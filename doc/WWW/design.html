@@ -658,7 +658,7 @@ $ pcmd file_family_width
 </TR>
 
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>lists the volmap-tape for the specifed volumename <br>*** Needs work to be fully functional ***</TD>
+<TD NOSAVE>lists the volmap-tape for the specified volumename <br>*** Needs work to be fully functional ***</TD>
 <TD NOSAVE>pcmd volume volumename</TD>
 <TD NOSAVE><pre>
 </pre></TD>
@@ -1003,7 +1003,7 @@ extension to <em>encp</em>.
 </tr>
 
 <tr NOSAVE>
-<td NOSAVE>print short help message abouting using <em>encp</em></td>
+<td NOSAVE>print short help message about using <em>encp</em></td>
 <td NOSAVE>--help</td>
 <td NOSAVE>None</td>
 </tr>
@@ -1217,9 +1217,9 @@ signifies a active transfer at a <u>M</u>over.
 </h3>
 Every individual encp request returns a status allowing to identify (and in some
 cases resolve)
-occured problem, if any. <em>Encp</em> processes the status internally and ether
-rertires request (providing user with intermediateate status) request or
-terminates with appropraite status. The only successful status returned by <em>encp</em> is <b>"OK"</b> and the only successful <em>encp</em> exit code is <b>0</b>. Below is the list of statuses reuterned to user:
+occurred problem, if any. <em>Encp</em> processes the status internally and ether
+retries request (providing user with intermediate status) request or
+terminates with appropriate status. The only successful status returned by <em>encp</em> is <b>"OK"</b> and the only successful <em>encp</em> exit code is <b>0</b>. Below is the list of statuses returned to user:
 <center><table BORDER COLS=2 WIDTH="80%" NOSAVE >
 <tr VALIGN=CENTER NOSAVE>
 <td NOSAVE><b>STATUS</b></td>
@@ -1228,7 +1228,7 @@ terminates with appropraite status. The only successful status returned by <em>e
 
 <tr NOSAVE>
 <td NOSAVE>OK</td>
-<td NOSAVE>Operation Cmopleted Successfuly</td>
+<td NOSAVE>Operation Completed Successfully</td>
 </tr>
 
 <tr NOSAVE>
@@ -1633,7 +1633,7 @@ using the full Ascii name specified in the configuration file. For example:<br>
 <td NOSAVE>environmental variable, ENSTORE_CONFIG_PORT, set by the UPS setup command</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>print a short help message abouting using the server</td>
+<td NOSAVE>print a short help message about using the server</td>
 <td NOSAVE>--help</td>
 <td NOSAVE>None</td>
 </tr>
@@ -1736,7 +1736,7 @@ bytes that would fit on the volume.
 <tr>
 <td valign=top>blocksize
 <td valign=top>int
-<td valign=top>Set by the Volume Clerk; derived from the the media type.
+<td valign=top>Set by the Volume Clerk; derived from the media type.
 <tr>
 <td valign=top>remaining_bytes
 <td valign=top>64-bit int
@@ -2016,7 +2016,7 @@ associated with the destination directory, identifies
      requests queued in the Library Manager queues. This command asks the Library Manager to provide information about all current requests from user node sphinx.fnal.gov. The output format is: <br>
 [user node] [user name] [input file] [output file] [request status]
      request status can be either P (pending) or M (at Mover)<br>
-     The exmple of the output is given in 1.2.4
+     The example of the output is given in 1.2.4
 </dl>
 <p>
 Work can be prioritized.
@@ -3590,7 +3590,7 @@ UDP is not a guaranteed reliable protocol but the Enstore protocols, described l
 
 <p>
 Generally, each server module has a corresponding client module that implements the client interface
-to the server.   For the media_changer, the the mover imports media_change_client.py n which 
+to the server.   For the media_changer, the mover imports media_change_client.py, which 
 implements load and unload methods.
 So,  mover.py imports media_changer_client which encapsulates the media_changer interface and media_changer_client
 imports udp_client which encapsulates the UDP communications.   On the server side, media changer
@@ -3599,7 +3599,7 @@ So far, we have mentioned modules that are imported with the python "import" com
 modules, there are python "new" commands that instantiate the corresponding classes.
 
 <p>
-All clients are themselves clients of the configuration_server server; so, each time they send
+All clients are themselves clients of the configuration server; so, each time they send
 a request to their server, they send a request to the configuration server to get the address
 of their server.   In this way the configuration server is the only server that has a hard coded address.
 When each process starts it is given the IP address and port number of its configuration server.
@@ -3630,11 +3630,11 @@ does not start with the original client time stamp or if the wait for the respon
 the request is resent.   More about this later.
 <p>
 The server implementation of the protocol in DispatchingWorker does a select on a list of read
-file descriptors which includes the socket (host, port) as issued by the the configuration
+file descriptors which includes the socket (host, port) as issued by the configuration
 server.   The select is repeated if it times out.
 <p>
 When input is detected on the socket, the server reads the request; checks the check sum; unpacks
-and saves the client id, the client time stamp, and the ticket ; 
+and saves the client id, the client time stamp, and the ticket; 
 converts the ticket to a python dictionary; 
 and calls the method specified by the "work" item in the ticket.   If any of these things fail
 then the request is ignored presuming the client will resend the request.
@@ -3645,7 +3645,7 @@ and instantiated a DispatchingWorker class.   When the work method is finished i
 method reply_to_caller with a status result ticket.
 <p>
 reply_to_caller builds a stringified reply with the client time stamp, the status ticket, and
-its own time stamp.  It sends the reply to the client; saves the clients address, the client message id,
+its own time stamp.  It sends the reply to the client; saves the client address, the client message id,
 and the complete reply in case of errors; and waits for more requests.
 <p>
 We save the complete reply in case of errors because we may get a request resent to the server which
@@ -3659,8 +3659,8 @@ If it grows beyond a certain size (currently 1000 entries) then entries older
 than 30 minutes are deleted.
 <p>
 
-he scheme described so far rquires that servers handle one request at a time and that clients
-queue in the the servers udp input buffer waiting their turn.  This is satisfactory if requests
+The scheme described so far requires that servers handle one request at a time and that clients
+queue in the servers udp input buffer waiting their turn.  This is satisfactory if requests
 are guaranteed to finsih quickly; however, the media changers operation may take a long time to complete
 while other operations might be done simultaneously.   To accomodate this, dispatching_worker was extended
 to allow forking in servers.
@@ -3924,6 +3924,9 @@ if the reception is a repeat. If the reception is a *repeat request*, send a
 saved copy of the response; if the reception is *repeat response*, just
 ignored it. This will take care of the case when a timeout/retry happens just
 before a response is received.
+<p>
+Some transfers do not require replies and using a described UDP communication
+may even hurt the system perfromance. One of such examples could be messages sent to the Log Server. For this purpose "pure" UDP messaging is used. 
 
 <h3><a name="read_protocol">
 3.1 Read Protocol
@@ -4034,7 +4037,7 @@ Manager.
 <em>encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
-The Library Manager puts write request into internal request queueand tells
+The Library Manager puts write request into internal request queue and tells
 the <em>encp</em> that the request has been accepted.
 <li>
 The Library Manager finds next potentially available mover in its list
@@ -4130,7 +4133,7 @@ Enstore conforms to the (oral) statements made about Run II operating conditions
 <P> Enstore is a distributed system. For a transfer to succeed, many of the
 Enstore processes must be up and running.  Therefore, the servers are
 robust, and run on reliable computers. Nevertheless, it is good to consider
-the the intrinsic ability for the system to recover when a process or
+the intrinsic ability for the system to recover when a process or
 system running a process crashes.  This is summarized in the table below:
 
 
