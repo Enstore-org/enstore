@@ -47,6 +47,10 @@ import volume_clerk_client
 import file_clerk_client
 import enstore_constants
 
+ONE_G = 1048576 * 1024
+TWO_G = ONE_G - 1 + ONE_G               # actually, 2G - 1
+MAX_FILE_SIZE = ONE_G - 2048 + ONE_G    # don't get overflow
+
 #############################################################################
 # verbose: Roughly, five verbose levels are used.
 # 0: Print nothing except fatal errors.
@@ -63,6 +67,16 @@ data_access_layer_requested = 0
 
 #Initial seed for generate_unique_id().
 _counter = 0
+
+# int32(v) -- if v > 2^31-1, make it long
+#
+# a quick fix for those 64 bit machine that consider int is 64 bit ...
+
+def int32(v):
+    if v > TWO_G:
+        return long(v)
+    else:
+        return v
 
 ############################################################################
 
@@ -296,6 +310,25 @@ def clients(config_host,config_port):
 
 ##############################################################################
 
+# for automounted pnfs
+
+pnfs_is_automounted = 0
+
+# access_check(path, mode) -- a wrapper for os.access() that retries for
+#                             automatically mounted file system
+
+def access_check(path, mode):
+    # if pnfs is not auto mounted, simply call os.access
+    if not pnfs_is_automounted:
+        return os.access(path, mode)
+
+    # automaticall retry 6 times, one second delay each
+    for i in range(5):
+        if os.access(path, mode):
+            return 1
+        time.sleep(1)
+    return os.access(path, mode)
+
 # check the input file list for consistency
 
 def inputfile_check(input_files, bytecount=None):
@@ -321,7 +354,7 @@ def inputfile_check(input_files, bytecount=None):
         inputlist[i] = fullname
 
         # input files must exist
-        if not os.access(inputlist[i], os.R_OK):
+        if not access_check(inputlist[i], os.R_OK):
             print_data_access_layer_format(inputlist[i], '', 0, {'status':(
                 'USERERROR','Cannot read file %s'%(inputlist[i],))})
             quit()
@@ -335,8 +368,14 @@ def inputfile_check(input_files, bytecount=None):
                 'USERERROR', 'Not a regular file %s'%(inputlist[i],))})
             quit()
 
+        # input files can't be larger than 2G
+        if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
+            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+                'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
+            quit()
+
         # get the file size
-        file_size.append(statinfo[stat.ST_SIZE])
+        file_size.append(int32(statinfo[stat.ST_SIZE]))
 
         #if bytecount != None:
         #    file_size.append(bytecount)
@@ -355,7 +394,6 @@ def inputfile_check(input_files, bytecount=None):
             pass  #There is no error.
 
     return (inputlist, file_size)
-
 
 # check the output file list for consistency
 # generate names based on input list if required
@@ -386,7 +424,7 @@ def outputfile_check(inputlist, output, dcache):
             #In this if...elif...else determine if the user entered in
             # valid file or directory names appropriately.
             
-            if os.access(outputlist[i], os.W_OK):
+            if access_check(outputlist[i], os.W_OK):
                 #File or directory exists with write permissions.
                 if os.path.isdir(outputlist[i]):
                     outputlist[i] = os.path.join(outputlist[i], ibasename)
@@ -400,7 +438,7 @@ def outputfile_check(inputlist, output, dcache):
                         #It is a file that already exists.
                         raise e_errors.EEXIST, \
                               "File %s already exists" % (outputlist[i],)
-            elif os.access(odir, os.W_OK) and len(inputlist) == 1:
+            elif access_check(odir, os.W_OK) and len(inputlist) == 1:
                 #Output is not a directory.  If one level up (odir) is a
                 # valid directory and the number of input files is 1, then
                 # the full name is the valid name of a one file transfer.
@@ -411,10 +449,10 @@ def outputfile_check(inputlist, output, dcache):
             else:
                 #only error conditions left
 
-                if os.access(outputlist[i], os.F_OK):
+                if access_check(outputlist[i], os.F_OK):
                     #Path exists, but without write permissions.
                     raise e_errors.USERERROR, "No write access to %s"%(odir,)
-                elif not os.access(outputlist[i], os.F_OK):
+                elif not access_check(outputlist[i], os.F_OK):
                     raise e_errors.USERERROR, \
                           "Invalid file or directory %s" % (outputlist[i],)
                 else:
@@ -1501,6 +1539,10 @@ def set_pnfs_settings(ticket, client, verbose):
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
 
+    # set file permission here
+    set_outfile_permissions(ticket)
+
+    # file size needs to be the LAST metadata to be recorded
     try:
         # set the file size
         p.set_file_size(ticket['file_size'])
@@ -1782,7 +1824,10 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         elif not e_errors.is_retriable(result_dict['status'][0]):
             return combine_dict(result_dict, work_ticket)
 
-        set_outfile_permissions(done_ticket) #Writes errors to log file.
+        # The following line has been moved into set_pnfs_settings()
+        # set_outfile_permissions(done_ticket)
+
+        #Writes errors to log file.
         ###What kind of check should be done here?
         #This error should result in the file being left where it is, but it
         # is still considered a failed transfer (aka. exit code = 1 and
@@ -2695,6 +2740,7 @@ class encp(interface.Interface):
     deprecated_options = ['--crc']
     
     def __init__(self):
+        global pnfs_is_automounted
         self.chk_crc = 1           # we will check the crc unless told not to
         self.priority = 1          # lowest priority
         self.delpri = 0            # priority doesn't change
@@ -2720,11 +2766,13 @@ class encp(interface.Interface):
 
         self.storage_info = None # Ditto
         self.test_mode = 0
+        self.pnfs_is_automounted = 0
 
         interface.Interface.__init__(self)
 
         # parse the options
         self.parse_options()
+        pnfs_is_automounted = self.pnfs_is_automounted
 
     ##########################################################################
     # define the command line options that are valid
@@ -2733,7 +2781,8 @@ class encp(interface.Interface):
             "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
-            "data-access-layer", "max-retry=", "max-resubmit="] + \
+            "data-access-layer", "max-retry=", "max-resubmit=",
+            "pnfs-is-automounted"] + \
             self.help_options()
 
     
