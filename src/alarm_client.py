@@ -13,6 +13,17 @@ import interface
 import Trace
 import e_errors
 
+class Lock:
+    def __init__(self):
+	self.locked = 0
+    def unlock(self):
+	self.locked = 0
+	return None
+    def test_and_set(self):
+	s = self.locked
+	self.locked=1
+	return s
+
 class AlarmClient(generic_client.GenericClient):
 
     def __init__(self, csc=0, verbose=0, \
@@ -31,8 +42,12 @@ class AlarmClient(generic_client.GenericClient):
         except KeyError:
             pass
 	Trace.set_alarm_func( self.alarm_func )
+	self.alarm_func_lock = Lock() 
 
     def alarm_func(self, time, pid, name, args):
+	# prevent infinite recursion (i.e if some function call by this
+	# function does a trace and the alarm bit is set
+	if self.alarm_func_lock.test_and_set(): return None
         if 0: print time  # lint fix
         ticket = {}
         ticket['work'] = "post_alarm"
@@ -46,7 +61,8 @@ class AlarmClient(generic_client.GenericClient):
             # we were called from someplace like Trace.trace and we only
             # have a text string for an argument
             ticket['text'] = args[1]
-        return self.u.send(ticket, self.server_address, 0, 0 )
+        self.u.send(ticket, self.server_address, 0, 0 )
+	return self.alarm_func_lock.unlock()
 
     def send(self, ticket, rcv_timeout=0, tries=0):
         # need this for the alive function
