@@ -924,6 +924,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		 'mode'         : self.client_obj_inst.mode,
 		 'tape'         : self.client_obj_inst.tape,
 		 'time_stamp'   : time.time(),
+		 'vol_info'     : self.client_obj_inst.vol_info,
 		 # just include total "work ticket"
 		 'work_ticket'  : self.client_obj_inst.work_ticket,
 		 'zlast_status' : self.last_status_tick }
