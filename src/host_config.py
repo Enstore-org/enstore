@@ -278,6 +278,11 @@ def update_cached_routes():
     _cached_netstat = get_netstat_r()
     return _cached_netstat
 
+def clear_cached_routes():
+    global _cached_netstat
+    _cached_netstat = None
+    return None
+
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
