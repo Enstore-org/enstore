@@ -1592,12 +1592,9 @@ Otherwise, the Library Manager can responde with 'no_work,'
 'read_from_hsm,' or 'write_to_hsm.'
 
 When the mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
-subprocess which handles the transfer.
-If there is some error, it issues a unilateral unbind to the
-Library Manager.
-
-If all is well with the entire transfer, it issues a have_bound_volume to
-the Library Manager.
+subprocess which handles the transfer utilizing a shared memory buffer. The
+main Mover process can read shared memory locations to get the status of
+the transfer.
 
 The first thing the transfer process does is check to see if the waiting
 encp is responsive. This involves contacting encp on the designated TCP
@@ -1612,39 +1609,52 @@ to a waiting <em>encp</em> program.
         The steps are:
 <ol>
 <li> Using the file_location_cookie, space to beginning of data.
-<li> Read the data from a volume, (stripping any wrapper like tar headers)
-     verify the sanity crc. send the data to the user.
+<li> Read any wrappering information that precedes the actual data.
+<li> Fork a process that reads and crc's the data from the volume verifing
+     the sanity crc and placing the
+     data in a 4 MB shared memory buffer.
+<li> Write data from the shared memory to the user.
+<li> Read any wrappering information that comes after the data.
 <li> Close the data port.
 <li> Tell the user done and all is well.
 <li> Close the control port.
 </ol>
 
-If any errors occur while reading the volume, an attempt is made to
-characterize them as either media or drive.  This is discussed more completely
-in the section on Error control.
 <p>
 Writes -- Once a volume is bound the Mover may receive data and write it to
 the volume.
         The steps are:
 <ol>
-<li>Mark the volume as "writing". That will cause the volume to
-    not be selected for subsequent writes, should we crash.
-<li>Using the eod_space_cookie, space to end of volume. Try
-    to verify that we are actually at the end of volume.
-<li>Receive data from <em>encp</em>, wrapper it, and write it to the volume
-<li>Close the data port.
-<li>Compute new eod_cookie and tell Volume Clerk that the
-    volume is writable. Update remaining bytes as well.
-<li>Compute the file location cookie, and tell the bit
-    File Clerk about the new file. Get a bit file ID in return.
-<li>Give the bit file ID to <em>encp</em>. We are done.
+<li> Mark the volume as "writing". That will cause the volume to
+     not be selected for subsequent writes, should we crash.
+<li> Using the eod_space_cookie, space to end of volume. Try
+     to verify that we are actually at the end of volume.
+<li> Write any wrappering information that precedes the data.
+<li> Fork a process that reads and crc's data from the user calculating the
+     sanity crc and placing the data in a 4 MB shared memory buffer.
+<li> Write data from the shared memory to the tape device.
+<li> Close the data port.
+<li> Write any wrappering information after the data.
+<li> Compute new eod_cookie and tell Volume Clerk that the
+     volume is writable. Update remaining bytes as well.
+<li> Compute the file location cookie, and tell the bit
+     File Clerk about the new file. Get a bit file ID in return.
+<li> Give the bit file ID to <em>encp</em>. We are done.
 </ol>
 
-If any errors occur while writing the volume, an attempt is made to
-characterize
-them as either media or drive.  This is discussed more completely in the
-section on Error control.  If the user drops the control tcp
-channel unilaterally, assume he has aborted.
+If any errors occur while reading or writing a volume, an attempt is made
+to characterize them as either media or drive.Depending upon the error, the
+Mover will issue either have_bound_volume or unilateral_unbind to the
+Library Manager.
+This is discussed more completely in the section on Error control.
+If the user drops the control tcp channel unilaterally, assume he has
+aborted.
+
+If all is well with the entire transfer, the Mover issues a
+have_bound_volume to the Library Manager.
+
+
+<p>
 
 <h4><a name="mover_cmds">
 1.3.4.1 Command Line Control of the Mover
