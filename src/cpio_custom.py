@@ -82,81 +82,6 @@ To extract:   cpio -idmv < archive
 """
 
 
-class Wrapper :
-
-    def sw_mount( self, driver, info ):
-	return
-
-    # generate an enstore cpio archive: devices must be open and ready
-    def write_pre_data( self, driver, info ):
-        inode        = info['inode']
-        mode         = info['mode']
-        uid          = info['uid']
-        gid          = info['gid']
-        mtime        = info['mtime']
-        self.filesize= info['size_bytes']
-        major        = info['major']
-        minor        = info['minor']
-        rmajor       = info['rmajor']
-        rminor       = info['rminor']
-        filename     = info['pnfsFilename']
-        sanity_bytes = info['sanity_size']
-
-        # generate the headers for the archive and write out 1st one
-        format = "new"
-        nlink = 1
-        header,self.crc_header,self.trailer = headers( format, inode, mode,
-						       uid, gid, nlink, mtime,
-						       self.filesize, major,
-						       minor, rmajor, rminor,
-						       filename, 0 )
-	self.header_size = len( header )
-	driver.write( header )
-	return
-
-
-    def write_post_data( self, driver, crc ):
-
-	size = self.header_size + self.filesize
-
-        driver.write( trailers(size,self.crc_header,crc,self.trailer) )
-        return
-
-
-    def read_pre_data( self, driver, info ):
-	# The pre data is one cpio header (including the pad).
-
-	# 1st read the constant length part
-	header = driver.read( 110 )
-
-	# determine/save info
-	self.file_size   = string.atoi( header[54:62], 16 )
-
-	self.filename_size = string.atoi( header[94:102], 16 )
-	header_pad = (4-((110+self.filename_size)%4)) % 4
-	self.header_size = 110+self.filename_size+header_pad
-
-	# now just index to first part of real data
-	buffer = driver.read( self.filename_size+header_pad )
-	return
-
-
-    def read_post_data( self, driver, info ):
-	dat_crc = info['data_crc']
-	data_size = self.header_size + self.file_size
-	pad_data = (4-(data_size%4)) % 4
-	pad_crc  = (4-((110+self.filename_size+4+8)%4)) % 4
-	# read the rest (padd), (crc_trailer) and trailer
-	length = pad_data + (110+self.filename_size+3+8+pad_crc) + (110+0xb)
-	trailer = driver.read( length )
-
-	recorded_crc = encrc( trailer[pad_data:] )
-        if recorded_crc != dat_crc :
-            raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
-                  " but was expecting "+repr(recorded_crc)
-	return
-	
-
 ###############################################################################
 # cpio support functions
 #
@@ -279,6 +204,81 @@ def encrc( buffer ):
 
 ###############################################################################
 
+
+class Wrapper :
+
+    def sw_mount( self, driver, info ):
+	return
+
+    # generate an enstore cpio archive: devices must be open and ready
+    def write_pre_data( self, driver, info ):
+        inode        = info['inode']
+        mode         = info['mode']
+        uid          = info['uid']
+        gid          = info['gid']
+        mtime        = info['mtime']
+        self.filesize= info['size_bytes']
+        major        = info['major']
+        minor        = info['minor']
+        rmajor       = info['rmajor']
+        rminor       = info['rminor']
+        filename     = info['pnfsFilename']
+        sanity_bytes = info['sanity_size']
+
+        # generate the headers for the archive and write out 1st one
+        format = "new"
+        nlink = 1
+        header,self.crc_header,self.trailer = headers( format, inode, mode,
+						       uid, gid, nlink, mtime,
+						       self.filesize, major,
+						       minor, rmajor, rminor,
+						       filename, 0 )
+	self.header_size = len( header )
+	driver.write( header )
+	return
+
+
+    def write_post_data( self, driver, crc ):
+
+	size = self.header_size + self.filesize
+
+        driver.write( trailers(size,self.crc_header,crc,self.trailer) )
+        return
+
+
+    def read_pre_data( self, driver, info ):
+	# The pre data is one cpio header (including the pad).
+
+	# 1st read the constant length part
+	header = driver.read( 110 )
+
+	# determine/save info
+	self.file_size   = string.atoi( header[54:62], 16 )
+
+	self.filename_size = string.atoi( header[94:102], 16 )
+	header_pad = (4-((110+self.filename_size)%4)) % 4
+	self.header_size = 110+self.filename_size+header_pad
+
+	# now just index to first part of real data
+	buffer = driver.read( self.filename_size+header_pad )
+	return
+
+
+    def read_post_data( self, driver, info ):
+	dat_crc = info['data_crc']
+	data_size = self.header_size + self.file_size
+	pad_data = (4-(data_size%4)) % 4
+	pad_crc  = (4-((110+self.filename_size+4+8)%4)) % 4
+	# read the rest (padd), (crc_trailer) and trailer
+	length = pad_data + (110+self.filename_size+3+8+pad_crc) + (110+0xb)
+	trailer = driver.read( length )
+
+	recorded_crc = encrc( trailer[pad_data:] )
+        if recorded_crc != dat_crc :
+            raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
+                  " but was expecting "+repr(recorded_crc)
+	return
+	
 # shamelessly stolen from python's posixfile.py
 class DiskDriver:
     states = ['open', 'closed']

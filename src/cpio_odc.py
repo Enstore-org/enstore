@@ -19,6 +19,8 @@ import e_errors
 
 """
 
+
+
 cpio odc format
 
 Offet Field Name   Length in Bytes Notes
@@ -45,84 +47,7 @@ To list them: cpio -tv < archive
 To extract:   cpio -idmv < archive
 
 """
-class Wrapper :
 
-    def sw_mount( self, driver, info ):
-	return
-
-    # generate an enstore cpio archive: devices must be open and ready
-    def write_pre_data( self, driver, info ):
-        inode        = info['inode']
-        mode         = info['mode']
-        uid          = info['uid']
-        gid          = info['gid']
-        mtime        = info['mtime']
-        self.filesize     = info['size_bytes']
-        major        = info['major']
-        minor        = info['minor']
-        rmajor       = info['rmajor']
-        rminor       = info['rminor']
-        filename     = info['pnfsFilename']
-        sanity_bytes = info['sanity_size']
-
-        # generate the headers for the archive and write out 1st one
-        nlink = 1
-        header, self.trailer = headers(inode, mode, uid, gid, nlink, mtime,
-				       self.filesize, major, minor, rmajor, rminor,
-				       filename)
-	self.header_size = len( header )
-	driver.write( header )
-	return
-
-
-    def write_post_data( self, driver, crc ):
-
-	try:
-	    blocksize = self.blocksize
-	except:
-	    blocksize = 512
-	size = self.header_size + self.filesize
-
-        driver.write( trailers(blocksize, size,self.trailer) )
-        return
-
-
-    def read_pre_data( self, driver, info ):
-	# The pre data is one cpio header (including the pad).
-
-	# 1st read the constant length part
-	header = driver.read(76)
-
-	# determine/save info
-	self.magic = header[0:6]
-	
-	self.filename_size = string.atoi( header[59:65], 8 )
-	self.file_size   = string.atoi( header[65:76], 8 )
-
-	self.header_size = 76+self.filename_size
-
-	# now just index to first part of real data
-	buffer = driver.read( self.filename_size )
-	return
-
-
-    def read_post_data( self, driver, info ):
-	trailer = driver.read(76)
-	magic = trailer[0:6]
-	if magic != self.magic:
-	    raise IOError, "header magic number " + repr(self.magic) +\
-		  "does not match trailer magic number " + repr(magic)
-	trailer_name_size = string.atoi( trailer[59:65], 8 )
-	trailer_size   = string.atoi( trailer[65:76], 8 )
-	if trailer_name_size != 11:
-	    raise IOError, "Wrong trailer name size " + repr(trailer_name_size)
-	trailer_name = driver.read(trailer_name_size)
-	if trailer_name != "TRAILER!!!\0":
-	   raise IOError, "Wrong trailer name " + repr(trailer_name) + \
-		 "Must be null terminated TRAILER!!!"
-
-	return
-	
 
 ###############################################################################
 # cpio support functions
@@ -203,6 +128,86 @@ def trailers(blocksize, siz, trailer):
         # ok, send it back to so he can write it out
 
         return(trailer + "\0"*int(padt) )
+
+             
+class Wrapper :
+
+    def sw_mount( self, driver, info ):
+	return
+
+    # generate an enstore cpio archive: devices must be open and ready
+    def write_pre_data( self, driver, info ):
+        inode        = info['inode']
+        mode         = info['mode']
+        uid          = info['uid']
+        gid          = info['gid']
+        mtime        = info['mtime']
+        self.filesize     = info['size_bytes']
+        major        = info['major']
+        minor        = info['minor']
+        rmajor       = info['rmajor']
+        rminor       = info['rminor']
+        filename     = info['pnfsFilename']
+        sanity_bytes = info['sanity_size']
+
+        # generate the headers for the archive and write out 1st one
+        nlink = 1
+        header, self.trailer = headers(inode, mode, uid, gid, nlink, mtime,
+				       self.filesize, major, minor, rmajor, rminor,
+				       filename)
+	self.header_size = len( header )
+	driver.write( header )
+	return
+
+
+    def write_post_data( self, driver, crc ):
+
+	try:
+	    blocksize = self.blocksize
+	except:
+	    blocksize = 512
+	size = self.header_size + self.filesize
+
+        driver.write( trailers(blocksize, size,self.trailer) )
+        return
+
+
+    def read_pre_data( self, driver, info ):
+	# The pre data is one cpio header (including the pad).
+
+	# 1st read the constant length part
+	header = driver.read(76)
+
+	# determine/save info
+	self.magic = header[0:6]
+	
+	self.filename_size = string.atoi( header[59:65], 8 )
+	self.file_size   = string.atoi( header[65:76], 8 )
+
+	self.header_size = 76+self.filename_size
+
+	# now just index to first part of real data
+	buffer = driver.read( self.filename_size )
+	return
+
+
+    def read_post_data( self, driver, info ):
+	trailer = driver.read(76)
+	magic = trailer[0:6]
+	if magic != self.magic:
+	    raise IOError, "header magic number " + repr(self.magic) +\
+		  "does not match trailer magic number " + repr(magic)
+	trailer_name_size = string.atoi( trailer[59:65], 8 )
+	trailer_size   = string.atoi( trailer[65:76], 8 )
+	if trailer_name_size != 11:
+	    raise IOError, "Wrong trailer name size " + repr(trailer_name_size)
+	trailer_name = driver.read(trailer_name_size)
+	if trailer_name != "TRAILER!!!\0":
+	   raise IOError, "Wrong trailer name " + repr(trailer_name) + \
+		 "Must be null terminated TRAILER!!!"
+
+	return
+	
 
 
 ###############################################################################

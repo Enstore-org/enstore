@@ -49,6 +49,84 @@ To list them: cpio -tv < archive
 To extract:   cpio -idmv < archive
 
 """
+
+
+###############################################################################
+# cpio support functions
+#
+
+# create device from major and minor
+def makedev(major, minor):
+    return (((major) << 8) | (minor))
+
+# extract major number
+def extract_major(device):
+    return (((device) >> 8) & 0xff)
+
+# extract minor number
+def extract_minor(device):
+    return ((device) & 0xff)
+
+# create header
+def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
+             major, minor, rmajor, rminor, filename):
+    
+    # files greater than 2  GB are just not allowed right now
+    max = 2**30-1+2**30
+    if filesize > max :
+	raise errno.errorcode[errno.EOVERFLOW],"Files are limited to "\
+	      +repr(max) + " bytes and your "+filename+" has "\
+	      +repr(filesize)+" bytes"
+    fname = filename
+    fsize = filesize
+    # set this dang mode to something that works on all machines!
+    if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
+	jonmode = 0100664
+	Trace.log(e_errors.INFO,
+                  "Mode "+repr(mode)+ " is invalid, setting to "+\
+                  repr(jonmode)+" so cpio valid")
+    else :
+	jonmode = mode
+
+    # make all filenames relative - strip off leading slash
+    if fname[0] == "/" :
+	fname = fname[1:]
+    dev = makedev(major, minor)
+    rdev = makedev(rmajor, rminor)
+    header = \
+	   "070707" +\
+	   "%06o"   % (dev & 0xffff) +\
+	   "%06lo"  % (inode & 0xffff) +\
+	   "%06lo"  % (jonmode & 0xffff) +\
+	   "%06lo"  % (uid & 0xffff) +\
+	   "%06lo"  % (gid & 0xffff) +\
+	   "%06lo"  % (nlink & 0xffff) +\
+	   "%06o"   % (rdev & 0xffff) +\
+	   "%011lo" % mtime +\
+	   "%06lo"  % ((int(len(fname)+1)) & 0xffff) +\
+	   "%011lo" % fsize +\
+	   "%s\0" % fname
+    return header
+
+
+# generate the enstore cpio "trailers"
+def trailers(blocksize, siz, header2, trailer):
+        size = siz
+
+        size = size + len(header2)
+	size = size + len(trailer)
+        pad = (blocksize-(size%blocksize)) % blocksize
+
+
+        # ok, send it back to so he can write it out
+
+        return(header2 + trailer + "\0"*int(pad) )
+
+
+###############################################################################
+
+             
+
 class Wrapper :
 
     def sw_mount( self, driver, info ):
@@ -137,81 +215,6 @@ class Wrapper :
 
 	return
 	
-
-###############################################################################
-# cpio support functions
-#
-
-# create device from major and minor
-def makedev(major, minor):
-    return (((major) << 8) | (minor))
-
-# extract major number
-def extract_major(device):
-    return (((device) >> 8) & 0xff)
-
-# extract minor number
-def extract_minor(device):
-    return ((device) & 0xff)
-
-# create header
-def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
-             major, minor, rmajor, rminor, filename):
-    
-    # files greater than 2  GB are just not allowed right now
-    max = 2**30-1+2**30
-    if filesize > max :
-	raise errno.errorcode[errno.EOVERFLOW],"Files are limited to "\
-	      +repr(max) + " bytes and your "+filename+" has "\
-	      +repr(filesize)+" bytes"
-    fname = filename
-    fsize = filesize
-    # set this dang mode to something that works on all machines!
-    if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
-	jonmode = 0100664
-	Trace.log(e_errors.INFO,
-                  "Mode "+repr(mode)+ " is invalid, setting to "+\
-                  repr(jonmode)+" so cpio valid")
-    else :
-	jonmode = mode
-
-    # make all filenames relative - strip off leading slash
-    if fname[0] == "/" :
-	fname = fname[1:]
-    dev = makedev(major, minor)
-    rdev = makedev(rmajor, rminor)
-    header = \
-	   "070707" +\
-	   "%06o"   % (dev & 0xffff) +\
-	   "%06lo"  % (inode & 0xffff) +\
-	   "%06lo"  % (jonmode & 0xffff) +\
-	   "%06lo"  % (uid & 0xffff) +\
-	   "%06lo"  % (gid & 0xffff) +\
-	   "%06lo"  % (nlink & 0xffff) +\
-	   "%06o"   % (rdev & 0xffff) +\
-	   "%011lo" % mtime +\
-	   "%06lo"  % ((int(len(fname)+1)) & 0xffff) +\
-	   "%011lo" % fsize +\
-	   "%s\0" % fname
-    return header
-
-
-# generate the enstore cpio "trailers"
-def trailers(blocksize, siz, header2, trailer):
-        size = siz
-
-        size = size + len(header2)
-	size = size + len(trailer)
-        pad = (blocksize-(size%blocksize)) % blocksize
-
-
-        # ok, send it back to so he can write it out
-
-        return(header2 + trailer + "\0"*int(pad) )
-
-
-###############################################################################
-
 
 # shamelessly stolen from python's posixfile.py
 class DiskDriver:
