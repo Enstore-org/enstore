@@ -15,7 +15,7 @@ DIR=$(DEFAULT_DIR)
 #
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=b2_1
+            VERS=v2_2
        UPS_STYLE=new
           DEPEND=
   TABLE_FILE_DIR=ups
