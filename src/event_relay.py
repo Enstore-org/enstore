@@ -6,12 +6,20 @@ import select
 import time
 import string
 
-DEFAULT_PORT = 55510
+#DEFAULT_PORT = 55510
+DEFAULT_PORT = 7499
 MINTOKLEN = 3
 
 # event relay message types
 ALL = "all"
 NOTIFY = "notify"
+
+def get_event_relay_host():
+    return os.environ.get("ENSTORE_CONFIG_HOST")
+
+def get_event_relay_port():
+    tmp = os.environ.get("ENSTORE_CONFIG_PORT")
+    return int(tmp) - 1
 
 def get_message_filter_dict(msg_tok):
     filter_d = {}
@@ -53,6 +61,7 @@ class Relay:
             if not msg:
                 continue
             tok = string.split(msg)
+	    print time.ctime(time.time()), msg
             if not tok:
                 continue
             if tok[0]==NOTIFY:

@@ -3,6 +3,7 @@ import socket
 import os
 
 import event_relay_messages
+import event_relay
 
 """
 This class supports messages from the event relay process.  Methods are provided to read
@@ -27,10 +28,9 @@ class EventRelayClient:
 
 	# get the address of the event relay process
 	if not event_relay_host:
-	    event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
+	    event_relay_host = event_relay.get_event_relay_host()
 	if not event_relay_port:
-	    tmp = os.environ.get("ENSTORE_CONFIG_PORT")
-	    event_relay_port = int(tmp) - 1
+	    event_relay_port = event_relay.get_event_relay_port()
 	self.event_relay_addr = (event_relay_host, event_relay_port)
 
 
