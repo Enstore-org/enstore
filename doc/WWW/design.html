@@ -3,8 +3,37 @@
 Enstore Data Storage System
 </i></b></font>
 <p>
+<font size=+3><b>Table of Contents</b></font>
+<ul>
+<li><a href="#overview">1 Overview of Enstore Architecture</a>
+<li><a href="#pnfs">1.1 pnfs Namespace</a>
+<li><a href="#encp">1.2 ENCP</a>
+<li><a href="#encp_throttle">1.2.1 Throttling in <em>encp</em></a>
+<li><a href="#servers">1.3 Enstore servers</a>
+<li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
+<li><a href="#file_clerk">1.3.2 File Clerk</a>
+<li><a href="#library_manager">1.3.3 Library Manager</a>
+<li><a href="#user_request">1.3.3.1 Users' Requests</a>
+<li><a href="#mover_request">1.3.3.2 Movers' Requests</a>
+<li><a href="#pub_request">1.3.3.3 Publisher Requests</a>
+<li><a href="#mover">1.3.4 Mover</a>
+<li><a href="#config_server">1.3.5 Configuration Server</a>
+<li><a href="#log_server">1.3.6 Log Server</a>
+<li><a href="#media_changer">1.3.7 Media Changer</a>
+<li><a href="#db">2 Databases in Enstore</a>
+<li><a href="#backup_recovery">2.1 Backup and Recovery Procedures</a>
+<li><a href="#backup">2.1.1 Backup </a>
+<li><a href="#recovery">2.2.2 Recovery</a>
+<li><a href="#current_db">2.2 Current Underlying Database Implemented in Enstore</a>
+<li><a href="#admin_tools">2.3 Administrative Tools</a>
+<li><a href="#protocol">3 Communication Protocols</a>
+<li><a href="#read_protocol">3.1 Read Protocol</a>
+<li><a href="#write_protocol">3.2 Write Protocol</a>
+<li><a href="#error">4 Error Control</a>
+</ul>
 
-<h2>
+<p>
+<h2><a name="overview">
 1 Overview of Enstore Architecture
 </h2>
 
@@ -70,7 +99,7 @@ an equivalent request with a new unique ID.
 The system can instruct <em>encp</em> to re-try if it needs to back out
 of an operation.
 
-<h2>
+<h2><a name="pnfs">
 1.1 pnfs Namespace
 </h2>
 The DESY <em>pnfs</em> package implements an <em>nfs</em> daemon and
@@ -127,7 +156,7 @@ information.
     After a file is written to tape, <em>encp</em> parks the bfid into
     the <em>pnfs</em> name space.
 </ol>
-<h2>
+<h2><a name="encp">
 1.2 ENCP
 </h2>
 Reading and writing files means interacting with media.
@@ -138,7 +167,7 @@ The syntax is:
 % encp [options] src_file dst_file
 </pre>
 
-<h3>
+<h3><a name="encp_throttle">
 1.2.1 Throttling in <em>encp</em>
 </h3>
 
@@ -154,7 +183,7 @@ Consequently, the system will survive the worst sort of abuse,
 for example, someone forking off 200 copy requests,
 since at most 15 will be active in the system at any time.
 
-<h2>
+<h2><a name="servers">
 1.3 Enstore servers
 </h2>
 
@@ -219,7 +248,7 @@ they really want the data, arrangements should be made to have the
 tapes placed in a library which is accessible,
 or get it manually later.
 <p>
-<h3>
+<h3><a name="volume_clerk">
 1.3.1 Volume Clerk
 </h3>
 The volume clerk has a single table database.
@@ -340,7 +369,7 @@ The volume clerk does the following short, atomic operations:
 <li>start/stop backup of volume journals
 </ul>
 
-<h3>
+<h3><a name="file_clerk">
 1.3.2 File Clerk
 </h3>
 The file clerk tracks files in the system. There is one record for each file
@@ -384,7 +413,7 @@ The file clerk supports the following requests:
 <li>start/stop backup of file journals
 </ul>
 
-<h3>
+<h3><a name="library_manager">
 1.3.3 Library Manager
 </h3>
 The library manager is a server which queues up and dispatches work for
@@ -395,8 +424,8 @@ It has three types of clients
 <li><em>Movers</em> -- seeking to actually read or write files.
 <li><em>Publishers</em> -- seeking HTML describing the library's current work.
 </ol>
-<h3>
-1.3.3.1 Users' Requests:
+<h3><a name="user_request">
+1.3.3.1 Users' Requests
 </h3>
 <dl>
 <dt>Writes into the system
@@ -419,8 +448,8 @@ The priority is conceptually more flexible than that.
 However, the system will exhaust all work for a volume,
 given that it has been mounted, regardless of priority.
 <p>
-<h3>
-1.3.3.2 Movers' Requests:
+<h3><a name="mover_request">
+1.3.3.2 Movers' Requests
 </h3>
 Movers seek to transport data between tape and users over a socket.
 Movers contact library managers seeking work. If the library manager
@@ -485,12 +514,12 @@ happen is that the library manager will be unable to schedule work for
 that volume. If the physical library has more than one drive, the system
 should be able to continue servicing requests.
 <p>
-<h3>
+<h3><a name="pub_request">
 1.3.3.3 Publisher Requests
 </h3>
 Publishers are not yet implemented.
 
-<h3>
+<h3><a name="mover">
 1.3.4 Mover
 </h3>
 A mover task is bound to a drive, and seeks to use that drive to service
@@ -572,7 +601,7 @@ them as either media or drive.  This is discussed more completely in the
 section on Error control.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
 <p>
-<h3>
+<h3><a name="config_server">
 1.3.5 Configuration Server
 </h3>
 The Configuration server maintains the crucial information about
@@ -582,7 +611,7 @@ ask the configuration server for information (e.g. the location
 of any other server with which to communicate).
 <br>
 <blink><font color=#ff0000>Need more content</font></blink>
-<h3>
+<h3><a name="log_server">
 1.3.6 Log Server
 </h3>
 The Log server receives messages from other processes and logs them into
@@ -592,13 +621,13 @@ Log files are labeled by dates.
 At midnight each day, the currently opened log file gets closed and another
 one is opened.
 <blink><font color=#ff0000>Need more content</font></blink>
-<h3>
+<h3><a name="media_changer">
 1.3.7 Media Changer
 </h3>
 The Media Changer mounts and dismounts the media into and from the drive
 according to a request from the mover.
 <blink><font color=#ff0000>Need more content</font></blink>
-<h2>
+<h2><a name="db">
 2 Databases in Enstore
 </h2>
 The database used in <em>Enstore</em> must provide the following:
@@ -615,10 +644,10 @@ Support performing daily backups of the database, log, and journal files.
 Support recovery of corrupted databases using the journal or log files.
 </ul>
 
-<h2>
+<h2><a name="backup_recovery">
 2.1 Backup and Recovery Procedures
 </h2>
-<h3>
+<h3><a name="backup">
 2.1.1 Backup 
 </h3>
 The backup procedure is a cron job that is performed daily. It copies 
@@ -664,7 +693,7 @@ journal file, release database access)
 <td valign=top><ul><li>deletes all the archival directories created more then 
 N days ago (default is 10 days)</ul>
 </table>
-<h3>
+<h3><a name="recovery">
 2.2.2 Recovery
 </h3>
 Recovery should be a job initiated manually in case of database corruption. 
@@ -692,8 +721,8 @@ There are two ways to recover from a crash:
 </ul>
 </table>
 
-<h2>
-2.1 Current Underlying Database Implemented in Enstore
+<h2><a name="current_db">
+2.2 Current Underlying Database Implemented in Enstore
 </h3>
 
 The current Enstore implementation uses LIBTP (BSD DB v2.3) as the underlying
@@ -758,8 +787,8 @@ It provides tools for database transaction logging, database backup and
 recovery.
 </ul>
 
-<h2>
-2.2 Administrative Tools
+<h2><a name="admin_tools">
+2.3 Administrative Tools
 </h2>
 
 Administrative tools will provide the following operations:
@@ -782,7 +811,7 @@ Enstore system
 than a specified date
 </ul>
 
-<h2>
+<h2><a name="protocol">
 3 Communication Protocols
 </h2>
 The base protocol for Enstore is UDP for "brief" messages and TCP for data
@@ -803,7 +832,7 @@ saved copy of the response; if the reception is *repeat response*, just
 ignored it. This will take care of the case when a timeout/retry happens just
 before a response is received.
 
-<h2>
+<h2><a name="read_protocol">
 3.1 Read Protocol
 </h2>
 The communications performed during a read operation are illustrated in the
@@ -874,7 +903,7 @@ The read has completed.
 The Mover tells the Library manager that he still has the volume mounted.
 </ul>
 
-<h2>
+<h2><a name="write_protocol">
 3.2 Write Protocol
 </h2>
 The communications performed during a write operation are illustrated in the
@@ -962,7 +991,7 @@ The Library manager tells the mover that there is no work to be done.
 The mover tells the Media changer to dismount the volume.
 </ul>
 
-<h2>
+<h2><a name="error">
 4 Error Control
 </h2>
 
