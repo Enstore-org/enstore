@@ -266,7 +266,7 @@ class Mover:
         timer_color        = colors('timer_color')
        
         self.outline = self.display.create_rectangle(x, y, x+self.width, y+self.height, fill = mover_color)
-        self.label   = self.display.create_text(x+self.label_offset.x,  y+self.label_offset.y,  text=self.name, font = self.font)
+        self.label   = self.display.create_text(x+self.label_offset.x,  y+self.label_offset.y,  text=self.name, anchor=Tkinter.SW,font = self.font)
         img          = find_image(self.state + '.gif')
         if img:
             self.state_display = self.display.create_image(x+self.img_offset.x, y+self.img_offset.y,
@@ -455,7 +455,17 @@ class Mover:
 
     def position_linear(self, N):
         self.font = get_font(self.height/3, 'Arial')
-        len_text = 50 #font.measure('XXXXX')
+        if self.display.mover_label_width is None:
+            max_width = 0
+            #Find the width of the widest mover label
+            print "Finding widest label..."
+            for m in  self.display.movers.keys():
+                print m
+                max_width = max(max_width, self.font.measure(m))
+            print "Done"
+            self.display.mover_label_width = max_width
+        len_text = self.font.measure(self.name)
+        label_width = self.display.mover_label_width
         #k = number of movers
         i=0
         k = self.index
@@ -465,15 +475,15 @@ class Mover:
         elif N < 20:
             space = (self.display.height - 40.0) / N
             y = 20 + k * space
-            x = self.display.width - ((self.display.width/3)+len_text)
+            x = self.display.width - ((self.display.width/3)+label_width)
         else:
             space = (self.display.height - 40.0) / (N/2.0)
             if k <= half:
-                x = self.display.width - ((self.display.width/1.5)+len_text)
+                x = self.display.width - ((self.display.width/1.5)+label_width)
                 y = 20 + k * space
             else:
                 self.column = 1
-                x = self.display.width -  ((self.display.width/3.5)+len_text)
+                x = self.display.width -  ((self.display.width/3.5)+label_width)
                 y = 20 + (k-half-0.5)*space
             print k, self.name, x, y, self.column
         self.display.mover_columns[self.column] = int(x)
@@ -500,9 +510,12 @@ class Mover:
         self.width = (self.display.width/4.0)
         font = get_font(self.height, 'Arial')
         len_text = font.measure(self.name)
+
+
+        self.x, self.y = self.position(N)
         
         #These are the new offsets
-        self.label_offset            = XY(self.width+30, self.height-4)
+        self.label_offset            = XY(self.width+5, self.height)
         self.state_offset            = XY(self.width/1.3, self.height/3.)
         self.timer_offset            = XY(self.width/1.3, self.height/1.4)
         self.percent_disp_offset     = XY(self.width/1.9, self.height/1.2)#green
@@ -519,15 +532,14 @@ class Mover:
         state_color         = colors('state_color')
         
         self.undraw()
-        self.x, self.y = self.position(N)
         self.draw()
-        #XXXXXXX
+        
         state = self.state
         mover_color = {'ERROR': mover_error_color, 'OFFLINE':mover_offline_color}.get(self.state, mover_stable_color)
         if state  in ['ERROR', 'OFFLINE']:
             self.undraw()
             self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height, fill=mover_color)
-            self.label=self.display.create_text(self.x+self.label_offset.x,  self.y+self.label_offset.y,  text=self.name, font = self.font)
+            self.label=self.display.create_text(self.x+self.label_offset.x,  self.y+self.label_offset.y,  text=self.name, anchor=Tkinter.SW, font = self.font)
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
@@ -823,6 +835,7 @@ class Display(Tkinter.Canvas):
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
         self.mover_columns = {} #x-coordinates for columns of movers
+        self.mover_label_width = None #width to allow for mover labels
         self.clients          = {} ## dictionary, key = client name, value is instance of class Client
         self.client_positions = {} #key is position index (0,1,-1,2,-2) and value is Client
         self.volumes          = {}
@@ -853,6 +866,7 @@ class Display(Tkinter.Canvas):
     def reposition_movers(self):
         items = self.movers.items()
         N = len(items) #need this to determine positioning
+        self.mover_label_width = None
         for mover_name, mover in items:
             mover.reposition(N)            
          
