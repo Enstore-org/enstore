@@ -12,7 +12,7 @@
       <System ID="Ping2" Cluster="STKEN"/>
       <SystemView ID="OSHealth.STK"/>
       <SystemView ID="Hardware.STK"/>
-      <SystemView ID="CronJob.STK"/>
+      <SystemView ID="Cronjob.STK"/>
    </SystemView>
    </SystemView>
 </NGOPConfig>
