@@ -58,10 +58,12 @@ Example:
 
 <h4>Hostip line</h4>
 
-The "hostip" line can be used to override the DNS name that encp
+The "hostip" line is used to override the DNS name that encp
 uses in the bind command when doing a (passive) open on on a socket
-used to listen for the mover to call it back. There should be 0 or 1
-hostname lines per enstore.conf file.
+used to listen for the mover to call it back. There should be 1
+hostname lines per enstore.conf file.  It must be the IP of one
+of the  IPs listed on an interface entry in this file.
+
 
 <pre>
 Example:
@@ -115,7 +117,7 @@ interface=eg3 weight=10 cpu=3 gw=131.225.32.36 ip=131.225.32.35
     <hr>
 <!-- Created: Tue May  9 15:25:50 CDT 2000 -->
 <!-- hhmts start -->
-Last modified: Tue Feb 13 12:37:33 CST 2001
+Last modified: Sun Apr  7 16:51:02 CDT 2002
 <!-- hhmts end -->
   </body>
 </html>
