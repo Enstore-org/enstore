@@ -3,6 +3,9 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 
+# fermi specif information
+hypmail="hyp-enstore@hppc.fnal.gov"
+
 # sun nodes need an extended path in order to find all the regular unix commands
 if [ `uname` = SunOS ]; then
   PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/lbin:/usr/ucb:/usr/ccs/bin
@@ -35,12 +38,12 @@ sendMail() {
   filename=$1
   mode=$2
   if [ "$mode" = "emergency" ] ; then
-     mailaddress="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
+     mailaddress=$ENSTORE_MAIL
   else
-     mailaddress="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
+     mailaddress=$ENSTORE_MAIL
   fi
   if [ -r $noMail ]; then
-     mailaddress="hyp-enstore@hppc.fnal.gov"
+     mailaddress=$hypmail
   fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
   if test -w /dev/console -a $quiet -ne 1; then
