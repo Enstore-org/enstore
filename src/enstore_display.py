@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-from Tkinter import *
-from tkFont import Font
-
 import cmath
 import exceptions
 import math
@@ -12,6 +9,18 @@ import socket
 import string
 import sys
 import time
+
+ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
+if ENSTORE_DIR:
+    TCL_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
+else:
+    TCL_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
+os.environ["TCL_LIBRARY"]=TCL_DIR
+os.environ["TK_LIBRARY"]=TCL_DIR
+sys.path.insert(0, os.path.join(TCL_DIR, sys.platform))
+
+from Tkinter import *
+from tkFont import Font
 
 debug = 1 
 DEFAULTPORT = 60126
