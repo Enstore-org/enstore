@@ -230,11 +230,31 @@ class MonitoredRatekeeper(MonitoredServer):
 
 class MonitoredMover(MonitoredServer):
 
+    STATUS_FIELDS = {enstore_constants.STATE : "",
+		     enstore_constants.TRANSFERS_COMPLETED : DASH,
+		     enstore_constants.TRANSFERS_FAILED : DASH,
+		     enstore_constants.BYTES_READ : "-1",
+		     enstore_constants.BYTES_WRITTEN : "-1",
+		     enstore_constants.FILES : ["", ""],
+		     enstore_constants.CURRENT_VOLUME : "",
+		     enstore_constants.MODE : "",
+		     enstore_constants.BYTES_TO_TRANSFER : "-1",
+		     enstore_constants.CURRENT_LOCATION : "0",
+		     enstore_constants.LAST_VOLUME : "",
+		     enstore_constants.LAST_LOCATION : "0",
+		     enstore_constants.STATUS : ""}
+
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
 	self.csc = csc
 	self.client = mover_client.MoverClient(self.csc, self.name)
+	self.status_keys = self.STATUS_FIELDS.keys()
 
+    def check_status_ticket(self, status):
+	# make sure this ticket has all of the fields we need
+	for key in self.status_keys:
+	    if not status.has_key(key):
+		status[key] = STATUS_FIELDS[key]
 
 class MonitoredMediaChanger(MonitoredServer):
 

@@ -787,10 +787,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the mover
     def update_mover(self, mover):
-        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout, 
-							   self.alive_retries)
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "get new state from %s"%(mover.name,))
+        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout, 
+							   self.alive_retries)
+	mover.check_status_ticket(self.mover_state[mover.name])
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name].get(enstore_constants.STATE, "")
         if enstore_functions.is_timedout(self.mover_state[mover.name]):
