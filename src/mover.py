@@ -2627,7 +2627,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 self.broken(broken)
 
-            return
+                return
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
