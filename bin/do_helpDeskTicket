@@ -19,29 +19,29 @@ mv $tickets.* /fnal/ups/prd/www_pages/enstore/
 exit 0
 
 
-Here is the .forward that is needed:
-
-| /usr/bin/procmail
-
-
-
-Here is the .procmail that is needed:
-
-VERBOSE=on
-HOME=/home/enstore
-PATH=/usr/krb5/bin/rcp:/bin:/usr/bin:/usr/local/bin
-
-
-MAILDIR=${HOME}/MAIL
-MAILNEW=${MAILDIR}/inbox
-DEFAULT=$MAILDIR/inbox
-LOGFILE=${MAILDIR}/logfile
-LOCKFILE=${HOME}/.lockmail
-
-:0
-* ^From:.*Seagate Information.*
-/home/enstore/ FARenstore-opens-forISAgroup
-
-:0
-* !^From:.*Seagate Information.*
-! bakken@fnal.gov
+###      Here is the .forward that is needed:
+###      
+###      | /usr/bin/procmail
+###     
+###     
+###     
+###      Here is the .procmail that is needed:
+###      
+###      VERBOSE=on
+###      HOME=/home/enstore
+###      PATH=/usr/krb5/bin/rcp:/bin:/usr/bin:/usr/local/bin
+###      
+###      
+###      MAILDIR=${HOME}/MAIL
+###      MAILNEW=${MAILDIR}/inbox
+###      DEFAULT=$MAILDIR/inbox
+###      LOGFILE=${MAILDIR}/logfile
+###      LOCKFILE=${HOME}/.lockmail
+###      
+###      :0
+###      * ^From:.*Seagate Information.*
+###      /home/enstore/ FARenstore-opens-forISAgroup
+###      
+###      :0
+###      * !^From:.*Seagate Information.*
+###      ! enstore-admin@fnal.gov
