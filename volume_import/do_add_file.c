@@ -1,36 +1,26 @@
-#include <stdio.h>
-#include <sys/stat.h>
+/* $Id$
+   This does the bulk of the work of writing files to the tape and
+   making database entries 
+*/
 
-#include <unistd.h> /*Portability?*/
-#include <stdlib.h>
+#include "volume_import.h"
+#include "globals.h"
 
-extern char *progname;
-extern char *tape_device;
-extern char *tape_db;
-extern char *volume_label;
-extern int blocksize;
-
-extern unsigned int adler32(int adler, char *buf, int len);
-extern int write_db_s(char *path, char *key, char *value);
-extern int write_db_i(char *path, char *key, int value);
-
-
-#define MAXPATHLEN 4096
 
 static void 
 rm_rf(char *path){
-    char cmd[MAXPATHLEN + 8];
-    sprintf(cmd, "rm -rf %s", path);
+    char cmd[MAX_PATH_LEN + 8];
+    sprintf(cmd, "/bin/rm -rf %s", path);
     system(cmd); /* XXX I was lazy when I wrote this, there must be a nicer way */
 }
 
 
 
 int
-do_add_file(char *pnfs_dir, char *filename, int verbose, int force)
+do_add_file(char *pnfs_dir, char *filename)
 {
     int file_number; /* index into this volume */
-    char path[MAXPATHLEN];
+    char path[MAX_PATH_LEN];
     int size;
     struct stat sbuf;
     FILE *fp;
@@ -82,8 +72,9 @@ do_add_file(char *pnfs_dir, char *filename, int verbose, int force)
     }
     
 
-    /* We already verified all the files when building up the file list, but there's always the
-     * possibility that a file was removed or otherwise changed between then and now */
+    /* We already verified all the files when building up the file list, but there's 
+     * always the possibility that a file was removed or otherwise changed between 
+     * then and now */
 
     if (stat(filename,&sbuf)){
 	fprintf(stderr, "%s: ", progname);
@@ -93,8 +84,8 @@ do_add_file(char *pnfs_dir, char *filename, int verbose, int force)
 
     size = sbuf.st_size;
 
-    /* Once we start writing into the database we need to make sure that if any error occurred,
-       we completely undo the partial addition */
+    /* Once we start writing into the database we need to make sure that if any 
+     * error occurred, we completely undo the partial addition */
     
     if (write_db_i(path,"size", size)) 
 	goto cleanup;
@@ -122,7 +113,8 @@ do_add_file(char *pnfs_dir, char *filename, int verbose, int force)
 		/* finish early checksum */
 		early_checksum = adler32(early_checksum, read_buffer,
 					  early_checksum_size - total_bytes);
-		if (write_db_i(path,"early_checksum_size", early_checksum_size))
+		if (write_db_i(path,"early_checksum_size", 
+			       early_checksum_size))
 		    goto cleanup;
 		if (write_db_i(path,"early_checksum", early_checksum))
 		    goto cleanup;

@@ -1,6 +1,9 @@
-#include <stdio.h>
+/* $Id$
+ Simple "inode" database
+*/
 
-#define MAXPATHLEN 4096
+#include "volume_import.h"
+
 
 extern char *progname;
 
@@ -8,7 +11,7 @@ static int
 write_db_fmt(char *db_path, char *fmt, char *key, int value)
 {
     FILE *fp;
-    char path[MAXPATHLEN];
+    char path[MAX_PATH_LEN];
 
     sprintf(path, "%s/%s", db_path, key);
     if (!(fp=fopen(path,"w"))){
