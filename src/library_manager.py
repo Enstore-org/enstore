@@ -10,6 +10,7 @@ import callback
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from udp_client import UDPClient
+import Trace
 
 pending_work = []       # list of read or write work tickets
 
@@ -415,6 +416,7 @@ if __name__ == "__main__" :
 
     while 1:
         try:
+            Trace.init(args[0][0:5]+'.libm')
             logc.send(log_client.INFO, 1, "Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:

@@ -55,7 +55,7 @@ import udp_client			# -'
 import callback
 import cpio
 from driver import RawDiskDriver, FTTDriver
-
+import Trace
 
 class Mover:
 
@@ -558,6 +558,7 @@ if __name__ == "__main__":
 
     while 1:
         try:
+            Trace.init(args[0][0:6]+'.mvr')
             mv = Mover(config_host,config_port)
             mv.move_forever(args[0])
         except:
