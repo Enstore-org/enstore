@@ -111,6 +111,7 @@ class GenericClient:
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
 
+        
 	# get the alarm client
 	if alarmc:
 	    # we were given one, use it
@@ -206,7 +207,7 @@ class GenericClient:
         #Get the address information from config server.
         csc = self._get_csc()
         try:
-            t = csc.get(server)
+            t = csc.get(server, timeout=rcv_timeout, retry=tries)
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT, None)}
         
