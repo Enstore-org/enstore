@@ -28,8 +28,8 @@ class FTTDriver(driver.Driver):
     def open(self, device=None, mode=None, retry_count=10):
         if mode not in (0,1):
             raise ValueError, ("illegal mode", mode)
+        mode = 1 #XXX HACK CGW!
         self.device = device
-
         if self.ftt and mode != self.mode:
             self.ftt.close()
             self.ftt = None
