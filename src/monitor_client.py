@@ -232,60 +232,64 @@ class Vetos:
 def do_real_work(summary, config_host, config_port, html_gen_host):
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get('active_monitor')
-
-    logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
-
-    
-    ip_list = get_all_ips(config_host, config_port, csc)
-    vetos = Vetos(config.get('veto_nodes', {}))
+    print config
+    if config['status'] == (e_errors.OK, None):
+        logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
 
-    if html_gen_host:
-        config['html_gen_host'] = html_gen_host
+        ip_list = get_all_ips(config_host, config_port, csc)
+        vetos = Vetos(config.get('veto_nodes', {}))
 
-    summary_d = {enstore_constants.TIME: enstore_functions.format_time(time.time())}
-    summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
-    summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
-        
-    for ip in ip_list:
-	host = socket.gethostbyaddr(ip)
-	hostname = enstore_functions.strip_node(host[0])
-        if vetos.is_vetoed_item(ip):
-	    if not summary:
-		print "Skipping %s" % (vetos.veto_info(ip),)
-            break
-	if not summary:
-	    print "Trying", host, 
-	msc = MonitorServerClient(
-            (ip,                      config['server_port']),
-            (config['html_gen_host'], config['server_port']),
-            config['default_timeout'],
-            config['block_size'],
-            config['block_count'],
-	    summary
-            )
-        measurement=msc.monitor_one_interface(ip)
-	rate = msc.send_measurement(measurement)
-	if measurement.has_key('status') and \
-	   not measurement['status'] == (e_errors.OK, None) :
-	    # we had a problem
-	    if not summary:
-		print "  Error.    Status is %s"%(measurement['status'],)
-	    summary_d[hostname] = enstore_constants.DOWN
-	    summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
-	else:
-	    if not summary:
-                #pprint.pprint(measurement)
-		print "  Success.  Network rate measured at ",rate," MB/S"
-	    if rate == 0.0:
-		summary_d[hostname] = enstore_constants.DOWN
-		summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
-	    else:
-		summary_d[hostname] = enstore_constants.UP
-    msc.flush_measurements()
-    
-    # add the name of the html file that will be created
-    summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
+
+        if html_gen_host:
+            config['html_gen_host'] = html_gen_host
+
+        summary_d = {enstore_constants.TIME: enstore_functions.format_time(time.time())}
+        summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
+        summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
+
+        for ip in ip_list:
+            host = socket.gethostbyaddr(ip)
+            hostname = enstore_functions.strip_node(host[0])
+            if vetos.is_vetoed_item(ip):
+                if not summary:
+                    print "Skipping %s" % (vetos.veto_info(ip),)
+                break
+            if not summary:
+                print "Trying", host, 
+            msc = MonitorServerClient(
+                (ip,                      config['server_port']),
+                (config['html_gen_host'], config['server_port']),
+                config['default_timeout'],
+                config['block_size'],
+                config['block_count'],
+                summary
+                )
+            measurement=msc.monitor_one_interface(ip)
+            rate = msc.send_measurement(measurement)
+            if measurement.has_key('status') and \
+               not measurement['status'] == (e_errors.OK, None) :
+                # we had a problem
+                if not summary:
+                    print "  Error.    Status is %s"%(measurement['status'],)
+                summary_d[hostname] = enstore_constants.DOWN
+                summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+            else:
+                if not summary:
+                    #pprint.pprint(measurement)
+                    print "  Success.  Network rate measured at ",rate," MB/S"
+                if rate == 0.0:
+                    summary_d[hostname] = enstore_constants.DOWN
+                    summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+                else:
+                    summary_d[hostname] = enstore_constants.UP
+        msc.flush_measurements()
+
+        # add the name of the html file that will be created
+        summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
+    else:
+        # there was nothing about the monitor server in the config file
+        summary_d = {}
     
     return summary_d
 
