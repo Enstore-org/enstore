@@ -201,7 +201,7 @@ mv $START_BACKUP_DATE $LAST_BACKUP_DATE
 touch $TOUCHME            # indicate that the backup was successful
 
 #  send mail to let people know what was backed up
-cat $BACKUP_LOG | /usr/bin/Mail -s "Metadata tape backup log from $node on `uname -n`" $ENSTORE_MAIL
+cat $BACKUP_LOG | /usr/bin/Mail -s "Metadata tape backup OK. Log from $node on `uname -n`" $ENSTORE_MAIL
 
 list "`date`: Finished backup on $node"
 
