@@ -54,8 +54,9 @@ class AlarmClient(generic_client.GenericClient):
         
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
-              alarm_info={}, rcv_timeout=0, tries=0):
-        apply( Trace.alarm, (severity,root_error), alarm_info )
+              alarm_info={}):
+        Trace.alarm(severity, root_error, alarm_info )
+#        apply( Trace.alarm, (severity,root_error), alarm_info )
 
     def resolve(self, id, rcv_timeout=0, tries=0):
         # this alarm has been resolved.  we need to tell the alarm server
