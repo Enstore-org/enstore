@@ -40,11 +40,11 @@ def fix_library(v2):
 					'library': library}
 				result = vcc.modify(ticket)
 				if result['status'][0] == e_errors.OK:
-					print 'OK'
+					print 'DONE',
 				else:
-					print 'FAILED'
+					print 'FAILED',
 			else:
-				print 'SIMULATED'
+				print 'SIMULATED',
 	else:
 		print 'ERROR: volume %s does not exist'%(v2)
 
