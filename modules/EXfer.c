@@ -1405,10 +1405,10 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
       }
       if(reads->exit_status)
       {
-	fprintf(stderr,
+	/*fprintf(stderr,
 		"Read thread exited with error(%d) '%s' from %s line %d.\n",
 		reads->errno_val, strerror(reads->errno_val),
-		reads->filename, reads->line);
+		reads->filename, reads->line);*/
 
 	/* Signal the other thread there was an error. We need to lock the
 	   mutex associated with the next bin to be used by the other thread.
@@ -1448,10 +1448,10 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
       }
       if(writes->exit_status)
       {
-	fprintf(stderr,
+	/*fprintf(stderr,
 		"Write thread exited with error(%d) '%s' from %s line %d.\n",
 		writes->errno_val, strerror(writes->errno_val),
-		writes->filename, writes->line);
+		writes->filename, writes->line);*/
 
 	/* Signal the other thread there was an error. We need to lock the
 	   mutex associated with the next bin to be used by the other thread.
@@ -1474,16 +1474,20 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
      to encp.py. */
   if(reads->exit_status)
   {
-    fprintf(stderr, "Low-level transfer failure: [Errno %d] %s: higher "
-	    "encp levels will process this error and retry if possible\n",
-	    reads->errno_val, strerror(reads->errno_val));
+    fprintf(stderr, "Low-level read transfer failure: [Errno %d] %s: \n"
+	    "\terror type: %d  filename: %s  line: %d\n\tHigher "
+	    "encp levels will process this error and retry if possible.\n",
+	    reads->errno_val, strerror(reads->errno_val),
+	    reads->exit_status, reads->filename, reads->line);
     fflush(stderr);
   }
   if(writes->exit_status)
   {
-    fprintf(stderr, "Low-level transfer failure: [Errno %d] %s: higher "
-	    "encp levels will process this error and retry if possible\n",
-	    writes->errno_val, strerror(writes->errno_val));
+    fprintf(stderr, "Low-level write transfer failure: [Errno %d] %s: \n"
+	    "\terror type: %d  filename: %s  line: %d\n\tHigher "
+	    "encp levels will process this error and retry if possible.\n",
+	    writes->errno_val, strerror(writes->errno_val),
+	    writes->exit_status, writes->filename, writes->line);
     fflush(stderr);
   }
 
@@ -2708,61 +2712,80 @@ int main(int argc, char **argv)
   int mmap_io_index = 0;
   int mmap_io_in = 0;
   int mmap_io_out = 0;
-  
+  int first_file_optind = 0;
+  int second_file_optind = 0;
+  int i;
+
+  /* The + for the first character in optstring is need on Linux machines
+     to tell getopt to use the posix compliant version of getopt(). */
   opterr = 0;
-  while((opt = getopt(argc, argv, "vtmda:b:l:")) != -1)
+  while(optind < argc)
   {
-    switch(opt)
+    while(((opt = getopt(argc, argv, "+vtmda:b:l:")) != -1))
     {
-    case 'v':
-      verbose = 1; /* print out extra information. */
-      break;
-    case 't':  /* threaded transfer */
-      threaded_transfer = 1;
-      break;
-    case 'm':  /* memory mapped i/o */
-      mmap_io += 1;
-      /*flags |= O_RDWR;*/
-      if(mmap_io_index == 0)
-	 mmap_io_index = optind;
-      break;
-    case 'd':  /* direct i/o */
-      direct_io += 1;
-      /*flags |= O_DIRECT;*/
-      if(direct_io_index == 0)
-	 direct_io_index = optind;
-      break;
-    case 'a':  /* array size */
-      errno = 0;
-      if((array_size = (int)strtol(optarg, NULL, 0)) == 0)
+      switch(opt)
       {
-	printf("invalid array size(%s): %s\n", optarg, strerror(errno));
-	return 1;
+      case 'v':
+	verbose = 1; /* print out extra information. */
+	break;
+      case 't':  /* threaded transfer */
+	threaded_transfer = 1;
+	break;
+      case 'm':  /* memory mapped i/o */
+	mmap_io += 1;
+	if(mmap_io_index == 0)
+	  mmap_io_index = optind - 1;
+	break;
+      case 'd':  /* direct i/o */
+	direct_io += 1;
+	if(direct_io_index == 0)
+	  direct_io_index = optind - 1;
+	break;
+      case 'a':  /* array size */
+	errno = 0;
+	if((array_size = (int)strtol(optarg, NULL, 0)) == 0)
+	{
+	  printf("invalid array size(%s): %s\n", optarg, strerror(errno));
+	  return 1;
+	}
+	break;
+      case 'b':  /* block size */
+	errno = 0;
+	if((block_size = (int)strtol(optarg, NULL, 0)) == 0)
+	{
+	  printf("invalid block size(%s): %s\n", optarg, strerror(errno));
+	  return 1;
+	}
+	break;
+      case 'l':  /* mmap length */
+	errno = 0;
+	if((mmap_size = strtol(optarg, NULL, 0)) == 0)
+	{
+	  printf("invalid mmap size(%s): %s\n", optarg, strerror(errno));
+	  return 1;
+	}
+	break;
+      default:
+	printf("Unknown option: -%c\n", optopt);
       }
-      break;
-    case 'b':  /* block size */
-      errno = 0;
-      if((block_size = (int)strtol(optarg, NULL, 0)) == 0)
-      {
-	printf("invalid block size(%s): %s\n", optarg, strerror(errno));
-	return 1;
-      }
-      break;
-    case 'l':  /* mmap length */
-      errno = 0;
-      if((mmap_size = strtol(optarg, NULL, 0)) == 0)
-      {
-	printf("invalid mmap size(%s): %s\n", optarg, strerror(errno));
-	return 1;
-      }
-      break;
-    default:
-      printf("Unknown option: -%c\n", optopt);
     }
+    /* Remember the index for the first non-option argument found. */
+    if((argv[optind] != NULL) && (argv[optind][0] != '-') && 
+	(first_file_optind == 0))
+       first_file_optind = optind;
+    /* Remember the index for the second non-option argument found. */
+    else if((argv[optind] != NULL) && (argv[optind][0] != '-') && 
+	    (second_file_optind == 0))
+       second_file_optind = optind;
+    
+    /* When a filename is found, getopt() stops processing the command line.
+       This bumps the optind up one so it can continue. */
+    if(optind < argc)
+      optind++;
   }
 
   /* Determine if the direct io was for the input file, output file or both. */
-  if((mmap_io == 1) && (mmap_io_index < optind))
+  if((mmap_io == 1) && (mmap_io_index < first_file_optind))
      mmap_io_in = 1;
   else if(mmap_io == 1)
      mmap_io_out = 1;
@@ -2770,13 +2793,14 @@ int main(int argc, char **argv)
      mmap_io_in = mmap_io_out = 1;
 
   /* Determine if the mmap io was for the input file, output file or both. */
-  if((direct_io == 1) && (direct_io_index < optind))
+  if((direct_io == 1) && (direct_io_index < first_file_optind))
      direct_io_in = 1;
   else if(direct_io == 1)
      direct_io_out = 1;
   else if(direct_io > 1)
      direct_io_in = direct_io_out = 1;
 
+  /* Determine the flags for the input file descriptor. */
   if(mmap_io_in && direct_io_in)
      flags_in |= O_RDWR | O_DIRECT;
   else if(mmap_io_in)
@@ -2786,6 +2810,7 @@ int main(int argc, char **argv)
   else
      flags_in |= O_RDONLY;
 
+  /* Determine the flags for the output file descriptor. */
   if(mmap_io_out && direct_io_out)
      flags_out |= O_RDWR | O_DIRECT | O_CREAT | O_TRUNC;
   else if(mmap_io_out)
@@ -2815,21 +2840,21 @@ int main(int argc, char **argv)
   }
 
   /* Check the input file. */
-  if(argv[optind] == NULL)
+  if(argv[first_file_optind] == NULL)
   {
      printf("input file not specified.\n");
      return 1;
   }
   errno = 0;
-  if(stat(argv[optind], &file_info) < 0)
+  if(stat(argv[first_file_optind], &file_info) < 0)
   {
-     printf("input stat(%s): %s\n", argv[optind], strerror(errno));
+     printf("input stat(%s): %s\n", argv[first_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
-  if(realpath(argv[optind], abspath) == NULL)
+  if(realpath(argv[first_file_optind], abspath) == NULL)
   {
-     printf("input file(%s): %s\n", argv[optind], strerror(errno));
+     printf("input file(%s): %s\n", argv[first_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
@@ -2859,21 +2884,21 @@ int main(int argc, char **argv)
   }
   
   /* Check the output file. */
-  if(argv[optind + 1] == NULL)
+  if(argv[second_file_optind] == NULL)
   {
      printf("output file not specified.\n");
      return 1;
   }
   errno = 0;
-  if(stat(argv[optind + 1], &file_info) < 0)
+  if(stat(argv[second_file_optind], &file_info) < 0)
   {
-     printf("output stat(%s): %s\n", argv[optind + 1], strerror(errno));
+     printf("output stat(%s): %s\n", argv[second_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
-  if(realpath(argv[optind + 1], abspath) == NULL)
+  if(realpath(argv[second_file_optind], abspath) == NULL)
   {
-     printf("output file(%s): %s\n", argv[optind + 1], strerror(errno));
+     printf("output file(%s): %s\n", argv[second_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
@@ -2942,13 +2967,15 @@ int main(int argc, char **argv)
   if (writes.exit_status != 0 && writes.errno_val != ECANCELED)
   {
      printf("Write error [ errno %d ]: %s:  File: %s  Line: %d\n",
-	    writes.errno_val, writes.msg, writes.filename, writes.line);
+	    writes.errno_val, strerror(writes.errno_val), writes.msg,
+	    writes.filename, writes.line);
      return 1;
   }
   else if (reads.exit_status != 0)
   {
-     printf("Read error [ errno %d ]: %s:  File: %s  Line: %d\n",
-	    writes.errno_val, writes.msg, writes.filename, writes.line);
+     printf("Read error [ errno %d ]: %s: %s:  File: %s  Line: %d\n",
+	    reads.errno_val, strerror(reads.errno_val), reads.msg,
+	    reads.filename, reads.line);
      return 1;
   }
   else
