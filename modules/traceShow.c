@@ -354,11 +354,7 @@ strncatCheck( char *str_buf, const char *msg, int num )
     {   if ((params<2) && (*cp=='%') && (*(cp - 1)!='\\'))
 	{   if (*(cp+1) == 's')
 	    {   
-#               ifdef IRIX /* irix cc warns "unrecognized character escape sequence" */
-                strcpy( str_buf, "(modified str format)" );
-#               else
-                strcpy( str_buf, "(modified \%s)" );
-#               endif
+                strcpy( str_buf, "(modified %%s" );
 		str_buf += strlen( str_buf );	/* go to end of str */
 		*str_buf++ = *cp++;
 		*str_buf++ = 'p'; cp++; /* replace/skip past 's' */
