@@ -225,14 +225,19 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 						    color=BRICKRED)),
 			  align="CENTER")
 
+    def trailer(self, table):
+	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(size=2, noshade=1))))
+	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href("http://www.fnal.gov/pub/disclaim.html", "Legal Notices"))))
+
 class EnSysStatusPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh = 60, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, system_tag=system_tag)
+	EnBaseHtmlDoc.__init__(self, refresh=refresh, help_file="serverStatusHelp.html",
+			       system_tag=system_tag)
 	self.title = "ENSTORE System Status"
 	self.script_title_gif = "ess.gif"
 	self.source_server = THE_INQUISITOR
-	self.description = "%s%sCurrent status of the running Enstore system as listed in the %s."%(NBSP, NBSP, 		                            HTMLgen.Href("config_enstore_system.html", "Configuration file"))
+	self.description = ""
 
     # output the list of shortcuts on the top of the page
     def shortcut_table(self):
@@ -574,8 +579,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	else:
 	    table.width = "40%"
 
+    BAD_MOVER_STATES = [mover_constants.OFFLINE, mover_constants.DRAINING,
+			mover_constants.ERROR]
+
     # add the mover information
     def mv_row(self, mover, table):
+	
 	# we may not have any other info on this mover as the inq may not be
 	# watching it.
 	moverd = self.data_dict.get(mover, {})
@@ -584,11 +593,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    # we may have gotten an error when trying to get it, 
 	    # so look for a piece of it.  
 	    if moverd.has_key(enstore_constants.STATE):
-		if moverd[enstore_constants.STATE] == mover_constants.OFFLINE:
-		    table.append(self.alive_row(mover_name, moverd[enstore_constants.STATUS],
-						FUSCHIA))
+		if moverd[enstore_constants.STATE] in self.BAD_MOVER_STATES:
+		    table.append(self.alive_row(mover_name, 
+						moverd[enstore_constants.STATUS], FUSCHIA))
 		else:
-		    table.append(self.alive_row(mover_name, moverd[enstore_constants.STATUS]))
+		    table.append(self.alive_row(mover_name, 
+						moverd[enstore_constants.STATUS]))
 
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Completed%sTransfers"%(NBSP,),
 							color=BRICKRED, html_escape='OFF')))
@@ -695,6 +705,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	td = HTMLgen.TD(HTMLgen.Name("servers"))
 	td.append(self.main_table())
 	table.append(HTMLgen.TR(td))
+	self.trailer(table)
 	self.append(table)
 
 class EnEncpStatusPage(EnBaseHtmlDoc):
@@ -789,6 +800,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	    en_table.append(tr)
 	    en_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(), colspan=2)))
 	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
+	self.trailer(table)
 	self.append(table)							 
 
 class EnConfigurationPage(EnBaseHtmlDoc):
@@ -846,6 +858,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 		
 	# add this table to the main one
 	table.append(HTMLgen.TR(HTMLgen.TD(cfg_table)))
+	self.trailer(table)
 	self.append(table)							 
 
 class EnMiscPage(EnBaseHtmlDoc):
@@ -899,6 +912,7 @@ class EnMiscPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(enstore_functions.format_time(os.stat(file)[stat.ST_MTIME])))
 	    dirs_table.append(tr)
 	table.append(HTMLgen.TR(HTMLgen.TD(dirs_table)))
+	self.trailer(table)
 	self.append(table)
 
 class EnLogPage(EnBaseHtmlDoc):
@@ -1005,6 +1019,7 @@ class EnLogPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR())))
 	# now create the tables for the different months.
 	self.generate_months(table, logs, "%s%s"%(www_host, http_path))
+	self.trailer(table)
 	self.append(table)							 
 
 class EnAlarmPage(EnBaseHtmlDoc):
@@ -1060,6 +1075,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
+	self.trailer(table)
 	self.append(table)
 
 class EnPatrolPage(EnBaseHtmlDoc):
@@ -1082,6 +1098,7 @@ class EnPatrolPage(EnBaseHtmlDoc):
 	else:
 	    # make the url
 	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(data[0], data[1]))))
+	self.trailer(table)
 	self.append(table)
 
 class EnAlarmSearchPage(EnBaseHtmlDoc):
@@ -1115,6 +1132,7 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, align="LEFT",
 				  width="800")
 	table.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
+	self.trailer(table)
 	self.append(table)
 	
 class EnPlotPage(EnBaseHtmlDoc):
@@ -1243,6 +1261,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    self.add_leftover_jpgs(plot_table, jpgs, pss)
 	    self.add_leftover_pss(plot_table, pss)
 	table.append(HTMLgen.TR(HTMLgen.TD(plot_table)))
+	self.trailer(table)
 	self.append(table)
 
 class EnActiveMonitorPage(EnBaseHtmlDoc):
@@ -1560,4 +1579,5 @@ class EnSaagPage(EnBaseHtmlDoc):
 
 	# add the legend table
 	table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table())))
+	self.trailer(table)
 	self.append(table)
