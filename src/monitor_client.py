@@ -102,7 +102,8 @@ class MonitorServerClient:
         c_socket.close()
         returned_ticket = callback.read_tcp_obj(ms_socket)
         ms_socket.close()
-        data_socket=callback.mover_callback_socket(returned_ticket)
+        data_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_socket.connect(returned_ticket['mover']['callback_addr'])
         data=data_socket.recv(1)
         if not data:
             raise "Server closed connection"
