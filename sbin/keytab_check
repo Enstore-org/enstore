@@ -4,8 +4,11 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ "${1:-}" = "-a" ] ; then ALARM=1;   shift; else ALARM=0;   fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1;   shift; else QUIET=0;   fi
-if [ "${1:-}" = "-v" ] ; then VERBOSE=1; shift; else VERBOSE=0; fi
 
+set +u
+. /usr/local/etc/setups.sh
+setup enstore
+set -u
 
 UNAME="/bin/uname"
 ECHO="/bin/echo"
