@@ -201,6 +201,7 @@ class FTTDriver(driver.Driver):
         t0 = time.time()
         try:
             r = self.ftt.read(buf, nbytes)
+            Trace.trace(100, "read(%s)-> %s" % (nbytes, r)) #REMOVE cgw XXX
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "read %s %s" % (detail, detail.value))
             raise e_errors.READ_ERROR, detail
