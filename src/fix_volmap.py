@@ -16,7 +16,7 @@ doit = 0
 verbose = 0
 
 def get_bfid(name):
-    p = os.popen('pnfs cat %s 1'%name, 'r')
+    p = os.popen('pnfs cat %s 1'%(name,), 'r')
     ret = p.readlines()
     status = p.close()
     if status:
@@ -24,7 +24,7 @@ def get_bfid(name):
     return ret[0]
 
 def get_fileinfo(bfid):
-    p = os.popen('enstore file --bfid %s '%bfid, 'r')
+    p = os.popen('enstore file --bfid %s '%(bfid,), 'r')
     ret = p.readlines()
     status = p.close()
     if status:
@@ -122,7 +122,7 @@ if __name__ == '__main__':
                 verbose=1
                 continue
             else:
-                print "Usage %s [-n] [-y] [-v] file..." %sys.argv[0]
+                print "Usage %s [-n] [-y] [-v] file..." %(sys.argv[0],)
                 sys.exit(-1)
         else:
             try:
