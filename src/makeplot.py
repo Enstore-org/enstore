@@ -260,7 +260,7 @@ if __name__ == "__main__":
         jpg_stamp_filename[group] = string.replace(jpg_stamp_filename_template,
                                                    '*', group + "_")
 
-    #Create temporary files.
+    #Create temporary filenames.
     tempfile.tempdir = tmp_dir
     scaled_filename = tempfile.mktemp(".plot")
     smooth_filename = tempfile.mktemp(".plot")
@@ -268,31 +268,58 @@ if __name__ == "__main__":
         plot_filename[group] = tempfile.mktemp(".plot")
 
     #Write the scaled file
-    scaled_file = open(scaled_filename, "w")
-    write_scale_file(log_dir, rate_log_files, scaled_file)  #Scale the data.
-    scaled_file.close()   #Start reading from beginning of file.
+    try:
+        scaled_file = open(scaled_filename, "w+")
+        write_scale_file(log_dir, rate_log_files, scaled_file)
+        scaled_file.seek(0, 0) #Go to beginning of the file.
+    except (OSError, IOError):
+        exc, msg = sys.exc_info()[:2]
+        sys.stderr.write("Unable to write scaled file: %s: %s\n" %
+                         (str(exc), str(msg)))
+        sys.exit(1)
 
-    smooth_file = open(smooth_filename, "w")
-    scaled_file = open(scaled_filename, "r")
-    write_smooth_file(smooth_file, scaled_file, smooth_num)  #Smooth the data.
-    smooth_file.close()   #Start reading from beginning of file.
-    scaled_file.close()   #Start reading from beginning of file.
+    #Write the smoothed file
+    try:
+        smooth_file = open(smooth_filename, "w+")
+        write_smooth_file(smooth_file, scaled_file, smooth_num)
+        smooth_file.seek(0, 0) #Go to beginning of the file.
+    except (OSError, IOError):
+        exc, msg = sys.exc_info()[:2]
+        sys.stderr.write("Unable to write smoothed file: %s: %s\n" %
+                         (str(exc), str(msg)))
+        sys.exit(1)
 
     for group in groups:
-        #Write the gnuplot command file.
-        plot_file = open(plot_filename[group], "w")
-        write_plot_file(sys_name, smooth_filename, plot_file,
-                        ps_filename[group], group, groups.index(group),
-                        sst[group])
-        plot_file.close()     #Close this file so gnuplot can read it.
-
+        #Write the gnuplot command file(s).
+        try:
+            plot_file = open(plot_filename[group], "w+")
+            write_plot_file(sys_name, smooth_filename, plot_file,
+                            ps_filename[group], group, groups.index(group),
+                            sst[group])
+            plot_file.close()     #Close this file so gnuplot can read it.
+        except (OSError, IOError):
+            exc, msg = sys.exc_info()[:2]
+            sys.stderr.write("Unable to write plot file: %s: %s\n" %
+                             (str(exc), str(msg)))
+            sys.exit()
+            
         os.system("gnuplot < %s >& /dev/null" % plot_filename[group])
         
         os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
                                                    jpg_filename[group]))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename[group], jpg_stamp_filename[group]))
-    
+
+    #Close the files.
+    try:
+        scaled_file.close()
+        smooth_file.close()
+    except (OSError, IOError):
+        exc, msg = sys.exc_info()[:2]
+        sys.stderr.write("Unable to write scaled file: %s: %s\n" %
+                         (str(exc), str(msg)))
+        sys.exit()
+
     os.remove(scaled_filename)
     os.remove(smooth_filename)
     for group in groups:
