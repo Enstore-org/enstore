@@ -80,68 +80,29 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	                  % ticket['library'])
 
         # optional keys - use default values if not specified
-        try:
-            record['last_access'] = ticket['last_access']
-        except KeyError:
-            record["last_access"] = -1
-        try:
-            record['first_access'] = ticket['first_access']
-        except KeyError:
-            record["first_access"] = -1
-        try:
-            record['declared'] = ticket['declared']
-            if record['declared'] == -1:
-                x = ticket['force_key_error_to_get_except']
-        except KeyError:
+        record['last_access'] = ticket.get('last_access', -1)
+        record['first_access'] = ticket.get('first_access', -1)
+        record['declared'] = ticket.get('declared',-1)
+        if record['declared'] == -1:
             record["declared"] = time.time()
-        try:
-            record['system_inhibit'] = ticket['system_inhibit']
-        except KeyError:
-            record["system_inhibit"] = "none"
-        try:
-            record['at_mover'] = ticket['at_mover']
-        except KeyError:
-            record["at_mover"] = ("unmounted", "none")
-        try:
-            record['user_inhibit'] = ticket['user_inhibit']
-        except KeyError:
-            record["user_inhibit"] = "none"
-        try:
-            record['sum_wr_err'] = ticket['sum_wr_err']
-        except KeyError:
-            record["sum_wr_err"] = 0
-        try:
-            record['sum_rd_err'] = ticket['sum_rd_err']
-        except KeyError:
-            record["sum_rd_err"] = 0
-        try:
-            record['sum_wr_access'] = ticket['sum_wr_access']
-        except KeyError:
-            record["sum_wr_access"] = 0
-        try:
-            record['sum_rd_access'] = ticket['sum_rd_access']
-        except KeyError:
-            record["sum_rd_access"] = 0
-        try:
-            record['wrapper'] = ticket['wrapper']
-        except KeyError:
-            record["wrapper"] = "cpio_custom"
-        try:
-            record['non_del_files'] = ticket['non_del_files']
-        except KeyError:
-            record["non_del_files"] = 0
-        try:
-            record['blocksize'] = ticket['blocksize']
-            if record['blocksize'] == -1:
-                x = ticket['force_key_error_to_get_except']
-        except KeyError:
+        record['system_inhibit'] = ticket.get('system_inhibit', "none")
+        record['at_mover'] = ticket.get('at_mover',  ("unmounted", "none") )
+        record['user_inhibit'] = ticket.get('user_inhibit', "none")
+        record['sum_wr_err'] = ticket.get('sum_wr_err', 0)
+        record['sum_rd_err'] = ticket.get('sum_rd_err', 0)
+        record['sum_wr_access'] = ticket.get('sum_wr_access', 0)
+        record['sum_rd_access'] = ticket.get('sum_rd_access', 0)
+        record['wrapper'] = ticket.get('wrapper', "cpio_custom")
+        record['non_del_files'] = ticket.get('non_del_files', 0)
+        record['blocksize'] = ticket.get('blocksize', -1)
+        if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
                 msize = sizes[ticket['media_type']]
             except:
-                ticket['status'] = (e_errors.UNKNOWNMEDIA, \
-				    "Volume Clerk: "\
-                                   +"unknown media type = unknown blocksize")
+                ticket['status'] = (e_errors.UNKNOWNMEDIA, 
+				    "Volume Clerk: "+
+                                    "unknown media type = unknown blocksize")
 	        self.enprint(ticket, generic_cs.PRETTY_PRINT)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
@@ -1231,27 +1192,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.init("get_vols")
         self.get_user_sockets(ticket)
         ticket["status"] = (e_errors.OK, None)
-        callback.write_tcp_socket(self.data_socket,ticket,
+        callback.write_tcp_socket(self.data_socket, ticket,
                                   "volume_clerk get_vols, controlsocket")
-        msg=""
+
         dict.cursor("open")
         key,value=dict.cursor("first")
+        separator = ''
         while key:
-                msg=msg+repr(key)+","
-                #send 16K message
-                if len(msg) >= 16384:
-                   callback.write_tcp_buf(self.data_socket,msg,
-                                  "volume_clerk get_vols, datasocket")
-                   msg=""
-                key,value=dict.cursor("next")
+            callback.write_tcp_buf(self.data_socket,separator+repr(key),
+                                   "volume_clerk get_vols, datasocket")
+            separator=','
+            key,value=dict.cursor("next")
         dict.cursor("close")
-        
-        #send the last message
-        msg=msg[:-1]
-        callback.write_tcp_buf(self.data_socket,msg,
-                                  "volume_clerk get_vols, datasocket")
         self.data_socket.close()
-        callback.write_tcp_socket(self.control_socket,ticket,
+
+        callback.write_tcp_socket(self.control_socket, ticket,
                                   "volume_clerk get_vols, controlsocket")
         self.control_socket.close()
         Trace.trace(20,'}get_vols child exitting')
