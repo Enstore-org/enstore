@@ -108,6 +108,7 @@
 131.225.13.28		stkenmvr16a.fnal.gov	stkenmvr16a
 131.225.13.26		stkenmvr17a.fnal.gov	stkenmvr17a
 131.225.13.29		stkenmvr18a.fnal.gov	stkenmvr18a
+131.225.13.31		stkenmvr19a.fnal.gov	stkenmvr19a
 131.225.13.35		stkendm1a.fnal.gov	stkendm1a
 131.225.13.36		stkendm2a.fnal.gov	stkendm2a
 131.225.13.84		stkendm3a.fnal.gov	stkendm3a
@@ -180,6 +181,7 @@
 #131.225.215.19		cdfendca3.fnal.gov	cdfendca3
 #131.225.215.20		cdfendca4.fnal.gov	cdfendca4
 #131.225.215.21		cdfendca5.fnal.gov	cdfendca5
+
 # private subnet for d0/adic, d0/stk, and public/stk
 192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
 192.168.19.8		d0ensrv2p.fnal.gov	d0ensrv2p
