@@ -1822,7 +1822,7 @@ def inputfile_check(input_files, bytecount=None):
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCESS','Not a regular file')})
             jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "
-                   +input[i]+" is not a regular file")
+                   +inputlist[i]+" is not a regular file")
 
     # we can not allow 2 input files to be the same
     # this will cause the 2nd to just overwrite the 1st
