@@ -1,6 +1,8 @@
 #!/bin/sh 
 set -u  
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+testToDo=""
+if [ "${1:-q}" != "q" ] ; then testToDo=${1}; fi
 
 # bin/$RCSfile$  $Revision$
 
@@ -10,7 +12,7 @@ raise_alarm() {
     item_to_override=$2
     error_code=$3
     enstore alarm --raise --severity "A" --root-error "$msg"
-    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail enstore-admin@fnal.gov
+    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail enstore-admin@fnal.gov -s "pageDcache error on %s"%(item_to_override,)
     enstore sched --override $item_to_override --saagstatus red --time="$msg"
     # do not turn the ball red any more ...
     #enstore sched --override enstore    --saagstatus red --time="$msg"
@@ -286,25 +288,40 @@ if [ -z "${DCAP_DIR:-}" ]; then
 fi
 
 case $gang in
-    cdfen)
-	dccp_test
-	get_ticket
-	kftp_test
-	ftp_test $wa
+    cdfen)	
+	if [ "$testToDo" != "" ];
+	then
+	    $testToDo $wa
+	else
+	    dccp_test
+	    get_ticket
+	    kftp_test
+	    ftp_test $wa
+	fi
 	# make sure the ball is ok
 	enstore sched --nooverride $dcache_saag
 	;;
     d0en)
-	dccp_test
-	get_ticket
-	kftp_test
-	ftp_test $wa
+	if [ "$testToDo" != "" ];
+	then
+	    $testToDo $wa
+	else
+	    dccp_test
+	    get_ticket
+	    kftp_test
+	    ftp_test $wa
+	fi
 	;;
     stken)
-	dccp_test
-	get_ticket
-	kftp_test
-	ftp_test $wa
+	if [ "$testToDo" != "" ];
+	then
+	    $testToDo $wa
+	else
+	    dccp_test
+	    get_ticket
+	    kftp_test
+	    ftp_test $wa
+	fi
 	;;
 esac
 
