@@ -72,7 +72,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.page = None
 
     def simulate_encp_transfer(self, ticket):
-        
+        #Create a new instance for each query.
         pid=self.fork()
         if pid: #parent
             return
@@ -87,14 +87,18 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         sock.connect(ticket['callback_addr'])
         callback.write_tcp_obj(sock,ticket)
         sock.close()
-
         xfer_sock, address = well_known_sock.accept()
         well_known_sock.close()
+
+        #Now that all of the socket connections have been opened, let the
+        # transfers begin.
+        #When sending, the time isn't important.
         if ticket['transfer'] == "send_from_server":
             sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
                 xfer_sock.send(sendstr)
             ticket['elapsed'] = -1
+        #Since we are recieving the data, recording the time is important.
         elif ticket['transfer'] == "send_to_server":
             data=xfer_sock.recv(1)
             if not data:
@@ -107,7 +111,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                     raise "Server closed connection"
                 bytes_received=bytes_received+len(data)
             ticket['elapsed']=time.time()-t0
-        
+
+        #Whether sending or recieving, send the reply and have the child exit.
         ticket['status'] = ('ok', None)
         self.reply_to_caller(ticket)
         xfer_sock.close()
