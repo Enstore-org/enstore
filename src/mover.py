@@ -43,7 +43,6 @@ import udp_client
 import socket_ext
 import hostaddr
 import string_driver
-import drivestat
 import disk_driver
 
 import Trace
@@ -739,6 +738,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.driver_type == 'FTTDriver':
             return
         import ftt
+        import drivestat
         fd = ftt.open(drive, ftt.RDWR)
         if fd:
             ds = drivestat.ds_alloc()
@@ -763,6 +763,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
+            import drivestat
             stats = self.tape_driver.ftt.get_stats()
             drivestat.ds_set_character_field(self.drive_stats, self.current_volume, drivestat.TAPE_VOLSER)
             st = drivestat.ds_translate_ftt_stats(self.drive_stats, stats.b, drivestat.RECENT)
@@ -2830,6 +2831,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = None
         self.update_stat()
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
+            import drivestat
 		ret=drivestat.ds_send_stats(self.drive_stats,
                                             10,
                                             drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
