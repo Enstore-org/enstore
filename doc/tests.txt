@@ -1,0 +1,24 @@
+The current tests 
+	a. create 8 various size files in a directory
+	b. copy these files to "final media"
+	c. start off 9 independent tasks who read the files back
+		and compare them to the original file.
+	
+
+To run the tests:
+
+        cd $ENSTORE_DIR/test
+
+Starting from scratch:
+
+        make clean newdbs
+
+Re-use -- must have done started from scratch and not done a clean
+          and the enstore servers must be runing (enstore-start command)
+
+        make olddbs
+
+
+Stopping the tests:
+        killall -9 longtest
+	and be patient - this needs some work.
