@@ -7,6 +7,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 vols=`ecmd vols | sed -e "s/'//g" -e "s/,/ /g"`
 for vol in $vols; do
   #ecmd vcc --atmover $vol
-  status=`ecmd vol $vol | egrep 'at_mover|label|inhibit'`
-  echo $status
+  #status=`ecmd vol $vol | egrep 'at_mover|label|inhibit'`
+  #echo $status
+  ecmd vcc --chkvol=$vol
 done

@@ -1,5 +1,3 @@
-import Trace
-Trace.trace(6,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -326,6 +324,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vols = 0
         self.nextvol = 0
         self.vol = ""
+        self.chkvol = ""
         self.addvol = 0
         self.delvol = 0
         self.force  = 0
@@ -339,7 +338,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["clrvol", "backup", "vols","nextvol","vol=","addvol","statvol=",
+               ["clrvol", "backup", "vols","nextvol","vol=","chkvol=","addvol","statvol=",
 	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force"]
 
     # parse the options like normal but make sure we have necessary params
@@ -421,6 +420,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
 
 if __name__ == "__main__":
+    import pprint
     Trace.init(MY_NAME)
     Trace.trace( 6, 'vcc called with args: %s'%sys.argv )
 
@@ -448,7 +448,15 @@ if __name__ == "__main__":
                                              1) #first_found
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-	print repr(ticket)
+	#print repr(ticket)
+	pprint.pprint(ticket)
+    elif intf.chkvol:
+        ticket = vcc.inquire_vol(intf.chkvol)
+        print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
+                                                      ticket['remaining_bytes']*1./1024./1024./1024.,
+                                                      ticket['at_mover'][0],
+                                                      ticket['system_inhibit'],
+                                                      ticket['user_inhibit'])
     elif intf.addvol:
         ticket = vcc.addvol(intf.args[0],              # library
                             intf.args[1],              # file family
@@ -476,7 +484,7 @@ if __name__ == "__main__":
     # D0_TEPM
     elif intf.atmover:
 	ticket = vcc.add_at_mover (intf.args[0])
-	print repr(ticket)
+	pprint.pprint(ticket)
     # END D0_TEMP
     else:
 	intf.print_help()

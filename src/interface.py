@@ -226,6 +226,8 @@ class Interface:
                 self.nextvol = 1
             elif opt == "--vol" :
                 self.vol = value
+            elif opt == "--chkvol" :
+                self.chkvol = value
             elif opt == "--statvol" :
                 self.statvol = value
             elif opt == "--view" :
