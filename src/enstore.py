@@ -14,6 +14,8 @@
 import sys
 import re
 import os
+import grp
+import pwd
 import string
 import errno
 
@@ -209,7 +211,45 @@ def no_argv2():
 def no_argv3():
     return no_argv_num(3)
 
+# this fuction is almost the same as in enstore_start
+# except setting is done for real not effective ids 
+def check_user():
+    #If in a cluster system...
+    if enstore_start.is_in_cluster():
+        #First determine if running as root, if so become enstore and restart.
+        if os.geteuid() == 0:
+            try:
+                enstore_gid = grp.getgrnam("enstore")[2]
+                #os.setegid(enstore_gid)
+                os.setgid(enstore_gid)
+            except (OSError, KeyError, IndexError):
+                print "Should be running as group enstore, " \
+                      "but the enstore group is not found."
+                sys.exit(1)
+            try:
+                enstore_uid = pwd.getpwnam("enstore")[2]
+                #os.seteuid(enstore_uid)
+                os.setuid(enstore_uid)
+            except (OSError, KeyError, IndexError):
+                print "Should be running as user enstore, " \
+                      "but the enstore user is not found."
+                sys.exit(1)
+            
+        #Extract the user name.
+	try:
+            name = pwd.getpwuid(os.geteuid())[0]
+	except (KeyError, IndexError):
+	    name = ""
+        #Check if running as user enstore.
+        if name != "enstore":
+            print "You should run this as user enstore."
+            sys.exit(1)
+
 def do_rgang_command(fdefault, command):
+    if (command.find("enstore start") != -1 or
+        command.find("enstore stop") != -1):
+        check_user()
+        
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
     return os.system('rgang %s \"%s\"'%(farmlet, command))
@@ -446,6 +486,10 @@ class Enstore:
 		# skip it.
 		for command in l_script[1:]:
 		    #each tuple in l_script is two items long.
+                    print "local command",command[1]
+                    if (command[1].find("enstore start") != -1 or
+                        command[1].find("enstore stop") != -1):
+                        check_user()
 		    try:
 			executable = command[0] % command[2:]
 		    except (IndexError, TypeError):

@@ -148,11 +148,22 @@ def detect_process(pid):
         os.kill(pid, 0)
         return 1
     except OSError, msg:
+        print msg
         if hasattr(msg, "errno") and msg.errno == errno.EPERM:
             return 1
         else:
             return 0
 
+def kill_root_process(pid):
+    # check for sudo.
+    if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
+        sudo = ""
+    else:
+        sudo = "sudo"  #found
+    if sudo:
+        return (os.system("%s %s %s"%(sudo, "/bin/kill", pid)) >> 8)
+    return 1
+    
 def kill_process(pid):
 
     if detect_process(pid):
@@ -208,7 +219,6 @@ def stop_server(gc, servername):
 
     #Get this information for the pid.
     rtn = gc.alive(servername, SEND_TO, SEND_TM)
-
     #Try to kill the process nicely.
     if not quit_process(gc):
         #Success, the process is dead.
@@ -223,7 +233,10 @@ def stop_server(gc, servername):
     #Note: there is a possible race condition here.  If the gc.quit()
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
-    rtn2 = kill_process(rtn['pid'])
+    if servername.find("mover"):
+        rtn2 = kill_root_process(rtn['pid'])
+    else:
+        rtn2 = kill_process(rtn['pid'])
     if rtn2:
         print "Enstore server, %s, remains." % (servername,)
         return 1
@@ -265,7 +278,10 @@ def stop_server_from_pid_file(servername):
                     # enstore server in question.
                     print "The %s process is running with pid %s.  Killing." \
                           % (servername, pid)
-                    rtn2 = kill_process(int(pid))
+                    if servername.find("mover"):
+                        rtn2 = kill_root_process(int(pid))
+                    else:
+                        rtn2 = kill_process(int(pid))
                     if rtn2:
                         print "Enstore server, %s, remains." % (servername,)
                         return 1
