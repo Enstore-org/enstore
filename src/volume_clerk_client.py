@@ -26,7 +26,7 @@ import backup_client
 import udp_client
 import Trace
 import e_errors
-
+import file_clerk_client
 
 
 MY_NAME = "VOLUME_C_CLIENT"
@@ -462,6 +462,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.rmvol = 0
         self.vol1ok = 0
         self.lm_to_clear = ""
+        self.list = None
+        self.list_active = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -474,7 +476,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib="]
+                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -643,6 +645,23 @@ def do_work(intf):
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
     elif intf.lm_to_clear:
         ticket = vcc.clear_lm_pause(intf.lm_to_clear)
+    elif intf.list:
+        fcc = file_clerk_client.FileClient(vcc.csc)
+        ticket = fcc.tape_list(intf.list)
+        vol = ticket['tape_list']
+        print "     label           bfid       size        location_cookie delflag original_name\n"
+        for key in vol.keys():
+            record = vol[key]
+            print "%10s %s %10i %22s %7s %s" % (intf.list,
+                record['bfid'], record['size'],
+                record['location_cookie'], record['deleted'],
+                record['pnfs_name0'])
+    elif intf.list_active:
+        fcc = file_clerk_client.FileClient(vcc.csc)
+        ticket = fcc.list_active(intf.list_active)
+        active_list = ticket['active_list']
+        for i in active_list:
+            print i
     else:
         intf.print_help()
         sys.exit(0)
