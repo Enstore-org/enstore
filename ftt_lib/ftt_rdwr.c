@@ -202,6 +202,8 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	    ftt_errno = FTT_EPARTIALWRITE;
             ftt_eprintf("Error: wrote fewer bytes than requested.");
         }
+    } else if (res == 0)  {
+	ftt_errno = FTT_ENOSPC;
     } else {
 	DEBUG0(stderr,"HARD error - writing record - error %d \n",res);
 	d->nharderrors++;
