@@ -842,7 +842,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = ERROR
         
     def position_media(self, verify_label=1):
-        #At this point the correct volume is loaded; now position it
+        #At this point the media changer claims the correct volume is loaded; now position it
         label_tape = 0
         have_tape = 0
         for retry_open in range(3):
@@ -1255,20 +1255,20 @@ class Mover(dispatching_worker.DispatchingWorker,
         status = mcc_reply.get('status')
         Trace.trace(10, 'mc replies %s' % (status,))
 
-        if self.mount_delay:
-            Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
-            time.sleep(self.mount_delay)
-
         if status and status[0] == e_errors.OK:
+            if self.mount_delay:
+                Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
+                time.sleep(self.mount_delay)
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
         else: #Mount failure, attempt to recover
             self.last_error = status
             Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
+            self.state = DISMOUNT_WAIT
             self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,))
             self.dismount_volume(after_function=self.idle)
-    
+            
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
         failed=0
