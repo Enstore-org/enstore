@@ -343,7 +343,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             ticket['status'] = self.__erase_volume(vol)
         except:
-            ticket["status"] = (e_errors.ERROR, "erase failed")
+            msg = 'erase failed due to: '+`sys.exc_type`+' '+`sys.exc_value`
+            ticket["status"] = (e_errors.ERROR, msg)
         # and return to the caller
         self.reply_to_caller(ticket)
         return
