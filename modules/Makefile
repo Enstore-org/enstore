@@ -30,10 +30,10 @@ PYMAKE=		make -f $(LIBPL)/Makefile
 LIBSO=		`$(PYMAKE) -s echodestshared`
 
 # Put your module name here:
-MODULE=Devcodes
+MODULE=ETape
 
 # Put the object files for your module here:
-OBS=Devcodes.o
+OBS=ETape.o
 
 CFLAGS=-g  -I./ -I$(FTT_DIR)/include 
 
