@@ -8,7 +8,7 @@ int ftt_trans_open[MAX_TRANS_ERRNO] = {
 	/*    2	ENOENT	*/	FTT_ENOENT,
 	/*    3	ESRCH	*/	FTT_ENOENT,
 	/*    4	EINTR	*/	FTT_ENOENT,
-	/*    5	EIO	*/	FTT_EIO,
+	/*    5	EIO	*/	FTT_ENOTAPE,
 	/*    6	ENXIO	*/	FTT_ENODEV,
 	/*    7	E2BIG	*/	FTT_EFAULT,
 	/*    8	ENOEXEC	*/	FTT_EFAULT,
