@@ -43,7 +43,15 @@ def archive_backup():
 	   Trace.log(e_errors.INFO,
                      "Error: "+dir_bck+" "+str(sys.exc_info()[1][1]))
 	   sys.exit(1)
-	cmd="mv *.tar "+dir_bck
+
+        # try to compress the tared file
+        # try gzip first, if it does not exist, try compress
+        # never mind if the compression programs are missing
+
+	if os.system("gzip *.tar"):	# failed?
+            os.system("compress *.tar")
+
+	cmd="mv *.tar* "+dir_bck
 	Trace.log(e_errors.INFO,cmd)
 	ret=os.system(cmd)	
 	if ret !=0 :
@@ -56,13 +64,21 @@ def archive_backup():
 	if ret !=0 :
 	   Trace.log(e_errors.INFO, "Failed: %s"%cmd)
 	   sys.exit(1)
-	cmd="rcp *.tar " + hst_bck+":"+dir_bck
+
+        # try to compress the tared file
+        # try gzip first, if it does not exist, try compress
+        # never mind if the compression programs are missing
+
+	if os.system("gzip *.tar"):	# failed?
+            os.system("compress *.tar")
+
+	cmd="rcp *.tar* " + hst_bck+":"+dir_bck
 	Trace.log(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
            Trace.log(e_errors.INFO,"Failed: %s"%cmd)
 	   sys.exit(1)
-	ret=os.system("rm *.tar")
+	ret=os.system("rm *.tar*")
 	if ret !=0 :
 	   Trace.log(e_errors.INFO, "Failed: %s"%cmd)
 	   sys.exit(1)		   

@@ -205,12 +205,25 @@ if __name__ == "__main__":		# main
 	for i in logs:
 		i = i[:-1]	# trim \012
 		cmd = "mv "+i+" "+i+".saved"
-		os.system(cmd)
+		try:	# if it doesn't succeed, never mind
+			os.system(cmd)
+			print cmd
+		except:
+			pass
+
+	# check the type of compression
+
+	compression = os.popen("rsh -n "+bckHost+" ls "+bckHome+"/dbase.tar*").readline()[-2:-1]
+	if compression == "z" or compression == "Z":	# decompress them first
+		cmd = "rsh -n "+bckHost+" gunzip "+bckHome+"/*"
 		print cmd
+		print "decompressing the backup files"
+		os.system(cmd)
 
 	# get the database file from backup
 
 	print "Retriving database file from backup ("+bckHost+":"+bckHome+")"
+
 	cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
 	print cmd
 	os.system(cmd)
