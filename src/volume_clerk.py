@@ -12,7 +12,7 @@ from generic_server import GenericServer
 from db import dBTable
 import pprint
 
-dict = dBTable("volume")
+#dict = dBTable("volume")
 
 class VolumeClerkMethods(DispatchingWorker) :
 
@@ -679,7 +679,7 @@ if __name__ == "__main__" :
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     vc.set_logc(logc)
-
+    dict = dBTable("volume",logc)
     while 1:
         try:
             logc.send(log_client.INFO, "Volume Clerk (re)starting")

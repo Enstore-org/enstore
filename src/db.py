@@ -2,17 +2,19 @@ import shelve
 import os
 import time
 import copy
+import log_client
 from  journal import JournalDict
 
 JOURNAL_LIMIT=1000
 backup_flag=1
 
 class dBTable:
-	def __init__(self,dbname):
+	def __init__(self,dbname,logc):
 		self.db=shelve.open( os.environ['ENSTORE_DB']+"/"+dbname)
 	        self.jou=JournalDict({},dbname+".jou")
                 self.count=0
                 self.name=dbname
+		self.logc=logc
 		if len(self.jou) :
 			self.start_backup()
 			self.checkpoint()
@@ -88,8 +90,8 @@ class dBTable:
         def checkpoint(self):
 	      import regex,string
 	      import time
-
 	      del self.jou
+	      self.logc.send(log_client.INFO, "Start checkpoint for "+self.name)
 	      file = open( os.environ['ENSTORE_DB']+"/"+self.name+".jou","r")
 	      while 1:
 		    l = file.readline()
@@ -110,13 +112,16 @@ class dBTable:
 	      os.system(cmd)
 	      self.jou = JournalDict({},self.name+".jou")
 	      self.count=0
+	      self.logc.send(log_client.INFO, "End checkpoint for "+self.name)
 	def start_backup(self):
 	     global  backup_flag            
 	     backup_flag=0
+             self.logc.send(log_client.INFO, "Start backup for "+self.name)
              self.checkpoint()
         def stop_backup(self):
 	     global  backup_flag           
              backup_flag=1
+	     self.logc.send(log_client.INFO, "End backup for "+self.name)
 def do_backup(name):
 	import time
 	cmd="tar cvf "+name+".tar  "+ os.environ['ENSTORE_DB'] + \

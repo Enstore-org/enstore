@@ -13,7 +13,7 @@ from generic_server import GenericServer
 from udp_client import UDPClient
 from db import dBTable
 
-dict = dBTable("file")
+
 
 class FileClerkMethods(DispatchingWorker) :
 
@@ -275,7 +275,7 @@ if __name__ == "__main__" :
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     fc.set_logc(logc)
-
+    dict = dBTable("file",logc)
     while 1:
         try:
             logc.send(log_client.INFO, "File Clerk (re)starting")
