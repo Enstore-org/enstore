@@ -276,7 +276,7 @@ class LibraryManager(EnstoreServer):
 	    # the lm is not in a good state mark it as yellow
 	    enprint("%s in a %s state"%(self.format_name, self.lstate))
 	    self.set_status(enstore_constants.WARNING)
-            self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
+            self.sendmail("%s is in %s state (config node - %s)"%(self.format_name,
                                                                     self.lstate,
                                                                     self.config_host))
 	else:
