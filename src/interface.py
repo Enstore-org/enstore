@@ -154,6 +154,8 @@ class Interface:
         	self.bfids = 1
             elif opt == "--bfid" :
                 self.bfid = value
+            elif opt == "--tape_list" :
+                self.tape_list = value
             elif opt == "--deleted" :
                 if string.find(string.lower(value),'y') !=-1:
                     self.deleted = "yes"
