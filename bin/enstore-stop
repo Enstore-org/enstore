@@ -7,15 +7,12 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # NOTE: some options (w/ or w/o args) are currently provided just for restart
 # (compatible with start)
-opts_wo_args='new'
 opts_w_args='xterm|just'
 USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 while opt=`expr "${1-}" : '--\(.*\)'`;do
     shift
     eval "case \$opt in
     \\?) echo \"$USAGE\"; exit 0;;
-    $opts_wo_args)
-        eval opt_\$opt=1;;
     $opts_w_args)
         if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
         eval opt_\$opt=\"'\$1'\";shift ;;
