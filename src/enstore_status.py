@@ -82,6 +82,16 @@ class EncpLine:
 
     def __init__(self, line):
         self.line = line
+	# on linux, if there is some garbage in the log file, grep may decide the
+	# log file is a binary file. then it will produce a message -
+	# Binary file LOG-2001-02-08 matches
+	# so look for this and ignore it if you find it.  but output a log file
+	# message as the encp hitory page will not be correct and there is
+	# probably something else wrong that produced the garbage in the log file
+	# in the first place.
+	if line[0:12] == "Binary file ":
+	    self.valid = 0
+	    return
         [self.time, self.node, self.pid, self.user, self.status, self.server, 
          self.text] = string.split(line, None, 6)
         self.bytes = "?"
