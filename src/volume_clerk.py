@@ -328,6 +328,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             # reseting volume family
             sg = string.split(record['volume_family'], '.')[0]
             record['volume_family'] = sg+'.none.none'
+            # check for obsolete fields
+            for ek in ['at_mover', 'file_family', 'status']:
+                if record.has_key(ek):
+                    del record[ek]
             self.dict[vol] = record
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
         else:
