@@ -44,17 +44,18 @@ def init(name):
 
 
 def log( severity, msg, msg_type=MSG_DEFAULT ):
-    if not log_func:
-        return
-    log_func( time.time(), os.getpid(), logname, (severity,msg_type,msg))
+    if  log_func:
+        log_func( time.time(), os.getpid(), logname, (severity,msg_type,msg))
     
         
 def alarm( severity, root_error, rest={} ):
     rest['severity'] = severity
     rest['root_error'] = root_error
-    alarm_func(
-        time.time, os.getpid(), logname, ("root_error:%s"%rest['root_error'], rest ))
-
+    if alarm_func:
+        alarm_func(
+            time.time, os.getpid(), logname, ("root_error:%s"%rest['root_error'], rest ))
+    log(severity, root_error)
+        
 def set_alarm_func( func ):
     global alarm_func
     alarm_func=func
