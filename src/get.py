@@ -124,11 +124,10 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         # Send the request to the mover.  This is an evil hack to modify
         # work_ticket outside of create_read_requests().
         work_ticket['method'] = "read_next"
-        print "3", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
         request  = udp_socket.process_request()
-        Trace.message(1, "MOVER_MESSAGE:")
+        Trace.message(10, "MOVER_MESSAGE:")
         Trace.message(10, pprint.pformat(request))
-        Trace.message(1, "MOVER_REQUEST_SUBMISSION:")
+        Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
         udp_socket.reply_to_caller(work_ticket)
         
@@ -180,9 +179,10 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             return work_ticket
 
         #Pretend we are the library manager.
-        request = udp_socket.process_request()
-        Trace.message(10, "LM MESSAGE:")
-        Trace.message(10, pprint.pformat(request))
+        #request = udp_socket.process_request()
+        #print "LENGTH OF LM RESPONSE:", len(str(request))
+        #Trace.message(10, "LM MESSAGE:")
+        #Trace.message(10, pprint.pformat(request))
 
         #Combine these tickets.  Encp would have this already done, in
         # its transfer_file() function, but not gets transfer_file() function.
@@ -414,11 +414,11 @@ def main(e):
         #Get the next volume in the list to transfer.
         request, index = get_next_request(requests_per_vol[e.volume])
 
-        #Only the first submition goes to the LM for volume reads.
+        #Only the first submission goes to the LM for volume reads.
         request['method'] = "read_tape_start" #evil hacks
         request['route_selection'] = 1 #On for Get..
         request['submitted'] = None #Failures won't be re-sent if not None.
-        Trace.message(10, "LM SUBMITION TICKET:")
+        Trace.message(10, "LM SUBMISSION TICKET:")
         Trace.message(10, pprint.pformat(request))
         submitted, reply_ticket = encp.submit_read_requests(
             [request], tinfo, e)
@@ -428,7 +428,7 @@ def main(e):
                              (e.volume, reply_ticket['status']))
             encp.quit(1)
 
-        Trace.message(4, "Read tape submition sent to LM.")
+        Trace.message(4, "Read tape submission sent to LM.")
 
         #Open the routing socket.
         #config = host_config.get_config()
@@ -448,7 +448,6 @@ def main(e):
                 encp.quit(1)
 
             Trace.message(4, "Opened routing socket.")
-            print "1", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
         except (encp.EncpError,), detail:
             if detail.errno == errno.ETIMEDOUT:
                 continue
@@ -510,7 +509,6 @@ def main(e):
             requests_per_vol[e.volume][index] = request
             
             Trace.message(4, "Preparing to read %s." % request['outfile'])
-            print "2", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
