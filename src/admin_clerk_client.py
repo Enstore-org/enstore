@@ -22,6 +22,11 @@ class AdminClerkClient(generic_client.GenericClient) :
                  port=interface.default_port()):
 	self.print_id = "ADMINC"
         configuration_client.set_csc(self, csc, host, port, verbose)
+	try:
+	    keys = self.csc.get("admin_clerk")
+	    self.print_id = keys['logname']
+	except:
+	    pass
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
 
@@ -52,8 +57,7 @@ class AdminClerkClient(generic_client.GenericClient) :
                 listen_socket.close()
                 break
             else:
-	        self.enprint("select - imposter called us back, trying again",\
-	                     generic_cs.ENNONE, generic_cs.ENNONE, self.logc)
+	        self.enprint("select - imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
