@@ -39,7 +39,7 @@ clean:
 		rm -f *.o *.a traceShow trace_delta
 
 reset:
-		@key_file=trace.key;\
+		@key_file=$$TRACE_KEY.key;\
 		if [ `uname` = Linux ];then \
 		    ipcrm shm `od -A n      -N 4 -t d4 $$key_file`;\
 		    ipcrm sem `od -A n -j 4 -N 4 -t d4 $$key_file`;\
