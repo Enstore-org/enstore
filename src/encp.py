@@ -2964,7 +2964,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #If this is the longer form, add these values to the ticket.
         if len(msg.args) >= 7:
             EXfer_ticket['bytes_transfered'] = request['file_size'] - \
-                                               EXfer_rtn[4]
+                                               msg.args[4]
             EXfer_ticket['bytes_not_transfered'] = msg.args[4]
             EXfer_ticket['read_time'] = msg.args[5]
             EXfer_ticket['write_time'] = msg.args[6]
