@@ -21,7 +21,6 @@ case "$1" in
 
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
-	exit
 
         if [ "$n1" != "$n2" ]; then
           if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c ", 0% packet loss"` -eq 1 ]; then
