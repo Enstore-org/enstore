@@ -69,7 +69,8 @@ int main(int argc, char **argv)
     if(optind >= argc)
     {
         strncpy(abspath, argv[0], PATH_MAX);
-	printf("Usage %s <file_name>\n", basename(abspath));
+	printf("Usage %s [-0 | -1] [-d | -h] [-v] <file_name>\n",
+	       basename(abspath));
 	exit(1);
     }
     
