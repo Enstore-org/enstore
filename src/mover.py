@@ -280,9 +280,10 @@ class Buffer:
     def block_read(self, nbytes, driver, fill_buffer=1):
 
 	# SEVA FOO
-	pad = (nbytes % 512)
+	pad = (-nbytes % 512)
+	nbytes = nbytes + pad
+
 	if (pad):
-	    nbytes = nbytes + (512 - pad)
 	    Trace.trace(42, "SEVA DEBUG: padded bytes to read: %s" % nbytes)
 
         if self.client_crc_on:
