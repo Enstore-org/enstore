@@ -4,7 +4,7 @@ if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-c" ] ; then CHKONLY=1;shift; else CHKONLY=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 
-BADCNT=6
+BADCNT=25 
 
 UNAME="/bin/uname"
 CMP="/usr/bin/cmp"
@@ -13,6 +13,9 @@ XNTPDC="/usr/sbin/xntpdc"
 NTPDATE="/usr/sbin/ntpdate"
 XNTP="/etc/rc.d/init.d/xntpd restart"
 EGREP="/bin/egrep"
+HEAD="/usr/bin/head"
+TAIL="/usr/bin/tail"
+CUT="/usr/bin/cut"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"
@@ -40,12 +43,14 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
         }
 # if these processes are hanging around, kill them...
 $EKILL -v -9 "$XNTPDC|$NTPDATE" >>$LOG 2>&1
+$EKILL    -9 "$XNTPDC|$NTPDATE" >>$LOG 2>&1
 
 # check that ntp is working, fix if not, complain if down more 6 times in a row (hour)
 if [ ! -r $TIME_SYNC_COUNTER ]; then
   echo '0'>$TIME_SYNC_COUNTER
 fi
 COUNT=`cat $TIME_SYNC_COUNTER`
+# don't set every time - give it time to settle down
 RELAX=`expr $COUNT - $COUNT / 2 \* 2`
 
 if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
@@ -59,6 +64,10 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
       fi
     fi
     if [ $CHKONLY -eq 0 ]; then
+      # if within 5 seconds of syncing, don't reset time - let it settle
+      disp=`echo "$x"|$EGREP '^='|$HEAD -n2|$TAIL -n1|$AWK '{print $NF}'|$CUT -f1 -d.`
+      if [ $disp -lt 5 ];then RELAX=1; fi
+
       if [ $RELAX -eq 0 ]; then
         $XNTP stop >>$LOG 2>&1
         # set the time, but use more than just fermilab to sync it
@@ -66,7 +75,7 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
         # start up ntp again - this just syncs to fermilab, according to policy.
         $XNTP start >>$LOG 2>&1
       else
-        $ECHO `$DATE` Clock not in sync, waiting till next time to set >>$LOG 2>&1
+        $ECHO `$DATE` Clock not in sync, waiting till next time to set. disp=$disp >>$LOG 2>&1
       fi
     fi
     $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 1 >>$HIST
