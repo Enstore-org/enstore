@@ -166,7 +166,7 @@ class MoverClient:
 	    config['device'] = dev_env + dev_rest
 	    pass
 
-	self.hsm_driver = eval( 'driver_new.'+config['driver']+'()' )
+	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
 	self.net_driver = Mover()
 
     def nowork( self, ticket ):
