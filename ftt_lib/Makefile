@@ -29,7 +29,7 @@ CFLAGS=-I. -Ilocal -g  $(WARN)
 
 LIB=libftt.a
 
-PROGS=ftt_suid asyncdemo 
+PROGS=ftt_suid asyncdemo ftt_checktable
 
 all: local $(LIB) $(PROGS)
 
@@ -80,6 +80,9 @@ asyncdemo: asyncdemo.c $(LIB)
 
 listdemo: listdemo.c $(LIB)
 	$(CC) $(CFLAGS) -o $@ listdemo.c $(LIB) $(LIBS)
+
+ftt_checktable: ftt_checktable.c $(LIB)
+	$(CC) $(CFLAGS) -o $@ ftt_checktable.c $(LIB) $(LIBS)
 
 
 # this is shotgunning, crude but effective :-)

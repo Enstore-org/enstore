@@ -66,3 +66,6 @@ extern int		ftt_writefm(ftt_descriptor);
 extern int		ftt_write2fm(ftt_descriptor);
 
 extern int		ftt_close_scsi_dev(ftt_descriptor);
+
+extern void		ftt_first_supported(int *);
+extern ftt_descriptor	ftt_next_supported(int *);

@@ -97,7 +97,7 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
 
     rres = 0;
     pp = ftt_list_all(d);
-    for( i = 0; pp[i] != 0; i++){
+    for( i = 0; pp[i] != 0; i++) {
         res = stat(pp[i],&sbuf);
 	if ( res == ENOENT )
 	    continue;

@@ -362,8 +362,10 @@ ftt_next_supported(int *pi) {
 		return 0;
 	}
 	/* gratuitous sprintf workaround... */
-	if (strcmp(devtable[*pi].baseconv_out,"%3$s") != 0) {
-	    sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0, "");
+	if (0 == strncmp(devtable[*pi].baseconv_out,"%s", 2)) {
+	    sprintf(namebuf, devtable[*pi].baseconv_out, "" , 0);
+	} else {
+	    sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0);
 	}
 	res = ftt_open_logical(namebuf,devtable[*pi].os,devtable[*pi].drivid,0);
 	(*pi)++;
