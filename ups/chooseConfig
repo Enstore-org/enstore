@@ -20,6 +20,10 @@ sirius=sirius
 
 complain=1
 
+# default for environment variables with a default
+ENSTORE_MAIL=enstore-auto@fnal.gov
+
+
 case $node in
 
   stken*|rip9|rip10)
@@ -28,6 +32,7 @@ case $node in
             complain=0
             ;;
   rip*)
+	    ENSTORE_MAIL=enstore@fnal.gov
 	    ENSTORE_CONFIG_HOST=$rip
 	    ENSTORE_CONFIG_FILE=rip.conf
             complain=0
@@ -81,5 +86,13 @@ elif [ "${1:-x}" = "file" ]; then
   fi
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $ENSTORE_CONFIG_FILE
+elif [ "${1:-x}" = "mail" ]; then
+  if [ $complain -eq 1 ]; then
+    # note that these warnings go to stderr
+    echo "WARNING: based on your node, `uname -n`, ENSTORE_MAIL has been set to $ENSTORE_MAIL" 1>&2
+    echo "WARNING: If this is not correct, either set ENSTORE_MAIL by hand or use a qualifier in your setup command!" 1>&2
+  fi
+  # need to feed this back up to the en*.table file on stdout to set it in the users's environment
+  echo $ENSTORE_MAIL
 fi
 
