@@ -9,6 +9,12 @@
 
 ctlr=3
 
+cmd()
+{   echo "$@"
+    "$@"
+}
+
+
 if [ `hostname` != rip2.fnal.gov ];then
     echo "must be run from specific node (rip2 in this case)"
     exit
@@ -38,10 +44,10 @@ rsh rip10 ". /usr/local/etc/setups.sh;setup enstore;\
            dasadmin list rip3;\
            dasadmin list rip10"
 
-mt -f /dev/rmt/tps${ctlr}d1n status
-mt -f /dev/rmt/tps${ctlr}d2n status
-mt -f /dev/rmt/tps${ctlr}d3n status
-mt -f /dev/rmt/tps${ctlr}d4n status
+cmd mt -f /dev/rmt/tps${ctlr}d1n status
+cmd mt -f /dev/rmt/tps${ctlr}d2n status
+cmd mt -f /dev/rmt/tps${ctlr}d3n status
+cmd mt -f /dev/rmt/tps${ctlr}d4n status
 
 cd ${ctlr}d1
 ../fd_xfer.py /raid/enstore/random/200MB.trand /dev/rmt/tps${ctlr}d1n None 1000 DECDLT DE01 CA2502 rip10 >${ctlr}d1.log 2>&1 &
