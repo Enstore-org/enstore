@@ -1,0 +1,23 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+# sbin/$RCSfile$  $Revision$
+
+if [ -z "${1-}" ] ; then echo "Usage: `basename $0` filename" ; exit 1; fi
+
+file=`mktemp /tmp/cronplot.XXXXXXXX`
+title=`basename $1 |sed -e 's/HISTOGRAM//'`
+echo "
+set xlabel 'Date'
+set timefmt '%Y-%m-%d:%H:%M:'
+set xdata time
+set xrange [ : ]
+set yrange [-1:20]
+set grid
+#set format x '%m-%d'
+plot '$1' using 1:2 t '$title' with points
+pause -1
+" >> $file
+#cat $file
+gnuplot $file
+rm $file
