@@ -1031,7 +1031,7 @@ class Interface:
                 return opt_dict.get(DEFAULT_VALUE, DEFAULT)
             else:
                 return value
-          #Return the DEFAULT_VALUE for an option that must take a value.
+        #Return the DEFAULT_VALUE for an option that must take a value.
         # Usually this will be set to the value passed in, unless
         # FORCE_SET_DEFAULT forces the setting of both values.
         else: #REQUIRED
