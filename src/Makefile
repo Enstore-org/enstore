@@ -49,6 +49,7 @@ encp:
 	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
 	cp ../modules/enroute2	ENCPBIN
 	cp ../modules/ddencp	ENCPBIN
+	cp ../modules/ecrc	ENCPBIN
 	rm -rf ENCPBIN_TEMP
 
 	- rm -rf ENSTORE_USER_BIN_TEMP
