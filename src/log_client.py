@@ -475,7 +475,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
         self.do_parse = flag
         self.restricted_opts = opts
-        self.msg = ""
+        self.message = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
