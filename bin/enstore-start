@@ -60,6 +60,14 @@ output() { tty -s
            fi
          }
 
+# function to check if server is up
+check_server()
+{
+    # check volume clerk file clerk depends on
+    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $1 | cut -d: -f2` \
+    `echo "$nodeplus_servers" | grep $1 | cut -d: -f3` $timeout --tries $tries >/dev/null
+    return $?
+}
 
 ###################################################################################################################################
 
@@ -87,7 +95,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
     fi
 
     echo "Checking Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT"
-    ecmd config --alive --verbose=32
+    # check if config server is up
+    #udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
+    udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout --tries $tries >/dev/null
     if [ $? -ne 0 ] ; then
         echo "   ...Configuration Server not reachable..."
         exit 1
@@ -111,6 +121,12 @@ ENSTORE_CONFIG_PORT=$ENSTORE_CONFIG_PORT;export ENSTORE_CONFIG_PORT
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
 nodeplus_servers=`conf.sh $local_host 3 2`
 
+# check if Configuration Server is up
+if [ $? -ne 0 ] ; then
+    echo "   ...Configuration Server not reachable..."
+    exit 1
+fi
+
 # now just isolate the servers for this node
 node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
 
@@ -122,6 +138,12 @@ if [ ! "$node_servers" ];then
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
     nodeplus_servers=`conf.sh $hh 3 2`
+    # check if Configuration Server is up
+    if [ $? -ne 0 ] ; then
+	echo "   ...Configuration Server not reachable..."
+	exit 1
+    fi
+
     node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
 fi
 
@@ -208,7 +230,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
 
     echo "Checking Volume Clerk"
     udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f3` $timeout --tries $tries
+                                     `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f3` $timeout --tries $tries >/dev/null
     if [ $? -ne 0 ] ; then
         echo "   ...Volume Clerk not reachable..."
         exit 1
@@ -219,7 +241,14 @@ fi
 
 # file clerk
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
+    # check volume clerk file clerk depends on
+    check_server volume_clerk
+    if [ $? -ne 0 ] ; then
+	echo "   ...Volume Clerk not reachable..."
+	exit 1
+    fi
     if [ "${opt_ping-}" != 1 -a $enstore_start_fileclerk = 1 ];then
+
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep file_clerk|sed -e 's/.*://'` $timeout >/dev/null
         then
@@ -252,6 +281,12 @@ fi
 # library manager
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
+    # check volume clerk library manager depends on
+    check_server volume_clerk
+    if [ $? -ne 0 ] ; then
+	echo "   ...Volume Clerk not reachable..."
+	exit 1
+    fi
     for i in $enstore_libraries; do
         if [ ! "${opt_ping-}" ];then
             if     [ ! "${opt_nocheck-}" ]\
@@ -322,6 +357,18 @@ fi
 
 # mover
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
+    # check volume clerk mover depends on
+    check_server volume_clerk
+    if [ $? -ne 0 ] ; then
+	echo "   ...Volume Clerk not reachable..."
+	exit 1
+    fi
+    # check file clerk mover depends on
+    check_server file_clerk
+    if [ $? -ne 0 ] ; then
+	echo "   ...File Clerk not reachable..."
+	exit 1
+    fi
     for i in $enstore_movers; do
         if [ ! "${opt_ping-}" ];then
             if     [ ! "${opt_nocheck-}" ]\
