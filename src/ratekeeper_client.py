@@ -14,7 +14,6 @@ class RatekeeperClient(generic_client.GenericClient):
 
     def __init__(self, csc, server_address):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        self.u = udp_client.UDPClient()
         self.timeout = 10
         self.ratekeeper_addr = server_address
 

@@ -210,10 +210,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
     def __init__(self, csc):
-        # need the following definition so the generic client init does not
-        # get an alarm client
-        self.is_alarm = 1
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME,
+					      flags=enstore_constants.NO_ALARM)
         Trace.init(self.log_name)
 
         self.alarms = {}

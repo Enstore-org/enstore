@@ -51,7 +51,6 @@ class MonitorServerClient(generic_client.GenericClient):
         
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
-        self.u = udp_client.UDPClient()
         self.monitor_server_addr = monitor_server_addr
         self.html_server_addr = html_server_addr
         self.html_dir = html_dir

@@ -34,12 +34,9 @@ class FileClient(generic_client.GenericClient,
                       backup_client.BackupClient):
 
     def __init__( self, csc, bfid=0, server_address=None, timeout=0, tries=0):
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        self.u = udp_client.UDPClient()
+        generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
 	self.bfid = bfid
-	if server_address != None:
-            self.server_address = server_address
-	else:
+	if self.server_address == None:
             self.server_address = self.get_server_address(MY_SERVER,
                                                           timeout, tries)
 

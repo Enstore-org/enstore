@@ -37,12 +37,14 @@ class GenericServerInterface(option.Interface):
 
 class GenericServer(generic_client.GenericClient):
 
-    def __init__(self, csc, name, function=None):
+    def __init__(self, csc, name, function=None, flags=0, logc=None, alarmc=None):
         # make pychecker happy
         self.socket = None
         # do this in order to centralize getting a log, alarm and configuration
         # client. and to record the fact that we only want to do it once.
-        generic_client.GenericClient.__init__(self, csc, name)
+        generic_client.GenericClient.__init__(self, csc, name, 
+					      flags=enstore_constants.NO_UDP | flags,
+					      logc=logc, alarmc=alarmc)
 	self.erc = event_relay_client.EventRelayClient(self, function)
 
     def handle_generic_commands(self, intf):

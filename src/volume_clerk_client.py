@@ -180,11 +180,8 @@ class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
     def __init__( self, csc, server_address=None ):
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        self.u = udp_client.UDPClient()
-        if server_address != None:
-            self.server_address = server_address
-        else:
+        generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
+        if self.server_address == None:
             self.server_address = self.get_server_address(MY_SERVER)
 
     # add a volume to the stockpile

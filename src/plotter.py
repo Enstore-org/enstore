@@ -18,10 +18,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
     def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir, 
 		 start_time, stop_time, media_changer, keep,
 		 keep_dir, output_dir, html_file):
-	# we need to get information from the configuration server
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        # we always need to be talking to our configuration server
-        self.u = udp_client.UDPClient()
 
 	self.logfile_dir = logfile_dir
 	self.start_time = start_time

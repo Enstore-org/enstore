@@ -21,6 +21,7 @@ import copy_reg			# to make freeze happy
 
 #enstore imports
 import generic_client
+import enstore_constants
 import udp_client
 import Trace
 import e_errors
@@ -297,11 +298,12 @@ class LoggerClient(generic_client.GenericClient):
                  i_am_a = MY_NAME,           # Abbreviated client instance name
                                              # try to make it capital letters
                                              # not more than 8 characters long
-                 servername = MY_SERVER):    # log server name
+                 servername = MY_SERVER,     # log server name
+		 flags=0):
         # need the following definition so the generic client init does not
         # get another logger client
-        self.is_logger = 1
-        generic_client.GenericClient.__init__(self, csc, i_am_a)
+	flags = flags | enstore_constants.NO_LOG
+        generic_client.GenericClient.__init__(self, csc, i_am_a, flags=flags)
         self.log_name = i_am_a
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]
@@ -311,7 +313,6 @@ class LoggerClient(generic_client.GenericClient):
 	self.logger_address = self.get_server_address(servername)
         lticket = self.csc.get( servername )
         self.log_dir = lticket.get("log_file_path", "")
-        self.u = udp_client.UDPClient()
 	Trace.set_log_func( self.log_func )
 
     def log_func( self, time, pid, name, args ):

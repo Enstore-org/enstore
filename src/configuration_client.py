@@ -12,6 +12,7 @@ import select
 
 # enstore imports
 import generic_client
+import enstore_constants
 import option
 import udp_client
 import Trace
@@ -30,8 +31,9 @@ class ConfigurationClient(generic_client.GenericClient):
             address = (os.environ.get("ENSTORE_CONFIG_HOST", 'localhost'),
                        int(os.environ.get("ENSTORE_CONFIG_PORT", 7500)))
         self.print_id = MY_NAME
-        self.server_address=address
-        self.u = udp_client.UDPClient()
+	flags = enstore_constants.NO_CSC | enstore_constants.NO_ALARM | \
+		enstore_constants.NO_LOG
+	generic_client.GenericClient.__init__(self, (), MY_NAME, address, flags=flags)
 
     #Retrun these values when requested.
     def get_address(self):

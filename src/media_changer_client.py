@@ -32,7 +32,6 @@ class MediaChangerClient(generic_client.GenericClient):
                                                          ".media_changer",
                                                          MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
-        self.u = udp_client.UDPClient()
         if name:
             self.server_address = self.get_server_address(name)
 

@@ -19,8 +19,6 @@ class Inquisitor(generic_client.GenericClient):
 
     def __init__(self, csc):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        # we always need to be talking to our configuration server
-        self.u = udp_client.UDPClient()
 	self.server_name = MY_SERVER
         self.server_address = self.get_server_address(self.server_name)
 

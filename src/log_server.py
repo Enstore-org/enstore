@@ -67,10 +67,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
     def __init__(self, csc, test=0):
-        # need the following definition so the generic client init does not
-        # get a logger client
-        self.is_logger = 1
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+	flags = enstore_constants.NO_LOG
+        generic_server.GenericServer.__init__(self, csc, MY_NAME, flags=flags)
         self.repeat_count = 0
         self.last_message = ''
         #   pretend that we are the test system

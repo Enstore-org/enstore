@@ -24,7 +24,6 @@ class MoverClient(generic_client.GenericClient):
         self.mover=name
         self.log_name = "C_"+string.upper(name)
         generic_client.GenericClient.__init__(self, csc, self.log_name)
-        self.u = udp_client.UDPClient()
         self.server_address = self.get_server_address(self.mover)
 
     def status(self, rcv_timeout=0, tries=0):

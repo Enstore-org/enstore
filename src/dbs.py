@@ -14,6 +14,7 @@ import hostaddr
 
 import option
 import generic_client
+import enstore_constants
 import e_errors
 import Trace
 
@@ -39,7 +40,8 @@ class DBS(generic_client.GenericClient):
     
     def __init__(self, csc):
 	# mainly we want to get the config client and log client.
-	generic_client.GenericClient.__init__(self, csc, "DBS")
+	flags = enstore_constants.NO_UDP
+	generic_client.GenericClient.__init__(self, csc, "DBS", flags=flags)
 
 # similar to db.DbTable, without automatic journaling and backup up.
 class DbTable(db.DbTable):

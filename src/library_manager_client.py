@@ -30,7 +30,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.send_to = 20
         self.send_tries = 2
-        self.u = udp_client.UDPClient()
         self.server_address = self.get_server_address(self.name)
         if not self.server_address:
             print "%s does not exist"%(self.name)

@@ -33,18 +33,16 @@ class Lock:
 
 class AlarmClient(generic_client.GenericClient):
 
-    def __init__(self, csc, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES):
-        # we always need to be talking to our configuration server
-        self.csc = csc
+    def __init__(self, csc, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
+		 flags=0):
         # need the following definition so the generic client init does not
         # get another alarm client
-        self.is_alarm = 1
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
+	flags = flags | enstore_constants.NO_ALARM
+        generic_client.GenericClient.__init__(self, csc, MY_NAME, flags=flags)
         try:
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
             self.uid = "unknown"
-        self.u = udp_client.UDPClient()
         self.server_address = self.get_server_address(MY_SERVER)
 
         self.rcv_timeout = rcv_timeout
