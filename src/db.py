@@ -11,6 +11,7 @@ import setpath
 import journal
 import Trace
 import traceback
+import interface
 import configuration_client
 import e_errors
 
@@ -270,46 +271,9 @@ class Index:
 	def check_and_fix(self):
 		if self.check():
 			self.fix()
-
-# cacheCursor -- work on a dictionary
-class cacheCursor:
-    def __init__(self, dict):
-        self.length = len(dict)
-        self.position = 0
-        self.dict = dict
-        self.keys = dict.keys()
-        self.values = dict.values()
-
-    def first(self):
-        self.position = 0
-        return self.keys[0], self.values[0]
-
-    def next(self):
-        if self.position < self.length:
-            k, v = self.keys[self.position], self.values[self.position]
-            self.position = self.position + 1
-            return k, v
-        else:
-            return None, None
-
-    def previous(self):
-        if self.position <= 0:
-            return None, None
-        else:
-            self.position = self.position - 1
-            return self.keys[self.position], self.values[self.position]
-
-    def last(self):
-        self.position = self.length - 1
-        k, v = self.keys[self.position], self.values[self.position]
-        return k, v
-
-    def close(self):
-        pass
-
-        
+			
 class DbTable:
-  def __init__(self, dbname, db_home, jou_home, indlst=None, auto_journal=1, auto_cache=0):
+  def __init__(self, dbname, db_home, jou_home, indlst=None, auto_journal=1):
     if indlst is None:
         indlst = []
     self.auto_journal = auto_journal
@@ -319,8 +283,7 @@ class DbTable:
     self.cursor_open = 0
     self.c = None
     self.t = None
-    self.cache = {}
-    self.cached = 0
+
     # open database file
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
     dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
@@ -347,18 +310,11 @@ class DbTable:
         self.checkpoint()
         self.stop_backup()
 
-    if auto_cache:
-        self.load_cache()
-        self.cached = 1
-
   #def next(self):
   #  return self.cursor("next")
 
   def newCursor(self, txn=None):
-    if self.cached:
-        return cacheCursor(self.cache)
-    else:
-        return self.db.cursor(txn)
+    return self.db.cursor(txn)
 
   # This is not backward compatible
   def cursor(self,action,KeyOrValue=None):
@@ -444,19 +400,12 @@ class DbTable:
   def sync(self):	# Flush a database to stable storage
     return self.db.sync()
 
-  def load_cache(self):
-    c = self.db.cursor()
-    k, v = c.first()
-    while k:
-        self.cache[k] = v
-        k, v = c.next()
-    c.close()
-    
   def __len__(self):
     try:	# to be backward compatible
       return self.db.__len__()
     except:	# in case self.db.__len__() was not implemented
-      c=self.db.cursor()
+      t=self.db.txn()
+      c=self.db.cursor(t)
       last,val=c.last()
       key,val=c.first()
       len=0
@@ -464,6 +413,7 @@ class DbTable:
   	key,val=c.next()
   	len=len+1
       c.close()
+      t.commit()
       return len+1
 
   def has_key(self,key):
@@ -476,6 +426,9 @@ class DbTable:
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
+
+#junk      for name in self.inx.keys():
+#junk         self.inx[name][value[name]]=key
 
      t=self.db.txn()
      # check if this is an update
@@ -497,14 +450,20 @@ class DbTable:
      self.db[(key,t)]=value
      t.commit()
 
-     if self.cached:
-         self.cache[key] = value
+
+#junk   def is_index(self,key):
+#junk         if self.inx.has_key(key):
+#junk 		return 1
+#junk 	return 0
+
+#junk   def index(self,field,field_val):
+#junk        try:
+#junk 	return self.inx[field][field_val]
+#junk        except:
+#junk 	return []
 
   def __getitem__(self,key):
-      if self.cached and key in self.cache.keys():
-          return(self.cache[key])
-      else:
-          return self.db[key]
+     return self.db[key]
 
   def __delitem__(self,key):
      value=self.db[key]
@@ -520,8 +479,6 @@ class DbTable:
        self.inx[name].delete(value[name], key, t)
      del self.db[(key,t)]
      t.commit()
-     if self.cached:
-         del self.cache[key]
      if self.auto_journal:
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
@@ -623,7 +580,6 @@ class DbTable:
 
 def do_backup(name, dbHome, jouHome):
      cwd=os.getcwd()
-#     interface.py should no longer be used, please use option.py
 #     try:
 #         dbHome = configuration_client.ConfigurationClient(\
 #		(interface.default_host(),\

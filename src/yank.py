@@ -7,7 +7,7 @@
 #	yank vol ...
 #
 
-import option
+import interface
 import volume_clerk_client
 import file_clerk_client
 import shelve
@@ -21,7 +21,7 @@ if len(sys.argv) < 2:
 
 # get csc
 
-intf = option.Interface()
+intf = interface.Interface()
 csc = (intf.config_host, intf.config_port)
 
 # get vcc and fcc
