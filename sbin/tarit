@@ -111,7 +111,7 @@ tar -czf \$F \\
   /root/.k5user \\
   /etc/sysconfig/network \\
   /etc/sysconfig/network-scripts/ifcfg* \\
-  /usr/local/etc/farmlets
+  /usr/local/etc/farmlets \\
   /var/spool/cron/*
 enrcp \$F $node:$SPECIAL
 "
