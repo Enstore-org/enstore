@@ -26,7 +26,7 @@ postscript_hist_out = os.path.join(install_dir, hist_out+'.ps')
 jpeg_hist_out = os.path.join(install_dir, hist_out+'.jpg')
 jpeg_hist_out_stamp = os.path.join(install_dir, hist_out+'_stamp.jpg')
 
-low_water_mark = 1000
+low_water_mark = 2000
 high_water_mark = 5000
 step = 100
 yoffset = 200
