@@ -175,11 +175,21 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
 	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY))) {
 	    if (8 == atoi(p)){
-		res = -1;
-		ftt_errno = FTT_EBLANK;
+		save2 = res = -1;
+		save1 = ftt_errno = FTT_EBLANK;
 	    } else {
 		ftt_errno = save1;
 	    }
+	} else {
+	    ftt_errno = save1;
+	}
+	if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
+	    DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
+	    if (d->last_pos > 0 && atoi(p) == d->last_pos) {
+		ftt_errno = FTT_EBLANK;
+		res = -1;
+	    }
+	    d->last_pos = atoi(p);
 	} else {
 	    ftt_errno = save1;
 	}

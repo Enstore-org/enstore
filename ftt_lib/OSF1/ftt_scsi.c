@@ -26,6 +26,47 @@ typedef struct {
 
 static osf_scsi_block open_devs[FD_MAX];
 
+/*
+** lookup_drive -- this is a drive lookup routine to 
+** find the scsi bus, target id, and lun of a given device, so
+** as we can deal with /dev/cam...
+*/
+static int
+lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
+        static char linebuf[512];
+	int dnum, scratch;
+	FILE *pf;
+	int which_entry = 0;
+	int res;
+
+	DEBUG2(stderr,"Converting drive %s\n", pc);
+
+	sscanf(pc, "/dev/%*[nr]mt%d", &dnum);
+	sprintf(linebuf, "uerf -R -r 300", pc);
+	pf = popen(linebuf,"r");
+
+	while( dnum >= 0 && !feof(pf) ) {
+	    fgets(linebuf, 512, pf);
+	    DEBUG3(stderr,"got line: %s", linebuf);
+	    res = sscanf(linebuf," tz%d at scsi%d %*[^g]get %d lun %d",
+				     &scratch, bus,         targ,  lun);
+	    DEBUG3(stderr,"sscanf returns %d, bus %d target %d lun %d\n", 
+			   res, *bus, *targ, *lun);
+	    if ( 4 == res ) {
+		fgets(linebuf,512,pf);
+		res = sscanf(linebuf, " _(%[^()])", idstring);
+		DEBUG3(stderr,"scanf returns %d id string %s", res, idstring);
+		dnum--;
+	    }
+	    if ( 0 == strncmp(linebuf, "**********", 10) && which_entry++ > 0) {
+		break;
+	    }
+	}
+	
+	pclose(pf);
+	return dnum == -1;
+}
+
 /*+ ftt_scsi_open
  *\subnam
  *	ftt_scsi_open
@@ -42,8 +83,7 @@ static osf_scsi_block open_devs[FD_MAX];
 scsi_handle
 ftt_scsi_open(const char *pc) { 
     int slot, n, i;
-    static char cmdbuf[512];
-    FILE *pf;
+    static char idbuf[512];
 
     DEBUG1(stderr, "Entering ftt_scsi_open\n");
     slot = -1;
@@ -72,25 +112,15 @@ ftt_scsi_open(const char *pc) {
 	}
 
     } else {
-
         /* 
-	** regular device; look up it's scsi id, etc  with "file" 
-	**
-	** entries look like:
-	** /dev/rmt0a:	character special (9/3078) SCSI #0 TZK08 tape #24 (SCSI ID #3) offline 
+	** regular device; look up it's scsi id, etc.
 	*/
 
-	DEBUG2(stderr,"Converting drive %s\n", pc);
-
-	open_devs[slot].lun = 0;
-	sprintf(cmdbuf, "file %s", pc);
-	pf = popen(cmdbuf,"r");
-	n = fscanf(pf, "%*[^S]SCSI #%d %*[^S]SCSI ID #%d", 
-		    &open_devs[slot].id, &open_devs[slot].targid);
-	pclose(pf);
-	DEBUG2(stderr,"Got controller %d, id %d\n",
+	if (lookup_drive(pc,&open_devs[slot].id, &open_devs[slot].targid,
+			    &open_devs[slot].lun, idbuf)) {
+	    DEBUG2(stderr,"Got controller %d, id %d\n",
 		    open_devs[slot].id, open_devs[slot].targid);
-	if (n != 2) {
+	} else {
 	    errno = EINVAL;
 	    return -1;
 	}
@@ -98,7 +128,7 @@ ftt_scsi_open(const char *pc) {
     if ((open_devs[slot].fd = open("/dev/cam", O_RDWR, 0)) < 0) {
 	return -1;
     }
-    open_devs[i].allocated = 1;
+    open_devs[slot].allocated = 1;
     return (scsi_handle)slot;
 }
 
@@ -151,7 +181,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     static UAGT_CAM_CCB ua_ccb;
     static CCB_SCSIIO ccb;
     static int gotstatus = 0;
-    static char acSense[255];
+#   define SENSSIZ 64
+    static char acSense[SENSSIZ];
 
     if (gotstatus && pcCmd[0] == 0x03) {
 	/* we already have mode sense data, so fake it */
@@ -172,6 +203,9 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ccb.cam_dxfer_len = nRdWr;
     ccb.cam_timeout = delay <= 5 ? CAM_TIME_DEFAULT: CAM_TIME_INFINITY;
     ccb.cam_cdb_len = nCmd;
+    ccb.cam_sense_ptr = (u_char *)acSense;
+    ccb.cam_sense_len = SENSSIZ;
+
     memcpy(ccb.cam_cdb_io.cam_cdb_bytes, pcCmd, nCmd);
 
     ua_ccb.uagt_ccb = (CCB_HEADER*)&ccb;
@@ -179,7 +213,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ua_ccb.uagt_buffer = pcRdWr;
     ua_ccb.uagt_buflen = nRdWr;
     ua_ccb.uagt_snsbuf = (u_char *)acSense;
-    ua_ccb.uagt_snslen = 255;
+    ua_ccb.uagt_snslen = SENSSIZ;
     ua_ccb.uagt_cdb = (CDB_UN *)NULL;
     ua_ccb.uagt_cdblen = 0;
 
@@ -192,7 +226,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     }
     gotstatus = ccb.cam_scsi_status != 0;
 
-    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status);
+    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
 
     if (pcRdWr != 0 && nRdWr != 0){
 	DEBUG2(stderr,"Read/Write buffer:\n");

@@ -1,3 +1,16 @@
-ftt                                NOT DECLARED
-                                   Version: b1_0         Flavor: IRIX+5
+
+          Verbose versions of ftt:
+
+Instance: 		v1_0
+Database: 		/usr/products/src1/devel_database
+Flavor : 		AIX
+Home_dir:		/usr/products/src2/ftt/AIX.d
+Declared date:		2-20-96
+Declarer:		root
+Master Source:		Source not available
+Distribution:		Unrestricted
+Tarfiledirectory:	No tar file directory
+Authorized_nodes:	All
+Requirements:		None
+
 

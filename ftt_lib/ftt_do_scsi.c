@@ -59,13 +59,13 @@ ftt_close_scsi_dev(ftt_descriptor d) {
 }
 
 int
-ftt_scsi_check(scsi_handle n,char *pcOp, int stat) {
+ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
     int res;
     static int recursive = 0;
     static char *errmsg =
 	"ftt_scsi_command: %s command returned  a %d, \n\
-	request sense data: \n\
-	 %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x";
+request sense data: \n\
+%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n";
     static unsigned char acSensebuf[19];
 
     static unsigned char acReqSense[]={ 0x03, 0x00, 0x00, 0x00, 
@@ -86,14 +86,20 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat) {
 	        recursive = 1; /* keep from recursing if sense fails */
 	        res = ftt_scsi_command(n,"sense",acReqSense, sizeof(acReqSense),
 	  		               acSensebuf, sizeof(acSensebuf),5,0);
+		DEBUG3(stderr,"request sense returns res %d\n", res);
 	        recursive = 0;
 	    } else {
-		res = -1;
+		return 0;
 	    }
-	    if (res < 0) {
-		 ftt_errno = FTT_EUNRECOVERED;
-		 break;
-	    }
+	    DEBUG3(stderr, errmsg, pcOp, stat,
+		    acSensebuf[0], acSensebuf[1],
+		    acSensebuf[2], acSensebuf[3],
+		    acSensebuf[4], acSensebuf[5],
+		    acSensebuf[6], acSensebuf[7],
+		    acSensebuf[8], acSensebuf[9],
+		    acSensebuf[10], acSensebuf[12],
+		    acSensebuf[13], acSensebuf[14],
+		    acSensebuf[15]);
 	    ftt_eprintf(errmsg, pcOp, stat,
 		    acSensebuf[0], acSensebuf[1],
 		    acSensebuf[2], acSensebuf[3],
@@ -104,9 +110,10 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat) {
 		    acSensebuf[13], acSensebuf[14],
 		    acSensebuf[15]);
 	    switch(acSensebuf[2]& 0xf) {
+	    default:
 	    case 0x0:
 		    ftt_errno =  FTT_SUCCESS;
-		    return 0;
+		    break;
 	    case 0x1:
 		    ftt_errno = FTT_EIO;
 		    break;
@@ -130,7 +137,7 @@ ftt_scsi_check(scsi_handle n,char *pcOp, int stat) {
 	    }
 	}
     } 
-    return -stat;
+    return ftt_errno == FTT_SUCCESS ? len : -stat;
 }
 
 char *

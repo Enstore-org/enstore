@@ -114,6 +114,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     d.densitytrans = devtable[i].densitytrans;
     d.basename = basename;
     d.prod_id = strdup(drivid);
+    d.last_pos = -1;
     if( 0 == d.prod_id ) {
 	ftt_eprintf("ftt_open_logical: out of memory allocating string for \"%s\" errno %d" , drivid, errno);
 	ftt_errno = FTT_ENOMEM;

@@ -36,7 +36,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     CKNULL("ftt_descriptor", d);
     CKNULL("data buffer pointer", buf);
     
-    if ( 0 != (d->scsi_ops & FTT_OP_READ)){
+    if ( 0 != (d->scsi_ops & FTT_OP_READ)) {
 	DEBUG2(stderr, "SCSI pass-thru\n");
 	d->last_operation = FTT_OP_READ;
 	if (d->default_blocksize == 0) {

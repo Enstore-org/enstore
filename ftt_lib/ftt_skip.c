@@ -85,6 +85,7 @@ ftt_skip_fm(ftt_descriptor d, int n) {
     CKNULL("ftt_descriptor", d);
 
     if ( n < 0 ) {
+        d->last_pos = -1;/* we skipped backwards, so this can't be valid */
 	res = ftt_write_fm_if_needed(d); 	if (res < 0) {return res;}
     }
 
@@ -130,6 +131,7 @@ ftt_skip_rec(ftt_descriptor d, int n){
 
     d->current_block += n;
     if ( n < 0 ) {
+        d->last_pos = -1;/* we skipped backwards, so this can't be valid */
 	res = ftt_write_fm_if_needed(d);	
 	if (res < 0){return res;}
         return ftt_mtop(d, -n, FTT_TAPE_RSR, FTT_OPN_RSKIPREC, "ftt_skip_rec", 
@@ -152,6 +154,7 @@ ftt_rewind(ftt_descriptor d){
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
+    d->last_pos = -1;	/* we skipped backwards, so this can't be valid */
     /*
     ** we rewind twice in case the silly OS has the 
     ** asynchronous rewind bit turned on, in which case 

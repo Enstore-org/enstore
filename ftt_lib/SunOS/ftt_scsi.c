@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include "ftt_private.h"
 
+extern int errno;
+
 #ifdef SYSV
 
 #include <sys/scsi/generic/mode.h>
@@ -31,7 +33,7 @@
 #endif /* SYSV */
 
 
-int
+scsi_handle
 ftt_scsi_open(const char *pcDevice)
 {
 	scsi_handle n;

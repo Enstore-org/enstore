@@ -53,7 +53,8 @@ typedef struct {
 	int		density_is_set;		/* we already set density */
 	int		data_direction;		/* are we reading/writing */
 	int		nreads, nwrites;	/* operation counts */
-	scsi_handle     scsi_descriptor;
+	scsi_handle     scsi_descriptor;	/* descriptor feild */
+	int 		last_pos;		/* have we moved data */
 } ftt_descriptor_buf, *ftt_descriptor;
 
 /* data directions */
@@ -128,7 +129,8 @@ typedef struct {
     long scsi_ops;		/* FTT_OP_XXX bits for ops to use SCSI */
     int **errortrans;		/* errortrans[FTT_OPN_XXX][errno]->ftt_errno */
     char **densitytrans;	/* density names */
-    char *baseconv;		/* basename parser scanf string */
+    char *baseconv_in;		/* basename parser scanf string */
+    char *baseconv_out;		/* basename parser scanf string */
     int nconv;			/* number of items scanf should return */
     char *drividcmd;		/* printf this to get shell command->driveid */
     ftt_devinfo devs[MAXDEVSLOTS]; /* drive specs with printf strings */

@@ -470,7 +470,7 @@ for (density = 0; density < 10; density++)              /* all densities */
 	    {
 	    fprintf (stderr,"Modes don't match: Expected %d Got: %d\n",
 		  mode[j],statval);
-	    return 0;
+	    /* return 0; */
 	    }
 	 statval_str = ftt_extract_stats (statbuf,FTT_TRANS_DENSITY);
  	 statval = -1;
@@ -479,7 +479,7 @@ for (density = 0; density < 10; density++)              /* all densities */
 	    {
 	    fprintf (stderr,"Densities don't match: Expected %d Got: %d\n",
 		  density,statval);
-	    return 0;
+	    /* return 0; */
 	    }
 	 statval_str = ftt_extract_stats (statbuf,FTT_BLOCK_SIZE);
  	 statval = -1;
@@ -488,7 +488,7 @@ for (density = 0; density < 10; density++)              /* all densities */
 	    {
 	    fprintf (stderr,"Blocksizes don't match: Expected %d Got: %d\n",
 		  blocksize[i],statval);
-	    return 0;
+	    /* return 0; */
 	    }
 
 	/* verify data

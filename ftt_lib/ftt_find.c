@@ -29,9 +29,9 @@ ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id, char
     for( i = 0; devtable[i].os !=0 ; i++ ) {
 	if (ftt_matches(os, devtable[i].os) && 
 		ftt_matches(drivid, devtable[i].drivid)) {
-	   DEBUG3(stderr,"trying format \"%s\"\n", devtable[i].baseconv);
+	   DEBUG3(stderr,"trying format \"%s\"\n", devtable[i].baseconv_in);
 	   if (devtable[i].nconv == 
-		     sscanf(basename,devtable[i].baseconv,bus,id,string)) {
+		     sscanf(basename,devtable[i].baseconv_in,bus,id,string)) {
 		     DEBUG3(stderr, "format Matches!\n");
 		     return i;
 	   }
@@ -53,7 +53,7 @@ ftt_strip_to_basename(const char *basename,char *os) {
     if (i < 0) {
 	return 0;
     }
-    sprintf(buf,devtable[i].baseconv, bus, id,string);
+    sprintf(buf,devtable[i].baseconv_out, bus, id,string);
     return strdup(buf);
 }
 

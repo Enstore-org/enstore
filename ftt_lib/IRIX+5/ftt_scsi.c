@@ -110,7 +110,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 		memcpy(pcRdWr, 
 		      ((struct context *) dp->ds_private)->dsc_sense, nRdWr);
 		gotstatus = 0;
-		return ftt_scsi_check(n,pcOp, 0);
+		return ftt_scsi_check(n,pcOp, 0, nRdWr);
 	}
 	dp->ds_cmdlen=nCmd;
 	dp->ds_cmdbuf=(char *)pcCmd;
@@ -123,7 +123,14 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	if (0 != scsistat) {
 		gotstatus = 1;
 	}
-	res = ftt_scsi_check(n,pcOp,scsistat);
+DEBUG3(stderr,"cmdsent %d datasent %d sensesent %d status %d ret %d msg %d\n",
+	CMDSENT(dp), DATASENT(dp), SENSESENT(dp), STATUS(dp), 
+	RET(dp), MSG(dp));
+
+	if (!writeflag)
+		nRdWr = DATASENT(dp);
+
+	res = ftt_scsi_check(n,pcOp,scsistat,DATASENT(dp));
 
 	if (pcRdWr != 0 && nRdWr != 0){
 		DEBUG2(stderr,"Read/Write buffer:\n");
