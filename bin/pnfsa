@@ -222,7 +222,19 @@ ppnfs_state()
               echo "Pnfs $state" 
 	      exit $ec; }
 
-        
+psGroup()
+            { if [ -z "${1-}" ] ; then
+                ptagcat sGroup
+              else
+                ptagecho "$1" sGroup
+              fi; }
+pOSMTemplate()
+            { if [ -z "${1-}" ] ; then
+                ptagcat OSMTemplate
+              else
+                ptagecho "$1" OSMTemplate
+              fi; }
+
 #debugging routine - space in arguments are being eaten by eval
 pdog()      { echo $#
               echo $1
