@@ -231,9 +231,6 @@ def check(bfid, vol):
 
 def delete(bfid):
 	ff = fcc.bfid_info(bfid)
-	if ff["deleted"] == "yes" or ff["deleted"] == "unknown":
-		print "already deleted ... OK"
-		return
 
 	f = ff.get('pnfs_name0', 'unknown')
 	if not f:
@@ -244,6 +241,11 @@ def delete(bfid):
 	else:
 		af = a_path(f)
 	print 'deleting', bfid, af, '...',
+
+	if ff["deleted"] == "yes" or ff["deleted"] == "unknown":
+		print "already deleted ... OK"
+		return
+
 	ticket = {'bfid': bfid,'pnfs_name0': af, 'deleted': 'yes'}
 	res = fcc.modify(ticket)
 	if res['status'][0] == e_errors.OK:
