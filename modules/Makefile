@@ -62,18 +62,23 @@ ETape:
 
 EXfer:
 	MODULE=EXfer; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs` "; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs`"; \
 	OBS=EXfer.o ; \
 	$(MAKEIT)
 
-Trace:	trace.a
+Trace:	trace_1st Trace.so
+	@echo done with Trace # do not use default rule
+
+trace_1st:
+	make -f trace.mk trace.a
+
+Trace.so: trace.a
+	rm -f Trace.so	# must force relink as $(LIBPL)/Makefile does not
+			# check agains YOURLIBS
 	MODULE=Trace; \
-	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a "; \
+	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a"; \
 	OBS=Trace.o ; \
 	$(MAKEIT)
-
-trace.a:
-	make -f trace.mk trace.a
 
 Devcodes:
 	MODULE=Devcodes; \
