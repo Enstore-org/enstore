@@ -955,10 +955,6 @@ FTT_writefm(  PyObject *self
     /* just like close */
     if (g_buf_bytes && (g_mode_c=='w'))
     {   /* write out partial block */
-	fprintf(stderr,"debug: ftt_writefm, partial_block %d %d %d %c %c %c\n",
-		g_ftt_desc_tp,  g_buf_p, g_buf_bytes,
-		g_buf_p[0], g_buf_p[1], g_buf_p[2]  );
-	fflush(stderr);
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
 	if (sts != g_buf_bytes) return (raise_ftt_exception("FTT_writefm - partial block write"));
     }
