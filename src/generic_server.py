@@ -33,11 +33,11 @@ class GenericServer(generic_cs.GenericCS):
         Trace.trace(10,'}server_bind')
 
     # we got an uncaught error while in serve_forever
-    def serve_forever_error(self, str, logger=0):
+    def serve_forever_error(self, id, logger=0):
         traceback.print_exc()
         format = timeofday.tod()+" "+str(sys.argv)+" "+\
                  str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+\
-                 str+" serve_forever continuing"
+                 id+" serve_forever continuing"
         self.enprint(format)
 	if logger:
             logger.send(log_client.ERROR, 1, format)
