@@ -278,8 +278,10 @@ class FileClient(generic_client.GenericClient,
                   "bfid": bfid}
         if file_family:
             ticket['file_family'] = file_family
-        r = self.send(ticket)
-	return r
+        print "ticket =", `ticket`
+        # r = self.send(ticket)
+	# return r
+        return {'status': (e_errors.OK, None)}
 
     # get volume map name for given bfid
     def get_volmap_name(self, bfid = None):
@@ -434,6 +436,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                          option.VALUE_NAME:"file_family",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.OPTIONAL,
+                         option.DEFAULT_TYPE:None,
                          option.DEFAULT_VALUE:None
                          }]
                      },
