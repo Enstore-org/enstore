@@ -520,7 +520,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    key = "restore"
 	    restore_volmap = ticket[key]
 	    key = "restore_dir"
-	    restore_dir = ticket["key"]
+	    restore_dir = ticket[key]
 
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 

@@ -50,12 +50,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 if string.find(new_label, ".deleted") != -1:
 	     cur_rec["system_inhibit"] = e_errors.DELETED
 	     set_deleted = "yes"
+	     restore_dir = "no"
 	 else:
 	     cur_rec["system_inhibit"] = "none"
 	     if restore == "yes":
 		 set_deleted = "no"
+		 restore_dir = "yes"
 	     else:
 		 set_deleted = "yes"
+		 restore_dir = "yes"
 
 	     
 	 import file_clerk_client
@@ -73,9 +76,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 # replace file clerk database entries
 	 for bfid in cur_rec['bfids']:
 	     ret = fcc.rename_volume(bfid, new_label, 
-				     set_deleted, restore, "yes")
+				     set_deleted, restore, restore_dir)
 	     if ret["status"][0] == e_errors.OK:
-		 print "RET", ret
 		 
 	 # create new record in the database
 	 dict[new_label] = cur_rec
@@ -86,7 +88,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
-         Trace.log(e_errors.INFO,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+         Trace.log(e_errors.ERROR,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
          return str(sys.exc_info()[0]), str(sys.exc_info()[1])
      
     # remove deleted volume and all information about it
