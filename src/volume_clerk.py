@@ -29,6 +29,7 @@ import enstore_constants
 import monitored_server
 import file_clerk_client
 import inquisitor_client
+import cPickle
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -1219,8 +1220,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                         Trace.alarm(e_errors.ERROR,
                           "Volume Clerk: Selecting volume from common pool, add more volumes for %s"%(vol_fam,))
                         # this is important so turn the enstore ball red
-			ic = inquisitor_client.Inquisitor(self.csc)
-                        ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
+                        # check if it is ignored
+                        if not library+'.'+sg in self.ignored_sg:
+			    ic = inquisitor_client.Inquisitor(self.csc)
+                            ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
+                            # release ic
+                            del ic
 
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
@@ -1892,7 +1897,106 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
         self.reply_to_caller({"status" : (e_errors.OK, None)})
-         
+
+    # The following is for temporarily surpress raising the red ball
+    # when new tape is drawn from the common pool. The operator may
+    # use the following methods to set or clear a library.storage_group
+    # in an ignored group list. This list is presistent across the
+    # sessions
+
+    def set_ignored_sg(self, ticket):
+        try:
+            sg = ticket['sg']
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # check syntax
+
+        if len(string.split(sg, '.')) != 2:
+            msg = 'wrong format. It has to be "library.storage_group"'
+            ticket["status"] = (e_errors.ERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        if not sg in self.ignored_sg:
+            self.ignored_sg.append(sg)
+            # dump it to file
+            try:
+                f = open(self.ignored_sg_file, 'w')
+                cPickle.dump(self.ignored_sg, f)
+                f.close()
+                Trace.log(e_errors.INFO, 'storage group "%s" has been ignored'%(sg))
+            except:
+                msg = 'Volume Clerk: failed to ignore storage group "%s"'%(sg)
+                ticket['status'] = (e_errors.ERROR, msg)
+                Trace.log(e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+
+        ticket['status'] = (e_errors.OK, self.ignored_sg)
+        self.reply_to_caller(ticket)
+        return
+
+    def clear_ignored_sg(self, ticket):
+        try:
+            sg = ticket['sg']
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        if sg in self.ignored_sg:
+            self.ignored_sg.remove(sg)
+            # dump it to file
+            try:
+                f = open(self.ignored_sg_file, 'w')
+                cPickle.dump(self.ignored_sg, f)
+                f.close()
+                Trace.log(e_errors.INFO, 'ignored storage group "%s" has been cleared'%(sg))
+            except:
+                msg = 'Volume Clerk: failed to clear ignored storage group "%s"'%(sg)
+                ticket['status'] = (e_errors.ERROR, msg)
+                Trace.log(e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+        else:
+            msg = '"%s" is not in ignored storage group list'%(sg)
+            ticket['status'] = (e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = (e_errors.OK, self.ignored_sg)
+        self.reply_to_caller(ticket)
+        return
+
+    def clear_all_ignored_sg(self, ticket):
+        try:
+            self.ignored_sg = []
+            f = open(self.ignored_sg_file, 'w')
+            cPickle.dump(self.ignored_sg, f)
+            f.close()
+            Trace.log(e_errors.INFO, 'all ignored storage groups has been cleared')
+        except:
+            msg = 'Volume Clerk: failed to clear all ignored storage groups'
+            ticket['status'] = (e_errors.ERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = (e_errors.OK, self.ignored_sg)
+        self.reply_to_caller(ticket)
+        return
+
+    def list_ignored_sg(self, ticket):
+        ticket['status'] = (e_errors.OK, self.ignored_sg)
+        self.reply_to_caller(ticket)
 
 class VolumeClerk(VolumeClerkMethods):
     def __init__(self, csc):
@@ -1926,7 +2030,14 @@ class VolumeClerk(VolumeClerkMethods):
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
         self.paused_lms = {}
         self.noaccess_time = time.time()
-        
+        # load ignored sg
+        self.ignored_sg_file = os.path.join(dbHome, 'IGNORED_SG')
+        try:
+            f = open(self.ignored_sg_file)
+            self.ignored_sg = cPickle.load(f)
+            f.close()
+        except:
+            self.ignored_sg = []
 	# start our heartbeat to the event relay process
 	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
 				 self.alive_interval)
