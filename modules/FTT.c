@@ -60,7 +60,6 @@ static	PyObject	*FTTErrObject;
 static PyObject *
 raise_exception( char *msg )
 {
-	char		buf[200];
         PyObject	*v;
         int		i = errno;
 
@@ -69,8 +68,7 @@ raise_exception( char *msg )
 #   endif
 
     /* note: format should be the same as in EXfer.c */
-    sprintf( buf, "(pid %d) %s - %s", getpid(), msg, strerror(i) );
-    v = Py_BuildValue( "(is)", i, buf );
+    v = Py_BuildValue( "(s,i,s,i)", msg, i, strerror(i), getpid() );
     if (v != NULL)
     {   PyErr_SetObject( FTTErrObject, v );
 	Py_DECREF(v);
@@ -381,9 +379,9 @@ static int		 g_msgqid;
 static int		 g_pid=0;
 
 static void
-send_writer(  int	mtype
-	    , int	d1
-	    , char	*c1 )
+send_writer(  enum e_mtype	mtype
+	    , int		d1
+	    , char		*c1 )
 {
 	int		sts;
 	struct s_msg	msg_s;
@@ -773,13 +771,11 @@ FTT_fd_xfer(  PyObject *self
 		waitpid( g_pid, &sts, 0 );
 		errno = msg_s.md.data;
 		return (raise_exception("fd_xfer - read error"));
-		break;
 	    case Eof:
 		waitpid( g_pid, &sts, 0 );
 		/* NOTE: string must be the same as in EXfer -- it is must in
 		   mover.py */
 		return (raise_exception("fd_xfer - read EOF unexpected"));
-		break;
 	    default:		/* assume DatCrc */
 		writing_flg = 0;	/* DONE! */
 		crc_i = msg_s.md.data;

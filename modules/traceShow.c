@@ -247,7 +247,7 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
 	    *c_p = '\0';
 	}
 	else
-	    c_p += sprintf( c_p, "%18.6lf ", time );
+	    c_p += sprintf( c_p, "%18.6f ", time );
 	c_p += sprintf( c_p, "%5d ", (trc_ent_sp+head)->pid );
 
 	if ((trc_ent_sp+head)->tid >= TRC_MAX_PIDS)
@@ -330,7 +330,12 @@ strncatCheck( char *str_buf, const char *msg, int num )
     while ((*cp!='\0') && num--)
     {   if ((params<2) && (*cp=='%') && (*(cp - 1)!='\\'))
 	{   if (*(cp+1) == 's')
-	    {   strcpy( str_buf, "(modified \%s)" );
+	    {   
+#               ifdef IRIX /* irix cc warns "unrecognized character escape sequence" */
+                strcpy( str_buf, "(modified str format)" );
+#               else
+                strcpy( str_buf, "(modified \%s)" );
+#               endif
 		str_buf += strlen( str_buf );	/* go to end of str */
 		*str_buf++ = *cp++;
 		*str_buf++ = 'p'; cp++; /* replace/skip past 's' */
