@@ -1774,7 +1774,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
         self.run_in_thread('client_connect_thread', self.connect_client)
 
-    def assert(self):
+    def assert_vol(self):
         ticket = self.current_work_ticket
         self.t0 = time.time()
         self.mount_volume(ticket['vc']['external_label'])
@@ -1824,14 +1824,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = self.tape_driver.verify_label(volume_label, self.mode)
             if status[0] != e_errors.OK:
                 self.transfer_failed(status[0], status[1], error_source=TAPE)
-                return 0
-        location = cookie_to_long(self.target_location)
-        self.run_in_thread('seek_thread', self.seek_to_location,
-                           args = (location, self.mode==WRITE),
-                           after_function=self.start_transfer)
-        
-        return 1
+                return
 
+        self.dismount_volume(after_function=self.idle)
+        
     def finish_transfer_setup(self):
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
         ticket = self.current_work_ticket
@@ -2524,7 +2520,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # for ASSERT finish here
             if self.setup_mode == ASSERT:
                listen_socket.close()
-               self.run_in_thread('finish_transfer_setup_thread', self.assert)
+               self.run_in_thread('finish_transfer_setup_thread', self.assert_vol)
                return
 
             try:
