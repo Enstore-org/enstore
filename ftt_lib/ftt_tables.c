@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id$";
+static char rcsid[] = "#(@)$Id$";
 #include <stdio.h>
 #include <ftt_private.h>
 
@@ -278,6 +278,41 @@ int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
 	/*   31	EMLINK	*/	FTT_ELEADER,
 };
 
+int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
+	/*    0 NOERROR	*/	FTT_SUCCESS,
+	/*    1	EPERM	*/	FTT_EPERM,
+	/*    2	ENOENT	*/	FTT_ENOENT,
+	/*    3	ESRCH	*/	FTT_ENOENT,
+	/*    4	EINTR	*/	FTT_EUNRECOVERED,
+	/*    5	EIO	*/	FTT_ENOTAPE,
+	/*    6	ENXIO	*/	FTT_ENOTAPE
+	/*    7	E2BIG	*/	FTT_EBLKSIZE,
+	/*    8	ENOEXEC	*/	FTT_ENOEXEC,
+	/*    9	EBADF	*/	FTT_ENOENT,
+	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
+	/*   11	EAGAIN	*/	FTT_ENOTAPE,
+	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   13	EACCES	*/	FTT_EPERM,
+	/*   14	EFAULT	*/	FTT_EFAULT,
+	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
+	/*   16	EBUSY	*/	FTT_EBUSY,
+	/*   17	EEXIST	*/	FTT_ENOTSUPPORTED,
+	/*   18	EXDEV	*/	FTT_ENOTSUPPORTED,
+	/*   19	ENODEV	*/	FTT_ENOENT,
+	/*   20	ENOTDIR	*/	FTT_ENOENT,
+	/*   21	EISDIR	*/	FTT_ENOENT,
+	/*   22	EINVAL	*/	FTT_ENOENT,
+	/*   23	ENFILE	*/	FTT_ENFILE,
+	/*   24	EMFILE	*/	FTT_ENFILE,
+	/*   25	ENOTTY	*/	FTT_ENOTTAPE,
+	/*   26	ETXTBSY	*/	FTT_ENOENT,
+	/*   27	EFBIG	*/	FTT_ENOTAPE
+	/*   28	ENOSPC	*/	FTT_ENOTAPE
+	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
+	/*   30	EROFS	*/	FTT_ENOTAPE
+	/*   31	EMLINK	*/	FTT_ELEADER,
+};
+
 int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EROFS,
@@ -390,7 +425,7 @@ int *ftt_trans_table_AIX[] = {
     /* FTT_OPN_WRITEFM		 3 */ ftt_trans_out_AIX,
     /* FTT_OPN_SKIPREC		 4 */ ftt_trans_skiprec,
     /* FTT_OPN_SKIPFM		 5 */ ftt_trans_skipf_AIX,
-    /* FTT_OPN_REWIND		 6 */ ftt_trans_skipr_AIX,
+    /* FTT_OPN_REWIND		 6 */ ftt_trans_skiprew_AIX,
     /* FTT_OPN_UNLOAD		 7 */ ftt_trans_skipf,
     /* FTT_OPN_RETENSION	 8 */ ftt_trans_skipf,
     /* FTT_OPN_ERASE		 9 */ ftt_trans_out,

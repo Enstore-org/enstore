@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id$";
+static char rcsid[] = "#(@)$Id$";
 #include <stdio.h>
 #include <string.h>
 #include <ftt_private.h>

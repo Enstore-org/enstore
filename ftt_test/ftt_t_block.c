@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id$";
+static char rcsid[] = "#(@)$Id$";
 /* routines for playing with blocks 
 
 Authors:        Margaret Votava, Marc Mengel

@@ -1,4 +1,4 @@
-static char rcsid[] = "$Id$";
+static char rcsid[] = "#(@)$Id$";
 int
 ftt_do_suid_scsi_command(ftt_descriptor d,char *pcOp,unsigned char *pcCmd, 
 	int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite){
