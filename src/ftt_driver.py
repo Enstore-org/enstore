@@ -53,7 +53,9 @@ class FTTDriver(driver.Driver):
                           ## loss of location information XXX
             ###{0:ftt.RDONLY, 1:ftt.RDWR}[mode])
             #Trace.trace(42, "%s=ftt.open() done"%(self.ftt,))
-
+            if not self.ftt:
+                Trace.log(e_errors.ERROR, "ftt_open returned None")
+                return -1
                 
         self.mode = mode
         self._burst_rate = 0
