@@ -548,9 +548,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def is_vol_available(self, ticket):
         work = ticket["action"]
         label = ticket["external_label"]
-        if not self.dict.has_key(label):
-            msg="Volume Clerk: volume %s does not exist" % (external_label,)
-            ticket["status"] = (errno.errorcode[errno.EEXIST], msg)
+        # get the current entry for the volume
+        try:
+            record = self.dict[label]  
+        except KeyError, detail:
+            msg="Volume Clerk: no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
