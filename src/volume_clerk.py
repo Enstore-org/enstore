@@ -75,13 +75,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.paused_lms = {}
         self.ignored_sg_file = None
         self.set_error_handler(self.vol_error_handler)
+        self.common_blank_low = {'warning':100, 'alarm':10}
         return
 
     def vol_error_handler(self, exc, msg, tb):
         if exc == edb.pg.error or msg == "no connection to the server":
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
-            'exc_type':str(exc), 'exc_value':str(msg)} )
+            'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
 
 
     # reconnect() -- re-establish connection to database
@@ -95,7 +96,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
              lookup_vol('%s'), lookup_stype('%s'), '%s');" % \
              (volume, type, value)
         try:
-	    res = self.dict.db.query(q)
+	    self.dict.db.query(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             msg = "change_state(): "+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -194,7 +195,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         try:
-            res = self.change_state(vol, 'write_protect', 'ON')
+            self.change_state(vol, 'write_protect', 'ON')
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -216,7 +217,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         try:
-            res = self.change_state(vol, 'write_protect', 'OFF')
+            self.change_state(vol, 'write_protect', 'OFF')
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -344,9 +345,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
-        id = res[0][0]
+        vid = res[0][0]
 
-        q = "delete from file where volume = %d;"%(id)
+        q = "delete from file where volume = %d;"%(vid)
         try:
             res = self.dict.db.query(q)
         except:
@@ -681,7 +682,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # deal with quota
 
         library = record['library']
-        q_dict = self.quota_enabled(library, storage_group)
+        q_dict = self.quota_enabled()
         if q_dict:
             if not self.check_quota(q_dict, library, storage_group):
                 msg="(%s, %s) quota exceeded when reassiging blank volume to it. Contact enstore admin."%(library, storage_group)
@@ -743,7 +744,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # show_quota() -- set comment to a volume record #### DONE
 
     def show_quota(self, ticket):
-	ticket['quota'] = self.quota_enabled(None, None)
+	ticket['quota'] = self.quota_enabled()
 	ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -794,7 +795,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             sg = ticket['storage_group']
             if sg != 'none':
                 # check if quota is enabled
-                q_dict = self.quota_enabled(library, sg)
+                q_dict = self.quota_enabled()
                 if q_dict:
                     if not self.check_quota(q_dict, library, sg):
                         msg="Volume Clerk: (%s, %s) quota exceeded while adding %s. Contact enstore admin."%(library, sg, external_label)
@@ -1065,6 +1066,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                              min_remaining_bytes, exact_match=1,
                              mover={}):
 
+        # to make pychecker happy
+        if first_found:
+            pass
+
         # decomposit storage_group, file_family and wrapper
         storage_group, file_family, wrapper = string.split(pool, '.')
 
@@ -1141,7 +1146,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return {}
 
     # check if quota is enabled in the configuration #### DONE
-    def quota_enabled2(self, library, storage_group):
+    def quota_enabled2(self):
         q_dict = self.csc.get('quotas')
         if q_dict['status'][0] == e_errors.KEYERROR:
             # no quota defined in the configuration
@@ -1157,7 +1162,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return q_dict
 
     # it is backward compatible with old quota_enabled()
-    def quota_enabled(self, library, storage_group):
+    def quota_enabled(self):
         q = "select value from option where key = 'quota';"
         state = self.dict.db.query(q).getresult()[0][0]
         if state != "enabled":
@@ -1309,7 +1314,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
             if vol and len(vol) != 0:
                 # check if quota is enabled
-                q_dict = self.quota_enabled(library, sg)
+                q_dict = self.quota_enabled()
                 inc_counter = 1
                 if q_dict:
                     if not self.check_quota(q_dict, library, sg):
@@ -1489,8 +1494,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
             
-        non_del_files = record['non_del_files']
-
         # update the non-deleted file count if we wrote a new file to the tape
         bfid = ticket.get("bfid") #will be present when a new file is added
         if bfid:
@@ -1726,8 +1729,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
         if record["status"][0] == e_errors.OK:
-            type = inhibit+'_'+`position`
-            self.change_state(external_label, type, "none")
+            itype = inhibit+'_'+`position`
+            self.change_state(external_label, itype, "none")
             Trace.log(e_errors.INFO, "system inhibit %d cleared for %s" % (position, external_label))
         self.reply_to_caller(record)
         return
@@ -1902,12 +1905,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # Trace.alarm(e_errors.WARNING, e_errors.NOTALLOWED,{"label":ticket["external_label"]}) 
         Trace.log(e_errors.INFO, "volume %s is set to NOTALLOWED"%(ticket['external_label']))
         return self.set_system_inhibit(ticket, e_errors.NOTALLOWED)
-
-    #### DONE
-    # device is broken - what to do, what to do ===================================FIXME======================================
-    def set_hung(self,ticket):
-        self.reply_to_caller({"status" : (e_errors.OK, None)})
-        return
 
     #### DONE, probably not completely
     # return all the volumes in our dictionary.  Not so useful!
@@ -2166,45 +2163,51 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def start_backup(self,ticket):
         try:
             self.dict.start_backup()
-            self.reply_to_caller({"status"        : (e_errors.OK, None),
-                                  "start_backup"  : 'yes' })
+            ticket["status"] = (e_errors.OK, None)
+            ticket["start_backup"] = "yes"
+            self.reply_to_caller(ticket)
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc,msg)
             status = str(exc), str(msg)
-            self.reply_to_caller({"status"       : status,
-                                  "start_backup" : 'no' })
+            ticket["status"] = status
+            ticket["start_backup"] = "no"
+            self.reply_to_caller(ticket)
 
     #### DONE
     def stop_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"stop_backup")
             self.dict.stop_backup()
-            self.reply_to_caller({"status"       : (e_errors.OK, None),
-                                  "stop_backup"  : 'yes' })
+            ticket["status"] = (e_errors.OK, None)
+            ticket["stop_backup"] = "yes"
+            self.reply_to_caller(ticket)
         # catch any error and keep going. server needs to be robust
         except:
             exc,msg=sys.exc_info()[:2]
             Trace.handle_error(exc,msg)
             status = str(exc), str(msg)
-            self.reply_to_caller({"status"       : status,
-                                  "stop_backup"  : 'no' })
+            ticket["status"] = status
+            ticket["stop_backup"] = "no"
+            self.reply_to_caller(ticket)
 
     #### DONE
     def backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"backup")
             self.dict.backup()
-            self.reply_to_caller({"status"       : (e_errors.OK, None),
-                                  "backup"  : 'yes' })
+            ticket["status"] = (e_errors.OK, None)
+            ticket["backup"] = "yes"
+            self.reply_to_caller(ticket)
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.handle_error(exc,msg)
             status = str(exc), str(msg)
-            self.reply_to_caller({"status"       : status,
-                                  "backup"  : 'no' })
+            ticket["status"] = status
+            ticket["backup"] = "no"
+            self.reply_to_caller(ticket)
 
     #### DONE
     def clear_lm_pause(self, ticket):
@@ -2374,8 +2377,6 @@ class VolumeClerk(VolumeClerkMethods):
         res = self.csc.get('common_blank_low')
         if res['status'][0] == e_errors.OK:
             self.common_blank_low = res
-        else:
-            self.common_blank_low = {'warning':100, 'alarm':10}
 
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:

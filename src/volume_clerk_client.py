@@ -636,12 +636,6 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'count'          : count }
         return self.send(ticket,timeout,retry)
 
-    # we are using the volume
-    def set_hung(self, external_label, timeout=300, retry=1):
-        ticket= { 'work'           : 'set_hung',
-                  'external_label' : external_label }
-        return self.send(ticket,timeout,retry)
-
     # this many bytes left - read the database
     def get_remaining_bytes(self, external_label, timeout=60, retry=10):
         ticket= { 'work'            : 'get_remaining_bytes',
