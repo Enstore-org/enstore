@@ -27,7 +27,6 @@ import udp_client
 import EXfer
 import interface
 import Trace
-import e_errors
 
 d0sam_format = "INFILE=%s\n"+\
                "OUTFILE=%s\n"+\
@@ -70,8 +69,13 @@ def write_to_hsm(input, output,
     maxretry = 2
     unique_id = []
     global logc # needs to be global so other defs can use it in this file
-    (csc,u,uinfo) = clients(config_host,config_port,list)
+    (csc,u,wrapper) = clients(config_host,config_port,list)
 
+    uinfo = {}                    # to be deleted shortly
+    for key in wrapper.keys():    # to be deleted shortly
+        uinfo[key] = wrapper[key] # to be deleted shortly
+
+        
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
     encp["basepri"] = pri
@@ -90,7 +94,9 @@ def write_to_hsm(input, output,
         print "csc=",csc
         print "u=",u
         print "logc=",logc
-        print "uinfo=",uinfo
+        print "uinfo=",uinfo  # to be deleted shortly
+        print "wrapper=",wrapper
+        
 
     if list>2:
         print "Checking input unix files:",input, "   cumt=",time.time()-t0
@@ -205,7 +211,8 @@ def write_to_hsm(input, output,
             tinfo1 = copy.deepcopy(tinfo)
 
             unique_id[i] = time.time()  # note that this is down to mS
-            uinfo["fullname"] = outputlist[i]
+            uinfo["fullname"] = outputlist[i]   # to be deleted shortly
+            wrapper["fullname"] = outputlist[i]
 
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
@@ -219,15 +226,19 @@ def write_to_hsm(input, output,
                                 "file_family"        : file_family[i],\
                                 "file_family_width"  : width[i]} # technically width does not belong here, but it associated with the volume
 
-                uinfo["sanity_size"] = 5000
-                uinfo["size_bytes"] = file_size[i]
+                uinfo["sanity_size"] = 5000        # to be deleted shortly
+                uinfo["size_bytes"] = file_size[i] # to be deleted shortly
+                uinfo["mtime"] = int(time.time())  # to be deleted shortly
+                wrapper["sanity_size"] = 5000 
+                wrapper["size_bytes"] = file_size[i]
+                wrapper["mtime"] = int(time.time())
                 encp["delayed_dismount"] = delayed_dismount
-                uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",
                                "callback_addr"      : callback_addr,
                                "vc"                 : volume_clerk,
                                "pinfo"              : pinfo[i],
                                "uinfo"              : uinfo,
+                               "wrapper"            : wrapper,
                                "encp"               : encp,
                                "times"              : times,
                                "unique_id"          : unique_id[i]
@@ -241,11 +252,11 @@ def write_to_hsm(input, output,
             if list > 3:
                 print "ENCP: write_to_hsm LM returned"
                 pprint.pprint(ticket)
-            if ticket['status'][0] != e_errors.OK :
+            if ticket['status'][0] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
                        +vticket['hostip']+"/"+repr(vticket['port'])\
-                       +", ticket[\"status\"]="+repr(ticket["status"]))
+                       +", ticket[\"status\"]="+ticket["status"])
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
             if list:
@@ -292,11 +303,11 @@ def write_to_hsm(input, output,
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"][0] != e_errors.OK:
+            if ticket["status"][0] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        +"1st (pre-file-send) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+repr(ticket["status"]),2)
+                       +"ticket[\"status\"]="+ticket["status"],2)
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
@@ -367,11 +378,11 @@ def write_to_hsm(input, output,
         Trace.trace(10,"write_to_hsm final dialog recieved")
 
         # make sure mover thinks transfer went ok
-        if done_ticket["status"][0] != e_errors.OK:
+        if done_ticket["status"][0] != "ok" :
             jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    +"2nd (post-file-send) mover callback on socket "\
                    +repr(address)+", failed to transfer: "\
-                   +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
+                   +"done_ticket[\"status\"]="+done_ticket["status"])
 
         # Check the CRC
             if chk_crc != 0:
@@ -425,7 +436,7 @@ def write_to_hsm(input, output,
             print format %\
                   (inputlist[i], outputlist[i], fsize,
                    done_ticket["fc"]["external_label"],
-                   tinfo1["rate"+repr(i)], uinfo["uname"],
+                   tinfo1["rate"+repr(i)], wrapper["uname"],
                    time.time()-t0)
         if d0sam:
             print d0sam_format % \
@@ -443,7 +454,7 @@ def write_to_hsm(input, output,
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
                   done_ticket["fc"]["external_label"],
-                  tinfo1["rate"+repr(i)], uinfo["uname"],
+                  tinfo1["rate"+repr(i)], wrapper["uname"],
                   time.time()-t0)
 
 
@@ -512,7 +523,11 @@ def read_from_hsm(input, output,
     vols_needed = {}
     delayed_dismount = 0
     global logc
-    (csc,u,uinfo) = clients(config_host,config_port,list)
+    (csc,u,wrapper) = clients(config_host,config_port,list)
+
+    uinfo = {}                    # to be deleted shortly
+    for key in wrapper.keys():    # to be deleted shortly
+        uinfo[key] = wrapper[key] # to be deleted shortly
 
     # make the part of the ticket that encp knows about (there's more later)
     encp = {}
@@ -532,7 +547,8 @@ def read_from_hsm(input, output,
         print "csc=",csc
         print "u=",u
         print "logc=",logc
-        print "uinfo=",uinfo
+        print "uinfo=",uinfo  # to be deleted shortly
+        print "wrapper=",wrapper
 
     if list>2:
         print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
@@ -612,7 +628,7 @@ def read_from_hsm(input, output,
                     repr(bfid[i]))
         binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
-        if binfo['status'][0] != e_errors.OK:
+        if binfo['status'][0]!='ok':
             pprint.pprint(binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
@@ -648,16 +664,19 @@ def read_from_hsm(input, output,
         for i in range(0,ninput):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
-                uinfo["fullname"] = outputlist[i]
-
-                uinfo["sanity_size"] = 5000
-                uinfo["size_bytes"] = file_size[i]
+                uinfo["fullname"] = outputlist[i]  # to be deleted shortly
+                uinfo["sanity_size"] = 5000        # to be deleted shortly
+                uinfo["size_bytes"] = file_size[i] # to be deleted shortly
+                wrapper["fullname"] = outputlist[i]
+                wrapper["sanity_size"] = 5000      
+                wrapper["size_bytes"] = file_size[i]
                 encp["delayed_dismount"] = delayed_dismount
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"              : "read_from_hsm",
                                "uinfo"             : uinfo,
+                               "wrapper"           : wrapper,
                                "callback_addr"     : callback_addr,
                                "fc"                : file_clerk,
                                "pinfo"             : pinfo[i],
@@ -672,12 +691,12 @@ def read_from_hsm(input, output,
                 if list > 3:
                     print "ENCP:read_from_hsm FC read_from_hsm returned"
                     pprint.pprint(ticket)
-                if ticket['status'][0] != e_errors.OK:
+                if ticket['status'][0] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: from"\
                            +"u.send to file_clerk at "+fticket['hostip']+"/"\
                            +repr(fticket['port']) +", ticket[\"status\"]="\
-                           +repr(ticket["status"]))
+                           +ticket["status"])
                 submitted = submitted+1
                 tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
                 if list :
@@ -747,11 +766,11 @@ def read_from_hsm(input, output,
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"][0] != e_errors.OK:
+            if ticket["status"][0] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"1st (pre-file-read) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+repr(ticket["status"]))
+                       +"ticket[\"status\"]="+ticket["status"])
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
@@ -810,11 +829,11 @@ def read_from_hsm(input, output,
             Trace.trace(10,"read_from_hsm final dialog recieved")
 
             # make sure the mover thinks the transfer went ok
-            if done_ticket["status"][0] != e_errors.OK:
+            if done_ticket["status"][0] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"2nd (post-file-read) mover callback on socket "\
                        +repr(address)+", failed to transfer: "\
-                       +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
+                       +"done_ticket[\"status\"]="+done_ticket["status"])
 
             # verify that the crc's match
             if chk_crc != 0 :
@@ -835,7 +854,7 @@ def read_from_hsm(input, output,
                     print "Updating pnfs last parked",\
                           "   cumt=",time.time()-t0
                 try:
-                    p.set_lastparked(repr(uinfo['fullname']))
+                    p.set_lastparked(repr(wrapper['fullname']))
                 except:
                     print "Failed to update last parked info"
                 if list>1:
@@ -860,7 +879,7 @@ def read_from_hsm(input, output,
                 print format %\
                       (inputlist[j], outputlist[j], fsize,\
                        done_ticket["fc"]["external_label"],\
-                       tinfo["rate"+repr(j)], uinfo["uname"],\
+                       tinfo["rate"+repr(j)], wrapper["uname"],\
                        time.time()-t0)
             if d0sam:
                 print d0sam_format % \
@@ -878,7 +897,7 @@ def read_from_hsm(input, output,
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
                       done_ticket["fc"]["external_label"],
-                      tinfo["rate"+repr(j)], uinfo["uname"],
+                      tinfo["rate"+repr(j)], wrapper["uname"],
                       time.time()-t0)
 
 
@@ -951,17 +970,17 @@ def clients(config_host,config_port,list):
     global logc
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
 
-    uinfo = {}
-    uinfo['uid'] = os.getuid()
-    uinfo['gid'] = os.getgid()
-    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
-    uinfo['machine'] = os.uname()
-    uinfo['fullname'] = "" # will be filled in later for each transfer
+    wrapper = {}
+    wrapper['uid'] = os.getuid()
+    wrapper['gid'] = os.getgid()
+    wrapper['gname'] = grp.getgrgid(wrapper['gid'])[0]
+    wrapper['uname'] = pwd.getpwuid(wrapper['uid'])[0]
+    wrapper['machine'] = os.uname()
+    wrapper['fullname'] = "" # will be filled in later for each transfer
 
     Trace.trace(16,"}clients csc="+repr(csc)+" u="+repr(u)+\
-                " uinfo="+repr(uinfo))
-    return (csc,u,uinfo)
+                " wrapper="+repr(wrapper))
+    return (csc,u,wrapper)
 
 ##############################################################################
 
