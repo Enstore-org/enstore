@@ -82,7 +82,7 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     /* check for an fmb header -- newline separated ascii */
 
     p = strchr(buf,'\n');
-    if (0 != p && (1024 == length || 2048 == length)) {
+    if (0 != p && (length % 1024 == 0)) {
 	if (vol) *vol = buf;
 	if (vlen) *vlen = p - buf;
 	return FTT_FMB_HEADER;
