@@ -1,4 +1,4 @@
-REMOVE		stkensrv	stken-all[ab]	stken-all
+REMOVE		stkensrv*	stken-all[ab]	stken-all
 stkensrv0	stkensrv	stken-alla	stken-all
 stkensrv1	stkensrv	stken-alla	stken-all
 stkensrv2	stkensrv	stken-alla	stken-all
@@ -39,11 +39,9 @@ stkenmvr30a	stkenmvr-a	stken-alla	stken-all
 stkenmvr31a	stkenmvr-a	stken-alla	stken-all
 stkenmvr32a	stkenmvr-a	stken-alla	stken-all
 stkenmvr33a	stkenmvr-a	stken-alla	stken-all
-REMOVE		stkendca
+REMOVE		stkendca*
 stkendca2a	stkendca
 stkendca3a	stkendca
-stkendca4a	stkendca
-stkendca5a	stkendca
 stkendca6a	stkendca
 stkendca7a	stkendca
 stkendca8a	stkendca
@@ -51,7 +49,7 @@ stkendca9a	stkendca
 stkendca10a	stkendca
 stkendca11a	stkendca
 stkendca12a	stkendca
-REMOVE		stkendm
+REMOVE		stkendm*
 stkendm1a	stkendm
 stkendm2a	stkendm
 stkendm3a	stkendm
