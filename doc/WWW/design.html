@@ -73,6 +73,8 @@ Enstore has four major kinds of software components:
         <li>Multiple, distributed Movers
         <li>Media Changer
         <li>Log Server
+	<li>Inquisitor
+	<li>Alarm Server
         </ul>
 <li><em>administration tools</em>
 </ul>
@@ -155,16 +157,16 @@ Enstore uses pnfs for three different kinds of access and information:
      in one of the pnfs file layers.
     <em>Encp</em> then reads this bit file ID and gives it to the servers
     when fetching data.
-     Other encp file transfer details, such as time of last access or location of
+     Other <em>encp</em> file transfer details, such as time of last access or location of
      where the file was copied to or transfer rates, are stored in a different
      layer of the same pnfs file.
 </ol>
 
 Pnfs was tested in the prototype with very good results. The code was run
-on a 200 MHz Pentium Pro Linux with scsi disks.  The pnfs code had not been
-run extensively on linux machines before and there a few minor glitches
-were found during initial running. Support from DESY was outstanding and
-all problems were solved quickly.
+on a 200 MHz Pentium Pro Linux machine with scsi disks.  The pnfs code had 
+not been run extensively on Linux machines before and there a few minor 
+glitches were found during initial running. Support from DESY was outstanding 
+and all problems were solved quickly.
 
 As a test of pnfs' capabilities, the current set of 250K HPSS filenames
 were put into pnfs. Approximately 20 pnfs databases were used for this
@@ -184,7 +186,7 @@ for Enstore.
 
 In order to do request files from a tape in an optimal transversal, it is
 necessary for the user to know the order of the files on a tape.  To aid in
-this process, encp creates a duplicate entry in pnfs (in addition to storing
+this process, <em>encp</em> creates a duplicate entry in pnfs (in addition to storing
 the filename and its metadata).  This duplicate entry is organized by file
 families and volumes instead of by the user's directory structure.  The naming
 convention for the duplicate entries is such that the file order on the tape
@@ -198,7 +200,7 @@ storage.
 
 Here is an example:
 
-Let's say a user transferred a file to mas storage and called it
+Let's say a user transferred a file to mass storage and called it
 /pnfs/enstore/airedale/one.  The file was stored on disk floppy named
 "flop301"  with a byte offset=0 and in a file family named "jon".
 
@@ -259,24 +261,24 @@ user deletes his entry in pnfs, we still have the duplicate entry and can
 1.2 ENCP
 </h2>
 Reading and writing files means interacting with media.
-This is done with an enstore provided utility, <em>encp</em>.
+This is done with an Enstore provided utility, <em>encp</em>.
 <em>encp</em> is very similar to the <em>cp</em> command in UNIX.
 The syntax is:
 <pre>
 % encp [options] src_file dst_file
 </pre>
 Currently there is no wildcarding allowed, but this is a straight forward
-extension to encp.
+extension to <em>encp</em>.
 
 <h3><a name="encp_throttle">
 1.2.1 Throttling in <em>encp</em>
 </h3>
 
 It is important not to swamp any system.
-In <em>Enstore</em>, a first level of throttling is implemented in
+In Enstore, a first level of throttling is implemented in
 <em>encp</em>.
-Control communications in <em>Enstore</em> uses a simple reliable
-request-response protocol implemented in <em>UDP</em>, whereas data transfers
+Control communications in Enstore uses a simple reliable
+request-response protocol implemented in UDP, whereas data transfers
 are implemented using two TCP ports.
 A fixed number, currently 30, of pre-allocated TCP ports are
 arbitrated among all instances of <em>encp</em> on a given machine.
@@ -288,29 +290,29 @@ since at most 15 will be active in the system at any time.
 1.2.2 Specifying lists of files when reading from or writing to the HSM
 </h3>
 
-Encp duplicates unix cp's behaviour when one tries to read or writing
+<em>Encp</em> duplicates unix cp's behaviour when one tries to read or write
 multiple input files from the HSM: <br> ecmd encp [options]
 source... directory<br> That is, the final item has to be a directory when
 specifying an input list.  There is 1 caveat when specifying multiple files
-using a single encp command: there is at most 1 mover processing your
+using a single <em>encp</em> command: there is at most 1 mover processing your
 request list at a time. If you want more than mover active, you should use
-multiple encp commands when you are reading lists of files from more than
-one volume.  The reason why encp uses just one mover is to limit the amount
-of forking it does (and if you want to many forks, then just use many encp
+multiple <em>encp</em> commands when you are reading lists of files from more than
+one volume.  The reason <em>encp</em> uses just one mover is to keep the system 
+simple (if you want to use multiple movers, then use many <em>encp</em>
 commands).
 <p>
 
-On reads from the HSM, encp scans all your files and groups them according
+On reads from the HSM, <em>encp</em> scans all your files and groups them according
 to which volume they are on and then submits all the file requests that are
 on one specific volume, reads all the files for that volume from the hsm
-and then proceeds to the next volume.  Encp processes the volumes in any
+and then proceeds to the next volume.  <em>Encp</em> processes the volumes in any
 order it chooses.
 <p>
 
-On writes to the HSM, encp processes each input file sequentially. Since
+On writes to the HSM, <em>encp</em> processes each input file sequentially. Since
 the user must specify a single output directory, all input files belong to
 the same file family, and hence could all go to the same tape (if
-possible). Encp sets a flag,"don't dismount the volume too quickly -
+possible). <em>Encp</em> sets a flag,"don't dismount the volume too quickly -
 there's more files coming for the same family", that the mover uses to
 postpone the dismount and thereby bypass the extra times involved in the
 volume manipulations.  Please note that there is no guarantee that all the
@@ -328,7 +330,7 @@ There are the following files on flop302: ran-5, ran-6 ran-7, ran-8<br>
 There are the following files on flop302: ran-9, ran-10 ran-11, ran-12<br>
 <p>
 
-Encp submits the requests for all files on flop301 and reads back those
+<em>Encp</em> submits the requests for all files on flop301 and reads back those
 files and then does the same for flop302 and flop303.
 <p>
 
@@ -644,7 +646,7 @@ in that family would be exceeded.
 <dt><em>File family</em>:
 <dd>A file family is specified by a name and an integer "width".
 A file family is associated with every file creation.
-Within a given library, <em>Enstore</em> keeps no more
+Within a given library, Enstore keeps no more
 than <em>"width"</em> volumes open for writing, and loads volumes on
 no more than <em>"width"</em>
 number of drives at any given moment.
@@ -656,7 +658,7 @@ By design, there is no pre-set limit on the number of file families.
 Clever use of file families will allow volumes to be faulted out to
 "shelf", and also to decrease access times for subsequent reads.  When a file
 family has filled all of its "width" media, new media, limited by a quota,
-are drawn out of pool of blanks.
+are drawn out of a pool of blanks.
 </dl>
 Media ejected to shelf are put into a shelf virtual library and
 are controlled by a shelf Library Manager.
@@ -766,7 +768,7 @@ volume, updated by Volume Clerk.
 <td valign=top>system_inhibit
 <td valign=top>string (d:"none" or "writing", "readonly", "full", "noaccess")
 <td valign=top>Administrator generated limitation on the kind of access permitted to
-this volume; update by Volume Clerk when data are written on the volume, an
+this volume; updated by Volume Clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the volume.
 </table>
@@ -791,7 +793,7 @@ The Volume Clerk does the following operations:
 The File Clerk tracks files in the system. There is one record for each file
 in the system.
 The records are keyed.
-The key is the string version of the bit file ID
+The key is the string version of the bit file ID.
 The default values are shown in parentheses ().
 The fields tracked are as follows:
 <table>
@@ -801,7 +803,7 @@ The fields tracked are as follows:
 <tr>
 <td valign=top>bfid
 <td valign=top>string [primary_key]
-<td valign=top>bit file id; uniquely identifies every file in the system.
+<td valign=top>bit file ID; uniquely identifies every file in the system.
 <tr>
 <td valign=top>external_label
 <td valign=top>string
@@ -880,7 +882,7 @@ Movers seek to transport data between media and users over a TCP socket.
 Movers contact Library Managers seeking work. If the Library Manager
 has work, the Mover is requested to mount a volume, and report
 back. When reporting back, the Mover may be told to contact a waiting
-encp program and read or write a file.
+<em>encp</em> program and read or write a file.
 The Mover may be told to unmount a volume as there is no more work for
 the volume.
 A Mover may have dismounted a volume unilaterally because it ran into
@@ -990,12 +992,12 @@ Library Manager. If all is well, it issues a have_bound_volume to the
 Library Manager.
 <p>
 Reads -- Once a volume is bound the Mover may read a volume and send data
-to a waiting encp program. Two tcp ports are involved.
+to a waiting <em>encp</em> program. Two tcp ports are involved.
         The steps are:
 <ol>
 <li>Arbitrate for a TCP port for the data transfer.
 <li>Open the tcp port (control port) specified in the request,
-    send the encp program the data transfer port address,
+    send the <em>encp</em> program the data transfer port address,
     hold the control port open. If it is dropped, abort.
 <li>Read the data from a volume, (stripping any wrapper like tar headers)
     verify the sanity crc. send the data to the user.
@@ -1013,19 +1015,19 @@ the volume. Two tcp ports are involved.
 <ol>
 <li>Arbitrate for a TCP port for the data transfer.
 <li>Open the tcp port (control port) specified in the request,
-    send the encp program the data transfer port address,
+    send the <em>encp</em> program the data transfer port address,
     hold the control port open. If it is dropped, abort.
 <li>Mark the volume as "writing". That will cause the volume to
     not be selected for subsequent writes, should we crash.
 <li>Using the eod_space_cookie, space to end of volume. Try
     to verify that we are actually at the end of volume.
-<li>Receive data from encp, wrapper it, and write it to the volume
+<li>Receive data from <em>encp</em>, wrapper it, and write it to the volume
 <li>Close the data port.
 <li>Compute new eod_cookie and tell Volume Clerk that the
     volume is writable. Update remaining bytes as well.
 <li>Compute the file location cookie, and tell the bit
     File Clerk about the new file. Get a bit file ID in return.
-<li>Give the bit file ID to encp. We are done.
+<li>Give the bit file ID to <em>encp</em>. We are done.
 </ol>
 
 If any errors occur while writing the volume, an attempt is made to
@@ -1065,7 +1067,7 @@ is the interface to the robotic software.
 <h2><a name="db">
 2 Databases in Enstore
 </h2>
-The database used in <em>Enstore</em> must provide the following:
+The database used in Enstore must provide the following:
 <ul>
 <li>
 Support journaling of the database to record all changes and support full
@@ -1176,7 +1178,7 @@ ability to store data items of unlimited size
 support for various data storage structures: hash table, binary tree,
 numbered records
 <li>
-allows duplicate keys (enstore doesn't use them)
+allows duplicate keys (Enstore doesn't use them)
 <li>
 data scanning with cursors, multiple cursors may be opened at the same time
 <li>
@@ -1316,7 +1318,7 @@ communicating.
 <li>
 The Configuration Server returns the location of the appropriate File Clerk.
 <li>
-<em>encp</em> sends the read request to the File Clerk.
+<em>Encp</em> sends the read request to the File Clerk.
 <li>
 The file Clerk asks the Volume Clerk with which Library manger should it be
 communicating.
@@ -1381,13 +1383,13 @@ The user (through <em>encp</em>) contacts PNFS with a request to create a file.
 <li>
 PNFS returns the file family and volume library information to <em>encp</em>.
 <li>
-<em>encp</em> asks the Configuration Server with which Library Manager should
+<em>Encp</em> asks the Configuration Server with which Library Manager should
 it be communicating.
 <li>
 The Configuration Server returns the location of the appropriate Library
 Manager.
 <li>
-<em>encp</em> sends the write request to the Library Manager, including file
+<em>Encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
 The Library Manager tells the <em>encp</em> that the request has been placed in
@@ -1431,7 +1433,7 @@ The Volume Clerk acknowledges this.
 <li>
 The Mover tells the File Clerk which file has been created.
 <li>
-The File Clerk responds with the bit file id.
+The File Clerk responds with the bit file ID.
 <li>
 The Mover tells <em>encp</em> that the file has been written and sends the bit
 file ID and the crc.
@@ -1549,7 +1551,7 @@ it is best to discover this before incurring the expense of a mount.
 <li>mark the volume as "system noaccess"
 <li>log that this happened and let an administrator look at the
 problem in the morning.
-<li><em>encp</em> shall not retry.
+<li><em>Encp</em> shall not retry.
 </ul>
 <li>
 "Off-lining the drive" means:
@@ -1568,32 +1570,32 @@ the system falls below a threshold.
 <td valign=top>"no such tape" error in library mount failure on write.
     If this happens, the volume data base is inconsistent with reality.
     Mover shall freeze the volume.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_TAPEBUSY</b>
 <td valign=top>"The Media Changer says that the volume is in another drive"
     Enstore has a bug, or some other system has mounted the volume or
     library micro put the volume somewhere else.
     Mover shall freeze the volume.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_DRIVEBUSY</b>
 <td valign=top>"The Media Changer says that some other volume is in the drive"
     Need to investigate if this could ever be a clean volume otherwise a bug in
     Enstore or a misconfiguration.     Mover shall offline the drive.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_BADMOUNT</b>
 <td valign=top>Other mount failure on write, or load operation failed.
     Must assume jammed volume.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall retry
+    <em>Encp</em> shall retry
 <tr>
 <td valign=top><b>WRITE_BADSPACE</b>
 <td valign=top>"EOD cookie does not produce EOD"
     Wrong volume, software bug or drive space error.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_ERROR</b>
 <td valign=top>"Error when writing data block or file mark"
@@ -1601,18 +1603,18 @@ the system falls below a threshold.
     If the drive has had many recent errors, Mover shall
     "offline the drive"
     The volume shall be marked read-only.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_EOT</b>
 <td valign=top>"Hit EOT while writing data block or file mark"
     Hit EOT. Mover shall mark volume full.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_UNLOAD</b>
 <td valign=top>"error when unloading volume from drive"
     Must assume that the volume is physically jammed.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
     No <em>encp</em> is associated with the volume at this time.
 <tr>
 <td valign=top><b>WRITE_UNMOUNT</b>
@@ -1644,7 +1646,7 @@ the system falls below a threshold.
 <td valign=top>"The Media Changer says that some other volume is in the drive"
     Need to investigate if this could ever be a clean volume otherwise a bug in
     Enstore or a misconfiguration.     Mover shall offline the drive.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
 <tr>
 <td valign=top><b>READ_BADMOUNT</b>
 <td valign=top>Other Mount failure on read, or load operation failed.
@@ -1658,16 +1660,16 @@ the system falls below a threshold.
     cookie is somehow corrupted, we have the wrong volume in the drive or
     the volume drive cannot space properly.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall not retry
+    <em>Encp</em> shall not retry
 <tr>
 <td valign=top><b>READ_ERROR</b>
 <td valign=top>Error when reading data block.
     Run of the mill read error.
     Mover shall consider the recent error history of the drive and the volume.
     If the drive has had many recent errors, Mover shall offline the drive.
-    <em>encp</em> shall retry.
+    <em>Encp</em> shall retry.
     If the volume has had many recent errors, Mover shall freeze the volume.
-    <em>encp</em> shall not retry.
+    <em>Encp</em> shall not retry.
     If the volume has had few recent errors,
     Mover shall fail the transfer,
     <em>encp</em> shall retry, and annotate that this Mover shall be avoided.
@@ -1678,21 +1680,21 @@ the system falls below a threshold.
     are suspicious. Corrupt file location cookie, drive space error, wrong
     volume in the drive, etc.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall not retry.
+    <em>Encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_EOT</b>
 <td valign=top>Hit EOT when reading.
     Should not happen. Corrupt file location cookie, drive space error, or
     wrong volume in the drive. Should have hit an EOF.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall not retry.
+    <em>Encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_EOD</b>
 <td valign=top>Hit EOD when reading.
     Should not happen. Corrupt file location cookie, drive space error, or
     wrong volume in the drive. Should have hit an EOF.
     Mover shall freeze the volume in the drive.
-    <em>encp</em> shall not retry.
+    <em>Encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_UNLOAD</b>
 <td valign=top>Error when unloading volume.
@@ -1709,7 +1711,7 @@ the system falls below a threshold.
 <th><font size=+1><b>Other Errors</b></font>
 <tr>
 <td valign=top><b>ENCP_GONE</b>
-<td valign=top><em>encp</em> has gone away while request is queued.
+<td valign=top><em>Encp</em> has gone away while request is queued.
     The Mover contacts <em>encp</em> to ping it before a mount, and if
     <em>encp</em> is not there, the Mover does not go on to contact the Media
     Changer, but instead returns a UNILATERAL_UNBIND to the Library Manager.
