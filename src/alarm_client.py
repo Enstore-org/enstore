@@ -67,6 +67,7 @@ class AlarmClientInterface(interface.Interface):
 
     #  define our specific help
     def parameters(self):
+        if 0: print self # quiet lint
         return "server"
 
     # parse the options like normal but see if we have a server
