@@ -11,12 +11,12 @@
 #include <string.h>
 #include <errno.h>
 
-#define BUF_SIZE 1048576
+#define BUF_SIZE 1048576L
 
 int main(int argc, char **argv)
 {
     /*Declare variables.*/
-    int buf_size = BUF_SIZE;    /*buffer size for the data blocks*/
+    long buf_size = BUF_SIZE;   /*buffer size for the data blocks*/
     unsigned int crc;           /*used to hold the crc as it is updated*/
     long nb, rest, i;           /*loop control variables*/
     struct stat sb;             /*used with fstat()*/
@@ -41,15 +41,20 @@ int main(int argc, char **argv)
         printf("Unable to stat file %s: %s\n", argv[1], strerror(errno));
 	exit(1);
     }
-
+    if(!(S_ISREG(sb.st_mode)))
+    {
+        printf("Operation permitted only for regular file.\n");
+        exit(1);
+    }
+    
     /*Initialize values used looping through reading in the file.*/
     nb = sb.st_size / buf_size;
     rest = sb.st_size % buf_size;
     crc = 0;
 
     /*Print a begin message with relavent information.*/
-    printf("size %ld buf_size %ld blocks %ld rest %ld\n",
-	   sb.st_size, buf_size, nb, rest);
+    printf("size %lld buf_size %ld blocks %ld rest %ld\n",
+	   (long long)sb.st_size, buf_size, nb, rest);
 
     /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
     for (i = 0;i < nb; i++){
