@@ -18,7 +18,7 @@ GB=MB*KB
 
 
 class FTTDriver(driver.Driver):
-    mount_delay = 30
+    mount_delay = 5
     def __init__(self):
         self.fd = -1
         self.ftt = None
