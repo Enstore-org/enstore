@@ -519,7 +519,7 @@ int ds_readin (DS_DESCRIPTOR* const ds_desc, const char* const file)
   fclose(fp);
   return(-1);  
 
-};
+}
 
 int _ds_set_flag_pointer(DS_DESCRIPTOR* const ds_desc, DS_STATS** p_stats_pointer, int** p_flag_pointer, const int flag){
 
