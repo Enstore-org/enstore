@@ -723,7 +723,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     waste = 0.
                 Trace.log(e_errors.INFO,
                           "%s is now full, bytes remaining = %d, %.2f %%" % (label, v["remaining_bytes"],waste))
-                self.dict.cursor("update",v)
+                #self.dict.cursor("update",v)
                 continue
             vetoed = 0
             for veto in vol_veto_list:
