@@ -1181,7 +1181,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 
 class EnActiveMonitorPage(EnBaseHtmlDoc):
 
-    def __init__(self, headings, refresh = 120.0 ):
+    def __init__(self, headings, refresh):
 
         """
         Make HTMLgen objects which describe the whole page. Let
