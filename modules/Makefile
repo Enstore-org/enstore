@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy enroute2 m2probe
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -37,6 +37,7 @@ adler32.a: adler32.c
 tape_copy: tape_copy.c
 	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
+
 tape_write: tape_write.c
 	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_write tape_write.c \
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
@@ -60,6 +61,6 @@ clean:
 	-rm Makefile.modules
 	-rm -f *.o *.so *~ *# so_locations sedscript enroute2 m2probe
 	-rm -rf mksetup
-	-rm -rf tape_copy
+	-rm -rf tape_copy tape_write
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	cd SWIG && make clean
