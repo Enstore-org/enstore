@@ -357,10 +357,16 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
         else:
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
+	    # ok, this is a test only - see if we can mount readonly for 9840 and 9940 tapes
+	    media_type = ticket['vol_ticket']['media_type']
+	    if ticket['vol_ticket']['media_type'] in ('9840','9940') and ticket['function'] == 'mount':
+		    if ticket['vol_ticket']['system_inhibit'][1] in ('full','readonly') or ticket['vol_ticket']['user_inhibit'][1] in ('full','readonly'):
+			    media_type=media_type+"READONLY"
+	    #print ticket['function'],ticket['vol_ticket']['external_label'],ticket['vol_ticket']['system_inhibit'][1], ticket['vol_ticket']['user_inhibit'][1],media_type
             sts = function(
                 ticket['vol_ticket']['external_label'],
                 ticket['drive_id'],
-                ticket['vol_ticket']['media_type'])
+                media_type)
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
 
         # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
@@ -957,8 +963,16 @@ class STK_MediaLoader(MediaLoaderMethods):
 
     def mount(self,volume, drive, media_type="",view_first=1):
 
+        # strip out the readonly if present
+	if string.find(media_type,'READONLY')!=-1:
+		media_type=string.replace(media_type,'READONLY','')
+		readonly=1
+	else:
+		readonly=0
         # build the command, and what to look for in the response
         command = "mount %s %s" % (volume,drive)
+	if readonly:
+		command = command + " readonly"
         answer_lookfor = "Mount: %s mounted on " % (volume,)
 
         # check if tape is in the storage location or somewhere else
