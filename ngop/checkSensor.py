@@ -4,6 +4,10 @@ import sys
 import re
 import time
 import stat
+
+NEW_IPMI_NODES = ["d0ensrv0.fnal.gov", "d0ensrv1.fnal.gov",
+		  "d0ensrv2.fnal.gov", "d0ensrv4.fnal.gov"]
+
 def isTime(nm,dur):
         try:
                 crtTime=os.stat(nm)[stat.ST_CTIME]
@@ -17,13 +21,22 @@ def isTime(nm,dur):
                 return -1 #not sync less than dur
 
 def checkFirmware():
-   p=os.popen('/home/enstore/ipmi/sdrread','r')
+   if os.uname()[1] in NEW_IPMI_NODES:
+	   ipmi = "ipmi_new"
+	   senDict={'Processor 1 Temp':0,\
+		    'Processor 2 Temp':0,\
+		    'Processor Fan 1':0,\
+		    'Processor Fan 2':0,\
+		    }
+   else:
+	   ipmi = "ipmi"
+	   senDict={'Processor 1 Temp':0,\
+		    'Processor 2 Temp':0,\
+		    'Processor 1 Fan':0,\
+		    'Processor 2 Fan':0,\
+		    }
+   p=os.popen("/home/enstore/%s/sdrread"%(ipmi,),'r')
    retList=p.readlines()
-   senDict={'Processor 1 Temp':0,\
-            'Processor 2 Temp':0,\
-            'Processor 1 Fan':0,\
-            'Processor 2 Fan':0,\
-   }
    for line in retList:
         if string.find(line,"GETINFO failed")>=0:
                 return 2,line[:-1]
@@ -56,8 +69,12 @@ if __name__=="__main__":
         print -1
         print -1
         sys.exit(0)
+    if os.uname()[1] in NEW_IPMI_NODES:
+	    ipmi = "ipmi_new"
+    else:
+	    ipmi = "ipmi"
     if sys.argv[1]=="temp":
-        cmd="/home/enstore/ipmi/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"
+        cmd="/home/enstore/%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"%(ipmi,)
         ret=check(cmd)
         if len(ret)!=2:
             print -1
@@ -71,7 +88,7 @@ if __name__=="__main__":
             print -1
             sys.exit(0)
     elif sys.argv[1]=="fan":
-        cmd="/home/enstore/ipmi/sdrread|grep 'Processor.*Fan:'|awk -F':' '{print $3}'|awk '{print $1}'"
+        cmd="/home/enstore/%s/sdrread|grep 'Processor.*Fan:'|awk -F':' '{print $3}'|awk '{print $1}'"%(ipmi,)
         ret=check(cmd)
         if len(ret)!=2:
             print -1
