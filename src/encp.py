@@ -347,7 +347,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
         # create a new pnfs object pointing to current output file
         Trace.trace(10,"write_to_hsm adding to pnfs "+outputlist[i])
-        p=pnfs.pnfs(outputlist[i])
+        p=pnfs.Pnfs(outputlist[i])
         # save the bfid and set the file size
         p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
         # create volume map and store cross reference data
@@ -892,7 +892,7 @@ def pnfs_information(filelist,nfiles):
     width = []
 
     for i in range(0,nfiles):
-        p = pnfs.pnfs(filelist[i])         # get the pnfs object
+        p = pnfs.Pnfs(filelist[i])         # get the pnfs object
         bfid.append(p.bit_file_id)         # get the bit file id
         library.append(p.library)          # get the library
         file_family.append(p.file_family)  # get the file family

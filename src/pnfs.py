@@ -25,8 +25,8 @@ try:
 except ImportError:
     print "Devcodes unavailable"
 
-ENABLE = "enabled"
-DISABLE = "disabled"
+ENABLED = "enabled"
+DISABLED = "disabled"
 VALID = "valid"
 INVALID =  "invalid"
 UNKNOWN = "unknown"
@@ -46,7 +46,7 @@ class Pnfs:
             dir = '.'
         self.dir = dir
         self.file = file
-        self.exists = unknown
+        self.exists = UNKNOWN
         self.check_valid_pnfs_filename()
         self.pstatinfo()
         self.rmajor = 0
@@ -70,7 +70,7 @@ class Pnfs:
 
     # simple test configuration
     def jon1(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             self.set_bit_file_id("1234567890987654321",123)
         else:
             raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
@@ -78,7 +78,7 @@ class Pnfs:
 
     # simple test configuration
     def jon2(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             self.set_bit_file_id("1234567890987654321",45678)
             self.set_library("activelibrary")
             self.set_file_family("raw")
@@ -93,35 +93,35 @@ class Pnfs:
     # check for the existance of a wormhole file called disabled
     # if this file exists, then the system is "off"
     def check_pnfs_enabled(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             try:
                 os.stat(self.dir+'/.(config)(flags)/disabled')
             except os.error:
                 if sys.exc_info()[1][0] == errno.ENOENT:
-                    return enabled
+                    return ENABLED
                 else:
                     raise sys.exc_info()[0],sys.exc_info()[1]
                 f = open(self.dir+'/.(config)(flags)/disabled')
                 why = f.readlines()
                 f.close()
-                return disabled+": "+why
+                return DISABLED+": "+why
         else:
-            return invalid
+            return INVALID
 
     # check if file is really part of pnfs file space
     def check_valid_pnfs_filename(self):
         try:
             f = open(self.dir+'/.(const)('+self.file+')','r')
             f.close()
-            self.valid = valid
+            self.valid = VALID
         except:
-            self.valid = invalid
+            self.valid = INVALID
 
     ##########################################################################
 
     # create a new file or update its times
     def touch(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             t = int(time.time())
             try:
                 os.utime(self.pnfsFilename,(t,t))
@@ -136,7 +136,7 @@ class Pnfs:
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
     def utime(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
@@ -147,14 +147,14 @@ class Pnfs:
 
     # delete a pnfs file including its metadata
     def rm(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             self.writelayer(1,"")
             self.writelayer(2,"")
             self.writelayer(3,"")
             # It would be better to move the file to some trash space.
             # I don't know how right now.
             os.remove(self.pnfsFilename)
-            self.exists = unknown
+            self.exists = UNKNOWN
             #self.utime()
             self.pstatinfo()
 
@@ -163,7 +163,7 @@ class Pnfs:
     # lock/unlock the file
     # this doesn't work - no nfs locks available
     def readlock(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 f = open(self.pnfsFilename,'r')
             # if we can not open the file, we can't set the times either
@@ -200,7 +200,7 @@ class Pnfs:
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
     def writelayer(self,layer,value):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','w')
             f.write(value)
             f.close()
@@ -209,13 +209,13 @@ class Pnfs:
 
     # read the value stored in the requested file layer
     def readlayer(self,layer):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r')
             l = f.readlines()
             f.close()
             return l
         else:
-            return invalid
+            return INVALID
 
     ##########################################################################
 
@@ -223,26 +223,26 @@ class Pnfs:
     # the file needs to exist before you call this
     # remember, tags are a propery of the directory, not of a file
     def writetag(self,tag,value):
-        if self.valid == valid:
+        if self.valid == VALID:
             f = open(self.dir+'/.(tag)('+tag+')','w')
             f.write(value)
             f.close()
 
     # read the value stored in the requested tag
     def readtag(self,tag):
-        if self.valid == valid:
+        if self.valid == VALID:
             f = open(self.dir+'/.(tag)('+tag+')','r')
             t = f.readlines()
             f.close()
             return t
         else:
-            return invalid
+            return INVALID
 
     ##########################################################################
 
     # get all the extra pnfs information
     def get_pnfs_info(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
 
             # get the numeric pnfs id of the file
             f = open(self.dir+'/.(const)('+self.file+')','r')
@@ -285,35 +285,35 @@ class Pnfs:
 
     # get the stat of file, or if non-existant, its directory
     def get_stat(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             # first the file itself
             try:
                 self.pstat = os.stat(self.pnfsFilename)
-                self.exists = exists
+                self.exists = EXISTS
             # if that fails, try the directory
             except os.error:
                 if sys.exc_info()[1][0] == errno.ENOENT:
                     try:
                         self.pstat = os.stat(self.dir)
-                        self.exists = direxists
+                        self.exists = DIREXISTS
                     except:
-                        self.pstat = (error,repr(sys.exc_info()[1])\
+                        self.pstat = (ERROR,repr(sys.exc_info()[1])\
                                      ,"directory: "+self.dir)
-                        self.exists = invalid
+                        self.exists = INVALID
                 else:
-                    self.pstat = (error,repr(sys.exc_info()[1])\
+                    self.pstat = (ERROR,repr(sys.exc_info()[1])\
                                  ,"file: "+self.pnfsFilename)
-                    self.exists = invalid
+                    self.exists = INVALID
                     self.major,self.minor = (0,0)
 
         else:
-            self.pstat = (error,invalid)
-            self.exists = invalid
+            self.pstat = (ERROR,INVALID)
+            self.exists = INVALID
 
     ##########################################################################
 
     def set_file_size(self,size):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             if self.file_size != 0:
                 try:
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
@@ -342,14 +342,14 @@ class Pnfs:
 
     # set a new mode for the existing file
     def chmod(self,mode):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             os.chmod(self.pnfsFilename,mode)
             self.utime()
             self.pstatinfo()
 
     # change the ownership of the existing file
     def chown(self,uid,gid):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             os.chown(self.pnfsFilename,uid,gid)
             self.utime()
             self.pstatinfo()
@@ -358,8 +358,8 @@ class Pnfs:
 
     # store a new bit file id
     def set_bit_file_id(self,value,size=0):
-        if self.valid == valid:
-            if self.exists == direxists:
+        if self.valid == VALID:
+            if self.exists == DIREXISTS:
                 self.touch()
             self.writelayer(1,value)
             self.get_bit_file_id()
@@ -368,13 +368,13 @@ class Pnfs:
 
     # store place where we last parked the file
     def set_lastparked(self,value):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             self.writelayer(2,value)
             self.get_lastparked()
 
     # store new info and transaction log
     def set_info(self,value):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             self.writelayer(3,value)
             self.get_info()
 
@@ -390,37 +390,37 @@ class Pnfs:
 
     # get the bit file id
     def get_bit_file_id(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 self.bit_file_id = self.readlayer(1)[0]
             except:
-                self.bit_file_id = unknown
+                self.bit_file_id = UNKNOWN
         else:
-            self.bit_file_id = unknown
+            self.bit_file_id = UNKNOWN
 
     # get the last parked layer
     def get_lastparked(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 self.lastparked = self.readlayer(2)[0]
             except:
-                self.lastparked = unknown
+                self.lastparked = UNKNOWN
         else:
-            self.lastparked = unknown
+            self.lastparked = UNKNOWN
 
     # get the information layer
     def get_info(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 self.info = self.readlayer(3)
             except:
-                self.info = unknown
+                self.info = UNKNOWN
         else:
-            self.info = unknown
+            self.info = UNKNOWN
 
     # get the cross reference layer
     def get_xreference(self):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
                 self.volume   = regsub.sub("\012","",xinfo[0])
@@ -429,73 +429,73 @@ class Pnfs:
                 self.origname = regsub.sub("\012","",xinfo[3])
                 self.mapfile  = regsub.sub("\012","",xinfo[3])
             except:
-                self.volume   = unknown
-                self.cookie   = unknown
-                self.origff   = unknown
-                self.origname = unknown
-                self.mapfile  = unknown
+                self.volume   = UNKNOWN
+                self.cookie   = UNKNOWN
+                self.origff   = UNKNOWN
+                self.origname = UNKNOWN
+                self.mapfile  = UNKNOWN
         else:
-            self.volume   = unknown
-            self.cookie   = unknown
-            self.origff   = unknown
-            self.origname = unknown
-            self.mapfile  = unknown
+            self.volume   = UNKNOWN
+            self.cookie   = UNKNOWN
+            self.origff   = UNKNOWN
+            self.origname = UNKNOWN
+            self.mapfile  = UNKNOWN
 
     ##########################################################################
 
     # store a new tape library tag
     def set_library(self,value):
-        if self.valid == valid :
+        if self.valid == VALID :
             self.writetag("library",value)
             self.get_library()
 
     # get the tape library
     def get_library(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             try:
                 self.library = self.readtag("library")[0]
             except:
-                self.library = unknown
+                self.library = UNKNOWN
         else:
-            self.library = unknown
+            self.library = UNKNOWN
 
     ##########################################################################
 
     # store a new file family tag
     def set_file_family(self,value):
-        if self.valid == valid:
+        if self.valid == VALID:
             self.writetag("file_family",value)
             self.get_file_family()
 
     # get the file family
     def get_file_family(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             try:
                 self.file_family = self.readtag("file_family")[0]
             except:
                 pass
         else:
-            self.file_family = unknown
+            self.file_family = UNKNOWN
 
     ##########################################################################
 
     # store a new file family width tag
     # this is the number of open files (ie simultaneous tapes) at one time
     def set_file_family_width(self,value):
-        if self.valid == valid:
+        if self.valid == VALID:
             self.writetag("file_family_width",repr(value))
             self.get_file_family_width()
 
     # get the file family width
     def get_file_family_width(self):
-        if self.valid == valid:
+        if self.valid == VALID:
             try:
                 self.file_family_width = string.atoi(\
                     self.readtag("file_family_width")[0])
             except:
-                self.file_family_width = error
+                self.file_family_width = ERROR
         else:
-            self.file_family_width = error
+            self.file_family_width = ERROR
 
     ##########################################################################
 
@@ -515,31 +515,31 @@ class Pnfs:
         command="if test -w "+self.dir+"; then echo ok; else echo no; fi"
         writable = os.popen(command,'r').readlines()
         if "ok\012" == writable[0]:
-            self.writable = enabled
+            self.writable = ENABLED
         else:
-            self.writable = disabled
+            self.writable = DISABLED
 
     ##########################################################################
 
     # get the uid from the stat member
     def pstat_decode(self):
-        if self.valid == valid and self.pstat[0] != error:
+        if self.valid == VALID and self.pstat[0] != ERROR:
             try:
                 self.uid = self.pstat[stat.ST_UID]
             except:
-                self.uid = error
+                self.uid = ERROR
             try:
                 self.uname = pwd.getpwuid(self.uid)[0]
             except:
-                self.uname = unknown
+                self.uname = UNKNOWN
             try:
                 self.gid = self.pstat[stat.ST_GID]
             except:
-                self.gid = error
+                self.gid = ERROR
             try:
                 self.gname = grp.getgrgid(self.gid)[0]
             except:
-                self.gname = unknown
+                self.gname = UNKNOWN
             try:
                 # always return mode as if it were a file, not directory, so
                 #  it can use used in enstore cpio creation  (we will be
@@ -550,22 +550,22 @@ class Pnfs:
             except:
                 self.mode = 0
                 self.mode_octal = 0
-            if self.exists == exists:
+            if self.exists == EXISTS:
                 try:
                     self.file_size = self.pstat[stat.ST_SIZE]
                 except:
-                    self.file_size = error
+                    self.file_size = ERROR
             else:
-                self.file_size = error
+                self.file_size = ERROR
 
         else:
-            self.uid = error
-            self.uname = unknown
-            self.gid = error
-            self.gname = unknown
+            self.uid = ERROR
+            self.uname = UNKNOWN
+            self.gid = ERROR
+            self.gname = UNKNOWN
             self.mode = 0
             self.mode_octal = 0
-            self.file_size = error
+            self.file_size = ERROR
 
 ##############################################################################
 
@@ -573,21 +573,21 @@ class Pnfs:
     # the volmap directory looks like:
     #         /pnfs/xxxx/volmap/origfilefamily/volumename/file_number_on_tape
     def volmap_filename(self,vol="",kookie=""):
-        if self.valid == valid and self.exists == exists:
+        if self.valid == VALID and self.exists == EXISTS:
 
             # origff not set until xref layer is filled in, use current file
             #    family in this case.
-            if self.origff!=unknown:
+            if self.origff!=UNKNOWN:
                 ff = self.origff
             else:
                 ff = self.file_family
             # volume not set until xref layer is filled in, has to be specified
-            if self.volume!=unknown:
+            if self.volume!=UNKNOWN:
                 volume = self.volume
             else:
                 volume = vol
             # cookie  not set until xref layer is filled in, has to be specified
-            if self.cookie!=unknown:
+            if self.cookie!=UNKNOWN:
                 cookie = self.cookie
             else:
                 cookie = kookie
@@ -608,11 +608,11 @@ class Pnfs:
             #     allow for 100 GB offsets
             self.volume_file = self.voldir+'/%12.12d'%volfile
         else:
-            self.volume_file = "unknown"
+            self.volume_file = UNKNOWN
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap(self):
-        if self.volume_file!=unknown:
+        if self.volume_file!=UNKNOWN:
             if posixpath.exists(self.voldir) == 0:
                 dir = ""
                 dir_elements = string.split(self.voldir,'/')
@@ -766,7 +766,7 @@ if __name__ == "__main__":
             e = p.check_pnfs_enabled()
             if list: print "enabled: ", e
 
-            if p.valid == valid:
+            if p.valid == VALID:
                 if count==2:
                     print "ERROR: File ",count\
                           ," is invalid - but valid flag is set"
@@ -859,7 +859,7 @@ if __name__ == "__main__":
 
                 if list: p.dump()
                 p.rm()
-                if p.exists != exists:
+                if p.exists != EXISTS:
                     if list: print p.pnfsFilename," deleted"
                 else:
                     print "ERROR: could not delete ",p.pnfsFilename
