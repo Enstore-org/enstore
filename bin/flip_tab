@@ -25,13 +25,15 @@ esac
 
 output=/tmp/write_tab.output
 
-work=/diska/write_protect_work
+work=/write_protect_work
 if [ ! -d $work ]; then
    echo `date` ERROR. $work does not exist
    exit 1
 fi
 
-for i in `ls -vI *.* $work`; do
+cd $work
+
+for i in `ls -vI *.*`; do
   t0=`date  +'%s'`
   . $i |tee $output 2>&1
   echo
@@ -71,7 +73,7 @@ for i in `ls -vI *.* $work`; do
   fi
   echo
   echo
-  left=`ls -vI *.* $work | wc -l`
+  left=`ls -vI *.* | wc -l`
   /bin/echo -n "There are $left groups left to do.  Another [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null ; then
      continue
