@@ -46,8 +46,6 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             fmt[0] = string.replace(fmt[0], "<string>", configfile)
 
             msg = (e_errors.ERROR, "Configuration Server: "+
-                   configfile+(" line %d \n"%
-                               tb.tb_lineno)+
                    string.join(fmt, ""))
             print msg[1]
 #            Trace.trace(msg[0],msg[1])
