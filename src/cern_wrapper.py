@@ -32,11 +32,24 @@ FILENAMELEN1 = 17
 UHLNFILECHUNK = HEADERLEN - 4
 MAXFILENAMELEN = (26*UHLNFILECHUNK)+FILENAMELEN1
 FERMILAB = "Fermilab"  # this string must remain 8 bytes long
-BLOCK_LEN_LIMIT = 99999
-RECORD_LEN_LIMIT = 99999
+BLOCK_LEN_LIMIT = 99999L
+RECORD_LEN_LIMIT = 99999L
 ADLER32 = "AD"
-USERNAME_L = 14
+
+BLOCK_LENGTH_L = 5
+DRIVE_MFG_L = 8
+DRIVE_MODEL_L = 8
+DRIVE_SERIAL_NUMBER_L = 12
+ENCPVERSION_L = 13
 EXPERIMENT_L = 8
+FILE_CHECKSUM_L = 10
+FILE_SIZE_L = 20
+GID_L = 10
+HOSTNAME_L = 10
+MODE_L = 4
+RECORD_LENGTH_L = 5
+UID_L = 10
+USERNAME_L = 14
 
 # exceptions that this module can raise
 UNKNOWNRECFORMAT = "UNKNOWN_RECORD_FORMAT"
@@ -145,14 +158,14 @@ class Label2(Label):
 		  "record format not one of %s"%(RECORDFORMAT,)
 
 	self.record_format = record_format
-	if block_length <= BLOCK_LEN_LIMIT:
+	if string.atol(block_length) <= BLOCK_LEN_LIMIT:
 	    self.block_length = block_length
 	else:
-	    self.block_length = 5*ZERO
+	    self.block_length = BLOCK_LENGTH_L*ZERO
 	if record_length <= RECORD_LEN_LIMIT:
 	    self.record_length = record_length
 	else:
-	    self.record_length = 5*ZERO
+	    self.record_length = RECORD_LENGTH_L*ZERO
 	self.implementation_id = implementation_id
 	self.offset_length = offset_length
 	self.reserved = 28*SPACE
@@ -460,19 +473,20 @@ class EnstoreLargeFileWrapper:
 	self.block_count = 6*ZERO                 # CN, FN - set in trailer
 	self.implementation_1 = ticket.get(ENCPVERSION,
 					   "")    # CN, FN - ENCP version
-	self.implementation_1 = add_r_padding(self.implementation_1, 13)
+	self.implementation_1 = add_r_padding(self.implementation_1[:ENCPVERSION_L], 
+					      ENCPVERSION_L)
 
 	# HDR2/EOF2
 	self.record_format = RECORDFORMAT[VARIABLE]# CN, FN - variable length 
 	                                          #            records
 	self.block_length = ticket.get(BLOCKLEN,  # CN, FN - set to 0 if 
 	                               "")        #                > 99999
-	self.block_length = add_l_padding(self.block_length, 5, ZERO)
+	self.block_length = add_l_padding(self.block_length, BLOCK_LENGTH_L, ZERO)
 	# the enstore block length is the same size as the record length
 	self.record_length = self.block_length    # CN, FN - set to 0 if 
 					          #              > 99999
 	self.implementation_2 = "%s%s%s"%(19*SPACE,
-					  ticket.get(COMPRESSION, SPACE),
+					  ticket.get(COMPRESSION, SPACE)[:1],
 					  15*SPACE)# CN, FN - byte 35 : tape
 	                                          #        recording technique
                                                   #        P means drive
@@ -482,37 +496,43 @@ class EnstoreLargeFileWrapper:
 	# UHL1/UTL1
 	self.site = FERMILAB                      # CN, FN
 	self.hostname = ticket.get(MOVERNODE, "") # CN, FN - where mover runs
-	self.hostname = add_r_padding(self.hostname, 10)
+	self.hostname = add_r_padding(self.hostname[:HOSTNAME_L], HOSTNAME_L)
 	self.drive_mfg = ticket.get(DRIVEMFG, "") # CN, FN - drive manufacturer
-	self.drive_mfg = add_r_padding(self.drive_mfg, 8)
+	self.drive_mfg = add_r_padding(self.drive_mfg[:DRIVE_MFG_L], DRIVE_MFG_L)
 	self.drive_model = ticket.get(DRIVEMODEL, # CN, FN - drive model
 				      "")
-	self.drive_model = add_r_padding(self.drive_model, 8)
+	self.drive_model = add_r_padding(self.drive_model[:DRIVE_MODEL_L], 
+					 DRIVE_MODEL_L)
 	self.drive_serial_number = ticket.get(DRIVESERIALNUMBER, # CN, FN
 					      "")
-	self.drive_serial_number = add_r_padding(self.drive_serial_number, 12)
+	self.drive_serial_number = add_r_padding(self.drive_serial_number[:DRIVE_SERIAL_NUMBER_L],
+						 DRIVE_SERIAL_NUMBER_L)
 
 	# UHL2/UTL2
 	self.file_id = 20*ZERO                    # CN
 	self.mode = ticket.get(MODE, "")           # CN, FN - file access mode
-	self.mode = add_l_padding(self.mode, 4, ZERO)
+	self.mode = add_l_padding(self.mode[:MODE_L], MODE_L, ZERO)
 	self.uid = ticket.get(UID, "")             # CN, FN - uid
-	self.uid = add_r_padding(self.uid, 10)
+	self.uid = add_r_padding(self.uid[:UID_L], UID_L)
 	self.gid = ticket.get(GID, "")             # CN, FN - gid
-	self.gid = add_r_padding(self.gid, 10)
+	self.gid = add_r_padding(self.gid[:GID_L], GID_L)
 	self.file_size = ticket.get(SIZEBYTES, "")# CN, FN - 64 bit file size
-	self.file_size = add_l_padding(self.file_size, 20, ZERO)
+	self.file_size = add_l_padding(self.file_size[:FILE_SIZE_L], 
+				       FILE_SIZE_L, ZERO)
 	self.checksum_algorithm = ADLER32         # CN, FN - AD = Adler32, 
 	                                          #          CS = cksum
 	self.file_checksum = ticket.get(CHECKSUM, # CN, FN - file checksum 
-					10*ZERO)  #          (32 bits)
-	self.file_checksum = add_l_padding(self.file_checksum, 10, ZERO)
+					"")       #          (32 bits)
+	self.file_checksum = add_l_padding(self.file_checksum[:FILE_CHECKSUM_L],
+					   FILE_CHECKSUM_L, ZERO)
 
 	# UHL3/UTL3
 	self.username =  ticket.get(USERNAME, "") # CN, FN
-	self.username = add_r_padding(self.username, USERNAME_L)
+	self.username = add_r_padding(self.username[:USERNAME_L],
+				      USERNAME_L)
 	self.experiment = ticket.get(EXPERIMENT, "")# CN, FN
-	self.experiment = add_r_padding(self.experiment, EXPERIMENT_L)
+	self.experiment = add_r_padding(self.experiment[:EXPERIMENT_L],
+					EXPERIMENT_L)
 	self.last_mod = 19*SPACE                  # CN - last modification
 	                                          #          date/time
 
