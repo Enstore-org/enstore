@@ -49,9 +49,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # rename deleted volume
     def rename_volume(self, old_label, new_label, restore="no"):
      try:
-	 cur_rec = dict[old_label]
+	 cur_rec = self.dict[old_label]
 	 # should not happen
-	 if dict.has_key(new_label):
+	 if self.dict.has_key(new_label):
 	     return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
 	 # rename volume names in the FC database
 	 if string.find(new_label, ".deleted") != -1:
@@ -90,9 +90,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		 Trace.log(e_errors.ERROR, "rename_volume failed: "+repr(ret))
 		 
 	 # create new record in the database
-	 dict[new_label] = cur_rec
+	 self.dict[new_label] = cur_rec
 	 # remove current record from the database
-	 del dict[old_label]
+	 del self.dict[old_label]
 	 Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
 							   new_label))
 	 return e_errors.OK, None
@@ -104,7 +104,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
      try:
-	 cur_rec = dict[external_label]
+	 cur_rec = self.dict[external_label]
 	 # if volume is not marked as deleted it is an error
 	 if cur_rec["system_inhibit"] != e_errors.DELETED:
 	     return cur_rec["system_inhibit"], "Volume Clerk: volume "+external_label+" is not marked as deleted"
@@ -125,7 +125,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		 os.remove(vol_map_name)
 	     os.rmdir(vm_dir)
 	     # remove current record from the database
-	     del dict[external_label]
+	     del self.dict[external_label]
 	     Trace.log(e_errors.INFO, "volume removed %s"%external_label)
 	     return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
@@ -152,16 +152,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.data_socket, ticket)
             if not ticket.has_key("external_label"):
                 # fill in the list of volumes to delete
-                dict.cursor("open")
-                key,value=dict.cursor("first")
+                self.dict.cursor("open")
+                key,value=self.dict.cursor("first")
                 while key:
                     if value["system_inhibit"] == e_errors.DELETED:
                         vols.append(key)
-                    key,value=dict.cursor("next")
-                dict.cursor("close")
+                    key,value=self.dict.cursor("next")
+                self.dict.cursor("close")
             else:
-                if dict.has_key(ticket["external_label"]):
-                    record = dict[ticket["external_label"]]
+                if self.dict.has_key(ticket["external_label"]):
+                    record = self.dict[ticket["external_label"]]
                     if record["system_inhibit"] == e_errors.DELETED:
                         vols.append(ticket["external_label"])
             for vol in vols:
@@ -200,7 +200,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # can't have 2 with same external_label
-        if dict.has_key(external_label):
+        if self.dict.has_key(external_label):
             ticket["status"] = (errno.errorcode[errno.EEXIST], \
                                 "Volume Clerk: volume "+external_label\
                                +" already exists")
@@ -263,7 +263,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             record['blocksize'] = msize
 
         # write the ticket out to the database
-        dict[external_label] = record
+        self.dict[external_label] = record
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,'addvol ok '+repr(external_label)+" "+repr(record))
@@ -285,7 +285,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]
+            record = self.dict[external_label]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -316,13 +316,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 	# if volume has not been written delete it
 	if record['sum_wr_access'] == 0:
-	    del dict[external_label]
+	    del self.dict[external_label]
 	    ticket["status"] = (e_errors.OK, None)
 	else:
 	    record["system_inhibit"] = e_errors.DELETED
-	    dict[external_label] = record
+	    self.dict[external_label] = record
 	    # try to remove deleted volume and mark the current one as deleted
-	    if dict.has_key(external_label+".deleted"):
+	    if self.dict.has_key(external_label+".deleted"):
 		# remove deleted volume
 		status = self.remove_deleted_volume(external_label+".deleted")
 		#if status[0] == e_errors.OK:
@@ -356,7 +356,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # get the current entry for the volume
 	cl = external_label+".deleted"
         try:
-            record = dict[cl]
+            record = self.dict[cl]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+cl\
@@ -369,11 +369,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	status = self.rename_volume(cl, external_label, restore_vm)
 	ticket["status"] = status
 	if status[0] == e_errors.OK:
-	    record = dict[external_label]
+	    record = self.dict[external_label]
 	    record["system_inhibit"] = "none"
 	    if restore_vm == "yes":
 		record["non_del_files"] = len(record["bfids"])
-	    dict[external_label] = record
+	    self.dict[external_label] = record
 
 	    Trace.log(e_errors.INFO,"Volume %s is restored"%external_label)
 	    Trace.trace(10,'restorevol ok '+repr(external_label))
@@ -385,7 +385,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def is_vol_available(self, ticket):
 	work = ticket["action"]
 	label = ticket["external_label"]
-	record = dict[label]  ## was deepcopy
+	record = self.dict[label]  ## was deepcopy
 	if record["system_inhibit"] == e_errors.DELETED:
 	    ret_stat = (record["system_inhibit"],None)
 	else:
@@ -435,9 +435,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # go through the volumes and find one we can use for this request
         vol = {}
-        dict.cursor("open")
+        self.dict.cursor("open")
         while 1:
-            label,v = dict.cursor("next")
+            label,v = self.dict.cursor("next")
             if label:
                 Trace.trace(17,'nwv '+label)
                 pass
@@ -482,7 +482,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     waste = 0.
                 Trace.log(e_errors.INFO,
                           "%s is now full, bytes remaining = %d, %.2f %%" % (label, v["remaining_bytes"],waste))
-                dict.cursor("update",v)
+                self.dict.cursor("update",v)
                 continue
             vetoed = 0
             for veto in vol_veto_list:
@@ -498,7 +498,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 v["status"] = (e_errors.OK, None)
                 Trace.trace(16,'next_write_vol label = '+ v['external_label'])
                 self.reply_to_caller(v)
-                dict.cursor("close")
+                self.dict.cursor("close")
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0:
@@ -509,7 +509,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 vol = v  ## was deepcopy
             else:
                 Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
-        dict.cursor("close")
+        self.dict.cursor("close")
 
         # return what we found
         if len(vol) != 0:
@@ -522,9 +522,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # nothing was available - see if we can assign a blank one.
         Trace.trace(16,'next_write_vol no vols available, checking for blanks')
         vol = {}
-        dict.cursor("open")
+        self.dict.cursor("open")
         while 1:
-            label,v = dict.cursor("next")
+            label,v = self.dict.cursor("next")
             if label:
                 Trace.trace(17,'nwv '+label)
                 pass
@@ -566,10 +566,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 v["file_family"] = file_family+"."+wrapper_type
                 v["wrapper"] = wrapper_type
                 Trace.log(e_errors.INFO, "Assigning blank volume "+label+" to "+library+" "+file_family)
-                dict[label] = v  ## was deepcopy
+                self.dict[label] = v  ## was deepcopy
                 v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
-                dict.cursor("close")
+                self.dict.cursor("close")
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0:
@@ -580,7 +580,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 vol = v  ## was deepcopy
             else:
                 Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
-        dict.cursor("close")
+        self.dict.cursor("close")
 
         # return blank volume we found
         if len(vol) != 0:
@@ -591,7 +591,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             vol["wrapper"] = wrapper_type
             Trace.log(e_errors.INFO,
                       "Assigning blank volume "+label+" to "+library+" "+file_family)
-            dict[label] = vol  ## was deepcopy
+            self.dict[label] = vol  ## was deepcopy
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
             return
@@ -627,7 +627,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
      # get the current entry for the volume
      try:
-         v = dict[external_label]  ## was deepcopy
+         v = self.dict[external_label]  ## was deepcopy
          # for backward compatibility for at_mover field
          try:
              at_mover = v['at_mover']
@@ -658,7 +658,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  Trace.log(e_errors.INFO,
                            "%s is now full, bytes remaining = %d, %.2f %%" %
                            (external_label, v["remaining_bytes"],waste))
-                 dict[external_label] = v  ## was deepcopy
+                 self.dict[external_label] = v  ## was deepcopy
                  ticket["status"] = (e_errors.WRITE_EOT, \
                                      "Volume Clerk: "+key+" is missing")
              self.reply_to_caller(ticket)
@@ -695,7 +695,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -715,9 +715,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
-            self.reply_to_caller(ticket)
-            Trace.trace(8,"get_remaining_bytes "+repr(ticket["status"]))
-            return
+            
+        self.reply_to_caller(ticket)
+        Trace.trace(8,"get_remaining_bytes "+repr(ticket["status"]))
+        return
 
 
     # update the database entry for this volume
@@ -736,7 +737,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -796,7 +797,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    	record["bfids"] = []
 	    record["bfids"].append(bfid)
         # record our changes
-        dict[external_label] = record  ## was deepcopy
+        self.dict[external_label] = record  ## was deepcopy
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(12,'set_remaining_bytes '+repr(record))
@@ -818,7 +819,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -833,7 +834,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # decrement the number of non-deleted files on the tape
         record ["non_del_files"] = record["non_del_files"] - count
-        dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'decr_file_count '+repr(record))
@@ -855,7 +856,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -894,7 +895,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
 
         # record our changes
-        dict[external_label] = record  ## was deepcopy
+        self.dict[external_label] = record  ## was deepcopy
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(12,'update_counts ok '+repr(record))
@@ -916,7 +917,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
             record["status"] = e_errors.OK, None
             self.reply_to_caller(record)
             Trace.trace(12,'inquire_vol '+repr(record))
@@ -943,7 +944,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         external_label = ticket['external_label']
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "Volume Clerk: volume "+external_label
@@ -964,7 +965,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if (record['at_mover'][0] == 'unmounted' and
             record['system_inhibit'] == 'writing'):
             record['system_inhibit'] = 'none'
-        dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'vc.update_mc_state '+repr(record))
@@ -986,7 +987,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -1008,7 +1009,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 						record["external_label"], 
 						record["media_type"])
 	    record['at_mover']=tuple(ll)
-	    dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'vc.clr_system_inhibit '+repr(record))
@@ -1052,7 +1053,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -1072,7 +1073,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             record['non_del_files'] = record['sum_wr_access']
 
-        dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'add_at_mover '+repr(record))
@@ -1084,11 +1085,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	new_library = ticket["new_library"]
 
 	# get the current entry for the volume
-	record = dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  ## was deepcopy
 	
 	# update the library field with the new library
 	record ["library"] = new_library
-	dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
 	self.reply_to_caller(record)
 	Trace.trace(16,external_label+" moved to library "+new_library)
@@ -1099,11 +1100,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	external_label = ticket["external_label"]
 	
 	# get the current entry for the volume
-	record = dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  ## was deepcopy
 	
 	# update the fields that have changed
 	record ["system_inhibit"] = flag
-	dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
 	Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
 	self.reply_to_caller(record)
@@ -1131,7 +1132,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # set at_mover flag
     def set_at_mover(self, ticket):
 	external_label = ticket["external_label"]
-	record = dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  ## was deepcopy
 	at_mover = record.get('at_mover',('unmounted','none'))
 	
 	# update the fields that have changed
@@ -1161,7 +1162,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 				repr(ticket['at_mover'][0]))
 	else:
 	    record ['at_mover'] = ticket['at_mover']
-	    dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
 	self.reply_to_caller(record)
 	Trace.trace(16,external_label+" state now "+str(ticket['at_mover']))
@@ -1183,8 +1184,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.get_user_sockets(ticket)
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
-            dict.cursor("open")
-            key,value=dict.cursor("first")
+            self.dict.cursor("open")
+            key,value=self.dict.cursor("first")
             msg=''
             while key:
                 if ticket.has_key("not"): cond = ticket["not"]
@@ -1218,9 +1219,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                  "library","file_fam")+\
                                 ","+formatted_string
 
-                key,value=dict.cursor("next")
+                key,value=self.dict.cursor("next")
             callback.write_tcp_raw(self.data_socket,msg)
-            dict.cursor("close")
+            self.dict.cursor("close")
             self.data_socket.close()
 
             callback.write_tcp_obj(self.control_socket, ticket)
@@ -1255,7 +1256,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def start_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"start_backup")
-            dict.start_backup()
+            self.dict.start_backup()
             self.reply_to_caller({"status"        : (e_errors.OK, None),
                                   "start_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -1269,7 +1270,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def stop_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"stop_backup")
-            dict.stop_backup()
+            self.dict.stop_backup()
             self.reply_to_caller({"status"       : (e_errors.OK, None),
                                   "stop_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -1282,7 +1283,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"backup")
-            dict.backup()
+            self.dict.backup()
             self.reply_to_caller({"status"       : (e_errors.OK, None),
                                   "backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -1303,6 +1304,23 @@ class VolumeClerk(VolumeClerkMethods,\
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
                                                              keys['port']))
 
+        Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+        try:
+            dbInfo = configuration_client.ConfigurationClient(
+		(intf.config_host, intf.config_port)).get('database')
+            dbHome = dbInfo['db_dir']
+            try:  # backward compatible
+                jouHome = dbInfo['jou_dir']
+            except:
+                jouHome = dbHome
+        except:
+            dbHome = os.environ['ENSTORE_DIR']
+            jouHome = dbHome
+
+        Trace.log(e_errors.INFO,"opening volume database using DbTable")
+        self.dict = db.DbTable("volume", dbHome, jouHome, [])
+        Trace.log(e_errors.INFO,"volume database is open")
+        
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
 
@@ -1311,27 +1329,8 @@ if __name__ == "__main__":
 
     # get the interface
     intf = VolumeClerkInterface()
-
-    # get a volume clerk
     vc = VolumeClerk((intf.config_host, intf.config_port))
     Trace.log(e_errors.INFO, '%s' % sys.argv)
-
-    Trace.log(e_errors.INFO,"determine dbHome and jouHome")
-    try:
-        dbInfo = configuration_client.ConfigurationClient(
-		(intf.config_host, intf.config_port)).get('database')
-        dbHome = dbInfo['db_dir']
-        try:  # backward compatible
-            jouHome = dbInfo['jou_dir']
-        except:
-            jouHome = dbHome
-    except:
-        dbHome = os.environ['ENSTORE_DIR']
-        jouHome = dbHome
-
-    Trace.log(e_errors.INFO,"opening volume database using DbTable")
-    dict = db.DbTable("volume", dbHome, jouHome, [])
-    Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
     while 1:
         try:
