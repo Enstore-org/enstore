@@ -16,7 +16,7 @@ LIB_OBJS = ${LIB_SRC:.c=.o}
 ktev_main: libktev.a ktev_main.o
 	@echo "OS $(MACH_OS)"
 	@echo "OPT" 
-	$(CC) -static -o $@ ktev_main.o $(LIBS) $(OS_DEP_LIB)
+	$(CC) -o $@ ktev_main.o $(LIBS) $(OS_DEP_LIB)
 #ktev_main: libktev.so ktev_main.o
 #	cc -o $@ ktev_main.o $(LIBS) -lc 
 
