@@ -218,8 +218,9 @@ class  FTTDriver(GenericDriver) :
     def get_stats( self ) :
 	# Note: remaining_bytes is updated in write and
 	# fd_xfer (when opened for write)
-	ss = FTT.get_stats()
-	return {'remaining_bytes':string.atoi(ss['remain_tape'])*1024L,
+	#ss = FTT.get_stats()
+	#return {'remaining_bytes':string.atoi(ss['remain_tape'])*1024L,
+	return {'remaining_bytes':self.remaining_bytes,
 		'wr_err':self.wr_err,
 		'rd_err':self.rd_err,
 		'wr_access':self.wr_access,
