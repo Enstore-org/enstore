@@ -114,12 +114,16 @@ class AtMovers:
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]): ### DBG: REMOVE
                 Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
-            if (self.at_movers.has_key(rec[0]) and self.at_movers[rec[0]]['volume_status'][0][1]) == 'none':  # system inhibit
-                # if volume can be potentially written increase number
-                # of write enabled volumes that are currently at work
-                # further comparison of this number with file family width
-                # tells if write work can be given out
-                write_enabled = write_enabled + 1
+            if self.at_movers.has_key(rec[0]):
+                if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
+                    # system inhibit
+                    # if volume can be potentially written increase number
+                    # of write enabled volumes that are currently at work
+                    # further comparison of this number with file family width
+                    # tells if write work can be given out
+                    write_enabled = write_enabled + 1
+                if self.at_movers[rec[0]]['state'] == 'ERROR':
+                    write_enabled = write_enabled + 1
         return vols, write_enabled
 
     # return active volumes for a given storage class for
