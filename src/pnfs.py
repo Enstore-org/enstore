@@ -511,9 +511,9 @@ class pnfs :
         self.get_gname()
         self.get_mode()
         self.get_file_size()
-        command="if test -w "+self.dir+"; then echo -n ok; else echo -n no; fi"
+        command="if test -w "+self.dir+"; then echo ok; else echo no; fi"
         writable = os.popen(command,'r').readlines()
-        if "ok" == writable[0] :
+        if "ok\012" == writable[0]:
             self.writable = enabled
         else :
             self.writable = disabled

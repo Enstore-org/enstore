@@ -7,7 +7,7 @@ from file_clerk_client import FileClerkClient
 from udp_client import UDPClient
 from callback import *
 from dict_to_a import *
-from driver import RawDiskDriver
+from driver import RawDiskDriver, FTTDriver
 from media_changer_client import *
 import pprint
 import cpio
@@ -314,10 +314,12 @@ class Mover :
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
-        for k in ['blocksize', 'device', 'eod', 'first_write_block',
-                  'rd_err', 'rd_mnt', 'remaining_bytes',
-                  'wr_err', 'wr_mnt'] :
-            exec("dinfo["+repr(k)+"] = self.driver."+k)
+        if 0 :
+            for k in ['blocksize', 'device', 'eod', 'first_write_block',
+                      'rd_err', 'rd_mnt', 'remaining_bytes',
+                      'wr_err', 'wr_mnt'] :
+                exec("dinfo["+repr(k)+"] = self.driver."+k)
+
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc
         ticket["sanity_cookie"] = sanity_cookie
@@ -418,11 +420,12 @@ class Mover :
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
-        for k in ['blocksize', 'device', 'eod', 'firstbyte',
-                  'left_to_read', 'pastbyte',
-                  'rd_err', 'rd_mnt', 'remaining_bytes',
-                  'wr_err', 'wr_mnt'] :
-            exec("dinfo["+repr(k)+"] = self.driver."+k)
+        if 0:
+            for k in ['blocksize', 'device', 'eod', 'firstbyte',
+                      'left_to_read', 'pastbyte',
+                      'rd_err', 'rd_mnt', 'remaining_bytes',
+                      'wr_err', 'wr_mnt'] :
+                exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc
         ticket["recorded_crc"] = recorded_crc

@@ -168,9 +168,9 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     dir,file = os.path.split(outfile)
     if dir == '' :
         dir = '.'
-    command="if test -w "+dir+"; then echo -n ok; else echo -n no; fi"
+    command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
-    if "ok" != writable[0] :
+    if "ok\012" != writable[0] :
         raise errorcode[EACCES],"encp.read_from__hsm: "\
               +outfile+", NO write access to directory"
     f = open(outfile,"w")

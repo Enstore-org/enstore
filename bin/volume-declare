@@ -10,6 +10,7 @@ activelibrary family_process  floppy  flop22     1400000     1400000
 shelf         family_reserved floppy  flop3      1400000     1400000
 shelf         family_reserved floppy  flop4      1400000     1400000
 red50library  family_redwood  redwood 000007 50000000000 50000000000
+8500library   family_8500     exabyte exascr  4500000000  4500000000
 "
 
 oldifs="${IFS}"

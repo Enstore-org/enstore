@@ -2,6 +2,7 @@ import sys
 from errno import *
 import pprint
 import posix
+import ETape
 
 class GenericDriver:
 
@@ -24,7 +25,7 @@ class GenericDriver:
     def unload(self):
         pass
 
-    # blocksize is volume dependent 
+    # blocksize is volume dependent
     def set_blocksize(self,blocksize):
         self.blocksize = blocksize
 
@@ -46,10 +47,6 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
-    try:
-	import ETape
-    except:
-	pass
 
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
@@ -116,7 +113,7 @@ class  RawDiskDriver(GenericDriver) :
         self.left_to_read = self.pastbyte - self.firstbyte
 
     def close_file_read(self) :
-	pass
+        pass
 
     def read_block(self):
         # no file marks on a disk, so use the information
