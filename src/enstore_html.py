@@ -1188,20 +1188,18 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         self.perf_table be the object pointing to the table
         of performance data we must fill in
         """
-	self.title = "ENSTORE Active Metwork Monitoring"
+	self.title = "ENSTORE Active Network Monitoring"
 	self.script_title_gif = "encph.gif"
 	self.description = "%s%sRecent network monitoring results"%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh)
         
         #add standard header to  html page
-        # BUGGY HTAL generated when I uncommment the below
-        #self.append(self.table_top())
         table_top = self.table_top()
         self.append(table_top)
 
-        # The standard look and feel provides for otu out put table to be a row
-        # in a master table called "table top".   To participate in the stard look
-        # and feel we make out table ("perf_table"), put it into a dat field, and
+        # The standard look and feel provides for our output table to be a row
+        # in a master table called "table top".   To participate in the standard look
+        # and feel we make our table ("perf_table"), put it into a data field, and
         # put the data field into a row, and  then add that row to "table_top"
         
         table_top_row_for_perf_table = HTMLgen.TR(valign="CENTER")
@@ -1223,15 +1221,16 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         
     def add_measurement(self, measurement):
         """
-        add a measurement to the bottom of the measurment table
-        lop off the head of the table when it becomes too long.
+        add a measurement to the top of the measurment table
+        lop off the tail of the table when it becomes too long.
         """
         measurement_row = HTMLgen.TR()
-        self.perf_table.append(measurement_row)
+        
+        #self.perf_table.append(measurement_row)
+        
+        self.perf_table.contents.insert(1,measurement_row)  
         for m in measurement :  measurement_row.append(HTMLgen.TD(m))
 
-
-        
         if len(self.perf_table.contents) > 400 :
-            self.perf_table.contents = self.perf_table.contents [50:]
+            self.perf_table.contents = self.perf_table.contents [:350]
 

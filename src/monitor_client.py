@@ -9,6 +9,7 @@ import time
 import errno
 import pprint
 import socket
+import select
 
 # enstore imports
 import callback
@@ -49,8 +50,16 @@ class MonitorServerClient:
                   'block_count' : block_count,
                   'block_size' : block_size
                   }
-        reply=self.send(ticket)
+
+        
+        reply=self.send(ticket, rcv_timeout=30) #raises exeption on timeout
         #simulate the control socket between encp and the mover
+
+        #when bad routing takes place an acept should take about 12 minutes to
+        # retry given the number of tries and the exponential backoff.
+        # let;s give 30 seconds instead.
+        r,w,ex = select.select([c_socket], [c_socket], [c_socket], 30)
+        if not r : raise "passive open did not hear back from monitor server via TCP"
         ms_socket, address = c_socket.accept()
         c_socket.close()
         returned_ticket = callback.read_tcp_obj(ms_socket)
@@ -116,14 +125,16 @@ def get_all_ips():
     inquire the configuration server, return a list
     of every  IP address involved in Enstore  
     """
-    
+
+    ## What if we cannot get to config server
     x = csc.u.send({"work":"reply_serverlist"},
                    (intf.config_host, intf.config_port))
     if x['status'][0] != 'ok': raise "error from config server"
     server_dict = x['server_list']
     ip_dict = {}
     for k in server_dict.keys():
-        
+
+        #assume we can get to config server since we could above
         details = csc.get(k)
         if details.has_key('data_ip'):
             ip = details['data_ip']     #check first if a mover
