@@ -51,11 +51,31 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
-def default_ascii_file():
-    return "./inquisitor.txt"
+default_dir = "./"
 
-def default_html_file():
-    return "./inquisitor.html"
+def default_ascii_file():
+    return default_dir+ascii_file_name()
+
+def default_status_html_file():
+    return default_dir+status_html_file_name()
+
+def default_inq_file():
+    return default_dir+inq_file_name()
+
+def default_encp_html_file():
+    return default_dir+encp_html_file_name()
+
+def encp_html_file_name():
+    return "encp_"+inq_file_name()
+
+def ascii_file_name():
+    return "inquisitor.txt"
+
+def status_html_file_name():
+    return "status_"+inq_file_name()
+
+def inq_file_name():
+    return "inquisitor.html"
 
 TRUE = 1
 FALSE = 0
@@ -327,7 +347,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                                        encplines)
 	# now we have some info, output it
 	self.essfile.output_encp(encplines, key, self.verbose)
-	self.htmlfile.output_encp(encplines, key, self.verbose)
+	self.encpfile.output_encp(encplines, key, self.verbose)
 
     # generate the file with the encp info in it and read it in
     def read_encp_file(self, fname, logip, suffix, numitems, encplist=[]):
@@ -406,6 +426,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        i = i + 1
 	self.essfile.remove_key(key)
 	self.htmlfile.remove_key(key)
+	self.encpfile.remove_key(key)
 	Trace.trace(12,"}remove_key")
 
     # fix up the server list that we are keeping track of
@@ -469,6 +490,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,"{flush_files")
 	self.essfile.flush()
 	self.htmlfile.flush()
+	self.encpfile.flush()
         Trace.trace(12,"}flush_files")
 
     # output a line if an update was requested of a server that we do not have
@@ -487,6 +509,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # file info.
 	    self.essfile.remove_key(server)
 	    self.htmlfile.remove_key(server)
+	    self.encpfile.remove_key(server)
 	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
@@ -499,7 +522,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# open the html file and output the header to it
 	self.htmlfile.open(self.verbose)
-	self.htmlfile.write_header()
+	self.encpfile.open(self.verbose)
 
 	# we will need the current time to decide which servers to poke with
 	# the soft cushions
@@ -507,6 +530,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# see which servers we need to get info from this time around
 	did_some_work = 0
+	did_some_encp_work = 0
 	for key in self.server_keys:
 	    if self.last_update.has_key(key):
 	        delta = ctime - self.last_update[key]
@@ -536,7 +560,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                   types.FunctionType:
 	                    exec("self."+inq_func+"(key, ctime)")
 	                    self.last_update[key] = ctime
-	                    did_some_work = 1
+	                    if inq_func == "update_encp":
+	                        did_some_encp_work = 1
+	                    else:
+	                        did_some_work = 1
 	                else:
 	                    self.update_nofunc(key)
 	            else:
@@ -559,12 +586,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# suffix tacked on the end. i.e. the file becomes for example inq.html
 	# not inq.html.new. only move the file if we actually did something
 	self.htmlfile.close()
+	self.encpfile.close()
+	self.move_file(did_some_work, self.htmlfile_orig)
+	self.move_file(did_some_encp_work, self.encpfile_orig)
+        Trace.trace(11,"}do_update ")
+
+    # try to move the just written file to the displayed copy
+    def move_file(self, flag, afile):
 	try:
-	    if did_some_work:
-	        os.system("mv "+self.htmlfile_orig+self.suffix+" "+\
-	                  self.htmlfile_orig)
+	    if flag:
+	        os.system("mv "+afile+self.suffix+" "+afile)
 	    else:
-	        os.system("rm "+self.htmlfile_orig+self.suffix)
+	        os.system("rm "+afile+self.suffix)
 	except:
 	    traceback.print_exc()
 	    format = timeofday.tod()+" "+\
@@ -573,7 +606,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	             str(sys.exc_info()[1])+" "+\
 	             "inquisitor update system error"
 	    self.logc.send(log_client.ERROR, 1, format)
-        Trace.trace(11,"}do_update ")
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
     def serve_forever(self) :
@@ -602,6 +634,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(4,"{handle_timeout ")
 	self.do_update(0, 0)
 	Trace.trace(4,"}handle_timeout ")
+
+    # generate the plot of bytes xferred/time
+    def xfer_rate_plot(self, ticket):
+	pass
 
     # our client said to update the enstore system status information
     def update(self, ticket):
@@ -634,6 +670,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.enprint("timeouts    - "+repr(self.timeouts))
 	self.enprint("server_keys - "+repr(self.server_keys))
 	self.enprint("reset       - "+repr(self.reset))
+	self.enprint(self.htmlfile_orig)
+	self.enprint(self.encpfile_orig)
+	self.enprint(self.parsed_file)
 	self.send_reply(ticket)
 	Trace.trace(10,"}dump")
 
@@ -681,6 +720,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"{set_refresh "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         self.htmlfile.set_refresh(ticket['refresh'])
+        self.encpfile.set_refresh(ticket['refresh'])
 	self.send_reply(ticket)
         Trace.trace(10,"}set_refresh")
 
@@ -833,7 +873,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# get the ascii output file.  this should be in the configuration file.
 	if ascii_file == "":
 	    try:
-	        ascii_file = keys['ascii_file']
+	        ascii_file = keys['ascii_file']+"/"+ascii_file_name()
 	    except:
 	        ascii_file = default_ascii_file()
 
@@ -841,48 +881,40 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# be in the configuration file.
 	if html_file == "":
 	    try:
-	        html_file = keys['html_file']
+	        inq_file = keys['html_file']
+	        html_file = inq_file+"/"+status_html_file_name()
+	        encp_file = inq_file+"/"+encp_html_file_name()
 	    except:
-	        html_file = default_html_file()
+	        html_file = default_status_html_file()
+	        encp_file = default_encp_html_file()
 
 	# get a logger
 	self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
 	                                    'logserver', 0)
 
-	# get an ascii system status file, and open it
-	if ascii_file != "":
-	    self.parsed_file = ascii_file
-	    self.essfile = enstore_status.EnstoreStatus(ascii_file, \
-	                                           enstore_status.ascii_file,\
-	                                           "", max_ascii_size, verbose)
-	    self.essfile.open(verbose)
-	else:
-	    # this will be the place that we will put the temporary files used
-	    # to parse out the encp information
-	    self.parsed_file = "$ENSTORE_DB/inq.txt"
-
-	# get an html system status file
-	if html_file == "":
-	    html_file = "$ENSTORE_DB/inq.html"
-
-	# add a suffix to it because we will write to this file and 
-	# maintain another copy of the file (with the user entered name) to
-	# be displayed
-	self.htmlfile = enstore_status.EnstoreStatus(\
-	                                            html_file+self.suffix,\
-	                                            enstore_status.html_file,\
-	                                            html_file, -1, verbose)
-	self.htmlfile_orig = html_file
-
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
         if refresh == -1:
             try:
-	        self.htmlfile.set_refresh(keys['refresh'])
+	        refresh = keys['refresh']
             except:
-	        self.htmlfile.set_refresh(default_refresh())
-        else:
-            self.htmlfile.set_refresh(refresh)
+	        refresh = default_refresh()
+
+	# get an ascii system status file, and open it
+	self.parsed_file = ascii_file
+	self.essfile = enstore_status.AsciiStatusFile(ascii_file, \
+	                                              max_ascii_size, verbose)
+	self.essfile.open(verbose)
+
+	# add a suffix to it because we will write to this file and 
+	# maintain another copy of the file (with the user entered name) to
+	# be displayed
+	self.htmlfile = enstore_status.HTMLStatusFile(html_file+self.suffix,\
+	                                              refresh, verbose)
+	self.htmlfile_orig = html_file
+	self.encpfile = enstore_status.HTMLStatusFile(encp_file+self.suffix,\
+	                                              refresh, verbose)
+	self.encpfile_orig = encp_file
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}

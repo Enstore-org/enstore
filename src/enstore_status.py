@@ -21,68 +21,114 @@ ascii_file = 0
 html_file = 1
 force = 1
 
-html_header1 = "<title>Inquisitor</title>\n"+\
+bg_color = "FFFFFF"
+
+html_header1 = "<title>Enstore Status</title>\n"+\
               "<meta http-equiv=\"Refresh\" content=\""
 html_header2 = "\">\n"+\
-              "<body bgcolor=\"FFFFFF\">\n<pre>\n"
+              "<body bgcolor=\""+bg_color+"\">\n<pre>\n"
 
-class EnstoreStatus:
+class EnStatus:
 
-    def __init__(self, file, fileType, hname, max_ascii_size, verbose=0):
-        Trace.trace(10,'{__init__ essfile '+file+"  "+repr(fileType))
-        self.file_name = file 
-	self.file_type = fileType
-	self.refresh = 8
-	self.max_ascii_size = max_ascii_size
-	self.set_header()
-	self.text = {}
-        Trace.trace(10,'}__init__')
+    # output the encp info
+    def output_encp(self, lines, key, verbose):
+	Trace.trace(12,"{output_encp ")
+	if lines != []:
+	    str = self.format_encp(lines, key)
+	else:
+	    str = "encp            : NONE"
+	generic_cs.enprint(str, generic_cs.SERVER|generic_cs.PRETTY_PRINT,\
+	                   verbose)
+	self.text[key] = str+"\n"
+	Trace.trace(12,"}output_encp ")
 
-    # set the header
-    def set_header(self):
-	self.header = html_header1+repr(self.refresh)+html_header2
+    # output the blocksize info
+    def output_blocksizes(self, info, prefix, key):
+        Trace.trace(12,"{output_blocksizes ")
+	prefix2 = "                  "
+	str = prefix
+	ctr = 0
+	for a_key in info.keys():
+	    if a_key != 'status':
+	        if ctr == 3:
+	            str = str+",\n"+prefix2
+	            ctr = 0
+	        elif ctr > 0:
+	            str = str+",  "
+	        ctr = ctr+1
+	        str = str+a_key+" : "+repr(info[a_key])
+	self.text[key] = str+"\n"
+        Trace.trace(12,"}output_blocksizes ")
 
-    # write the header to the file
-    def write_header(self):
-        Trace.trace(12,"{write_header "+self.header)
-	self.file.write(self.header)
-        Trace.trace(12,"}write_header ")
+    # output the passed alive status
+    def output_alive(self, host, tag, status, time, key):
+        Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
+	ftime = self.format_time(time)
+	str = self.unquote(tag)+self.unquote(status['work'])+" on "+\
+	      self.format_ip_address(host, status['address'])+" at "+\
+	      ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_alive")
 
-    # open the file
-    def open(self, verbose=0):
-        Trace.trace(12,"{open "+self.file_name)
-	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
-	                    verbose)
-        # try to open status file for append
-        try:
-            self.file = open(self.file_name, 'a')
-            generic_cs.enprint("opened for append", generic_cs.SERVER, verbose)
-        except:
-            self.file = open(self.file_name, 'w')
-            generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
-        Trace.trace(12,"}open")
+    # output the timeout error
+    def output_etimedout(self, address, tag, time, key):
+        Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
+	ftime = self.format_time(time)
+	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
+	       ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_etimedout")
 
-    # close the file
-    def close(self):
-        Trace.trace(12,"{close "+self.file_name)
-	if self.file_type == html_file:
-	    self.file.write("</pre></body>\n")
-	self.file.close()
-        Trace.trace(12,"}close")
+    # output timeout error when trying to get config dict from config server
+    def output_noconfigdict(self, tag, time, key):
+        Trace.trace(12,"{output_noconfigdict "+repr(tag))
+	ftime = self.format_time(time)
+	str = tag + "timed out while getting config dict at "+ftime+"\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_noconfigdict")
 
-    # flush everything to the file
-    def flush(self):
-        Trace.trace(10,'{flush')
-	# well, nothing has really been written to the file, it is all stored
-	# in a hash.  so we must write it all now
-	self.file.write("\nENSTORE SYSTEM STATUS\n")
-	keys = self.text.keys()
-	keys.sort()
-	for key in keys:
-	    self.file.write(self.text[key])
+    # output a line stating that we do not support this server
+    def output_nofunc(self, key):
+        Trace.trace(12,"}output_nofunc"+key)
+	str = key+" : NOT SUPPORTED IN INQUISITOR\n"
+	self.text[key] = str
+        Trace.trace(12,"}output_nofunc")
 
-	self.file.flush()
-        Trace.trace(10,'}flush')
+    # output the library manager suspect volume list
+    def output_suspect_vols(self, ticket, key, verbose):
+        Trace.trace(12,"{output_suspect_vols "+repr(ticket))
+	sm = self.format_lm_suspect_vols(ticket)
+	generic_cs.enprint(sm, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
+	self.text[key] = self.text[key]+sm
+        Trace.trace(12,"}output_suspect_vols")
+
+    # output the library manager queues
+    def output_lmqueues(self, ticket, key, verbose):
+        Trace.trace(12,"{output_lmqueues "+repr(ticket))
+	fq = self.format_lm_queues(ticket)
+	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
+	self.text[key] = self.text[key]+fq
+        Trace.trace(12,"}output_lmqueues ")
+
+    # output the library manager queues
+    def output_moverstatus(self, ticket, key, verbose):
+        Trace.trace(12,"{output_moverstatus "+repr(ticket))
+	fs = self.format_moverstatus(ticket)
+	generic_cs.enprint(fs, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
+	self.text[key] = self.text[key]+fs
+        Trace.trace(12,"}output_moverstatus")
+
+    # output the library manager mover list
+    def output_lmmoverlist(self, ticket, key, verbose):
+        Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
+	fq = self.format_lm_moverlist(ticket)
+	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
+	self.text[key] = self.text[key]+fq
+        Trace.trace(12,"}output_lmmoverlist ")
 
     # remove something from the text hash that will be written to the files
     def remove_key(self, key):
@@ -94,18 +140,6 @@ class EnstoreStatus:
         Trace.trace(12,"{unquote "+repr(string))
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
-
-    # move the file to a timestamped backup copy
-    def timestamp(self, really=0):
-	Trace.trace(11,"{timestamp "+self.file_name)
-	s = os.stat(self.file_name)
-	if (self.max_ascii_size > 0) or (really == 1):
-	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
-	        self.close()
-	        ts = regsub.gsub(" ", "_", self.format_time(time.time()))
-	        os.system("mv "+self.file_name+" "+self.file_name+"."+ts)
-	        self.open()
-        Trace.trace(11,"}timestamp ")
 
     # translate time.time output to a person readable format.
     # strip off the day and reorganize things a little
@@ -304,7 +338,7 @@ class EnstoreStatus:
 	    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
 	                          string.split(line, None, 6)
 	    str = str+spacing+etime+" on "+enode+" by "+euser
-	    spacing = "       "
+	    spacing = "                  "
 	    if estatus == log_client.sevdict[log_client.INFO]:
 	        [erest2, erest3] = string.splitfields(erest, ":", 1)
 	        # erest2 has the file name info which we do not need, get the 
@@ -327,113 +361,69 @@ class EnstoreStatus:
 	Trace.trace(13,"}format_encp ")
 	return str
 
-    # output the encp info
-    def output_encp(self, lines, key, verbose):
-	Trace.trace(12,"{output_encp ")
-	if lines != []:
-	    str = self.format_encp(lines, key)
-	else:
-	    str = "encp            : NONE"
-	generic_cs.enprint(str, generic_cs.SERVER|generic_cs.PRETTY_PRINT,\
-	                   verbose)
-	self.text[key] = str+"\n"
-	Trace.trace(12,"}output_encp ")
+class EnStatusFile:
 
-    # output the blocksize info
-    def output_blocksizes(self, info, prefix, key):
-        Trace.trace(12,"{output_blocksizes ")
-	prefix2 = "                  "
-	str = prefix
-	ctr = 0
-	for a_key in info.keys():
-	    if a_key != 'status':
-	        if ctr == 3:
-	            str = str+",\n"+prefix2
-	            ctr = 0
-	        elif ctr > 0:
-	            str = str+",  "
-	        ctr = ctr+1
-	        str = str+a_key+" : "+repr(info[a_key])
-	self.text[key] = str+"\n"
-        Trace.trace(12,"}output_blocksizes ")
+    def __init__(self, file):
+        Trace.trace(10,'{__init__ essfile '+file)
+        self.file_name = file 
+	self.text = {}
+        Trace.trace(10,'}__init__')
 
-    # output the passed alive status
-    def output_alive(self, host, tag, status, time, key):
-        Trace.trace(12,"{output_alive "+repr(tag)+" "+repr(host))
-	ftime = self.format_time(time)
-	str = self.unquote(tag)+self.unquote(status['work'])+" on "+\
-	      self.format_ip_address(host, status['address'])+" at "+\
-	      ftime+"\n"
-	self.text[key] = str
-        Trace.trace(12,"}output_alive")
+    # open the file
+    def open(self, verbose=0):
+        Trace.trace(12,"{open "+self.file_name)
+	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
+	                    verbose)
+        # try to open status file for append
+        try:
+            self.file = open(self.file_name, 'a')
+            generic_cs.enprint("opened for append", generic_cs.SERVER, verbose)
+        except:
+            self.file = open(self.file_name, 'w')
+            generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
+        Trace.trace(12,"}open")
 
-    # output the timeout error
-    def output_etimedout(self, address, tag, time, key):
-        Trace.trace(12,"{output_etimedout "+repr(tag)+" "+repr(address))
-	ftime = self.format_time(time)
-	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
-	       ftime+"\n"
-	self.text[key] = str
-        Trace.trace(12,"}output_etimedout")
+    # flush everything to the file
+    def flush(self):
+        Trace.trace(10,'{flush')
+	# well, nothing has really been written to the file, it is all stored
+	# in a hash.  so we must write it all now
+	self.file.write("\nENSTORE SYSTEM STATUS\n")
+	keys = self.text.keys()
+	keys.sort()
+	for key in keys:
+	    self.file.write(self.text[key])
 
-    # output timeout error when trying to get config dict from config server
-    def output_noconfigdict(self, tag, time, key):
-        Trace.trace(12,"{output_noconfigdict "+repr(tag))
-	ftime = self.format_time(time)
-	str = tag + "timed out while getting config dict at "+ftime+"\n"
-	self.text[key] = str
-        Trace.trace(12,"}output_noconfigdict")
+	self.file.flush()
+        Trace.trace(10,'}flush')
 
-    # output a line stating that we do not support this server
-    def output_nofunc(self, key):
-        Trace.trace(12,"}output_nofunc"+key)
-	str = key+" : NOT SUPPORTED IN INQUISITOR\n"
-	self.text[key] = str
-        Trace.trace(12,"}output_nofunc")
 
-    # output the library manager suspect volume list
-    def output_suspect_vols(self, ticket, key, verbose):
-        Trace.trace(12,"{output_suspect_vols "+repr(ticket))
-	sm = self.format_lm_suspect_vols(ticket)
-	generic_cs.enprint(sm, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	                   verbose)
-	self.text[key] = self.text[key]+sm
-        Trace.trace(12,"}output_suspect_vols")
+class HTMLStatusFile(EnStatusFile, EnStatus):
 
-    # output the library manager queues
-    def output_lmqueues(self, ticket, key, verbose):
-        Trace.trace(12,"{output_lmqueues "+repr(ticket))
-	fq = self.format_lm_queues(ticket)
-	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	                   verbose)
-	self.text[key] = self.text[key]+fq
-        Trace.trace(12,"}output_lmqueues ")
+    def __init__(self, file, refresh, verbose=0):
+        Trace.trace(10,'{__init__ htmlstatusfile ')
+	self.refresh = refresh
+	self.set_header()
+	EnStatusFile.__init__(self, file)
+        Trace.trace(10,'}__init__')
 
-    # output the library manager queues
-    def output_moverstatus(self, ticket, key, verbose):
-        Trace.trace(12,"{output_moverstatus "+repr(ticket))
-	fs = self.format_moverstatus(ticket)
-	generic_cs.enprint(fs, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	                   verbose)
-	self.text[key] = self.text[key]+fs
-        Trace.trace(12,"}output_moverstatus")
+    # open the file and write the header to the file
+    def open(self, verbose=0):
+        Trace.trace(12,"{open "+self.header)
+	EnStatusFile.open(self, verbose)
+	self.file.write(self.header)
+        Trace.trace(12,"}write_header ")
 
-    # output the library manager mover list
-    def output_lmmoverlist(self, ticket, key, verbose):
-        Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
-	fq = self.format_lm_moverlist(ticket)
-	generic_cs.enprint(fq, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	                   verbose)
-	self.text[key] = self.text[key]+fq
-        Trace.trace(12,"}output_lmmoverlist ")
+    # close the file
+    def close(self):
+        Trace.trace(12,"{close "+self.file_name)
+	self.file.write("</pre></body>\n")
+	self.file.close()
+        Trace.trace(12,"}close")
 
-    # set a new timestamp value
-    def set_max_ascii_size(self, value):
-	self.max_ascii_size = value
-
-    # get the timestamp value
-    def get_max_ascii_size(self):
-	return self.max_ascii_size
+    # reset the header, the refresh has changed
+    def set_header(self):
+	self.header = html_header1+repr(self.refresh)+html_header2
 
     # reset the refresh
     def set_refresh(self, value):
@@ -443,3 +433,31 @@ class EnstoreStatus:
     # return the current refresh value
     def get_refresh(self):
 	return self.refresh
+
+class AsciiStatusFile(EnStatusFile, EnStatus):
+
+    def __init__(self, file, max_ascii_size, verbose=0):
+        Trace.trace(10,'{__init__ asciifile ')
+	self.max_ascii_size = max_ascii_size
+	EnStatusFile.__init__(self, file)
+        Trace.trace(10,'}__init__')
+
+    # move the file to a timestamped backup copy
+    def timestamp(self, really=0):
+	Trace.trace(11,"{timestamp "+self.file_name)
+	s = os.stat(self.file_name)
+	if (self.max_ascii_size > 0) or (really == 1):
+	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
+	        self.file.close()
+	        ts = regsub.gsub(" ", "_", self.format_time(time.time()))
+	        os.system("mv "+self.file_name+" "+self.file_name+"."+ts)
+	        self.open()
+        Trace.trace(11,"}timestamp ")
+
+    # set a new timestamp value
+    def set_max_ascii_size(self, value):
+	self.max_ascii_size = value
+
+    # get the timestamp value
+    def get_max_ascii_size(self):
+	return self.max_ascii_size
