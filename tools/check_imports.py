@@ -67,9 +67,13 @@ def find_imports(filename, imports):
         if not words:
             continue
         if words[0]=="import":
+            for w in words[1:]:
+                if w not in l:
+                    l.append(w)
             l.extend(words[1:])
         elif words[0]=="from":
-            l.append(words[1])
+            if words[1] not in l:
+                l.append(words[1])
 
 warned=[]
 
