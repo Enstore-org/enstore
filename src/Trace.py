@@ -73,4 +73,4 @@ def default_log_func( time, pid, name, args ):
 set_log_func( default_log_func )
 
 
-#sys.setprofile(Ptrace.profile)
+sys.setprofile(Ptrace.profile)
