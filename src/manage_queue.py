@@ -2,7 +2,8 @@
 import time
 #import string
 
-import generic_cs
+import e_errors
+import Trace
 
 class Queue:
    queue=[]
@@ -19,10 +20,11 @@ class Queue:
          # deltas is the number of delta time periods 
          deltas=int(time.time()-ticket["times"]["job_queued"])/60/ticket["encp"]["agetime"]
          p=p + ticket["encp"]["delpri"]*deltas
-      #self.enprint(p+" "+repr(ticket["encp"]["basepri"])+" "+repr(deltas)+\
-      #            " "+repr(ticket["encp"]["agetime"])+" "+\
-      #            repr(ticket["encp"]["delpri"])+\
-      #            " "+repr(time.time())+" "+repr(ticket["times"]["t0"]))
+      #Trace.log(e_errors.INFO,
+      #          p+" "+repr(ticket["encp"]["basepri"])+" "+repr(deltas)+\
+      #          " "+repr(ticket["encp"]["agetime"])+" "+\
+      #          repr(ticket["encp"]["delpri"])+\
+      #          " "+repr(time.time())+" "+repr(ticket["times"]["t0"]))
       ticket["encp"]["curpri"]=p
       return p
    
@@ -186,14 +188,14 @@ if __name__ == "__main__":
   n=10
   while n:
     w=pending_work.get_init()
-    generic_cs.enprint(w["encp"]["pri"])
+    Trace.log(e_errors.INFO, repr(w["encp"]["pri"]))
     while w:
       w=pending_work.get_next()
     time.sleep(30)
     n=n-1
-  generic_cs.enprint("delete t1")
+  Trace.log(e_errors.INFO, "delete t1")
   pending_work.delete_job(t1)
 # get the whole list of jobs
-  generic_cs.enprint("get_queue")
-  generic_cs.enprint(pending_work.get_queue(), generic_cs.PRETTY_PRINT)
+  Trace.log(e_errors.INFO,("get_queue"))
+  Trace.log(e_errors.INFO, repr(pending_work.get_queue()))
 

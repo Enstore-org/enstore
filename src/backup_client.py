@@ -2,7 +2,6 @@
 # src/$RCSfile$   $Revision$
 #
 #enstore imports
-import Trace
 
 class BackupClient:
 
