@@ -216,21 +216,23 @@ class EnstoreStatus:
         Trace.trace(12,"{format_lm_suspect_vols "+repr(ticket))
 	str =       "    SUSPECT VOLUMES : "
 	spacing = "\n                      "
-	ctr = 0
-	movers = ticket['suspect_volumes']
-	if len(movers) != 0:
-	    for mover in movers:
-	        ctr = ctr + 1
-	        if ctr > 2:
-	            str = str + "\n"+spacing
-	            ctr = 1
-	        else:
-	            str = str + ", "
-	        str = str + mover 
+	sus_vols = ticket['suspect_volumes']
+	if len(sus_vols) != 0:
+	    for svol in sus_vols:
+	        str = str+svol['external_label']+" - "
+	        movers = svol['movers']
+	        if len(movers) != 0:
+	            not_first_one = 0
+	            for mover in movers:
+	                if not_first_one:
+	                    str=str+", "
+	                str = str+mover
+	                not_first_one = 1
+	        str = str+spacing
 	else:
 	    str = str + "NONE"
         Trace.trace(12,"}format_lm_suspect_vols ")
-	return str+"\n\n"
+	return str+"\n"
 
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
