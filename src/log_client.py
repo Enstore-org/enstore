@@ -72,7 +72,7 @@ class LoggerClient:
         self.uname = pwdb_entry[0]
         self.logger = servername
         self.debug = debug
-        self.log_priority = 2
+        self.log_priority = 7
 
 
     """ send the request to the Media Loader server and then send answer
