@@ -156,7 +156,8 @@ class FTTDriver(generic_driver.Driver):
             #Trace.trace(42, "%s,%s=ftt.get_position() done" % (fil, block,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
-            return -1
+            raise ftt.FTTError, detail
+            #return -1
         return fil
     
     def seek(self, target, eot_ok=0): #XXX is eot_ok needed?
