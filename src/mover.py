@@ -656,8 +656,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.do_cleaning = 0
         
         self.rem_stats = 1
-        if self.config.has_key('get_remainig_from_stats'):
-            if self.config['get_remainig_from_stats'][0] in ('n','N'):
+        if self.config.has_key('get_remaining_from_stats'):
+            if self.config['get_remaining_from_stats'][0] in ('n','N'):
                 self.rem_stats = 0
 
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
