@@ -2,6 +2,7 @@
 #
 import sys
 import os
+import pwd
 
 # enstore imports
 import configuration_client
@@ -16,51 +17,56 @@ class AlarmClient(generic_client.GenericClient):
 
     def __init__(self, csc=0, verbose=0, \
                  host=interface.default_host(), \
-                 port=interface.default_port(), \
-                 source="ALRMC"):
+                 port=interface.default_port()):
         # we always need to be talking to our configuration server
-        Trace.trace(10,'{__init__')
         self.print_id = "ALRMC"
-        self.pid = os.getpid()
-        self.uid = os.getuid()
-        self.source = source
+        self.uid = pwd.getpwuid(os.getuid())[0]
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
         self.verbose = verbose
         ticket = self.csc.get("alarm_server")
+        self.server_address = (ticket['hostip'], ticket['port'])
         try:
             self.print_id = ticket['logname']
         except KeyError:
             pass
-        Trace.trace(10,'}__init')
+	Trace.set_alarm_func( self.alarm_func )
+
+    def alarm_func(self, time, pid, name, args):
+        ticket = {}
+        if args[0] == e_errors.ALARM:
+            ticket['work'] = "post_alarm"
+            ticket['uid'] = self.uid
+            ticket['pid'] = pid
+            ticket['source'] = name
+            ticket.update(args[2])
+        else:
+            ticket['work'] = "post_alarm"
+            ticket['uid'] = self.uid
+            ticket['pid'] = pid
+            ticket['source'] = name
+            ticket['text'] = args[1]
+            pass
+        s = self.send(ticket, 0, 0 )
+	return s
 
     def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace(12,"{send "+repr(ticket))
-        # who's our alarm server that we should send the ticket to?
-        vticket = self.csc.get("alarm_server")
         # send user ticket and return answer back
-        Trace.trace(12,"send addr="+repr((vticket['hostip'], \
-                                           vticket['port'])))
-        s = self.u.send(ticket, (vticket['hostip'], vticket['port']), \
-                        rcv_timeout, tries )
-        Trace.trace(12,"}send "+repr(s))
+        s = self.u.send(ticket, self.server_address, rcv_timeout, tries )
         return s
 
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info={}, rcv_timeout=0, tries=0):
-        Trace.trace(12,"{alarm ")
-        # format the ticket to send to the alarm server
-        ticket = {}
-        ticket['work'] = "post_alarm"
-        ticket['root_error'] = root_error
-        ticket['severity'] = severity
-        ticket['uid'] = self.uid
-        ticket['pid'] = self.pid
-        ticket['source'] = self.source
-	ticket.update(alarm_info)
-        s = self.send(ticket, rcv_timeout, tries )
-	return s
+        print 'alarm_client: alarm: alarm_info =',alarm_info
+        apply( Trace.alarm, (severity,root_error), alarm_info )
+
+    def resolve(self, id, rcv_timeout=0, tries=0):
+        # this alarm has been resolved.  we need to tell the alarm server
+        # this
+        ticket = {'work' : "resolve_alarm",
+                  'id'   : id}
+        return self.send(ticket, rcv_timeout, tries)
 
     def ens_status(self, info, server="ALARMC", rcv_timeout=0, tries=0):
         # send the 'info' to the alarm server
@@ -83,6 +89,8 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.alarm = 0
+        self.resolve = 0
+        self.id = 0
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.patrol_file = 0
@@ -95,8 +103,16 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
     def options(self):
         Trace.trace(16,"{}options")
         return self.client_options() +\
-	       ["alarm", "severity=", "root_error=", "patrol_file"]
+	       ["alarm", "severity=", "root_error=", "patrol_file", \
+                "resolve", "id="]
 
+    # we must have an id if the user is trying to resolve an alarm
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        if self.resolve and not self.id:
+            generic_cs.enprint("An alarm id must be entered (--id=value).")
+            self.print_help()
+            sys.exit(1)
 
 if __name__ == "__main__" :
     Trace.init("ALARM client")
@@ -112,6 +128,11 @@ if __name__ == "__main__" :
         ticket = alc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
 
+    elif intf.resolve:
+        ticket = alc.resolve(intf.id, intf.alive_rcv_timeout,\
+                             intf.alive_retries)
+        msg_id = generic_cs.CLIENT
+
     elif intf.got_server_verbose:
         ticket = alc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
 	                         intf.alive_retries)
@@ -122,7 +143,8 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
 
     elif intf.alarm:
-        ticket = alc.alarm(intf.severity, intf.root_error)
+        alc.alarm(intf.severity, intf.root_error)
+        ticket = {}
 	msg_id = generic_cs.CLIENT
 
     elif intf.patrol_file:
