@@ -17,6 +17,7 @@ import setpath
 
 import volume_clerk_client
 import callback
+import hostaddr
 import dispatching_worker
 import generic_server
 import event_relay_client
@@ -844,9 +845,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
-	self.alive_interval = monitored_server.get_alive_interval(self.csc,
-								  libman,
-								  self.keys)
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  libman,
+                                                                  self.keys)
         enstore_dir = os.environ.get('ENSTORE_DIR','')
         priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
         self.pri_sel = priority_selector.PriSelector(self.csc)
@@ -868,9 +869,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
-	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(self.name, self.alive_interval, 
-				 self.return_state)
+        # start our heartbeat to the event relay process
+        self.erc.start_heartbeat(self.name, self.alive_interval, 
+                                 self.return_state)
 
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
@@ -1338,7 +1339,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            self.get_user_sockets(ticket)
+            if not self.get_user_sockets(ticket):
+                return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["at movers"] = self.work_at_movers.list
@@ -1360,7 +1362,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            self.get_user_sockets(ticket)
+            if not self.get_user_sockets(ticket):
+                return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["suspect_volumes"] = self.suspect_volumes.list
@@ -1385,9 +1388,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.control_socket.connect(ticket['callback_addr'])
         callback.write_tcp_obj_new(self.control_socket, ticket)
         data_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            data_socket.close()
+            listen_socket.close()
+            return 0
         self.data_socket = data_socket
         listen_socket.close()
-
+        return 1
+    
     # remove work from list of pending works
     def remove_work(self, ticket):
         id = ticket["unique_id"]
@@ -1430,7 +1438,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # this is used to include the state information in with the heartbeat
     def return_state(self):
-	return self.lm_lock
+        return self.lm_lock
 
     # get state of the library manager
     def get_lm_state(self, ticket):
