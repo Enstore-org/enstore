@@ -51,9 +51,13 @@ class EventRelayNotifyMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	self.host, self.port, self.msg_types = string.split(self.extra_info, 
+	self.host, self.port, self.msg_types = string.split(self.extra_info,
 							    MSG_FIELD_SEPARATOR, 2)
-	
+	self.msg_type_l = string.split(self.msg_types, MSG_FIELD_SEPARATOR)
+
+    def encode_self(self):
+	self.encode(self.msg_type_l)
+
 # Message format:   alive host port server_name 
 class EventRelayAliveMsg(EventRelayMsg):
 
@@ -62,41 +66,50 @@ class EventRelayAliveMsg(EventRelayMsg):
 	self.host, self.port, self.server = string.split(self.extra_info, 
 							 MSG_FIELD_SEPARATOR, 2)
 
-    def encode(self, name):
+    def encode(self, server):
 	self.type = ALIVE
 	self.extra_info = self.encode_addr()
-	self.extra_info = "%s%s%s"%(self.extra_info, MSG_FIELD_SEPARATOR, name)
+	self.extra_info = "%s%s%s"%(self.extra_info, MSG_FIELD_SEPARATOR, server)
 
-# Message format:  newconfigfile host port
+    def encode_self(self):
+	self.encode(self.server)
+
+# Message format:  newconfigfile
 class EventRelayNewConfigFileMsg(EventRelayMsg):
 
     def decode(self, msg):
-	self.type, self.extra_info = decode_type(msg)
-	self.host, self.port = string.split(self.extra_info, 
-					    MSG_FIELD_SEPARATOR, 1)
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
 
     def encode(self):
 	self.type = NEWCONFIGFILE
-	self.extra_info = self.encode_addr()
+	self.extra_info = ""
+
+    def encode_self(self):
+	self.encode()
 
 # Message format:  client host work file_family more_info
 class EventRelayClientMsg(EventRelayMsg):
 
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
-	self.host, self.work, self.file_family, \
-		   self.more = string.split(self.extra_info, 
-					    MSG_FIELD_SEPARATOR, 3)
+	self.host, self.work, self.file_family, self.more = string.split(self.extra_info, 
+								   MSG_FIELD_SEPARATOR, 3)
 
-    def encode(self, host, work, file_family, more_info):
+    def encode(self, work, file_family, more_info):
 	self.type = CLIENT
-	self.extra_info = "%s %s %s %s"%(host, work, file_family, 
-					 more_info)
+	self.extra_info = "%s %s %s %s"%(self.host, work, 
+					 file_family, more_info)
+
+    def encode_self(self):
+	self.encode(self.work, self.file_family,
+		    self.more_info)
 
 # Message format:  state short_name state_name
 class EventRelayStateMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -109,10 +122,13 @@ class EventRelayStateMsg(EventRelayMsg):
 	self.type = STATE
 	self.extra_info = "%s %s"%(self.short_name, state_name)
 
+    def encode_self(self):
+	self.encode(self.state_name)
+
 # Message format:  transfer short_name bytes_read bytes_to_read
 class EventRelayTransferMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -126,10 +142,13 @@ class EventRelayTransferMsg(EventRelayMsg):
 	self.type = TRANSFER
 	self.extra_info = "%s %s %s"%(self.short_name, bytes_read, bytes_to_read)
 
+    def encode_self(self):
+	self.encode(self.bytes_read, self.bytes_to_read)
+
 # Message format:  disconnect short_name client_hostname
 class EventRelayDisconnectMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -142,10 +161,13 @@ class EventRelayDisconnectMsg(EventRelayMsg):
 	self.type = DISCONNECT
 	self.extra_info = "%s %s"%(self.short_name, client_hostname)
 
+    def encode_self(self):
+	self.encode(self.client_hostname)
+
 # Message format:  connect short_name client_hostname
 class EventRelayConnectMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -158,10 +180,13 @@ class EventRelayConnectMsg(EventRelayMsg):
 	self.type = CONNECT
 	self.extra_info = "%s %s"%(self.short_name, client_hostname)
 
+    def encode_self(self):
+	self.encode(self.client_hostname)
+
 # Message format:  unload short_name volume
 class EventRelayUnloadMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -172,12 +197,15 @@ class EventRelayUnloadMsg(EventRelayMsg):
 
     def encode(self, volume):
 	self.type = UNLOAD
-	self.extra_info = "%s %s"%(self.short_name, state_name)
+	self.extra_info = "%s %s"%(self.short_name, volume)
+
+    def encode_self(self):
+	self.encode(self.volume)
 
 # Message format:  loaded short_name volume
 class EventRelayLoadedMsg(EventRelayMsg):
 
-    def __init__(self, short_name):
+    def __init__(self, short_name=""):
 	EventRelayMsg.__init__(self)
 	self.short_name = short_name
 
@@ -187,8 +215,11 @@ class EventRelayLoadedMsg(EventRelayMsg):
 						    MSG_FIELD_SEPARATOR, 1)
 
     def encode(self, volume):
-	self.type = VOLUME
+	self.type = LOADED
 	self.extra_info = "%s %s"%(self.short_name, volume)
+
+    def encode_self(self):
+	self.encode(self.volume)
 
 # list of supported messages
 SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
@@ -205,8 +236,8 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 
 
 def decode(msg):
-    type, extra_info = decode_type(msg)
-    msg_class = SUPPORTED_MESSAGES.get(type, None)
+    dec_msg = decode_type(msg)
+    msg_class = SUPPORTED_MESSAGES.get(dec_msg[0], None)
     if msg_class:
 	decoded_msg = msg_class()
 	decoded_msg.decode(msg)
