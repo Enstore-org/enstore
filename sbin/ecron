@@ -66,8 +66,8 @@ quit() {
     echo "$done: $0 $@ ...finished. code=$code" >/dev/console
   fi
   if [ -f $genAlarm -a $code != 0 ] ; then 
-      echo enstore alarm --raise --severity "A" --root-error "$0 STAT=$code"
-           enstore alarm --raise --severity "A" --root-error "$0 STAT=$code"
+      echo enstore alarm --raise --severity "A" --root-error "$@ STAT=$code"
+           enstore alarm --raise --severity "A" --root-error "$@ STAT=$code"
   fi   
   exit $code
 }
