@@ -254,10 +254,16 @@ class FileClient(generic_client.GenericClient,
 	return r
 
     # rename volume and volume map
-    def restore(self, file_name, restore_dir="no"):
+    def restore2(self, file_name, restore_dir="no"):
         r = self.send({"work"           : "restore_file",
                        "file_name"      : file_name,
 		       "restore_dir"    : restore_dir } )
+	return r
+
+    # rename volume and volume map
+    def restore(self, bfid):
+        r = self.send({"work"           : "restore_file2",
+                       "bfid"           : bfid } )
 	return r
 
     # get volume map name for given bfid
@@ -362,14 +368,15 @@ def do_work(intf):
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
 	    print ticket['fc']
-	    print ticket['vc']
+	    # print ticket['vc']
     elif intf.restore:
 	try:
 	    if intf.restore_dir: dir="yes"
 	except AttributeError:
 	    dir = "no"
-	print "file",intf.restore
-        ticket = fcc.restore(intf.restore, dir)
+	print "bfid",intf.restore
+        # ticket = fcc.restore(intf.restore, dir)
+        ticket = fcc.restore(intf.restore)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)

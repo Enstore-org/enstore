@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# Got to run this at the server that hosts bfid_db (just for now)
-
 import sys
 import os
 import volume_clerk_client
@@ -10,8 +8,6 @@ import generic_client
 import configuration_client
 import e_errors
 import string
-# just for now, while bfid_db is still alive
-import bfid_db
 
 class Interface(generic_client.GenericClientInterface):
 	def __init__(self):
@@ -41,15 +37,6 @@ if __name__ == '__main__':
 	dbInfo = configuration_client.ConfigurationClient((intf.config_host, intf.config_port)).get('database')
 
 	dbHome = dbInfo['db_dir']
-	bfiddb = bfid_db.BfidDb(dbHome)
-
-	#if intf.delete:
-	#	vol = intf.delete
-	#elif len(intf.args) == 1:
-	#	vol = intf.args[0]
-	#else:
-	#	usage()
-	#	sys.exit(0)
 
 	if len(intf.args) == 1:
 		vol = intf.args[0]
@@ -58,6 +45,7 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	print 'checking', vol, '...'
+	error = 0
 
 	if intf.bfids:	# read from the file
 		try:
@@ -69,10 +57,11 @@ if __name__ == '__main__':
 		for i in bf.readlines():
 			files.append(string.strip(i))
 		bf.close()
-	else:		# get it from bfid_db
+	else:		# get it from file clerk
 		try:	
-			files = bfiddb.get_all_bfids(vol)
+			files = fcc.get_bfids(vol)['bfids']
 		except:
+			error = error + 1
 			print 'can not find files for', vol
 			if not intf.force:
 				sys.exit(1)
@@ -88,7 +77,6 @@ if __name__ == '__main__':
 		else:
 			print '(Warning)', i, fileInfo
 
-	error = 0
 	for i in file_list.keys():
 		fileInfo = file_list[i]
 		if not intf.bfids:

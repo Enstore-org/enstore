@@ -576,6 +576,25 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
         bfids = self.get_all_bfids(old)
 
+        # deal with volmap directory
+        # if volmap directory can not be renamed, singal a error and stop
+
+	if len(bfids):
+            volmap = self.dict[bfids[0]]["pnfs_mapname"]
+            p1, f = os.path.split(volmap)
+            p, f1 = os.path.split(p1)
+            if old != f1:
+                Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1))
+                return e_errors.ERROR, 'volmap name mismatch. Looking for "%s" but found "%s"'%(old, f1)
+            new_volmap = os.path.join(p, new)
+            # can I modify it?
+            if not os.access(p, os.W_OK):
+		return e_errors.ERROR, 'can not rename %s to %s'%(p, new_volmap)
+            try:
+                os.rename(p1, new_volmap)
+            except:
+                return e_errors.ERROR, 'can not rename %s to %s'%(p, new_volmap)
+        
         for bfid in bfids:
             record = self.dict[bfid] 
             # replace old volume name with new one
@@ -588,7 +607,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.dict[bfid] = record 
  
         Trace.log(e_errors.INFO, 'volume %s renamed to %s'%(old, new))
-        return
+        return e_errors.OK, None
 
     # rename volume -- server service
 
@@ -603,12 +622,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        ticket["status"] = (e_errors.OK, None)
         # catch any failure
         try:
-            self.__rename_volume(old, new)
+            ticket["status"] = self.__rename_volume(old, new)
         except:
-            ticket["status"] = (e_errors.OK, "rename failed")
+            ticket["status"] = (e_errors.ERROR, "rename failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
