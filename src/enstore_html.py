@@ -761,7 +761,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                     continue
                 ##XXX end hack cgw
 	    ## another hack which can be removed when encp is recut (efb - aug, 02, 2000)
-	    if string.find(row[3], "imposter") != -1:
+	    if string.find(row[3], "impostor") != -1:
 		# found it, ignore this row
 		continue
 	    ## endof second hack
