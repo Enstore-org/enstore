@@ -24,7 +24,7 @@ V=`enstore vol --vol $tape`
 sys_inh=`echo "$V" | grep system_inhibit|cut -f2 -d:`
 lib=`echo "$V" | grep library|cut -f2 -d:`
 vf=`echo "$V" | grep volume_family|cut -f2 -d:`
-n=`echo "$V" |wc|awk '{print $1}'`
+n=`enstore fil --ls-active $tape |wc|awk '{print $1}'`
 echo `date` Starting tape $tape $sys_inh $lib $vf $n files
 
 gotit=/tmp/$tape.gotit.$$
