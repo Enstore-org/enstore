@@ -846,6 +846,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 	return
 
     def device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov']):
+        import m2
 
         """
         device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov'])
@@ -870,7 +871,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         res = m2.dump_code(self.device, '/tmp', sendto, notify, 'enstore mover: '+self.name)
 
 	if res:
-            Trace.log(e_error.INFO, res)
+            Trace.log(e_errors.INFO, res)
 
 	return res
  
