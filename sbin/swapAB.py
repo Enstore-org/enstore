@@ -22,6 +22,31 @@ fcc = None
 e_count = 0
 debug = 0
 doit = 0
+vcc = None
+cbvolume = []
+
+# restore the correct library
+def fix_library(v2):
+	# handling library
+	vv = vcc.inquire_vol(v2)
+	if vv['status'][0] == e_errors.OK:
+		ll = string.split(vv['library'], '-')
+		if len(ll) == 2 and ll[0] in library_prefixes and \
+			ll[1] == library_migration:
+			library = ll[0]+'-'+library_9940b
+			print '===> %s : changing library from %s to %s ...'%(v2, vv['library'], library),
+			if doit:
+				ticket = {'external_label': v2,
+					'library': library}
+				result = vcc.modify(ticket)
+				if result['status'][0] == e_errors.OK:
+					print 'OK'
+				else:
+					print 'FAILED'
+			else:
+				print 'SIMULATED'
+	else:
+		print 'ERROR: volume %s does not exist'%(v2)
 
 _mtab = None
 
@@ -190,6 +215,11 @@ def swap(f):
 		f_b.show()
 		print
 
+	# handle library
+	if not f_b.volume in cbvolume:
+		fix_library(f_b.volume)
+		cbvolume.append(f_b.volume)
+
 	# check size
 	if long(f_o.size) != long(f_b.size):
 		error("p_size(%d, %d)"%(long(f_o.size), long(f_b.size)))
@@ -348,24 +378,13 @@ if __name__ == '__main__':
 					for i in result['active_list']:
 						swap(i)
 						te_count = te_count + e_count
-					# handling library
-					vv = vcc.inquire_vol(v2)
-					if vv['status'][0] == e_errors.OK:
-						ll = string.split(vv['library'], '-')
-						if len(ll) == 2 and ll[0] in library_prefixes and \
-							ll[1] == library_migration:
-							library = ll[0]+'-'+library_9940b
-							if doit:
-								print '===> %s : changing library from %s to %s ...'%(v2, vv['library'], library),
-								ticket = {'external_label': v2,
-									'library': library}
-								result = vcc.modify(ticket)
-								if result['status'][0] == e_errors.OK:
-									print 'DONE'
-								else:
-									print 'FAILED'
+					# set system inhibit to migrated
+					print 'set', v2, 'to migrated ...',
+					res = vcc.set_system_migrated(v2)
+					if res['status'][0] == e_errors.OK:
+						print 'OK'
 					else:
-						print 'ERROR: volume %s does not exist'%(v2)
+						print 'FAILED'
 			else:
 				print result['status'][1]
 	else:
