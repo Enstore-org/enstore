@@ -14,6 +14,7 @@ print time.strftime("%c",time.localtime('$1'))
 if [ -z "${1-}" ] ; then
   # write the output to a sub-directory in the inquisitor's web directory
   output=`conf.sh -k inquisitor | awk '($1 ~ /html_file/) {print $2}' | sed -e "s/'//g" -e "s/,//g"`tape_inventory
+  echo "OUT $output"
   if [ "$output" = "" ]; then exit 2; fi
   if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
   out=$output/VOLUMES_DEFINED
@@ -23,6 +24,10 @@ if [ -z "${1-}" ] ; then
   #vols=`enstore volume --vols | cut -f1 -d\ | grep -v label`
   enstore volume --vols >> $out
   vols=`cat $out | cut -f1 -d\ | egrep -v 'label|Date|\.deleted'`
+  # report volume quotas
+  out=$output/VOLUME_QUOTAS
+  echo Date this listing was generated: `date` > $out
+  $ENSTORE_DIR/src/report_volume_quotas.py >> $out
 else
   vols="$1"
   output=""
