@@ -65,6 +65,8 @@ COMPRESSION_USED = "P"
 CVSREVISION = "CVS $Revision: "
 efile = None 
 
+VOL1_LABEL_LENGTH = HDR_LABELLEN * 3
+
 # exceptions that this module can raise
 UNKNOWNRECFORMAT = "UNKNOWN_RECORD_FORMAT"
 INVALIDLENGTH = "INVALID_LENGTH"
@@ -776,6 +778,9 @@ def create_wrapper_dict(ticket):
     wrapper_d[VOLUME_FAMILY] = ticket_vc[VOLUME_FAMILY]
     
     return wrapper_d
+
+def vol_label_length():
+    return VOL1_LABEL_LENGTH
 
 def vol_labels(vol_label, ticket={}, own_id=OWNER):
     vol1 = VOL1(volume_id=vol_label, owner_id=own_id)

@@ -398,9 +398,17 @@ class FTTDriver(driver.Driver):
         Trace.trace(25, "set mode: new mode is %s" % (self.ftt.get_mode(),))
         return r
 
-    def verify_label(self, volume_label=None, mode=0):
+    def check_addtl_hdrs(self, nbytes, buf):
+        # check for VOL2 - VOL9 and
+        #           UVL1 - UVL9
+        return 1
+
+
+    # the expected length is set to the absolute maximum volume header length that
+    # we could possibly get (VOL1-VOL9 + UVL1-UVL9, each 80 bytes = 1440)
+    def verify_label(self, volume_label=None, mode=0, expected_length=1440):
         
-        buf=80*' '
+        buf=expected_length*' '
         try:
             Trace.trace(25, "rewinding tape to check volume label")
             r=self.rewind()
@@ -410,15 +418,20 @@ class FTTDriver(driver.Driver):
             if self.fd is None:
                 return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
             try:
-                nbytes=self.read(buf, 0, 80)
+                import pdb
+                pdb.set_trace()
+                nbytes=self.read(buf, 0, expected_length)
             except e_errors.READ_ERROR, detail:
                 nbytes = 0
-            if nbytes != 80:
+            # the returned data should be a modulo of 80.
+            if not nbytes or nbytes%80 != 0:
                 Trace.trace(25, "read %s bytes checking label" % (nbytes,))
                 return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], None
             Trace.trace(25, "verify_label: read %s" % (buf,))
             if buf[:4] != "VOL1":
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
+            if self.check_addtl_hdrs(nbytes, buf) != 1:
+                return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None # FIX
             s = string.split(buf[4:])
             if not s:
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
