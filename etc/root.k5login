@@ -8,8 +8,6 @@ petravic@FNAL.GOV
 alcorn@FNAL.GOV
 seva@FNAL.GOV
 jonest@FNAL.GOV
-sachs@FNAL.GOV
-joes@FNAL.GOV
 george@FNAL.GOV
 genser@FNAL.GOV
 tlevshin@FNAL.GOV
@@ -18,7 +16,6 @@ djholm@FNAL.GOV
 ron@FNAL.GOV
 neilsen@FNAL.GOV
 vsergeev@FNAL.GOV
-nbirch@FNAL.GOV
 baisley@FNAL.GOV
 wellner@FNAL.GOV
 podstvkv@FNAL.GOV
@@ -129,6 +126,10 @@ host/cdfenmvr18a.fnal.gov@FNAL.GOV
 host/cdfenmvr19a.fnal.gov@FNAL.GOV
 host/cdfenmvr20a.fnal.gov@FNAL.GOV
 host/cdfenmvr21a.fnal.gov@FNAL.GOV
+host/cdfenmvr22a.fnal.gov@FNAL.GOV
+host/cdfenmvr23a.fnal.gov@FNAL.GOV
+host/cdfenmvr24a.fnal.gov@FNAL.GOV
+host/cdfenmvr25a.fnal.gov@FNAL.GOV
 host/cdfendca3.fnal.gov@FNAL.GOV
 host/cdfendca4.fnal.gov@FNAL.GOV
 host/cdfendca5.fnal.gov@FNAL.GOV
