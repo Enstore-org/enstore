@@ -342,7 +342,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
             return
         output_data = {'DEVNAME' : self.mvr_config['mc_device'],
-                       'VSN'     : }
+                       'VSN'     : self.vol_info['external_label']}
         """
         try:
             fd = open(path,'a')
