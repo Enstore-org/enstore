@@ -64,7 +64,7 @@ class DispatchingWorker:
 
     socket_type = socket.SOCK_DGRAM
 
-    max_packet_size = 8192
+    max_packet_size = 16384
     
     rcv_timeout = 60.   # timeout for get_request in sec.
 
