@@ -1,7 +1,6 @@
 *.fake
 *.dot
 *.out
-*.in
 *.pyc
 *.jou
 *.dat
