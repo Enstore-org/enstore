@@ -15,6 +15,9 @@ import os
 import pwd
 import errno
 import socket
+import string
+import base64
+import cPickle
 
 #enstore imports
 import generic_client
@@ -28,10 +31,9 @@ MY_SERVER = "log_server"
 
 # send a message to the logger
 def logit(logc, message="HELLO", logname="LOGIT"):
-
     # reset our log name
     logc.log_name = logname
-        
+
     # send the message
     Trace.log(e_errors.INFO, message)
 
@@ -85,9 +87,12 @@ class LoggerClient(generic_client.GenericClient):
             ln = name
 	if severity > e_errors.MISC: severity = e_errors.MISC
 
+        if string.find(msg, "MSG_TYPE") < 0:
+            msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
+            msg = "%s %s" % (msg, msg_type)
+
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
-
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
 	return 	self.lock.unlock()
@@ -96,6 +101,330 @@ class LoggerClient(generic_client.GenericClient):
 	if args != (): format = format%args
 	Trace.log( severity, format )
 	return {"status" : (e_errors.OK, None)}
+
+#############################################################################################
+# AUTHOR        : FERMI-LABS
+# DATE          : JUNE 8, 1999
+# DESCRIPTION   : THIS FUNCTION TAKES A LINE THAT IS PASSED TO IT BY THE CALLER, AND
+#               : USES DICTIONARIES TO TRY SENSIBLE ERROR MESSAGES
+# PRECONDITION  : A VALID LINE IN STRING FORMAT
+# POSTCONDITION : AN ACCURATE (HOPEFULLY) ERROR MESSAGE
+#############################################################################################
+def genMsgType(msg, ln, severity):
+    TRUE = 1
+    FALSE = 0
+
+    clientFlg = FALSE # DETERMINES IF A VALID CLIENT DEFINITION WAS FOUND
+    functFlg  = FALSE # FOR FUNCTION DEFINITIONS
+    sevFlg    = FALSE # FOR SEVERITY DEFINITIONS
+    clientMsg = ''    # CONTAINS THE ACTUAL CLIENT PORTION OF ERROR MESSAGE
+    functMsg  = ''    # FUNCTION PORTION OF ERROR MESSAGE
+    sevMsg    = ''    # SEVERITY PORTION OF ERROR MESSAGE
+    listNum  = 0      # MESSAGES START ON THIS PORTION OF LINE INPUT
+    msgStrt   = 0     # ANCHOR FOR WHERE MESSAGE STARTS
+
+    tmpLine = string.split(msg)      # 2 LINES CAUSE A GROUP OF CHARACTERS TO BE SPLIT APART AND THEN
+    msg = string.joinfields(tmpLine) # RE-ASSEMBLED LEAVING ONLY 1 SPACE IN BETWEEN EACH GROUP
+    lowLine = string.lower(msg)      # CONVERTS LINE TO ALL LOWER CASE FOR STRING CHECKS
+
+    if string.find(lowLine, "file clerk") >= 0:
+        cKey = "fc"
+    elif string.find(lowLine, "file_clerk ") >= 0:
+        cKey = "fc"
+    elif string.find(lowLine, "alarm server") >= 0:
+        cKey = "alarm_srv"
+    elif string.find(lowLine, "alarm_server") >= 0:
+        cKey = "alarm_srv"
+    elif string.find(lowLine, "volume clerk") >= 0:
+        cKey = "vc"
+    elif string.find(lowLine, "volume_clerk ") >= 0:
+        cKey = "vc"
+    elif string.find(lowLine, "media changer") >= 0:
+        cKey = "mc"
+    elif string.find(lowLine, "media_changer ") >= 0:
+        cKey = "mc"
+    elif string.find(lowLine, "library manager") >= 0:
+        cKey = "lm"
+    elif string.find(lowLine, "library_manager ") >= 0:
+        cKey = "lm"
+    elif string.find(lowLine, "config server") >= 0:
+        cKey = "cs"
+    elif string.find(lowLine, "configuration server") >= 0:
+        cKey = "cs"
+    elif string.find(lowLine, "root error") >= 0:
+        cKey = "re"
+    elif string.find(lowLine, "root_error ") >= 0:
+        cKey = "re"
+    elif string.find(lowLine, "backup") >= 0:
+        cKey = "backup"
+    elif string.find(lowLine, " mover ") >= 0:
+        cKey = "mvr"
+    elif string.find(lowLine, "encp") >= 0:
+        cKey = "encp"
+    else:
+        cKey = string.lower(tmpLine[msgStrt])
+         
+    if string.find(lowLine, "unmount") >= 0:
+        fKey = "unmount"
+    elif string.find(lowLine, "write_to_hsm") >= 0:
+        fKey = "write_hsm"
+    elif string.find(lowLine, "dismount") >= 0:
+        fKey = "dismount"
+    elif string.find(lowLine, "unload") >= 0:
+        fKey = "dismount"
+    elif string.find(lowLine, "find_mover") >= 0:
+        fKey = "mvr_find"
+    elif string.find(lowLine, "exception") >= 0:
+        fKey = "exception"
+    elif string.find(lowLine, "badmount") >= 0:
+        fKey = "mount"
+    elif string.find(lowLine, "getmoverlist") >= 0:
+        fKey = "get_mv"
+    elif string.find(lowLine, "getwork") >= 0:
+        fKey = "get_wrk"
+    elif string.find(lowLine, "get_work") >= 0:
+        fKey = "get_wrk"
+    elif string.find(lowLine, "get_suspect_vol") >= 0:
+        fKey = "gsv"
+    elif string.find(lowLine, "get_user_socket") >= 0:
+        fKey = "gus"
+    elif string.find(lowLine, "busy_vols") >= 0:
+        fKey = "busy_vols"
+    elif string.find(lowLine, "open_file_write") >= 0:
+        fKey = "write_file"
+    elif string.find(lowLine, "wrapper.write") >= 0:
+        fKey = "write_wrapper"
+    elif string.find(lowLine, "read ") >= 0:
+        fKey = "read"
+    elif string.find(lowLine, "reading") >= 0:
+        fKey = "read"
+    elif string.find(lowLine, "write ") >= 0:
+        fKey = "write"
+    elif string.find(lowLine, "writing") >= 0:
+        fKey = "write"
+    elif string.find(lowLine, "file database") >= 0:
+        fKey = "filedb"
+    elif string.find(lowLine, "volume database") >= 0:
+        fKey = "voldb"
+    elif string.find(lowLine, "added to mover list") >= 0:
+        fKey = "add_list"
+    elif string.find(lowLine, "update_mover_list") >= 0:
+        fKey = "update_mover_list"
+    elif string.find(lowLine, "get_work") >= 0:
+        fKey = "get_work"
+    elif string.find(lowLine, "next_work") >= 0:
+        fKey = "next_work"
+    elif string.find(lowLine, "insertvol") >= 0:
+        fKey = "insert_vol"
+    elif string.find(lowLine, "insert") >= 0:
+        fKey = "insert"
+    elif string.find(lowLine, "serverdied") >= 0:
+        fKey = "server_died"
+    elif string.find(lowLine, "cantrestart") >= 0:
+        fKey = "cant_restart"
+    elif string.find(lowLine, "no such vol") >= 0:
+        fKey = "vol_err"
+    elif string.find(lowLine, "unbind vol") >= 0:
+        fKey = "unbind_vol"
+    elif string.find(lowLine, "unbind") >= 0:
+        fKey = "unbind"
+    elif string.find(lowLine, " vol") >= 0:
+        fKey = "vol"
+    elif string.find(lowLine, "load") >= 0:
+        fKey = "mount"
+    elif string.find(lowLine, "load") >= 0:
+        fKey = "mount"
+    elif string.find(lowLine, "quit") >= 0:
+        fKey = "quit"
+    elif string.find(lowLine, "file") >= 0:
+        fKey = "file "
+    else:
+        fKey = string.lower(tmpLine[msgStrt])
+    
+    if string.find(lowLine, "tape stall") >= 0:
+        sKey = "ts"
+    elif string.find(lowLine, "tape_stall") >= 0:
+        sKey = "ts"
+    elif string.find(lowLine, "getmoverlist") >= 0:
+        sKey = "get_mv"
+    elif string.find(lowLine, "getwork") >= 0:
+        sKey = "get_wrk"
+    elif string.find(lowLine, "get_work") >= 0:
+        sKey = "get_wrk"
+    elif string.find(lowLine, "get_suspect_vol") >= 0:
+        sKey = "gsv"
+    elif string.find(lowLine, "get_user_socket") >= 0:
+        sKey = "gus"
+    elif string.find(lowLine, "busy_vols") >= 0:
+        sKey = "busy_vols"
+    elif string.find(lowLine, "find_mover") >= 0:
+        sKey = "mvr_find"
+    elif string.find(lowLine, "open_file_write") >= 0:
+        sKey = "write_file"
+    elif string.find(lowLine, "wrapper.write") >= 0:
+        sKey = "write_wrapper"
+    elif string.find(lowLine, "completed precautionary") >= 0:
+        sKey = "check_suc"
+    elif string.find(lowLine, "performing precautionary") >= 0:
+        sKey = "check"
+    elif string.find(lowLine, "update_mover_list") >= 0:
+        sKey = "update_mover_list"
+    elif string.find(lowLine, "get_work") >= 0:
+        sKey = "get_work"
+    elif string.find(lowLine, "next_work") >= 0:
+        fKey = "next_work"
+    elif string.find(lowLine, "bad") >= 0:
+        sKey = "bad"
+    elif string.find(lowLine, "done") >= 0:
+        sKey = "done"
+    elif string.find(lowLine, "hurrah") >= 0:
+        sKey = "hurrah"
+    elif string.find(lowLine, "start{") >= 0:
+        sKey = "start"
+    elif string.find(lowLine, "(re)") >= 0:
+        sKey = "restart"
+    elif string.find(lowLine, "restart") >= 0:
+        sKey = "restart"
+    elif string.find(lowLine, "start") >= 0:
+        sKey = "start"
+    elif string.find(lowLine, "stop") >= 0:
+        sKey = "stop"
+    elif string.find(lowLine, "full") >= 0:
+        sKey = "full "
+    else:
+        sKey = string.lower(tmpLine[msgStrt])
+
+    while listNum < len(tmpLine):
+        if clientFlg == TRUE and functFlg == TRUE and sevFlg == TRUE:
+            break
+        while 1:
+            if listNum > msgStrt: # ONLY DO ELSE THE FIRST TIME THROUGH
+                key = string.lower(tmpLine[listNum])
+                cKey = key
+                fKey = key
+                sKey = key
+            else:
+                if e_errors.ctypedict.has_key(cKey):
+                    clientMsg = e_errors.ctypedict[cKey]
+                    clientFlg = TRUE
+                if e_errors.ftypedict.has_key(fKey):
+                    if e_errors.stypedict.has_key(fKey):
+                        functMsg = e_errors.ftypedict[fKey]
+                        functFlg = TRUE
+                        sevMsg = e_errors.stypedict[fKey]
+                        sevFlg = TRUE
+                    else:
+                        functMsg = e_errors.ftypedict[fKey]
+                        functFlg = TRUE
+                elif e_errors.stypedict.has_key(sKey):
+                    sevMsg = e_errors.stypedict[sKey]
+                    sevFlg = TRUE
+                
+            if clientFlg == FALSE:
+                if e_errors.ctypedict.has_key(cKey):
+                    clientMsg = e_errors.ctypedict[cKey]
+                    clientFlg = TRUE
+                    listNum = listNum + 1
+                    break
+                
+            if functFlg == FALSE:
+                if e_errors.ftypedict.has_key(fKey):
+                    functMsg = e_errors.ftypedict[fKey]
+                    functFlg = TRUE
+                    listNum = listNum + 1
+                    break
+                
+            if sevFlg == FALSE:
+                if e_errors.stypedict.has_key(sKey):
+                    sevMsg = e_errors.stypedict[sKey]
+                    sevFlg = TRUE
+                    listNum = listNum + 1
+                    break
+            listNum = listNum + 1
+            break
+
+    # THESE SERIES OF CHECKS ARE IF ANY OF THE PORTIONS OF THE ERROR MESSAGE
+    # WEREN'T FOUND. IT TRIES TO COME UP WITH A SANE DEFAULT.
+    if sevMsg == functMsg:
+        functFlg = FALSE
+        functMsg = ""
+    if clientFlg == FALSE:
+        clientMsg = string.upper(ln)
+    clientMsg = "_" + clientMsg
+    if string.lower(sevMsg) == "suc" and  string.lower(severity) != "i":
+        sevFlg = FALSE
+    if sevFlg == FALSE:
+        sKey = string.lower(severity)
+        sevMsg = e_errors.stypedict[sKey]
+    if functFlg == TRUE:
+        sevMsg = "_" + sevMsg
+        
+    return  "MSG_TYPE=%s%s%s" % (functMsg, sevMsg, clientMsg)
+
+#################################################################################
+# NAME        : FERMI LABS - RICHARD KENNA
+# DATE        : JUNE 24, 1999
+# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
+#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
+#             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
+#             : MSG, MSG_DICT AND MSG_TYPE
+#             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
+#             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
+#             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
+#################################################################################
+def parse(lineIn):
+
+    tmpLine = string.split(lineIn)
+    time = tmpLine[0]
+    host = tmpLine[1]
+    pid = tmpLine[2]
+    user = tmpLine[3]
+    severity = tmpLine[4]
+    server = tmpLine[5]
+
+    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
+                 'user' : user, 'severity' : severity,
+                 'server' : server }
+
+    mNum = string.find(lineIn, server) + len(server) + 1
+    dNum = string.find(lineIn, "MSG_DICT:")
+    tNum = string.find(lineIn, "MSG_TYPE=")
+
+    if tNum < 0:
+        tNum = len(lineIn)
+    else:
+        msg_type = []
+        num = tNum
+        while num < len(lineIn):
+            msg_type.append(lineIn[num])
+            num = num + 1
+        msg_type = string.joinfields(msg_type, "")
+        msg_type = string.split(msg_type, "=")
+        msg_type = msg_type[1]
+        lineDict['msg_type'] = msg_type
+    if dNum < 0:
+        dNum = tNum;
+    else:
+        msg_dict = []
+        num = dNum
+        while num < tNum:
+            msg_dict.append(lineIn[num])
+            num = num + 1
+        msg_dict = string.joinfields(msg_dict, "")
+        msg_dict = string.split(msg_dict, ":")
+        msg_dict = msg_dict[1]
+        msg_dict = cPickle.loads(base64.decodestring(msg_dict))
+        lineDict['msg_dict'] = msg_dict
+    if mNum < dNum:
+        msg = []
+        num = mNum
+        while num < dNum:
+            msg.append(lineIn[num])
+            num = num + 1
+        msg = string.joinfields(msg, "")
+        lineDict['msg'] = msg
+
+    return lineDict
 
 #
 # priorty allows turning logging on and off in a server.

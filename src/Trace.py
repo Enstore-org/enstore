@@ -10,16 +10,18 @@ import sys				# setprofile
 import e_errors				# required for default logging, ???
 import os				# required for default logging, ???
 import pwd				# required for default logging, ???
-import Ptrace				# basis for this work
+import Ptrace				# basis for this work    
+import base64                           # to send pickled dictionary as  string
+import cPickle                          # to preserve dictionaries and lists
+import string
 
 # message types.  a message type will be appended to every message so that
 # identifying which message is which will be easier.  messages logged without
 # a message type will have MSG_DEFAULT appended.
+MSG_DICT_DFLT = ""
+MSG_DICT = "MSG_DICT:"
+MSG_TYPE_DFLT = ""
 MSG_TYPE = "MSG_TYPE="
-MSG_DEFAULT = ""
-MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
-MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
-MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
 
 # define some short-cuts, for efficiency.  (I may wish to use
 # "from Ptrace import *)
@@ -32,8 +34,22 @@ mode   = Ptrace.mode
 
 
 # USER FUNCTIONS
-def log( severity, msg, msg_type=MSG_DEFAULT ):
-    trace( severity, msg_type+msg )
+def log( severity, msg, msg_dict = MSG_DICT_DFLT, msg_type = MSG_TYPE_DFLT ):
+    # CHECK TO SEE IF THERE IS A VALID DICTIONARY. IF THERE IS,
+    # BASE64(CPICKLE) IT AND ATTACH TO END OF MESSAGE.
+    if type(msg_dict) == type({}):
+        tmp_dict = base64.encodestring(cPickle.dumps(msg_dict))
+        tmp_dict = string.split(tmp_dict, "\n")
+        tmp_dict = string.joinfields(tmp_dict, "")
+        msg_dict = "%s%s" % (MSG_DICT, tmp_dict)
+
+    # SEE IF USER ENTERED HIS OWN 'MSG_TYPE' MESSAGE. IF HE DID,
+    # ATTACH TO END OF MESSAGE.
+    if len(msg_type) > 0:
+        msg_type = "%s%s" % (MSG_TYPE, msg_type)
+
+    msg = "%s %s %s" % (msg, msg_dict, msg_type)
+    trace( severity, msg)
     return None
 
 def alarm( severity, root_error, rest={} ):
