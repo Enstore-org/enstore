@@ -1422,10 +1422,6 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
-    def valid_dictionaries(self):
-	    return media_options + \
-		 generic_server.GenericServerInterface.valid_dictionaries(self)
-
     media_options = {
 	    option.LOG:{option.HELP_STRING:"",
 			option.VALUE_USAGE:option.REQUIRED,
@@ -1436,7 +1432,22 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 			     option.VALUE_TYPE:option.INTEGER
 			     },
 	    }
-    """
+
+    def valid_dictionaries(self):
+	    return (self.media_options,) + \
+		 generic_server.GenericServerInterface.valid_dictionaries(self)
+
+    # parse the options like normal but make sure we have a media changer
+    def parse_options(self):
+        option.Interface.parse_options(self)
+        # bomb out if we don't have a media_changer
+        if len(self.args) < 1 :
+            self.missing_parameter(self.parameters())
+            self.print_help(),
+            sys.exit(1)
+        else:
+            self.name = self.args[0]
+"""
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+[
@@ -1445,18 +1456,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
     #  define our specific help
     def parameters(self):
         return "media_changer"
-    """
-    # parse the options like normal but make sure we have a media changer
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        # bomb out if we don't have a media_changer
-        if len(self.args) < 1 :
-            self.missing_parameter(self.parameters())
-            self.print_help(),
-            sys.exit(1)
-        else:
-            self.name = self.args[0]
-
+"""
 
 if __name__ == "__main__" :
     Trace.init("MEDCHANGER")

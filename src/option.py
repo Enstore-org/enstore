@@ -180,13 +180,14 @@ LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
 LOAD = "load"                                #configuration
+LOG = "log"                                  #medaia(s)
 KEEP = "keep"                                #plotter
 KEEP_DIR = "keep-dir"                        #plotter
 LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
-MAX_WORK = "max-work"                        #media
+MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
@@ -278,7 +279,7 @@ valid_option_list = [
     HELP, HOST, HTML, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IO,
     KEEP, KEEP_DIR,
-    LAYER, LIBRARY, LIST, LOAD, LOGFILE_DIR, LS, LS_ACTIVE,
+    LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
