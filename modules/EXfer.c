@@ -42,7 +42,7 @@
 #endif
 
 /* Define DEBUG only for extra debugging output */
-#define DEBUG
+/*#define DEBUG*/
 
 /* Define PROFILE only for extra time output */
 /* This profile only works for the non-threaded implementation.  It works
