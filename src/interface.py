@@ -188,6 +188,12 @@ class Interface:
         if 0: print self # lint fix
 	return value
 
+    # This is a dummy option(), the derived class should supply a real
+    # one
+
+    def options(self):
+        return []
+
     def parse_options(self):
         try:
             argv=map(dash_to_underscore, sys.argv[1:])
