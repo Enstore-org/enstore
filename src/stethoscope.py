@@ -12,7 +12,7 @@ import enstore_erc_functions
 import generic_client
 import option
 
-NINETY_SECONDS = 10
+NINETY_SECONDS = 90
     
 
 def do_real_work(intf):
