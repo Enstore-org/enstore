@@ -812,6 +812,7 @@ class LibraryManagerMethods:
         Trace.trace(17,"PW3")
         rq=self.pending_work.get()
         while rq:
+            Trace.trace(17, "PWAA %s"%(rq,))
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
@@ -826,10 +827,11 @@ class LibraryManagerMethods:
                         host_from_ticket = hostaddr.address_to_name(callback[0])
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                    
+
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
-                    #Trace.trace(16, "restrict_host_access returned %s"%(ret,))
+                    Trace.trace(17, "restrict_host_access returned %s"%(ret,))
+
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
@@ -837,9 +839,18 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["library"],
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
-                        rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                        Trace.trace(17,"PW4")
-                        rq = self.pending_work.get(next=1) # get next request
+
+                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                            Trace.trace(17,"PW4")
+                        if rq.work == 'write_to_hsm':
+                            label = rq.ticket["vc"]["volume_family"]
+                        else:
+                            label = rq.ticket["vc"]["external_label"]
+                        rq = self.pending_work.get(label, next=1)
+                        Trace.trace(17, "NEXT RQ1: %s"%(rq,))
+                        if not rq:
+                            rq = self.pending_work.get(next=1) # get next request
+                            Trace.trace(17, "NEXT RQ2: %s"%(rq,))
                         continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
