@@ -202,6 +202,11 @@ def next_work_any_volume(csc, verbose):
                 continue
             # otherwise we have found a volume that has read work pending
 	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
+            # ok passed criteria
+	    # sort requests according file locations
+	    w = pending_work.get_init_by_location()
+	    #print "LOCATION COOKIE1:", w["fc"]["location_cookie"]
+	    # return read work ticket
 	    return w
 
         # if we need to write: ask the volume clerk for a volume, but first go
@@ -282,7 +287,12 @@ def next_work_this_volume(v):
         # reading from this volume?
         elif (w["work"]           == "read_from_hsm" and
               w["fc"]["external_label"] == v['vc']["external_label"] ):
-            # ok passed criteria, return read work ticket
+            # ok passed criteria
+	    # pick up request according to file locations
+	    w = pending_work.get_init_by_location()
+	    w = pending_work.get_next_for_this_volume(v)
+	    #print "LOCATION COOKIE:", w["fc"]["location_cookie"]
+	    # return read work ticket
 	    Trace.trace(3,"}next_work_this_volume " + repr(w))
             return w
         w=pending_work.get_next()
@@ -823,8 +833,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 self.verbose)
 	    self.reply_to_caller({'work': 'nowork'})
 	    return
-        # otherwise, see if this volume will do for any other work pending
 
+        # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(mticket)
         self.enprint("next_work_this_volume "+repr(w), generic_cs.SERVER, \
 	             self.verbose)

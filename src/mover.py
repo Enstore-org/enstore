@@ -554,6 +554,7 @@ def forked_read_from_hsm( self, ticket ):
 
         # add some info to user's ticket
         ticket['vc'] = self.vol_info
+	ticket['vc']['current_location'] = ticket['fc']['location_cookie']
 	ticket['mover'] = self.config
 	ticket['mover']['callback_addr'] = self.callback_addr# this was the data callback
 

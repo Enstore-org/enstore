@@ -36,9 +36,19 @@ class Queue:
          return 1
       return -1
    
+   # A call back for sort, highest file location should be first.
+   def compare_location(self,t1,t2):
+       if t1["fc"]["external_label"] == t2["fc"]["external_label"]:
+	   if t1["fc"]["location_cookie"] > t2["fc"]["location_cookie"]:
+	       return 1
+	   if t1["fc"]["location_cookie"] < t2["fc"]["location_cookie"]:
+	       return -1
+       return -1
+   
    # Add work to the end of the set of jobs
    def insert_job(self,ticket):
       ticket['times']['job_queued'] = time.time()
+      #print "REQ LC:", ticket['fc']['location_cookie']
       self.queue.append(ticket)
    
    # Remove a ticket 
@@ -65,12 +75,38 @@ class Queue:
       self.queue.sort(self.compare_priority)		# Sort the jobs by priority
       return self.queue[0]				# Return the top one
 
+   # Sort jobs by location for the given volume and return the top one
+   def get_init_by_location(self):
+      self.queue_ptr=0
+      if len(self.queue) == 0:			    # There are no jobs
+          return
+      #for w in self.queue:
+      #   w["fc"]["location_cookie"] = self.priority(w)
+      self.queue.sort(self.compare_location)	    # Sort the jobs by location
+      #self.queue.reverse()
+      return self.queue[0]			    # Return the top one
+
    # Return the next highest priority job.  get_init must be called first
    def get_next(self):
       self.queue_ptr=self.queue_ptr+1
       if len(self.queue) > self.queue_ptr:
           return self.queue[self.queue_ptr]
       return
+
+   # Get next job for the given volume, note that get_init_by_location must be
+   # before calling this function
+   def get_next_for_this_volume(self, v):
+      for i in range (0, len(self.queue)):
+	  if self.queue[i]['vc']['external_label'] == v['vc']["external_label"]:
+	      if self.queue[i]['fc']['location_cookie'] > v['vc']['current_location']:
+		  return self.queue[i]
+      # no match has been found, return first for this volume
+      for i in range (0, len(self.queue)):
+	  if self.queue[i]['vc']['external_label'] == v['vc']["external_label"]:
+	      return self.queue[i]
+      return
+
+      
 
    # return the entire sorted queue with current priorities for reporting
    def get_queue(self):
