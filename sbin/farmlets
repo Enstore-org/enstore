@@ -1,7 +1,9 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+# this is cheap argument processing. Must be in this order when checking.
 if [ "${1:-}" = "-a" ] ; then ALARM=1;       shift; else ALARM=0;        fi
 if [ "${1:-}" = "-f" ] ; then FIX=/bin/true; shift; else FIX=/bin/false; fi
 
@@ -10,76 +12,76 @@ set +u
 setup enstore
 set -u
 
-UPDATE="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x"
-CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x --delete --dry-run --stats"
+FIXIT="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -clpogtx --blocking-io"
+CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -clpogtx --blocking-io --dry-run --stats"
 
 # $Id$
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-if [ "$gang" = "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1;fi
+if [ "$gang" = "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1; fi
 
 if $FIX; then
-    $UPDATE  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/
-    $UPDATE stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/
-    $UPDATE cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/
-    $UPDATE ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
+    $FIXIT    d0ensrv1:/usr/local/etc/farmlets/d0en*	/usr/local/etc/farmlets/
+    $FIXIT   stkensrv1:/usr/local/etc/farmlets/stken*	/usr/local/etc/farmlets/
+    $FIXIT   cdfensrv1:/usr/local/etc/farmlets/cdfen*	/usr/local/etc/farmlets/
+    $FIXIT ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
 fi
 
-ND0=9999
+NSAM=9999
 NSTK=9999
 NCDF=9999
 NENS=9999
 
-D0="`$CHECK  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/ 2>/dev/null`"
-STK="`$CHECK stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/ 2>/dev/null`"
-CDF="`$CHECK cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/ 2>/dev/null`"
+SAM="`$CHECK    d0ensrv1:/usr/local/etc/farmlets/d0en*    /usr/local/etc/farmlets/ 2>/dev/null`"
+STK="`$CHECK   stkensrv1:/usr/local/etc/farmlets/stken*   /usr/local/etc/farmlets/ 2>/dev/null`"
+CDF="`$CHECK   cdfensrv1:/usr/local/etc/farmlets/cdfen*   /usr/local/etc/farmlets/ 2>/dev/null`"
 ENS="`$CHECK ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`"
 
-ND0=`echo "$D0"  |awk '/Number of files transferred:/ {print $NF}'`
+NSAM=`echo "$SAM"|awk '/Number of files transferred:/ {print $NF}'`
 NSTK=`echo "$STK"|awk '/Number of files transferred:/ {print $NF}'`
 NCDF=`echo "$CDF"|awk '/Number of files transferred:/ {print $NF}'`
 NENS=`echo "$ENS"|awk '/Number of files transferred:/ {print $NF}'`
 
-if [ -z "$ND0" -o -z "$NSTK" -o -z "$NCDF" -o -z "$NENS" ]; then 
-    #enstore alarm --raise --severity "A" --root-error "farmlet kerberos trouble"
-    #/usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman  </dev/null
-    x=1
-fi
+#if [ -z "$NSAM" -o -z "$NSTK" -o -z "$NCDF" -o -z "$NENS" ]; then
+#    enstore alarm --raise --severity "A" --root-error "farmlet kerberos trouble"
+#    /usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman < /dev/null
+#fi
 
-if [ $ND0  != 0 ]; then echo "$D0" ; fi
+if [ $NSAM != 0 ]; then echo "$SAM"; fi
 if [ $NSTK != 0 ]; then echo "$STK"; fi
 if [ $NCDF != 0 ]; then echo "$CDF"; fi
 if [ $NENS != 0 ]; then echo "$ENS"; fi
 
 rc=0
 
-if [ $ND0 != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
-    msg="`date` BAD CONFIGURATION: Farmlet mismatch ND0=$ND0 NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
+if [ $NSAM != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
+    msg="`date` BAD CONFIGURATION: Farmlet mismatch NSAM=$NSAM NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
     echo $msg
     if [ $ALARM -eq 1 ]; then
-       enstore alarm --raise --severity "A" --root-error "$msg1"
+       enstore alarm --raise --severity "A" --root-error "$msg"
     fi
     rc=1
 else
     echo "Farmlets match, ok"
 fi
 
-# now check the cron.x jobs and make sure they match, too
-for f in /etc/cron.*; do 
-  CHK="`$CHECK ${basenode}:$f/ $f/ 2>/dev/null`"
-  NCHK=`echo "$CHK"  |awk '/Number of files transferred:/ {print $NF}'`
-  if [ $NCHK  != 0 ]; then echo $f "$CHK" 
-    msg="`date` BAD CONFIGURATION: irectory  $f NCHK=$NCHK"
-    echo $msg
-    if [ $ALARM -eq 1 ]; then
-       enstore alarm --raise --severity "A" --root-error "$msg1"
-    fi
-    rc=1
-  else
-    echo "Directory $f, ok"
-  fi
-done
+# commented out for now because of Linux version incompatibilities (dmb 11/18/03)
+
+## now check the cron.x jobs and make sure they match, too
+#for f in /etc/cron.*; do
+#  CHK="`$CHECK ${basenode}:$f/ $f/ 2>/dev/null`"
+#  NCHK=`echo "$CHK"|awk '/Number of files transferred:/ {print $NF}'`
+#  if [ $NCHK != 0 ]; then echo $f "$CHK"
+#    msg="`date` BAD CONFIGURATION: Directory $f NCHK=$NCHK"
+#    echo $msg
+#    if [ $ALARM -eq 1 ]; then
+#       enstore alarm --raise --severity "A" --root-error "$msg"
+#    fi
+#    rc=1
+#  else
+#    echo "Directory $f, ok"
+#  fi
+#done
 
 exit $rc
-
