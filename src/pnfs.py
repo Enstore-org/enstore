@@ -2002,7 +2002,7 @@ def get_mtab():
         l = f.readline()
         while l:
             lc = string.split(l)
-            if lc[1][:5] == 'pnfs':
+            if lc[1][:5] == '/pnfs':
                 c1 = string.split(lc[0], ':')
                 if len(c1) > 1:
                     mtab[lc[1]] = (c1[1], c1[0])
