@@ -1077,9 +1077,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def stop_draining(self, ticket):		# put itself into idle state
-        self.client_obj_inst.state = 'idle'
-	out_ticket = {'status':(e_errors.OK,None)}
-	self.reply_to_caller( out_ticket )
+        if self.client_obj_inst.state == 'draining':
+            self.client_obj_inst.state = 'idle'
+	    out_ticket = {'status':(e_errors.OK,None)}
+	    self.reply_to_caller( out_ticket )
 	return
 
     def shutdown( self, ticket ):
