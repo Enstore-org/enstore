@@ -2144,6 +2144,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
                         self.file_info['pnfsid'] = None
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
+                        if self.gid: self.file_info['gid'] = self.gid
+                        else:
+                            self.file_info['gid'] = None
+                        if self.uid: self.file_info['uid'] = self.uid
+                        else:
+                            self.file_info['uid'] = None
+                        
                         
                         ret = self.fcc.create_bit_file(self.file_info)
                         # update file info
@@ -2362,6 +2369,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.save_state = self.state
         self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
+        self.uid = None
+        self.gid = None
+        if ticket.has_key('wrapper'):
+            uid = ticket['wrapper'].get('uid', None)
+            gid = ticket['wrapper'].get('gid', None)
+        if uid: self.uid = uid
+        if gid: self.gid = gid
         if self.method and self.method == "read_next" and self.udp_control_address:
             self.lm_address = self.udp_control_address
             self.lm_address_saved = self.lm_address
@@ -3076,6 +3090,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
+            if self.gid: fc_ticket['gid'] = self.gid
+            if self.uid: fc_ticket['uid'] = self.uid
+            
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                             'fc'  : fc_ticket
                                             })
@@ -3537,6 +3554,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "transfer_deficiency": int(self.transfer_deficiency),
             "time_in_state": now - self.state_change_time,
             "library": self.current_library,
+            "library_list":self.libraries, # this is needed for the federation project
             }
         return ticket
 
