@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+##  $Id$
+        
 
 DictionaryLockedError = "DictionaryLockedError"
 
@@ -20,9 +24,15 @@ class LockingDict:
     def __getitem__(self,key):
         return self.dict[key]
 
+    def __delitem__(self,key):
+        if self._locked:
+            raise DictionaryLockedError, ('__delitem__', key)
+        else:
+            del(self.dict[key])
+    
     def __setitem__(self,key,value):
         if self._locked:
-            raise DictionaryLockedError, (key,value)
+            raise DictionaryLockedError, ('__setitem__', key, value)
 
         self.dict[key]=value
 
@@ -34,3 +44,28 @@ class LockingDict:
 
     
         
+if __name__ == "__main__":
+
+    d = LockingDict()
+    d[1]=2
+    d['a']=77
+    print len(d)
+    print d.keys()
+    del d[1]
+    d[1]='3'
+    print 'locking'
+    d.lock()
+    print len(d)
+    print d.keys()
+    print d.locked()
+    try:
+        del d[0]
+    except DictionaryLockedError, detail:
+        print "caught exception",detail
+    try:    
+        d[1]=66
+    except DictionaryLockedError, detail:
+        print "caught exception",detail
+    
+
+       
