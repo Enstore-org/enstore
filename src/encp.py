@@ -3629,6 +3629,25 @@ def main():
     encp_start_time = time.time()
     tinfo = {'encp_start_time':encp_start_time,
              't0':int(encp_start_time)}
+
+    #If verbosity is turned on get the user name.
+    try:
+        user_name = pwd.getpwuid(os.geteuid())[0]
+    except (OSError, KeyError):
+        user_name = os.geteuid()
+    try:
+        real_name = pwd.getpwuid(os.getuid())[0]
+    except (OSError, KeyError):
+        real_name = os.getuid()
+
+    #Create the logfile user name string.
+    if user_name == real_name:
+        log_name = user_name
+    else:
+        log_name = "%s(%s)" % (user_name, real_name)
+    #Other strings for the log file.
+    command_line = string.join(sys.argv)
+    version = encp_client_version().strip()
     
     Trace.init("ENCP")
 
@@ -3646,12 +3665,6 @@ def main():
         Trace.do_print(x)
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
-
-    #If verbosity turn on get the user name.
-    try:
-        user_name = pwd.getpwuid(os.geteuid())[0]
-    except (OSError, KeyError):
-        user_name = os.geteuid()
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, 'Start time: %s' % time.ctime(encp_start_time))
@@ -3672,10 +3685,10 @@ def main():
     Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
 
     # convenient, but maybe not correct place, to hack in log message
-    # that shows how encp was called
+    # that shows how encp was called.
     Trace.log(e_errors.INFO,
-                'encp version %s, command line: "%s"' %
-                (encp_client_version(), string.join(sys.argv)))
+                'encp version %s, user: %s, command line: "%s"' %
+                (version, log_name, command_line))
 
     if e.data_access_layer:
         global data_access_layer_requested
