@@ -20,7 +20,7 @@ static char rcsid[] = "@(#)$Id$";
  */
 #include <stdio.h>
 #include <fcntl.h>
-#include <dslib.h>
+#include <scsi/sg.h>
 #include <string.h>
 #include "ftt_private.h"
 
@@ -101,42 +101,39 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	if (gotstatus && pcCmd[0] == 0x03) {
 		/* we already have mode sense data, so fake it */
 		memcpy(pcRdWr, 
-		      sg_hd.sense , nRdWr);
+		      sg_hd->sense_buffer , nRdWr);
 		gotstatus = 0;
 		return ftt_scsi_check(n,pcOp, 0, nRdWr);
 	}
-	sg_hd->reply_len = SCSI_OFF + writeflag ? nRdWr : 0;
+	sg_hd->reply_len = sizeof(struct sg_header) + writeflag ? nRdWr : 0;
 	sg_hd->twelve_byte = nCmd;
 	sg_hd->result = 0;
-	len = SCSI_OFF + nCmd;
-	memcpy( pcCmd, buffer+SCSI_OFF, nCmd );
+	len = sizeof(struct sg_header) + nCmd;
+	memcpy( pcCmd, buffer+sizeof(struct sg_header), nCmd );
 	if (writeflag) {
-	    memcpy(pcRdWr, buffer+SCSI_OFF+nCmd, nRdWr);
+	    memcpy(pcRdWr, buffer+sizeof(struct sg_header)+nCmd, nRdWr);
 	    len += nRdWr;
 	}
 	res = write(n, buffer, len);
 	if (res < 0) {
 	    scsistat = 255;
 	} else {
-		len = SCSI_OFF + writeflag ? 0 : nRdWr;
+		len = sizeof(struct sg_header) + writeflag ? 0 : nRdWr;
 		res = read(n, buffer, len);
 		if (res < 0) {
 		    scsistat = 255;
 		} else {
 
 			if ( !writeflag ) {
-			    memcpy(buffer+SCSI_OFF, pcRdWr, nRdWr);
+			    memcpy(buffer+sizeof(struct sg_header), pcRdWr, nRdWr);
 			}
 
-			scsistat = hd->result;
+			scsistat = sg_hd->result;
 			if (0 != scsistat) {
 				gotstatus = 1;
 			}
 		}
 	}
-DEBUG3(stderr,"cmdsent %d datasent %d sensesent %d status %d ret %d msg %d\n",
-	CMDSENT(dp), DATASENT(dp), SENSESENT(dp), STATUS(dp), 
-	RET(dp), MSG(dp));
 
 	res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 

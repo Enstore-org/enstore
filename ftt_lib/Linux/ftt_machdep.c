@@ -30,7 +30,7 @@ ftt_status(ftt_descriptor d, int time_out) {
     res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",
 				res,"an MTIOCGET ioctl()",1);
 
-    while ((0 <= res && !(buf.mt_dposn & MT_ONL) && time_out > 0)) {
+    while ((0 <= res && !(GMT_ONLINE(buf.mt_gstat)) && time_out > 0)) {
 	sleep(1);
 	res = ioctl(d->file_descriptor,MTIOCGET,&buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,"ftt_status",
@@ -46,12 +46,12 @@ ftt_status(ftt_descriptor d, int time_out) {
     }
     res = 0;
     /* ZZZ should figure out which of these two it is somehow... */
-    if( buf.mt_dposn & MT_EOT )     res |= FTT_AEOT;
-    if( buf.mt_dposn & MT_EOT )     res |= FTT_AEW;
+    if (GMT_EOT(buf.mt_gstat))     res |= FTT_AEOT;
+    if (GMT_EOT(buf.mt_gstat))     res |= FTT_AEW;
 
-    if (buf.mt_dposn & MT_BOT )     res |= FTT_ABOT;
-    if (buf.mt_dposn & MT_WPROT )   res |= FTT_PROT;
-    if (buf.mt_dposn & MT_ONL )     res |= FTT_ONLINE;
+    if (GMT_BOT(buf.mt_gstat))     res |= FTT_ABOT;
+    if (GMT_WR_PROT(buf.mt_gstat)) res |= FTT_PROT;
+    if (GMT_ONLINE(buf.mt_gstat))  res |= FTT_ONLINE;
 
     return res;
 }
@@ -64,8 +64,10 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
    static struct mtop buf;
-   buf->mt_op = MTSETDENSITY;
-   buf->mt_count = hwdens;
+   int res;
+
+   buf.mt_op = MTSETDENSITY;
+   buf.mt_count = hwdens;
    res = ioctl(d->file_descriptor,MTIOCTOP,&buf);
    return 0;
 }
@@ -83,11 +85,11 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 	** but since that gives us a different device node in 
 	** ftt_open_logical, it ends up getting set to zero anyhow.
 	*/
-	buf.mt_op = MTSCSI_SETBLK;
+	buf.mt_op = MTSETBLK;
 	buf.mt_count = blocksize;
 	res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,
-				"an MTIOCTOP/MTSCSI_SETBLK ioctl()", res,
+				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
     }
     return res;
