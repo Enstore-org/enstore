@@ -2292,7 +2292,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
-            
+        if self.current_volume:
+            volume_family = self.volume_family
+        else:
+            volume_family = None
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -2302,7 +2305,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "returned_work": returned_work,
             "state": state_name(self.state),
             "status": status,
-            "volume_family": self.volume_family,
+            "volume_family": volume_family,
             "volume_status": volume_status,
             "operation": mode_name(self.mode),
             "error_source": error_source,

@@ -969,7 +969,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # due to inaccurate REMAINING_BYTES
         min_file_size = self.keys.get('min_file_size',0L)
         # maximal file size
-        sel.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
+        self.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
