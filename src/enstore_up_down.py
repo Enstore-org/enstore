@@ -206,15 +206,20 @@ class EnstoreServer:
 		reason.append(self.reason_down)
 
     def get_enstore_state(self, state, reason):
-	if self.status == enstore_constants.DOWN:
-	    # en_status records the state of enstore when the server is done
-	    self.set_reason(reason)
-	    return state | self.en_status
-	elif self.status == enstore_constants.WARNING:
-	    return state | enstore_constants.WARNING
-	elif self.status == enstore_constants.SEEN_DOWN:
-	    return state | enstore_constants.SEEN_DOWN
+	if not self.offline_d.has_key(self.format_name):
+	    if self.status == enstore_constants.DOWN:
+		# en_status records the state of enstore when the server is done
+		self.set_reason(reason)
+		return state | self.en_status
+	    elif self.status == enstore_constants.WARNING:
+		return state | enstore_constants.WARNING
+	    elif self.status == enstore_constants.SEEN_DOWN:
+		return state | enstore_constants.SEEN_DOWN
+	    else:
+		return state
 	else:
+	    # this server is known down, so for the sake of enstore, we don't care
+	    # about its real state, say that it is up
 	    return state
 
     # the third parameter is used to determine the state of enstore if this server is 
@@ -315,10 +320,13 @@ class LibraryManager(EnstoreServer):
 	ok_movers = 0
 	bad_movers = 0
 	for mover in self.movers:
-	    if mover.status == enstore_constants.UP:
-		ok_movers = ok_movers + 1
-	    else:
-		bad_movers = bad_movers + 1
+	    # ignore this mover if it is marked known down
+	    if not self.offline_d.has_key(mover.format_name):
+		if mover.status == enstore_constants.UP or \
+		   mover.status == enstore_constants.SEEN_DOWN:
+		    ok_movers = ok_movers + 1
+		else:
+		    bad_movers = bad_movers + 1
 	if bad_movers > ok_movers:
 	    return LOW_CAPACITY, bad_movers, ok_movers
 	else:
@@ -603,12 +611,16 @@ def do_real_work():
 		enprint("LOW CAPACITY: Found, %s of %s movers not responding or in a bad state"%(bad_movers, 
 									server.num_movers))
 		server.writemail("Found LOW CAPACITY movers for %s"%(server.name,))
-		server.real_status(enstore_constants.WARNING)
-		summary_d[server.name] = server.status
+		server.real_status(enstore_constants.DOWN)
 	    elif bad_movers != 0:
 		enprint("Sufficient capacity of movers for %s, %s of %s responding"%(server.name,
 										     ok_movers,
 									           server.num_movers))
+		self.real_status(enstore_constants.WARNING)
+	    elif bad_movers == 0 and ok_movers == 0:
+		# there are no movers, all are known down, flag a warning.
+		server.real_status(enstore_constants.WARNING)
+
 	else:
 	    # server did not get back to us, assume it is dead
 	    server.is_dead()
