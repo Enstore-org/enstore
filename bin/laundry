@@ -11,53 +11,85 @@
 
 import os
 import re
+import stat
+import time
+import sys
+
+dirt = ["bakken", "fnal", "d0"]
+
+# various files to ignore
+ignoreEnds = ["\.pyc$", "\.o$", "\.so$", "\.a$", "\.ps$", "\.gif$", "\.kil$",
+	      "\.jou$"]
+ignoreDirs = ["CVS"]
+ignoreStarts = ["^LOG-.*", "^__db.*", "^\.#.*"]
+ignoreStartsPatterns = []
+ignoreEndsPatterns = []
+
+def patternSearch(pats, file):
+    # make sure this file does not start with ignoreStarts
+    for pat in pats:
+	if pat.search(file):
+	    break
+    else:
+	return 0
+    return 1
+
+def do_the_walk(dirtFile, dir, files):
+    
+    toRemove = []
+    for file in files:
+	thefile = "%s/%s"%(dir, file)
+	# get info on this file
+	mode = os.lstat(thefile)[stat.ST_MODE]
+	if stat.S_ISDIR(mode):
+	    # this is a directory
+	    if file in ignoreDirs: 
+		# ignore this directory, remove it from the list later
+		toRemove.append(file)
+	elif stat.S_ISREG(mode):
+	    # this is a regular file, make sure it is not one to ignore
+	    if patternSearch(ignoreStartsPatterns, file) or \
+	       patternSearch(ignoreEndsPatterns, file):
+		# this file's end/start labels it as ignorable
+		sys.stderr.write("%s ignored\n"%(thefile))
+		continue
+	    elif not file == dirtFile:
+		# check this file for the dirt - open the output file
+		df = open(dirtFile, 'a')
+		df.write("FILE: %s - \n"%(thefile,))
+		df.close()
+		for d in dirt:
+		    os.system("fgrep -i %s %s >> %s"%(d, thefile, dirtFile))
+    else:
+	# now remove any unwanted directories from the list of files
+	if toRemove:
+	    for aDir in toRemove:
+		files.remove(aDir)
 
 class Laundry:
 
-    dir = "."
-    dirt = ["bakken", "fnal", "d0"]
-
-    ignoreThese = ["pyc", "o", "so", "a", "pyc*", "c*", "so*", "a*"]
-    laundryFile = "laundry.txt"
+    currentDir = "."
+    dirtFile = "dirt.txt"
 
     def __init__(self):
-	# get a list of the files to check
-	os.system("ls -CFR1 > %s"%(self.laundryFile,))
-	fd = open(self.laundryFile, 'r')
-	lines = re.split("\n", fd.read(), 0)
-	for line in lines:
-	    if line == '':
-		# this was a blank line
-		continue
-	    elif line[0] == ".":
-		# this is a new directory, remove the last letter which is a
-		# ':'
-		self.dir = line[0:-1]
-		continue
-	    elif line[-1] == "/":
-		# this is a directory within the current directory
-		continue
-	    elif line[-1] == "@":
-		# this is a symoblic link
-		continue
-	    elif len(line) > 2 and line[0:3] == "CVS":
-		# this is a CVS directory, ignore all the files in it
-		continue
-	    elif line == self.laundryFile:
-		# this is the file we are reading, skip it
-		continue
-	    else:
-		# aha!! a file, make sure it is not one to ignore
-		file = re.split("\.", line, 0)
-		if len(file) >= 2 and file[-1] in self.ignoreThese:
-		    continue
-		else:
-		    # check this file for the dirt
-		    print "FILE: %s -"%(line,)
-		    for d in self.dirt:
-			os.system("fgrep -i %s %s/%s"%(d, self.dir, line))
+	# write the header to the output file
+	df = open(self.dirtFile, 'w')
+	df.write("Laundry done on %s at %s\n\n"%(os.uname()[1], 
+					   time.ctime(time.time())))
+	df.close()
+
+	# compile the patters
+	for pat in ignoreStarts:
+	    ignoreStartsPatterns.append(re.compile(pat))
+	for pat in ignoreEnds:
+	    ignoreEndsPatterns.append(re.compile(pat))
+
+    def doLaundry(self):
+	# walk the directory to search for files 
+	os.path.walk(self.currentDir, do_the_walk, self.dirtFile)
 
 if __name__ == "__main__" :
 
     lf = Laundry()
+    lf.doLaundry()
 
