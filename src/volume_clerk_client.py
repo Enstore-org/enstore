@@ -30,6 +30,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                     ' host='+repr(host)+' port='+repr(port))
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+	self.verbose = verbose
         Trace.trace(10,'}__init__ u='+repr(self.u))
 
     # send the request to the volume clerk server and then send answer to user
