@@ -59,7 +59,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		return
 
 	def log_stat(self, ticket):
-		Trace.trace(11, "log_stat ticket %s"%(ticket,))
+		Trace.log(e_errors.INFO, "log_stat ticket %s"%(ticket,))
 		try:
 			drive_sn = ticket['drive_sn']
 			drive_vendor = ticket['drive_vendor']
