@@ -638,7 +638,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         self.event_relay.alive(now)
         self.sent_event_relay_alarm = 0  
-        msg = self.erc.read(fd)
+	msg = enstore_functions.read_erc(self.erc, fd)
         if msg:
             # ignore messages that originated with us
             if msg.type == event_relay_messages.ALIVE and not msg.server == self.inquisitor.name:

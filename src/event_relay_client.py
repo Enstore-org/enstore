@@ -5,8 +5,8 @@ import os
 import event_relay_messages
 
 """
-This class supports messages from the event relay process.  Methods are provided to read
-the message.
+This class supports messages from the event relay process.  Methods are 
+provided to read the message.
 """
 
 DEFAULT_PORT = 55510
@@ -37,8 +37,8 @@ class EventRelayClient:
         self.event_relay_addr = (event_relay_host, event_relay_port)
 
 
-    # this method must be called if we want to have the event relay forward messages
-    # to us.
+    # this method must be called if we want to have the event relay forward 
+    # messages to us.
     def start(self, subscribe_msgs=None, resubscribe_rate=600):
         self.subscribe_msgs = subscribe_msgs
         self.resubscribe_rate = resubscribe_rate
@@ -52,7 +52,8 @@ class EventRelayClient:
 	    self.server.add_select_fd(self.sock, 0, self.function)
         
 	    # resubscribe ourselves to the event relay every 10 minutes
-	    self.server.add_interval_func(self.subscribe, self.resubscribe_rate)
+	    self.server.add_interval_func(self.subscribe, 
+					  self.resubscribe_rate)
 
     # send the message to the event relay
     def send(self, msg):
@@ -66,19 +67,18 @@ class EventRelayClient:
     def read(self, fd=None):
         if not fd:
             fd = self.sock
-        try:
-            msg = fd.recv(1024)
-        except socket.error, detail:
-            return None
-        # now decode the message based on the message type, which is always the first
-        # word in the text message
+	# note: this may raise a socket.error exception which needs to be
+	# caught by the calling routine. (enstore_functions.read_erc does it)
+	msg = fd.recv(1024)
+        # now decode the message based on the message type, which is always 
+	# the first word in the text message
         return event_relay_messages.decode(msg)
         
     # subscribe ourselves to the event relay server
     def subscribe(self):
         if not self.notify_msg:
             self.notify_msg = event_relay_messages.EventRelayNotifyMsg(self.host,
-                                                                      self.port)
+                                                                     self.port)
             self.notify_msg.encode(self.subscribe_msgs)
         self.send(self.notify_msg)
 
@@ -86,7 +86,7 @@ class EventRelayClient:
     def unsubscribe(self):
         if not self.unsubscribe_msg:
             self.unsubscribe_msg = event_relay_messages.EventRelayUnsubscribeMsg(self.host,
-										 self.port)
+								    self.port)
             self.unsubscribe_msg.encode()
         self.send(self.unsubscribe_msg)
 
