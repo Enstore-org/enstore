@@ -62,6 +62,10 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
+    # XXX Now, before we register with the event_relay, it would
+    # be really nice to use "enstore mover --status" to get current
+    # status of all the Movers!
+    
     #Tell the event_relay that we want to hear about Enstore
     #events.
     #This gets us 15 minutes worth of update messages
