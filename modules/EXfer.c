@@ -1,5 +1,6 @@
 /* EXfer.c - Low level data transfer C modules for encp. */
 
+/* $Id$*/
 
 
 #ifndef STAND_ALONE
@@ -546,13 +547,19 @@ do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
 		"Read thread exited with error(%d) '%s' from %s line %d.\n",
 		read_val->errno_val, strerror(read_val->errno_val),
 		read_val->filename, read_val->line);
-	memcpy(rtn_val, read_val, sizeof(struct return_values));
-	/*free(&(*write_val));*/
-	pthread_kill(write_tid, SIGKILL);
-	break; /*If an error occured, no sense continuing*/
+	if(write_val == NULL)
+	  memcpy(rtn_val, read_val, sizeof(struct return_values));
+
+	/* Signal the other thread there was an error. We need to lock the
+	   mutex associated with the next bin to be used by the other thread.
+	   Since, we don't know which one, get them all. */
+	for(i = 0; i < array_size; i++)
+	    pthread_mutex_lock(&(buffer_lock[i]));
+	pthread_cond_signal(&next_cond);
+	for(i = 0; i < array_size; i++)
+	    pthread_mutex_unlock(&(buffer_lock[i]));
       }
-      else
-	read_done = -1; /* Set to non-positive and non-zero value. */
+      read_done = -1; /* Set to non-positive and non-zero value. */
     }
     if(write_done > 0) /*true when thread_write ends*/
     {
@@ -560,21 +567,26 @@ do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
 	return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				   "joining with write thread failed",
 				   0.0, 0.0, __FILE__, __LINE__);
-      memcpy(rtn_val, write_val, sizeof(struct return_values));
-      /*free(&(*read_val));*/
+      if(!rtn_val->exit_status)
+	memcpy(rtn_val, write_val, sizeof(struct return_values));
       if(write_val->exit_status)
       {
 	fprintf(stderr,
 		"Write thread exited with error(%d) '%s' from %s line %d.\n",
 		write_val->errno_val, strerror(write_val->errno_val),
 		write_val->filename, write_val->line);
-	/*pthread_kill(read_tid, SIGKILL);*/
-	break; /*If an error occured, no sense continuing*/
-      }
-      else
-	write_done = -1; /* Set to non-positive and non-zero value. */
-    }
 
+	/* Signal the other thread there was an error. We need to lock the
+	   mutex associated with the next bin to be used by the other thread.
+	   Since, we don't know which one, get them all.*/
+	for(i = 0; i < array_size; i++)
+	  pthread_mutex_lock(&(buffer_lock[i]));
+	pthread_cond_signal(&next_cond);
+	for(i = 0; i < array_size; i++)
+	  pthread_mutex_unlock(&(buffer_lock[i]));
+      }
+      write_done = -1; /* Set to non-positive and non-zero value. */
+    }
   }
   pthread_mutex_unlock(&done_mutex);
 
@@ -665,6 +677,8 @@ static void* thread_read(void *info)
   struct timeval end_total;     /* Hold overall time measurment value. */
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
+  struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
+  struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
 
   /* Initialize the running time incase of early failure. */
   memset(&start_time, 0, sizeof(struct timeval));
@@ -754,9 +768,15 @@ static void* thread_read(void *info)
     }
     if(stored[bin])
     {
+      /* Determine the absolute time to wait in pthread_cond_timedwait(). */
+      gettimeofday(&cond_wait_tv, NULL);
+      cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + read_info->timeout.tv_sec;
+      cond_wait_ts.tv_nsec = cond_wait_tv.tv_usec * 1000;
+
       /* This bin still needs to be used by the other thread.  Put this thread
 	to sleep until the other thread is done with it. */
-      if((p_rtn = pthread_cond_wait(&next_cond, &buffer_lock[bin])) != 0)
+      if((p_rtn = pthread_cond_timedwait(&next_cond, &buffer_lock[bin],
+					 &cond_wait_ts)) != 0)
       {
 	set_done_flag(&read_done);
 	corrected_time = elapsed_time(&start_time, &end_time);
@@ -772,6 +792,18 @@ static void* thread_read(void *info)
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				"mutex unlock failed", corrected_time, 0.0,
 				__FILE__, __LINE__);
+    }
+
+    /* Determine if the main thread sent the signal to indicate the other
+       thread exited early from an error. If this value is still non-zero,
+       then assume there was an error. */
+    if(stored[bin])
+    {
+      set_done_flag(&read_done);
+      corrected_time = elapsed_time(&start_time, &end_time);
+      return pack_return_values(0, ECANCELED, THREAD_ERROR, bytes,
+				"waiting for condition failed",
+				corrected_time, 0.0, __FILE__, __LINE__);
     }
 
     /* Number of bytes remaining for this loop. */
@@ -996,6 +1028,8 @@ static void* thread_write(void *info)
   struct timeval end_total;     /* Hold overall time measurment value. */
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
+  struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
+  struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
 
   /* Initialize the running time incase of early failure. */
   memset(&start_time, 0, sizeof(struct timeval));
@@ -1103,9 +1137,15 @@ static void* thread_write(void *info)
     }
     if(stored[bin] == 0)
     {
+      /* Determine the absolute time to wait in pthread_cond_timedwait(). */
+      gettimeofday(&cond_wait_tv, NULL);
+      cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + write_info->timeout.tv_sec;
+      cond_wait_ts.tv_nsec = cond_wait_tv.tv_usec * 1000;
+
       /* This bin still needs to be used by the other thread.  Put this thread
 	to sleep until the other thread is done with it. */
-      if((p_rtn = pthread_cond_wait(&next_cond, &buffer_lock[bin])) != 0)
+      if((p_rtn = pthread_cond_timedwait(&next_cond, &buffer_lock[bin],
+				    &cond_wait_ts)) != 0)
       {
 	set_done_flag(&write_done);
 	corrected_time = elapsed_time(&start_time, &end_time);
@@ -1121,6 +1161,18 @@ static void* thread_write(void *info)
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				"mutex unlock failed", 0.0, corrected_time,
 				__FILE__, __LINE__);
+    }
+
+    /* Determine if the main thread sent the signal to indicate the other
+       thread exited early from an error. If this value is still zero,
+       then assume there was an error. */
+    if(stored[bin] == 0)
+    {
+      set_done_flag(&write_done);
+      corrected_time = elapsed_time(&start_time, &end_time);
+      return pack_return_values(0, ECANCELED, THREAD_ERROR, bytes,
+				"waiting for condition failed",
+				0.0, corrected_time, __FILE__, __LINE__);
     }
 
     /* Number of bytes remaining for this loop. */
