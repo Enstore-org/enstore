@@ -64,7 +64,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	timer_task.msg_add(180, self.checkMyself) # initial check time in seconds
         
     # retry function call
-    def retry_function(function,*args):
+    def retry_function(self,function,*args):
         return apply(function,args)
     
     def checkMyself(self):
@@ -582,6 +582,25 @@ class STK_MediaLoader(MediaLoaderMethods):
         self.load=STK.mount
         self.unload=STK.dismount
         self.prepare=STK.dismount
+
+    def getVolState(self, ticket):
+        import STK
+	"get current state of the tape"
+	external_label = ticket['external_label']
+	media_type = ticket['media_type']
+        #print "calling query_volume",external_label, media_type
+	rt = self.retry_function(STK.query_volume,external_label, media_type)
+        #print "query_volume returned: ",rt
+        Trace.trace( 11, "getVolState returned %s"%(rt,))
+        if rt[3] == '\000':
+            Trace.trace( 11, "RT3 is 0")
+            state=''
+        else :
+            Trace.trace( 11, "RT3 is %s"%(rt[3],))
+            state = rt[3]
+        #print "getVolState returning: ",rt[0], rt[1], rt[2], state
+        return (rt[0], rt[1], rt[2], state)
+	
 
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
