@@ -129,7 +129,7 @@ class DispatchingWorker:
 
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
-        
+        ###XXX should have a global exception handler here
         while not self.is_child:
             self.handle_request()
             collect_children()
