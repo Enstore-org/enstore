@@ -55,6 +55,18 @@ class accClient(generic_client.GenericClient):
 		ticket = {'work': 'hello'}
 		return self.send2(ticket)
 
+	def debug(self, level = 0):
+		ticket = {
+			'work': 'debug',
+			'level': level}
+		self.send2(ticket)
+
+	def debug_on(self):
+		self.debug(1)
+
+	def debug_off(self):
+		self.debug(0)
+
 	def log_start_mount(self, volume, type, start=None):
 		if not self.server_address: return
 		if not start:

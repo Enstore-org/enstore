@@ -19,6 +19,7 @@ import enstore_constants
 import accounting
 import monitored_server
 import event_relay_messages
+import time
 
 MY_NAME = "accounting_server"
 
@@ -37,6 +38,7 @@ class Interface(generic_server.GenericServerInterface):
 
 class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 	def __init__(self, csc):
+		self.debug = 0
 		generic_server.GenericServer.__init__(self, csc, MY_NAME)
 		Trace.init(self.log_name)
 		self.keys = self.csc.get(MY_NAME)
@@ -75,6 +77,10 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		print 'hello, world'
 		return
 
+	# turn on/off the debugging
+	def debug(self, ticket):
+		self.debug = ticket.get('level', 0)
+
 	# These need confirmation
 	def quit(self, ticket):
 		self.accDB.close()
@@ -85,6 +91,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_start_mount(self, node, volume, type, logname, start)
 	def log_start_mount(self, ticket):
+		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			type = ticket['type']
@@ -101,9 +108,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			e, v, tb = sys.exc_info()
 			Trace.handle_error(e, v, tb)
 			Trace.log(e_errors.ERROR, err_msg('log_start_mount()', ticket, e, v, tb))
-
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'start_mount\t', dt
+		
 	# log_finish_mount(self, node, volume, finish, state='M')
 	def log_finish_mount(self, ticket):
+		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_finish_mount(
@@ -114,9 +125,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_finish_mount()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'finish_mount\t', dt
 
 	# log_start_dismount(self, node, volume, type, logname, start)
 	def log_start_dismount(self, ticket):
+		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_start_dismount(
@@ -128,9 +143,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_start_dismount()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'start_dismount\t', dt
 
 	# log_finish_dismount(self, node, volume, finish, state='D')
 	def log_finish_dismount(self, ticket):
+		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_finish_dismount(
@@ -141,6 +160,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_finish_dismount()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'finish_dismount\t', dt
 
 	# log_encp_xfer(....)
 	def log_encp_xfer2(self, ticket):
@@ -153,6 +175,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_encp_xfer(....)
 	def log_encp_xfer(self, ticket):
+		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_encp_xfer(
@@ -181,9 +204,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_encp_xfer()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'encp_xfer\t', dt
 
 	# log_start_event
 	def log_start_event(self, ticket):
+		st = time.time()
 		try:
 			self.accDB.log_start_event(
 				ticket['tag'],
@@ -194,9 +221,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_start_event()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'start_event\t', dt
 
 	# log_finish_event
 	def log_finish_event(self, ticket):
+		st = time.time()
 		try:
 			if ticket.has_key('comment'):
 				self.accDB.log_finish_event(
@@ -212,6 +243,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_finish_event()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'finish_event\t', dt
 
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
