@@ -9,6 +9,14 @@ import select
 import string
 import time
 
+import configuration_client
+
+config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
+config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
+config=(config_host,config_port)
+timeout=15
+tries=3
+
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
@@ -68,7 +76,8 @@ class Ratekeeper:
                     sys.stderr.write("Can't open file\n")
 
             year, month, day = self.ymd
-            outfile_name = os.path.join(self.output_dir, "%s.RATES.%04d%02d%02d" %
+            outfile_name = os.path.join(self.output_dir, \
+                                        "%s.RATES.%04d%02d%02d" %
                                         (self.filename_base, year, month, day))
             self.outfile=open(outfile_name, 'w')
 
@@ -94,8 +103,10 @@ class Ratekeeper:
             remaining = end_time - now
             if remaining <= 0:
                 try:
-                    self.outfile.write( "%s %d %d\n" % (time.strftime("%T", time.localtime(now)),
-                                                        bytes_read, bytes_written))
+                    self.outfile.write( "%s %d %d\n" %
+                                        (time.strftime("%m-%d-%Y %H:%M:%S",
+                                                       time.localtime(now)),
+                                         bytes_read, bytes_written))
                     self.outfile.flush()
                 except:
                     sys.stderr.write("Can't write to output file\n")
@@ -154,22 +165,72 @@ class Ratekeeper:
 
 
 if __name__ == "__main__":
+    #Get the configuration from the configuration server.
+    csc = configuration_client.ConfigurationClient(config)
+    ratekeep = csc.get('ratekeeper', timeout, tries)
     
-    if len(sys.argv) > 1:
-        event_relay_host = sys.argv[1]
-    if event_relay_host[:2]=='d0':
-        event_relay_host = 'd0ensrv2.fnal.gov'
-        filename_base = 'd0en'
-    elif event_relay_host[:3]=='stk':
-        event_relay_host = 'stkensrv2.fnal.gov'
-        filename_base = 'stken'
-    else:
-        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
-        filename_base = event_relay_host
-        
-    event_relay_port = 55510
+    ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
+    ratekeeper_host = ratekeep.get('host','MISSING')
+    ratekeeper_port = ratekeep.get('port','MISSING')
+    ratekeeper_name = ratekeep.get('name','MISSING')
+    
+    if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
+        print "Error: Missing ratekeeper configdict directory.",
+        print "  (ratekeeper_dir)"
+        sys.exit(1)
+    if ratekeeper_port == 'MISSING' or not ratekeeper_port:
+        print "Error: Missing ratekeeper configdict directory.",
+        print "  (ratekeeper_port)"
+        sys.exit(1)
+    if ratekeeper_host  == 'MISSING':
+        ratekeeper_host = ''
+    if ratekeeper_name == 'MISSING':
+        ratekeeper_name = ratekeeper_host
 
-    rk = Ratekeeper((event_relay_host, event_relay_port), filename_base)
+    #Parse the command line.
+    #If no options specified, obtain the defaults.
+    if len(sys.argv) == 1:
+        #If the configdict doesn't have anything, check the env. variable
+        if not ratekeeper_host:
+            event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
+            filename_base = event_relay_host
+        else:
+            event_relay_host = ratekeeper_host
+            filename_base = ratekeeper_name
+
+    #If an option is specified, then use it.  But first check to see if it is
+    # listed in the 'nodes' dictionary.  Think of it as the key is the shortest
+    # number of characters needed for a match and the value is a tuple
+    # containing the full hostname and basename.
+    #Example: ratekeeper.py d0
+    # Here "d0" is placed into the host and file names.  Then it is compared
+    # with the values in the 'nodes' dictionary.  When a match is found, then
+    # "d0ensrv2" becomes the host and "d0en" becomes the base name.  If there
+    # is not match, then it is left as simply "d0".
+    elif len(sys.argv) == 2:
+        event_relay_host = sys.argv[1]
+        filename_base = event_relay_host
+
+        ratekeeper_nodes = ratekeep.get('nodes','MISSING')
+        if ratekeeper_nodes != 'MISSING':
+            for short_name in ratekeeper_nodes.keys():
+                if event_relay_host[:len(short_name)] == short_name:
+                    event_relay_host = ratekeeper_nodes[short_name][0]
+                    filename_base = ratekeeper_nodes[short_name][1]
+                    break
+
+    #To many arguments.
+    elif len(sys.argv) > 2:
+        print "To many arguments.\n"
+        print "Usage:", sys.argv[0], "[host]\n"
+        sys.exit(1)
+    else:
+        print "Unable to determine host."
+        sys.exit(1)
+
+    print "Connecting to host", event_relay_host, "."
+    rk = Ratekeeper((event_relay_host, ratekeeper_port), filename_base,
+                    ratekeeper_dir)
     rk.main()
     
             
