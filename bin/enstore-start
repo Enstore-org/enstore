@@ -7,9 +7,6 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 me=`whoami`
 PID_DIR=/tmp/enstore/$me
-if [ ! -d $PID_DIR ]; then
-    mkdir -p $PID_DIR
-fi
 
 opts_wo_args='ping|nocheck'
 opts_w_args='xterm|just'
@@ -41,9 +38,13 @@ if expr "$ENSTORE_CONFIG_HOST" : '.*\.' >/dev/null;then eful=1; fi
 if expr "$local_host" : '.*\.' >/dev/null;         then lful=1; fi
 
 if   [ $eful = 1 -a $lful = 0 ];then
+    echo "Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup `date`"
     local_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
+    echo "nslookup returned `date`"
 elif [ $eful = 0 -a $lful = 1 ];then
+    echo "Warning $ENSTORE_CONFIG_HOST $local_host eful=$eful lful=$lful...calling nslookup `date`"
     ENSTORE_CONFIG_HOST=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
+    echo "nslookup returned `date`"
 fi
 
 if [ $local_host = $ENSTORE_CONFIG_HOST ];then
