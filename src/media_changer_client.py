@@ -143,13 +143,27 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # parse the options like normal but make sure we have other args
     def parse_options(self):
         interface.Interface.parse_options(self)
+
+        if self.args != []:
+            #If the user opted not to add the ".media_changer" to the end of
+            # the server, then it should be concatenated.
+            try:
+                if self.args[0][-14:] != ".media_changer":
+                    name = self.args[0] + ".media_changer"
+                else:
+                    name = self.args[0]
+            except IndexError:
+                #The string does not contain enough characters to end in
+                # ".media_changer".  So, it must be added.
+                name = self.args[0] + ".media_changer"
+            
 	if self._import:
             if len(self.args) < 2:
 	        self.missing_parameter("--import media_changer insertNewLib")
                 self.print_help()
                 sys.exit(1)
             else:
-                self.media_changer = self.args[0]
+                self.media_changer = name  #self.args[0]
                 self.insertNewLib = self.args[1]
 		self.ioarea = []
 		if len(self.args) > 2:
@@ -161,7 +175,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 self.print_help()
                 sys.exit(1)
             else:
-                self.media_changer = self.args[0]
+                self.media_changer = name  #self.args[0]
                 self.media_type = self.args[1]
 		self.volumeList = []
 		for pos in range(2,len(self.args)):
@@ -172,7 +186,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 self.print_help()
                 sys.exit(1)
             else:
-                self.media_changer = self.args[0]
+                self.media_changer = name  #self.args[0]
                 self.volume=self.args[1]
                 self.drive = self.args[2]
 	elif self.dismount:
@@ -181,7 +195,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 self.print_help()
                 sys.exit(1)
             else:
-                self.media_changer = self.args[0]
+                self.media_changer = name  #self.args[0]
                 self.volume=self.args[1]
                 self.drive = self.args[2]
 	else:
@@ -190,7 +204,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 self.print_help()
                 sys.exit(1)
             else:
-                self.media_changer = self.args[0]
+                self.media_changer = name  #self.args[0]
 
     # print out our extended help
     def print_help(self):

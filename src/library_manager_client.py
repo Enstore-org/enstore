@@ -249,7 +249,17 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             self.print_help()
             sys.exit(1)
         else:
-            self.name = self.args[0]
+            #If the user opted not to add the ".mover" to the end of the
+            # server, then it should be concatenated.
+            try:
+                if self.args[0][-16:] != ".library_manager":
+                    self.name = self.args[0] + ".library_manager"
+                else:
+                    self.name = self.args[0]
+            except IndexError:
+                #The string does not contain enough characters to end in
+                # ".library_manager".  So, it must be added.
+                self.name = self.args[0] + ".library_manager"
             
     # print delete _work arguments
     def print_delete_work_args(self):

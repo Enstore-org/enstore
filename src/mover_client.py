@@ -78,7 +78,17 @@ class MoverClientInterface(generic_client.GenericClientInterface):
             self.print_help()
             sys.exit(1)
         else:
-            self.mover = self.args[0]
+            #If the user opted not to add the ".mover" to the end of the
+            # server, then it should be concatenated.
+            try:
+                if self.args[0][-6:] != ".mover":
+                    self.mover = self.args[0] + ".mover"
+                else:
+                    self.mover = self.args[0]
+            except IndexError:
+                #The string does not contain enough characters to end in
+                # ".mover".  So, it must be added.
+                self.mover = self.args[0] + ".mover"
 
 
 def do_work(intf):

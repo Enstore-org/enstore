@@ -210,7 +210,6 @@ class Interface:
             sys.stderr.write("error: %s\n"%(detail,))
             self.print_help()
             sys.exit(1)
-            
         for (opt,value) in optlist :
             # keep a list of the options entered without the leading "--"
             self.options_list.append(string.replace(opt, "-", ""))
@@ -468,3 +467,4 @@ class Interface:
                 self.vols = 1
             elif opt == "--web-host":
                 self.web_host = value
+

@@ -203,43 +203,6 @@ class EnstoreInterface(UserOptions):
             # allowed options.
             # remove the 'enstore' name from sys.argv
             del sys.argv[0]
-            
-            #If the user opted not to add the ".mover", ".library_manager" or
-            # ".media_changer" to the end of the server, then it must be
-            # concatenated.
-            try:
-                #We need to skip to the first argument after all of the
-                # options that have been listed
-                for pos in range(len(sys.argv[1:])):
-                    if sys.argv[pos + 1][0:2] != "--":
-                        pos = pos + 1 #need to add one to offset first element
-                        break
-                
-                if len(sys.argv) < 3: #not enough options to deal with here
-                    pass
-                elif self.matched_server == "mover":
-                    # 6 = len(".mover")
-                    if len(sys.argv[pos]) <= 6 or \
-                       sys.argv[pos][-6:] != ".mover":
-                        sys.argv[pos] = sys.argv[pos] + ".mover"
-                elif self.matched_server == "library":
-                    # 16=len(".library_manager")
-                    if len(sys.argv[pos]) <= 16 or \
-                       sys.argv[pos][-16:] != ".library_manager":
-                        sys.argv[pos] = sys.argv[pos] + ".library_manager"
-                elif self.matched_server == "media":
-                    # 14 = len(".media_changer")
-                    if len(sys.argv[pos]) <= 14 or \
-                       sys.argv[pos][-14:] != ".media_changer":
-                        sys.argv[pos] = sys.argv[pos] + ".media_changer"
-                else:
-                    pass
-                        
-            except IndexError:
-                #There was an unexpected number of elements.  Let the
-                # following function(s) handle displaying the correct error
-                # messages.
-                pass
 
             # call the servers' interface, since we pass in a list of valid
             # options, we do not have to validate them, getopts does it
