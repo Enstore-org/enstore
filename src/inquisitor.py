@@ -896,9 +896,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
 
-    # spill our guts
-    def dump(self, ticket):
-        ticket["status"] = (e_errors.OK, None)
+    def do_dump(self):
         Trace.trace(11, "last_update - %s"%(self.last_update,))
 	Trace.trace(11, "last_alive - %s"%(self.last_alive,))
 	Trace.trace(11, "intervals  - %s"%(self.intervals,))
@@ -918,6 +916,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	pprint.pprint(self.htmlfile.text)
 	print ""
 
+    # spill our guts
+    def dump(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+	self.do_dump()
 	self.send_reply(ticket)
 
     # set the select timeout
@@ -1273,5 +1275,6 @@ if __name__ == "__main__":
         except:
 	    e_errors.handle_error()
 	    inq.serve_forever_error(inq.log_name)
+	    inq.do_dump()
             continue
     Trace.trace(6,"Inquisitor finished (impossible)")
