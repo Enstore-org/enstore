@@ -49,19 +49,15 @@ def go():
         an_argv = []
 	# there may be more than one alarm that was chosen to be
 	# cancelled, so get them all
-	i = 0
 	alarms = []
-	while 1:
-	    key = "alarm%s"%(i,)
-	    if form.has_key(key):
-		alarms.append(float(string.strip(form[key].value)))
-		i = i + 1
-	    else:
-		if i == 0:
-		    # not to decide, is to decide
-		    print "ERROR: No alarm chosen for resolution."
-		    raise SystemExit
-		break;
+        for key in form.keys():
+            if key[0:5] == "alarm":
+                alarms.append(float(string.strip(form[key].value)))
+        else:
+            if not alarms:
+                # not to decide, is to decide
+                print "ERROR: No alarm chosen for resolution."
+                raise SystemExit
 
 	# we need to find the location of enstore so we can import
 	(config_host, config_port) = enstore_utils_cgi.find_enstore()
@@ -81,6 +77,9 @@ def go():
 		Trace.log(e_errors.INFO, msg)
 	    else:
 		print "Could not resolve alarm with id = %s."%(alarm,)
+                if ticket.get('status', ""):
+                    print "  Return status = (%s, %s)"%(ticket['status'][0],
+                                                        ticket['status'][1])
 	else:
 	    print "</PRE>"
 		
