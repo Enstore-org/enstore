@@ -808,7 +808,14 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         if ticket['status'] != (e_errors.OK, None):
             return None, None, ticket
 
-        mover_addr = ticket['mover']['callback_addr']
+        try:
+            mover_addr = ticket['mover']['callback_addr']
+        except KeyError:
+            exc, msg, tb = sys.exc_info()
+            sys.stderr.write("Sub ticket 'mover' not found.")
+            sys.stderr.write("%s: %s", (exc, msg))
+            sys.stderr.write(pprint.pformat(ticket))
+            return None, None, ticket
 
         #Attempt to get the data socket connected with the mover.
         try:
@@ -1149,17 +1156,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Since a retriable error occured, resubmit the ticket.
             submit_one_request(request_dictionary, verbose)
         except KeyError:
-            #If we get here, then the error occured while waiting for any
-            # (valid) mover to call back.  Since, there was no information
-            # then the submitting operation failed and we should go back
-            # to the top and wait for the other transfers to commence.
-            # The key error is generated trying to get
-            # request_dictionary['vc']['library']
-
-            #??? The situation described above is handled with the
-            # elif status[0] == e_errors.RESUBMITTING: line earlier in this
-            # function.  So what does this code do now???
-            pass
+            sys.stderr.write("Error processing resubmition of %s." %
+                             (request_dictionary['unique_id']))
+            sys.stderr.write(pprint.pformat(request_dictionary))
 
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, status)
@@ -1914,10 +1913,6 @@ def write_to_hsm(e, client, tinfo):
         
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
-    #try:
-    #    listen_socket.close()
-    #except socket.error:
-    #    pass
 
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
@@ -2130,6 +2125,8 @@ def create_read_requests(inputlist, outputlist, file_size,
         vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
         fc_reply['address'] = file_clerk_address
         try:
+            if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
+                sys.stderr.write("Old file clerk format detected.\n")
             del fc_reply['fc'] #Speed up debugging by removing these.
             del fc_reply['vc']
         except:
@@ -2425,13 +2422,13 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         try:
             succeded_ids.append(req['unique_id'])
         except KeyError:
-            sys.stderr.write("Error obtaining unique id list of successes..")
+            sys.stderr.write("Error obtaining unique id list of successes.\n")
             sys.stderr.write(pprint.pformat(req))
     for req in failed_requests:
         try:
             failed_ids.append(req['unique_id'])
         except KeyError:
-            sys.stderr.write("Error obtaining unique id list of failures.")
+            sys.stderr.write("Error obtaining unique id list of failures.\n")
             sys.stderr.write(pprint.pformat(req))
 
     #For each transfer that failed without even succeding to open a control
@@ -2442,13 +2439,14 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
             try:
                 transfer = combine_dict(unknown_failed_transfers[0], transfer)
                 del unknown_failed_transfers[0] #shorten this list.
-            except IndexError:
-                pass
 
-            print_data_access_layer_format(transfer['infile'],
-                                           transfer['outfile'],
-                                           transfer['file_size'],
-                                           transfer)
+                print_data_access_layer_format(transfer['infile'],
+                                               transfer['outfile'],
+                                               transfer['file_size'],
+                                               transfer)
+            except IndexError:
+                msg = "Unable to print data access layer.\n"
+                sys.stderr.write(msg)
 
     return failed_requests, bytes, done_ticket
 
@@ -2563,10 +2561,6 @@ def read_from_hsm(e, client, tinfo):
 
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
-    #try:
-    #    listen_socket.close()
-    #except socket.error:
-    #    pass
 
     #Finishing up with a few of these things.
     calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
