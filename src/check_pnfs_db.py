@@ -6,6 +6,7 @@ import string
 import time
 import getopt
 
+tdir = .
 OK = 0
 FAIL = 1
 
