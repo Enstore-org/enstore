@@ -4322,6 +4322,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 # number_of_files was set to one anyway to force a tape
                 # to be ingested.
                 vc_reply = vcc.inquire_vol(e.volume)
+                vc_reply['address'] = vcc.server_address
                 fc_reply = {'address' : fcc.server_address,
                             #'bfid' : None,
                             #'complete_crc"' : None,
