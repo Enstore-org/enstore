@@ -131,23 +131,23 @@ flushing/checkpointing of data to the database files.
 
      <li> Log in to d0ensrv1 as enstore
 
-     <li> Stop all enstore processes on the node "setup enstore"
+     <li> Stop all Enstore processes on the node "setup enstore"
      "enstore stop". Make sure they are stopped.  "lsof | egrep
      '/diska|/diskb' shows you who is still accessing the databases.
      Stop everyone. <a
      href="http://www-d0en.fnal.gov/enstore/d0ensrv1_raid_status.txt">
      This information </a> is also available on a web page.
 
-     <li> Make sure the inquisitor doesn't start enstore up while you
+     <li> Make sure the inquisitor doesn't start Enstore up while you
      are working.
 
      <li> Type "cd /diskb/enstore-database"
 
-     <li> Type "db_recover -h . -v" and then try to restart the enstore
+     <li> Type "db_recover -h . -v" and then try to restart the Enstore
      servers.
 
      <li> If that fails (it almost never does), rm __db* *.index log.*
-     and then try to restart the enstore servers.
+     and then try to restart the Enstore servers.
 
 
      <li> If that fails, it is time to go to the database backups!
@@ -254,14 +254,14 @@ again after the disk fixes have been resolved.
 
 <li> user root - plog.  If this fails, either you are out of disk
 space on /diska for the pnfs logs or else something is not configured
-correctly. (This cronjob runs in the pnfs framework, not the enstore
+correctly. (This cronjob runs in the pnfs framework, not the Enstore
 one).
 
 <li> user root - pnfsFastBackup. If this fails either you are out of
 disk space on /diska for the backups, or the backup node, d0ensrv3, is
 down or out of disk space, or the network connection to the backup
 node is down. (This cronjob runs in the pnfs framework, not the
-enstore one).
+Enstore one).
 
 <li> user root - delfile. If this fails, there are most likely
 problems with the file clerk.
