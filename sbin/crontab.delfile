@@ -1,1 +1,1 @@
-00 5 * * * sh -c 'OUT=/home/bakken/enstore-delfile.out;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup enstore 1>>$OUT 2>&1;find /rip6a/pnfs/trash/4 -type f -exec $ENSTORE_DIR/bin/delfile {} \; 1>>$OUT 2>&1;'
+00 5 * * * sh -c 'OUT=/home/bakken/enstore-delfile.out;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup enstore 1>>$OUT 2>&1;find /rip6a/pnfs/trash/4 -type f -exec $ENSTORE_DIR/sbin/delfile {} \; 1>>$OUT 2>&1;'
