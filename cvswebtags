@@ -225,24 +225,18 @@ ftt_write2fm      444 ftt_lib/ftt_skip.c ftt_write2fm(ftt_descriptor d) {
 ftt_write_fm_if_needed  416 ftt_lib/ftt_skip.c ftt_write_fm_if_needed(ftt_descriptor d) {
 ftt_write_vol_label  102 ftt_lib/ftt_higher.c ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
 ftt_writefm       351 ftt_lib/ftt_skip.c ftt_writefm(ftt_descriptor d) {
-geteuid            10 ftt_lib/ftt_do_scsi.c #define geteuid() -1
-gethostname        28 ftt_lib/SunOS/ftt_scsi.c #define gethostname(b, l) sysinfo(SI_HOSTNAME, b, (long)l)
 getopt              7 ftt_test/ftt_t_getopt.c int getopt(int argc,char **argv,char *what) 
 hex               370 ftt_lib/ftt_do_scsi.c #define hex(x) "0123456789ABCDEF" [ (x) & 0xF ]
 hprint            376 ftt_lib/ftt_do_scsi.c hprint(unsigned char *s, int n, int nperline, int space, int ascii)
-if                 61 ftt_lib/ftt_macros.h     if ( d && d->unrecovered_error != 0 && recovers < d->unrecovered_error) {\
 inqdata           368 ftt_lib/ftt_do_scsi.c } inqdata;
-long                6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
 lookup_drive       38 ftt_lib/OSF1/ftt_scsi.c lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
-main               59 ftt_lib/asyncdemo.c main(int argc, char **argv) {
+main               59 ftt_test/ftt_test.c main(int argc, char **argv) {
 osf_scsi_block     28 ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
 osf_scsi_descriptor   28 ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
 pack                6 ftt_lib/ftt_label.c #define pack(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
 printinq          417 ftt_lib/ftt_do_scsi.c printinq(inqdata *inq)
-rewind_both         9 sample_code/tapecopy.c rewind_both(ftt_descriptor dfrom, ftt_descriptor dto) {
 scsi_handle         1 ftt_lib/ftt_scsi.h typedef long scsi_handle;
 set_stat           79 ftt_lib/ftt_stats.c set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 sleep              24 ftt_test/ftt_t_rdwr.c #define sleep(x) Sleep(1000*x)
-tapecopy           39 sample_code/tapecopy.c tapecopy(char *from , char *to) {
 ulong               6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
 usage              12 ftt_lib/ftt_suid.c usage(void) {
