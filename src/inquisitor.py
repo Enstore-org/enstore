@@ -107,7 +107,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(14,"{alive_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive(host, prefix, stat, time, key)
+	    self.asciifile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
 	    self.last_alive[key] = time
 	except errno.errorcode[errno.ETIMEDOUT]:
@@ -115,7 +115,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        last_time = self.last_alive[key]
 	    else:
 	        last_time = -1
-	    self.essfile.output_etimedout((host, port), prefix, time, key, \
+	    self.asciifile.output_etimedout((host, port), prefix, time, key, \
 	                                  last_time)
 	    self.htmlfile.output_etimedout((host, port), prefix, time, key, \
 	                                   last_time)
@@ -130,7 +130,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(prefix, time, key)
+	    self.asciifile.output_noconfigdict(prefix, time, key)
 	    self.htmlfile.output_noconfigdict(prefix, time, key)
             Trace.trace(13,"}do_alive_check - ERROR, getting config dict timed out ")
 	    return self.timed_out
@@ -150,10 +150,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"{suspect_vols "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.get_suspect_volumes()
-	    self.essfile.output_suspect_vols(stat, key, self.verbose)
+	    self.asciifile.output_suspect_vols(stat, key, self.verbose)
 	    self.htmlfile.output_suspect_vols(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.asciifile.output_etimedout((host, port), "    ", time, key)
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}suspect_vols - ERROR, timed out")
 	    return
@@ -164,10 +164,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"{work_queue "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getwork(self.verbose)
-	    self.essfile.output_lmqueues(stat, key, self.verbose)
+	    self.asciifile.output_lmqueues(stat, key, self.verbose)
 	    self.htmlfile.output_lmqueues(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.asciifile.output_etimedout((host, port), "    ", time, key)
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}work_queue - ERROR, timed out")
 	    return
@@ -178,10 +178,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"{mover_list "+repr(host)+" "+repr(port))
 	try:
 	    stat = lm.getmoverlist()
-	    self.essfile.output_lmmoverlist(stat, key, self.verbose)
+	    self.asciifile.output_lmmoverlist(stat, key, self.verbose)
 	    self.htmlfile.output_lmmoverlist(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.asciifile.output_etimedout((host, port), "    ", time, key)
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}mover_list - ERROR, timed out")
 	    return
@@ -192,10 +192,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(13,"{mover_status "+repr(host)+" "+repr(port))
 	try:
 	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_moverstatus(stat, key, self.verbose)
+	    self.asciifile.output_moverstatus(stat, key, self.verbose)
 	    self.htmlfile.output_moverstatus(stat, key, self.verbose)
 	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.essfile.output_etimedout((host, port), "    ", time, key)
+	    self.asciifile.output_etimedout((host, port), "    ", time, key)
 	    self.htmlfile.output_etimedout((host, port), "    ", time, key)
 	    Trace.trace(13, "}mover_list - ERROR, timed out")
 	    return
@@ -204,7 +204,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the configuration server
     def update_config_server(self, key, time):
-        Trace.trace(12,"{update_config_server "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_config_server "+repr(self.asciifile.file_name))
 	self.alive_status(self.csc, self.csc.get_address(), \
 	                  self.cfg_prefix, time, key)
         Trace.trace(12,"}update_config_server")
@@ -212,13 +212,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the library manager(s)
     def update_library_manager(self, key, time):
         Trace.trace(12,"{update_library_manager "+\
-                         repr(self.essfile.file_name)+" "+repr(key))
+                         repr(self.asciifile.file_name)+" "+repr(key))
 	# get info on this library_manager
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
 	    Trace.trace(12,"}update_library_manager - ERROR, getting config dict timed out")
 	    return
@@ -245,14 +245,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the movers
     def update_mover(self, key, time):
-        Trace.trace(12,"{update_mover "+repr(self.essfile.file_name)+" "+\
+        Trace.trace(12,"{update_mover "+repr(self.asciifile.file_name)+" "+\
                         repr(key))
 	# get info on this mover
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
             Trace.trace(12,"}update_mover - ERROR, getting config dict timed out")
 	    return
@@ -274,32 +274,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the admin clerk
     def update_admin_clerk(self, key, time):
-        Trace.trace(12,"{update_admin_clerk "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_admin_clerk "+repr(self.asciifile.file_name))
 	self.do_alive_check(key, time, self.acc, self.ac_prefix)
         Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
     def update_file_clerk(self, key, time):
-        Trace.trace(12,"{update_file_clerk "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_file_clerk "+repr(self.asciifile.file_name))
 	self.do_alive_check(key, time, self.fcc, self.fc_prefix)
         Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
     def update_logserver(self, key, time):
-        Trace.trace(12,"{update_log_server "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_log_server "+repr(self.asciifile.file_name))
 	self.do_alive_check(key, time, self.logc, self.logc_prefix)
         Trace.trace(12,"}update_log_server ")
 
     # get the information from the media changer(s)
     def update_media_changer(self, key, time):
-        Trace.trace(12,"{update_media_changer "+repr(self.essfile.file_name)+\
+        Trace.trace(12,"{update_media_changer "+repr(self.asciifile.file_name)+\
 	                " "+repr(key))
 	# get info on this media changer
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(key+self.trailer, time, key)
+	    self.asciifile.output_noconfigdict(key+self.trailer, time, key)
 	    self.htmlfile.output_noconfigdict(key+self.trailer, time, key)
             Trace.trace(12,"}update_media_changer - ERROR, getting config dict timed out")
 	    return
@@ -319,19 +319,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the inquisitor
     def update_inquisitor(self, key, time):
-        Trace.trace(12,"{update_inquisitor "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_inquisitor "+repr(self.asciifile.file_name))
 	# get info on the inquisitor
 	try:
 	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, \
 	                              self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(self.in_prefix, time, key)
+	    self.asciifile.output_noconfigdict(self.in_prefix, time, key)
 	    self.htmlfile.output_noconfigdict(self.in_prefix, time, key)
             Trace.trace(12,"}update_inquisitor - ERROR, getting config dict timed out")
 	    return
 
 	# just output our info, if we are doing this, we are alive.
-	self.essfile.output_alive(t['host'], self.in_prefix, \
+	self.asciifile.output_alive(t['host'], self.in_prefix, \
 	                          { 'work' : "alive",\
 	                            'address' : (t['host'], t['port']), \
                                     'status' : (e_errors.OK, None)}, time, key)
@@ -373,7 +373,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                                                ".encp2", logfile2)
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	# now we have some info, output it
-	self.essfile.output_encp(encplines, key, self.verbose)
+	self.asciifile.output_encp(encplines, key, self.verbose)
 	self.encpfile.output_encp(encplines, key, self.verbose)
 
     # get the default server timeout, either from the inquisitor config dict
@@ -387,22 +387,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the volume clerk server
     def update_volume_clerk(self, key, time):
-        Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_volume_clerk "+repr(self.asciifile.file_name))
 	self.do_alive_check(key, time, self.vcc, self.vc_prefix)
         Trace.trace(12,"}update_volume_clerk ")
 
     # get the information about the blocksizes
     def update_blocksizes(self, key, time):
-        Trace.trace(12,"{update_blocksizes "+repr(self.essfile.file_name))
+        Trace.trace(12,"{update_blocksizes "+repr(self.asciifile.file_name))
 	try:
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    self.essfile.output_noconfigdict(self.bl_prefix, time, key)
+	    self.asciifile.output_noconfigdict(self.bl_prefix, time, key)
 	    self.htmlfile.output_noconfigdict(self.bl_prefix, time, key)
             Trace.trace(12,"}update_blocksizes - ERROR, getting config dict timed out")
 	    return
         if t['status'] == (e_errors.OK, None):
-	    self.essfile.output_blocksizes(t, self.bl_prefix, key)
+	    self.asciifile.output_blocksizes(t, self.bl_prefix, key)
 	    self.htmlfile.output_blocksizes(t, self.bl_prefix, key)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
@@ -430,7 +430,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        del self.server_keys[i]
 	    else:
 	        i = i + 1
-	self.essfile.remove_key(key)
+	self.asciifile.remove_key(key)
 	self.htmlfile.remove_key(key)
 	self.encpfile.remove_key(key)
 	Trace.trace(12,"}remove_key")
@@ -481,7 +481,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    if a_key not in csc_keys['get_keys']:
 	        if a_key != "config_server" and a_key != "encp":
 	            del self.timeouts[a_key]
-	            self.essfile.remove_key(a_key)
+	            self.asciifile.remove_key(a_key)
 	            self.htmlfile.remove_key(a_key)
 	# if there was no encp or config_server timeouts specified in the 
 	# inquisitor section of the config file then we will use the default
@@ -494,7 +494,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # flush the files we have been writing to
     def flush_files(self):
         Trace.trace(12,"{flush_files")
-	self.essfile.flush()
+	self.asciifile.flush()
 	self.htmlfile.flush()
 	self.encpfile.flush()
         Trace.trace(12,"}flush_files")
@@ -507,13 +507,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# anything), then this information is not to be displayed anyway.
 	ticket = self.csc.get(server)
 	if not ticket.has_key("inq_ignore"):
-	    self.essfile.output_nofunc(server)
+	    self.asciifile.output_nofunc(server)
 	    self.htmlfile.output_nofunc(server)
 	else:
 	    # we should not display this info, however we may have been
 	    # displaying it until recently, so we need to remove it from the
 	    # file info.
-	    self.essfile.remove_key(server)
+	    self.asciifile.remove_key(server)
 	    self.htmlfile.remove_key(server)
 	    self.encpfile.remove_key(server)
 	Trace.trace(12,"}update_nofunc ")
@@ -524,7 +524,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# check the ascii file and see if it has gotten too big and needs to be
 	# backed up and opened fresh.
-	self.essfile.timestamp()
+	self.asciifile.timestamp()
 
 	# open the html file and output the header to it
 	self.htmlfile.open(self.verbose)
@@ -714,7 +714,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def set_maxi_size(self, ticket):
         Trace.trace(10,"{set_maxi_size "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-        self.essfile.set_max_ascii_size(ticket['max_ascii_size'])
+        self.asciifile.set_max_ascii_size(ticket['max_ascii_size'])
 	self.send_reply(ticket)
         Trace.trace(10,"}set_maxi_size")
 
@@ -755,7 +755,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def do_timestamp(self, ticket):
         Trace.trace(10,"{do_timestamp "+repr(ticket))
 	ticket['status'] = (e_errors.OK, None)
-	self.essfile.timestamp(enstore_status.force)
+	self.asciifile.timestamp(enstore_status.FORCE)
 	self.send_reply(ticket)
         Trace.trace(10,"}do_timestamp")
 
@@ -781,7 +781,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the current maximum ascii file size
     def get_maxi_size(self, ticket):
         Trace.trace(10,"{get_maxi_size "+repr(ticket))
-	ret_ticket = { 'max_ascii_size' : self.essfile.get_max_ascii_size(),\
+	ret_ticket = { 'max_ascii_size' : self.asciifile.get_max_ascii_size(),\
 	               'status'  : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
         Trace.trace(10,"}get_timeout")
@@ -1252,9 +1252,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# get an ascii system status file, and open it
 	self.parsed_file = ascii_file
-	self.essfile = enstore_status.AsciiStatusFile(ascii_file, \
+	self.asciifile = enstore_status.AsciiStatusFile(ascii_file, \
 	                                              max_ascii_size, verbose)
-	self.essfile.open(verbose)
+	self.asciifile.open(verbose)
 
 	# add a suffix to it because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to

@@ -16,10 +16,8 @@ import e_errors
 import generic_cs
 import log_client
 
-# define file types
-ascii_file = 0
-html_file = 1
-force = 1
+# used to force timestamping
+FORCE = 1
 
 # ENCP line pieces from log file
 ETIME = 0
@@ -538,7 +536,7 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
     def timestamp(self, really=0):
 	Trace.trace(11,"{timestamp "+self.file_name)
 	s = os.stat(self.file_name)
-	if (self.max_ascii_size > 0) or (really == 1):
+	if (self.max_ascii_size > 0) or (really == FORCE):
 	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
 	        self.file.close()
 	        os.system("mv "+self.file_name+" "+self.file_name+"."+\
