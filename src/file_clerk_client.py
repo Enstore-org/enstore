@@ -105,6 +105,55 @@ class FileClient(generic_client.GenericClient,
 
         return ticket
 
+    def list_active(self,external_label):
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"          : "list_active",
+                  "callback_addr" : (host, port),
+                  "external_label": external_label}
+        # send the work ticket to the file clerk
+        ticket = self.send(ticket)
+        if ticket['status'][0] != e_errors.OK:
+            return ticket
+
+        r, w, x = select.select([listen_socket], [], [], 15)
+        if not r:
+            listen_socket.close()
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            listen_socket.close()
+            control_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+        ticket = callback.read_tcp_obj(control_socket)
+        listen_socket.close()
+        
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
+        
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['file_clerk_callback_addr'])
+  
+        ticket= callback.read_tcp_obj(data_path_socket)
+        list =''
+        while 1:
+            msg=callback.read_tcp_raw(data_path_socket)
+            if not msg: break
+            if list:
+                list = list + msg
+            else: list = msg
+        ticket['active_list'] = string.split(list)
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with file clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            return done_ticket
+
+        return ticket
+
     def tape_list(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -154,9 +203,11 @@ class FileClient(generic_client.GenericClient,
         return ticket
 
 
-    def bfid_info(self):
+    def bfid_info(self, bfid = None):
+        if not bfid:
+            bfid = self.bfid
         r = self.send({"work" : "bfid_info",
-                       "bfid" : self.bfid } )
+                       "bfid" : bfid } )
         return r
 
     def set_deleted(self, deleted, restore_dir="no"):
@@ -198,15 +249,19 @@ class FileClient(generic_client.GenericClient,
 	return r
 
     # get volume map name for given bfid
-    def get_volmap_name(self):
+    def get_volmap_name(self, bfid = None):
+        if not bfid:
+            bfid = self.bfid
         r = self.send({"work"           : "get_volmap_name",
-                       "bfid"           : self.bfid} )
+                       "bfid"           : bfid} )
 	return r
 
     # delete bitfile
-    def del_bfid(self):
+    def del_bfid(self, bfid = None):
+        if not bfid:
+            bfid = self.bfid
         r = self.send({"work"           : "del_bfid",
-                       "bfid"           : self.bfid} )
+                       "bfid"           : bfid} )
 	return r
 
 class FileClerkClientInterface(generic_client.GenericClientInterface):
@@ -226,6 +281,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.get_crcs=None
         self.set_crcs=None
 	self.all = 0
+        self.list_active = None
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -236,7 +292,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
             return self.client_options()+[
                 "bfid=","deleted=","list=","backup",
                 "get-crcs=","set-crcs=",
-                "restore=", "recursive", "bfids="]
+                "restore=", "recursive", "bfids=", "list-active="]
             
 def do_work(intf):
     # now get a file clerk client
@@ -264,6 +320,11 @@ def do_work(intf):
         ticket = fcc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
             print ticket['tape_list']
+    elif intf.list_active:
+        ticket = fcc.list_active(intf.list_active)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['active_list']:
+                print i
     elif intf.bfids:
         ticket  = fcc.get_bfids(intf.bfids)
         if ticket['status'][0] == e_errors.OK:

@@ -683,6 +683,65 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.control_socket.close()
         return
 
+    # list_active(self, ticket) -- list the active files on a volume
+    #     only the /pnfs path is listed
+    #     the purpose is to generate a list for deletion before the
+    #     deletion of a volume
+
+    def list_active(self,ticket):
+        try:
+            external_label = ticket["external_label"]
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            ####XXX client hangs waiting for TCP reply
+            return
+
+        # get a user callback
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket,ticket)
+
+        # if index is available, use index, otherwise use bfid_db to be
+        # backward compatible
+
+        if self.dict.inx.has_key('external_label'):  # use index
+            # now get a cursor so we can loop on the database quickly:
+            c = self.dict.inx['external_label'].cursor()
+            key, pkey = c.set(external_label)
+            while key:
+                value = self.dict[pkey]
+                if not value.has_key('deleted') or value['deleted'] != "yes":
+                    if value.has_key('pnfs_name0'):
+                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
+                key,pkey = c.nextDup()
+            c.close()
+        else:  # use bfid_db
+            try:
+                bfid_list = self.bfid_db.get_all_bfids(external_label)
+            except:
+                msg = "File Clerk: no entry for volume %s" % external_label
+                ticket["status"] = (e_errors.KEYERROR, msg)
+                Trace.log(e_errors.ERROR, msg)
+                bfid_list = []
+            for bfid in bfid_list:
+                value = self.dict[bfid]
+                if not value.has_key('deleted') or value['deleted'] != "yes":
+                    if value.has_key('pnfs_name0'):
+                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
+
+        # finishing up
+
+        callback.write_tcp_raw(self.data_socket, "")
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close()
+        return
+
     def start_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"start_backup")
