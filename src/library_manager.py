@@ -34,8 +34,6 @@ def priority(ticket):
 
 # insert work into our queue based on its priority
 def queue_pending_work(ticket):
-    print "LM: queue_pending_work"
-    pprint.pprint(ticket)
     ticket["priority"] = priority(ticket)
     i = 0
     tryp = ticket["priority"]
@@ -239,8 +237,6 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
-	print "LM:have_bound_volume"
-	pprint.pprint(mticket)
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket["external_label"])
         if w:
