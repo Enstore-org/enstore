@@ -341,7 +341,8 @@ class  FTTDriver(GenericDriver) :
 
     def seek( self, loc_cookie ):
 	part, block_loc, filenum = loc2int( self, loc_cookie )
-	if block_loc:
+	# THE "and 0" IN THE NEXT LINE IS TO TEMPORARILY DISABLE FTT.locate
+	if block_loc and 0:
 	    xx = 2
 	    while xx:
 		FTT.locate( block_loc )
