@@ -23,4 +23,4 @@ case `uname` in
         ;;
 esac
 
-echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash'| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_'
+echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_'
