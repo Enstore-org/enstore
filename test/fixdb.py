@@ -39,7 +39,7 @@ def main(argv):
             print "update database"
             d[vol]=data
 
-            vol,data=d.cursor('next')
+        vol,data=d.cursor('next')
 
 if __name__=='__main__':
     main(sys.argv)
