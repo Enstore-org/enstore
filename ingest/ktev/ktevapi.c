@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include "dcap.h"
-#include "ktevapi.h"
 
 #define PNFS_ROOT getenv("DCACHE_ROOT")?getenv("DCACHE_ROOT"):"/pnfs/ktev/migrated_from_dlt/"
 #define FILENAME_LEN 1024
