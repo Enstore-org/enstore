@@ -89,6 +89,7 @@ insert into state_type (name) values ('system_inhibit_1');
 insert into state_type (name) values ('user_inhibit_0');
 insert into state_type (name) values ('user_inhibit_1');
 insert into state_type (name) values ('write_protect');
+insert into state_type (name) values ('other');
 
 create function lookup_stype(varchar) returns integer
 as 'select id from state_type where name = $1;'
