@@ -11,7 +11,7 @@ def addpath(p):
     p = os.path.expandvars(p)
     p = os.path.normpath(p)
     if p not in sys.path:
-        sys.path.insert(0,p)
+        sys.path.append(p)
 
 
 addpath('$ENSTORE_DIR/src')
