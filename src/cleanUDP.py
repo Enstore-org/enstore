@@ -1,23 +1,27 @@
 #!/usr/bin/env python
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 
 """
 	The purpose of this module is to provide a clean datagram
-	interface for Enstore. By "clean" i mean that we try to
-        provide a uniforaminterfaec on all platforms by masking specific
+	interface for Enstore. By "clean" we mean that we try to
+        provide a uniform interface on all platforms by masking specific
 	errors.
 
 	Specific errors that are masked:
 
 	1) Linux ipv4 -- returning an error on the next UDP send or recieve
-	when an ICMP port unreachable measage is recieved. Retry self.retry_max
-	times to make sure we have no recieved sevearl messages , say
-	the last several messge. N.B. the ECONNREFUSED message is cleared
-	after it is returned to the user.
+	when an ICMP port unreachable measage is recieved. The socket 
+	implementation will return, then automaticallay clear ECONNREFUSED.
+	To handle this, we transpearently retry self.retry_max times 
 
 
-	Notice that the python socket is a primitive type, like
-	file descriptors, and so is not available for inheritance.
-	therefore we have to pedantically code all the "methods".
+	Notice that the python socket is a primitive type in the 
+	language, like file descriptors, and so is not available for 
+	inheritance. therefore we have to pedantically code all the "methods".
+	This implementaion does nto handle all patterns of optional 
+	arguments.
 
 
 """

@@ -25,10 +25,10 @@ def try_a_port(host, port) :
     Trace.trace(20,'{try_a_port '+repr((host,port)))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#	uncommen these lines to try clean UDP
-#	import cleanUDP
-#	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind(host, port)
+#	uncomment these lines to try clean UDP
+	import cleanUDP
+	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((host, port))
     except:
 	try:
             sock.close()

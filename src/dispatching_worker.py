@@ -14,13 +14,11 @@ import sys
 # the SOCKS protocol to make connections through a firewall machine.
 # See http://www.w3.org/People/Connolly/support/socksForPython.html or
 # goto www.python.org and search for "import SOCKS"
-try:
-    import SOCKS
-    socket = SOCKS
-except ImportError:
-    import socket
+import socket
 
 #enstore imports
+
+import cleanUDP
 import timeofday
 import Trace
 import e_errors
@@ -88,12 +86,8 @@ class DispatchingWorker:
 	"""
         Trace.trace(10,"{__init__ add="+repr(server_address))
         self.server_address = server_address
-        self.socket = socket.socket(self.address_family,
+	self.socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
-# Uncomment the lines below to try cleanUDP
-#	import cleanUDP
-#	self.socket = cleanUDP.cleanUDP (self.address_family,
-#                                    self.socket_type)
 
         self.server_bind()
         Trace.trace(10,"}__init__")
