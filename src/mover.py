@@ -1194,6 +1194,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def offline(self):
         self.state = OFFLINE
+        Trace.log(e_errors.INFO, "mover is set OFFLINE")
         self.update_lm()
 
     def reset(self, sanity_cookie, client_crc_on):
@@ -2796,6 +2797,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
+            time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
+            Trace.log(e_errors.INFO, "dismounted %s %s %s"%(volume_label,self.config['product_id'], time_msg))
             self.current_volume = None
             if self.setup_mode == ASSERT:
                 self.send_client_done(self.current_work_ticket, e_errors.OK, None)
