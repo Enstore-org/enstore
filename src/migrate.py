@@ -696,7 +696,7 @@ def final_scan_volume(vol):
 				local_error = local_error + 1
 				continue
 
-			open_log(MY_TASK, "verifying", bfid, pnfs_path, '...')
+			open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
 			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
