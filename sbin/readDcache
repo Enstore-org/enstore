@@ -52,24 +52,28 @@ case $gang in
          do_dccpwrite=1
          do_readback=1
           ;;
-  d0en*) namespace=/pnfs/sam/dzero
+  d0en) namespace=/pnfs/sam/dzero
 	 weak_port=24126
 	 strong_port=24127
          #date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
 	 #place=$namespace/`date_string_d`
          #file=`find $place -type f -print | head -n 1`
 	 # new file once/day, asumming the head of directory is constant (bad assumption)
+       echo "Finding file"
          file=`find $namespace -type f -size +0 -print | head -n $N | tail -n 1` 2>/dev/null
+	echo "found file"
          f2=`echo $file | sed -e 's%/pnfs%%'`
-         f3=`echo $file | sed -e 's%/pnfs/archive%%'`
+         #f3=`echo $file | sed -e 's%/pnfs/archive%%'`
+         f3=`echo $file | sed -e 's%/pnfs/sam%%'`
          w=/pnfs/archive/dcache-tests/$N.dcache
          w2=`echo $w | sed -e 's%/pnfs%%'`
-         w3=`echo $w | sed -e 's%/pnfs/archive%%'`
-         dcache=fndca
+         #w3=`echo $w | sed -e 's%/pnfs/archive%%'`
+         w3=`echo $w | sed -e 's%/pnfs%%'`
+         dcache=d0endca3a
          do_active=1
          do_passive=1
-         do_nonkerb_active=1
-         do_nonkerb_passive=1
+         do_nonkerb_active=0
+         do_nonkerb_passive=0
          do_kftp_write=1
          do_dccp=1
          do_double=1
@@ -79,30 +83,28 @@ case $gang in
        *) namespace="UNKNOWN"
           ;;
 esac
-
+echo FILE $file $f2 $f3 $w $w2 $w3
 test_file=/tmp/dcache_test_file
 read_back=/tmp/dcache_read_back
 
 rm -f $test_file
 cp /var/log/messages $test_file
 
-
 source /usr/local/etc/setups.sh
-if [ $? ]; then
+if [ $? -gt 0 ]; then
     echo "Unable to source /usr/local/etc/setups.sh."
     exit 9
 fi
 setup kftp
-if [ $? ]; then
+if [ $? -gt 0 ]; then
     echo "Unable to setup kftp."
     exit 8
 fi
 setup dcap
-if [ $? ]; then
+if [ $? -gt 0 ]; then
     echo "Unable to setup dcap."
     exit 8
 fi
-
 
 # get a file that is old.  As time moves on, choose a different
 # file.  But keep old choice for a reasonable amount of time.
@@ -195,7 +197,6 @@ else
   stat2=0
 fi
 
-#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$A
 if /bin/false; then
 
 wfile=${w3}_$$_2
@@ -245,7 +246,6 @@ else
   stat2b=0
   stat2c=0
 fi
-#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$A
 
 # read the same file twice - Active kerberized read
 if [ $do_active = 1 -a $do_double = 1 ]; then
@@ -312,8 +312,8 @@ stat4=0
 # dccp read
 if [ $do_dccp = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` dccp read ~bakken/dccp -d 2 $file /dev/null"
-                         ~bakken/dccp -d 2 $file /dev/null
+  echo "`date` dccp read dccp -d 2 $file /dev/null"
+                         dccp -d 2 $file /dev/null
   stat5=$?
   echo
 else
@@ -324,8 +324,8 @@ fi
 # double dccp read
 if [ $do_dccp = 1 -a $do_double = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date` Double dccp read ~bakken/dccp -d 2 $file /dev/null"
-                                ~bakken/dccp -d 2 $file /dev/null& j1=$!; ~bakken/dccp -d 2 $file /dev/null& j2=$!
+  echo "`date` Double dccp read dccp -d 2 $file /dev/null"
+                                dccp -d 2 $file /dev/null& j1=$!; dccp -d 2 $file /dev/null& j2=$!
   ps axuwww | grep dccp | grep -v grep
   (sleep 900; echo after 900 seconds killing $j1 and $j2; kill $j1 $j2)&j3=$!
   echo waiting for process $j1 and $j2
@@ -341,8 +341,8 @@ wfile=${w}_$$_3
 # dccp write
 if [ $do_dccpwrite = 1 ]; then
   echo "================================================================================================================================"
-  echo "`date`dccp write  ~bakken/dccp -d 2 $test_file $wfile"
-                          ~bakken/dccp -d 2 $test_file $wfile
+  echo "`date`dccp write  dccp -d 2 $test_file $wfile"
+                          dccp -d 2 $test_file $wfile
   stat6=$?
   echo
 else
@@ -355,11 +355,11 @@ if [ $do_dccpwrite = 1 -a $do_readback = 1 ]; then
   echo "================================================================================================================================"
   echo "rm -f $read_back"
         rm -f $read_back
-  echo "`date` dccp readback ~bakken/dccp -d 2 $wfile $read_back"
-                             ~bakken/dccp -d 2 $wfile $read_back
+  echo "`date` dccp readback dccp -d 2 $wfile $read_back"
+                             dccp -d 2 $wfile $read_back
   stat7=$?
   if [ $stat7 -ne 0 ]; then
-     echo enstore alarm --raise --severity "A" --root-error "dccp readback ~bakken/dccp -d 2 $wfile $read_back"
+     echo enstore alarm --raise --severity "A" --root-error "dccp readback dccp -d 2 $wfile $read_back"
      stat7c=0
   else
      cmp $test_file $read_back
