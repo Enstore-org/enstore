@@ -188,7 +188,11 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
               done
               #echo $filename
               #filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
-	      filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
+	      if [ `echo $filename | grep -c 'root/fs/usr'` -ne 1 ] ; then
+                echo "PNFS PROTECTION ERROR: admin should chmod go+rx /pnfs/fs/usr and subdirs"
+	      else
+ 	        filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
+              fi
               if [ -z $filename ] ; then
                 filename="NO_SUCH_FILE"
                 echo $filename
