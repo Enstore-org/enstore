@@ -6,7 +6,7 @@ import time
 
 def formatedf(file):
 	bfid = file.get('bfid', None)
-	complete_crc = file.get('complete_crc', None)
+	complete_crc = file.get('complete_crc', 0)
 	deleted = 'u'
 	if file.has_key('deleted'):
 		if file['deleted'] == 'no':
@@ -20,6 +20,10 @@ def formatedf(file):
 	pnfsid = file.get('pnfsid', None)
 	sanity_cookie_0 = file.get('sanity_cookie', (None, None))[0]
 	sanity_cookie_1 = file.get('sanity_cookie', (None, None))[1]
+	if sanity_cookie_0 == None:
+		sanity_cookie_0 = 0
+	if sanity_cookie_1 == None
+		sanity_cookie_1 = 0
 	size = file.get('size', 0)
 	res = '%s\t%d\t%c\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d'% (
 		bfid, complete_crc, deleted, drive, external_label,
