@@ -20,6 +20,8 @@ def preprocess(lines):
                 state=q1
                 q=c
             else:
+                if c==';': #turn semicolons into newlines
+                    c='\n'
                 outbuf=outbuf+c
         elif state==comment:
             if c=='\n':
@@ -70,7 +72,6 @@ def find_imports(filename, imports):
             for w in words[1:]:
                 if w not in l:
                     l.append(w)
-            l.extend(words[1:])
         elif words[0]=="from":
             if words[1] not in l:
                 l.append(words[1])
