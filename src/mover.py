@@ -217,9 +217,9 @@ class Buffer:
         l = len(self._buf)
         for i in range(l):
             self._buf.pop(0)
-        l = len(self._free_list)
+        l = len(self._freelist)
         for i in range(l):
-            self._free_listuf.pop(0)
+            self._freelist.pop(0)
         self._lock.release()
         
         self.write_ok.clear()
