@@ -16,6 +16,10 @@
 # system imports
 import os
 import sys
+import time				# sleep
+import popen2
+import string
+import socket
 
 # enstore imports
 import configuration_client
@@ -24,11 +28,8 @@ import generic_server
 import generic_cs
 import interface
 import log_client
-import time				# sleep
 import Trace
 import e_errors
-import popen2
-import string
 
 
 # media loader template class
@@ -259,10 +260,19 @@ class RDD_MediaLoader(MediaLoaderMethods) :
 
 # "Shelf" manual media server - interfaces with OCS
 class Shelf_MediaLoader(MediaLoaderMethods) :
+    """
+      Reserving tape drives for the exclusive use of the Enstore-media_changer
+      can be done by establishing an OCS Authorization Group inwhich the sole
+      user is the enstore_userid and tape drive list consists soley of the
+      enstore reserved drives. These drives and the enstore_userid must not be
+      listed in any other Authorization Group as well. Section 7.3.2 of the
+      OCS Installation/Administration Guide, Version 3.1, details this 
+      mechanism.
+    """
     status_message = {
       'OK':        (e_errors.OK, "request successful"),
       'ERRCfgHst': (e_errors.NOACCESS, "mc:Shlf config OCShost incorrect"),
-      'ERRLoHoNR': (e_errors.NOACCESS, "mc:Shlf local host not responding"),
+      'ERRNoLoHN': (e_errors.NOACCESS, "mc:Shlf local hostname not accessable"),
       'ERRPipe':   (e_errors.NOACCESS, "mc:Shlf no pipeObj"),
       'ERRHoNoRe': (e_errors.NOACCESS, "mc:Shlf remote host not responding"),
       'ERRHoCmd':  (e_errors.NOACCESS, "mc:Shlf remote host command unsuccessful"),
@@ -287,88 +297,89 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
                  host=interface.default_host(), \
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
-	#self.prepare=self.unload  #  override prepare with dismount
+	self.prepare=self.unload #override prepare with dismount and deallocate
 	
-	fnstatusR = self.getRemoteHost()
+	fnstatusO = self.getOCSHost()
 	fnstatus = self.getLocalHost()
-	if fnstatus == 'OK' and fnstatusR == 'OK' :
-	    if self.remoteHostShort == self.localHost:
+        Trace.trace(e_errors.INFO,"Shelf init localHost=%s OCSHost=%s" % (self.localHost, self.ocsHost))
+	if fnstatus == 'OK' and fnstatusO == 'OK' :
+	    index = string.find(self.localHost,self.ocsHost)
+	    if index > -1 :
 	        self.cmdPrefix = ""
 	        self.cmdSuffix = ""
 	    else :
-	        self.cmdPrefix = "rsh " + self.remoteHost + " '"
+	        self.cmdPrefix = "rsh " + self.ocsHost + " '"
 	        self.cmdSuffix = "'"
                 fnstatus = self.checkRemoteConnection()
-            Trace.log(e_errors.INFO, "MedChShf init Host=%s shortHost=%s" % (self.remoteHost, self.remoteHostShort) )
-	    if fnstatus == 'OK' :
-	        fnstatus = self.checkOCSalive()
+		if fnstatus != 'OK' :
+                    Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+		    return
 	else :
-            Trace.log(e_errors.ERROR, "ERROR:MedChShf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
-            Trace.log(e_errors.ERROR, "ERROR:MedChShf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
-        Trace.log(e_errors.INFO, "MedChShf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+	    return
+        fnstatus = self.checkOCSalive()
+        if fnstatus != 'OK' :
+             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+             return
+     	fnstatus = self.deallocateOCSdrive("AllTheTapeDrives")
+        if fnstatus != 'OK' :
+             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+             return
+        Trace.log(e_errors.INFO, "Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 	return
 
-    def getRemoteHost(self):
-        "get the hostname of the remote machine from the config server"
+    def getOCSHost(self):
+        "get the hostname of the OCS machine from the config server"
         fnstatus = 'OK'
-	self.remoteHost = self.mc_config['OCSclient']
-	index = string.find(self.remoteHost,".")
-	if index > 0 :
-	    self.remoteHostShort = self.remoteHost[:index]
-	elif index == 0 :
+	self.ocsHost = string.strip(self.mc_config['OCSclient'])
+	index = string.find(self.ocsHost,".")
+	if index == 0 :
 	    fnstatus = 'ERRCfgHst'
-	else :
-	    self.remoteHostShort = self.remoteHost
         return fnstatus
 	
     def getLocalHost(self):
         "get the hostname of the local machine"
         fnstatus = 'OK'
-        command = "echo $(hostname -s) ; echo $?"
-        Trace.log(e_errors.INFO, "MedChShf gLH Cmd=%s" % command )
-        pipeObj = popen2.Popen3(command, 0, 0)
-	if pipeObj is None:
-	    fnstatus = 'ERRPipe'
-            return fnstatus
-	stat = pipeObj.wait()
-	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf gLH return strings=%s stat=%s" % (result, stat))
-	if stat == 0:
-	    retval = result[len(result)-1][0]
-	    if retval != '0':
-	        fnstatus = 'ERRLoHoNR'
-                return fnstatus
-	    else :
-	        self.localHost = result[0]
+	result = socket.gethostbyaddr(socket.gethostname())
+        Trace.log(e_errors.INFO, "Shelf gLH Rslt=%s" % result[0] )
+	localH = result[0]
+	index = string.find(localH,".")
+	if index > 0 :
+	    self.localHost = localH
+	elif len(result[1]) > 0 :
+	    for localH in result[1] :
+                Trace.trace(10, "Shelf gLH Rslt[1]=%s" % localH )
+	        index = string.find(localH,".")
+                if index > 0 :
+	            self.localHost = localH
+		    break
+            else :
+	        fnstatus = 'ERRNoLoHN'
+		return fnstatus
 	else :
-	    fnstatus = 'ERRLoHoNR'
-            return fnstatus
+	    fnstatus = 'ERRNoLoHN'
+	    return fnstatus
         return fnstatus
-    
+	    
     def checkRemoteConnection(self):
 	"check to see if remote host is there"
         fnstatus = 'OK'
-        command = self.cmdPrefix + "echo $(hostname -s) ; echo $?" \
+        command = self.cmdPrefix + "echo $(hostname) ; echo $?" \
 	          + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf cRC Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf cRC Cmd=%s" % command )
         pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRPipe'
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf cRC rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf cRC rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0':
 	        fnstatus = 'ERRHoCmd'
                 return fnstatus
-	    else :   # check if remote hostname matches self.remoteHostShort
-	        retstring = result[0]
-	        pos=string.find(retstring, self.remoteHostShort)
-		if pos == -1 :
-		    fnstatus = 'ERRHoNamM'  # hostname mismatch
-                    return fnstatus
 	else :
 	    fnstatus = 'ERRHoNoRe'
             return fnstatus
@@ -379,14 +390,14 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
         fnstatus = 'OK'
         command = self.cmdPrefix + "ocs_left_allocated -l 0 ; echo $?" \
 	          + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf cOa Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf cOa Cmd=%s" % command )
         pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRPipe'
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf cOa rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf cOa rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0':
@@ -406,14 +417,14 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 	fnstatus = 'OK'
 	command = self.cmdPrefix + "ocs_allocate -T " + drive + \
 	          " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf aOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf aOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRAloPip'
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf aOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf aOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0':
@@ -427,7 +438,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
          	    pos=string.find(retstring," ")
 		    if pos != -1 :
 		        wrongdrive=string.strip(retstring[pos+1:])
-                        Trace.log(e_errors.ERROR, "ERROR:MedChShf aOd rsh wrongdrive=" % wrongdrive )
+                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=" % wrongdrive )
 		    fnstatusR = self.deallocateOCSdrive(drive)
                     return fnstatus
 	else :
@@ -440,7 +451,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 	fnstatus = 'OK'
 	command = self.cmdPrefix + "ocs_request -t " + drive + \
 	          " -v " + external_label + " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf mOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf mOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRReqPip'
@@ -448,7 +459,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf mOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf mOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0':
@@ -464,16 +475,20 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
     def deallocateOCSdrive(self, drive):
 	"deallocate an OCS managed drive"
 	fnstatus = 'OK'
-	command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
-	          " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf dOd Cmd=%s" % command )
+	if "AllTheTapeDrives" == drive :
+	    command = self.cmdPrefix + "ocs_deallocate -a " + \
+	              " ; echo $?" + self.cmdSuffix
+	else :
+	    command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
+	              " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "Shelf dOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRDeaPip'
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf dOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf dOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0': #check if drive already deallocated (not an error)
@@ -492,14 +507,14 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 	fnstatus = 'OK'
 	command = self.cmdPrefix + "ocs_dismount -t " + drive + \
 	          " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "MedChShf uOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf uOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstat = 'ERRDsmPip'
             return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "MedChShf uOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf uOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
 	    retval = result[len(result)-1][0]
 	    if retval != '0':
@@ -519,22 +534,22 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:MedChShf load exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf load exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
         return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 
     def unload(self, external_label, drive, media_type):
 	"unload a tape"
 	fnstatusTmp = self.unmountOCSdrive(drive)
      	fnstatus = self.deallocateOCSdrive(drive)
-        Trace.log(e_errors.INFO, "MedChShf unload deallocate exit fnstatus=%s" % fnstatus)
+        Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % fnstatus)
 	if fnstatusTmp != 'OK' :
-            Trace.log(e_errors.ERROR, "ERROR:MedChShf unload deall exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 	    fnstatus = fnstatusTmp
 	if fnstatus == 'OK' :
 	    status = 0
 	else :
 	    status = 1
-            Trace.log(e_errors.ERROR, "ERROR:MedChShf unload exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:Shelf unload exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
         return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 	
 class MediaLoaderInterface(generic_server.GenericServerInterface):
