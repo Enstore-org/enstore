@@ -34,7 +34,7 @@ fi
 
 cd $base
 
-lastweek=`date -d '1 week ago' +'%Y-%m-%d:00:01'`
+last1week=`date -d '1 week ago' +'%Y-%m-%d:00:01'`
 last6months=`date -d '6 months ago' +'%Y-%m-%d:00:01'`
 tomorrow=`date -d '1 day' +'%Y-%m-%d:00:01'`
 
@@ -50,7 +50,12 @@ for i in *; do
      if [ "$j" = "*HISTOGRAM" ]; then break; fi
      f=`basename $j |sed -e 's/HISTOGRAM//'`
      # for the log-stash plot, use 6 months time scale not 2 weeks
-     if [ "$f" = "log-stash" ]; then lastweek=$last6months; fi
+     if [ "$f" = "log-stash" ]; 
+     then 
+	lastweek=$last6months; 
+     else
+	lastweek=$last1week; 
+     fi
      echo generating plot for $i/$f
      file=`mktemp /tmp/cronplot.XXXXXXXX`
      title=$i/$f
