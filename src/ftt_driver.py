@@ -26,7 +26,7 @@ class FTTDriver(driver.Driver):
         self._bytes_transferred = 0
         self._start_time = None
         self._total_time = 0
-        self._rate = self._last_rate = 0
+        self._rate = self._burst_rate = 0
         self._cleaning_bit = 0
         
     def open(self, device=None, mode=None, retry_count=10):
@@ -51,7 +51,8 @@ class FTTDriver(driver.Driver):
 
                 
         self.mode = mode
-        self._last_rate = 0
+        self._burst_rate = 0
+        self._active_time = 0 #time actually spent in read or write call
         self._rate = 0
         self._bytes_transferred = 0
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
@@ -77,7 +78,7 @@ class FTTDriver(driver.Driver):
         else:
             return 0 #this is BADSWMOUNT
         
-        self._rate = self._last_rate = self._bytes_transferred = 0
+        self._rate = self._burst_rate = self._bytes_transferred = 0
 
         return 1
     
@@ -217,11 +218,13 @@ class FTTDriver(driver.Driver):
             raise e_errors.READ_ERROR, detail
         if r > 0:
             now = time.time()
-            self._last_rate = r/(now-t0)
-            if self._bytes_transferred == 0:
-                self._start_time = t0
+            t = (now - t0)
+            if t!=0:
+                self._burst_rate = r / t
+                self._rate = self._active_time * self._rate + t * self._burst_rate
+                self._active_time = self._active_time + t
+                self._rate = self.rate / self._active_time
             self._bytes_transferred = self._bytes_transferred + r
-            self._rate = self._bytes_transferred/(now - self._start_time)
         return r
     
     def write(self, buf, offset, nbytes):
@@ -237,11 +240,13 @@ class FTTDriver(driver.Driver):
             raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
-            self._last_rate = r/(now - t0)
-            if self._bytes_transferred == 0:
-                self._start_time = t0
+            t = (now - t0)
+            if t!=0:
+                self._burst_rate = r / t
+                self._rate = self._active_time * self._rate + t * self._burst_rate
+                self._active_time = self._active_time + t
+                self._rate = self.rate / self._active_time
             self._bytes_transferred = self._bytes_transferred + r
-            self._rate = self._bytes_transferred/(now - self._start_time)
         return r
         
     def writefm(self):
@@ -347,7 +352,7 @@ class FTTDriver(driver.Driver):
         
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
-        return self._rate, self._last_rate
+        return self._rate, self._burst_rate
     
     def get_cleaning_bit(self):
         clean = 0
