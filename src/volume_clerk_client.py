@@ -180,10 +180,6 @@ class VolumeClerkClient(generic_client.GenericClient,
                        'vcc.get_vols: sending ticket: %s'%(ticket,) )
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket %s"%(ticket,)
 
-        # We have placed our request in the system and now we have to wait.
-        # All we  need to do is wait for the system to call us back,
-        # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. 
         while 1:
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_obj(control_socket)
@@ -257,10 +253,6 @@ class VolumeClerkClient(generic_client.GenericClient,
         if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket %s"%(ticket,)
 
-        # We have placed our request in the system and now we have to wait.
-        # All we  need to do is wait for the system to call us back,
-        # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. 
         while 1:
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_obj(control_socket)
