@@ -760,6 +760,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    elif wt["unique_id"] == ticket["unique_id"]:
 		break
         else:
+            if not ticket.has_key('lm'):
+                ticket['lm'] = {'address':self.server_address }
             status = self.pending_work.insert_job(ticket)
             if status:
                 if status == e_errors.INPROGRESS:
@@ -786,8 +788,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					 ticket["vc"]["library"],
 					 ticket["vc"]["file_family"],
 					 ticket["wrapper"]["uname"]))
-	if not ticket.has_key('lm'):
-	    ticket['lm'] = {'address':self.server_address }
 
 	# find the next idle mover
 	if ticket["fc"].has_key("external_label"):
