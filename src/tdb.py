@@ -13,7 +13,7 @@ class Tdb(threading.Thread) :
         threading.Thread.__init__(self)
 
     def writeln(self, thing):
-        self.outFile.write(`thing`+ "\n")
+        self.outFile.write(`thing` + "\n")
         self.outFile.flush()
 
     def run(self) :
@@ -28,10 +28,12 @@ class Tdb(threading.Thread) :
             except :
                 import traceback
                 traceback.print_exc(file=self.outFile)
+
             
     def once(self) :
         self.outFile.write("\ntdb>>")
         self.outFile.flush()
+
         line  = string.strip(self.inFile.readline())
         toks  = string.split(line)
         if  toks :
@@ -42,10 +44,14 @@ class Tdb(threading.Thread) :
                     self.help()
             elif toks[0] ==   "who" :
                 self.who(string.strip(line[3:]))
+            elif toks[0] ==   "whoall" :
+                self.whoall(string.strip(line[6:]))
+            elif toks[0] ==   "import" :
+                self.imprt(string.strip(line[6:]))
             elif toks[0] == "eval" :
                 self.eval(line[4:])
             elif toks[0] == "exec" :
-                self.exc(line[4:])
+                self.exc(string.strip(line[4:]))
             elif toks[0] == "help":
                 self.help()
             elif toks[0] == "modules":
@@ -58,27 +64,44 @@ class Tdb(threading.Thread) :
     def list(self, filename, lineno):
         import linecache
         for l in  range (string.atoi(lineno), string.atoi(lineno) + 10) :
-            self.writeln(linecache.getline(filename, l))
+            self.writeln(linecache.getline(filename + ".py", l))
 
     def who(self, m):
         d = sys.modules[m].__dict__
 	for e in d.keys() :
+            self.writeln(repr(e))
+
+    def whoall(self, m):
+        d = sys.modules[m].__dict__
+	for e in d.keys() :
             self.writeln(repr(e)  + '=' + repr(d[e]))
+
+    def imprt(self, m):
+        import __main__
+        __main__.__dict__[m]=__import__(m)
+        self.writeln(eval(m))
 
     def eval(self, e):
         self.writeln(eval(e))
 
     def exc(self, e):
-        if 0 : print e #linter
-        self.writeln("not yet there")
+        if 0 : print self #linter
+        exec e
 
     def modules(self):
 	for m in sys.modules.keys() :
             self.writeln(m)
 
-    def  help(self):
-        self.writeln(
-	  "help,list <filename> <line>, who <module>, eval <expression>, modules, quit")
+    def help(self):
+        self.writeln("help")
+        self.writeln("list <filename>.py <line>-- Print 10 lines from file")
+        self.writeln("who <module>             -- Print names at module scope")
+        self.writeln('whoall <module>          -- Print values  "   "     "  ')
+        self.writeln("eval rest....           -- eval the rest of line")
+        self.writeln("exec rest....           -- exec the rest of line")
+        self.writeln("modules                  -- print known modules")
+        self.writeln("import <module>          -- import a module")
+        self.writeln("quit")
     
     def quit(self):
         if 0 : print self # quiet the linter
@@ -86,7 +109,7 @@ class Tdb(threading.Thread) :
         
 class TdbListener(threading.Thread):
     host =  "localhost"
-    port = 9999
+    port = 9998
     
     def __init__(self) :
         threading.Thread.__init__(self)
@@ -109,6 +132,20 @@ if __name__ == "__main__" :
     dog = {'cat' : 1} 
     TdbListener().start()
     while 1:
-        print "visit me at localhost 9999        !!!! ", dog
+        print "visit me at localhost 9998        !!!! ", dog
         time.sleep(10)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
