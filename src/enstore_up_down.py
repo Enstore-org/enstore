@@ -544,6 +544,9 @@ def do_real_work():
                                                                           libs[lib]['total_movers']- libs[lib]['bad_movers']))
     # rewrite the schedule file as we keep track of how many times something has been down
     if sfile:
+        # refresh data
+	outage_d, offline_d, junk = sfile.read()
+        # write it back with updated seen_down_d
 	sfile.write(outage_d, offline_d, seen_down_d)
 
     # now figure out the state of enstore based on the state of the servers
