@@ -3573,7 +3573,7 @@ def check_crc(done_ticket, encp_intf, fd=None):
                     msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
                           (dcache_crc, hex(dcache_crc),
                            encp_crc, hex(encp_crc))
-                    done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+                    done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
                     return
 
     Trace.message(TIME_LEVEL, "Time to check CRC: %s sec." %

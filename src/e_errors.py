@@ -73,6 +73,7 @@ POSITIONING_ERROR='POSITIONING_ERROR'
 DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
 FILE_MODIFIED = "FILE WAS MODIFIED"     #Encp knows local file changed.
 NO_FILES = "NO_FILES"                   #Internal encp error.
+CRC_DCACHE_ERROR='CRC DCACHE MISMATCH'  #CRC error if caught by encp.
 
 
 # Severity codes
@@ -190,8 +191,9 @@ non_retriable_errors = ( NOACCESS, # set by enstore
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
                        )
 
-email_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
-                       CRC_ECRC_ERROR,  #Set by encp
+email_alarm_errors = ( CRC_ENCP_ERROR,   #Set by encp
+                       CRC_ECRC_ERROR,   #Set by encp
+                       CRC_DCACHE_ERROR, #Set by encp
                        DEVICE_ERROR, #EXfer read/write call stuck in kernel
                       )
 
