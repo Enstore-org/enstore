@@ -7,7 +7,7 @@ clean:
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	rm -f *.pyc encp
 
-encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $(ENSTORE_DIR)/modules/EXfer.o
+encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $(ENSTORE_DIR)/modules/EXfer.o $(ENSTORE_DIR)/modules/Trace.o
 	mkdir ENCPBIN_TEMP
 	python $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
 	(cd ENCPBIN_TEMP; make; cp encp ..)
@@ -24,3 +24,6 @@ $(ENSTORE_DIR)/modules/ETape.o:
 
 $(ENSTORE_DIR)/modules/EXfer.o:
 	(cd  $(ENSTORE_DIR)/modules; make EXfer)
+
+$(ENSTORE_DIR)/modules/Trace.o:
+	(cd  $(ENSTORE_DIR)/modules; make Trace)
