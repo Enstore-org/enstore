@@ -674,7 +674,7 @@ def do_real_work():
 	    alc = alarm_client.AlarmClient((cs.config_host, cs.config_port))
 	    Trace.init("Enstore_Up_Down")
 	    Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
-	    Trace.alarm(e_errors.INFO, "this is a test for the big ball, eileen will clear",
+	    Trace.alarm(e_errors.INFO, "this is a test ticket, eileen will clear, however, please page as normal",
                         {'Reason':repr(reason)}, "test", "TestAlarm") 
     else:
 	stat = "UP"
