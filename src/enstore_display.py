@@ -142,15 +142,16 @@ class Mover:
         self.volume.draw(load_state)
 
     def unload_tape(self, volume):
-        if volume != self.volume.name: #XXXXXXXXXXXXXXXXXXXX
+        if volume != self.volume.name: #XXXXXXXXXXX
             print "Mover does not have this tape : ", volume
         else:
             k=self.index
             N=self.N
             angle=math.pi/(N-1)
-            x, y = .75+.5*math.cos(math.pi/2 + angle*k),  .5*math.sin(math.pi/2 + angle*k)
-            self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
-            self.volume.moveto(self.x, self.y)
+            x, y =.75+.5*math.cos(math.pi/2 + angle*k),  .65*math.sin(math.pi/2 + angle*k)
+            self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
+            self.volume.moveto(self.volume.x, self.volume.y)
+            self.volume.draw(load_state='loaded')
    
             
     def show_progress(self, percent_done):
@@ -215,17 +216,6 @@ class Mover:
         x, y = 0.75 + 0.8 * math.cos(math.pi/2 + angle*k), 0.85 * math.sin(math.pi/2 + angle*k)
         self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
 
-     ## def robot_path(self, N):
-##        k = self.index
-##        if N == 1: ## special positioning for a single mover.
-##            k = 1
-##            angle = math.pi / 2
-##        else:
-##            angle = math.pi / (N-1)
-##        x, y = 0.75 + 0.5 * math.cos(math.pi/2 + angle*k), 0.5 * math.sin(math.pi/2 + angle*k)
-##        self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
-
-
     def reposition(self, N):
         if self.volume:
             volume_offset = self.volume.x-self.x, self.volume.y - self.y
@@ -267,12 +257,12 @@ class Volume:
             tape_color = 'grey'
             label_color='black'
         self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = tape_color)
-        self.label = self.display.create_text(x+25, y+6, text=self.name,fill = label_color)
+        self.label = self.display.create_text(x+25, y+6, text=self.name, fill = label_color)
 
     def moveto(self, x, y):
-            self.display.move(self.outline, x, y)
-            self.display.move(self.label, x, y)
-            self.x, self.y = x, y
+        self.display.move(self.outline, x, y)
+        self.display.move(self.label, x, y)
+        self.x, self.y = x, y
 
     def undraw(self):
         self.display.delete(self.outline)
