@@ -11,19 +11,20 @@ then
 	print "USAGE: prelude_in_c  \"command to execute\""
 	rtn=1
 else
-	command=$1
+	command="${1}"
 	# create a string without whitespace or unusual characters to use as a
 	# filename
 	cmtext=`echo $command|sed -e 's/[^A-Za-z0-9]//g'`
 	# setup some variables
-	activeFlag=~/MISC/$cmtext
+	theDirectory=~/MISC
+	activeFlag=$theDirectory/$cmtext
 	# make sure we are not already running
 	mkdir $activeFlag 1>/dev/null 2>/dev/null
 	if [ $? -ne 0 ] 
 	then 
 		rtn=2;
 	else
-		$command;
+		eval $command;
 		rtn=0
 		rmdir $activeFlag 1>/dev/null 2>/dev/null
 	fi
