@@ -18,3 +18,7 @@ def header_size(header_start):
 
 def create_wrapper_dict(ticket):
     return {}
+
+def vol_labels(volume_label, ticket={}, own_id=""):
+    vol1_label = 'VOL1'+ volume_label[0:6]
+    return vol1_label+ (79-len(vol1_label))*' ' + '0'
