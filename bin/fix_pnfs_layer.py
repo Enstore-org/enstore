@@ -193,4 +193,6 @@ if __name__ == "__main__":
                 print "exception: %s %s" % (str(exc), str(msg))
         else:
             sys.exit(0)
+    else:
+        print "Layer 4 OK"
     
