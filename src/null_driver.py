@@ -116,9 +116,12 @@ class NullDriver(driver.Driver):
     def rates(self):
         return self._rate, self._last_rate
 
-
-    def verify_label(self, label, mode):
-        return e_errors.OK, None
+    def verify_label(self, label=None, mode=0):
+        if label is None:
+            #hack. "New" null volumes must appear unlabeled
+            return e_errors.READ_VOL1_READ_ERR, None
+        else:
+            return e_errors.OK, None
     
             
         
