@@ -234,6 +234,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 		}
 	    }
 	}
+	
+        if (FTT_EBLANK == ftt_errno && atoi(ftt_extract_stat(FTT_BOT)) {
+	    ftt_errno == ELEADER;
+	}
     }
     if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {
 
