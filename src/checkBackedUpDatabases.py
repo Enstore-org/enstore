@@ -6,6 +6,8 @@ import string
 import stat
 import regex
 import time
+import shutil
+import traceback
 
 import e_errors
 import timeofday
@@ -43,6 +45,7 @@ def check_existance(the_file,plain_file):
     try:
         the_stat = os.stat(the_file)
     except:
+        traceback.print_exc()
         print timeofday.tod(),'ERROR',the_file,'not found'
         sys.exit(1)
     if not plain_file:
@@ -59,8 +62,16 @@ def remove_files(files,dir):
     for f in files:
         ff = dir+'/'+f
         try:
-            os.remove(ff)
+            ffstat=os.stat(ff)
+            if stat.S_ISDIR(ffstat[stat.ST_MODE]): 
+                shutil.rmtree(ff)
+            elif stat.S_ISREG(ffstat[stat.ST_MODE]):
+                os.remove(ff)
+            else:
+                print timeofday.tod(),"ERROR Failed to remove",ff,' not a directory or regular file'
+                sys.exit(1)
         except:
+            traceback.print_exc()
             print timeofday.tod(),"ERROR Failed to remove",ff
             sys.exit(1)
 
