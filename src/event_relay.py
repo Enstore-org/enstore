@@ -142,6 +142,15 @@ class Relay:
 	    self.dump()
 	    Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 
+    def handle_error(self, addr, msg, extra=""):
+	error_msg = "send failed %s (%s) (%s)"%(addr, msg, extra)
+	Trace.log(e_errors.ERROR, error_msg, Trace.MSG_EVENT_RELAY)
+
+	### figure out if we should stop sending to this client
+	self.timeouts[addr] = self.timeouts.get(addr, 0) + 1
+	if self.timeouts[addr] > MAX_TIMEOUTS:
+	    self.cleanup(addr, YES)
+
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
         for addr, (t0, filter_d) in self.clients.items():
@@ -153,17 +162,11 @@ class Relay:
                 if (not filter_d) or filter_d.has_key(msg_type):
                     try:
                         self.send_socket.sendto(msg, addr)
+		    except socket.error, detail:
+			extra = "%s"%(detail,)
+			self.handle_error(addr, msg, extra)
                     except:
-			###self.dump()
-                        ###Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
-			error_msg = "send failed %s (%s)"%(addr, msg)
-			Trace.log(e_errors.ERROR, error_msg, Trace.MSG_EVENT_RELAY)
-
-			### figure out if we should stop sending to this client
-			self.timeouts[addr] = self.timeouts.get(addr, 0) + 1
-			if self.timeouts[addr] > MAX_TIMEOUTS:
-			    self.cleanup(addr, YES)
-                
+			self.handle_error(addr, msg)
 if __name__ == '__main__':
     R = Relay()
     R.mainloop()
