@@ -1,11 +1,11 @@
 import time
-import string
+#import string
 import os
 import exceptions
-import tempfile
-import types
-import pwd
-import signal
+#import tempfile
+#import types
+#import pwd
+#import signal
 import socket
 
 import configuration_server
@@ -65,9 +65,9 @@ def get_html_dir():
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
-    dict = {'port' : option.default_port()}
-    dict['host'] = option.default_host()
-    return dict
+    dictionary = {'port' : option.default_port()}
+    dictionary['host'] = option.default_host()
+    return dictionary
 
 def get_www_host():
     default = get_config_server_info()['host']
