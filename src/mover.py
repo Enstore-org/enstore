@@ -43,6 +43,22 @@ Mover:
 	    o                                                                      buf = r.read( bytes )
 
 """
+
+import os
+
+#setting this to 1 turns on printouts related to "paranoid"
+# checking of VOL1 and EOV1 headers.
+#once this is all working, the printout code can be stripped out
+debug_paranoia=0
+if os.environ.get('DEBUG_PARANOIA'):
+    debug_paranoia=1
+vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
+eov1_paranoia=1 #write and check EOV1 headers (spacing error)
+#If you have any problems with the eov1 checking, just set the above variable to 0 to disable this feature.
+
+
+
+
 # Note: pass statement used to help emacs formatting.
 #
 #       vcc stands for Volume Clerk Client
@@ -51,11 +67,8 @@ Mover:
 #
 
 
-
-
 # python modules
 import errno
-import os				# os.environ, os.system, and possible os.error (from os.waitpid)
 import pprint
 import signal				# signal - to del shm on sigterm, etc
 import sys				# exit
@@ -116,6 +129,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
           e_errors.WRITE_VOL1_MISSING,
           e_errors.READ_VOL1_WRONG,
           e_errors.WRITE_VOL1_WRONG,
+          e_errors.EOV1_ERROR,
 	  e_errors.MOVER_CRASH,
           e_errors.USERERROR]	# obviously can not handle this one
 
@@ -127,16 +141,6 @@ forked_state = [ 'forked',
 		 'wrapper, post',
 		 'send_user_done' ]
 	   
-
-#setting this to 1 turns on printouts related to "paranoid"
-# checking of VOL1 and EOV1 headers.
-#once this is all working, the printout code should be stripped out
-debug_paranoia=0
-if os.environ.get('DEBUG_PARANOIA'):
-    debug_paranoia=1
-vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
-eov1_paranoia=0 #write and check EOV1 headers (spacing error)
-### eov1 checks are still a "work in progress", do not enable this!
 
 def fix_nul(s):
     r=""
@@ -203,7 +207,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.read_error = [0,0]         # error this vol ([0]) and last vol ([1])
         self.crc_flag = 1
         self.local_mover_enable = 0
-
+        self.inhibit_eov = 0  #avoid writing out the EOV label on dismount, etc, if a write error occurred
         self.mvr_config['device'] = os.path.expandvars( self.mvr_config['device'] )
 
         if 'shared_mem_size' in self.mvr_config.keys():
@@ -258,7 +262,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def unbind_volume( self, ticket ):
         #if last action was write, and the feature is enabled, write an EOV label before
         #unloading tape.  
-        if eov1_paranoia and self.mode=='w' and self.mvr_config['driver']=='FTTDriver':
+        if eov1_paranoia and self.mode=='w' and self.mvr_config['driver']=='FTTDriver' \
+           and not self.inhibit_eov:
             driver_object = self.hsm_driver.open( self.mvr_config['device'], 'a+')
             eod_cookie=self.vol_info['eod_cookie']
             external_label=self.vol_info['external_label']
@@ -266,7 +271,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if debug_paranoia: print "unbind_volume: writing EOV1 label", ll
 	    driver_object.write( ll )
 	    driver_object.writefm()
-            driver_object.seek(eod_cookie)
+            driver_object.close()
 	if self.vol_info['external_label'] == '': return self.idle_mover_next()
 	if self.mvr_config['do_fork']:
             self.do_fork( ticket, 'u' )
@@ -527,21 +532,20 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.vol_info.update( tmp_vol_info )
             self.vol_info['from_lm'] = self.work_ticket['lm']['address'] # who gave me this volume
             self.store_statistics('mount', self.hsm_driver)
-
+            tape_is_labelled=0
             #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
             if vol1_paranoia and self.mvr_config['driver']=='FTTDriver':
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], 'r' )
                 if debug_paranoia: print "Rewinding (pre check-label)"
                 r=driver_object.rewind()
-                if debug_paranoia:
-                    print "pre check-label rewind complete, returned",r
-                header_type, header_label = driver_object.check_header()
-                if debug_paranoia: print "header_type=",header_type, "label=",header_label
+                header_type, header_label, extra = driver_object.check_header()
+                if debug_paranoia: print "header_type=",header_type, "label=",header_label,"extra=",extra
                 if header_type == None:
                     ##This only happens if there was a read error, which is
                     ##OK for a brand-new tape
                     if driver_object.is_bot(tmp_vol_info['eod_cookie']):
                         infomsg="New tape, labelling %s"%(external_label,)
+                        tape_is_labelled=0
                         if debug_paranoia:
                             print infomsg
                         Trace.log(e_errors.INFO, infomsg)
@@ -558,6 +562,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
                             print errmsg
                         Trace.log(e_errors.ERROR, errmsg)
                         return 'VOL1_WRONG'
+                    else:
+                        tape_is_labelled=1
                 else:
                     self.vcc.set_system_noaccess( external_label )
                     self.inhibit_eov = 1
@@ -566,8 +572,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     if debug_paranoia:
                         print errmsg
                     Trace.log(e_errors.ERROR,errmsg)
+                    tape_is_labelled=0
                     return 'VOL1_MISSING' 
-
+                    
                 if debug_paranoia: print "Rewind (post check-label)"
                 # Note:  Closing the device seems to write a
                 #file mark (even though it was opened "r"!),
@@ -587,11 +594,31 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 driver_object.is_bot(tmp_vol_info['eod_cookie'])):
 
                 # write an ANSI label and update the eod_cookie
-                ll = driver_object.format_vol1_header( external_label )
-                if debug_paranoia: print "bind_volume: writing VOL1 label", ll
-                driver_object.write( ll )
-                driver_object.writefm()
-                eod_cookie = driver_object.tell()
+                label = driver_object.format_vol1_header( external_label )
+                if debug_paranoia: print "bind_volume: writing VOL1 label", label
+                if tape_is_labelled:
+                    if debug_paranoia:
+                        print "Tape already labelled"
+
+                    driver_object.skip_fm(1) #Take me past the VOL1 label
+                    eod_cookie = driver_object.tell()
+                    
+                    if debug_paranoia:
+                        print "EOD_COOKIE=", eod_cookie
+                else:
+                    driver_object.write( label )
+                    driver_object.writefm()
+                    eod_cookie = driver_object.tell()
+                    if eov1_paranoia and not self.inhibit_eov:
+                        label = driver_object.format_eov1_header  (
+                        external_label, eod_cookie)
+                        if debug_paranoia: print "bind_volume: writing EOV1 label", label
+                        driver_object.write( label )
+                        driver_object.writefm()
+                        driver_object.skip_fm(-2)
+                        if debug_paranoia: print "TELL", driver_object.tell()
+
+                if debug_paranoia: print "eod_cookie=", eod_cookie
                 tmp_vol_info['eod_cookie'] = eod_cookie
                 tmp_vol_info['remaining_bytes'] = driver_object.get_stats()['remaining_bytes']
                 self.vcc.set_remaining_bytes( external_label,
@@ -601,13 +628,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%
                              (tmp_vol_info['eod_cookie'],
                               tmp_vol_info['remaining_bytes']) )
-                if eov1_paranoia and self.mvr_config['driver']=='FTTDriver' and not self.inhibit_eov:
-                    ll = driver_object.format_eov1_header  (
-                        external_label, eod_cookie)
-                    if debug_paranoia: print "bind_volume: writing EOV1 label", ll
-                    driver_object.write( ll )
-                    driver_object.writefm()
-                    driver_object.skip_fm(-1)
                 pass
             driver_object.close()
             # update again, after all is said and done
@@ -668,7 +688,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.return_or_update_and_exit( self.lm_origin_addr, sts )
                 pass
 
-            sts = self.vcc.set_writing( self.vol_info['external_label'] )
+            external_label = self.vol_info['external_label']
+            sts = self.vcc.set_writing(external_label)
             if sts['status'][0] != "ok":
                 # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
                 self.usr_driver.close()
@@ -677,7 +698,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 pass
 
             Trace.log(e_errors.INFO,"OPEN_FILE_WRITE %s: %s"%
-                      (self.vol_info['external_label'],self.vol_info['eod_cookie']))
+                      (external_label,self.vol_info['eod_cookie']))
             # open the hsm file for writing
             try:
                 # if forked, our eod info is not correct (after previous write)
@@ -691,15 +712,45 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 driver_object.seek( self.vol_info['eod_cookie'] )
                 self.vol_info['eod_cookie'] = driver_object.tell()
                 if check_eov:
+                    eov_valid=1
                     if debug_paranoia: print "checking EOV label"
-                    header_type, header_label=driver_object.check_header()
-                    if debug_paranoia: print header_type, header_label
+                    header_type, header_label, extra=driver_object.check_header()
+                    if debug_paranoia: print header_type, header_label, extra
                     if header_type != "EOV1":
-                        #XXX Error!!
-                        print "bad EOV1 %s %s"%(header_type, header_label)
-                    driver_object.skip_fm(-1)
+                        eov_valid = 0
+                        errmsg="Expected EOV1 label, got %s" % (header_type,)
+                        Trace.log(e_errors.ERROR, errmsg)
+                    else:
+                        if header_label != external_label:
+                            eov_valid=0
+                            errmsg="EOV1 label: wrong volume: expected %s, got %s" \
+                                    % (external_label,header_label)
+                            Trace.log(e_errors.ERROR, errmsg)
+                        try:
+                            p1,b1,f1=string.split(self.vol_info['eod_cookie'],'_')
+                            p2,b2,f2=string.split(extra,'_')
+                            p1,b1,f1=map(int,[p1,b1,f1])
+                            p2,b2,f2=map(int,[p2,b2,f2])
+                            if (p1!=p2) or (f1!=f2) or (b1 and b2 and b1!=b2):
+                                eov_valid=0
+                                errmsg="EOV1 label: location mismatch, expected %s, got %s" %\
+                                        (self.vol_info['eod_cookie'],extra)
 
-
+                        except:
+                            errmsg="EOV1 label: cannot parse location %s" %(extra,)
+                            Trace.log(e_errors.ERROR, errmsg)
+                    if not eov_valid:
+                        self.vcc.set_system_noaccess( external_label )
+                        self.inhibit_eov=1
+                        wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
+                        self.vcc.update_counts( external_label,
+                                                wr_err, rd_err, wr_access, rd_access )
+                        self.usr_driver.close()
+                        raise e_errors.EOV1_ERROR, errmsg
+                        
+                    driver_object.skip_fm(-1) #go to before the file marker
+                    driver_object.skip_fm(1) #then right after it
+                    
                 ticket['times']['seek_time'] = time.time() - t0
 
                 fast_write = 1
@@ -782,6 +833,19 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.usr_driver.close()
                 self.send_user_done(  ticket, e_errors.WRITE_ERROR )
                 self.return_or_update_and_exit( self.lm_origin_addr, e_errors.WRITE_ERROR )
+                pass
+            except e_errors.EOV1_ERROR, errmsg:
+                self.vcc.set_system_noaccess( external_label )
+                self.inhibit_eov = 1
+                if debug_paranoia:
+                    print errmsg
+                    Trace.log(e_errors.ERROR,errmsg)
+                wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
+                self.vcc.update_counts( self.vol_info['external_label'],
+                                        wr_err, rd_err, wr_access, rd_access )
+                self.usr_driver.close()
+                self.send_user_done( ticket, e_errors.EOV1_ERROR,errmsg )
+                self.return_or_update_and_exit( self.lm_origin_addr, e_errors.EOV1_ERROR )
                 pass
             except:
                 e_errors.handle_error()
@@ -1001,6 +1065,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.send_user_done( ticket, e_errors.READ_ERROR )
                 self.return_or_update_and_exit( self.lm_origin_addr, e_errors.READ_ERROR )
                 pass
+                    
             except:
                 # unanticipated exception: guess a cause and hope we can continue
                 e_errors.handle_error()
@@ -1518,8 +1583,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass
         elif m_err[exit_status] in (e_errors.WRITE_VOL1_MISSING,
                                     e_errors.WRITE_VOL1_WRONG,
+                                    e_errors.EOV1_ERROR,
                                     e_errors.READ_VOL1_MISSING,
                                     e_errors.READ_VOL1_WRONG):
+            self.inhibit_eov=1
             next_req_to_lm = self.freeze_tape( m_err[exit_status] )
             pass
         elif m_err[exit_status] == e_errors.USERERROR:
