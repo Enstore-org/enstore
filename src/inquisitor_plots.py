@@ -26,7 +26,7 @@ class InquisitorPlots:
 	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
 	self.plothtmlfile.write(jpgs, stamps, pss)
 	self.plothtmlfile.close()
-	self.move_file(1, self.plothtmlfile_orig)
+	self.plothtmlfile.install()
 
     #  make all the plots
     def plot(self, ticket):
