@@ -83,6 +83,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def vol_error_handler(self, exc, msg, tb):
         if exc == edb.pg.error or msg == "no connection to the server":
             self.reconnect(msg)
+        self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
+            'request':request, 'exc_type':str(exc), 'exc_value':str(msg)} )
+
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
