@@ -516,7 +516,16 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 if rsp['status'][0] == 'media_in_another_device':
                     time.sleep (10)
                     return 'TAPEBUSY' # generic, not read or write specific
-                else: return 'BADMOUNT'
+                else:
+                    mcstate = self.vcc.update_mc_state(external_label)
+                    if mcstate["at_mover"][0] != 'unmounted':
+                        # force set to unmounted
+                        Trace.log(e_errors.INFO,"forcing %s to unmouted state"%
+                                  (external_label,))
+                        self.vcc.set_at_mover(external_label, 
+                                              'unmounted', 
+                                              self.mvr_config['name'],1)
+                    return 'BADMOUNT'
             try:
                 Trace.log(e_errors.INFO,'Requesting software mount %s %s'%
                           (external_label,self.mvr_config['device']))
@@ -1593,17 +1602,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                     e_errors.READ_TAPEBUSY):
             next_req_to_lm = self.freeze_tape( m_err[exit_status] )
             pass
-        elif m_err[exit_status] in (e_errors.WRITE_BADMOUNT,
-                                    e_errors.WRITE_BADSPACE,
-                                    e_errors.WRITE_UNLOAD,
-                                    e_errors.READ_BADMOUNT,
+        elif m_err[exit_status] in (e_errors.WRITE_BADSPACE,
                                     e_errors.READ_BADLOCATE,
                                     e_errors.READ_COMPCRC,
                                     e_errors.READ_EOT,
                                     e_errors.READ_EOD,
-                                    e_errors.READ_UNLOAD,
                                     e_errors.UNMOUNT):
             next_req_to_lm = self.freeze_tape_in_drive( m_err[exit_status] )
+        elif m_err[exit_status] in (e_errors.WRITE_BADMOUNT,
+                                    e_errors.WRITE_UNLOAD,
+                                    e_errors.READ_BADMOUNT,
+                                    e_errors.READ_UNLOAD):
+            next_req_to_lm = self.unilateral_unbind_next( m_err[exit_status] )
         elif m_err[exit_status] in (e_errors.READ_VOL1_READ_ERR,
                                     e_errors.WRITE_VOL1_READ_ERR):
             # we don't know if it's a tape error or a drive error.  take the drive offline.

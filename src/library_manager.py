@@ -777,10 +777,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
 	# check if this volume is OK
 	v = self.vcc.inquire_vol(ticket['fc']['external_label'])
-	if v['system_inhibit'][0] == e_errors.NOACCESS:
+	if (v['system_inhibit'][0] == e_errors.NOACCESS or
+            v['system_inhibit'][0] == e_errors.NOTALLOWED):
 	    # tape cannot be accessed, report back to caller and do not
 	    # put ticket in the queue
-	    ticket["status"] = (e_errors.NOACCESS, None)
+	    ticket["status"] = (v['system_inhibit'][0], None)
 	    self.reply_to_caller(ticket)
 	    format = "read request discarded for unique_id=%s : volume %s is marked as %s"
 	    Trace.log(e_errors.ERROR, format%(ticket['unique_id'],
@@ -1259,26 +1260,35 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		del(mv["work_ticket"])
 
 	    if ticket['state'] != 'offline':
-		# change volume state to unmounting and send unmount request
-		v = self.vcc.set_at_mover(ticket['external_label'], 
-				    'unmounting', 
-				    ticket["mover"])
-		if v['status'][0] != e_errors.OK:
-                    state,mover=v.get('at_mover')
-		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-		    Trace.log(e_errors.INFO, format %\
-			      (ticket['external_label'],
-			      mover, 
-			      state))
+                # mount / dismount failed
+                if (ticket['status'][0] == e_errors.READ_BADMOUNT or
+                    ticket['status'][0] == e_errors.WRITE_BADMOUNT or
+                    ticket['status'][0] == e_errors.READ_UNLOAD or
+                    ticket['status'][0] == e_errors.WRITE_UNLOAD):
                     self.reply_to_caller({"work" : "nowork"})
-		else:
-		    timer_task.msg_cancel_tr(summon_mover, 
-					     self, mv['mover'])
-		    format = "unbind vol %s mover=%s"
-		    Trace.log(e_errors.ERROR, format %\
-			       (ticket['external_label'],
-			       ticket["mover"]))
-		    self.reply_to_caller({"work" : "unbind_volume"})
+
+                else:
+                    
+                    # change volume state to unmounting and send unmount request
+                    v = self.vcc.set_at_mover(ticket['external_label'], 
+                                              'unmounting', 
+                                              ticket["mover"])
+                    if v['status'][0] != e_errors.OK:
+                        state,mover=v.get('at_mover')
+                        format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
+                        Trace.log(e_errors.INFO, format %\
+                                  (ticket['external_label'],
+                                   mover, 
+                                   state))
+                        self.reply_to_caller({"work" : "nowork"})
+                    else:
+                        timer_task.msg_cancel_tr(summon_mover, 
+                                                 self, mv['mover'])
+                        format = "unbind vol %s mover=%s"
+                        Trace.log(e_errors.ERROR, format %\
+                                  (ticket['external_label'],
+                                   ticket["mover"]))
+                        self.reply_to_caller({"work" : "unbind_volume"})
 	    else:
                 if ticket['state'] == "draining":
                     if mv in movers:

@@ -308,7 +308,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # mark volume as noaccess
     def set_system_noaccess(self, external_label):
-        ticket= { 'work'           : 'set_system_noaccess',
+        ticket= { 'work'           : 'set_system_notallowed',
                   'external_label' : external_label }
         x = self.send(ticket)
         return x

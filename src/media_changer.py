@@ -62,7 +62,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.timeInsert = time.time()
 	timer_task.TimerTask.__init__(self, 10)
 	timer_task.msg_add(180, self.checkMyself) # initial check time in seconds
-
+        
+    # retry function call
+    def retry_function(function,*args):
+        return apply(function,args)
+    
     def checkMyself(self):
         pass
 	#timer_task.msg_add(180, self.checkMyself) # recheck time in seconds
@@ -120,6 +124,29 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
         self.reply_to_caller({'status' : (e_errors.OK, 0, None),'worklist':result})
 
+    # load volume into the drive;  default, overridden for other media changers
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):	# media type
+	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
+	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
+	    # OUTPUT OF THE PRINTS GO TO THE TERMINAL
+	    print "make sure tape %s in in drive %s"%(external_label,drive)
+	    time.sleep( self.mc_config['delay'] )
+	    print 'continuing with reply'
+	return (e_errors.OK, 0, None)
+
+    # unload volume from the drive;  default overridden for other media changers
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+	       media_type):     # media type
+	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
+            Trace.log(e_errors.INFO,
+                      "remove tape "+external_label+" from drive "+drive)
+	    time.sleep( self.mc_config['delay'] )
+	return (e_errors.OK, 0, None)
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
              external_label,    # volume external label
@@ -280,35 +307,18 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
-                count = self.getNretry()
-		rpcErrors = 0
-                sts=("",0,"")
-		while count > 0 and sts[0] != e_errors.OK:
-		    if ticket['function'] == 'insert':
-			sts = function(ticket)
-		    elif ticket['function'] == 'eject':
-			sts = function(ticket)
-		    elif ticket['function'] == 'homeAndRestart':
-			sts = function(ticket)
-		    elif ticket['function'] == 'cleanCycle':
-			sts = function(ticket)
-		    elif ticket['function'] == 'getVolState':
-			sts = function(ticket)
-		    else:
-		        sts = function(
-			    ticket['vol_ticket']['external_label'],
-			    ticket['drive_id'],
-			    ticket['vol_ticket']['media_type'])
-		    if sts[1] == 1 and rpcErrors < 10:  # RPC failure
-		        time.sleep(10)
-			rpcErrors = rpcErrors + 1
-                        Trace.log(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
-		    #elif sts[1] != 0:
-                    else:
-                        Trace.log(e_errors.ERROR, 'mcDoWork >>> status returned %s, count=%s'%(repr(sts[1]),repr(count)))
-			count = count - 1
-                        #time.sleep(60)
-                    #print "RET",sts
+                if (ticket['function'] == 'insert' or
+                    ticket['function'] == 'eject' or
+                    ticket['function'] == 'homeAndRestart' or
+                    ticket['function'] == 'cleanCycle' or
+                    ticket['function'] == 'getVolState'):
+                    sts = function(ticket)
+                else:
+                    sts = function(
+                        ticket['vol_ticket']['external_label'],
+                        ticket['drive_id'],
+                        ticket['vol_ticket']['media_type'])
+
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
@@ -353,6 +363,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
 # aml2 robot loader server
 class AML2_MediaLoader(MediaLoaderMethods):
+
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
 
@@ -397,56 +408,102 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    else:
                 Trace.log(e_errors.INFO, "mc:aml2 IdleHomeTime is not defined or too small, default used")
 
-	import aml2
         
-        self.load=aml2.mount
-        self.unload=aml2.dismount
-        self.prepare=aml2.dismount
-        self.robotHome=aml2.robotHome
-        self.robotStatus=aml2.robotStatus
-        self.robotStart=aml2.robotStart
+        self.prepare=self.unload
+
         
         
+
+    # retry function call
+    def retry_function(self,function,*args):
+        count = self.getNretry()
+        rpcErrors = 0
+        sts=("",0,"")
+        while count > 0 and sts[0] != e_errors.OK:
+            try:
+                sts=apply(function,args)
+                if sts[1] != 0:
+                   Trace.log(e_errors.ERROR, 'function %s error %s'%(repr(function),sts[2])) 
+                if sts[1] == 1 and rpcErrors < 2:  # RPC failure
+                    time.sleep(10)
+                    rpcErrors = rpcErrors + 1
+                elif (sts[1] == 5 or         # requested drive in use
+                      sts[1] == 8 or         # DAS was unable to communicate with AMU
+                      sts[1] == 10 or        # AMU was unable to communicate with robot
+                      sts[1] == 24):         # requested volume in use
+                    count = count - 1
+                    time.sleep(20)
+                else:
+                    break
+            except:
+                exc,val,tb = e_errors.handle_error()
+                return exc,0,""
+        return sts
+    
+    # load volume into the drive;
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):	# media type
+        import aml2
+        return self.retry_function(aml2.mount,external_label, drive,media_type)
+    
+    # unload volume from the drive
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+	       media_type):     # media type
+        import aml2
+        return self.retry_function(aml2.dismount,external_label, drive,media_type)
+
+    def robotHome(self, arm):
+        import aml2
+        return self.retry_function(aml2.robotHome,arm)
+    
+    def robotStatus(self):
+        import aml2
+        return self.retry_function(aml2.robotStatus)
+
+    def robotStart(self, arm):
+        import aml2
+        return self.retry_function(aml2.robotStart, arm)
+    
     def insert(self, ticket):
         import aml2
 	self.insertRA = None
         classTicket = { 'mcSelf' : self }
 	ticket['timeOfCmd'] = time.time()
 	ticket['medIOassign'] = self.mediaIOassign
-	rt = aml2.insert(ticket, classTicket)
-        return rt
+        return self.retry_function(aml2.insert,ticket, classTicket)
 	
     def eject(self, ticket):
         import aml2
         classTicket = { 'mcSelf' : self }
 	ticket['medIOassign'] = self.mediaIOassign
-	rt = aml2.eject(ticket, classTicket)
-        return rt
+        return self.retry_function(aml2.eject,ticket, classTicket)
 
     def robotHomeAndRestart(self, ticket):
         import aml2
         classTicket = { 'mcSelf' : self }
 	ticket['robotArm'] = self.robotArm
-	rt = aml2.robotHomeAndRestart(ticket, classTicket)
-        return rt
+        return self.retry_function(aml2.robotHomeAndRestart,ticket, classTicket)
     
     def getVolState(self, ticket):
-	"get current state of the tape"
         import aml2
+	"get current state of the tape"
 	external_label = ticket['external_label']
 	media_type = ticket['media_type']
-	rt = aml2.view(external_label, media_type)
-        if 'O' == rt[5] :
-          state = 'O'
-        elif 'M' == rt[5] :
-          state = 'M'
+	rt = self.retry_function(aml2.view,external_label, media_type)
+        print "RT",rt
+        if rt[5] == '\000':
+            state=''
         else :
           state = rt[5]
         return (rt[0], rt[1], rt[2], state)
 	
     def cleanCycle(self, inTicket):
-        #do drive cleaning cycle
         import aml2
+        #do drive cleaning cycle
         Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
         try:
@@ -487,14 +544,14 @@ class AML2_MediaLoader(MediaLoaderMethods):
             rt = self.load(v['external_label'], drive, v['media_type']) 
             status = rt[1]
             if status != 0:      # mount returned error
-                s1,s2,s3 = aml2.convert_status(status)
+                s1,s2,s3 = self.retry_function(aml2.convert_status,status)
                 return s1, s2, s3
             
             time.sleep(cleanTime)  # wait cleanTime seconds
             rt = self.unload(v['external_label'], drive, v['media_type'])
             status = rt[1]
             if status != 0:      # dismount returned error
-                s1,s2,s3 = aml2.convert_status(status)
+                s1,s2,s3 = self.retry_function(aml2.convert_status,status)
                 return s1, s2, s3
             Trace.log(e_errors.INFO,"AML2 Clean returned %s"%(rt,))
  

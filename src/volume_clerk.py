@@ -1221,10 +1221,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
         stat = mcc.viewvol(volume, m_type)["status"][3]
-
-        if 'O' == stat :
+        if stat == 'O':
             state = 'unmounted'
-        elif 'M' == stat :
+        elif stat == 'M':
             state = 'mounted'
         else :
             state = stat
@@ -1318,6 +1317,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_system_noaccess(self, ticket):
         Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
         return self.set_system_inhibit(ticket, e_errors.NOACCESS)
+
+    # flag that the current volume is marked as not allowed
+    def set_system_notallowed(self, ticket):
+        Trace.alarm(e_errors.WARNING, e_errors.NOTALLOWED,{"label":ticket["external_label"]}) 
+        return self.set_system_inhibit(ticket, e_errors.NOTALLOWED)
 
     # device is broken - what to do, what to do ===================================FIXME======================================
     def set_hung(self,ticket):
