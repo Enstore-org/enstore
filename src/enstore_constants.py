@@ -85,6 +85,7 @@ FILE_LIST = "file_list"
 ENCP_IP = "encp_ip"
 
 # server names used in enstore_up_down
+ACCS = "Accounting Server"
 LOGS = "Logger"
 ALARMS = "Alarm Server"
 CONFIGS = "Configuration Server"
@@ -96,17 +97,23 @@ UP_DOWN = "up_down"
 RATE = "Ratekeeper"
 
 # server names used in config file
+###Note: enstore start/stop assumes that the spelling here matches that of
+### the .py file of the matching server (save www_server).
+ACCOUNTING_SERVER = "accounting_server"
 LOG_SERVER = "log_server"
 ALARM_SERVER = "alarm_server"
 EVENT_RELAY = "event_relay"
 FILE_CLERK = "file_clerk"
 VOLUME_CLERK = "volume_clerk"
 INQUISITOR = "inquisitor"
-CONFIG_SERVER = "config_server"  # included for use by inquisitor
+CONFIG_SERVER = "configuration_server"  # included for use by inquisitor
+CONFIGURATION_SERVER = "configuration_server" # included for use by inquisitor
 WWW_SERVER = "www_server"
 RATEKEEPER = "ratekeeper"
+MONITOR_SERVER = "monitor_server"
 
-SERVER_NAMES = {LOGS : LOG_SERVER,
+SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
+                LOGS : LOG_SERVER,
 		ALARMS : ALARM_SERVER,
 		FILEC : FILE_CLERK,
 		INQ : INQUISITOR,
@@ -225,8 +232,9 @@ LIBRARY_MANAGER = "library_manager"
 MOVER = "mover"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
-GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
-		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER]
+GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
+                    EVENT_RELAY, FILE_CLERK, INQUISITOR,
+		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER ]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6
