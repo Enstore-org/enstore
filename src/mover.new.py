@@ -808,6 +808,7 @@ mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']), 0 )
 mvr_srvr.rcv_timeout = 15
 
 Trace.init( "Mover" )
+Trace.on( "Mover", 0, 31 )
 mvr_srvr.serve_forever()
 
 print "ERROR?"
