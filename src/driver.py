@@ -38,7 +38,7 @@ class GenericDriver:
         return self.blocksize
 
     def get_eod_remaining_bytes(self):
-        return self.remaining_bytes
+        return self.remaining_bytes-5000
 
     def get_eod_cookie(self):
         return repr(self.eod)
@@ -71,13 +71,15 @@ class  FTTDriver(GenericDriver) :
         move = loc - self.position
         if move < 0 :
            move = move-1
-        self.ETdesc = ETape.ET_OpenRead(self.device, move, self.blocksize)
+        print self.device,"open read",loc,size,self.position,self.eod
+        self.ETdesc = ETape.ET_OpenRead(self.device, move, loc, self.blocksize)
         self.position = loc
 
     def close_file_read(self) :
         self.position = self.position + 1
+        print self.device,"close read",self.position,self.eod
         stats = ETape.ET_CloseRead(self.ETdesc)
-
+   
         if stats[1] != "Invalid":
           self.rd_access = string.atoi(stats[1])
         if stats[2] != "Invalid":
@@ -90,6 +92,7 @@ class  FTTDriver(GenericDriver) :
         self.bod = self.eod
         self.ETdesc = ETape.ET_OpenWrite(self.device, self.eod-self.position, self.blocksize)
         self.position = self.eod
+        print self.device,"open write",self.position,self.eod,self.bod
 
     def close_file_write(self):
         stats = ETape.ET_CloseWrite(self.ETdesc)
@@ -106,6 +109,7 @@ class  FTTDriver(GenericDriver) :
           self.wr_err = string.atoi(stats[2])
         else :
           self.wr_err = 0;
+        print self.device,"close write",self.position,self.eod,self.bod,stats[3]
         return `(self.bod, stats[3])`
 
     def write_block(self, data):
