@@ -23,6 +23,7 @@ import hostaddr
 import cleanUDP
 import Trace
 import e_errors
+import enstore_constants
 
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
@@ -217,7 +218,6 @@ class DispatchingWorker(udp_server.UDPServer):
 
         gotit = 0
         while not gotit:
-
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
 
@@ -272,6 +272,13 @@ class DispatchingWorker(udp_server.UDPServer):
                     req, addr = self.server_socket.recvfrom(
                         self.max_packet_size, self.rcv_timeout)
 
+                    try:
+                        if self.csc.new_config_obj.have_new_config():
+                            hostaddr.update_domains(self.csc)
+                    except AttributeError:
+                        #The configuration server itself will fall here.
+                        # It can't create a client to itself.
+                        pass
                     #Determine if the address the request came from is
                     # one that we should be responding to.
                     try:
@@ -433,6 +440,20 @@ class DispatchingWorker(udp_server.UDPServer):
         except KeyError, detail:
             Trace.trace(6,"done_cleanup exception %s"%(detail,))
             pass
+
+    # send back our response
+    def send_reply(self, t):
+        try:
+            self.reply_to_caller(t)
+        except:
+            # even if there is an error - respond to caller so he can process it
+            exc, msg = sys.exc_info()[:2]
+            t["status"] = (str(exc),str(msg))
+            self.reply_to_caller(t)
+            Trace.trace(enstore_constants.DISPWORKDBG,
+                        "exception in send_reply %s" % (t,))
+            return
+
 
     def restricted_access(self):
         '''

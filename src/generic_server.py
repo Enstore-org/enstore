@@ -47,7 +47,8 @@ class GenericServer(generic_client.GenericClient):
     def handle_er_msg(self, fd):
 	msg = enstore_erc_functions.read_erc(self.erc)
 	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
-	    #self.er_flag.new_config_msg()
+            Trace.log(e_errors.INFO,
+                      "Recieved notification of new configuration file.")
             self.csc.new_config_obj.new_config_msg()
 	return msg
 
@@ -65,16 +66,20 @@ class GenericServer(generic_client.GenericClient):
         #Servers need to communicate with the event relay.  Instantiate the
         # event relay client class to facilitate that communication.
 	self.erc = event_relay_client.EventRelayClient(self, function)
-
+        
         #We want the servers to cache the config file contents, because
         # they can wait for the NEWCONFIGFILE message from the event relay.
         try:
             self.csc.new_config_obj.enable_caching()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()
+        except NameError:
+            #When 'self' is the configuration server, self.csc does not exist.
+            # However, the configuration server does not use this __init__
+            # function, so it should never happen...
+            Trace.log(e_errors.WARNING, "Configuration server calling itself.")
         except:
             Trace.log(e_errors.WARNING, "Unable to cache configuration.")
-
 
     __pychecker__ = "no-override"
     def handle_generic_commands(self, intf):
@@ -133,7 +138,8 @@ class GenericServer(generic_client.GenericClient):
         lineno = tb.tb_lineno
         Trace.alarm(e_errors.ERROR, "Exception in file %s at line %s: %s. See system log for details." %
                     (filename, lineno, msg))
-        
+
+    """
     # send back our response
     def send_reply(self, t):
         try:
@@ -146,3 +152,4 @@ class GenericServer(generic_client.GenericClient):
             Trace.trace(enstore_constants.DISPWORKDBG,
                         "exception in send_reply %s" % (t,))
             return
+    """
