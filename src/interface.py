@@ -149,6 +149,9 @@ class Interface:
                 self.list = 1
             elif opt == "--verbose" :
                 self.list = string.atoi(value)
+            elif opt == "--d0sam":
+                # if d0sam has been requested, just add 4096 to the list option
+                self.list = self.list | 0x1000 
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)
             elif opt == "--laccess":
