@@ -18,12 +18,9 @@ def do_real_work():
     # event loop - wait for events
     while 1:
 	readable, junk, junk = select.select([erc.sock, 0], [], [], 15)
-	now = time.time()
-	if now - start > TEN_MINUTES:
-	    # resubscribe
-	    erc.subscribe()
 	if not readable:
 	    continue
+	now = time.time()
 	for fd in readable:
 	    if fd == 0:
 		# move along, no more to see here
@@ -32,7 +29,10 @@ def do_real_work():
 		return
 	    else:
 		msg = erc.read()
-		print msg.type, msg.extra_info
+		print time.ctime(now), msg.type, msg.extra_info
+	if now - start > TEN_MINUTES:
+	    # resubscribe
+	    erc.subscribe()
 
 
 if __name__ == "__main__" :
