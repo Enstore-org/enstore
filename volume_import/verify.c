@@ -163,7 +163,7 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
     if (status){ /* it doesn't exist, make it */
 	if (new){
 	    if (chkdir(path, 1)
-		||write_db_s(path,"next_file","0000000")
+		||write_db_s(path,"next_file","0000001")
 		) return -1;
 	    sprintf(path,"%s/volumes/%s/files", tape_db, volume_label);
 	    if (chkdir(path, 1))

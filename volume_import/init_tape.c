@@ -151,7 +151,7 @@ init_tape_main(int argc, char **argv)
     
     if (write_vol1_header()
 	||write_eof_marks(1)
-	||write_eot1_header(0)
+	||write_eot1_header(1)
 	||close_tape())
 	goto cleanup;
     /* all is well */
