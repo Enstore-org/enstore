@@ -82,4 +82,5 @@ checksum checksum_wrap.c adler32.a
 
 socket_ext socket_ext_wrap.c
 
+strbuffer strbuffer_wrap.c
 #ftt ftt_wrap.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
