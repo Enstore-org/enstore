@@ -33,12 +33,15 @@ class Queue:
    
    # Add work to the end of the set of jobs
    def insert_job(self,ticket):
+      ticket['times']['job_queued'] = time.time()
       self.queue.append(ticket)
    
    # Remove a ticket 
    def delete_job(self,ticket):
       for w in self.queue:
          if w["unique_id"] == ticket["unique_id"]:
+	    ticket['times']['in_queue'] = time.time() - \
+					  ticket['times']['job_queued'] 
             self.queue.remove(w)
             return
 

@@ -532,11 +532,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        mticket["mover"],
                                        w["wrapper"]["uname"])
 	    w['times']['lm_dequeued'] = time.time()
+	    pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    if list:
 		print "MOVER WORK:"
 		pprint.pprint(w)
-	    pending_work.delete_job(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
 	    update_mover_list(mticket, 'work_at_mover')
@@ -602,10 +602,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["wrapper"]["uname"])
 	    w['times']['lm_dequeued'] = time.time()
 	    if list: print "sending ", w, " to mover"
+            pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    state = 'work_at_mover'
 	    update_mover_list(mticket, state)
-            pending_work.delete_job(w)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
 	    if list: 
