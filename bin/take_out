@@ -1,0 +1,91 @@
+#!/bin/sh -u
+
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
+
+usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
+	  echo "       enter `basename $0`"
+	}
+
+[ "$USER" != enstore ] && usage && exit 1
+
+node=`hostname -s`
+
+case $node in
+  d0ensrv4)
+     clerk=d0ensrv0
+     ocap="1,1,0"
+     sun=fntt
+     ;;
+  stkensrv4)
+     clerk=stkensrv0
+     ocap="0,0,0"
+     sun=fntt
+     ;;
+  cdfensrv4)
+     clerk=cdfensrv0
+     ocap="0,0,0"
+     sun=fntt2
+     ;;
+  *) usage
+     exit 1
+     ;;
+esac
+
+output=/tmp/`basename $0`.output
+
+work=/purge_volumes_work
+if [ ! -d $work ]; then
+  echo `date` ERROR. $work does not exist
+  exit 1
+fi
+
+. $HOME/gettkt
+
+cd $work
+
+for i in `ls -vI \*.\*`; do
+  t0=`date  +'%s'`
+  echo "Now deleting volumes to be ejected from enstore..."
+  # extract the volumes about to be ejected, and delete them
+  vols=`awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) printf "%s ",vols[v]}' $i`
+  if ! klist -s; then
+    echo `date` ERROR. "Check kerberos credentials."
+    exit 1
+  fi
+  if ! rsh $clerk ". /local/ups/etc/setups.sh; setup enstore; for vol in $vols; do enstore vol --delete \$vol; done" 2>/dev/null; then
+    echo `date` ERROR. "Failed to delete volumes!"
+    exit 1
+  fi
+  echo
+  . $i |tee -a $output 2>&1
+  echo
+  echo
+  t1=`date  +'%s'`
+  delta=`expr $t1 - $t0`
+  deltam=`expr $delta / 60`
+  deltas=`expr $delta % 60`
+  echo That cycle took $deltam minutes $deltas seconds.
+  /bin/echo -n "Were all of these steps successful [y/n]? "
+  if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+     echo "... success acknowledged"
+     touch $i
+     mv $i ${i}.done
+  else
+     echo "... failure acknowledged"
+     mv $i ${i}.fail
+  fi
+  echo
+  echo
+  rem=`ls -vI \*.\* | wc -l`
+  if expr $rem : 0 >/dev/null; then
+     echo `date` There are no groups remaining. Thank you.
+     break
+  else
+     /bin/echo -n "There are `expr $rem` groups remaining.  Do another [y/n]? "
+     if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+	continue
+     else
+	break
+     fi
+  fi
+done
