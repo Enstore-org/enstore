@@ -235,15 +235,16 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      callback.write_tcp_socket(self.data_socket,ticket,
                                   "file_clerk get bfids, controlsocket")
      msg=""
-     key=dict.next()
+     dict.cursor("open")
+     key,value=dict.cursor("first")
      while key:
         msg=msg+repr(key)+","
-        key=dict.next()
         if len(msg) >= 16384:
            callback.write_tcp_buf(self.data_socket,msg,
                                   "file_clerk get bfids, datasocket")
            msg=""
-
+        key,value=dict.cursor("next")
+     dict.cursor("close")
      msg=msg[:-1]
      callback.write_tcp_buf(self.data_socket,msg,
                                   "file_clerk get bfids, datasocket")
@@ -332,6 +333,39 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"bfid_info "+repr(ticket["status"]))
          return
 
+    # change the delete state element in the dictionary
+    def del_bfid(self, ticket):
+     Trace.trace(12,'{del_bfid '+repr(ticket))
+     try:
+
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key+" key is missing")
+            self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"del_bfid "+repr(ticket["status"]))
+            return
+
+        # now just delete the bfid
+        del dict[bfid]
+
+        # and return to the caller
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'}del_bfid '+repr(ticket))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+         return
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -351,6 +385,53 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.enprint(msg)
          Trace.trace(0,"unique_bit_file_id "+msg)
          sys.exit(1)
+
+    def tape_list(self,ticket):
+     Trace.trace(10,'{tape_list '+repr(ticket))
+     # everything is based on external_label - make sure we have this
+     try:
+         key="external_label"
+         external_label = ticket[key]
+         ticket["status"] = (e_errors.OK, None)
+         self.reply_to_caller(ticket)
+     except KeyError:
+         ticket["status"] = (e_errors.KEYERROR,"File Clerk: "+key+" key is missing")
+         self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}tape_list "+repr(ticket["status"]))
+         return
+ 
+     if self.fork() != 0:
+         return
+     # get a user callback
+     self.get_user_sockets(ticket)
+     callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
+     msg=""
+        
+     # now get a cursor so we can loop on the database quickly:
+     dict.cursor("open")
+     key,value=dict.cursor("first")
+     while key:
+         if value['external_label'] == external_label:
+             if value['deleted']=="yes":
+                 deleted = "deleted"
+             else:
+                 deleted = " active"
+             msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+                                                      value['size'],value['location_cookie'],
+                                                      deleted,value['pnfs_name0'])
+             if len(msg) >= 16384:
+                 #print "sending len(msg)"
+                 callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list, datasocket")
+                 msg=""
+         key,value=dict.cursor("next")
+     dict.cursor("close")
+     callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list(2), datasocket")
+     self.data_socket.close()
+     callback.write_tcp_socket(self.control_socket,ticket, "file_clerk tape_list, controlsocket")
+     self.control_socket.close()
+     Trace.trace(10,"}tape_list")
+     return
 
     def start_backup(self,ticket):
         Trace.trace(10,'{start_backup '+repr(ticket))

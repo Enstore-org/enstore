@@ -128,6 +128,74 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(16,"}get_bfids")
         return worklist
 
+    def tape_list(self,external_label):
+        Trace.trace(16,"{tape_list")
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"          : "tape_list",
+                  "callback_addr" : (host, port),
+                  "external_label": external_label,
+                  "unique_id"     : time.time() }
+        # send the work ticket to the file clerk
+        ticket = self.send(ticket)
+        if ticket['status'][0] != e_errors.OK:
+            raise errno.errorcode[errno.EPROTO],"fcc.tape_list: sending ticket"+repr(ticket)
+
+        # We have placed our request in the system and now we have to wait.
+        # All we  need to do is wait for the system to call us back,
+        # and make sure that is it calling _us_ back, and not some sort of old
+        # call-back to this very same port. It is dicey to time out, as it
+        # is probably legitimate to wait for hours....
+        while 1:
+            control_socket, address = listen_socket.accept()
+            new_ticket = callback.read_tcp_socket(control_socket, "file"+\
+                                  "clerk client tape_list,  fc call back")
+            if ticket["unique_id"] == new_ticket["unique_id"]:
+                listen_socket.close()
+                break
+            else:
+	        self.enprint("tape_list - imposter called us back, trying again")
+                control_socket.close()
+        ticket = new_ticket
+        if ticket["status"][0] != e_errors.OK:
+            msg = "tape_list: "\
+                  +"1st (pre-work-read) file clerk callback on socket "\
+                  +repr(address)+", failed to setup transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+            Trace.trace(0,msg)
+            raise errno.errorcode[errno.EPROTO],msg
+        # If the system has called us back with our own  unique id, call back
+        # the library manager on the library manager's port and read the
+        # work queues on that port.
+        data_path_socket = callback.file_server_callback_socket(ticket)
+        ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
+                  +"client tape_list, fc final dialog")
+        workmsg=""
+        while 1:
+          msg=callback.read_tcp_buf(data_path_socket,"file  clerk client tape_list, reading worklist")
+          if len(msg)==0:
+              break
+          workmsg = workmsg+msg
+        worklist = ticket
+        worklist['tape_list'] = workmsg
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with file clerk
+        done_ticket = callback.read_tcp_socket(control_socket, "file clerk"\
+                  +"client tape_list, fc final dialog")
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            msg = "tape_list "\
+                  +"2nd (post-work-read) file clerk callback on socket "\
+                  +repr(address)+", failed to transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+            Trace.trace(0,msg)
+            raise errno.errorcode[errno.EPROTO],msg
+
+        Trace.trace(16,"}tape_list")
+        print workmsg
+        return worklist
+
 
     def bfid_info(self):
         Trace.trace(10,"{bfid_info")
@@ -150,6 +218,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         Trace.trace(10,'{fci.__init__')
         # fill in the defaults for the possible options
         self.bfids = 0
+        self.tape_list = 0
         self.bfid = 0
         self.backup = 0
         self.deleted = 0
@@ -161,7 +230,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.client_options()+["bfids","bfid=","deleted=","backup"]
+        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup"]
 
 
 if __name__ == "__main__" :
@@ -203,6 +272,11 @@ if __name__ == "__main__" :
     elif intf.bfids:
         ticket = fcc.get_bfids()
 	msg_id = generic_cs.CLIENT
+
+    elif intf.tape_list:
+        ticket = fcc.tape_list(intf.tape_list)
+	msg_id = generic_cs.CLIENT
+        aticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries) #clear out any zombies from the forked file clerk
 
     elif intf.bfid:
         ticket = fcc.bfid_info()

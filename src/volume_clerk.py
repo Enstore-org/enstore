@@ -242,13 +242,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # go through the volumes and find one we can use for this request
         vol = {}
+        dict.cursor("open")
         while 1:
-            label=dict.next()
+            label,v = dict.cursor("next")
             if label:
                 pass
             else:
                 break
-            v = copy.deepcopy(dict[label])
+            #v = copy.deepcopy(dict[label])
 	    # for backward compatibility for at_mover field
 	    try:
 		at_mover = v['at_mover']
@@ -284,7 +285,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     waste = left/totb*100.
 	        self.enprint(label+" is now full, bytes remaining = "+\
 	                     repr(left)+" wasted = "+repr(waste)+"%")
-                dict[label] = copy.deepcopy(v)
+                #dict[label] = copy.deepcopy(v)
+                dict.cursor("update",v)
                 continue
             vetoed = 0
             for veto in vol_veto_list:
@@ -301,31 +303,33 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(v)
                 Trace.trace(12,'}next_write_vol label = '+\
                             repr(v['external_label'])+" "+repr(v))
+                dict.cursor("close")
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0:
                 vol = copy.deepcopy(v)
             elif v['declared'] < vol['declared']:
                 vol = copy.deepcopy(v)
-
+        dict.cursor("close")
+        
         # return what we found
         if len(vol) != 0:
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
-            Trace.trace(12,'}next_write_vol label = '+\
-                        repr(v['external_label'])+" "+repr(v))
+            Trace.trace(12,'}next_write_vol label = '+ vol['external_label']+" "+repr(vol))
             return
 
         # nothing was available - see if we can assign a blank one.
         Trace.trace(12,'}next_write_vol no vols available, checking for blanks')
         vol = {}
+        dict.cursor("open")
         while 1:
-            label=dict.next()
+            label,v = dict.cursor("next")
             if label:
                 pass
             else:
                 break
-            v = copy.deepcopy(dict[label])
+            #v = copy.deepcopy(dict[label])
 	    # for backward compatibility for at_mover field
 	    try:
 		at_mover = v['at_mover']
@@ -360,12 +364,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 v["file_family"] = file_family+"."+wrapper_type
 		v["wrapper"] = wrapper_type
                 self.logc.send(e_errors.INFO,2,
-                  "Assigning blank volume"+label+"to"+library+" "+file_family)
+                  "Assigning blank volume "+label+" to "+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
                 Trace.trace(12,'}next_write_vol label = '+\
                             repr(v['external_label'])+" "+repr(v))
+                dict.cursor("close")
                 return
             # if not, is this an "earlier" volume that one we already found?
             Trace.trace(12,'next_write_vol blank found '+\
@@ -374,6 +379,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 vol = copy.deepcopy(v)
             elif v['declared'] < vol['declared']:
                 vol = copy.deepcopy(v)
+        dict.cursor("close")
 
         # return blank volume we found
         if len(vol) != 0:
@@ -383,18 +389,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             vol["file_family"] = file_family+"."+wrapper_type
 	    vol["wrapper"] = wrapper_type
             self.logc.send(e_errors.INFO,2,
-                  "Assigning blank volume"+label+"to"+library+" "+file_family)
+                  "Assigning blank volume "+label+" to "+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
-            Trace.trace(12,'}next_write_vol label = '+\
-                        repr(v['external_label'])+" "+repr(v))
+            Trace.trace(12,'}next_write_vol label = '+vol['external_label']+" "+repr(vol))
             return
 
         # nothing was available at all
         ticket["status"] = (e_errors.NOVOLUME, \
 			    "Volume Clerk: no new volumes available")
-        self.logc.send(e_errors.ERROR,1, "No blank volumes"+str(ticket) )
+        self.logc.send(e_errors.ERROR,1, "No blank volumes "+str(ticket) )
         self.reply_to_caller(ticket)
         Trace.trace(0,"}delvol "+repr(ticket["status"]))
         return
@@ -1187,15 +1192,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         callback.write_tcp_socket(self.data_socket,ticket,
                                   "volume_clerk get_vols, controlsocket")
         msg=""
-        key=dict.next()
+        dict.cursor("open")
+        key,value=dict.cursor("first")
         while key:
                 msg=msg+repr(key)+","
-                key=dict.next()
                 #send 16K message
-                if len(msg) >= 8192:
+                if len(msg) >= 16384:
                    callback.write_tcp_buf(self.data_socket,msg,
                                   "volume_clerk get_vols, datasocket")
                    msg=""
+                key,value=dict.cursor("next")
+        dict.cursor("close")
+        
         #send the last message
         msg=msg[:-1]
         callback.write_tcp_buf(self.data_socket,msg,

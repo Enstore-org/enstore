@@ -23,19 +23,19 @@ JOURNAL_LIMIT=1000
 backup_flag=1
 cursor_open=0
 
-class MyIndex(table.Index):
-  def __init__(self,db,name):
-	table.Index.__init__(self,db,name)
-  def val_to_str(self,val):
-        if 0: print self # quiet lint
-	if val==None:
-		return None
-	return val
-  def str_to_val(self,str):
-        if 0: print self # quiet lint
-	if str==None:
-		return None
-	return str
+#junk class MyIndex(table.Index):
+#junk   def __init__(self,db,name):
+#junk 	table.Index.__init__(self,db,name)
+#junk   def val_to_str(self,val):
+#junk         if 0: print self # quiet lint
+#junk 	if val==None:
+#junk 		return None
+#junk 	return val
+#junk   def str_to_val(self,str):
+#junk         if 0: print self # quiet lint
+#junk 	if str==None:
+#junk 		return None
+#junk 	return str
 
 class DbTable:
   def __init__(self,dbname,logc=0,indlst=[], auto_journal=1):
@@ -50,10 +50,10 @@ class DbTable:
     dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
-    self.inx={}
+#junk     self.inx={}
 
-    for name in indlst:
-    	self.inx[name]=MyIndex(self.dbindex,name)
+#junk     for name in indlst:
+#junk     	self.inx[name]=MyIndex(self.dbindex,name)
 
     if self.auto_journal:
         self.jou=journal.JournalDict({},self.dbHome+"/"+dbname+".jou")
@@ -67,75 +67,88 @@ class DbTable:
         self.checkpoint()
         self.stop_backup()
 
-  def next(self):
-    if cursor_open==0:
-	return self.cursor("open")
-    return self.cursor("next")
+  #def next(self):
+  #  return self.cursor("next")
 
-  def cursor(self,action,key="None",value=0):
+  def cursor(self,action,KeyOrValue=None):
     global c
     global t
     global cursor_open
+    if not cursor_open and action !="open":
+      self.cursor("open")
+
     if action=="open":
-       if cursor_open==0:
-          t=self.db.txn()
-          c=self.db.cursor(t)
-          key,value=c.first()
-          cursor_open=1
-          return key
+      t=self.db.txn()
+      c=self.db.cursor(t)
+      cursor_open=1
+      return
+
     if action=="close":
-       if cursor_open:
-          c.close()
-          t.commit()
-          cursor_open=0
-          return 0
+      c.close()
+      t.commit()
+      cursor_open=0
+      return
+
+    if action=="first":
+      return c.first()
+
+    if action=="last":
+      return c.last()
+
+    if action=="next":
+      return c.next()
+
+    # this should really be replaced by the db_stat command
     if action=="len":
-       if cursor_open:
-          pos,value=c.get()
-          len=0
-          last,value=c.last()
-          key,value=c.first()
-          while key!=last:
-             key,val=c.next()
-             len=len+1
-             c.set(pos)
-          if 0: print val # quiet lint
-          return len
+      pos,value=c.get()
+      len=0
+      last,value=c.last()
+      key,value=c.first()
+      while key!=last:
+        key,val=c.next()
+        len=len+1
+        c.set(pos)
+        if 0: print val # quiet lint
+      return len
+
     if action=="has_key":
-       if cursor_open:
-          pos,value=c.get()
-          key,value=c.set(key)
-          c.set(pos)
-          if key:
-		return 1
-          else:
-                return 0
+      pos,value=c.get()
+      key,value=c.set(KeyOrValue)
+      c.set(pos)
+      if key:
+        return 1
+      else:
+        return 0
 
     if action=="delete":
-        pass
-
-    if action=="get":
-        key,value=c.set(key)
-        return value
-    if action=="update":
-        c.set(key)
-        c.update(value)
-        return key
-    if action=="next":
-        key,value=c.next()
-        if key:
-           pass
+      if self.auto_journal:
+        if self.jou.has_key(c.Key) == 0:
+          self.jou[c.Key]=copy.deepcopy(self.db[c.Key])
         else:
-           self.cursor("close")
-        return key
+          if self.jou[c.Key]['db_flag']=='delete':
+            return
+        self.jou[c.Key]['db_flag']='delete'
+        del self.jou[c.Key]
+      return c.delete()
+   
+    if action=="get":
+      return c.set(KeyOrValue)
 
+    if action=="update":
+      if self.auto_journal:
+        if 'db_flag' in KeyOrValue.keys(): del KeyOrValue['db_flag']
+        self.jou[c.Key]=copy.deepcopy(KeyOrValue)
+        self.jou[c.Key]['db_flag']='add'
+        self.count=self.count+1
+        if self.count > JOURNAL_LIMIT and backup_flag:
+          self.checkpoint()
+
+      return c.update(KeyOrValue)
 
   def keys(self):
     return self.db.keys()
 
   def __len__(self):
-    if cursor_open==1:
-        return self.cursor("len")
     t=self.db.txn()
     c=self.db.cursor(t)
     last,val=c.last()
@@ -153,7 +166,6 @@ class DbTable:
      return self.db.has_key(key)
 
   def __setitem__(self,key,value):
-
      if self.auto_journal:
        if 'db_flag' in value.keys(): del value['db_flag']
        self.jou[key]=copy.deepcopy(value)
@@ -162,31 +174,25 @@ class DbTable:
        if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
 
-     for name in self.inx.keys():
-        self.inx[name][value[name]]=key
-
-     if cursor_open==1:
-           self.cursor("update",key,value)
-	   return
+#junk      for name in self.inx.keys():
+#junk         self.inx[name][value[name]]=key
 
      t=self.db.txn()
      self.db[(key,t)]=value
      t.commit()
 
-  def is_index(self,key):
-        if self.inx.has_key(key):
-		return 1
-	return 0
+#junk   def is_index(self,key):
+#junk         if self.inx.has_key(key):
+#junk 		return 1
+#junk 	return 0
 
-  def index(self,field,field_val):
-       try:
-	return self.inx[field][field_val]
-       except:
-	return []
+#junk   def index(self,field,field_val):
+#junk        try:
+#junk 	return self.inx[field][field_val]
+#junk        except:
+#junk 	return []
 
   def __getitem__(self,key):
-     if cursor_open==1:
-     	return self.cursor("get",key)
      return self.db[key]
 
   def __delitem__(self,key):
@@ -208,8 +214,8 @@ class DbTable:
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
       	 self.checkpoint()
-     for name in self.inx.keys():
-        del self.inx[name][(key,value[name])]
+#junk      for name in self.inx.keys():
+#junk         del self.inx[name][(key,value[name])]
 
   def dump(self):
      t=self.db.txn()
@@ -254,13 +260,6 @@ class DbTable:
      if self.logc:
         self.logc.send(e_errors.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
-     #import time
-     #try:
-     #  import SOCKS
-     #  socket = SOCKS
-     #except ImportError:
-     #  import socket
-
      cwd=os.getcwd()
      try:
          dbHome = configuration_client.ConfigurationClient(\
