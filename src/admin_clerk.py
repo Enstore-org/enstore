@@ -1,22 +1,25 @@
+# system imports
 import sys
 import os
 import time
-import timeofday
 import pprint
 import copy
+import traceback
+
+#enstore imports
+import SocketServer
+import timeofday
 import callback
 import log_client
 import dict_to_a
-import traceback
-from SocketServer import UDPServer, TCPServer
-from configuration_client import configuration_client
-from dispatching_worker import DispatchingWorker
-from generic_server import GenericServer
-from db import dBTable
+import configuration_client
+import dispatching_worker
+import generic_server
+import dBTable
 import dbutil
 import Trace
 
-class AdminClerkMethods(DispatchingWorker) :
+class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
    def select(self,ticket):
         ticket["status"] = "ok"
         try:
@@ -133,7 +136,9 @@ class AdminClerkMethods(DispatchingWorker) :
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
-class AdminClerk(AdminClerkMethods, GenericServer, UDPServer) :
+
+class AdminClerk(AdminClerkMethods, generic_server.GenericServer,
+                 SocketServer.UDPServer) :
 	pass
 if __name__=="__main__":
    Trace.init("adminclerk")
@@ -170,7 +175,7 @@ if __name__=="__main__":
 
    if config_list :
         print "Connecting to configuration server at ",config_host,config_port
-   csc = configuration_client(config_host,config_port)  
+   csc = configuration_client.configuration_client(config_host,config_port)  
    csc.connect()
    keys = csc.get("admin_clerk")
    ac =  AdminClerk((keys['host'], keys['port']), AdminClerkMethods)
@@ -178,11 +183,12 @@ if __name__=="__main__":
    logc = log_client.LoggerClient(csc, "", 'logserver', 0)
    ac.set_logc(logc)
    indlst=['media_type','file_family','library']
-   dictV = dBTable("volume",logc,indlst) 
+   dictV = db.dBTable("volume",logc,indlst) 
    indlst=['external_label']
-   dictF = dBTable("file",logc,indlst)
+   dictF = db.dBTable("file",logc,indlst)
    while 1:
         try:
+            Trace.trace(1,"Admin Clerk (re)starting")
             logc.send(log_client.INFO, 1, "Admin Clerk (re)starting")
             ac.serve_forever()
         except:
@@ -194,4 +200,5 @@ if __name__=="__main__":
                      "admin clerk serve_forever continuing"
             print format
             logc.send(log_client.ERROR, 1, format)
+            Trace.trace(0,"admin clerk error"+format)
             continue
