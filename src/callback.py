@@ -186,7 +186,7 @@ def write_tcp_buf(sock,buffer,errmsg=""):
     while badsock==errno.ECONNREFUSED and refused<25:
         refused = refused+1
         Trace.trace(0,"ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
-        self.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
+        generic_cs.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
         sock.send(buffer)
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
