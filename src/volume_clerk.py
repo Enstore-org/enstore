@@ -72,7 +72,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         llm = self.csc.get_library_managers(ticket)
         if not(llm.has_key(ticket['library'])):
             Trace.log(e_errors.INFO,
-                      " vc.addvol: License Manager does not exist: %s " \
+                      " vc.addvol: Library Manager does not exist: %s " \
                       % ticket['library'])
 
         # optional keys - use default values if not specified
