@@ -221,6 +221,7 @@ class LibraryManagerMethods:
         if not external_label: return
         w = self.pending_work.get(external_label)
         while w:
+            w.ticket['status'] = (status, None)
             Trace.log(e_errors.INFO,"flush_pending_jobs:work %s"%(w.ticket,))
             self.send_regret(w.ticket)
             self.pending_work.delete(w)
