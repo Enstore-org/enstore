@@ -34,17 +34,17 @@ case `uname -n` in
 
    samson*)
     killall python
-    python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_port=7500 --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf
-    python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov --config_port=7500
-    python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov --config_port=7500
-    python /fnal/ups/prd/enstore/x0_4/src/library_manager.py     --config_host=samson.fnal.gov --config_port=7500 samdisk.library_manager
-    python /fnal/ups/prd/enstore/x0_4/src/media_changer.py       --config_host=samson.fnal.gov --config_port=7500 samdisk.media_changer
-    python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk2.mover
-    python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk1.mover
-    python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk3.mover
-    python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk4.mover
-    python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk5.mover
-    python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py          --config_host=samson.fnal.gov --config_port=7500
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_port=7500 --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py     --config_host=samson.fnal.gov --config_port=7500 samdisk.library_manager &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py       --config_host=samson.fnal.gov --config_port=7500 samdisk.media_changer &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk2.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk1.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk3.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk4.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk5.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
     ;;
 
    rip1*)
