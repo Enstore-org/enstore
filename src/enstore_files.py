@@ -430,6 +430,9 @@ class HTMLEncpStatusFile(EnStatusFile):
             eline = []
             self.get_lines(day1, lines1, eline)
             self.get_lines(day2, lines2, eline)
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+                                       "update_encp - parsed out %s lines"%(len(eline),))
+
             doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
                                                 system_tag=self.system_tag)
             doc.body(eline)
