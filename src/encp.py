@@ -5310,8 +5310,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if pnfsid == None or pnfs_name0 == None:
                 #If we get here, then most likely, this is the first time
                 # the volume has been read.
-                sys.stdout.write("Location %s is active, but the "
-                                 "pnfs id is unknown.\n" % lc)
+                sys.stdout.write("Location %s has no known metadata." % lc)
 
                 #Determine the inupt filename.
                 ifullname = os.path.join(e.input[0], filename)
