@@ -1,6 +1,4 @@
 import Trace
-Trace.init("Vol Clerk")
-Trace.trace(6,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -33,7 +31,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
-     Trace.trace(10,'{addvol '+repr(ticket))
      try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
@@ -132,7 +129,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # delete a volume from the database
     def delvol(self, ticket):
-     Trace.trace(10,'{delvol '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         key="external_label"
@@ -199,7 +195,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
-     Trace.trace(12,'{next_write_volume '+repr(ticket))
      try:
         # make sure we have this vol_veto_list
         key="vol_veto_list"
@@ -412,7 +407,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # check if specific volume can be used for write
     def can_write_volume (self, ticket):
-     Trace.trace(12,'{can_write_volume '+repr(ticket))
      # get the criteria for the volume from the user's ticket
      try:
 	 key = "min_remaining_bytes"
@@ -489,7 +483,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
-     Trace.trace(12,'{set_remaining_bytes '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -575,7 +568,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # decrement the file count on the volume 
     def decr_file_count(self, ticket):
-     Trace.trace(10,'{decr_file_count '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -627,7 +619,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 
     # update the database entry for this volume
     def update_counts(self, ticket):
-     Trace.trace(12,'{update_counts '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -699,7 +690,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # get the current database volume about a specific entry
     def inquire_vol(self, ticket):
-     Trace.trace(12,'{inquire_vol '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -740,7 +730,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag the database that we are now writing the system
     def update_mc_state(self, ticket):
-     Trace.trace(10,'{vc.update_mc_state '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -788,7 +777,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
-     Trace.trace(10,'{vc.clr_system_inhibit '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -837,7 +825,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 
     # get the actual state of the media changer
     def get_media_changer_state(self, libMgr, volume, m_type):
-     Trace.trace(11,'{vc.get_media_changer_state '+repr(volume))
      import library_manager_client
      lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
         	           libMgr+".library_manager", 0, 0)
@@ -873,7 +860,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # for the backward compatibility D0_TEMP
     # flag the database that we are now writing the system
     def add_at_mover(self, ticket):
-     Trace.trace(10,'{add_at_mover '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -927,7 +913,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # move a volume to a new library
     def new_library(self, ticket):
-     Trace.trace(16,'{new_library '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -985,7 +970,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # set system_inhibit flag
     # flag the database that we are now writing the system
     def set_writing(self, ticket):
-     Trace.trace(16,'{set_writing '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -1030,7 +1014,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # set system_inhibit flag
     def set_system_inhibit(self, ticket, flag):
-     Trace.trace(11,'{set_system_inhibit '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -1074,19 +1057,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag that the current volume is readonly
     def set_system_readonly(self, ticket):
-     Trace.trace(10,'{set_system_readonly '+repr(ticket))
      self.set_system_inhibit(ticket, "readonly")
      Trace.trace(10,"}set_system_readonly ")
 
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
-     Trace.trace(10,'{set_system_noaccess '+repr(ticket))
      self.set_system_inhibit(ticket, e_errors.NOACCESS)
      Trace.trace(10,"}set_system_noaccess ")
 
     # device is broken - what to do, what to do
     def set_hung(self,ticket):
-     Trace.trace(10,'{set_hung '+repr(ticket))
      try:
         self.reply_to_caller({"status" : (e_errors.OK, None)})
         Trace.trace(10,'}set_hung')
@@ -1103,7 +1083,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # set at_mover flag
     def set_at_mover(self, ticket):
-     Trace.trace(11,'{set_at_mover '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -1177,15 +1156,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
-        Trace.trace(20,'get_vols R U CRAZY? '+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
         try:
             self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
+        # this seems impossible since we failed already...
         except:
             ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            Trace.trace(0,"get_vols except "+repr(ticket["status"]))
             self.reply_to_caller(ticket)
-            Trace.trace(0,"}get_vols "+repr(ticket["status"]))
             return
 
         # this could tie things up for awhile - fork and let child
@@ -1220,9 +1199,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
     def get_user_sockets(self, ticket):
-        Trace.trace(16,'{get_user_sockets '+repr(ticket))
-        volume_clerk_host, volume_clerk_port, listen_socket =\
-                           callback.get_callback()
+        volume_clerk_host, volume_clerk_port, listen_socket = callback.get_callback()
+        Trace.trace(16,'get_user_sockets='+repr((volume_clerk_host,volume_clerk_port)))
         listen_socket.listen(4)
         ticket["volume_clerk_callback_host"] = volume_clerk_host
         ticket["volume_clerk_callback_port"] = volume_clerk_port
@@ -1230,28 +1208,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
-        Trace.trace(16,'}get_user_sockets ='+repr((volume_clerk_host,\
-                                                   volume_clerk_port)))
 
     def start_backup(self,ticket):
-        Trace.trace(5,'{start_backup '+repr(ticket))
         dict.start_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
-                "start_backup"  : 'yes' })
-        Trace.trace(5,'}start_backup')
+        self.reply_to_caller({"status"        : (e_errors.OK, None),
+                              "start_backup"  : 'yes' })
 
     def stop_backup(self,ticket):
-        Trace.trace(5,'{stop_backup '+repr(ticket))
         dict.stop_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
-                "stop_backup"  : 'yes' })
-        Trace.trace(5,'}stop_backup')
-
+        self.reply_to_caller({"status"       : (e_errors.OK, None),
+                              "stop_backup"  : 'yes' })
+        
 class VolumeClerk(VolumeClerkMethods,\
                   generic_server.GenericServer):
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), 
                  port=interface.default_port()):
-        Trace.trace(10, '{__init__')
 	self.print_id = "VOLCS"
 	self.verbose = verbose
         # get the config server
@@ -1269,32 +1240,31 @@ class VolumeClerk(VolumeClerkMethods,\
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         # get a logger
-        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+        self.logc = log_client.LoggerClient(self.csc, keys["logname"], 
                                             'logserver', 0)
-        Trace.trace(10, '}__init__')
 
 class VolumeClerkInterface(generic_server.GenericServerInterface):
 	pass
 
 if __name__ == "__main__":
-    import sys
-    Trace.init("Vol Clerk")
-    Trace.trace(6,"Volume clerk called with args "+repr(sys.argv))
+    Trace.init("VolClerk")
 
     # get the interface
     intf = VolumeClerkInterface()
 
     # get a volume clerk
     vc = VolumeClerk(0, intf.verbose, intf.config_host, intf.config_port)
+    Trace.log(e_errors.INFO, '%s' % sys.argv)
 
-    indlst=['media_type','file_family','library']
-    dict = db.DbTable("volume",vc.logc,indlst)
+    Trace.log(e_errors.INFO,"opening volume database using DbTable")
+    dict = db.DbTable("volume",vc.logc,[''])
+    Trace.log(e_errors.INFO,"hurrah, volume database is open")
+
     while 1:
         try:
-            Trace.trace(6,'Volume Clerk (re)starting')
-            vc.logc.send(e_errors.INFO, 1, "Volume Clerk (re)starting")
+            Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
         except:
 	    vc.serve_forever_error("volume clerk", vc.logc)
             continue
-    Trace.trace(1,"Volume Clerk finished (impossible)")
+    Trace.log(e_errors.ERROR,"Volume Clerk finished (impossible)")
