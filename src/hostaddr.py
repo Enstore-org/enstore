@@ -25,8 +25,9 @@ def gethostinfo(verbose=0):
         hostname=socket.gethostname()
         uname = os.uname()[1]
         if hostname != uname:
-            print "Warning:  gethostname returns %s, uname returns %s\n" % (
-                hostname, uname)
+            if verbose:
+                print "Warning:  gethostname returns %s, uname returns %s\n" % (
+                    hostname, uname)
         if verbose:
             print "sending DNS request"
         hostinfo=socket.gethostbyaddr(hostname)
