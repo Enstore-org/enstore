@@ -2889,16 +2889,29 @@ int main(int argc, char **argv)
      printf("output file not specified.\n");
      return 1;
   }
+
+  /* Open the output file. */
   errno = 0;
-  if(stat(argv[second_file_optind], &file_info) < 0)
+  if((fd_out = open(argv[second_file_optind], flags_out,
+		    S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
   {
-     printf("output stat(%s): %s\n", argv[second_file_optind], strerror(errno));
+     printf("output open(%s): %s\n",
+	    argv[second_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
   if(realpath(argv[second_file_optind], abspath) == NULL)
   {
-     printf("output file(%s): %s\n", argv[second_file_optind], strerror(errno));
+     printf("output file(%s): %s\n",
+	    argv[second_file_optind], strerror(errno));
+     return 1;
+  }
+
+  /* Check the output file. */
+  errno = 0;
+  if(stat(abspath, &file_info) < 0)
+  {
+     printf("output stat(%s): %s\n", abspath, strerror(errno));
      return 1;
   }
   errno = 0;
@@ -2908,14 +2921,6 @@ int main(int argc, char **argv)
      return 1;
   }
   
-  /* Open the output file. */
-  errno = 0;
-  if((fd_out = open(abspath, flags_out, S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
-  {
-    printf("output open(%s): %s\n", abspath, strerror(errno));
-    return 1;
-  }
-
   if(verbose)
   {
      printf("The output file: %s\n", abspath);
