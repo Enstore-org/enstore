@@ -32,6 +32,8 @@ def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
 #setting this to 1 turns on printouts related to "paranoid" checking of VOL1 headers.
 #once this is all working, the printout code should be stripped out
 debug_paranoia=0
+if os.environ.get('DEBUG_PARANOIA'):
+    debug_paranoia=1
 
 class GenericDriver:
 

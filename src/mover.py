@@ -125,6 +125,8 @@ forked_state = [ 'forked',
 # checking of VOL1 and EOV1 headers.
 #once this is all working, the printout code should be stripped out
 debug_paranoia=0
+if os.environ.get('DEBUG_PARANOIA'):
+    debug_paranoia=1
 vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
 eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 ### eov1 checks are still a "work in progress", do not enable this!
