@@ -364,6 +364,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0
+        # self.need_lm_update is used in threads to flag LM update in
+        # the main thread. First element flags update if not 0, second flags
+        # reset timer in update_lm()
+        self.need_lm_update = (0,0) 
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -493,6 +497,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vcc = None
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
+        mc_keys = self.csc.get(self.mcc.media_changer)
+        # STK robot can eject tape by either sending command directly to drive or
+        # by pushing a corresponding button
+        if mc_keys.has_key('type') and mc_keys['type'] is 'STK_MediaLoader':
+            self.can_force_eject = 1
+        else:
+            self.can_force_eject = 0
+        
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.client_hostname = None
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
@@ -591,7 +603,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mount_delay = 0
 
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
-        self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
+        self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
+        self.add_interval_func(self.need_update, 1) #this sets the period for checking if child thread has asked for update.
         self.set_error_handler(self.handle_mover_error)
         ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
@@ -612,12 +625,19 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        self.need_lm_update = (0, 0)
         if state is None:
             state = self.state
         
         Trace.trace(20,"update_lm: %s %s" % (state_name(state), self.unique_id))
         inhibit = 0
-        
+        thread = threading.currentThread()
+        if thread:
+            thread_name = thread.getName()
+        else:
+            thread_name = None
+        Trace.trace(20, "update_lm: thread %s"% (thread_name,))
+
         if not hasattr(self,'_last_state'):
             self._last_state = None
 
@@ -630,30 +650,50 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.reset_interval_timer(self.update_lm)
 
         if not inhibit:
+            # only main thread is allowed to send messages to LM
             ticket = self.format_lm_ticket(state=state, error_source=error_source)
             for lib, addr in self.libraries:
                 if state != self._last_state:
                     Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
                 self._last_state = self.state
-                if 1: #Old version
-                    self.udpc.send_no_wait(ticket, addr)
-                else: #New version
+                # only main thread is allowed to send messages to LM
+                # exception is a mover_busy and mover_error works
+                if ((thread_name is 'MainThread') and
+                    (ticket['work'] is not 'mover_busy')
+                    and (ticket['work'] is not 'mover_error')):
+                    Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
                     ## XXX Sasha - this is an experiment - not sure this is a good idea!
-                    request_from_lm = self.send(ticket, addr, rcv_timeout=5)
-                    status = request_from_lm.get('status')
-                    if not status or status[0] != e_errors.OK:
-                        Trace.trace(10, "update_lm: got %s" %(ticket,))
+                    try:
+                        request_from_lm = self.udpc.send(ticket, addr)
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        if exc == errno.errorcode[errno.ETIMEDOUT]:
+                            x = {'status' : (e_errors.TIMEDOUT, msg)}
+                        else:
+                            x = {'status' : (str(exc), str(msg))}
+                        Trace.trace(10, "update_lm: got %s" %(x,))
                         continue
                     work = request_from_lm.get('work')
                     if not work or work=='nowork':
                         continue
-                    func = getattr(self, work, None)
-                    if func:
-                        func(self, request_from_lm)
+                    method = getattr(self, work, None)
+                    if method:
+                        method(request_from_lm)
                         ### XXX Try/except here?
+                # if work is mover_busy of mover_error
+                # send no_wait message
+                if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
+                    Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
+                    self.udpc.send_no_wait(ticket, addr)
                         
         self.check_dismount_timer()
 
+
+    def need_update(self):
+        if self.need_lm_update[0]:
+            Trace.trace(20," need_update calling update_lm") 
+            self.update_lm(reset_timer=self.need_lm_update[1])
+            
     def _do_delayed_update_lm(self):
         for x in xrange(3):
             time.sleep(1)
@@ -682,7 +722,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = IDLE
         self.mode = None
         self.vol_info = {}
-        self.update_lm() 
+        thread = threading.currentThread()
+        if thread:
+            thread_name = thread.getName()
+        else:
+            thread_name = None
+        # if running in the main thread update lm
+        if thread_name is 'MainThread':
+            self.update_lm() 
+        else: # else just set the update flag
+            self.need_lm_update = (1, 0)
 
     def offline(self):
         self.state = OFFLINE
@@ -964,7 +1013,19 @@ class Mover(dispatching_worker.DispatchingWorker,
     def write_to_hsm(self, ticket):
         Trace.log(e_errors.INFO, "WRITE_TO_HSM")
         self.setup_transfer(ticket, mode=WRITE)
-        
+
+    def update_volume_info(self, ticket):
+        Trace.trace(20, "update_volume_info for %s. Current %s"%(ticket['external_label'],
+                                                                 self.vol_info))
+        if not self.vol_info:
+            self.vol_info.update(self.vcc.inquire_vol(ticket['external_label']))
+        else:
+            if self.vol_info['external_label'] is not ticket['external_label']:
+                Trace.log(e_errors.ERROR,"Library manager asked to update iformation for the wrong volume: %s, current %s" % (ticket['external_label'],self.vol_info['external_label']))
+            else:
+                self.vol_info.update(self.vcc.inquire_vol(ticket['external_label']))
+            
+            
     # the library manager has asked us to read a file from the hsm
     def read_from_hsm(self, ticket):
         Trace.log(e_errors.INFO,"READ FROM HSM")
@@ -1287,7 +1348,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.maybe_clean()
             self.idle()
             
-        self.delayed_update_lm()
+        
+        #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
+        #self.update_lm()
     
         
     def transfer_completed(self):
@@ -1306,8 +1369,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
-        self.update_lm(reset_timer=1)
-
+        ######### AM 01/30/01
+        ### do not update lm as in a child thread
+        # self.update_lm(reset_timer=1)
+        ##########################
+        
         if self.state == DRAINING:
             self.dismount_volume()
             self.state = OFFLINE
@@ -1315,9 +1381,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
             if self.maybe_clean():
                 self.state = IDLE
-        if self.state == HAVE_BOUND:
-            self.update_lm(reset_timer=1)
-        self.delayed_update_lm()
+        self.need_lm_update = (1, 1)
+        ######### AM 01/30/01
+        ### do not update lm in child a thread
+        #if self.state == HAVE_BOUND:
+        #    self.update_lm(reset_timer=1)
+        ###############################
+        
+        #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
+        #self.update_lm()
             
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
@@ -1502,6 +1574,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         work = None
         if state is None:
             state = self.state
+        Trace.trace(20,"format_lm_ticket: state %s"%(state,))
         if state is IDLE:
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
@@ -1535,6 +1608,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if time.time() - self.state_change_time > 900:
                 self.unique_id = None
 
+        Trace.trace(20, "format_lm_ticket: volume info %s"%(self.vol_info,))
         if not self.vol_info:
             volume_status = (['none', 'none'], ['none','none'])
         else:
@@ -1594,17 +1668,21 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ejected = self.tape_driver.eject()
         if ejected == -1:
-            broken = "Cannot eject tape"
+            if self.can_force_eject:
+                # try to unload tape if robot is STK. It can do this
+                Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
+            else:
+                
+                broken = "Cannot eject tape"
 
-            if self.current_volume:
-                try:
-                    self.vcc.set_system_noaccess(self.current_volume)
-                except:
-                    exc, msg, tb = sys.exc_info()
-                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
+                if self.current_volume:
+                    try:
+                        self.vcc.set_system_noaccess(self.current_volume)
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
 
-            self.broken(broken)
-##            self.error("Cannot eject tape")
+                self.broken(broken)
 
             return
         self.tape_driver.close()
@@ -1640,6 +1718,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if status and status[0]==e_errors.OK:
             self.current_volume = None
             if after_function:
+                Trace.trace(20,"after function %s" % (after_function,))
                 after_function()
 
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
@@ -1657,7 +1736,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, msg, tb = sys.exc_info()
                     broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
             self.broken(broken)        
-        
+        return
+    
     def mount_volume(self, volume_label, after_function=None):
         broken = ""
         self.dismount_time = None
