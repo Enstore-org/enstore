@@ -4881,12 +4881,12 @@ def write_to_hsm(e, tinfo):
     except (OSError, IOError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
-            if not e_ticket.get('status', None):
+            if e_ticket.get('status', None) == None:
                 e_ticket['status'] = (msg.type, str(msg))
-        else:  #OSError or IOError
-            error = errno.errorcode.get(getattr(msg, "errno", None),
-                                        errno.errorcode[errno.ENODATA])
-            e_ticket = {'status' : (e_errors.OSERROR, error)}
+        elif isinstance(msg, OSError):
+            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+        else:
+            e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
 
         #Print the error and exit.
         print_data_access_layer_format("", "", 0, e_ticket)
@@ -6591,13 +6591,17 @@ def read_from_hsm(e, tinfo):
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
     except (OSError, IOError, EncpError), msg:
-        if hasattr(msg, "type"):
-            error = msg.type
+        if isinstance(msg, EncpError):
+            e_ticket = msg.ticket
+            if e_ticket.get('status', None) == None:
+                e_ticket['status'] = (msg.type, str(msg))
+        elif isinstance(msg, OSError):
+            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         else:
-            error = errno.errorcode.get(getattr(msg, "errno", None),
-                                        errno.errorcode[errno.ENODATA])
-        print_data_access_layer_format(
-            "", "", 0, {'status':(error, str(msg))})
+            e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
+
+        #Print the error and exit.
+        print_data_access_layer_format("", "", 0, e_ticket)
         delete_at_exit.quit()
 
     #If this is the case, don't worry about anything.
