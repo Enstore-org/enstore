@@ -1,19 +1,11 @@
-#!/bin/ksh
+#
 # @(#) $Id$
+#
 #===============================================================================
 # This will read/write with a random delay to see if we can dredge up
 # any bugs.
 #===============================================================================
- 
-#===============================================================================
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-#===============================================================================
- 
-ftt_test << EOD
+
 ftt_open
 ftt_rewind
 
@@ -25,7 +17,8 @@ ftt_rewind
 ftt_init_stats
 ftt_verify_tblock -nblock 1000 -delay 5
 ftt_update_stats -errors
+
 ftt_rewind
 ftt_close
 quit
-EOD
+

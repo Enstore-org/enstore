@@ -18,7 +18,7 @@ ftt_status(ftt_descriptor d, int time_out) {
     ENTERING("ftt_status");
     CKNULL("ftt_descriptor", d);
 
-    if (0 > (res = ftt_open_dev(d))) { 
+    if (0 > (res = ftt_open_io_dev(d))) { 
 	if( FTT_EBUSY == ftt_errno ){
 	    return FTT_BUSY;
 	} else {
@@ -69,23 +69,14 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     static struct mtop buf;
-    static int recursing = 0;
-    int res;
+    int res = 0;
 
-    if (recursing) {
-	/* 
-	** we need the device open before we do this, so we call
-	** ftt_open_dev. of course, it is going to call *us* again.
-	** so we have this recursive call bail-out. 
-	*/
-	return 0;
-    }
     DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
     recursing = 1;
-    if (0 > (res = ftt_open_dev(d))) { 
+    if (0 > (res = ftt_open_io_dev(d))) { 
 	return res;
     }
-    recursing = 0;
+   
     if (blocksize != 0) {
 	/* 
 	** the silly program won't let us set the blocksize to zero,

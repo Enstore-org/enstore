@@ -105,6 +105,10 @@ if (ftt_t_nerror > ftt_t_max_error)				\
       }									\
    }
 
+#ifdef WIN32
+#define strcasecmp stricmp
+#endif
+
 #define FTT_T_CHECK_ESTATUS(estring,estatus) {				\
    if (estring)								\
       {									\

@@ -14,7 +14,12 @@ Include files:-
 #include <stdlib.h>
 #include <string.h>
 #include "ftt.h"
- 
+
+#ifdef WIN32
+extern char *optarg;
+int getopt();
+#endif
+
 #define FTT_ERROR_REPORT(routine)   {           \
    ftt_errstr = ftt_get_error(&ftt_errno);      \
    fprintf (stderr,"%s \n",ftt_errstr);         \
@@ -23,7 +28,7 @@ Include files:-
    exit(1);                                     \
    }
  
-int main(int argc, char **argv)
+void main(int argc, char **argv)
 {
  
 int 		opt;			/* command line option */
@@ -48,7 +53,6 @@ while ((opt = getopt(argc,argv,"o:i:")) != -1)
       case 'o':
          { outdev = strdup(optarg); break; }
       case '?':
-      usage:
          printf( "Usage: copy -i <input device> -o <output device> \n");
          exit(1);
       }

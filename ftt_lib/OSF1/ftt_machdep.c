@@ -17,7 +17,7 @@ ftt_status(ftt_descriptor d, int time_out) {
     ENTERING("ftt_status");
     CKNULL("ftt_descriptor", d);
 
-    if (0 > (res = ftt_open_dev(d))) {
+    if (0 > (res = ftt_open_io_dev(d))) {
         if( FTT_EBUSY == ftt_errno ){
             return FTT_BUSY;
         } else {
@@ -65,10 +65,7 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-    static struct mtop buf;
-    static int recursing = 0;
-    int res;
-
+    
     return 0;
 }
 

@@ -92,7 +92,7 @@ if (length >= ARGSIZ)
    abort();
    }
 
-g_Specified_args[0] = NULL;
+g_Specified_args[0] = 0;
 
 retValue = ftt_t_pass1(argcPtr, argv, argTable);	/* take out switch */
 if (retValue) return (retValue);			/* return error */
@@ -167,7 +167,7 @@ int dstIndex;		/* Index into argv to which next unused
 				 * argument should be copied (never greater
 				 * than srcIndex). */
 int length;			/* Number of characters in current argument. */
-int i;
+
 char tmpKeyBuf[30];
 
 #define ftt_t_missing_arg(myarg) {					\
@@ -361,8 +361,8 @@ int      	reqPosParams,	/* Count of required positional params */
 		optPosParams,	/* Count of optional positional params */
 		i;
 short    	flag;		/* General purpose flag */
-char     	*sp,		/* Utility pointer used in various places */
-		tmpBuf[30];	/* Temporary buffer area used many places */
+char     	*sp;		/* Utility pointer used in various places */
+		
  
 reqPosParams = optPosParams = 0;
 flag = 0;
@@ -518,8 +518,8 @@ for (infoPtr = argTable; infoPtr->type != FTT_T_ARGV_END; infoPtr++)
                   * '[...]' from infoPtr->key. Store the result in keyBuf[].
                   */
          sprintf(keyBuf, "%s", &infoPtr->key[1]);
-         for (pSp = keyBuf; *pSp != NULL; pSp++)
-            if (*pSp == '>' || *pSp == ']') *pSp = NULL;
+         for (pSp = keyBuf; *pSp != '\0'; pSp++)
+            if (*pSp == '>' || *pSp == ']') *pSp = '\0';
 
          fprintf(stderr,"Programmer Error: %s is not a ", infoPtr->key);
          fprintf(stderr,"supported object for positional\n parameters. ");
@@ -649,7 +649,6 @@ CALL:
 void ftt_t_print_usage(ftt_t_argt *argTable, char *cmd_name)
 {
 register ftt_t_argt 	*infoPtr;  		/* ptr to entry in argTable */
-int 			i;                      /* index variable */
 
 if (NULL == cmd_name) cmd_name = "";		/* blank command */
 

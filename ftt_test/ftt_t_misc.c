@@ -18,7 +18,8 @@ Include files:-
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"
 
-
+int ftt_clear_unrecovered();
+
 /* ============================================================================
 
 ROUTINE:

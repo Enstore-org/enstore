@@ -1,0 +1,21 @@
+#!/bin/ksh
+# @(#) $Id$
+# ============================================================================
+# this script is to run ftt_test with the input data from
+# $FTT_DIR\ftt_test\scripts direcory
+# ============================================================================
+
+#===============================================================================
+# Get the tape device by looking in $2. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${2:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+if $1 == describe || $1 == rate then
+ $FTT_DIR/ftt_test/scripts/$1
+else
+  ftt_test < $FTT_DIR/ftt_test/scripts/$1.dat
+fi
+

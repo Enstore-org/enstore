@@ -358,7 +358,7 @@ ftt_open_io_dev(ftt_descriptor d) {
     }
 
 	d->which_is_open = d->which_is_default;
-    DEBUG2(stderr,"Actually opening\n");
+    DEBUG1(stderr,"Actually opening\n");
 
 #ifndef WIN32
 
@@ -404,25 +404,24 @@ ftt_open_dev(ftt_descriptor d) {
     /* can't have scsi passthru and regular device open at the same time */
     ftt_close_scsi_dev(d);
 
-	/* we have correct device open */
-	if ( d->which_is_open == d->which_is_default ) return 0; 
 
-	if ( d->which_is_open >= 0 ) { /* There is other device open - needs to be closed */
-		
-		if ( 0 > ftt_close_dev(d) ) return -1 ;
-	}
-	
+	if ( d->which_is_open >= 0 ) { 
+		if ( d->which_is_open != d->which_is_default ) {
+			/* different device is open -close it */
+			if ( 0 > ftt_close_dev(d) ) return -1 ;
+		}
+	} else {
 	/* Now no device is open */
-	if ( 0 > ( status_res = ftt_open_status(d) )) {
-		return status_res;
+		if ( 0 > ( status_res = ftt_open_status(d) )) {
+			return status_res;
+		}
+		if (! (d->flags&FTT_FLAG_MODE_AFTER) ) { 
+			if ( 0> ftt_open_set_mode (d,status_res)  ) return -1;
+		}
+		if (!(d->flags&FTT_FLAG_BSIZE_AFTER) ) {
+			if ( 0 > ftt_open_set_blocksize(d) ) return -1;
+		}
 	}
-	if (! (d->flags&FTT_FLAG_MODE_AFTER) ) { 
-		if ( 0> ftt_open_set_mode (d,status_res)  ) return -1;
-	}
-	if (!(d->flags&FTT_FLAG_BSIZE_AFTER) ) {
-		if ( 0 > ftt_open_set_blocksize(d) ) return -1;
-	}
-	
 	/* 
 	** now we've checked for the ugly read-write with write protected
 	** tape error, and set density if needed, we can go on and open the 
@@ -437,7 +436,6 @@ ftt_open_dev(ftt_descriptor d) {
 		if ( 0 > ftt_open_set_blocksize(d) ) return -1;
 	}
 	    
-	
     DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);
     return d->file_descriptor;
 }

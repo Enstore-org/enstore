@@ -1,0 +1,14 @@
+#
+# @(#) $Id$
+#===============================================================================
+# This will erase a tape
+#===============================================================================
+
+ftt_open
+ftt_write_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_rewind
+ftt_erase
+ftt_verify_vol_label -label fttest -type FTT_BLANK_HEADER
+ftt_close
+quit
+

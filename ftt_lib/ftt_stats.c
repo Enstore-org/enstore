@@ -15,6 +15,8 @@ DWORD ftt_win_get_paramters();
 
 #endif
 
+int ftt_open_io_dev();
+
 extern int errno;
 
 
@@ -74,38 +76,37 @@ ftt_itoa(long n) {
 static void
 set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
     char save;
-    int do_freeme = 0, char *freeme;
+    int do_freeme = 0;
+	char *freeme;
 
     /* clean out old value */
     if (b->value[n] != 0) {
-	do_freeme = 1;
-	freeme = b->value[n];
-	b->value[n] = 0;
+		do_freeme = 1;
+		freeme = b->value[n];
+		b->value[n] = 0;
     }
 
     /* if null, leave it */
-    if (pcStart == 0) {
-	return;
-    }
+    if (pcStart != 0) {
+	
+		/* null terminate at pcEnd, copy the string, 
+		** and then put the byte back where we scribbled the null
+		** ... after eating blanks off the end
+		*/
+		if (pcEnd == 0) {
+		pcEnd = pcStart + strlen(pcStart) + 1;
+		}
+		do {
+		pcEnd--;
+		} while(*pcEnd == ' ');
+		pcEnd++;
+		save = *pcEnd;
+		*pcEnd = 0;
 
-    /* null terminate at pcEnd, copy the string, 
-    ** and then put the byte back where we scribbled the null
-    ** ... after eating blanks off the end
-    */
-    if (pcEnd == 0) {
-	pcEnd = pcStart + strlen(pcStart) + 1;
-    }
-    do {
-	pcEnd--;
-    } while(*pcEnd == ' ');
-    pcEnd++;
-    save = *pcEnd;
-    *pcEnd = 0;
-
-    DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
-    b->value[n] = strdup(pcStart);
-    *pcEnd = save;
-
+		DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
+		b->value[n] = strdup(pcStart);
+		*pcEnd = save;
+	}
     if (do_freeme) {
          free(freeme);
     }
@@ -658,6 +659,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		HANDLE fh = (HANDLE)d->file_descriptor;
 		TAPE_GET_MEDIA_PARAMETERS gmp;
 		TAPE_GET_DRIVE_PARAMETERS gdp;
+		if ( ftt_open_io_dev(d) < 0 ) {
+			ftt_eprintf("ftt_get_stats, Device is not opened \n");
+				ftt_errno = FTT_EPARTIALSTAT;
+				return -1;
+		}
 		fres = ftt_win_get_paramters(d,&gmp,&gdp);
 		if ( fres == NO_ERROR ) {
 			if ( gdp.FeaturesLow & TAPE_DRIVE_TAPE_REMAINING ) {
@@ -667,7 +673,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 				set_stat(b,FTT_TRANS_COMPRESS,ftt_itoa(gdp.Compression),0);
 			}
 
-		
+			
 		}
 		else {
 			ftt_eprintf("ftt_get_stats, Getting Media & Drive Parameters Failed \n");

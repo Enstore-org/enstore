@@ -13,13 +13,18 @@ Include files:-
 ===============
 */
 
-#include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include "ftt.h"
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"
 
+#ifdef WIN32
+#include <windows.h>
+#define sleep(x) Sleep(1000*x)
+#define srandom  srand
+#define random  rand
+#endif
 #define FTT_T_MAXDSIZE	65536
 
 /* Prototypes

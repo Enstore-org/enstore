@@ -16,6 +16,10 @@ Include files:-
 #include <string.h>
 #include "ftt_t_cmdtable.h"
 
+#ifdef WIN32
+extern char *optarg;
+int getopt(); 
+#endif
 
 /* Globals:-
    ========= */
@@ -65,7 +69,7 @@ Routine:
 	the command loop with the prompt and list of valid commands.
 ==============================================================================*/
 
-int main(int argc, char **argv)
+void main(int argc, char **argv)
 {
 
 int opt;
@@ -137,13 +141,11 @@ while ((opt = getopt(argc,argv,"f:")) != -1)
    switch (opt) {
       case 'f':
          {
-         int length;
          ftt_t_basename = (char *) malloc ((strlen(optarg) + 1));
          strcpy(ftt_t_basename,optarg);
          break;
          }
       case '?':
-      usage:
          printf( "Usage: ftt_test -f <basename>\n");
          exit(1);
       }

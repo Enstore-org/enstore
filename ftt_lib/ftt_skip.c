@@ -92,7 +92,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 
 			if (opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_RSKIPREC ) { LowOff = (DWORD) -n;
 			} else LowOff = (DWORD)n;
-again:	
+
 			if ( opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_SKIPFM ) {
 				fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,LowOff,0,0);
 			} else if ( opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_SKIPREC ) {
@@ -100,22 +100,29 @@ again:
 			} else if ( opn == FTT_OPN_WRITEFM ) {
 				fres = WriteTapemark(fh,TAPE_LONG_FILEMARKS,n,0); /* can be LONG or SHORT */
 			} else if ( opn == FTT_OPN_RETENSION ) {
-				fres = PrepareTape(fh,TAPE_TENSION,0);
+				/* go to the end of tape */
+				do {
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,99999,0,0); 
+				} while ( fres == NO_ERROR);
+				fres = SetTapePosition(fh,TAPE_SPACE_END_OF_DATA,0,0,0,0);
+				/* now rewind */
+				do {
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0); 
+				} while ( fres == NO_ERROR);
+				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0); 
+				
 			} else if ( opn == FTT_OPN_UNLOAD  ) {
 				fres = PrepareTape(fh,TAPE_UNLOAD,0);
 			} else if ( opn == FTT_OPN_REWIND  ) {
-				fres = PrepareTape(fh,TAPE_REWIND,0);
+				/* this is the trick to avoid Bus reset */
+				do {
+					fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,(DWORD)-99999,0,0); 
+				} while ( fres == NO_ERROR);
+				fres = SetTapePosition(fh,TAPE_REWIND,0,0,0,0); 
 			} else if ( opn == FTT_OPN_ERASE   ) {
 				fres = EraseTape(fh,TAPE_ERASE_LONG,0); /* can be SHORT */
 			} else {
 				fres = (DWORD)-1;
-			}
-			printf("ftt-skip: %d error doing %s : %d time \n",(int)fres,what,Count);
-			if ( fres == ERROR_BUS_RESET && Count < 10 ) {
-				printf(" OK this is the WIN %s operation try it one more (%d)\n",what,Count);
-				Sleep(1000);
-				Count++;
-				goto again;
 			}
 			res = ftt_translate_error_WIN(d, opn, "win - tape functions ", fres, what,0);
 		}	

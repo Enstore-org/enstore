@@ -33,7 +33,13 @@ Revision history:-
 
 #endif
 
+#ifdef WIN32
+#include <io.h>
+#else
 #include <termio.h>
+
+#endif
+
 #include <signal.h>
 #include <fcntl.h>
 #include <stdio.h>

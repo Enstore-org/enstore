@@ -22,6 +22,7 @@ Include files:-
 #define FALSE 0
 #endif
 
+int ftt_dump();
 /*
 ** The following two macros pack 4 bytes into an int and unpack
 ** an int into four bytes in a machine-independant fasion
@@ -106,7 +107,6 @@ ftt_t_block_dump
 ==============================================================================*/
 void ftt_t_block_dump(FILE *outfile,int bufferno,unsigned char *buff,int bsize,int do_offsets, int do_chars )
 {
-int		i;			/* counter */
 
 fprintf(outfile,"\n\nbuffer %d (%d bytes):\n",bufferno,bsize);
 ftt_dump(outfile, buff, bsize, do_offsets, do_chars );

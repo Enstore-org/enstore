@@ -42,7 +42,13 @@ static char rcsid[] = "@(#)$Id$";
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#ifdef WIN32
+#include <windows.h>
+#include <process.h>
+#include <io.h>
+#else
 #include <termio.h>
+#endif
 #include <signal.h>     /* Needed for signal function */
 #include <sys/types.h>
 #include <stdlib.h>
@@ -68,29 +74,41 @@ extern int	ftt_t_istty;
 */
 static void ftt_t_cmdint();
 static void ftt_t_cmdtstp();
+static void ftclCmd_TERM();
 
 /*---------------------------------------------------------------------
 **
 ** LOCAL DEFINITIONS, MACROS
 */
-
+#ifndef WIN32
 /*
 ** LOCALLY GLOBAL LINE EDITOR "ORIGINAL" TERMINAL CHARACTERISTICS
 */
 static	struct termio	g_ed_savearg;
+#else 
+#endif
 
 /*
 ** LOCALLY GLOBAL INTERRUPT SIGNAL FLAGS
 */
+#ifdef WIN32
+static int       g_exit_pid;
+#else
 static	pid_t		g_exit_pid;
+#endif
+
 static  int		g_exit_flag=0;
 static	int		g_sigint_flag=0;
 static	int		g_sigint_flag_max=0;
+
+#ifdef WIN32
+	/* Win-NT part ? */
+#else
 struct sigaction	g_sigint_old;
 struct sigaction	g_sigtstp_old;
 struct sigaction	g_sigcont_old;
 struct sigaction	g_sigterm_old;
-
+#endif
 /*---------------------------------------------------------------------
 **
 ** PRINTLINE, CLRTOEOL : FTCLftt_cmd_t_ LOCAL MACRO DEFINITONS
@@ -112,7 +130,12 @@ struct sigaction	g_sigterm_old;
       } \
    }
 
+#ifdef WIN32
 
+#define ED_ON(a_savearg) {}
+#define ED_OFF(a_savearg) {}
+
+#else
 /*---------------------------------------------------------------------
 **
 ** ED_ON : FTCLftt_cmd_t_ MACRO TO SET TERMINAL CHARACTERISTICS
@@ -129,7 +152,6 @@ struct sigaction	g_sigterm_old;
    ioctl(1, TCSETA, (char*)&ed_arg); 		\
    }
 
-
 /*---------------------------------------------------------------------
 **
 ** ED_OFF : FTCLftt_cmd_t_ MACRO TO RESET TERMINAL CHARACTERISTICS
@@ -139,8 +161,9 @@ struct sigaction	g_sigterm_old;
    ioctl(1, TCSETA, (char*)(a_savearg)); \
    }
 
-
-static void ftt_t_exithandler();	/* forward declaration */
+#endif
+
+static void ftt_t_exithandler(void);	/* forward declaration */
 
 
 /*============================================================================  
@@ -161,7 +184,7 @@ GLOBALS REFERENCED
 ============================================================================ */
 void ftt_t_linestart ( ftt_cmd_edithndl_t *a_hl, char *a_prompt)   
 {
-int status;
+
 
 /* SETUP EXIT HANDLER
    ------------------ */
@@ -292,10 +315,8 @@ RETURN VALUES:
 int ftt_t_procchar (ftt_cmd_edithndl_t *a_hl,char *a_line)   
 {
 ftt_cmd_t 	tmpline;
-int 		tmp, rstatus, i, foundSpace, foundChar;
-int 		entry, entry2, entry3;
-int 		last_nhndx;
-char 		savech;
+int 		rstatus, i, foundSpace, foundChar;
+int 		entry, entry3;
 
 char escseq[5];
 escseq[0] = L_ESC;
@@ -631,7 +652,28 @@ return(rstatus);
 } /* ftt_t_procchar */
 
 
-
+#ifdef WIN32
+
+static g_quit_flag = 0 ; /* this is for NT */
+
+BOOL ftt_t_Win_Interrupt(DWORD sig) {
+	g_quit_flag = 0;
+
+	switch (sig) {
+
+	case CTRL_C_EVENT : /* this is ^C */
+		ftt_t_cmdint();
+		if (! g_quit_flag ) return TRUE;
+		break;
+
+	case CTRL_BREAK_EVENT: /* this is NT kill */
+		ftclCmd_TERM();
+		if (! g_quit_flag ) return TRUE;
+		break;
+	}
+	return FALSE;
+}
+#endif
 /*============================================================================  
 
 ROUTINE: ftt_t_cmdint
@@ -653,53 +695,60 @@ GLOBALS REFERENCED
 ============================================================================ */
 static void ftt_t_cmdint()   
 {
-struct sigaction    act;
 
-/*
-** INCREMENT THE GLOBAL INTERRUPT FLAG
-*/
-g_sigint_flag++;
+	/*
+	** INCREMENT THE GLOBAL INTERRUPT FLAG
+	*/
+	g_sigint_flag++;
 
-/*
-** TELL THE USER AN INTERRUPT WAS DETECTED
-*/
-fputc(L_BELL, stdout);
-fputs("\n-- INTERRUPT --\n", stdout);
-if ((g_sigint_flag + 1) == g_sigint_flag_max)
-   {fputs("-- Hit ^C again to exit program --\n", stdout);}
+	/*
+	** TELL THE USER AN INTERRUPT WAS DETECTED
+	*/
+	fputc(L_BELL, stdout);
+	fputs("\n-- INTERRUPT --\n", stdout);
+	if ((g_sigint_flag + 1) == g_sigint_flag_max)
+	   {fputs("-- Hit ^C again to exit program --\n", stdout);}
 
-/*
-** IF WE'VE EXCEEDED THE MAX NUMBER OF INTERRUPTS COUNT, THEN EXIT THE PROGRAM
-*/
-if (g_sigint_flag >= g_sigint_flag_max)
-   {
-   /*
-   ** FIRST RESTORE THE ORIGINAL TERMINAL CHARACTERISTICS
-   */
-   ED_OFF(&g_ed_savearg);
+	/*
+	** IF WE'VE EXCEEDED THE MAX NUMBER OF INTERRUPTS COUNT, THEN EXIT THE PROGRAM
+	*/
+	if (g_sigint_flag >= g_sigint_flag_max) {
+	   /*
+	   ** FIRST RESTORE THE ORIGINAL TERMINAL CHARACTERISTICS
+	   */
+	   ED_OFF(&g_ed_savearg);
 
-   /*
-   ** CALL THE OLD HANDLER, THEN RESTORE DEFAULT HANDLER AND RE-SEND INTERRUPT
-   ** SO DEFAULT ACTION TAKES PLACE
-   */
-   if ((g_sigint_old.sa_handler != SIG_IGN) && 
-       (g_sigint_old.sa_handler != SIG_DFL) &&
-       (g_sigint_flag == g_sigint_flag_max))
-      {
-      g_sigint_old.sa_handler(0);
-      }
+#ifdef WIN32
+		/* this is Win-NT part */
+		g_quit_flag = 1;
 
-   /* If we're still here, then restore the default handler so we exit */
-   sigemptyset(&act.sa_mask);
-   act.sa_flags = 0;
-   act.sa_handler = (void (*)(int))SIG_DFL;
-   sigaction(SIGINT, &act, NULL);
-   raise(SIGINT);
-   }
+#else
+	   {
+			struct sigaction    act;
+			/*
+			** CALL THE OLD HANDLER, THEN RESTORE DEFAULT HANDLER AND RE-SEND INTERRUPT
+			** SO DEFAULT ACTION TAKES PLACE
+			*/
+			if ((g_sigint_old.sa_handler != SIG_IGN) && 
+				   (g_sigint_old.sa_handler != SIG_DFL) &&
+				   (g_sigint_flag == g_sigint_flag_max))
+				  {
+					g_sigint_old.sa_handler(0);
+				  }
+
+			/* If we're still here, then restore the default handler so we exit */
+			sigemptyset(&act.sa_mask);
+			act.sa_flags = 0;
+			act.sa_handler = (void (*)(int))SIG_DFL;
+			sigaction(SIGINT, &act, NULL);
+			raise(SIGINT);
+		}
+#endif
+	}
 }
 
+#ifndef WIN32 
 
-
 static void ftt_t_cmdcont();	/* forward declaration */
 /*============================================================================  
 **============================================================================
@@ -736,6 +785,7 @@ static void ftt_t_cmdtstp
 **============================================================================
 */
 {
+
 struct sigaction    act;
 
 /*
@@ -756,10 +806,10 @@ sigaction(SIGCONT, &act, &g_sigcont_old);   /* Continue from CTRL Z interrupt */
 */
 sigaction(SIGTSTP, &g_sigtstp_old, NULL);
 raise(SIGTSTP);
+
 }
 
 
-
 /*============================================================================  
 **============================================================================
 **
@@ -790,6 +840,7 @@ static void ftt_t_cmdcont
 **============================================================================
 */
 {
+
 struct termio	    l_ed_savearg;
 struct sigaction    act;
 
@@ -812,9 +863,10 @@ ED_ON(&l_ed_savearg);
 */
 sigaction(SIGCONT, &g_sigcont_old, NULL);
 raise(SIGCONT);
+
 }
 
-
+#endif
 
 /*============================================================================  
 **============================================================================
@@ -843,20 +895,25 @@ static void ftclCmd_TERM
 **============================================================================
 */
 {
-/*
-** RESTORE THE ORIGINAL TERMINAL CHARACTERISTICS
-*/
-ED_OFF(&g_ed_savearg);
+	/*
+	** RESTORE THE ORIGINAL TERMINAL CHARACTERISTICS
+	*/
+	ED_OFF(&g_ed_savearg);
 
-/*
-** RESTORE OLD HANDLER, THEN RE-SEND INTERRUPT SO DEFAULT ACTION TAKES PLACE
-*/
-sigaction(SIGTERM, &g_sigterm_old, NULL);
-raise(SIGTERM);
+#ifdef WIN32
+	/* this is Win-NT part */
+	g_quit_flag = 1;
+	
+#else
+	/*
+	** RESTORE OLD HANDLER, THEN RE-SEND INTERRUPT SO DEFAULT ACTION TAKES PLACE
+	*/
+	sigaction(SIGTERM, &g_sigterm_old, NULL);
+	raise(SIGTERM);
+#endif
 }
 
 
-
 /*============================================================================  
 **============================================================================
 
@@ -878,45 +935,55 @@ GLOBALS REFERENCED
 ============================================================================ */
 void ftt_t_interrupt_dec (int a_cnt)   
 {
-struct sigaction act, curHndlr;
+	g_sigint_flag = 0;
 
-/* Initialize global variables just in case a CTRL C is hit before any of the
-   ftclCmd_ routines are called */
-memset(&g_ed_savearg,0, sizeof(g_ed_savearg));
-g_sigint_flag = 0;
+	if (a_cnt <= 0) {a_cnt = 1;}
+	g_sigint_flag_max = a_cnt;
 
-if (a_cnt <= 0) {a_cnt = 1;}
-g_sigint_flag_max = a_cnt;
+#ifdef WIN32
+	/*this is Win-NT part */
 
-/* Set SIGINT handler (if we're not already the handler) */
-sigaction(SIGINT, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdint)
-   {
-   sigemptyset(&act.sa_mask);
-   act.sa_flags = 0;
-   act.sa_handler = (void (*)(int))ftt_t_cmdint;
-   sigaction(SIGINT, &act, &g_sigint_old);	/* CTRL C interrupt */
-   }
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)ftt_t_Win_Interrupt,TRUE );
 
-/* Set SIGTSTP handler (if we're not already the handler) */
-sigaction(SIGTSTP, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdtstp)
-   {
-   sigemptyset(&act.sa_mask);
-   act.sa_flags = 0;
-   act.sa_handler = (void (*)(int))ftt_t_cmdtstp;
-   sigaction(SIGTSTP, &act, &g_sigtstp_old);   /* CTRL Z interrupt */
-   }
+#else
+	{
+		struct sigaction act, curHndlr;
 
-/* Set SIGTERM handler (if we're not already the handler) */
-sigaction(SIGTERM, NULL, &curHndlr);		/* Get current handler */
-if (curHndlr.sa_handler != (void (*)(int))ftclCmd_TERM)
-   {
-   sigemptyset(&act.sa_mask);
-   act.sa_flags = 0;
-   act.sa_handler = (void (*)(int))ftclCmd_TERM;
-   sigaction(SIGTERM, &act, &g_sigterm_old);   /* KILL */
-   }
+		/* Initialize global variables just in case a CTRL C is hit before any of the
+		   ftclCmd_ routines are called */
+		memset(&g_ed_savearg,0, sizeof(g_ed_savearg));
+
+		/* Set SIGINT handler (if we're not already the handler) */
+		sigaction(SIGINT, NULL, &curHndlr);		/* Get current handler */
+		if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdint)
+		   {
+		   sigemptyset(&act.sa_mask);
+		   act.sa_flags = 0;
+		   act.sa_handler = (void (*)(int))ftt_t_cmdint;
+		   sigaction(SIGINT, &act, &g_sigint_old);	/* CTRL C interrupt */
+		   }
+
+		/* Set SIGTSTP handler (if we're not already the handler) */
+		sigaction(SIGTSTP, NULL, &curHndlr);		/* Get current handler */
+		if (curHndlr.sa_handler != (void (*)(int))ftt_t_cmdtstp)
+		   {
+		   sigemptyset(&act.sa_mask);
+		   act.sa_flags = 0;
+		   act.sa_handler = (void (*)(int))ftt_t_cmdtstp;
+		   sigaction(SIGTSTP, &act, &g_sigtstp_old);   /* CTRL Z interrupt */
+		   }
+
+		/* Set SIGTERM handler (if we're not already the handler) */
+		sigaction(SIGTERM, NULL, &curHndlr);		/* Get current handler */
+		if (curHndlr.sa_handler != (void (*)(int))ftclCmd_TERM)
+		   {
+		   sigemptyset(&act.sa_mask);
+		   act.sa_flags = 0;
+		   act.sa_handler = (void (*)(int))ftclCmd_TERM;
+		   sigaction(SIGTERM, &act, &g_sigterm_old);   /* KILL */
+		   }
+	}
+#endif
 }
 
 

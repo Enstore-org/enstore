@@ -41,7 +41,6 @@ ftt_t_cmd_table_t	*cmd;			/* command and function ptr */
 ftt_t_cmd_table_t	*match = NULL;		/* command and function ptr */
 char 			*usrcmd;		/* command name */
 int			cmd_length;		/* command length */
-int 			i;
 
 if ( (!strcmp(cmdbuf, "exit")) |
      (!strcmp(cmdbuf, "quit")) |

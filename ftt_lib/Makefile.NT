@@ -19,8 +19,8 @@
 DEB = /D "NDEBUG" /O2 
 DB  = 
 !ELSE
-DEB = /D "_DEBUG" /Od /Z7 
-DB = /DEBUG
+DEB = /D "_DEBUG" /Od /Z7
+DB = /DEBUG 
 !ENDIF
 
 #---------------------------------------------- Working directories
@@ -29,7 +29,8 @@ LIBDIR  =  ..\lib
 BINDIR  =  ..\bin
 INCDIR  =  ..\include
 WINDIR  =  WIN32
-#---------------------------------------------- name of the DAFT library
+
+#---------------------------------------------- name of the FTT library
 
 FTT_LIB  = $(LIBDIR)\ftt.lib
 
@@ -68,21 +69,17 @@ LIB32  = link.exe -lib
 CC_PROJ= /W3 /GX  /I "./" /I $(WINDIR)  /D "WIN32"\
  /D "_WINDOWS" /D "_MBCS" $(DEB) 
 
-
 EXE_FLAGS = $(FTT_LIB) \
  kernel32.lib user32.lib gdi32.lib\
- winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib\
- uuid.lib odbc32.lib odbccp32.lib /subsystem:console /incremental:no /pdb:none\
+ winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib \
+ uuid.lib odbc32.lib odbccp32.lib /subsystem:console /incremental:no /pdb:none \
  /machine:I386  /nod:"libcmtd.lib" $(DB)
-
 
 CLEAN :  
 	    -@erase $(SRCDIR)\*.obj
-	    -@erase $(SRCDIR)\*.pdb
 
 CLOBBER :
 	    -@erase $(SRCDIR)\*.obj
-	    -@erase $(SRCDIR)\*.pdb
 	    -@erase $(FTT_LIB) 
 
 

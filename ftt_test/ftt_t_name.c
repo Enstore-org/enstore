@@ -15,15 +15,19 @@ Include files:-
 
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifndef WIN32
 #include <grp.h>
 #include <pwd.h>
+#endif
+
 #include "ftt.h"
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"
 
 void ftt_t_block_fill   (char *, int, int, int);
 int  ftt_t_block_verify (char *, int, int, int);
-
+int ftt_list_supported(FILE *);
 
 /* ============================================================================
 
@@ -100,12 +104,6 @@ int	ftt_t_chall(int argc, char **argv)
 {
 int 		status;			/* status */
 int		estatus = 0;		/* expected status */
-char		**allname;		/* all names */
-int		i;			/* counter */
-int		uid;			/* uid */
-int		gid;			/* gid */
-struct group	*sgroup;		/* group structure */
-struct passwd	*spasswd;		/* password structure */
 static char	*uidstr;		/* uid string */
 static char	*gidstr;		/* uid string */
 static int	mode;			/* mode */
@@ -125,34 +123,39 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
+#ifndef WIN32
+{
+	/* get the gid value from the string
+	--------------------------------- */
+	struct group	*sgroup;		/* group structure */
+	struct passwd	*spasswd;		/* password structure */
+	sgroup = getgrnam(gidstr);
+	if (!sgroup) 
+	{
+	   fprintf(stderr,"could not find group %s\n",gidstr);
+	   FTT_T_INC_NERROR();
+	   return 0;
+	   }
 
-/* get the gid value from the string
-   --------------------------------- */
 
-sgroup = getgrnam(gidstr);
-if (!sgroup) 
-   {
-   fprintf(stderr,"could not find group %s\n",gidstr);
-   FTT_T_INC_NERROR();
-   return 0;
-   }
+	/* get the gid value from the string
+	   --------------------------------- */
 
+	spasswd = getpwnam(uidstr);
+	if (!spasswd) 
+	   {
+	   fprintf(stderr,"could not find user %s\n",uidstr);
+	   FTT_T_INC_NERROR();
+	   return 0;
+	   }
 
-/* get the gid value from the string
-   --------------------------------- */
+	/* finally do the chall
+	   -------------------- */
 
-spasswd = getpwnam(uidstr);
-if (!spasswd) 
-   {
-   fprintf(stderr,"could not find user %s\n",uidstr);
-   FTT_T_INC_NERROR();
-   return 0;
-   }
+	status = ftt_chall(ftt_t_fd,(int)spasswd->pw_uid,(int)sgroup->gr_gid,mode); 
+}
+#endif
 
-/* finally do the chall
-   -------------------- */
-
-status = ftt_chall(ftt_t_fd,(int)spasswd->pw_uid,(int)sgroup->gr_gid,mode); 
 FTT_T_CHECK_CALL(status ,estatus);
 return 0;
 }
@@ -554,7 +557,7 @@ if (out_filename)
    }
  
 ftt_list_supported (outfile);
-if (outfile != stderr) close(outfile);
+if (outfile != stderr) fclose(outfile);
 return 0;
 }
 

@@ -14,7 +14,6 @@ Include files:-
 ===============
 */
 
-#include <unistd.h>
 #include "ftt.h"
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"

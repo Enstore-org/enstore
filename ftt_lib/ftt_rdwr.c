@@ -81,11 +81,16 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 		}
 #else 
 		{ /* ---------------- this is the WIN-NT part -----------------*/
-			DWORD	nread;	
+			DWORD	nread,Lerrno;	
 			if ( ! ReadFile((HANDLE)d->file_descriptor,(LPVOID)buf,(DWORD)length,&nread,0) ) {
-				ftt_translate_error_WIN(d, FTT_OPN_READ, "ftt_read",
-					GetLastError(), "a ReadFile call",1);
-				nread = (DWORD)-1;
+				Lerrno = GetLastError();
+				if ( Lerrno == ERROR_FILEMARK_DETECTED ) {
+					nread = (DWORD)0;
+				} else {
+					ftt_translate_error_WIN(d, FTT_OPN_READ, "ftt_read",
+						GetLastError(), "a ReadFile call",1);
+					nread = (DWORD)-1;
+				}
 			}
 			res = (int)nread;
 		}

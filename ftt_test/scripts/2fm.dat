@@ -1,23 +1,17 @@
-#!/bin/ksh
+#
 # @(#) $Id$
+#
+# this file is input for ftt_test used by ftt_run_test script
+#
 #===============================================================================
-# This will test writing a test tape.
-#===============================================================================
- 
-#===============================================================================
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-#===============================================================================
- 
-ftt_test << EOD
+
 ftt_open
+
 #===============================================================================
 # test that if we write to filemarks and then close, we really have four
 # at the end
 #===============================================================================
+
 ftt_rewind
 ftt_write_tblock -nblock 100 -bsize 4000 -delta 1000
 ftt_writefm 
@@ -30,10 +24,12 @@ ftt_verify_tblock -filemark
 ftt_verify_tblock -filemark
 ftt_verify_tblock -filemark
 ftt_verify_tblock -status FTT_EBLANK
+
 #===============================================================================
 # test that if we call the special ftt routine to write 2 filemarks and then
 # close, we really have just two at the end
 #===============================================================================
+
 ftt_rewind
 ftt_write_tblock -nblock 100 -bsize 4000 -delta 1000
 ftt_write2fm 
@@ -45,5 +41,6 @@ ftt_verify_tblock -filemark
 ftt_verify_tblock -status FTT_EBLANK
 ftt_rewind
 ftt_close
+
 quit
-EOD
+

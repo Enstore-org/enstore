@@ -12,8 +12,9 @@ Revision history:-
 Include files:-
 ===============
 */
-
+#ifndef WIN32
 #include <sys/utsname.h>			/* for uname */
+#endif
 #include "ftt.h"
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"
@@ -89,12 +90,17 @@ int	ftt_t_open_logical	(int argc, char **argv)
 {
 int 		status;			/* status */
 int		estatus = 1;		/* expected status */
-struct utsname	uname_buf;		/* uname buffer */
+
 static char	*estatus_str;		/* expected status string */
 static int	readonly;		/* readonly */
 static char	*basename;		/* basename */
 static char	*flavor;		/* os flavor */
 static char	*driveid;		/* drive id */
+
+#ifndef WIN32
+struct utsname	uname_buf;		/* uname buffer */
+#endif
+
 ftt_t_argt	argt[] = {
  	{"[basename]",	FTT_T_ARGV_STRING,	NULL,		&basename},
  	{"-flavor",	FTT_T_ARGV_STRING,	NULL,		&flavor},
@@ -147,8 +153,12 @@ if (!driveid)
 
 if (!flavor)
    {
+#ifndef WIN32
    uname(&uname_buf);
    flavor = uname_buf.sysname;
+#else
+   flavor = "WINNT";
+#endif
    }
 
 /* do the open

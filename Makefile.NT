@@ -21,19 +21,31 @@ DEB = ""
 !ENDIF
 
 #---------------------------------------------- Working directories
-SRCDIR  =  Ftt_lib
 
-ALL : FTT_LIBRARY 
 
-FTT_LIBRARY :
-			cd $(SRCDIR) 
-			$(MAKE) /f Makefile.NT $(DEB)
+ALL : 
+		cd ftt_lib
+		$(MAKE) /f Makefile.NT $(DEB)
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT $(DEB)
+		cd ..
 
 CLEAN:
-			cd $(SRCDIR) 
-			$(MAKE) /f Makefile.NT clean	   
+		cd ftt_lib
+		$(MAKE) /f Makefile.NT clean
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT clean
+		cd ..
+				   
 
 CLOBBER :
-			cd $(SRCDIR) 
-			$(MAKE) /f Makefile.NT clobber  
+		cd ftt_lib 
+		$(MAKE) /f Makefile.NT clobber 
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT clobber 
+
+ 
 			 

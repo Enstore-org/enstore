@@ -1,18 +1,9 @@
-#!/bin/ksh
+#
 # @(#) $Id$
 #===============================================================================
 # This will test that close puts you in the suspected position
 #===============================================================================
  
-#===============================================================================
-# Get the tape device by looking in $1. If that's not set,
-# try FTT_TAPE. If that's not set either, then exit.
-export FTT_TAPE
-FTT_TAPE=${1:-${FTT_TAPE:-""}}
-FTT_TAPE=${FTT_TAPE:?"No device specified"}
-#===============================================================================
- 
-ftt_test << EOD
 ftt_open
 ftt_rewind
 #===============================================================================
@@ -26,4 +17,3 @@ ftt_verify_position 0 0
 ftt_verify_tblock -nblock 1
 ftt_close
 quit
-EOD

@@ -15,13 +15,20 @@ Include files:-
 #include <time.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 
+#ifdef WIN32
+extern char *optarg;
+int getopt();
+#define srandom srand
+#define random rand 
+#endif
 
 
 /*=============================================================================
 ==============================================================================*/
 
-int main(int argc, char **argv)
+void main(int argc, char **argv)
 {
 char	*filename = NULL;				/* filename */
 FILE	*fd;						/* fileid */
@@ -49,7 +56,6 @@ while ((opt = getopt(argc,argv,"f:")) != -1)
          break;
          }
       case '?':
-      usage:
          printf( "Usage: ftt_random -f <filename>\n");
          exit(1);
       }
@@ -71,6 +77,8 @@ srandom ((int) mytime);
 
 fd = fopen (filename, "w");
 if (!fd) { perror (filename); exit(1); }		/* error on open */
+
+#ifndef WIN32
 fprintf(fd,"#!/bin/sh\n");
 fprintf(fd,"# =============================================================\n");
 fprintf(fd,"# Randomly generated test script to test ftt functionality\n");
@@ -88,6 +96,8 @@ fprintf(fd,"# =============================================================\n");
 fprintf(fd,"# Write the test data \n");
 fprintf(fd,"# =============================================================\n");
 fprintf(fd,"ftt_test << EOD\n");
+#endif
+
 fprintf(fd,"ftt_open\n");
 fprintf(fd,"ftt_rewind\n");
 
@@ -149,7 +159,12 @@ for (i = 0; i < FTT_MAXPOSITION; i++)
    oldfileno = fileno;
    }
 fprintf(fd,"ftt_close\n");
+
+#ifdef WIN32
+printf("now execute: ftt_test -f <device_name> < %s \n",filename);
+#else
 fprintf(fd,"EOD\n");
+#endif
 fclose(fd);
 exit(0);
 }
