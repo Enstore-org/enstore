@@ -1234,6 +1234,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             bfid = self.unique_bit_file_id()
             ticket['bfid'] = bfid
 
+        # handle branding
+
+        if bfid[0] in string.letters:
+            brand = bfid[:4]
+            sequence = long(bfid[4:]+'L')
+            while self.dict.has_key(self.brand+str(sequence))
+                sequence = sequence + 1
+            bfid = self.brand+str(sequence)
+
         # extracting the values 
         try:
             complete_crc = ticket['complete_crc']
