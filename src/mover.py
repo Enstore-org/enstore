@@ -1241,7 +1241,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
     def status(self, ticket):
         now = time.time()
-        tick = { 'status'       : self.last_error,
+        status_info = (e_errors.OK, None)
+        if self.state == ERROR:
+            status_info = self.last_error
+        tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
                  'drive_id'     : self.config['product_id'],
@@ -1255,6 +1258,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  # from "work ticket"
                  'bytes_to_transfer': self.bytes_to_transfer,
                  'files'        : self.files,
+                 'last_error': self.last_error,
                  'mode'         : mode_name(self.mode),
                  'current_volume': self.current_volume,
                  'current_location': self.current_location,
