@@ -499,7 +499,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
 	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
-	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
+/*	    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+35);             */
 	    if ( 0 != strcmp(d->prod_id, ftt_extract_stats(b,FTT_PRODUCT_ID))) {
 		char *tmp;
 
@@ -508,8 +508,15 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		tmp = d->prod_id;
 		d->prod_id = strdup(ftt_extract_stats(b,FTT_PRODUCT_ID));
 		free(tmp);
-
-
+/***********************************************************************
+*         different drives has different length of a Product Revision Number
+*
+*/
+                if ((d->prod_id[1] == 'a') && (d->prod_id[3] == 'm')) {
+                    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
+                 } else {
+                    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
+                   }
 	    }
 	    /*
 	     * look up based on ANSI version *and* product id, so
