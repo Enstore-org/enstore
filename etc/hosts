@@ -134,6 +134,11 @@
 192.168.19.10    	d0ensrv4p.fnal.gov     	d0ensrv4p
 192.168.19.11   	d0ensrv5p.fnal.gov     	d0ensrv5p
 192.168.19.12           adic2.fnal.gov          adic2
+192.168.19.13   	cdfensrv0p.fnal.gov     cdfensrv0p
+192.168.19.14   	cdfensrv2p.fnal.gov     cdfensrv2p
+192.168.19.15   	cdfensrv3p.fnal.gov     cdfensrv3p
+192.168.19.16    	cdfensrv4p.fnal.gov     cdfensrv4p
+192.168.19.17           fntt2.fnal.gov          fntt2
 # This sucks, but gets around the host lookup problem
 131.225.164.53          d0olc.fnal.gov          d0olc
 131.225.164.53          d0olc-gb-1.fnal.gov     d0olc-gb-1
