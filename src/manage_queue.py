@@ -542,7 +542,7 @@ class Request_Queue:
 
             # see if label points to write queue
             if label in self.ref.keys():
-                if next and self.admin_rq_returned = 0:
+                if next and self.admin_rq_returned == 0:
                     record = self.write_queue.get_next(label)
                 else:
                     record = self.write_queue.get(label, location)
@@ -568,7 +568,7 @@ class Request_Queue:
             
             # label is not specified, get the highest priority from
             # the tags queue
-            if next and self.admin_rq_returned = 0:
+            if next and self.admin_rq_returned == 0:
                 for r in self.tags.sorted_list:
                     Trace.trace(21, "TAG %s" % (r,))
                 rq = self.tags.get_next()
