@@ -46,7 +46,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
             capacity_bytes,        #
             remaining_bytes,       #
             eod_cookie  = "none",  # code for seeking to eod
-            user_inhibit  = "none",# "none" | "readonly" | "NOACCESS"
+            user_inhibit  = ["none","none"],# 0:"none" | "readonly" | "NOACCESS"
             error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
                                    # lesser access is specified as
                                    #       we find media errors,
@@ -63,7 +63,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
             wrapper = "cpio_odc",  # kind of wrapper for volume
             blocksize = -1,        # blocksize (-1 =  media type specifies)
             non_del_files = 0,     # non-deleted files
-            system_inhibit = "none" # "none" | "readonly" | "NOACCESS"
+            system_inhibit = ["none","none"] # 0:"none" | "writing??" | "NOACCESS", "DELETED
+                                             # 1:"none" | "readonly" | "full"
             ):
         Trace.trace( 6, 'add label=%s'%(external_label,))
         ticket = { 'work'            : 'addvol',
@@ -113,6 +114,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None):
+        import cPickle
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -160,14 +162,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # work queues on that port.
         data_path_socket = callback.volume_server_callback_socket(ticket)
         ticket= callback.read_tcp_obj(data_path_socket)
-        volumes=''
-        volumes=callback.read_tcp_raw(data_path_socket)
+        volumes = cPickle.loads(callback.read_tcp_raw(data_path_socket))
         ##while 1:
         ##    msg=callback.read_tcp_raw(data_path_socket)
         ##    if not msg: break
         ##    if volumes: volumes = volumes+","+msg
         ##    else: volumes=msg
-        ticket['volumes'] = volumes
+        #ticket['volumes'] = volumes
         data_path_socket.close()
 
 
@@ -183,6 +184,24 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
+
+        if volumes.has_key("header"):        # full info
+            print "%-10s  %-8s %-12s %-17s %17s %012s %-012s"%\
+                  ("label","avail.","mount state",
+                   "system_inhibit","user_inhibit",
+                   "library","    file_family")
+            for v in volumes["volumes"]:
+                print "%-10s  %-6.2gGB %-12s (%-08s %08s) (%-08s %08s) %-012s %012s"%\
+                      (v['volume'],v['bytes_left'],v['at_mover'][0],
+                       v['system_inhibit'][0],v['system_inhibit'][1],
+                       v['user_inhibit'][0],v['user_inhibit'][1],
+                       v['library'],v['file_family'])
+        else:
+            vlist = ''
+            for v in volumes["volumes"]:
+                vlist = vlist+v['volume']+" "
+            print vlist
+                
 
         return ticket
 
@@ -315,9 +334,11 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # clear any inhibits on the volume
-    def clr_system_inhibit(self,external_label):
+    def clr_system_inhibit(self,external_label,what=None, pos=0):
         ticket= { 'work'           : 'clr_system_inhibit',
-                  'external_label' : external_label }
+                  'external_label' : external_label,
+                  'inhibit'        : what,
+                  'position'       : pos}
         x = self.send(ticket)
         return x
 
@@ -486,13 +507,18 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         print "   add arguments: volume_name library file_family media_type"\
               +" volume_byte_capacity remaining_capacity"
 
+    # print out clear arguments
+    def print_clear_args(self):
+        print "usage: --clear volume_name"
+        print "       --clear volume_name {system_inhibit|user_inhibit} position(1 or 2)"
+
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
         self.print_add_args()
         self.print_update_mc_state_args()
         self.print_new_library_args()
-
+        self.print_clear_args()
 
 def do_work(intf):
     # get a volume clerk client
@@ -532,11 +558,6 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
-        if nargs == 0:
-            vols = string.split(ticket['volumes'],',')
-            for v in vols:
-                print v
-        else:print ticket['volumes']
     elif intf.rmvol:
         # optional argument
         if intf.rmvol == 'all': intf.rmvol = None
@@ -554,7 +575,7 @@ def do_work(intf):
 	pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
-        ##print repr(ticket)
+        print repr(ticket)
         print "%-10s  %5.2gGB %-12s  %s %s" % (ticket['external_label'],
                                                ticket['remaining_bytes']*1./1024./1024./1024.,
                                                ticket['at_mover'][0],
@@ -576,7 +597,25 @@ def do_work(intf):
     elif intf.restore:
         ticket = vcc.restore(intf.restore, intf.all)  # name of volume
     elif intf.clear:
-        ticket = vcc.clr_system_inhibit(intf.clear)  # name of this volume
+        nargs = len(intf.args)
+        what = None
+        pos = 0
+        if nargs > 0:
+            if nargs != 2:
+                intf.print_clear_args()
+            else:
+                ipos = string.atoi(intf.args[1])-1
+                if not (intf.args[0] == "system_inhibit" or intf.args[0] == "user_inhibit"):
+                    intf.print_clear_args()
+                    return
+                elif not (ipos == 0 or ipos == 1):
+                    intf.print_clear_args()
+                    return
+                else:
+                    what = intf.args[0]
+                    pos = ipos
+                
+        ticket = vcc.clr_system_inhibit(intf.clear, what, pos)  # name of this volume
     elif intf.update:
         ticket = vcc.update_mc_state(intf.update)  # name of this volume
         Trace.trace(12, repr(ticket))

@@ -1817,7 +1817,7 @@ def read_from_hsm(input_files, output,
                    "encp.read_from_hsm:  cannot get info on bfid %s"%(bfid[i],))
         Trace.trace(7,"read_from_hsm on volume=%s"%
                     (binfo['fc']['external_label'],))
-	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
+	if binfo['vc']['system_inhibit'][0] == e_errors.NOACCESS:
 	    binfo['status'] = (e_errors.NOACCESS, None)
 	    print_data_access_layer_format('', '', 0, binfo)
 	    continue

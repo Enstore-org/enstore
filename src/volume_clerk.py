@@ -25,6 +25,7 @@ def mycmp(cond, a, b):
 
 # require 5% more space on a tape than the file size,
 #    this accounts for the wrapper overhead and "some" tape rewrites
+
 SAFETY_FACTOR=1.05
 
 MY_NAME = "volume_clerk"
@@ -55,11 +56,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
 	 # rename volume names in the FC database
 	 if string.find(new_label, ".deleted") != -1:
-	     cur_rec["system_inhibit"] = e_errors.DELETED
+	     cur_rec["system_inhibit"][0] = e_errors.DELETED
 	     set_deleted = "yes"
 	     restore_dir = "no"
 	 else:
-	     cur_rec["system_inhibit"] = "none"
+	     cur_rec["system_inhibit"][0] = "none"
 	     if restore == "yes":
 		 set_deleted = "no"
 		 restore_dir = "yes"
@@ -106,8 +107,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      try:
 	 cur_rec = self.dict[external_label]
 	 # if volume is not marked as deleted it is an error
-	 if cur_rec["system_inhibit"] != e_errors.DELETED:
-	     return cur_rec["system_inhibit"], "Volume Clerk: volume "+external_label+" is not marked as deleted"
+	 if cur_rec["system_inhibit"][0] != e_errors.DELETED:
+	     return cur_rec["system_inhibit"][0], "Volume Clerk: volume "+external_label+" is not marked as deleted"
 	 
 	 ## if volume is marked as deleted copy its record into DB
 	 ## and delete original
@@ -155,14 +156,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 self.dict.cursor("open")
                 key,value=self.dict.cursor("first")
                 while key:
-                    if value["system_inhibit"] == e_errors.DELETED:
+                    if value["system_inhibit"][0] == e_errors.DELETED:
                         vols.append(key)
                     key,value=self.dict.cursor("next")
                 self.dict.cursor("close")
             else:
                 if self.dict.has_key(ticket["external_label"]):
                     record = self.dict[ticket["external_label"]]
-                    if record["system_inhibit"] == e_errors.DELETED:
+                    if record["system_inhibit"][0] == e_errors.DELETED:
                         vols.append(ticket["external_label"])
             for vol in vols:
                 ret = self.remove_deleted_volume(vol)
@@ -237,9 +238,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['declared'] = ticket.get('declared',-1)
         if record['declared'] == -1:
             record["declared"] = time.time()
-        record['system_inhibit'] = ticket.get('system_inhibit', "none")
+        record['system_inhibit'] = ticket.get('system_inhibit', ["none", "none"])
         record['at_mover'] = ticket.get('at_mover',  ("unmounted", "none") )
-        record['user_inhibit'] = ticket.get('user_inhibit', "none")
+        record['user_inhibit'] = ticket.get('user_inhibit', ["none", "none"])
         record['sum_wr_err'] = ticket.get('sum_wr_err', 0)
         record['sum_rd_err'] = ticket.get('sum_rd_err', 0)
         record['sum_wr_access'] = ticket.get('sum_wr_access', 0)
@@ -319,7 +320,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    del self.dict[external_label]
 	    ticket["status"] = (e_errors.OK, None)
 	else:
-	    record["system_inhibit"] = e_errors.DELETED
+	    record["system_inhibit"][0] = e_errors.DELETED
 	    self.dict[external_label] = record
 	    # try to remove deleted volume and mark the current one as deleted
 	    if self.dict.has_key(external_label+".deleted"):
@@ -367,7 +368,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = status
 	if status[0] == e_errors.OK:
 	    record = self.dict[external_label]
-	    record["system_inhibit"] = "none"
+	    record["system_inhibit"] = ["none","none"]
 	    if restore_vm == "yes":
 		record["non_del_files"] = len(record["bfids"])
 	    self.dict[external_label] = record
@@ -382,30 +383,39 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	work = ticket["action"]
 	label = ticket["external_label"]
 	record = self.dict[label]  ## was deepcopy
-	if record["system_inhibit"] == e_errors.DELETED:
-	    ret_stat = (record["system_inhibit"],None)
+	if record["system_inhibit"][0] == e_errors.DELETED:
+	    ret_stat = (record["system_inhibit"][0],None)
 	else:
 	    if work == 'read_from_hsm':
 		# if system_inhibit is NOT in one of the following 
 		# states it is NOT available for reading
-		if (record['system_inhibit'] != 'none' and 
-		    record['system_inhibit'] != 'readonly' and
-		    record['system_inhibit'] != 'full'):
-		    ret_stat = (record['system_inhibit'], None)
+                if record['system_inhibit'][0] != 'none':
+                    ret_stat = (record['system_inhibit'][0], None)
+                elif (record['system_inhibit'][1] != 'none' and
+                      record['system_inhibit'][1] != 'readonly' and
+                      record['system_inhibit'][1] != 'full'):
+		    ret_stat = (record['system_inhibit'][1], None)
 		# if user_inhibit is NOT in one of the following 
 		# states it is NOT available for reading
-		elif (record['user_inhibit'] != 'none' and
-		      record['user_inhibit'] != 'readonly' and
-		      record['user_inhibit'] != 'full'):
-		    ret_stat = (record['system_inhibit'], None)
-		    ticket['status'] = (e_errors.OK,None)
+                elif record['user_inhibit'][0] != 'none':
+                    ret_stat = (record['user_inhibit'][0], None)
+                elif (record['user_inhibit'][1] != 'none' and
+                      record['user_inhibit'][1] != 'readonly' and
+		      record['user_inhibit'][1] != 'full'):
+		    ret_stat = (record['user_inhibit'][1], None)
 		else:
 		    ret_stat = (e_errors.OK,None)
 	    elif work == 'write_to_hsm':
-		if record['system_inhibit'] != 'none':
-		    ret_stat = (record['system_inhibit'], None)
-		elif record['user_inhibit'] != 'none':
+		if record['system_inhibit'][0] != 'none':
+		    ret_stat = (record['system_inhibit'][0], None)
+                elif (record['system_inhibit'][1] == 'readonly' or
+                      record['system_inhibit'][1] == 'full'):
+		    ret_stat = (record['system_inhibit'][1], None)
+		elif record['user_inhibit'][0] != 'none':
 		    ret_stat = (record['user_inhibit'], None)
+                elif (record['user_inhibit'][1] == 'readonly' or
+                      record['user_inhibit'][1] == 'full'):
+		    ret_stat = (record['user_inhibit'][1], None)
 		else:
 		    if (ticket['file_family'] == record['file_family'] and
 			ticket['file_size'] <= record['remaining_bytes']):
@@ -449,11 +459,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             #if v["wrapper"] != wrapper_type:
             #    Trace.trace(17,label+" rejected wrapper "+v["wrapper"]+' '+wrapper_type)
             #    continue
-            if v["user_inhibit"] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"])
+            if v["user_inhibit"][0] != "none":
+                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][0])
                 continue
-            if v["system_inhibit"] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"])
+            if v["user_inhibit"][1] != "none":
+                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][1])
+                continue
+            if v["system_inhibit"][0] != "none":
+                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][0])
+                continue
+            if v["system_inhibit"][1] != "none":
+                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][1])
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
@@ -469,7 +485,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 # administrator reset the system_inhibit back to none in these
                 # special, and hopefully rare cases.
                 Trace.trace(17,label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
-                v["system_inhibit"] = "full"
+                v["system_inhibit"][1] = "full"
                 left = v["remaining_bytes"]/1.
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
@@ -533,11 +549,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if v["file_family"] != "none":
                 Trace.trace(17,label+" rejected file_family "+v["file_family"])
                 continue
-            if v["user_inhibit"] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"])
+            if v["user_inhibit"][0] != "none":
+                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][0])
                 continue
-            if v["system_inhibit"] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"])
+            if v["user_inhibit"][1] != "none":
+                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][1])
+                continue
+            if v["system_inhibit"][0] != "none":
+                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][0])
+                continue
+            if v["system_inhibit"][1] != "none":
+                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][1])
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
@@ -634,8 +656,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          if (v["library"] == library and
              (v["file_family"] == file_family+"."+wrapper_type) and
              v["wrapper"] == wrapper_type and
-             v["user_inhibit"] == "none" and
-             v["system_inhibit"] == "none" and
+             v["user_inhibit"][0] == "none" and
+             v["user_inhibit"][1] == "none" and
+             v["system_inhibit"][0] == "none" and
+             v["system_inhibit"][1] == "none" and
              v['at_mover'][0] == "mounted"):
              if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                  # if it __ever__ happens that we can't write a file on a
@@ -646,7 +670,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  # worry about if it is really a problem - I propose that an
                  # administrator reset the system_inhibit back to none in these
                  # special, and hopefully rare cases.
-                 v["system_inhibit"] = "full"
+                 v["system_inhibit"][1] = "full"
                  left = v["remaining_bytes"]/1.
                  totb = v["capacity_bytes"]/1.
                  if totb != 0:
@@ -758,7 +782,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"set_remaining_bytes "+repr(ticket["status"]))
             return
 
-        record["system_inhibit"] = "none"
+        record["system_inhibit"][0] = "none"
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
@@ -960,8 +984,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['at_mover']=tuple(ll)
         # if volume is unmounted system_inhibit cannot be writing
         if (record['at_mover'][0] == 'unmounted' and
-            record['system_inhibit'] == 'writing'):
-            record['system_inhibit'] = 'none'
+            record['system_inhibit'][0] == 'writing'):
+            record['system_inhibit'][0] = "none"
         self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
@@ -974,6 +998,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             key="external_label"
             external_label = ticket[key]
+            key = "inhibit"
+            inhibit = ticket[key]
+            if not inhibit: inhibit = "system_inhibit" # set default field 
+            key = "position"
+            position = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: "+key+" key is missing")
@@ -994,18 +1023,24 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"vc.clr_system_inhibit "+repr(ticket["status"]))
             return
 
-	if record ["system_inhibit"] == e_errors.DELETED:
-	    # if volume is deleted no data can be changed
-	    record["status"] = (e_errors.DELETED, 
-				"Cannot perform action on deleted volume")
-	else:    
-	    # update the fields that have changed
-	    record ["system_inhibit"] = "none"
-	    ll = list(record['at_mover'])
-	    ll[0]= self.get_media_changer_state(record["library"],
-						record["external_label"], 
-						record["media_type"])
-	    record['at_mover']=tuple(ll)
+        if (inhibit == "system_inhibit" and position == 0):
+            if record [inhibit][position] == e_errors.DELETED:
+                # if volume is deleted no data can be changed
+                record["status"] = (e_errors.DELETED, 
+                                    "Cannot perform action on deleted volume")
+            else:    
+                # update the fields that have changed
+                record[inhibit][position] = "none"
+                ll = list(record['at_mover'])
+                ll[0]= self.get_media_changer_state(record["library"],
+                                                    record["external_label"], 
+                                                    record["media_type"])
+                record['at_mover']=tuple(ll)
+                self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+                record["status"] = (e_errors.OK, None)
+        else:
+            # if it is not record["system_inhibit"][0] just set it to none
+            record[inhibit][position] = "none"
 	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
@@ -1045,7 +1080,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                 "Volume Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(8,"cadd_at_mover "+repr(ticket["status"]))
+            Trace.trace(8,"add_at_mover "+repr(ticket["status"]))
             return
 
         # get the current entry for the volume
@@ -1093,14 +1128,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	return
 
     # set system_inhibit flag
-    def set_system_inhibit(self, ticket, flag):
+    def set_system_inhibit(self, ticket, flag, index=0):
 	external_label = ticket["external_label"]
-	
 	# get the current entry for the volume
 	record = self.dict[external_label]  ## was deepcopy
-	
+
 	# update the fields that have changed
-	record ["system_inhibit"] = flag
+	record["system_inhibit"][index] = flag
+
 	self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
 	Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
@@ -1113,7 +1148,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag that the current volume is readonly
     def set_system_readonly(self, ticket):
-        return self.set_system_inhibit(ticket, "readonly")
+        return self.set_system_inhibit(ticket, "readonly", 1)
 
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
@@ -1176,6 +1211,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(17,'get_vols forked parent - returning')
             return
         try:
+            import cPickle
             Trace.init("GET_VOLS")
             Trace.trace(17,"get_vols child processing")
             self.get_user_sockets(ticket)
@@ -1183,7 +1219,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             callback.write_tcp_obj(self.data_socket, ticket)
             self.dict.cursor("open")
             key,value=self.dict.cursor("first")
-            msg=''
+            msg={}
             while key:
                 if ticket.has_key("not"): cond = ticket["not"]
                 if ticket.has_key("in_state") and ticket["in_state"] != None:
@@ -1194,29 +1230,48 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                             else:
                                 loc_val = value[ticket["key"]]
                             if mycmp(cond,loc_val,ticket["in_state"]):
-                                if msg: msg = msg+","+key
-                                else: msg = key
+                                if msg:
+                                    dict = {"volume":key}
+                                    msg["volumes"].append(dict)
+                                else:
+                                    msg["volumes"]= []
+                                    dict = {"volume":key}
+                                    msg["volumes"].append(dict)
                             else:
                                 pass
                     else:
-                        if value["system_inhibit"] == ticket["in_state"]:
-                            if msg: msg = msg+","+key
-                            else: msg = key
+                        if (ticket["in_state"] == "full" or
+                            ticket["in_state"] == "readonly"):
+                            index = 1
+                        else: index = 0
+                        if value["system_inhibit"][index] == ticket["in_state"]:
+                            if msg:
+                                dict = {"volume":key}
+                                msg["volumes"].append(dict)
+                            else:
+                                msg["volumes"]= []
+                                dict = {"volume":key}
+                                msg["volumes"].append(dict)
                 else:
                     bytes_left = value['remaining_bytes']*1./1024./1024./1024.
-                    formatted_string="%-10s  %-6.2gGB %-12s  %-12s %-12s %-12s %-12s"%\
-                                      (key,bytes_left,value['at_mover'][0],
-                                       value['system_inhibit'],
-                                       value['user_inhibit'],value['library'],
-                                       value['file_family'])
-                    if msg: msg = msg+","+formatted_string
-                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s,%s"%\
-                                ("label","avail.","mount state",
-                                 "sys_inhibit","usr_inhibit",
-                                 "library","file_fam", formatted_string)
+                    dict = {"volume"         : key,
+                            "bytes_left"     : bytes_left,
+                            "at_mover"       : value['at_mover'],
+                            "system_inhibit" : value['system_inhibit'],
+                            "user_inhibit"   : value['user_inhibit'],
+                            "library"        : value['library'],
+                            "file_family"    : value['file_family']
+                            }
+                    if msg:
+                        msg["volumes"].append(dict)
+                    else:
+                        msg["header"] = "FULL"
+                        msg["volumes"]= []
+                        msg["volumes"].append(dict)
 
                 key,value=self.dict.cursor("next")
-            callback.write_tcp_raw(self.data_socket,msg)
+            to_send = cPickle.dumps(msg)
+            callback.write_tcp_raw(self.data_socket, to_send)
             self.dict.cursor("close")
             self.data_socket.close()
 

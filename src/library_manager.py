@@ -732,7 +732,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def read_from_hsm(self, ticket):
 	# check if this volume is OK
 	v = self.vcc.inquire_vol(ticket['fc']['external_label'])
-	if v['system_inhibit'] == e_errors.NOACCESS:
+	if v['system_inhibit'][0] == e_errors.NOACCESS:
 	    # tape cannot be accessed, report back to caller and do not
 	    # put ticket in the queue
 	    ticket["status"] = (e_errors.NOACCESS, None)
