@@ -1026,6 +1026,12 @@ class LibraryManagerMethods:
         # first see if there are any HiPri requests
         rq =self.pending_work.get_admin_request()
         while rq:
+            # skip over tape read requests they are processed only in the idle state
+            method = ticket.get("method", None)
+            if method and method == "start_read_tape":
+                rq = self.pending_work.get_admin_request(next=1) # get next request
+                continue
+
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
@@ -1103,6 +1109,11 @@ class LibraryManagerMethods:
         exc_limit_rq = None
         loop = 1
         while rq:
+            # skip over tape read requests they are processed only in the idle state
+            method = ticket.get("method", None)
+            if method and method == "start_read_tape":
+                rq = self.pending_work.get_admin_request(next=1) # get next request
+                continue
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
@@ -1329,9 +1340,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                      generic_server.GenericServer,
                      LibraryManagerMethods):
 
-    max_suspect_movers = 2 # maximal number of movers in the suspect volume
-    max_suspect_volumes = 100 # maximal number of suspected volumes for alarm
-                              # generation
     def __init__(self, libman, csc):
         self.name_ext = "LM"
         self.csc = csc
@@ -1364,6 +1372,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         min_file_size = self.keys.get('min_file_size',0L)
         # maximal file size
         self.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
+        self.max_suspect_movers = self.keys.get('max_suspect_movers',2) # maximal number of movers in the suspect volume list
+        self.max_suspect_volumes = self.keys.get('max_suspect_volumes', 100) # maximal number of suspected volumes for alarm generation
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
