@@ -1305,6 +1305,7 @@ def open_data_socket(mover_addr, interface_ip):
 
 def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
     use_listen_socket = listen_socket
+    ticket = {}
     unique_id_list = []
     for work_ticket in work_tickets:
         unique_id_list.append(work_ticket['unique_id'])
