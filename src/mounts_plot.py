@@ -37,19 +37,27 @@ mts = []
 mtsg = {}
 mtsh = {}
 
-hwmk = str(high_water_mark)
-lwmk = str(low_water_mark)
-
 def hist_key(n):
-	return str(n/step*step)
-
+	if n > high_water_mark:
+		return '>'+str(high_water_mark)
+	elif n > low_water_mark:
+		return str(low_water_mark)+'-'+str(high_water_mark-1)
+	else:
+		nb = n/step*step
+		return str(nb)+'-'+str(nb+step-1)
+		
 if __name__ == '__main__':
 
 	# create bins
+	hist_key = [] # to preserve the order
 	for i in range(0, low_water_mark, step):
-		mtsh[str(i)] = 0
-	mtsh[lwmk] = 0
-	mtsh[hwmk] = 0
+		k = hist_key(i)
+		mtsh[k] = 0
+		hist_key.append(k)
+	k = hist_key(low_water_mark)
+	mtsh[k] = 0
+	k = hist_key(high_water_mark)
+	mtsh[k] = 0
 
 	f = open(vf_file)
 	l = f.readline()
@@ -70,13 +78,8 @@ if __name__ == '__main__':
 					toh = toh + 1
 				if m > low_water_mark:
 					tol = tol + 1
-				if m > high_water_mark:
-					mtsh[hwmk] = mtsh[hwmk]+1
-				elif m > low_water_mark:
-					mtsh[lwmk] = mtsh[lwmk]+1
-				else:
-					k = hist_key(m)
-					mtsh[k] = mtsh[k]+1
+				k = hist_key(m)
+				mtsh[k] = mtsh[k]+1
 		l = f.readline()
 
 	mts.sort()
@@ -124,15 +127,23 @@ if __name__ == '__main__':
 
 	# The histogram
 
+	count = 0
+	set_xtics = "set xtics ("
 	outf = open(tmp_data, "w")
-	for i in mtsh.keys():
-		outf.write("%s %d\n"%(i, mtsh[i]))
+	for i in hist_key:
+		count = count + 1
+		outf.write("%d %d\n"%(count, mtsh[i]))
+		set_xtics = set_xtics + '"%s" %d,'%(i, count)
 	outf.close()
+	set_xtics[-1] = ')'
+	set_xtics = set_xtics+'\n'
 
 	outf = open(tmp_gnuplot_cmd, "w")
 	outf.write("set grid\n")
 	outf.write("set ylabel 'Volumes'\n")
 	outf.write("set xlabel 'Mounts'\n")
+	outf.write("set xragne [0:%d]\n"%(count+1))
+	outf.write(set_xtics)
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
 	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
