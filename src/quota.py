@@ -80,23 +80,8 @@ def whoami():
 
 # handles everthing with quota		
 class Quota:
-	def __init__(self, csc, remote=0):
-		# where is the database
-		self.csc = configuration_client.ConfigurationClient(csc)
-		dbInfo = self.csc.get('database')
-		if remote:
-			self.host = dbInfo['db_host']
-		else:
-			self.host = 'localhost'
-		self.port = dbInfo['db_port']
-		self.dbname = dbInfo['dbname']
-		try:
-			self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
-		except:
-			exc_type, exc_value = sys.exc_info()[:2]
-			print str(exc_type)+' '+str(exc_value)
-			print 'has to be user "enstore" on *srv0!'
-			sys.exit(0)
+	def __init__(self, db):
+		self.db = db
 		self.uname = whoami()
 
 	# informational log any way, stick user identity before the msg
@@ -437,8 +422,18 @@ class Interface(option.Interface):
 	}
 
 def do_work(intf):
-	q = Quota((intf.config_host, intf.config_port))
-	logc = log_client.LoggerClient(q.csc)
+	# get database
+	csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+	dbInfo = csc.get('database')
+	try:
+		db = pg.DB(host='localhost', port=dbInfo['db_port'], dbname=dbInfo['dbname'])
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		print str(exc_type)+' '+str(exc_value)
+		print 'has to be user "enstore" on *srv0!'
+		sys.exit(0)
+	q = Quota(db)
+	logc = log_client.LoggerClient(csc)
 	Trace.init(string.upper(MY_NAME))
 
 	if intf.show:
