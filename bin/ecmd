@@ -34,7 +34,7 @@ ecmd clrvol  [--vols  --vol=  --verbose= --help'] volume_name
 
 ecmd log    [--server_verbose= --test --alive  --verbose= --logit --help]
 
-ecmd inq    [--server_verbose= --alive --update --timeout=timeout_secs --get_timeout --help]
+ecmd inq    [--server_verbose= --alive --refresh=secs --get_refresh --update --timeout=secs --get_timeout --reset_timeout --timestamp --max_ascii_size --get_max_ascii_size --dump --help]
 
 ecmd pnfs    [--test --status --file= --restore=file --verbose= --help]
 
