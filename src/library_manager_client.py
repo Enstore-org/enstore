@@ -180,7 +180,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
             raise errno.errorcode[errno.EPROTO],"lmc.%s sending ticket %s"%(work,ticket)
 
         while 1 :
+            Trace.trace(9,"lmc: accepting")
             control_socket, address = listen_socket.accept()
+            Trace.trace(9,"lmc: accepted connection from %s"%(address,))
             if not hostaddr.allow(address):
                 control_socket.close()
                 listen_socket.close()

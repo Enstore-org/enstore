@@ -12,6 +12,9 @@ import string,re
 import time
 
 
+#Enstore imports
+import Trace
+
 hostinfo=None
 
 #Only allow connections from these domains
@@ -61,7 +64,9 @@ def name_to_address(name):
     return addr
 
 def allow(addr):
+    Trace.trace(9, "allow: checking address %s" % (addr,))
     if not addr:
+        Trace.trace(9, "allow: not allowing %s" % (addr,))
         return 0
     if type(addr) is type(()):
         if len(addr)==2:
@@ -71,14 +76,18 @@ def allow(addr):
     if addr[0] not in string.digits:
         addr = name_to_address(addr)
     if addr[0] not in string.digits:
+        Trace.trace(9, "allow: not allowing %s" % (addr,))
         return 0
     tok = string.split(addr, '.')
     if len(tok) != 4:
+        Trace.trace(9, "allow: not allowing %s" % (addr,))
         return 0
     for v in valid_domains:
         vtok = string.split(v, '.')
         if tok[:len(vtok)] == vtok:
+            Trace.trace(9, "allow: allowing %s" % (addr,))
             return 1
+    Trace.trace(9, "allow: not allowing %s" % (addr,))
     return 0
 
 ifconfig_command=None
