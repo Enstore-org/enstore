@@ -190,8 +190,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # Do the forking and call the function
     def DoWork(self, function, ticket):
-        Trace.trace(10, '>mcDoWork')
-        Trace.log(e_errors.INFO, "REQUESTED "+ticket['function'])
+	if ticket['function'] == "mount" or ticket['function'] == "dismount":
+            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function']+ \
+		   ticket['vol_ticket']['external_label']+ticket['drive_id'])
+        else:
+            Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function'])
         #if we have max number of working children, assume client will resend
         if len(self.work_list) >= self.MaxWork :
             Trace.log(e_errors.INFO,
@@ -222,19 +225,20 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             pipe = os.pipe()
             if not self.fork():
                 # if in child process
-                Trace.trace(e_errors.INFO, 'mcDoWork>forked')
+	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
+                    Trace.trace(e_errors.INFO, 'mcDoWork>>> forked (child)'+ticket['function']+ \
+		           ticket['vol_ticket']['external_label']+ticket['drive_id'])
+                else:
+                    Trace.trace(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
                 if ticket['function'] == "mount":
-                    Trace.trace(10, 'mcDoWork>dismount for mount')
-                    #Trace.log(e_errors.INFO, "PREPARE "+repr(ticket))
+                    Trace.trace(e_errors.INFO, 'mcDoWork>dismount for mount (prepare)')
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
-
-                Trace.trace(e_errors.INFO, 'mcDoWork>>> '+ticket['function'])
                 count = self.getNretry()
 		rpcErrors = 0
                 sts=("",0,"")
@@ -253,9 +257,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		    if sts[1] == 1 and rpcErrors < 10:  # RPC failure
 		        time.sleep(5)
 			rpcErrors = rpcErrors + 1
+                        Trace.trace(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
 		    else:
 			count = count - 1
-                    Trace.trace(10, 'mcDoWork >>> called fn '+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
@@ -282,9 +286,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
            if i["ra"] == ticket["ra"]:
               self.work_list.remove(i)
               break
-        Trace.log(e_errors.INFO, "FINISHED "+ticket['function'])
         # report back to original client - probably a mover
-        Trace.trace(10, '<<< mcWorkDone')
+	if ticket['function'] == "mount" or ticket['function'] == "dismount":
+            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function']+ \
+		   ticket['vol_ticket']['external_label']+ticket['drive_id'])
+        else:
+            Trace.trace(e_errors.INFO, 'FINISHED '+ticket['function'])
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 	self.robotNotAtHome = 1
