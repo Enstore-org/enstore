@@ -2644,7 +2644,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 null_err = 0
                 if self.config['driver'] == "NullDriver": 
                     filename = ticket['wrapper'].get("pnfsFilename",'')
-                    if "NULL" not in string.split(filename,'/'):
+                    for w in string.split(filename,'/'):
+                        if w.find("NULL") != -1:
+                            # found
+                            break
+                    else: # for
+                        # not found
                         ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
                         #self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
                         Trace.log(e_errors.USERERROR, "NULL not in PNFS path")
