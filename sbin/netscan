@@ -348,7 +348,7 @@ fi
 
 # check that we have a ntpset running in the crontab:
 if [ `$EGREP -c ntpset /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing ntpset or it is misconfigured" 
+   msg="/var/spool/cron/root is missing ntpset or misconfigured" 
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -357,8 +357,8 @@ elif [ $QUIET -ne 1 ]; then
 fi
 
 # check that ipmisrv is running without watchdog timer
-if [ `$PS -ef | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
-   msg="ipmisrv NO_DOG not running"
+if [ `$PS -ef | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
+   msg="ipmisrv NO_DOG not running or misconfigured"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
