@@ -352,16 +352,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             return "ENOENT", msg
 
-        if record.has_key('pnfs_name0'):
-            if os.access(record['pnfs_name0'], os.F_OK): # file exists
-                msg = "%s exists"%(record['pnfs_name0'])
-                Trace.log(e_errors.ERROR, msg)
-                return "EFEXIST", msg
-        else:
-            msg = "no pnfs entry for file %s"%(bfid)
-            Trace.log(e_errors.ERROR, msg)
-            return "ENOPNFSNAME", msg
-
         if check:
             if record["external_label"][-8:] == '.deleted':
                 msg = "volume %s is deleted"%(record["external_label"])
@@ -377,7 +367,17 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 if record['deleted'] == 'yes':
                     # do nothing
-                    return e_errors.OK, None
+                    return e_errors.OK, 'deleted file'
+
+        if record.has_key('pnfs_name0'):
+            if os.access(record['pnfs_name0'], os.F_OK): # file exists
+                msg = "%s exists"%(record['pnfs_name0'])
+                Trace.log(e_errors.ERROR, msg)
+                return "EFEXIST", msg
+        else:
+            msg = "no pnfs entry for file %s"%(bfid)
+            Trace.log(e_errors.ERROR, msg)
+            return "ENOPNFSNAME", msg
 
         # find file_family
         if not file_family: 
