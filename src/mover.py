@@ -766,9 +766,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
         
         self.update(reset_timer=1)
+
         
     def transfer_completed(self):
-
+        Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
+            self.current_volume, self.current_location))
+        
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_access=1)
         else:
@@ -780,8 +783,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.current_location = self.tape_driver.tell()
 
-        Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
-            self.current_volume, self.current_location))
 
         now = time.time()
 
