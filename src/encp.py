@@ -1612,8 +1612,15 @@ def submit_one_request(ticket):
 
     #Send work ticket to LM
     #Get the library manager info information.
+    if ticket['work'] == "read_from_hsm":
+        # allow library manager selection based on the environment variable
+        lm = os.environ.get('ENSTORE_SPECIAL_LIB')
+        if lm == None:
+            lm = ticket['vc']['library']
+    else:
+        lm = ticket['vc']['library']
     lmc = library_manager_client.LibraryManagerClient(
-        csc, ticket['vc']['library'] + ".library_manager")
+        csc, lm + ".library_manager")
     if ticket['infile'][:5] == "/pnfs":
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
