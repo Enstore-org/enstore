@@ -110,6 +110,11 @@ writestop:
 	done
 	touch $$ENSTORE_DIR/test/writestop
 
+scsi_generic_cmd_rsp: scsi_generic_cmd_rsp.c
+	if [ `uname` = Linux ];then\
+	    cc -g -o scsi_generic_cmd_rsp scsi_generic_cmd_rsp.c;\
+	fi
+
 clean:
 	make stop 
 	@ $$ENSTORE_DIR/bin/enstoreClean

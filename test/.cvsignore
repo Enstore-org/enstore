@@ -36,6 +36,7 @@ read_list.*
 readstop
 writestop
 longstop
+scsi_generic_cmd_rsp
 trace.key
 t_rand
 t_read
