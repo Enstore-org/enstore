@@ -125,12 +125,15 @@ EXTRA_OPTION = "extra_option"
 
 #Note: This list is in alphabetical order, please keep it that way.
 ADD = "add"                                  #volume
+AGE_TIME = "age-time"                        #encp
 ALIVE = "alive"
-ALL = "all"                                  #volume
+ALL = "all"                                  #volume, start, stop
+ARRAY_SIZE = "array-size"                    #encp
 ASSIGN_SG = "assign-sg"                      #volume
 BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
+BUFFER_SIZE = "buffer-size"                  #encp
 BYPASS_LABEL_CHECK = "bypass-label-check"    #volume
 CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
 CAT = "cat"                                  #pnfs
@@ -147,13 +150,17 @@ CP = "cp"                                    #pnfs
 CURSOR = "cursor"                            #pnfs
 DATABASE = "database"                        #pnfs
 DATABASEN = "databaseN"                      #pnfs
+DATA_ACCESS_LAYER = "data-access-layer"      #encp
 DBHOME = "dbHome"                            #restore
 DECR_FILE_COUNT = "decr-file-count"          #volume
+DELAYED_DISMOUNT = "delayed-dismount"        #encp
 DELETE = "delete"                            #volume
 DELETED = "deleted"                          #file
 DELETE_WORK = "delete-work"                  #library
+DELPRI = "delpri"                            #encp
 DESCRIPTION = "description"                  #enstore_make_log_plot
 DESTROY = "destroy"                          #volume
+DIRECT_IO = "direct-io"                      #encp
 DISMOUNT = "dismount"                        #media
 DO_ALARM = "do-alarm"
 DO_LOG = "do-log"
@@ -167,11 +174,13 @@ DOWN = "down"                                #pnfs, inqusitor, mover
 DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"                      #pnfs
 ECHO = "echo"                                #pnfs
+ECRC = "ecrc"                                #encp
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
+EPHEMERAL = "ephemeral"                      #encp
 ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
-FILE_FAMILY = "file-family"                  #pnfs
+FILE_FAMILY = "file-family"                  #pnfs, encp
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
 FILESIZE = "filesize"                        #pnfs
@@ -179,6 +188,8 @@ FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
 GET_ASSERTS = "get-asserts"                  #library
+GET_BFID = "get-bfid"                        #encp
+GET_CACHE = "get-cache"                      #encp
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
 GET_LOGFILE_NAME = "get-logfile-name"        #log
@@ -219,9 +230,13 @@ LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAKE_HTML = "make-html"                      #up_down
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
+MAX_RETRY = "max-retry"                      #encp
+MAX_RESUBMIT = "max-resubmit"                #encp
 MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log
 MIGRATED = "migrated"                        #volume
+MMAP_IO = "mmap-io"                          #encp
+MMAP_SIZE = "mmap-size"                      #encp
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
 MOVER_TIMEOUT = "mover-timeout"              #assert
@@ -230,6 +245,7 @@ NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
 NOCHECK = "nocheck"                          #dbs
+NO_CRC = "no-crc"                            #encp
 NO_MAIL = "no-mail"                          #up_down
 NO_PLOT_HTML = "no-plot-html"                #plotter
 NOT_ALLOWED = "not-allowed"                  #volume
@@ -246,10 +262,13 @@ REFRESH = "refresh"                          #inquisitor(c&s)
 PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
 PLOT = "plot"                                #plotter
+PNFS_IS_AUTOMOUNTED = "pnfs-is-automounted"  #encp
+PNFS_MOUNT_POINT = "pnfs-mount-point"        #encp
 PNFS_STATE = "pnfs-state"                    #pnfs
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
-PRIORITY = "priority"                        #library
+PRIORITY = "priority"                        #library, encp
+PUT_CACHE = "put-cache"                      #encp
 PTS_DIR = "pts_dir"                          #plotter
 PTS_NODES = "pts_nodes"                      #plotter
 RAISE = "raise"                              #alarm
@@ -272,6 +291,7 @@ SET_COMMENT = "set-comment"                  #volume
 SET_SG_COUNT = "set-sg-count"                #volume
 SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
+SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
@@ -292,6 +312,7 @@ TAGCHOWN = "tagchown"                        #pnfs
 TAGECHO = "tagecho"                          #pnfs
 TAGRM = "tagrm"                              #pnfs
 TAGS = "tags"                                #pnfs
+THREADED = "threaded"                        #encp
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
 TITLE = "title"                              #enstore_make_log_plot
@@ -305,7 +326,8 @@ UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
 UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 URL = "url"                                  #plotter
 USAGE = "usage"
-VERBOSE = "verbose"                          #monitor, ensync, assert
+VERBOSE = "verbose"                          #monitor, ensync, assert, encp
+VERSION = "version"                          #encp
 VOL = "vol"                                  #volume
 GVOL = "gvol"                                #volume
 VOLS = "vols"                                #volume, library
@@ -323,47 +345,59 @@ TEST = "test"                                #option
 # to keep the different spellings of options (ie. --host vs. --hostip vs --ip)
 # in check.
 valid_option_list = [
-    ADD, ALIVE, ALL, ASSIGN_SG,
-    BACKUP, BFID, BFIDS, BYPASS_LABEL_CHECK,
+    ADD, AGE_TIME, ALIVE, ALL, ARRAY_SIZE, ASSIGN_SG,
+    BACKUP, BFID, BFIDS, BUFFER_SIZE, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CLIENT_NAME,
     COMMANDS_FILE, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
-    DATABASE, DATABASEN, DBHOME,
-    DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
-    DISMOUNT,
+    DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
+    DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
+    DESCRIPTION, DESTROY,
+    DIRECT_IO, DISMOUNT,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE,
-    ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
+    ECHO, ECRC, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FORCE,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
-    GET_ASSERTS, GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME,
-    GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
-    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED, GVOL, GET_SG_COUNT,
+    GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
+    GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
+    GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
+    GET_WORK_SORTED, GET_SG_COUNT,
+    GVOL, 
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE, LIST_SG_COUNT,
-    MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
+    LS_ACTIVE, LIST_SG_COUNT,
+    MAKE_HTML,
+    MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
+    MESSAGE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_TIMEOUT,
     MOVERS_FILE, MIGRATED,
-    NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
+    NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
+    NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
-    PARENT, PATH, PLOT, PNFS_STATE, POSITION, PREFIX, PRIORITY, PTS_DIR, PTS_NODES,
+    PARENT, PATH, PLOT,
+    PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE,
+    POSITION, PREFIX, PRIORITY, PTS_DIR,
+    PTS_NODES, PUT_CACHE, 
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
-    SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA, SIZE, SKIP_PNFS,
+    SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
+    SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
-    TEST, TIME, TIMEOUT, TITLE, TITLE_GIF, TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
+    TEST, THREADED, TIME, TIMEOUT, TITLE, TITLE_GIF,
+    TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
-    VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
+    VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,
     XREF,
     ]
@@ -726,17 +760,31 @@ class Interface:
                 
             usage_line = usage_line + "--" + key + has_value + " "
 
-        usage_string = "USAGE: " + sys.argv[0]
+        usage_string = "       " + sys.argv[0]
         if short_opts or usage_line:
             usage_string = usage_string + " [ " + short_opts + " " + \
                            usage_line + "] "
-        usage_string = usage_string + self.format_parameters()
-        return usage_string
+
+        #usage_string = usage_string + self.format_parameters()
+        full_usage_string = ""
+        for parameter_set in self.parameters:
+            full_usage_string = full_usage_string + usage_string + parameter_set + "\n"
+        if not full_usage_string:
+            full_usage_string = usage_string
+            
+        return "USAGE: \n" + full_usage_string
 
     def format_parameters(self):
         param_string = ""
+        param_list = []
         for parameter in self.parameters:
-            param_string = param_string + " " + parameter
+            if type(parameter) == types.ListType:
+                param_string = ""
+                for parameter2 in parameter:
+                    param_string = param_string + " " + parameter2
+                param_list.append(param_string)
+            else:
+                param_string = param_string + " " + parameter
         return param_string
 
     def print_usage(self, message=None):
