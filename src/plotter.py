@@ -156,11 +156,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
         }
     
     def valid_dictionaries(self):
-        return (self.plotter_options,)
-
-    # parse the options like normal but make sure we have other args
-    #def parse_options(self):
-    #    option.Interface.parse_options(self)
+        return (self.plotter_options, self.help_options, self.trace_options)
 
 
 if __name__ == "__main__":
