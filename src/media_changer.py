@@ -79,6 +79,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 
     def getwork(self,ticket):
+        if 0: print ticket #lint fix
         result = []
         for i in self.work_list:
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
@@ -89,9 +90,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
              external_label,    # volume external label
              drive,             # drive id
              media_type) :	# media type
+        if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    self.enprint("make sure tape "+external_label+" is in drive "+\
-	                 drive)
+	    self.enprint("make sure tape "+external_label+" is in drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	    self.enprint( 'continuing with reply' )
 	return (e_errors.OK, 0, None)
@@ -101,6 +102,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,  # volume external label
                drive,
 	       media_type) :         # drive id
+        if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
@@ -108,9 +110,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
-               external_label,  # volume external label
+               external_label,
                drive,
-               media_type) :         # drive id
+               media_type) :        
+        if 0: print external_label, drive, media_type, self.keys()
         pass
 
     # Do the forking and call the function which will be load or unload
@@ -241,6 +244,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     #  define our specific help
     def parameters(self):
+        if 0: print self.keys() #lint fix
         return "media_changer"
 
     # parse the options like normal but make sure we have a media changer
