@@ -182,7 +182,7 @@ class MoverClient:
 
 	self.vol_info['external_label'] = ''
 
-	return {}
+	return idle_mover_next( self )
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
