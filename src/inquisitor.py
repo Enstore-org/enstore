@@ -25,7 +25,6 @@ import stat
 import signal
 
 # enstore imports
-import timeofday
 import traceback
 import volume_clerk_client
 import file_clerk_client
@@ -37,9 +36,8 @@ import generic_server
 import Trace
 import e_errors
 import enstore_files
-import enstore_status
 import enstore_plots
-import enstore_html
+import enstore_functions
 import udp_client
 
 def default_timeout():
@@ -869,7 +867,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 os.remove(afile+SUFFIX)
 	except OSError, msg:
             format = "%s %s %s, inquisitor update system error %s %s"%(
-                timeofday.tod(), sys.argv, msg, afile, SUFFIX)
+                enstore_functions.format_time(time.time()), sys.argv, msg, 
+		afile, SUFFIX)
 	    Trace.log(e_errors.ERROR, format)
 
     def handle_timeout(self):
