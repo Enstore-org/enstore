@@ -22,11 +22,11 @@ fntt=131.225.164.13
 
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 case $drive in
-  dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-# dm05) cmd="rsh $fntt 'mt -f /dev/rmt/1cn     $command 2>&1; echo \$?'" ;;
+# dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  dm05) cmd="rsh $fntt 'mt -f /dev/rmt/1cn     $command 2>&1; echo \$?'" ;;
 # dm06) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
-  dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-# dm07) cmd="rsh $fntt 'mt -f /dev/rmt/0cn     $command 2>&1; echo \$?'" ;;
+# dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  dm07) cmd="rsh $fntt 'mt -f /dev/rmt/0cn     $command 2>&1; echo \$?'" ;;
 # dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
   dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5n $command 2>&1; echo \$?'" ;;
 # dc11) cmd="rsh $fntt 'mt -f /dev/rmt/4cn     $command 2>&1; echo \$?'" ;;
