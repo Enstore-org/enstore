@@ -1341,15 +1341,22 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        # get the current entry for the volume
-        try:
-            record = self.dict[external_label]  
-            record["status"] = e_errors.OK, None
-            self.reply_to_caller(record)
+        # guarded against external_label == None
+        if external_label:
+            # get the current entry for the volume
+            try:
+                record = self.dict[external_label]  
+                record["status"] = e_errors.OK, None
+                self.reply_to_caller(record)
+            except KeyError, detail:
+                msg="Volume Clerk: no such volume %s" % (detail,)
+                ticket["status"] = (e_errors.KEYERROR, msg)
+                Trace.log(e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
             return
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+        else:
+            msg = "Volume Clerk::inquire_vol(): external_label == None"
+            ticket["status"] = (e_errors.ERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
