@@ -26,6 +26,7 @@ Enstore Data Storage System
 <li><a href="#config_server">1.3.5 Configuration Server</a>
 <li><a href="#log_server">1.3.6 Log Server</a>
 <li><a href="#media_changer">1.3.7 Media Changer</a>
+<li><a href="#inquisitor">1.3.8 Inquisitor</a>
 <li><a href="#db">2 Databases in Enstore</a>
 <li><a href="#backup_recovery">2.1 Backup and Recovery Procedures</a>
 <li><a href="#backup">2.1.1 Backup </a>
@@ -1253,6 +1254,113 @@ The Media Changer mounts and dismounts the media into and from the drive
 according to a request from the Mover.  One Media Changer can serve multiple
 drives and libraries.  When the drives are in the robot, the Media Changer
 is the interface to the robotic software.
+<h3><a name="inquisitor">
+1.3.8 Inquisitor
+</h3>
+The Inquisitor 
+obtains information from the Enstore system and creates reports
+using this information.
+<h3>1.3.8.1 Command Line Control of the Inquisitor 
+</h3>
+<h3>1.3.8.2 Inquisitor Config File Values
+</h3>
+The Inquisitor looks for the following values in the Inquisitor section of the
+Enstore config file. The default value is used if the dictionary element is not
+found. Dictionary elements with no default must be specified in the Enstore 
+config file.  All frequencies are specified in seconds.<BR>
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>DICTIONARY ELEMENT</B></TD>
+<TD NOSAVE><B>DEFINITION</B></TD>
+<TD NOSAVE><B>DEFAULT</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>alive_rcv_timeout</TD>
+<TD NOSAVE>seconds to wait for response to alive request</TD>
+<TD NOSAVE>5</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>alive_retries</TD>
+<TD NOSAVE>times to retry alive request</TD>
+<TD NOSAVE>2</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>ascii_file</TD>
+<TD NOSAVE>directory for ascii status file(s)</TD>
+<TD NOSAVE>./</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>default_server_timeout</TD>
+<TD NOSAVE>frequency to monitor servers not listed in <B>timeouts</B></TD>
+<TD NOSAVE>60</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>host</TD>
+<TD NOSAVE>node where inquisitor runs</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>html_file</TD>
+<TD NOSAVE>directory for html status files</TD>
+<TD NOSAVE>./</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>logname</TD>
+<TD NOSAVE>ascii value used for id in messages to log server</TD>
+<TD NOSAVE>INQS</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>max_ascii_size</TD>
+<TD NOSAVE>maximum allowed size (bytes) of ascii status file</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>max_encp_lines</TD>
+<TD NOSAVE>maximum number of encp lines to display</TD>
+<TD NOSAVE>25</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>port</TD>
+<TD NOSAVE>udp port for inquisitor communication</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>refresh</TD>
+<TD NOSAVE>frequency for auto-refresh of html status page</TD>
+<TD NOSAVE>120</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>timeout</TD>
+<TD NOSAVE>frequency that inquisitor looks for work</TD>
+<TD NOSAVE>5</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>timeouts</TD>
+<TD NOSAVE>dictionary of frequencies for monitoring each server</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+</TABLE>
+<P>
+In addition to the information listed above, the inquisitor will look for the
+<B>inq_timeout</B> dictionary element in each of the individual server sections.
+If present, the value of this dictionary element will be used to specify the 
+timeout value for monitoring this server.  This is the same as if the 
+<B>timeouts</B>  dictionary element mentioned
+above contained a dictionary element for the particular server.  For example, 
+in order to monitor the file_clerk every 65 seconds, the Enstore config file 
+must have one of the following in it:<BR>
+
+<UL>
+<LI>in the inquisitor section - a dictionary element, within the <B>timeouts</B>
+dictionary element, for the file clerk set to 65
+<LI>in the file_clerk section - the dictionary element <B>inq_timeout</B> set to
+65
+</UL>
+The value in the individual server dictionary element will take precedence over
+the value in the Inquisitor dictionary element.
+
+
 <h2><a name="db">
 2 Databases in Enstore
 </h2>
