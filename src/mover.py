@@ -121,7 +121,7 @@ def mode_name(mode):
     if mode is None:
         return None
     else:
-        return ['READ','WRITE','ASSERT'][mode]
+        return ['READ','WRITE','ASSERT','START_READ_TAPE'][mode]
 
 #KB=1L<<10
 MB=1L<<20
@@ -319,10 +319,10 @@ class Buffer:
         data = None
         partial = None
         space = self._getspace()
-        #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
+        Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
-        #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
+        Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,)) # COMMENT THIS
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -355,7 +355,7 @@ class Buffer:
         if do_crc:
             crc_error = 0
             try:
-                #Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
+                Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs)) #COMMENT THIS
 
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        data,
@@ -385,7 +385,7 @@ class Buffer:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise "CRC_ERROR"
                 
-##        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
+        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
         if data and fill_buffer:
             self.push(data)
             if partial:
@@ -512,16 +512,21 @@ class Buffer:
             do_crc = 1
         else:
             do_crc = 0
-        Trace.trace(8, "stream_write do_crc %s"%(do_crc,))
+        Trace.trace(8, "stream_write do_crc %s bytes %s"%(do_crc,nbytes))
         if not self._writing_block:
             if self.empty():
                 Trace.trace(10, "stream_write: buffer empty")
                 return 0
+            Trace.trace(35, "ZZZZZ")
             self._writing_block = self.pull()
+            Trace.trace(35, "YYYYYY")
             self._write_ptr = 0
         bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
+        Trace.trace(35, "bytes_to_write %s write_ptr %s"%(bytes_to_write,self._write_ptr))
+        
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
+            Trace.trace(35,"!!!!!!!!!!!!!!!!!")
             if bytes_written != bytes_to_write:
                 Trace.trace(e_errors.ERROR, "encp gone? bytes to write %s, bytes written %s"%
                             (bytes_to_write, bytes_written)) 
@@ -547,10 +552,12 @@ class Buffer:
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
+        Trace.trace(35, "write_ptr %s len w_b %s"%(self._write_ptr,len(self._writing_block)))
         if self._write_ptr == len(self._writing_block): #finished sending out this block
             self._freespace(self._writing_block)
             self._writing_block = None
             self._write_ptr = 0
+        Trace.trace(35,"uuuuu")
         return bytes_written
 
     def _getspace(self):
@@ -654,6 +661,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.clear()
             del(self.buffer)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        Trace.log(e_errors.INFO, "Buffer %s"%(self.buffer,)) # REMOVE
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
@@ -898,6 +906,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
+        self.udp_control_address = None  ## needed for tape ingest
+        self.udp_cm_sent = 0  ## needed for tape ingest 
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
@@ -927,6 +937,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_failures = 3
         self.failure_interval = 3600
         self.current_work_ticket = {}
+        # work may have a method. read_from_hsm work may have methods
+        # describing how read must be done. This is used for reading
+        # tapes bypassing LM. So called tape reads.
+        self.method = None    
         self.vol_info = {}
         self.file_info = {}
         self.dismount_time = None
@@ -980,6 +994,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         for lib in lib_list:
             lib_config = self.csc.get(lib)
             self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+        self.saved_libraries = self.libraries ## needed for tape ingest
 
         #how often to send a message to the library manager
         self.update_interval = self.config.get('update_interval', 15)
@@ -1178,6 +1193,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def nowork(self, ticket):
         x =ticket # to trick pychecker
+        if self.control_socket is None:
+            return {}
+        try:
+            self.control_socket.close()
+            self.listen_socket.close()
+        except:
+            pass
+        self.control_socket = None
+        self.listen_socket = None
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -1191,6 +1215,28 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
 
+    ## ready to read the tape
+    def tape_read_ready(self): ## REMOVE!!!!
+        self.state = HAVE_BOUND
+        
+        """
+        thread = threading.currentThread()
+        if thread:
+            thread_name = thread.getName()
+        else:
+            thread_name = None
+        # if running in the main thread update lm
+        if thread_name is 'MainThread':
+            self.update_lm() 
+        else: # else just set the update flag
+            self.need_lm_update = (1, None, 0, None)
+        """
+        ticket = copy.deepcopy(self.current_work_ticket)
+        ticket['work'] = 'mover_bound_volume'
+        Trace.log (e_errors.INFO,"Tape read. Sending %s"%(ticket,))
+        callback.write_tcp_obj(self.control_socket, ticket)
+
+         
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
         self.need_lm_update = (0, None, 0, None)
@@ -1297,7 +1343,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.send_update_cnt == 0:
                send_rq = 1
                self.send_update_cnt = 10
-        
+        if self.method and self.method == 'read_next' and not self.udp_cm_sent:
+            send_rq = 0
         if send_rq:
             libraries = copy.deepcopy(self.libraries)
             if self.state == IDLE and len(libraries) > 1:
@@ -1352,10 +1399,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
                     Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
                     self.udpc.send_no_wait(ticket, addr)
+            if self.method and self.method == 'read_next':
+                self.udp_cm_sent = 1
         self.check_dismount_timer()
 
 
     def need_update(self):
+        # self.need_lm_update is used in threads to flag LM update in
+        # the main thread. First element flags update if not 0,
+        # second - state
+        # third -  reset timer
+        # fourth - error source
+
         if self.need_lm_update[0]:
             Trace.trace(20," need_update calling update_lm") 
             self.update_lm(state = self.need_lm_update[1],
@@ -1850,7 +1905,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, -self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
 
-        t_started = time.time()    
+        t_started = time.time()
+        break_here = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(33,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
@@ -1907,7 +1963,37 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 break
-            except:
+            except e_errors.READ_ERROR, detail:
+                if type(detail) != type(""):
+                    detail = str(detail)
+                if detail == 'FTT_SUCCESS' and self.method == 'read_next':
+                    prev_loc = self.current_location
+                    self.current_location = self.tape_driver.tell()
+                    if self.current_location - prev_loc == 1:
+                        break_here = 1
+                        Trace.log(e_errors.INFO, "hit EOF while reading tape. Current Location %s Previous location %s"%
+                                  (self.current_location, prev_loc))
+                        if bytes_read == 0:
+                          #End of tape
+                          Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
+                                    (self.current_location, prev_loc))
+                          self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
+                          failed = 1
+                          break
+                            
+                    else:
+                        Trace.log(e_errors.ERROR, "Read failed. Current Location %s Previous location %s"%
+                                  (self.current_location, prev_loc))
+                        self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
+                        failed = 1
+                        break
+                        
+                else:
+                    Trace.trace(33,"Exception %s %s"%(e_errors.READ_ERROR,str(detail)))
+                    self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
+                    failed = 1
+                    break
+            except:    
                 exc, detail = sys.exc_info()[:2]
                 Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
                 #Trace.handle_error(exc, detail, tb)
@@ -1915,10 +2001,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 failed = 1
                 break
             if bytes_read <= 0:
-                self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
-                                     error_source=TAPE)
-                failed = 1
-                break
+                if bytes_read == 0 and self.method == 'read_next':
+                    pass
+                else:
+                    self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
+                                         error_source=TAPE)
+                    failed = 1
+                    break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 if len(self.buffer._buf) != 1:
                     Trace.log(e_errors.ERROR,
@@ -1937,9 +2026,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
             self.bytes_read = self.bytes_read + bytes_read
-            
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
+
             #If it is time to do so, send the notify message.
             if is_threshold_passed(self.bytes_read, bytes_notified,
                                    self.bytes_to_read):
@@ -1950,10 +2039,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                               time.time()))
 
             if not self.buffer.empty():
+                Trace.trace(99, "write_ok_set")
                 self.buffer.write_ok.set()
+            if bytes_read < nbytes and self.method == 'read_next':
+                # end of file?
+                location = self.tape_driver.tell()
+                Trace.log(e_errors.INFO, "location %s cur_loc %s"%(location, self.current_location))
+                break
+            if break_here:
+                break
+
 
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
         
+        if break_here and self.method == 'read_next':
+            self.bytes_to_write = self.bytes_read # set correct size for bytes to write
         if self.tr_failed:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
@@ -1968,9 +2068,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # this is to fix file db
                 if self.file_info['complete_crc'] == None:
                     sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
-                    Trace.log(e_errors.WARNING, "found complete CRC set to None in file DB for %s. Changing cookie to %s and CRC to %s" %
-                              (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
-                    self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
+                    if self.method == 'read_next' and self.file_info['bfid'] == None:
+                        # must be tape ingest case
+                        Trace.log(e_errors.WARNING, "updating file db entry for the tape ingest")
+                        # create a bit file entry
+                        self.file_info['size'] = self.bytes_read
+                        self.file_info['sanity_cookie'] = sanity_cookie
+                        self.file_info['complete_crc'] = self.buffer.complete_crc
+                        self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
+                        self.file_info = self.fcc.create_bit_file(self.file_info)
+                        if self.file_info['status'][0] != e_errors.OK:
+                            Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(self.file_info,))
+                            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
+                            return
+                    else:
+                        Trace.log(e_errors.WARNING, "found complete CRC set to None in file DB for %s. Changing cookie to %s and CRC to %s" %
+                                  (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
+                        self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
                     if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
                     Trace.alarm(e_errors.ERROR, "read_tape CRC error",
@@ -1999,8 +2113,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             do_crc = 0
         driver = self.net_driver
+        Trace.trace(99, "wrapper %s"%(self.wrapper.__name__,)) # REMOVE !!!
         #be careful about 0-length files
-        if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
+        if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper and self.wrapper.__name__ != "null_wrapper": #Skip over cpio or other headers
             while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
                 Trace.trace(8, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
@@ -2017,62 +2132,71 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, -self.bytes_written,
                       self.bytes_to_write, self.buffer.nbytes(),
                       time.time()))
+        cnt = 0
+        while 1:
+            Trace.trace(33, "state %s cnt %s"%(state_name(self.state),cnt))
+            Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
+            if self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
+                #Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
+                if self.tr_failed:
+                    break
+                self.bytes_written_last = self.bytes_written
+                if self.buffer.empty():
+                    # there is no data to transfer to the client
+                    Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
+                                (self.bytes_written, self.bytes_to_write))
+                    self.buffer.write_ok.clear()
+                    #self.buffer.write_ok.wait(1)
+                    self.buffer.write_ok.wait(2)
+                    continue
 
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-            if self.tr_failed:
-                break
-            self.bytes_written_last = self.bytes_written
-            if self.buffer.empty():
-                # there is no data to transfer to the client
-                Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
-                            (self.bytes_written, self.bytes_to_write))
-                self.buffer.write_ok.clear()
-                self.buffer.write_ok.wait(1)
-                continue
-                
-            nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
-            bytes_written = 0
-            try:
-                bytes_written = self.buffer.stream_write(nbytes, driver)
-            except "CRC_ERROR":
-                Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                            {'outfile':self.current_work_ticket['outfile'],
-                             'infile':self.current_work_ticket['infile'],
-                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                             'external_label':self.current_work_ticket['vc']['external_label']})
-                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
-                failed = 1
-                break
-            except:
-                exc, detail, tb = sys.exc_info()
-                #Trace.handle_error(exc, detail, tb)
-                #if self.state is not DRAINING: self.state = HAVE_BOUND
-                # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, detail)
-                failed = 1
-                break
-            if bytes_written < 0:
-                #if self.state is not DRAINING: self.state = HAVE_BOUND
-                # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
-                failed = 1
-                break
-            if bytes_written != nbytes:
-                pass #this is not unexpected, since we send with MSG_DONTWAIT
-            self.bytes_written = self.bytes_written + bytes_written
+                nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
+                bytes_written = 0
+                try:
+                    bytes_written = self.buffer.stream_write(nbytes, driver)
+                except "CRC_ERROR":
+                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                    failed = 1
+                    break
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    #Trace.handle_error(exc, detail, tb)
+                    #if self.state is not DRAINING: self.state = HAVE_BOUND
+                    # if state is DRAINING transfer_failed will set it to OFFLINE
+                    self.transfer_failed(e_errors.ENCP_GONE, detail)
+                    failed = 1
+                    break
+                if bytes_written < 0:
+                    #if self.state is not DRAINING: self.state = HAVE_BOUND
+                    # if state is DRAINING transfer_failed will set it to OFFLINE
+                    self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
+                    failed = 1
+                    break
+                if bytes_written != nbytes:
+                    pass #this is not unexpected, since we send with MSG_DONTWAIT
+                self.bytes_written = self.bytes_written + bytes_written
+                Trace.trace(35,"22222")
+                if not self.buffer.full():
+                    Trace.trace(35,"33333")
+                    self.buffer.read_ok.set()
+                    Trace.trace(35,"444444")
 
-            if not self.buffer.full():
-                self.buffer.read_ok.set()
-
-            #If it is time to do so, send the notify message.
-            if is_threshold_passed(self.bytes_written, bytes_notified,
-                                   self.bytes_to_write):
-                bytes_notified = self.bytes_written
-                #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s network %s %.3f" %
-                             (self.shortname, -self.bytes_written,
-                              self.bytes_to_write, self.buffer.nbytes(),
-                              time.time()))
+                #If it is time to do so, send the notify message.
+                if is_threshold_passed(self.bytes_written, bytes_notified,
+                                       self.bytes_to_write):
+                    bytes_notified = self.bytes_written
+                    #negative byte-count to indicate direction
+                    Trace.notify("transfer %s %s %s network %s %.3f" %
+                                 (self.shortname, -self.bytes_written,
+                                  self.bytes_to_write, self.buffer.nbytes(),
+                                  time.time()))
+            else:
+                break
 
         if self.tr_failed:
             return
@@ -2117,6 +2241,10 @@ class Mover(dispatching_worker.DispatchingWorker,
     # the library manager has asked us to read a file from the hsm
     def read_from_hsm(self, ticket):
         Trace.log(e_errors.INFO,"READ FROM HSM")
+        self.method = ticket.get("method", None)
+        Trace.trace(98, "read_from_hsm %s"%(ticket,))
+        if self.method and self.method == "read_next":
+            self.udp_cm_sent = 0
         self.setup_transfer(ticket, mode=READ)
 
     def volume_assert(self, ticket):
@@ -2128,6 +2256,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.save_state = self.state
 
         self.unique_id = ticket['unique_id']
+        if self.method and self.method == "read_next" and self.udp_control_address:
+            self.lm_address = self.udp_control_address
+            Trace.trace(98, "LM address %s"%(self.lm_address,)) 
+            self.libraries = [("get", self.lm_address)]
         try:
             self.lm_address = ticket['lm']['address']
         except KeyError:
@@ -2163,7 +2295,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
-        self.run_in_thread('client_connect_thread', self.connect_client)
+        ####UNCOMMENT THESE 3
+        #if self.method and self.method == "read_next":
+        #    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+        #else:
+        #    self.run_in_thread('client_connect_thread', self.connect_client)
+        self.run_in_thread('client_connect_thread', self.connect_client)  # REMOVE THIS !!!!
 
     def assert_vol(self):
         ticket = self.current_work_ticket
@@ -2250,10 +2387,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.file_info.update(fc)
         self.volume_family=vc['volume_family']
         delay = 0
-        if ticket['work'] == 'read_from_hsm':
-            sanity_cookie = ticket['fc']['sanity_cookie']
-        else:
-            sanity_cookie = None
+        sanity_cookie = ticket['fc'].get('sanity_cookie', None)
         
         if ticket.has_key('client_crc'):
             client_crc_on = ticket['client_crc']
@@ -2326,10 +2460,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         pnfs_filename = self.current_work_ticket['wrapper'].get('pnfsFilename', '?')
 
         self.mode = self.setup_mode
-        self.bytes_to_transfer = long(fc['size'])
+        bytes = fc.get('size', None)
+        if bytes == None:
+            self.bytes_to_transfer = None
+            self.expected_transfer_time = 0.
+            if self.method == "read_next":
+                # we do not know what is the file size, so let's assume that it is big
+                self.bytes_to_transfer = self.vol_info['capacity_bytes']
+                self.expected_transfer_time = self.bytes_to_transfer / self.max_rate
+        else:
+            self.bytes_to_transfer = long(bytes)
+            self.expected_transfer_time = self.bytes_to_transfer / self.max_rate
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
-        self.expected_transfer_time = self.bytes_to_write*1.0 / self.max_rate
         self.real_transfer_time  = 0.
         self.transfer_deficiency = 1.
 
@@ -2863,9 +3006,20 @@ class Mover(dispatching_worker.DispatchingWorker,
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
-        if self.control_socket:
-            self.control_socket.close()
+        if ticket['method'] != 'read_next':
+            # close sockets only for general case
+            # in case of tape reads do not close them
+            try:
+                self.control_socket.close()
+                self.listen_socket.close()
+            except:
+                pass
         self.control_socket = None
+        self.listen_socket = None
+        if self.udp_control_address:
+            if self.udp_control_address in self.libraries:
+                self.libraries = self.saved_libraries
+            self.udp_control_address = None
         return
 
     def del_udp_client(self, udp_client):
@@ -2886,208 +3040,255 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
 
     def connect_client(self):
+        self.control_socket, self.listen_socket, self.client_socket = None, None, None
         # run this in a thread
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
-            host, port, listen_socket = callback.get_callback(ip=data_ip)
-            listen_socket.listen(1)
-            ticket['mover']['callback_addr'] = (host,port) #client expects this
+            host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+            #self.listen_socket.listen(1)
+            if ticket['method'] == 'read_tape_start':
+                self.udp_control_address = ticket.get('routing_callback_addr', None)
+                if self.udp_control_address:
+                    self.lm_address = self.udp_control_address
+                    Trace.trace(98, "LM address %s"%(self.lm_address,))
+                    self.state = IDLE
+                    self.libraries = [("get", self.lm_address)]
+                
+            if ticket['method'] != 'read_next':
+                self.listen_socket.listen(1)
+                # need a control connection setup
+                # otherwise: not because it must be left open
+                
+                ticket['mover']['callback_addr'] = (host,port) #client expects this
+                ticket['mover']['mover_address'] = (host, self.config['port'])
 
-            control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            flags = fcntl.fcntl(control_socket.fileno(), fcntl.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
-            # the following insertion is for antispoofing
-            if ticket.has_key('route_selection') and ticket['route_selection']:
-                ticket['mover_ip'] = host
-                # bind control socket to data ip
-                control_socket.bind((host, 0))
-                u = udp_client.UDPClient()
-                Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
-                try:
-                    x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
-                except errno.errorcode[errno.ETIMEDOUT]:
-                    Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
-                              (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                flags = fcntl.fcntl(self.control_socket.fileno(), fcntl.F_GETFL)
+                fcntl.fcntl(self.control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+                # the following insertion is for antispoofing
+                if ticket.has_key('route_selection') and ticket['route_selection']:
+                    ticket['mover_ip'] = host
+                    # bind control socket to data ip
+                    self.control_socket.bind((host, 0))
+                    u = udp_client.UDPClient()
+                    Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
+                    try:
+                        x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
+                    except errno.errorcode[errno.ETIMEDOUT]:
+                        Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                                  (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                        self.del_udp_client(u)
+                        #del u
+                        # just for a case
+                        try:
+                            self.control_socket.close()
+                            self.listen_socket.close()
+                            self.control_socket,self.listen_socket = None, None 
+                        except:
+                            pass
+                        self.client_socket = None
+                        self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                        return
+                    Trace.trace(10, "encp called back with %s"%(x,))
+                    if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
                     self.del_udp_client(u)
                     #del u
+                Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
+                try:
+                    self.control_socket.connect(ticket['callback_addr'])
+                except socket.error, detail:
+                    Trace.log(e_errors.ERROR, "%s %s" %
+                              (detail, ticket['callback_addr']))
+                    #We have seen that on IRIX, when the connection succeds, we
+                    # get an ISCONN error.
+                    if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
+                        pass
+                    #The TCP handshake is in progress.
+                    elif detail[0] == errno.EINPROGRESS:
+                        pass
+                    else:
+                        Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                                  (ticket['callback_addr'], os.strerror(detail)))
+                        # just for a case
+                        try:
+                            self.control_socket.close()
+                            self.listen_socket.close()
+                            self.control_socket,self.listen_socket = None, None
+                        except:
+                            pass
+
+                        self.client_socket = None
+                        self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                        return
+
+                #Check if the socket is open for reading and/or writing.
+                r, w, ex = select.select([self.control_socket], [self.control_socket], [], self.connect_to*self.connect_retry)
+
+                if r or w:
+                    #Get the socket error condition...
+                    rtn = self.control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                else:
+                    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                              (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
                     # just for a case
                     try:
-                        control_socket.close()
-                        listen_socket.close()
+                        self.control_socket.close()
+                        self.listen_socket.close()
+                        self.control_socket,self.listen_socket = None, None
                     except:
                         pass
-                    self.control_socket, self.client_socket = None, None
+
+                    self.client_socket = None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
-                Trace.trace(10, "encp called back with %s"%(x,))
-                if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
-                self.del_udp_client(u)
-                #del u
-            Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
-	    try:
-		control_socket.connect(ticket['callback_addr'])
-	    except socket.error, detail:
-		Trace.log(e_errors.ERROR, "%s %s" %
-			  (detail, ticket['callback_addr']))
-		#We have seen that on IRIX, when the connection succeds, we
-		# get an ISCONN error.
-		if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
-		    pass
-		#The TCP handshake is in progress.
-		elif detail[0] == errno.EINPROGRESS:
-		    pass
-		else:
-		    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
-			      (ticket['callback_addr'], os.strerror(detail)))
+                #...if it is zero then success, otherwise it failed.
+                if rtn != 0:
+                    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                              (ticket['callback_addr'], os.strerror(rtn)))
                     # just for a case
                     try:
-                        control_socket.close()
-                        listen_socket.close()
+                        self.control_socket.close()
+                        self.listen_socket.close()
+                        self.control_socket,self.listen_socket = None, None
                     except:
                         pass
 
-		    self.control_socket, self.client_socket = None, None
+                    self.client_socket = None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
-		    
-	    #Check if the socket is open for reading and/or writing.
-	    r, w, ex = select.select([control_socket], [control_socket], [], self.connect_to*self.connect_retry)
 
-	    if r or w:
-		#Get the socket error condition...
-		rtn = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-	    else:
-                Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
-                          (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
-                # just for a case
+                # we have a connection
+                fcntl.fcntl(self.control_socket.fileno(), fcntl.F_SETFL, flags)
+                Trace.trace(10, "connected")
+
                 try:
-                    control_socket.close()
-                    listen_socket.close()
-                except:
-                    pass
-
-                self.control_socket, self.client_socket = None, None
-                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
-                return
-	    #...if it is zero then success, otherwise it failed.
-            if rtn != 0:
-                Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
-                          (ticket['callback_addr'], os.strerror(rtn)))
-                # just for a case
-                try:
-                    control_socket.close()
-                    listen_socket.close()
-                except:
-                    pass
-
-                self.control_socket, self.client_socket = None, None
-                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
-                return
-
-	    # we have a connection
-            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags)
-            Trace.trace(10, "connected")
-            try:
-                ### cgw - abstract this to a check_valid_filename method of the driver ?
-                null_err = 0
-                if self.config['driver'] == "NullDriver": 
-                    filename = ticket['wrapper'].get("pnfsFilename",'')
-                    for w in string.split(filename,'/'):
-                        if w.find("NULL") != -1:
-                            # found
-                            break
-                    else: # for
-                        # not found
-                        ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
-                        #self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
-                        Trace.log(e_errors.USERERROR, "NULL not in PNFS path")
-                        self.state = self.save_state
-                        null_err = 1
-                    if not null_err:
-                        wrapper_type = volume_family.extract_wrapper(self.tmp_vf)
-                        if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
-                            ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
-                            #self.send_client_done(ticket, e_errors.USERERROR,
-                            #                      'only "null" wrapper is allowed for NULL mover')
+                    ### cgw - abstract this to a check_valid_filename method of the driver ?
+                    null_err = 0
+                    if self.config['driver'] == "NullDriver": 
+                        filename = ticket['wrapper'].get("pnfsFilename",'')
+                        for w in string.split(filename,'/'):
+                            if w.find("NULL") != -1:
+                                # found
+                                break
+                        else: # for
+                            # not found
+                            ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
+                            #self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
+                            Trace.log(e_errors.USERERROR, "NULL not in PNFS path")
                             self.state = self.save_state
                             null_err = 1
-                
-                if self.setup_mode == ASSERT:
-                    ticket['status'] = (e_errors.OK, None)
-                Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
-                callback.write_tcp_obj(control_socket, ticket)
-                if null_err:
+                        if not null_err:
+                            wrapper_type = volume_family.extract_wrapper(self.tmp_vf)
+                            if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
+                                ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
+                                #self.send_client_done(ticket, e_errors.USERERROR,
+                                #                      'only "null" wrapper is allowed for NULL mover')
+                                self.state = self.save_state
+                                null_err = 1
+
+                    if self.setup_mode == ASSERT:
+                        ticket['status'] = (e_errors.OK, None)
+                    """
+                    if self.method:
+                        if self.method == "read_tape_start":
+                            pass
+                    else:
+                        Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
+                        callback.write_tcp_obj(self.control_socket, ticket)
+                    """
+                    Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
+                    callback.write_tcp_obj(self.control_socket, ticket)
+                    if null_err:
+                        # just for a case
+                        try:
+                            self.control_socket.close()
+                            self.listen_socket.close()
+                            self.control_socket,self.listen_socket = None, None
+                        except:
+                            pass
+
+                        self.client_socket = None
+                        self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                        return
+
+                    # for ASSERT finish here
+                    if self.setup_mode == ASSERT:
+                        self.listen_socket.close()
+                        self.listen_socket = None
+                        self.run_in_thread('volume_assert__thread', self.assert_vol)
+                        return
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
                     # just for a case
                     try:
-                        control_socket.close()
-                        listen_socket.close()
+                        self.control_socket.close()
+                        self.listen_socket.close()
+                        self.control_socket,self.listen_socket = None, None
                     except:
                         pass
-                    
-                    self.control_socket, self.client_socket = None, None
+                    self.client_socket = None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
-                    
-                # for ASSERT finish here
-                if self.setup_mode == ASSERT:
-                    listen_socket.close()
-                    self.control_socket  = control_socket
-                    self.run_in_thread('volume_assert__thread', self.assert_vol)
-                    return
-            except:
-                exc, detail, tb = sys.exc_info()
-                Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
-                # just for a case
-                try:
-                    control_socket.close()
-                    listen_socket.close()
-                except:
-                    pass
-                self.control_socket, self.client_socket = None, None
-                self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+
+            if self.method == "read_tape_start":
+                # do not establish data connection yet
                 return
             # we expect a prompt call-back here
+            # establish a data connection
             Trace.trace(10, "select: listening for client callback")
-            read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
-            Trace.trace(10, "select returned %s" % ((listen_socket in read_fds),))
-            if listen_socket in read_fds:
+            read_fds,write_fds,exc_fds=select.select([self.listen_socket],[],[],60) # one minute timeout
+            Trace.trace(10, "select returned %s" % ((self.listen_socket in read_fds),))
+
+            if self.listen_socket in read_fds:
                 Trace.trace(10, "accepting client connection")
-                client_socket, address = listen_socket.accept()
+                self.client_socket, address = self.listen_socket.accept()
                 if not hostaddr.allow(address):
                     # just for a case
                     try:
-                        control_socket.close()
-                        listen_socket.close()
-                        client_socket.close()
+                        if ticket['method'] != 'read_next':
+                            # close sockets only for general case
+                            # in case of tape reads do not close them
+                            self.control_socket.close()
+                            self.listen_socket.close()
+                            self.control_socket,self.listen_socket = None, None
+                        self.client_socket.close()
                     except:
                         pass
-		    self.control_socket, self.client_socket = None, None
+		    self.client_socket = None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
                 if data_ip:
                     interface=hostaddr.interface_name(data_ip)
                     if interface:
-                        status=socket_ext.bindtodev(client_socket.fileno(),interface)
+                        status=socket_ext.bindtodev(self.client_socket.fileno(),interface)
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
 
-                listen_socket.close()
+                if ticket['method'] != 'read_next':
+                    # close sockets only for general case
+                    # in case of tape reads do not close them
+                    self.listen_socket.close()
+                    self.listen_socket = None
                 self.client_ip = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
-                self.net_driver.fdopen(client_socket)
-                self.control_socket, self.client_socket = control_socket, client_socket
+                self.net_driver.fdopen(self.client_socket)
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
             else:
                 Trace.log(e_errors.ERROR, "timeout on waiting for client connect")
                 # just for a case
                 try:
-                    control_socket.close()
-                    listen_socket.close()
+                    if ticket['method'] != 'read_next':
+                        # close sockets only for general case
+                        # in case of tape reads do not close them
+                        self.control_socket.close()
+                        self.listen_socket.close()
+                        self.control_socket,self.listen_socket = None, None
                 except:
                     pass
-                self.control_socket, self.client_socket = None, None
+                self.client_socket = None
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
         except:
@@ -3096,11 +3297,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                       (exc, msg, traceback.format_tb(tb)))
             # just for a case
             try:
-                control_socket.close()
-                listen_socket.close()
+                self.control_socket.close()
+                self.listen_socket.close()
+                self.control_socket,self.listen_socket = None, None
             except:
                 pass
-            self.control_socket, self.client_socket = None, None
+            self.client_socket = None
             self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
     
     def format_lm_ticket(self, state=None, error_info=None, returned_work=None, error_source=None):
@@ -3221,6 +3423,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         broken = ""
         self.dismount_time = None
+        self.method = None
         Trace.log(e_errors.INFO, "Updating stats")
         try:
             self.update_stat()
@@ -3852,6 +4055,7 @@ class DiskMover(Mover):
         self.max_failures = 3
         self.failure_interval = 3600
         self.current_work_ticket = {}
+        self.method = None
         self.vol_info = {}
         self.file_info = {}
         self.dismount_time = None

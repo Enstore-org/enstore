@@ -53,13 +53,14 @@ def convert_version(version):
     dash_cnt = 0
     for ch in version:
         if ch == '_' or ch == '-':
-          dash_cnt = dash_cnt + 1  
+          dash_cnt = dash_cnt + 1
         if ch.isdigit():
-            if dash_cnt < 2:
+            if dash_cnt < 1:
                 dig=dig*10.+(ord(ch)-ord('0'))*1.
             else:
                 dig = dig + (ord(ch)-ord('0'))*0.1
                 break
+    dig = int(dig*10)
     return dig
     
 def get_storage_group(dict):
@@ -880,7 +881,8 @@ class LibraryManagerMethods:
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
                 else:
                     fsize = w['wrapper'].get('size_bytes', 0L)
-                    if w['method'] != "read_tape_start":
+                    method = w.get('method', None)
+                    if method and method != "read_tape_start":
                         # size has a meaning only for general rq
                         fsize = fsize+self.min_file_size
                     ret = self.vcc.is_vol_available(rq.work,
@@ -961,7 +963,8 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work, external_label, requestor)
         else:
             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
-            if rq.ticket['method'] != "read_tape_start":
+            method = rq.ticket.get('method', None)
+            if method and method != "read_tape_start":
                 # size has a meaning only for general rq
                 fsize = fsize+self.min_file_size
             ret = self.vcc.is_vol_available(rq.work,  external_label,

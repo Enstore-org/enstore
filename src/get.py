@@ -67,11 +67,15 @@ def next_request_update(work_ticket, file_number):
     #Update the unique id for the LM.
     work_ticket['unique_id'] = encp.generate_unique_id()
 
-def get_single_file(work_ticket, control_socket, e):
+def get_single_file(work_ticket, udp_server, e):
 
     #Loop around in case the file transfer needs to be retried.
     while work_ticket.get('retry', 0) <= e.max_retry:
 
+        Trace.message(5, "waiting for a message from mover")
+        ticket = udp_server.process_request()
+        Trace.message(5, "Mover request %s"%(ticket,))
+        
         Trace.message(5, "Opening local file.")
 
         # Open the local file.
@@ -89,7 +93,8 @@ def get_single_file(work_ticket, control_socket, e):
         # Send the request to the mover.
         work_ticket['method'] = "read_next" #evil hack
         try:
-            done_ticket = callback.write_tcp_obj(control_socket, work_ticket)
+            
+            done_ticket = udp_server.reply_to_caller(work_ticket)
         except e_errors.TCP_EXCEPTION:
             sys.stderr.write("Unable to communicate request to mover.\n",
                              (work_ticket['outfile'], done_ticket['status'],))
@@ -214,6 +219,7 @@ def main(e):
                 udp_server,
                 [requests_per_vol[e.volume][0]['unique_id']], #unique_id_list
                 e)
+            print "ticket over routing socket",ticket
 
             if not e_errors.is_ok(ticket):
                 sys.stderr.write("Unable to handle routing: %s\n",
@@ -255,7 +261,7 @@ def main(e):
             Trace.message(4, "Preparing to read %s." % request['outfile'])
             
             #Read from tape.
-            done_ticket = get_single_file(request, control_socket, e)
+            done_ticket = get_single_file(request, udp_server, e)
 
             if e_errors.is_ok(done_ticket):
                 Trace.message(1,
