@@ -400,6 +400,18 @@ class Interface:
                 self.start_draining = 1
             elif opt == "--stop_draining":
                 self.stop_draining = 1
+	    elif opt == "--prefix":
+		self.prefix = value
+	    elif opt == "--web_host":
+		self.web_host = value
+	    elif opt == "--caption_title":
+		self.caption_title = value
+	    elif opt == "--title":
+		self.title = value
+	    elif opt == "--output":
+		self.output = value
+	    elif opt == "--description":
+		self.description = value
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)

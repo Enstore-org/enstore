@@ -56,6 +56,17 @@ def default_alive_retries():
 def default_max_encp_lines():
     return 50
 
+# given a directory get a list of the files and their sizes
+def get_file_list(dir, prefix):
+    logfiles = {}
+    files = os.listdir(dir)
+    # pull out the files and get their sizes
+    prefix_len = len(prefix)
+    for file in files:
+	if file[0:prefix_len] == prefix:
+	    logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
+    return logfiles
+
 MY_NAME = "inquisitor"
 
 CONFIG_DICT_TOUT = "can't get config dict"
@@ -266,12 +277,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # first get a list of all of the log files and their sizes
         if self.logc.log_dir:
-            logfiles = {}
-            files = os.listdir(self.logc.log_dir)
-            # pull out the log files and get their sizes
-            for file in files:
-                if file[0:4] == enstore_files.LOG_PREFIX:
-                    logfiles[file] = os.stat('%s/%s'%(self.logc.log_dir,file))[stat.ST_SIZE]
+	    # given a directory get a list of the files and their sizes
+	    logfiles = get_file_list(self.logc.log_dir, enstore_files.LOG_PREFIX)
             if logfiles:
                 # create the new log listing file.  create it with a different
                 # extension than the real one, we will mv the new one to the

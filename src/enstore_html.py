@@ -728,8 +728,15 @@ class EnLogPage(EnBaseHtmlDoc):
 	self.script_title_gif = "en_log.gif"
 	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor and periodically updated. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Href('enstore_log_file_search.html', 'searched')))
 
-    # given a dict of log files, create a list of lists which divides the log files up by month and
-    # year. most recent goes first
+    def logfile_date(self, logfile):
+	(prefix, year, month, day) = string.split(logfile, '-')
+	month = string.atoi(month)
+	year = string.atoi(year)
+	day = string.atoi(day)
+	return (prefix, year, month, day)
+
+    # given a dict of log files, create a list of lists which divides the log files up by month
+    # and year. most recent goes first
     def find_months(self, logs):
 	lkeys = logs.keys()
 	lkeys.sort()
@@ -737,22 +744,66 @@ class EnLogPage(EnBaseHtmlDoc):
 	log_months = {}
 	dates = []
 	for log in lkeys:
-	    (prefix, year, month, day) = string.split(log, "-")
-	    month = string.atoi(month)
+	    (prefix, year, month, day) = self.logfile_date(log)
 	    date = "%s %s"%(calendar.month_name[month], year)
-	    year = string.atoi(year)
-	    day = string.atoi(day)
-	    if not dates or not date == dates[len(dates)-1][0]:
-		dates.append((date, year, month))
+	    if not dates or not (year, month, date) in dates:
+		dates.append((year, month, date))
 	    if not log_months.has_key(date):
 		log_months[date] = {}
 	    log_months[date][day] = (logs[log], log)
+	dates.sort()
+	dates.reverse()
 	return (dates, log_months)
 
-    # create the body of the page, where http_path is the web server path to the files, www_host is
-    # the host where the web server is running, user_logs is a dictionary that contains
-    # user logs and logs is a dictionary where the log file names are the keys and the sizes are the
-    # values.
+    # generate the calendar looking months with url's for each day for which there exists a log
+    # file. the data in logs, should be a dictionary where the log file names are the keys and
+    # the value the size of the file
+    def generate_months(self, table, logs, web_host, caption_title="Enstore Log Files"):
+	(dates, sizes) = self.find_months(logs)
+	did_title = 0
+	for (year, month, date) in dates:
+	    caption = HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(date), 
+						   size="+2", color=BRICKRED))
+	    if not did_title:
+		did_title = 1
+		caption.prepend(HTMLgen.BR())
+		caption.prepend(HTMLgen.BR())
+		caption.prepend(HTMLgen.Font(HTMLgen.Bold(caption_title), 
+					     size="+2", color=BRICKRED))
+	    log_table =  HTMLgen.TableLite(caption, bgcolor=AQUA, cellspacing=5, 
+					   cellpadding=CELLP, align="LEFT", border=2)
+	    tr = HTMLgen.TR()
+	    for day in calendar.day_abbr:
+		tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(day),size="+1", color=BRICKRED)))
+	    log_table.append(tr)
+	    # the following generates a  list of lists, which specifies how to draw a calendar
+	    # with the first of the month occuring in the correct day of the week slot.
+	    mweeks = calendar.monthcalendar(year, month)
+	    for mweek in mweeks:
+		tr = HTMLgen.TR()
+		for day in [0,1,2,3,4,5,6]:
+		    if mweek[day] == 0:
+			# this is null entry represented by a blank entry on the calendar
+			tr.append(HTMLgen.TD(self.empty_data()))
+		    else:
+			(size, log) = sizes[date].get(mweek[day], (-1, ""))
+			if size == -1:
+			    # there was no log file for this day
+			    tr.append(HTMLgen.TD(HTMLgen.Bold(mweek[day]), bgcolor=YELLOW))
+			else:
+			    td = HTMLgen.TD(HTMLgen.Href("%s/%s"%(web_host, log), 
+							 HTMLgen.Font(HTMLgen.Bold(mweek[day]),
+								      size="+2")))
+			    td.append(" : %s"%(size,))
+			    tr.append(td)
+		log_table.append(tr)
+	    table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
+	    table.append(self.empty_row())
+
+    # create the body of the page, where http_path is the web server path to the files, www_host
+    # is the host where the web server is running, user_logs is a dictionary that contains
+    # user logs and logs is a dictionary where the log file names are the keys and the sizes are
+    # the values.
     def body(self, http_path, logs, user_logs, www_host):
 	table = self.table_top()
 	# now add the data, first the table with the user specified log files in it
@@ -773,47 +824,7 @@ class EnLogPage(EnBaseHtmlDoc):
 							"Search the Enstore Log Files"))))
 	table.append(self.empty_row())
 	# now create the tables for the different months.
-	(dates, sizes) = self.find_months(logs)
-	did_title = 0
-	for (date, year, month) in dates:
-	    caption = HTMLgen.Caption(HTMLgen.Font(HTMLgen.Bold(date), 
-						   size="+2", color=BRICKRED))
-	    if not did_title:
-		did_title = 1
-		caption.prepend(HTMLgen.BR())
-		caption.prepend(HTMLgen.BR())
-		caption.prepend(HTMLgen.Font(HTMLgen.Bold("Enstore Log Files"), 
-					     size="+2", color=BRICKRED))
-	    log_table =  HTMLgen.TableLite(caption, bgcolor=AQUA, cellspacing=5, 
-					   cellpadding=CELLP, align="LEFT", border=2)
-	    tr = HTMLgen.TR()
-	    for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]:
-		tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(day),size="+1", color=BRICKRED)))
-	    log_table.append(tr)
-	    # the following generates a  list of lists, which specifies how to draw a calendar with
-	    # the first of the month occuring in the correct day of the week slot.
-	    mweeks = calendar.monthcalendar(year, month)
-	    for mweek in mweeks:
-		tr = HTMLgen.TR()
-		for day in [0,1,2,3,4,5,6]:
-		    if mweek[day] == 0:
-			# this is null entry represented by a blank entry on the calendar
-			tr.append(HTMLgen.TD(self.empty_data()))
-		    else:
-			(size, log) = sizes[date].get(mweek[day], (-1, ""))
-			if size == -1:
-			    # there was no log file for this day
-			    tr.append(HTMLgen.TD(HTMLgen.Bold(mweek[day]), bgcolor=YELLOW))
-			else:
-			    td = HTMLgen.TD(HTMLgen.Href("%s%s/%s"%(www_host, http_path,
-									 log), 
-							 HTMLgen.Font(HTMLgen.Bold(mweek[day]),
-								      size="+2")))
-			    td.append(" : %s"%(size,))
-			    tr.append(td)
-		log_table.append(tr)
-	    table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
-	    table.append(self.empty_row())
+	self.generate_months(table, logs, "%s%s"%(www_host, http_path))
 	self.append(table)							 
 
 class EnAlarmPage(EnBaseHtmlDoc):
