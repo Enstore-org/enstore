@@ -257,12 +257,18 @@ def format_class_for_print(object, name):
 def get_file_size(file):
     if file[:6] == "/pnfs/":
         #Get the remote pnfs filesize.
-        pin = pnfs.Pnfs(file)
-        pin.get_file_size()
-        filesize = pin.file_size
+        try:
+            pin = pnfs.Pnfs(file)
+            pin.get_file_size()
+            filesize = pin.file_size
+        except (OSError, IOError), detail:
+            filesize = 0
     else:
-        statinfo = os.stat(file)
-        filesize = statinfo[stat.ST_SIZE]
+        try:
+            statinfo = os.stat(file)
+            filesize = statinfo[stat.ST_SIZE]
+        except (OSError, IOError), detail:
+            filesize = 0
 
     return filesize
 
@@ -545,8 +551,15 @@ def filename_check(filename):
 def filesystem_check(target_filesystem, inputfile):
 
     #Get filesize
-    size = get_file_size(inputfile)
-
+    try:
+        size = get_file_size(inputfile)
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
+    except (OSError, IOError):
+        exc, msg, tb = sys.exc_info()
+        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+        
     #os.pathconf likes its targets to exist.  If the target is not a directory,
     # use the parent directory.
     if not os.path.isdir(target_filesystem):
@@ -562,12 +575,13 @@ def filesystem_check(target_filesystem, inputfile):
         raise exc, msg, tb
     except KeyError, detail:
         return
-    except:
+    except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
         msg = "System error getting filesystem file size limit: %s: %s" \
               % (str(exc), str(msg))
         Trace.log(e_errors.ERROR, msg)
-        raise exc, msg, tb
+        #raise exc, msg, tb
+        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
         
     filesystem_max = 2L**(bits - 1) - 1
     
@@ -582,18 +596,25 @@ def filesystem_check(target_filesystem, inputfile):
 def wrappersize_check(target_filepath, inputfile):
 
     #Get filesize
-    size = get_file_size(inputfile)
+    try:
+        size = get_file_size(inputfile)
 
-    #Get the remote pnfs wrapper.  If the maximum size of the
-    # wrapper isn't in the configuration file, assume 2GB-1.
-    pout = pnfs.Tag((os.path.dirname(target_filepath)))
-    pout.get_file_family_wrapper()
-    # get a configuration server and the max filesize the wrappers allow.
-    csc = get_csc()
-    wrappersizes = csc.get('wrappersizes', {})
-    wrapper_max = wrappersizes.get(pout.file_family_wrapper,
-                                   MAX_FILE_SIZE)
-    
+        #Get the remote pnfs wrapper.  If the maximum size of the
+        # wrapper isn't in the configuration file, assume 2GB-1.
+        pout = pnfs.Tag((os.path.dirname(target_filepath)))
+        pout.get_file_family_wrapper()
+        # get a configuration server and the max filesize the wrappers allow.
+        csc = get_csc()
+        wrappersizes = csc.get('wrappersizes', {})
+        wrapper_max = wrappersizes.get(pout.file_family_wrapper,
+                                       MAX_FILE_SIZE)
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
+    except (OSError, IOError):
+        exc, msg, tb = sys.exc_info()
+        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+
     if size > wrapper_max:
         raise EncpError(errno.EFBIG,
                         "Filesize (%s) larger than wrapper (%s) allows (%s)." \
@@ -604,15 +625,22 @@ def wrappersize_check(target_filepath, inputfile):
 def librarysize_check(target_filepath, inputfile):
 
     #Get filesize
-    size = get_file_size(inputfile)
+    try:
+        size = get_file_size(inputfile)
 
-    #Determine the max allowable size for the given library.
-    pout = pnfs.Tag(os.path.dirname(target_filepath))
-    pout.get_library()
-    csc = get_csc()
-    library = csc.get(pout.library + ".library_manager", {})
-    library_max = library.get('max_file_size', MAX_FILE_SIZE)
-    
+        #Determine the max allowable size for the given library.
+        pout = pnfs.Tag(os.path.dirname(target_filepath))
+        pout.get_library()
+        csc = get_csc()
+        library = csc.get(pout.library + ".library_manager", {})
+        library_max = library.get('max_file_size', MAX_FILE_SIZE)
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
+    except (OSError, IOError):
+        exc, msg, tb = sys.exc_info()
+        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+
     #Compare the max sizes allowed for these various conditions.
     if size > library_max:
         raise EncpError(errno.EFBIG,
@@ -688,6 +716,13 @@ def inputfile_check(input_files):
             size = get_file_size(inputlist[i])
             print_data_access_layer_format(inputlist[i], "", size,
                                            {'status':(msg.type, msg.strerror)})
+            quit()
+        except (OSError, IOError), detail:
+            exc, msg, tb = sys.exc_info()
+            size = get_file_size(inputlist[i])
+            print_data_access_layer_format(
+                inputlist[i], "", size,
+                {'status':(errno.errorcode[msg.errno], str(msg))})
             quit()
 
     return (inputlist, file_size)
@@ -1215,7 +1250,7 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
                                  e.bufsize, crc_flag, 0)
         EXfer_ticket = {'status':(e_errors.OK, None)}
     except EXfer.error, msg:
-        EXfer_ticket = {'status':(e_errors.IOERROR, msg)}
+        EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     # File has been read - wait for final dialog with mover.
@@ -1749,10 +1784,10 @@ def set_pnfs_settings(ticket):
 
     # create a new pnfs object pointing to current output file
     Trace.trace(20,"write_to_hsm adding to pnfs "+ ticket['outfile'])
-    p=pnfs.Pnfs(ticket['outfile'])
-    t=pnfs.Tag(os.path.dirname(ticket['outfile']))
 
     try:
+        p=pnfs.Pnfs(ticket['outfile'])
+        t=pnfs.Tag(os.path.dirname(ticket['outfile']))
         # save the bfid and set the file size
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
@@ -1906,6 +1941,7 @@ def create_write_requests(callback_addr, e, tinfo):
         try:
             p = pnfs.Pnfs(outputlist[i])
             pinfo = get_pinfo(p)
+            print format_class_for_print(p, "p")
         except (OSError, IOError), detail:
             print_data_access_layer_format(
                 inputlist[i], outputlist[i], file_size[i],
@@ -2346,8 +2382,17 @@ def verify_read_request_consistancy(requests_per_vol):
 
             #If no layer 4 is present, then report the error, raise an alarm,
             # but continue with the transfer.
-            p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
-            p.get_xreference()
+            try:
+                p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
+                p.get_xreference()
+            except (OSError, IOError), detail:
+                request['stats'] = (errno.errorcode(detail.errno), str(detail))
+                print_data_access_layer_format(request['infile'],
+                                               request['outfile'],
+                                               request['file_size'], request)
+                quit() #Harsh, but necessary.
+
+            
             if (p.volume == pnfs.UNKNOWN or
                 p.location_cookie == pnfs.UNKNOWN or
                 p.size == pnfs.UNKNOWN or
@@ -2453,10 +2498,12 @@ def get_clerks_info(vcc, fcc, bfid):
 def verify_file_size(ticket):
     #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] == '/dev/null':
-	p = pnfs.Pnfs(ticket['infile'])
-	p.get_file_size()
-	return p.file_size
-        #filename = ticket['infile']
+        try:
+            p = pnfs.Pnfs(ticket['infile'])
+            p.get_file_size()
+            return p.file_size
+        except (OSError, IOError), detail:
+            return 0
 
     filename = ticket['outfile']
     file_size = 0 #quick hack
@@ -2469,9 +2516,12 @@ def verify_file_size(ticket):
 	
         #Until pnfs supports NFS version 3 (for large file support) make sure
 	# we are using the correct file_size for the pnfs side.
-	p = pnfs.Pnfs(ticket['infile'])
-	p.get_file_size()
-	real_size = p.file_size
+        try:
+            p = pnfs.Pnfs(ticket['infile'])
+            p.get_file_size()
+            real_size = p.file_size
+        except (OSError, IOError), detail:
+            real_size = 0
 
 	if file_size != real_size: #ticket['file_size']:
             msg = "Expected file size (%s) not equal to actuall file size " \
@@ -3069,9 +3119,16 @@ class encp(interface.Interface):
             local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
             #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
-            p.get_path()
-            remote_file = p.path
+            try:
+                p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
+                p.get_path()
+                remote_file = p.path
+            except (OSError, IOError), detail:
+                print_data_access_layer_format(
+                    local_file, pnfs_id, 0,
+                    {'status':(errno.errorcode[detail.errno],str(detail))})
+                quit()
+                
             #self.args[0:2] = [remote_file[0][:-1], local_file]
             self.args[0:2] = [remote_file, local_file]
         if self.put_cache:
@@ -3079,9 +3136,15 @@ class encp(interface.Interface):
             local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
             #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
-            p.get_path()
-            remote_file = p.path
+            try:
+                p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
+                p.get_path()
+                remote_file = p.path
+            except (OSError, IOError), detail:
+                print_data_access_layer_format(
+                    local_file, pnfs_id, 0,
+                    {'status':(errno.errorcode[detail.errno],str(detail))})
+                quit()
             #self.args[0:2] = [local_file, remote_file[0][:-1]]
             self.args[0:2] = [local_file, remote_file]
 
