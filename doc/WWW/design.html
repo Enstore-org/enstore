@@ -28,6 +28,8 @@
 <li><a href="#mover_request">1.3.3.2 Movers' Requests</a>
 <li><a href="#pub_request">1.3.3.3 Publisher Requests</a>
 <li><a href="#mover">1.3.4 Mover</a>
+<li><a href="#mover_cmds">1.3.4.1 Command Line Control of the Mover/a>
+<li><a href="#mover_config">1.3.4.2 Mover Config File Values</a>
 <li><a href="#config_server">1.3.5 Configuration Server</a>
 <li><a href="#config_server_cmds">1.3.5.1 Command Line Control of the Configuration Server</a>
 <li><a href="#log_server">1.3.6 Log Server</a>
@@ -1569,34 +1571,52 @@ Group A have one third of the tape drives, Group B have one third, and the last 
 be shared.  The Movers can be configured to do this easily.  And with some slight
 changes, this is how we can guarantee resources to data acquisition.
 <p>
-The Mover hunts Library Managers that have work when it is idle by
-consulting a Configuration Server.
-A Mover's configuration gives a list of Library Managers to hunt among
-for work.
-If there is no work at any Library Manager,
-the Mover sleeps for a while and begins the hunt again.
-While sleeping the Mover is sensitive to datagrams at a
-specific UDP address. A Library Manager uses this mechanism to try to
-hasten a Mover when the Library Manager has work queued up.
-<p>
-When a Mover has found a Library Manager that has work, it attempts
-to mount the salient volume, by contacting the physical library's Media
-Changer.  If there is some error, it issues a unilateral unbind to the
-Library Manager. If all is well, it issues a have_bound_volume to the
+
+<!-- ----------------------------------------------------->
+When the Mover starts up, the 'idle_mover' request/command is sent to each
+Library Manager configured and the responses from the Library Managers are
+acted upon.  After the startup, the mover wait until it is 'summoned' by a
 Library Manager.
+
+<p>
+When a Mover is summoned by a Library Manager, it will send one of three
+request/commands to the Library Manager that summoned the mover:
+<ol>
+  <li> idle_mover
+  <li> have_bound_volume, idle
+  <li> have_bound_volume, busy
+</ol>
+
+When the mover is busy, the Library Manager should responde with 'no_work.'
+Otherwise, the Library Manager can responde with 'no_work,'
+'read_from_hsm,' or 'write_to_hsm.'
+
+When the mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
+subprocess which handles the transfer.
+If there is some error, it issues a unilateral unbind to the
+Library Manager.
+
+If all is well with the entire transfer, it issues a have_bound_volume to
+the Library Manager.
+
+The first thing the transfer process does is check to see if the waiting
+encp is responsive. This involves contacting encp on the designated TCP
+control port and sending along the TCP port designation for the data transfer.
+If encp is responsive, the Mover proceeds with making
+sure the proper volume is loaded in it's tape drive.
+
+
 <p>
 Reads -- Once a volume is bound the Mover may read a volume and send data
-to a waiting <em>encp</em> program. Two tcp ports are involved.
+to a waiting <em>encp</em> program.
         The steps are:
 <ol>
-<li>Arbitrate for a TCP port for the data transfer.
-<li>Open the tcp port (control port) specified in the request,
-    send the <em>encp</em> program the data transfer port address,
-    hold the control port open. If it is dropped, abort.
-<li>Read the data from a volume, (stripping any wrapper like tar headers)
-    verify the sanity crc. send the data to the user.
-<li>Close the data port.
-<li>Tell the user done and all is well.
+<li> Using the file_location_cookie, space to beginning of data.
+<li> Read the data from a volume, (stripping any wrapper like tar headers)
+     verify the sanity crc. send the data to the user.
+<li> Close the data port.
+<li> Tell the user done and all is well.
+<li> Close the control port.
 </ol>
 
 If any errors occur while reading the volume, an attempt is made to
@@ -1604,13 +1624,9 @@ characterize them as either media or drive.  This is discussed more completely
 in the section on Error control.
 <p>
 Writes -- Once a volume is bound the Mover may receive data and write it to
-the volume. Two tcp ports are involved.
+the volume.
         The steps are:
 <ol>
-<li>Arbitrate for a TCP port for the data transfer.
-<li>Open the tcp port (control port) specified in the request,
-    send the <em>encp</em> program the data transfer port address,
-    hold the control port open. If it is dropped, abort.
 <li>Mark the volume as "writing". That will cause the volume to
     not be selected for subsequent writes, should we crash.
 <li>Using the eod_space_cookie, space to end of volume. Try
@@ -1629,6 +1645,115 @@ characterize
 them as either media or drive.  This is discussed more completely in the
 section on Error control.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
+
+<h4><a name="mover_cmds">
+1.3.4.1 Command Line Control of the Mover
+</h4>
+
+The Mover is started and controlled through a command line interface using
+ecmd. Option commands for "ecmd mov [--option_command] <mover>" include the
+general option commands
+supported by all other servers:
+alive, alive_rcv_timeout=, alive_retries=, config_host=, config_port=
+, help, server_verbose, verbose. Additionally the "status" option commands
+is supported and produce the following:
+<br>
+$ ecmd mov --status fndaprdisk.mover<br>
+{'wr_bytes': 6398896, 'rd_bytes': 6398896, 'no_xfers': 11, 'mode': 'w',
+'bytes_to_xfer': 6398896, 'crc_func': '<built-in function ECRC>',
+'state': 'idle', 'status': ('ok', None)}
+
+<dl>
+<dt>wr_bytes
+     <dd> the number of bytes written to the tape device when 'mode' is 'w'
+	  else the number of bytes written to the user device.
+<dt>rd_bytes
+     <dd> the number of bytes read from the user device when 'mode' is 'w'
+	  else the number of bytes read from the tape device.
+<dt>no_xfers
+     <dd> the number of completed transfers.
+<dt>mode
+     <dd> 'r' for reading from HSM, 'w' for writing to HSM.
+<dt>bytes_to_xfer
+     <dd> number of bytes to be transfer for current transfer if state is
+	  'busy' or the last transfer is state is idle.
+<dt>crc_func
+     <dd>active crc function.
+<dt>state
+     <dd>'idle' if no transfer active, else 'busy.'
+<dt>status
+     <dd>should always be: ('ok', None)
+</dl>
+
+<h4><a name="mover_config">
+1.3.8.2 Mover Config File Values
+</h4>
+<TABLE BORDER COLS=4 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>DICTIONARY ELEMENT</B></TD>
+<TD NOSAVE><B>DEFINITION</B></TD>
+<TD NOSAVE><B>DEFAULT</B></TD>
+<TD NOSAVE><B>EXAMPLE VALUE</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>host</TD>
+<TD NOSAVE>node where mover runs</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>hppc</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>port</TD>
+<TD NOSAVE>udp port for mover communication</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>7516</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>logname</TD>
+<TD NOSAVE>ascii value used for id in messages to log server</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>FMOV</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>library</TD>
+<TD NOSAVE>list of libraries that the mover will contact when it starts up.</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>['fndaprdisk.library_manager']</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>media_changer</TD>
+<TD NOSAVE>the name of the media changer server that will be communicated
+with in order to load and unload tape cartidges.</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>'fndaprdisk.media_changer</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>mc_device</TD>
+<TD NOSAVE>a device name or number to include with communications with the
+media changer.</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>1</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>do_eject</TD>
+<TD NOSAVE>used when testing stand alone tape drive (no robot).</TD>
+<TD NOSAVE>'yes'</TD>
+<TD NOSAVE>'no'</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>driver</TD>
+<TD NOSAVE>the hsm driver</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>'FTTDriver'</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>device</TD>
+<TD NOSAVE>device name used as parameter to certain driver function calls.</TD>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>'/dev/st0'</TD>
+</TR>
+</TABLE>
+
+
 <p>
 <h3><a name="config_server">
 1.3.5 Configuration Server
