@@ -365,7 +365,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.add = None
         self.modify = None
         self.dont_try_this_at_home_erase = None
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
 
     def valid_dictionaries(self):
@@ -408,12 +409,12 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"volume_name",
-                     option.USER_LEVEL:option.ADMIN},
+                     option.USER_LEVEL:option.USER},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
-                          option.USER_LEVEL:option.ADMIN},
+                          option.USER_LEVEL:option.USER},
         option.MODIFY:{option.HELP_STRING:
                     "modify file record (dangerous!)",
                     option.VALUE_TYPE:option.STRING,

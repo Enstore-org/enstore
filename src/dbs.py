@@ -406,13 +406,13 @@ def do_work(intf):
 
 class Interface(option.Interface):
 
-	def __init__(self):
+	def __init__(self, args=sys.argv, user_mode=1):
  		self.status = 0
 		self.dump = 0
 		self.all = 0
 		self.restore_all = 0
 		self.nocheck = 0
-		option.Interface.__init__(self)
+		option.Interface.__init__(self, args, user_mode)
 
 	def valid_dictionaries(self):
 	    return (self.config_options, self.dbs_options)

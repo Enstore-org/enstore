@@ -492,6 +492,8 @@ class Interface:
                     FORCE_SET_DEFAULT:NORMAL}
         }
 
+    config_options = {} #hack for old code
+
     test_options = {
         'test':{DEFAULT_VALUE:2,
                 DEFAULT_TYPE:INTEGER,

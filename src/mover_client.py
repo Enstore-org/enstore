@@ -118,7 +118,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
-                       option.USER_LEVEL:option.USER},
+                       option.USER_LEVEL:option.ADMIN},
         option.UP:{option.HELP_STRING:"set mover to online state",
                    option.DEFAULT_VALUE:option.DEFAULT,
                    option.DEFAULT_TYPE:option.INTEGER,

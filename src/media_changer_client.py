@@ -160,7 +160,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
-                         option.USER_LEVEL:option.USER},
+                         option.USER_LEVEL:option.ADMIN},
         option.MAX_WORK:{option.HELP_STRING:"",
                          option.VALUE_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.REQUIRED,

@@ -733,12 +733,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"volume_name",
-                        option.USER_LEVEL:option.ADMIN},
+                        option.USER_LEVEL:option.USER},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
-                          option.USER_LEVEL:option.ADMIN},
+                          option.USER_LEVEL:option.USER},
         option.SET_COMMENT:{
                         option.HELP_STRING:"set comment for a volume",
                         option.VALUE_TYPE:option.STRING,
@@ -800,7 +800,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
-                          option.USER_LEVEL:option.ADMIN},
+                          option.USER_LEVEL:option.USER},
         option.LABELS:{
                 option.HELP_STRING:"list all volume labels",
                 option.DEFAULT_VALUE:option.DEFAULT,
@@ -811,7 +811,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.ADMIN},
+                     option.USER_LEVEL:option.USER},
         option.VOL1OK:{option.HELP_STRING:
                        "reset cookie to '0000_000000000_0000001'",
                        option.DEFAULT_VALUE:option.DEFAULT,

@@ -480,12 +480,14 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         option.HOST:{option.HELP_STRING:"selects a single host",
 		     option.VALUE_NAME:"hostip",
 		     option.VALUE_USAGE:option.REQUIRED,
-		     option.USER_LEVEL:option.ADMIN
+		     option.USER_LEVEL:option.USER,
 		     },
-        option.SUMMARY:{option.HELP_STRING:"summary for saag",},
+        option.SUMMARY:{option.HELP_STRING:"summary for saag",
+                        option.USER_LEVEL:option.ADMIN},
         option.HTML_GEN_HOST:{option.HELP_STRING:
                               "ip/hostname of the html server",
-                              option.VALUE_USAGE:option.REQUIRED,},
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.USER_LEVEL:option.ADMIN},
         }
                    
                    
