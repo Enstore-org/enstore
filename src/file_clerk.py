@@ -192,6 +192,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                               "File Clerk: key %s is missing"%key)
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
+            return
         ticket["status"]=(e_errors.OK, None)
         ticket["complete_crc"]=complete_crc
         ticket["sanity_cookie"]=sanity_cookie
@@ -208,6 +209,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                               "File Clerk: key %s is missing"%key)
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
+            return
         record["complete_crc"]=complete_crc
         record["sanity_cookie"]=sanity_cookie
         #record our changes to the database
