@@ -274,12 +274,13 @@ class LibraryManagerMethods:
         rq = request
         if self.volumes_at_movers.is_vol_busy(rq.ticket["fc"]["external_label"]):
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
+            Trace.trace(11,"VOL BUSY %s" % (rq.ticket["fc"]["external_label"],))  ## REMOVE!!!
             self.continue_scan = 1
             return rq, None
         # otherwise we have found a volume that has read work pending
         Trace.trace(11,"process_read_request %s"%(rq.ticket,))
         # ok passed criteria. Get request by file location
-        if rq.ticket['encp']['adminpri'] < 0:
+        if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
             rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
 
         ########################################################
@@ -288,6 +289,7 @@ class LibraryManagerMethods:
         Trace.trace(13,"SUSPECT_VOLS %s"%(self.suspect_volumes,))
         suspect_v,suspect_mv = self.is_mover_suspect(requestor, rq.ticket['fc']['external_label'])
         if suspect_mv:
+            Trace.trace(11,"suspect mv %s %s" % (suspect_v,suspect_mv)) ## REMOVE!!
             # determine if this volume had failed on the maximal
             # allowed number of movers and, if yes, set volume 
             # as having no access and send a regret: noaccess.
@@ -319,6 +321,7 @@ class LibraryManagerMethods:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
         key_to_check = self.fair_share(rq)
+        Trace.trace(11, "key to check %s" % (key_to_check,))  ## REMOVE !!!
         if key_to_check:
             self.continue_scan = 1
         return rq, key_to_check
@@ -405,6 +408,7 @@ class LibraryManagerMethods:
         while rq:
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
+                Trace.trace(11,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
@@ -528,7 +532,7 @@ class LibraryManagerMethods:
             elif rq.work == 'write_to_hsm':
                 rq, key = self.process_write_request(rq) 
                 if self.continue_scan:
-                    rq, status = self.check_write_request(self, external_label, rq)
+                    rq, status = self.check_write_request(external_label, rq)
                     if rq and status[0] == e_errors.OK: break
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
@@ -989,7 +993,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['current_location'] = None
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['status'] =  (e_errors.OK, None)
-        #mticket['operation'] = work
+        # update volume status
+        # get it directly from volume clerk as mover
+        # in the idle state does not have it
+        vol_info = self.vcc.inquire_vol(mticket['external_label'])
+        mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                                    vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+        
+         #mticket['operation'] = work
 
         Trace.trace(11,"MT %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
@@ -1214,10 +1225,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
-        Trace.log(e_errors.INFO,"MVRS %s" % (movers,))
         ticket['movers'] = []
         for mover in movers:
-            print "MOVER",mover
             ticket['movers'].append({'mover'          : mover['mover'],
                                      'external_label' : mover['external_label'],
                                      'volume_family'  : mover['volume_family'],
@@ -1226,6 +1235,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      })
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
+
+    # get strage groups
+    def storage_groups(self, ticket):
+        ticket['storage_groups'] = []
+        ticket['storage_groups'] = self.sg_limits
+        self.reply_to_caller(ticket)
+        
         
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
