@@ -560,8 +560,8 @@ def main(e):
                 continue
             else:
                 sys.stderr.write(
-                    "Unable to open control socket with mover: %s\n"
-                    % (str(detail),))
+                    "Unable to open control socket with mover: %s\n" %
+                    (str(detail),))
                 encp.quit(1)
 
         Trace.message(4, "Opened control socket.")
@@ -767,7 +767,9 @@ if __name__ == '__main__':
         sys.stderr.write("Second argument is not an input directory.\n")
         sys.exit(1)
 
-    if not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
+    if sys.argv[-1] == "/dev/null":
+        pass  #If the output is /dev/null, this is okay.
+    elif not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
         sys.stderr.write("Third argument is not an output directory.\n")
         sys.exit(1)
 
