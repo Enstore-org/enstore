@@ -14,7 +14,7 @@ QUALIFIERS = ""
 	setupOptional("dot")
 	setupOptional("tgif")
 	setupOptional("htmldoc")
-	setupOptional("ftt")
+	setupRequired("ftt")
 	setupOptional("python")
 	envSetIfNotSet(PYTHON_DIR, /usr/local)
 	exeAccess("python")
