@@ -1422,6 +1422,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                               self.process_event_message)
         Trace.init(self.log_name)
         self.startup_state = e_errors.OK
+        self.last_time_for_periodic_tasks = time.time()
 
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
