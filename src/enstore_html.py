@@ -1419,7 +1419,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	rows = []
 	extra_read_rows = []
 	extra_write_rows = []
-	filename = "%s_%s.html"%lm, enstore_constants.PENDING)
+	filename = "%s_%s.html"%(lm, enstore_constants.PENDING)
 	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
 	# do the read queue first
 	if not the_work[enstore_constants.READ] == []:
