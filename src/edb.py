@@ -96,9 +96,11 @@ class DbTable:
 		self.host = host
 		self.database = database
 		self.table = table
+		self.name = table	# backward compatible
 		self.pkey = pkey
 		self.auto_journal = auto_journal
 		self.backup_flag = 1
+		self.jouHome = jouHome
 
 		if self.auto_journal:
 			self.jou = ejournal.Journal(os.path.join(
@@ -183,12 +185,26 @@ class DbTable:
 		Trace.log(e_errors.INFO, "End backup for "+self.table)
 		self.backup_flag = 1
 
-        #### NEED MORE WORK LATER
 	def checkpoint(self):
+		if self.auto_journal:
+			self.jou.checkpoint()
 		return
 
-	#### NEED MORE WORK LATER
 	def backup(self):
+		try:
+			cwd=os.getcwd()
+		except OSError:
+			cwd = "/tmp"
+
+		os.chdir(self.jouHome)
+		cmd="tar rf "+self.name+".tar"+" "+self.name+".jou.*"
+		Trace.log(e_errors.INFO, repr(cmd))
+		os.system(cmd)
+		cmd="rm "+ self.name +".jou.*"
+		Trace.log(e_errors.INFO, repr(cmd))
+		os.system(cmd)
+		os.chdir(cwd)
+
 		return
 
 	def close(self):	# don't know what to do
