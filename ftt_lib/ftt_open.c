@@ -35,7 +35,7 @@ ftt_open(const char *name, int rdonly) {
     
     ENTERING("ftt_open");
     PCKNULL("base name", name);
-
+    
     DEBUG2(stderr, "ftt_open( %s, %d )\n", name, rdonly);
     strcpy(alignname, name);
     os=ftt_get_os();
@@ -446,6 +446,12 @@ ftt_open_dev(ftt_descriptor d) {
 		ftt_eprintf("ftt_open_dev: called with invalid (closed?) ftt descriptor");
 		return -1;
     }
+
+
+    if ( d->which_is_open == d->which_is_default ) {
+      return (0);
+    }
+
 
     /* can't have scsi passthru and regular device open at the same time */
     ftt_close_scsi_dev(d);
