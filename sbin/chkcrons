@@ -3,7 +3,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-ttt=`which gang`
+ttt=`which gang >/dev/null 2>&1`
 if [ $? -eq 0 ];
 then
     gang=`gang`
