@@ -123,7 +123,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         p = string.split(fjbk, '.')
         p[0] = p[0]+time_stamp
         fp = string.join(p, '.')
-        cmd = "enrcp "+fjbk+' '+hst_bck+":"+os.path.join(os.path.join(dir_bck, journal_backup), fp)
+        cmd = "enrcp "+fjbk+' '+hst_bck+":"+os.path.join(os.path.join(os.path.split(dir_bck)[0], journal_backup), fp)
         if os.system(cmd):
             Trace.log(e_errors.ERROR, "Failed: "+cmd)
             sys.exit(1)
@@ -131,7 +131,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         p = string.split(vjbk, '.')
         p[0] = p[0]+time_stamp
         fp = string.join(p, '.')
-        cmd = "enrcp "+vjbk+' '+hst_bck+":"+os.path.join(os.path.join(dir_bck, journal_backup), fp)
+        cmd = "enrcp "+vjbk+' '+hst_bck+":"+os.path.join(os.path.join(os.path.split(dir_bck)[0], journal_backup), fp)
         if os.system(cmd):
             Trace.log(e_errors.ERROR, "Failed: "+cmd)
             sys.exit(1)
