@@ -948,7 +948,8 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         #Attempt to get the control socket connected with the mover.
         try:
             control_socket, mover_address, ticket = open_control_socket(
-                listen_socket, mover_timeout, verbose)
+                listen_socket, 1,verbose)#mover_timeout, verbose)
+
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
             if detail.args[0] == errno.ETIMEDOUT:
@@ -1192,6 +1193,27 @@ def set_outfile_permissions(ticket):
 
 ############################################################################
 
+#This internal version of handle retries should only be called from inside
+# of handle_retries().
+def internal_handle_retries(request_list, request_dictionary, error_dictionary,
+                            control_socket, encp_intf):
+    #Set the encp_intf to internal test values to two.  This means
+    # there is only one check made on internal problems.
+    remember_retries = encp_intf.max_retry
+    remember_resubmits = encp_intf.max_resubmit
+    encp_intf.max_retry = 2
+    encp_intf.max_resubmit = 2
+    
+    internal_result_dict = handle_retries(request_list, request_dictionary,
+                                          error_dictionary, control_socket,
+                                          encp_intf)
+
+    #Set the max resend parameters to original values.
+    encp_intf.max_retry = remember_retries
+    encp_intf.max_resubmit = remember_resubmits
+
+    return internal_result_dict
+
 def handle_retries(request_list, request_dictionary, error_dictionary,
                    control_socket, encp_intf):
     #Extract for readability.
@@ -1300,6 +1322,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             # didn't let us determine which request failed, don't worry.
             del request_list[request_list.index(request_dictionary)]
             queue_size = len(request_list)
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except (KeyError, ValueError):
             queue_size = len(request_list) - 1
 
@@ -1307,7 +1332,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # that ths error means that there should be none left in the queue.
         # On writes, if it gets this far it should already be 0 and doesn't
         # effect anything.
-        if status == e_errors.TOO_MANY_RESUBMITS:
+        if status[0] == e_errors.TOO_MANY_RESUBMITS:
             queue_size = 0
         
         result_dict = {'status':status, 'retry':retry,
@@ -1319,6 +1344,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # Even though for writes there is only one entry in the active request
     # list at a time, submitting like this will still work.
     elif status[0] == e_errors.RESUBMITTING:
+        ###Is the work done here duplicated in the next commented code line???
         request_dictionary['resubmits'] = resubmits + 1
 
         for req in request_list:
@@ -1337,18 +1363,27 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
                 #Since a retriable error occured, resubmit the ticket.
                 lm_responce = submit_one_request(req, verbose)
-                if lm_responce['status'][0] != e_errors.OK:
-                    sys.stderr.write("Error resubmitting.\n")
-                    sys.stderr.write(pprint.pformat(lm_responce))
+
+            except KeyboardInterrupt:
+                exc, msg, tb = sys.exc_info()
+                raise exc, msg, tb
             except:
                 exc, msg, tb = sys.exc_info()
                 sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
-            
-            #Log the intermidiate error as a warning instead as a full error.
-            status = (status[0], req.get('unique_id', None))
-            Trace.log(e_errors.WARNING, status)
 
-            result_dict = {'status':(e_errors.RESUBMITTING, None),
+            #Now it get checked.  But watch out for the recursion!!!
+            internal_result_dict = internal_handle_retries([req], req,
+                                                           lm_responce,
+                                                           None, encp_intf)
+            if internal_result_dict['status'][0] != e_errors.OK:
+                status = internal_result_dict['status']
+            else:
+                status = (e_errors.RESUBMITTING, None)
+                
+            Trace.log(e_errors.WARNING, (e_errors.RETRY, req.get('unique_id',
+                                                                 None)))
+
+            result_dict = {'status':status,
                            'retry':request_dictionary.get('retry', 0),
                            'resubmits':request_dictionary.get('resubmits', 0),
                            'queue_size':len(request_list)}
@@ -1357,7 +1392,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by 1.
     else:
+        #Log the intermidiate error as a warning instead as a full error.
+        Trace.log(e_errors.WARNING, status)
+
+        #Get a new unique id for the transfer request since the last attempt
+        # ended in error.
         request_dictionary['unique_id'] = generate_unique_id()
+
         #Keep retrying this file.
         try:
             #Increase the retry count.
@@ -1374,22 +1415,26 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 
             #Since a retriable error occured, resubmit the ticket.
             lm_responce = submit_one_request(request_dictionary, verbose)
-            if lm_responce['status'][0] != e_errors.OK:
-                sys.stderr.write("Error resubmitting.\n")
-                sys.stderr.write(pprint.pformat(lm_responce))
-                status = lm_responce['status']
+
         except KeyError:
             sys.stderr.write("Error processing resubmition of %s.\n" %
                              (request_dictionary['unique_id']))
             sys.stderr.write(pprint.pformat(request_dictionary))
+            
+        #Now it get checked.  But watch out for the recursion!!!
+        internal_result_dict = internal_handle_retries([request_dictionary],
+                                                       request_dictionary,
+                                                       lm_responce,
+                                                       None, encp_intf)
 
-        #Log the intermidiate error as a warning instead as a full error.
-        Trace.log(e_errors.WARNING, status)
-        Trace.log(e_errors.WARNING, (e_errors.RETRY,
-                                     request_dictionary['unique_id']))
+        if internal_result_dict['status'][0] != e_errors.OK:
+            status = internal_result_dict['status']
+        else:
+            status = (e_errors.RETRY, request_dictionary['unique_id'])
+            
+        Trace.log(e_errors.WARNING, (e_errors.RETRY, status))
 
-        result_dict = {'status':(e_errors.RETRY,
-                                 request_dictionary['unique_id']),
+        result_dict = {'status':status,
                        'retry':request_dictionary.get('retry', 0),
                        'resubmits':request_dictionary.get('resubmits', 0),
                        'queue_size':len(request_list)}
@@ -2602,6 +2647,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         done_ticket = request_ticket #Make sure this exists by this point.
         result_dict = handle_retries(request_list, request_ticket,
                                      request_ticket, None, e)
+
         if result_dict['status'][0]== e_errors.RETRY or \
            result_dict['status'][0]== e_errors.RESUBMITTING:
             continue
@@ -2755,13 +2801,13 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
             succeded_ids.append(req['unique_id'])
         except KeyError:
             sys.stderr.write("Error obtaining unique id list of successes.\n")
-            sys.stderr.write(pprint.pformat(req))
+            sys.stderr.write(pprint.pformat(req) + "\n")
     for req in failed_requests:
         try:
             failed_ids.append(req['unique_id'])
         except KeyError:
             sys.stderr.write("Error obtaining unique id list of failures.\n")
-            sys.stderr.write(pprint.pformat(req))
+            sys.stderr.write(pprint.pformat(req) + "\n")
 
     #For each transfer that failed without even succeding to open a control
     # socket, print out their data access layer.
