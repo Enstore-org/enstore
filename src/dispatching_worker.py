@@ -76,6 +76,6 @@ class DispatchingWorker:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list) :
-        #dict[self.current_id] = list
+        #dict[self.current_id] = list                                                  UNCOMMENT ME AND ERRORS HAPPEN
         if jdebug: print "RL", self.current_id, list,"\n",dict
         self.socket.sendto(`list`, self.reply_address)

@@ -34,7 +34,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # check the output pnfs file next
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
-        raise errorcode[EPERM],"encp.write_to_hsm: "\
+        raise errorcode[EINVAL],"encp.write_to_hsm: "\
               +pnfsfile+" is an invalid pnfs filename"
     if p.exists == pnfs.exists :
         raise errorcode[EEXIST],"encp.write_to_hsm: "\

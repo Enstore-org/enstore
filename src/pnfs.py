@@ -8,6 +8,7 @@ import grp
 import string
 import time
 import fcntl
+import lockfile
 import regsub
 import pprint
 
@@ -49,7 +50,8 @@ class pnfs :
             self.set_bit_file_id("1234567890987654321",123,"no information")
             self.statinfo()
         else:
-            raise self.pnfsFilename+" is invalid"
+            raise errorcode[EINVAL],"pnfs.jon1: "\
+                  +self.pnfsfile+" is an invalid pnfs filename"
 
     # simple test configuration
     def jon2(self) :
@@ -60,7 +62,8 @@ class pnfs :
             self.set_file_family_width(2)
             self.statinfo()
         else:
-            raise self.pnfsFilename+" is invalid"
+            raise errorcode[EINVAL],"pnfs.jon1: "\
+                  +self.pnfsfile+" is an invalid pnfs filename"
 
     #################################################################################
 
@@ -111,35 +114,51 @@ class pnfs :
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
     def utime(self) :
-        if self.valid == valid :
+        if self.valid == valid and self.exists == exists :
+            #self.get_showid()  # not clear if this is needed to flush cache or not????
+            try :
+                t = int(time.time())
+                os.utime(self.pnfsFilename,(t,t))
+            except os.error :
+                pass
+
+    # lock/unlock the file
+    # this doesn't work - no nfs locks available ???
+    def readlock(self) :
+        if self.valid == valid and self.exists == exists :
+            try :
+                f = open(self.pnfsFilename,'r')
+            # if we can not open the file, we can't set the times either
+            except :
+                return
+
             if 0 :
                 try :
-                    f = open(self.pnfsFilename,'r')
-                except :
-                    # if we can not open the file, we can't set the times either
-                    return
-                #try :
                     # I can't find these in python - got them from /usr/include/sys/file.h
                     # LOCK_EX 2    /* Exclusive lock.  */
                     # LOCK_UN 8    /* Unlock.  */
                     # LOCK_NB 4    /* Don't block when locking.  */
-                    #fcntl.flock(f.fileno(),2+4)
-                    #fcntl.flock(f.fileno(),8)
-                    #print "locked/unlocked"
-                #except :
-                    #print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
-                f.close()
-            self.get_showid()
-            t = int(time.time())
-            try :
-                os.utime(self.pnfsFilename,(t,t))
-            except os.error :
-                pass
+                    fcntl.flock(f.fileno(),2+4)
+                    fcntl.flock(f.fileno(),8)
+                    print "locked/unlocked - worked, a miracle"
+                except :
+                    print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
+
+            if 0 :
+                try :
+                    lockfile.readlock(f)
+                    lockfile.unlock(f)
+                    print "locked/unlocked - worked, a miracle"
+                except :
+                    print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
+
+            f.close()
 
     # delete a pnfs file including its metadata
     def rm(self) :
         if self.valid == valid and self.exists == exists :
             self.writelayer(1,"")
+            self.writelayer(2,"")
             #>>>>>> It would be better to move the file to some trash space. I don't know how right now. <<<<<<<<<
             os.remove(self.pnfsFilename)
             self.exists = unknown
@@ -303,20 +322,25 @@ class pnfs :
 
     # set a new file size
     # the file needs to exist before you call this
-    # you can't change the file size once you set it
+    # you can't change the file size if it is not 0
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
             self.statinfo()
             if self.file_size != 0 :
                 try :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
+                    self.statinfo()
                 except os.error :
                     if sys.exc_info()[1][0] == errno.ENOENT :
-                        print "failed to remove size attribute"
-                        pass
+                        self.statinfo()
+                        # maybe this works??
+                        f = open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w')
+                        f.close()
+                        self.statinfo()
                     else :
                         raise sys.exc_info()[0],sys.exc_info()[1]
-            self.statinfo()
+            if self.file_size != 0 :
+                print "can not set file size to 0 - oh well!"
             f = open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w')
             f.close()
             self.statinfo()
@@ -337,7 +361,7 @@ class pnfs :
     # set a new mode for the existing file
     def chmod(self,mode) :
         if self.valid == valid and self.exists == exists :
-            chmod(self.pnfsFilename,mode)
+            os.chmod(self.pnfsFilename,mode)
             self.statinfo()
 
     # get the mode of stat member
@@ -359,7 +383,7 @@ class pnfs :
     # change the ownership of the existing file
     def chown(self,uid,gid) :
         if self.valid == valid and self.exists == exists :
-            chown(self.pnfsFilename,uid,gid)
+            os.chown(self.pnfsFilename,uid,gid)
             self.statinfo()
 
     #################################################################################
@@ -519,12 +543,21 @@ class pnfs :
 
 if __name__ == "__main__" :
 
+    # if the user specifies a filename - assume it is a pnfs filename and dump
+    # all the information about the pnfs file that we know about
     try :
         pf = sys.argv[1]
+        dump = 1
+
+    # otherwise, just run the self consistency test
+    except :
+        dump = 0
+
+    if dump :
         p=pnfs(pf,1)
         p.dump()
 
-    except:
+    else :
 
         list = 0
         base = "/pnfs/user/test1"
