@@ -256,6 +256,7 @@ class Mover :
         remaining_bytes = self.driver.get_eod_remaining_bytes()
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
+        print "mover",eod_cookie,remaining_bytes, wr_err,rd_err,wr_access,rd_access
         vcc = VolumeClerkClient(self.csc)
 
         # check for errors and inform volume clerk

@@ -82,8 +82,7 @@ class  FTTDriver(GenericDriver) :
           self.rd_err = stats[2]
 
     def read_block(self):
-        x = ETape.ET_ReadBlock (self.ETdesc)
-        return x
+        return ETape.ET_ReadBlock (self.ETdesc)
 
     def open_file_write(self):
         self.bod = self.eod
@@ -104,7 +103,8 @@ class  FTTDriver(GenericDriver) :
           self.wr_err = stats[2]
         else :
           self.wr_err = 0;
-        return (repr(self.bod), repr(stats[3]))
+        print repr(self.bod), repr(stats[3])
+        return `(self.bod, stats[3])`
 
     def write_block(self, data):
        ETape.ET_WriteBlock(self.ETdesc, data)
