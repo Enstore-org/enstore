@@ -180,7 +180,7 @@ class Mover:
         self.index                = index
         self.name                 = name
         self.N                    =N
-        self.width                = 165
+        self.width                = 170
         self.x, self.y            = 0, 0 # Not placed yet             
         self.x, self.y            = self.position(N)     
         
@@ -213,12 +213,12 @@ class Mover:
         x, y                       = self.x, self.y
         bar_width                  = 38
         img_offset                 =  XY(90, 2)
-        label_offset               = XY(-35, 20)
+        label_offset               = XY(215, 22)
         percent_disp_offset        = XY(60, 22)
         progress_bar_offset        = XY(6, 22)
         progress_bar_bg_offset1    = XY(5, 17)
         progress_bar_bg_offset2    = XY(6, 26)
-        state_offset               = XY(110, 8)
+        state_offset               = XY(120, 8)
         timer_offset               = XY(100, 22)
 
         # create color names
@@ -250,7 +250,8 @@ class Mover:
 
     def update_state(self, state, time_in_state=0):
         img_offset            =XY(90, 2)
-        state_disp_offset=XY(110, 8)
+        state_offset=XY(120, 8)
+        label_offset = XY(215, 22)
 
         #different mover colors
         mover_error_color = colors('mover_error_color')
@@ -273,12 +274,17 @@ class Mover:
             self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y,
                                                            anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(x+state_disp_offset.x, y+state_disp_offset.y, text=self.state, fill=state_color)
+            self.state_display = self.display.create_text(x+state_offset.x, y+state_offset.y, text=self.state, fill=state_color)
         now = time.time()
         self.timer_started = now - time_in_state
         if state != 'ACTIVE':
             self.show_progress(None)
         self.update_timer(time_in_state)
+        if self.state in ['ERROR', 'OFFLINE', 'IDLE']:
+            if self.connection:
+                self.connection.undraw()
+                print "deleting the connection because state is :  ", state
+            
         
     def update_timer(self, seconds):
         timer_offset = XY(100, 22)
@@ -403,8 +409,8 @@ class Mover:
         if N == 1:
             y = self.display.height / 2.
         else:
-            y = (k+0.5)*(self.display.height  / (N+1))
-        x = self.display.width - 200
+            y = (k*2)*(self.display.height  / (N+1))
+        x = self.display.width - 275
         return int(x), int(y)
     
     def position(self, N):
@@ -419,7 +425,8 @@ class Mover:
     
     def reposition(self, N, state=None):
         img_offset=XY(90, 2)
-        state_disp_offset=XY(110, 8)
+        state_offset=XY(120, 8)
+        label_offset = XY(215, 22)
 
         ### color
         mover_error_color = colors('mover_error_color')
@@ -437,14 +444,14 @@ class Mover:
             self.undraw()
             self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height,
                                                           fill=mover_color)
-
+            self.label=self.display.create_text(self.x+label_offset.x,  self.y+label_offset.y,  text=self.name)
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
             self.state_display = self.display.create_image(self.x+img_offset.x, self.y+img_offset.y,
                                                            anchor=Tkinter.NW, image=img)
         else:
-            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y, text=self.state, fill=state_color)
+            self.state_display = self.display.create_text(self.x+state_offset.x, self.y+state_offset.y, text=self.state, fill=state_color)
 
         
         if self.volume:
@@ -689,26 +696,23 @@ class Display(Tkinter.Canvas):
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
         Tkinter.Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
-
-##        self.QUIT = Button(self, text='QUIT', background='blue', height=1, command=self.quit)
-##        self.QUIT.pack(side=BOTTOM, fill=BOTH)
-
-##        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
-##        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
+#XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
+        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
        #When the canvas changes size or moves, update the scrollbars
-##        self['xscrollcommand']= self.scrollX.set
-##        self['yscrollcommand'] = self.scrollY.set
+        self['xscrollcommand']= self.scrollX.set
+        self['yscrollcommand'] = self.scrollY.set
 
         #When scrollbar clicked on, move the canvas
-##        self.scrollX['command'] = self.xview
-##        self.scrollY['command'] = self.yview
+        self.scrollX['command'] = self.xview
+        self.scrollY['command'] = self.yview
 
         #pack 'em up
-##        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
-##        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-##        self.pack(side=Tkinter.LEFT)
-
+        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
+        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
+        self.pack(side=Tkinter.LEFT)
+#XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
         Tkinter.Tk.title(self.master, title)
         self.configure(attributes)
         self.pack(expand=1, fill=Tkinter.BOTH)
@@ -807,7 +811,6 @@ class Display(Tkinter.Canvas):
             
             # command does not require a mover name, will only put clients in a queue
             if words[0]=='client':
-                return #for now, don't show waiting clients
                 client_name = normalize_name(words[1])
                 client = self.clients.get(client_name) 
                 if client is None: #it's a new client
@@ -831,7 +834,6 @@ class Display(Tkinter.Canvas):
 
             if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
                                                                    ## any currently connected client
-
                 if not mover.connection:
                     print "Mover is not connected"
                     return
@@ -855,9 +857,15 @@ class Display(Tkinter.Canvas):
                     except:
                         print "bad numeric value", words[3]            
                 mover.update_state(what_state, time_in_state)
+                if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
+                    if mover.connection: #no connection with mover object
+                        mover.connection=None
                 return
         
             if words[0]== 'connect':
+                if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
+                    print "Cannot connect to mover that is ", mover.state
+                    return
                 client_name = normalize_name(words[2])
                 #print "connecting with ",  client_name
                 client = self.clients.get(client_name)
@@ -959,6 +967,7 @@ class Display(Tkinter.Canvas):
                 if now - client.last_activity_time > 5: # grace period
                     print "It's been longer than 5 seconds, ", client_name," client must be deleted"
                     del self.clients[client_name]
+                    client.undraw()
 
             #### Handle titling
             if self.title_animation:
