@@ -1347,18 +1347,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                ticket["mover"]))
                     self.reply_to_caller({"work" : "unbind_volume"})
         else:
-            if ticket['state'] == "draining":
-                if mv in movers:
-                    movers.remove(mv)
-                    mover_cnt = mover_cnt - 1
-                    if (self.mover_index >= mover_cnt and 
-                        self.mover_index > 0):
-                        self.mover_index = mover_cnt - 1
-
-                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
             Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
             self.reply_to_caller({"work" : "nowork"})
 
+        if ticket['state'] == "draining":
+            if mv in movers:
+                movers.remove(mv)
+                mover_cnt = mover_cnt - 1
+                if (self.mover_index >= mover_cnt and 
+                    self.mover_index > 0):
+                    self.mover_index = mover_cnt - 1
+
+                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
 	# determine if all the movers are in suspect volume list and if
 	# yes set volume as having no access and send a regret: noaccess.
 
