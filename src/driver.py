@@ -88,10 +88,11 @@ class GenericDriver:
 	# Note: remaining_bytes is updated in write and
 	# fd_xfer (when opened for write)
 	return {'remaining_bytes':self.remaining_bytes,
-		'wr_err':self.wr_err,
-		'rd_err':self.rd_err,
-		'wr_access':self.wr_access,
-		'rd_access':self.rd_access}
+		'wr_err'         :self.wr_err,
+		'rd_err'         :self.rd_err,
+		'wr_access'      :self.wr_access,
+		'rd_access'      :self.rd_access,
+		'serial_num'     :'1234555'}
 
     def fd_xfer( self, fd, siz_bytes, crc_flag=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
@@ -248,7 +249,8 @@ class  FTTDriver(GenericDriver) :
 		 'wr_err'         :self.wr_err,
 		 'rd_err'         :self.rd_err,
 		 'wr_access'      :self.wr_access,
-		 'rd_access'      :self.rd_access }
+		 'rd_access'      :self.rd_access,
+		 'serial_num'     :ss['serial_num'] }
 
     def fd_xfer( self, fd, siz_bytes, crc_flag=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred

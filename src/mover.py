@@ -227,6 +227,7 @@ class MoverClient:
 	self.tape = '' # like vol_info['external_label'], just for "status"
 	self.files = ('','')
 	self.work_ticket = {}
+	self.hsm_drive_sn = ''
 
 	self.pid = 0
 
@@ -267,15 +268,22 @@ class MoverClient:
         except AttributeError:
             Trace.log(e_errors.INFO, "No such driver: "+config['driver'])
             self.hsm_driver = None
-                        
+	    pass
+	if self.hsm_driver != None:
+	    do = self.hsm_driver.open( mvr_config['device'], 'a+' )
+	    ss = do.get_stats()
+	    do.close()
+	    if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
 
-	# check for tape in drive
-	# if no vol one labels, I can only eject. -- tape maybe left in bad
-	# state.
-	if mvr_config['do_eject'] == 'yes':
-	    self.hsm_driver.offline( self.config['device'] )
-	    # tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
-	    #mcc.unloadvol( self.vol_info, self.config['mc_device'] )
+	    # check for tape in drive
+	    # if no vol one labels, I can only eject. -- tape maybe left in bad
+	    # state.
+	    if mvr_config['do_eject'] == 'yes':
+		self.hsm_driver.offline( self.config['device'] )
+		# tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
+		#mcc.unloadvol( self.vol_info, self.config['mc_device'] )
+		pass
+	    pass
 
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
 	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
@@ -967,6 +975,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	wb  = self.client_obj_inst.hsm_driver.wr_bytes_get()
 	rb  = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	tick = { 'status'       : (e_errors.OK,None),
+		 'drive_sn'     : self.client_obj_inst.hsm_drive_sn,
 		 #
 		 'crc_flag'     : str(self.client_obj_inst.crc_flag),
 		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
