@@ -61,7 +61,7 @@ def trunc(x):
     if type(x) != type(""):
         x = str(x)
     if len(x)>=4096:
-        x=x[:4080] + "(truncated)"
+        x=x[:4080] + "(trunc. %s)"%(len(x),)
     return x
 
 def do_print(levels):
