@@ -20,6 +20,8 @@
 
 static PyObject *STKErrObject;
 
+static char volStatus[1000];
+
 int STKerr(char *caller, char *location, STATUS status)
 {
 #ifdef DEBUG
@@ -174,6 +176,62 @@ STATUS STKdismount(SEQ_NO p_s,
     return(dp->dismount_status);
 }
 
+STATUS STKquery_volume(SEQ_NO p_s,
+                    char p_volume[])    /* query volume function             */
+
+{
+
+    VOLID                  vol_id[MAX_ID]; /* volume array structure         */
+    ACS_QUERY_VOL_RESPONSE *qp;         /* volume response structure         */
+    QU_VOL_STATUS          *sp;         /* volume status structure           */
+    ALIGNED_BYTES          rbuf[(MAX_MESSAGE_SIZE/sizeof(ALIGNED_BYTES)+1)];
+    STATUS                 status;      /* command return status structure   */
+    ACS_RESPONSE_TYPE      type;        /* final response structure          */
+    int                    size;        /* final response size               */
+    int                    i;           /* loop counter                      */
+    char                   *drive_name; /* drive name                        */ 
+
+    /*
+    **  Call query_volume to get the status of the requested volume.  If the 
+    **  query itself, or the query_volume status fails, write an error message 
+    **  to stderr, otherwise write the query volume results to stdout.
+    */
+
+    (void)strcpy(vol_id[0].external_label,p_volume);
+    (void)strcpy(volStatus,"??");
+
+    if ((status = acs_query_volume(p_s,vol_id,(ushort) 1)) != STATUS_SUCCESS) {
+        (void)fprintf(stderr,"%s ERROR: %s transmit failed, error is %s, code is %d\n",
+	              "stkq","query_volume",cl_status(status),status);
+        return(status);
+    }
+
+    if ((status = get_ack()) != STATUS_SUCCESS) return(status);
+
+    while (1) {
+
+        size = sizeof(ACS_QUERY_VOL_RESPONSE);
+        if ((status = get_next(rbuf,size,&type))
+            != STATUS_SUCCESS) return(status);
+
+        qp = (ACS_QUERY_VOL_RESPONSE *)rbuf;
+        if (qp->query_vol_status != STATUS_SUCCESS) {
+            (void)fprintf(stderr,"%s ERROR: %s failure, error is %s, code is %d\n", 
+                          "stkq","query_volume",cl_status(qp->query_vol_status),
+	                  qp->query_vol_status);
+        }  else {
+            /* I don't see how qp->count can ever be anything byt 1 */
+            for (i = 0; i < (int)qp->count; i++) {
+                sp = &qp->vol_status[i];
+               (void)strcpy(volStatus,(char *)cl_status(sp->status));
+            }
+        }
+        if (type == RT_FINAL) break;
+    }
+
+    return(qp->query_vol_status);
+}
+
 /*
    Convert a drive from ascii of the form "lsm,acs,panel,drive" to a DRIVEID struct.
    see  ./h/api/ident_api.h.   There must be a stk api but I can't find it.
@@ -222,6 +280,7 @@ int *e;
 static char STK_Doc[] =  "STK Robot load and unload";
 static char Mount_Doc[] =  "Mount a tape";
 static char Dismount_Doc[] =  "Dismount a tape";
+static char Query_Volume_Doc[] =  "Query volume stat";
 /*   	mount
 
 	Arguments{
@@ -243,7 +302,7 @@ static PyObject* mount(PyObject *self, PyObject *args)
   int stat;
   char *sc;
   /*
-        Get the arguements
+        Get the arguments
   */
   if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
   	return (NULL);
@@ -251,7 +310,7 @@ static PyObject* mount(PyObject *self, PyObject *args)
   if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
   else
-    stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
+    stat = STKmount(1, vol, stkdrv, 0, NO_LOCK_ID);
   sc = status_class(stat, drive_errs, media_errs );
   return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
 }
@@ -274,9 +333,36 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
   else
-    stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
+    stat = STKdismount(2, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
   sc = status_class(stat, drive_errs, media_errs );
   return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
+}
+
+static PyObject* query_volume(PyObject *self, PyObject *args)
+{
+  char *vol;
+  char *media_type;
+  int stat;
+  char *sc;
+
+  if(!PyArg_ParseTuple(args, "ss", &vol, &media_type))                         /* get args */ 
+  	return (NULL);
+  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
+    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
+  else
+    stat = STKquery_volume(3, vol);
+  sc = status_class(stat, drive_errs, media_errs );
+  /* try to put this into same format as aml/2 state */
+  if (strcmp("STATUS_VOLUME_IN_DRIVE",volStatus)==0) {
+      strcpy(volStatus,"M"); /* mounted */
+  } else if (strcmp("STATUS_VOLUME_HOME",volStatus)==0) {
+      strcpy(volStatus,"O"); /* occupied */
+  } else if (strcmp("STATUS_VOLUME_NOT_IN_LIBRARY",volStatus)==0) {
+      volStatus[0]=0; /* not present - no info */
+  } else if (strcmp("STATUS_VOLUME_IN_TRANSIT",volStatus)==0) {
+      strcpy(volStatus,"T"); /* aml doesnot have this - byt shorten */
+  }
+  return(Py_BuildValue("siss", sc, stat, cl_status(stat),volStatus));
 }
 
 /*
@@ -293,6 +379,7 @@ static PyObject* dismount(PyObject *self, PyObject *args)
 static PyMethodDef STK_Methods[] = {
   { "mount", mount, 1, Mount_Doc},
   { "dismount", dismount, 1, Dismount_Doc},
+  { "query_volume", query_volume, 1, Query_Volume_Doc},
   {0,     0}        /* Sentinel */
 };
 
