@@ -6,6 +6,7 @@ import stat
 import Trace
 import enstore_constants
 import enstore_functions
+import enstore_functions2
 import enstore_files
 import generic_client
 import enstore_up_down
@@ -69,7 +70,7 @@ def do_work(intf):
 
     # check if the network status should be overridden
     if enstore_constants.NETWORK in override_d_keys:
-	netstat[enstore_constants.NETWORK] = enstore_functions.override_to_status(\
+	netstat[enstore_constants.NETWORK] = enstore_functions2.override_to_status(\
 	    override_d[enstore_constants.NETWORK])
 
     system_tag = enstore_functions.get_from_config_file(www_server.WWW_SERVER,

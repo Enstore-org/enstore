@@ -12,6 +12,7 @@ import Trace
 import alarm
 import enstore_html
 import enstore_functions
+import enstore_functions2
 import enstore_status
 import enstore_constants
 import e_errors
@@ -251,7 +252,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
     def __init__(self, file, refresh, system_tag="", page_thresholds=NO_THRESHOLDS):
         EnStatusFile.__init__(self, file, system_tag)
         self.file_name = "%s.new"%(file,)
-	self.html_dir = enstore_functions.get_dir(file)
+	self.html_dir = enstore_functions2.get_dir(file)
         self.refresh = refresh
 	self.page_thresholds = page_thresholds
 	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,), 
@@ -266,7 +267,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
         self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [enstore_constants.NOT_MONITORING,
 					 self.format_host(host), 
-                                         enstore_functions.format_time(time.time())]
+                                         enstore_functions2.format_time(time.time())]
 
     def set_alive_error_status(self, key):
         try:
@@ -329,7 +330,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    status_keys = self.text.keys()
 	    self.filelist = []
 	    for key in status_keys:
-		if enstore_functions.is_library_manager(key) and \
+		if enstore_functions2.is_library_manager(key) and \
 		   not self.text[key][enstore_constants.STATUS][0] == \
 		                 enstore_constants.NOT_MONITORING:
 		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh, 
@@ -498,7 +499,7 @@ class EnDataFile(EnFile):
         else:
             cdcmd = "cd %s;"%(indir,)
         os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
-        tmp = enstore_functions.strip_file_dir(inFile)
+        tmp = enstore_functions2.strip_file_dir(inFile)
         self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
 
     def read(self, max_lines):
@@ -601,7 +602,7 @@ class EnMountDataFile(EnDataFile):
 
 	    # parse out the file directory , a remnant from the grep in the time 
 	    # field
-	    etime = enstore_functions.strip_file_dir(etime)
+	    etime = enstore_functions2.strip_file_dir(etime)
 
 	    # pull out any dictionaries from the rest of the message
 	    #msg_dicts = enstore_status.get_dict(erest)
@@ -629,7 +630,7 @@ class EnEncpDataFile(EnDataFile):
                 if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
 		    # remove the directory and the log prefix to get just the
 		    # date and time
-                    etime = enstore_functions.strip_file_dir(encp_line.time)
+                    etime = enstore_functions2.strip_file_dir(encp_line.time)
                     self.data.append([string.replace(etime, prefix, ""), 
                                       encp_line.bytes, encp_line.direction, 
 				      encp_line.mover, encp_line.drive_id])
@@ -643,7 +644,7 @@ class EnSgDataFile(EnDataFile):
 	    sg_line = enstore_status.SgLine(line)
 	    # remove the directory and the log prefix to get just the
 	    # date and time
-	    etime = enstore_functions.strip_file_dir(sg_line.time)
+	    etime = enstore_functions2.strip_file_dir(sg_line.time)
 	    etime = string.replace(etime, prefix, "")
 	    if self.data.has_key(sg_line.sg):
 		self.data[sg_line.sg].append([etime, sg_line.pending])
@@ -902,6 +903,6 @@ class EnstoreBpdFile(EnDataFile):
     def timed_read(self, start_time, stop_time):
 	if start_time is None and stop_time is None:
 	    # no start time or stop time  was entered, do last 30 days
-	    start_time = enstore_functions.get_days_ago(time.time(), 30)
-	    start_time = enstore_functions.format_plot_time(start_time)
+	    start_time = enstore_functions2.get_days_ago(time.time(), 30)
+	    start_time = enstore_functions2.format_plot_time(start_time)
 	EnDataFile.timed_read(self, start_time, stop_time, "")

@@ -13,7 +13,8 @@ import time
 import threading
 import enstore_display
 import configuration_client
-import enstore_functions
+import enstore_functions2
+import enstore_erc_functions
 import e_errors
 import mover_client
 import pprint
@@ -93,15 +94,15 @@ def get_csc():
     if _csc:  #used cached version.
         return _csc
 
-    config_port = enstore_functions.default_port()
+    config_port = enstore_functions2.default_port()
     if len(sys.argv) > 1:
         config_host = sys.argv[1]
     else:
-        config_host = enstore_functions.default_host()
+        config_host = enstore_functions2.default_host()
         #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
 
-    default_config_host = enstore_functions.default_host()
-    default_config_port = enstore_functions.default_port()
+    default_config_host = enstore_functions2.default_host()
+    default_config_port = enstore_functions2.default_port()
 
     # get a configuration server
     csc = configuration_client.ConfigurationClient((default_config_host,
@@ -300,7 +301,7 @@ def handle_messages(display):
                 sys.stderr.write("Exiting early.\n")
                 return
             else:
-                msg = enstore_functions.read_erc(erc)
+                msg = enstore_erc_functions.read_erc(erc)
                 if msg and not getattr(msg, "status", None):
                     command="%s %s" % (msg.type, msg.extra_info)
                     Trace.trace(1, command)

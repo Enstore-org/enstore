@@ -12,7 +12,6 @@ import time
 import stat
 import event_relay_client
 import event_relay_messages
-import enstore_functions
 import Trace
 # from Tkinter import *
 # import tkFont

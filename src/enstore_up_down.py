@@ -7,7 +7,6 @@ import tempfile
 import time
 import errno
 import select
-import e_errors
 import timeofday
 
 import configuration_client
@@ -15,6 +14,8 @@ import alarm_client
 import generic_client
 import enstore_constants
 import enstore_functions
+import enstore_functions2
+import enstore_erc_functions
 import event_relay_client
 import event_relay_messages
 import Trace
@@ -71,20 +72,20 @@ def get_media_changer(cdict, config_d, config_d_keys, lm):
 def get_library_managers(config_d_keys):
     lms = []
     for key in config_d_keys:
-	if enstore_functions.is_library_manager(key):
+	if enstore_functions2.is_library_manager(key):
 	    lms.append(key)
     return lms
 
 def get_allowed_down_index(server, allowed_down, index):
     if allowed_down.has_key(server):
 	rtn = allowed_down[server][index]
-    elif enstore_functions.is_mover(server):
+    elif enstore_functions2.is_mover(server):
 	rtn = allowed_down.get(enstore_constants.MOVER,
                                MOVERALLOWEDDOWN)[index]
-    elif enstore_functions.is_library_manager(server):
+    elif enstore_functions2.is_library_manager(server):
 	rtn = allowed_down.get(enstore_constants.LIBRARY_MANAGER,
                                DEFAULTALLOWEDDOWN)[index]
-    elif enstore_functions.is_media_changer(server):
+    elif enstore_functions2.is_media_changer(server):
 	rtn = allowed_down.get(enstore_constants.MEDIA_CHANGER,
                                DEFAULTALLOWEDDOWN)[index]
     else:
@@ -117,7 +118,7 @@ class EnstoreServer:
 
     def real_status(self, status):
 	if self.override:
-	    self.status = enstore_functions.override_to_status(self.override)
+	    self.status = enstore_functions2.override_to_status(self.override)
 	else:
 	    self.status = status
 
@@ -476,7 +477,7 @@ def do_real_work():
     sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file()
     dfile, seen_down_d = enstore_functions.read_seen_down_file()
 
-    summary_d = {enstore_constants.TIME: enstore_functions.format_time(time.time())}
+    summary_d = {enstore_constants.TIME: enstore_functions2.format_time(time.time())}
 
     allowed_down_d = get_allowed_down_dict()
     override_d_keys = override_d.keys()
@@ -573,16 +574,16 @@ def do_real_work():
 		    did_not_append = 0
 		continue
 
-	msg = enstore_functions.read_erc(erc)
+	msg = enstore_erc_functions.read_erc(erc)
 	if msg and msg.server in total_servers_names:
 	    total_servers_names.remove(msg.server)
 	    got_one = 1
-	    if enstore_functions.is_mover(msg.server):
+	    if enstore_functions2.is_mover(msg.server):
 		# we also got it's state in the alive msg, save it
 		for mv in total_movers:
 		    if msg.server == mv.name:
 			mv.server_state = msg.opt_string
-	    elif enstore_functions.is_library_manager(msg.server):
+	    elif enstore_functions2.is_library_manager(msg.server):
 		# we also got it's state in the alive msg, save it
 		for lm in total_lms:
 		    if msg.server == lm.name:
@@ -650,7 +651,7 @@ def do_real_work():
 
     # now check if there is an override set to make sure that enstore is marked down
     if enstore_constants.ENSTORE in override_d_keys:
-	summary_d[enstore_constants.ENSTORE] = enstore_functions.override_to_status(\
+	summary_d[enstore_constants.ENSTORE] = enstore_functions2.override_to_status(\
 	    override_d[enstore_constants.ENSTORE])
 	if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	    # it was overridden

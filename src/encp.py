@@ -48,7 +48,7 @@ import volume_family
 import volume_clerk_client
 import file_clerk_client
 import enstore_constants
-import enstore_functions
+import enstore_functions2
 
 #Constants for the max file size.  Currently this assumes the max for the
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
@@ -407,8 +407,8 @@ def e_access(path, mode):
 # present) of the bfid.
 def get_csc(ticket_or_bfid=None):
     # get a configuration server
-    config_host = enstore_functions.default_host()
-    config_port = enstore_functions.default_port()
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     fcc = file_clerk_client.FileClient(csc)
     

@@ -16,7 +16,7 @@ def eval(stuff):
 import Trace
 import e_errors
 import enstore_constants
-import enstore_functions
+import enstore_functions2
 import mover_constants
 
 FILE_FAMILY = 'file_family'
@@ -147,7 +147,7 @@ class EncpLine:
 		    if aDict.has_key(enstore_constants.MOVER_INTERFACE):
 			self.interface = aDict[enstore_constants.MOVER_INTERFACE]
 			# get rid of .fnal.gov
-			self.interface = enstore_functions.strip_node(self.interface)
+			self.interface = enstore_functions2.strip_node(self.interface)
 		    if aDict.has_key(enstore_constants.STORAGE_GROUP):
 			self.storage_group = aDict[enstore_constants.STORAGE_GROUP]
                 tmp_list = string.splitfields(tmp1, " ")
@@ -227,13 +227,13 @@ class EnStatus:
 	# 'mtime' not found in reads
 	if wrapper.has_key('mtime'):
 	    dict[enstore_constants.MODIFICATION] = \
-				       enstore_functions.format_time(wrapper['mtime'])
+				       enstore_functions2.format_time(wrapper['mtime'])
 	machine = wrapper['machine']
 	dict[enstore_constants.NODE] = self.unquote(machine[1])
 	dict[enstore_constants.USERNAME] = wrapper['uname']
 
 	times = mover['times']
-	dict[enstore_constants.SUBMITTED] = enstore_functions.format_time(times['t0'])
+	dict[enstore_constants.SUBMITTED] = enstore_functions2.format_time(times['t0'])
 
 	vc = mover['vc']
 	# 'file_family' is not present in a read, use volume family instead
@@ -289,12 +289,12 @@ class EnStatus:
 	    self.get_common_q_info(mover, enstore_constants.WORK, key, writekey, 
 				   readkey, dict)
  	    dict[enstore_constants.DEQUEUED] = \
-				enstore_functions.format_time(mover['times']['lm_dequeued'])
+				enstore_functions2.format_time(mover['times']['lm_dequeued'])
             self.text[key][enstore_constants.WORK].append(dict)
 
     def format_host(self, host):
         fhost = self.unquote(host)
-        return enstore_functions.strip_node(fhost)
+        return enstore_functions2.strip_node(fhost)
 
     # output the passed alive status
     def output_alive(self, host, state, time, key):
@@ -302,7 +302,7 @@ class EnStatus:
             self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [state, 
                                                     self.format_host(host), 
-                                                    enstore_functions.format_time(time)]
+                                                    enstore_functions2.format_time(time)]
 
     # output the passed alive status
     def output_error(self, host, state, time, key):
@@ -313,11 +313,11 @@ class EnStatus:
         if last_time == -1:
             ltime = enstore_constants.NO_INFO
         else:
-            ltime = enstore_functions.format_time(last_time)
+            ltime = enstore_functions2.format_time(last_time)
         if not self.text.has_key(key):
             self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [state, self.format_host(host),
-                                               enstore_functions.format_time(time), ltime]
+                                               enstore_functions2.format_time(time), ltime]
 
     # output the library manager suspect volume list
     def output_suspect_vols(self, ticket, key):

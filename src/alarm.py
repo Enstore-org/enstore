@@ -11,7 +11,7 @@ def eval(text):
     return _rexec.r_eval(text)
 
 # enstore imports
-import enstore_functions
+import enstore_functions2
 import enstore_constants
 import e_errors
 import Trace
@@ -101,7 +101,7 @@ class GenericAlarm:
         #         servername on node - text string
         # where servername and node are replaced with the appropriate values
         str = "%s on %s at %s - "%(self.source, self.host,
-                                  enstore_functions.format_time(self.timedate))
+                                  enstore_functions2.format_time(self.timedate))
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem

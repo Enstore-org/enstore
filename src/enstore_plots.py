@@ -10,7 +10,7 @@ import calendar
 import stat
 
 # enstore imports
-import enstore_functions
+import enstore_functions2
 import enstore_files
 import enstore_constants
 import Trace
@@ -171,7 +171,7 @@ def convert_to_jpg(psfile, file_name):
 
 # return the time to be included in the title of the plots
 def plot_time():
-    return "(Plotted: %s)"%(enstore_functions.format_time(time.time()),)
+    return "(Plotted: %s)"%(enstore_functions2.format_time(time.time()),)
 
 class EnPlot(enstore_files.EnFile):
 
@@ -657,7 +657,7 @@ class BpdMoverDataFile(EnPlot):
 	# see if there is a subdir to 'dir' that is bpd_per_mover.  if so, install
 	# our files there. only do this if told to.
 	if use_subdir:
-	    new_dir = enstore_functions.get_bpd_subdir(dir)
+	    new_dir = enstore_functions2.get_bpd_subdir(dir)
 	else:
 	    new_dir = dir
 	EnPlot.install(self, new_dir)

@@ -6,6 +6,7 @@ import stat
 import Trace
 import enstore_constants
 import enstore_functions
+import enstore_functions2
 import enstore_files
 import generic_client
 import enstore_up_down
@@ -73,7 +74,7 @@ def do_work(intf):
 
     # check if the alarm status should be overridden
     if enstore_constants.ANYALARMS in override_d_keys:
-	alarms[enstore_constants.ANYALARMS] = enstore_functions.override_to_status(\
+	alarms[enstore_constants.ANYALARMS] = enstore_functions2.override_to_status(\
 	    override_d[enstore_constants.ANYALARMS])
 
     system_tag = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
@@ -92,13 +93,13 @@ def do_work(intf):
 	if server != enstore_constants.CONFIGS:
 	    if config.configdict.has_key(server):
 		host = config.configdict[server].get('host', "")
-		host = enstore_functions.strip_node(host)
+		host = enstore_functions2.strip_node(host)
 	    else:
 		host = ""
 	else:
 	    # we need to get the config node from the environment
 	    host = os.environ.get("ENSTORE_CONFIG_HOST", "")
-	    host = enstore_functions.strip_node(host)
+	    host = enstore_functions2.strip_node(host)
 	if host:
 	    if nodes.has_key(host):
 		nodes[host].append(server)
