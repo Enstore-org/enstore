@@ -264,6 +264,28 @@ class EnstoreStatus:
         Trace.trace(12,"}format_lm_moverlist ")
 	return string
 
+    # format the mover status information
+    def format_moverstatus(self, ticket):
+        Trace.trace(12,"{format_moverstatus "+repr(ticket))
+	spacing = "\n    "
+	string = spacing+"Completed Xfers : "+repr(ticket["no_xfers"])
+	if ticket["state"] == "busy":
+	    p = "Current"
+	    if ticket["mode"] == "r":
+	        m = " reading"
+	    else:
+	        m = " writing"
+	elif ticket["state"] == "idle":
+	    p = "Last"
+	    m = " "
+
+	string = string+",  Current State : "+ticket["state"]+m
+	string = string+spacing+p+" Read : "+\
+	             repr(ticket["rd_bytes"])+" bytes,  "+p+" Write : "+\
+	             repr(ticket["wr_bytes"])+" bytes\n\n" 
+        Trace.trace(12,"}format_moverstatus ")
+	return string
+
     # output the blocksize info
     def output_blocksizes(self, info, prefix, key):
         Trace.trace(12,"{output_blocksizes ")
@@ -333,6 +355,15 @@ class EnstoreStatus:
 	                   verbose)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmqueues ")
+
+    # output the library manager queues
+    def output_moverstatus(self, ticket, key, verbose):
+        Trace.trace(12,"{output_moverstatus "+repr(ticket))
+	fs = self.format_moverstatus(ticket)
+	generic_cs.enprint(fs, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
+	                   verbose)
+	self.text[key] = self.text[key]+fs
+        Trace.trace(12,"}output_moverstatus")
 
     # output the library manager mover list
     def output_lmmoverlist(self, ticket, key, verbose):

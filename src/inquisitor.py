@@ -145,6 +145,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
         Trace.trace(13,"}mover_list ")
 
+    # get the movers' status
+    def mover_status(self, movc, (host, port), key, verbose):
+        Trace.trace(13,"{mover_status "+repr(host)+" "+repr(port))
+	try:
+	    stat = movc.status(self.alive_rcv_timeout, self.alive_retries)
+	    self.essfile.output_moverstatus(stat, key, verbose)
+	    self.htmlfile.output_moverstatus(stat, key, verbose)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.essfile.output_etimedout((host, port), "    ", key)
+	    self.htmlfile.output_etimedout((host, port), "    ", key)
+	    Trace.trace(13, "}mover_list - ERROR, timed out")
+	    return
+        Trace.trace(13,"}mover_status")
+
+
     # get the information from the configuration server
     def update_config_server(self, key, time, verbose=0):
         Trace.trace(12,"{update_config_server "+repr(self.essfile.file_name))
@@ -198,8 +213,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # get a client and then check if the server is alive
 	    movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
 	                                    t['port'])
-	    self.alive_status(movc, (t['host'], t['port']), key+self.trailer, \
-	                      time, key)
+	    ret = self.alive_status(movc, (t['host'], t['port']),\
+	                            key+self.trailer, time, key)
+	    if ret == self.did_it:
+	        self.mover_status(movc, (t['host'], t['port']), key, verbose)
 	elif t['status'][0] == 'KEYERROR':
 	    self.remove_key(key)
         Trace.trace(12,"}update_mover")
