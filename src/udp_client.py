@@ -24,7 +24,7 @@ TRANSFER_MAX=16384
 
 # see if we can allocate a specific port on a specific host
 def try_a_port(host, port) :
-    Trace.trace("try_a_port: trying udp port %s %s" % (host, port))
+    Trace.trace(20,"try_a_port: trying udp port %s %s" % (host, port))
     try:
 	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((host, port))
