@@ -278,7 +278,7 @@ def forked_write_to_hsm( self, ticket ):
 	    pass
 
 	t0 = time.time()
-	sts = bind_volume( self, ticket['fc']['external_label' )
+	sts = bind_volume( self, ticket['fc']['external_label'] )
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
