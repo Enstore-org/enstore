@@ -192,6 +192,18 @@ def format_class_for_print(object, name):
         pad = len(name) + 1 #length of string plus the = character
     return formated_string
 
+def get_file_size(file):
+    if file[:6] == "/pnfs/":
+        #Get the remote pnfs filesize.
+        pin = pnfs.Pnfs(file)
+        pin.get_file_size()
+        filesize = pin.file_size
+    else:
+        statinfo = os.stat(file)
+        filesize = statinfo[stat.ST_SIZE]
+
+    return filesize
+
 ############################################################################
 
 #Return the correct configuration server client based on the 'brand' (if
@@ -439,7 +451,70 @@ def filename_check(filename):
         return status
 
     return (e_errors.OK, None)
+
+#Make sure that the filesystem can handle the filesize.
+def filesystem_check(target_filesystem, inputfile):
+
+    #Get filesize
+    size = get_file_size(inputfile)
+
+    #Not all operating systems support this optional POSIX limit (ie OSF1).
+    try:
+        #get the maximum filesize the local filesystem allows.
+        bits = os.pathconf(os.path.split(target_filesystem)[0],
+                           os.pathconf_names['PC_FILESIZEBITS'])
+    except KeyError, detail:
+        return
+
+    filesystem_max = 2L**(bits - 1) - 1
     
+    #Compare the max sizes.
+    if size > filesystem_max:
+        raise e_errors.USERERROR, \
+              "Filesize (%s) larger than filesystem allows (%s)." \
+              % (size, filesystem_max)
+
+#Make sure that the wrapper can handle the filesize.
+def wrappersize_check(target_filesystem, inputfile):
+
+    #Get filesize
+    size = get_file_size(inputfile)
+
+    #Get the remote pnfs wrapper.  If the maximum size of the
+    # wrapper isn't in the configuration file, assume 2GB-1.
+    pout = pnfs.Pnfs(target_filesystem)
+    pout.get_file_family_wrapper()
+    # get a configuration server and the max filesize the wrappers allow.
+    csc = get_csc()
+    wrappersizes = csc.get('wrappersizes', {})
+    wrapper_max = wrappersizes.get(pout.file_family_wrapper,
+                                   MAX_FILE_SIZE)
+    
+    if size > wrapper_max:
+        raise e_errors.USERERROR, \
+              "Filesize (%s) larger than wrapper (%s) allows (%s)." \
+              % (size, pout.file_family_wrapper, wrapper_max)
+    
+#Make sure that the library can handle the filesize.
+def librarysize_check(target_filesystem, inputfile):
+
+    #Get filesize
+    size = get_file_size(inputfile)
+
+    #Determine the max allowable size for the given library.
+    pout = pnfs.Pnfs(target_filesystem)
+    pout.get_library()
+    csc = get_csc()
+    library = csc.get(pout.library + ".library_manager", {})
+    library_max = library.get('max_file_size', MAX_FILE_SIZE)
+    
+    #Compare the max sizes allowed for these various conditions.
+    if size > library_max:
+        raise e_errors.USERERROR, \
+              "Filesize (%s) larger than library (%s) allows (%s)." \
+              % (size, pout.library, library_max)
+
+
 # check the input file list for consistency
 def inputfile_check(input_files, bytecount=None):
     # create internal list of input unix files even if just 1 file passed in
@@ -536,10 +611,6 @@ def outputfile_check(inputlist, output, dcache):
     nfiles = len(inputlist)
     outputlist = []
 
-    # get a configuration server and the max filesize the wrappers allow.
-    csc = get_csc()
-    wrappersizes = csc.get('wrappersizes', {})
-    
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
     for i in range(nfiles):
@@ -599,58 +670,12 @@ def outputfile_check(inputlist, output, dcache):
             # the input file.  Also, make sure that the maximum size that
             # the wrapper uses is greater than the filesize.
             if "/pnfs/" == inputlist[i][:6]: #READS
-                #Get the remote pnfs filesize.
-                pin = pnfs.Pnfs(inputlist[i])
-                pin.get_file_size()
-
-                #get the maximum filesize the local filesystem allows.
-                bits = os.pathconf(os.path.split(outputlist[i])[0],
-                                   os.pathconf_names['PC_FILESIZEBITS'])
-                filesystem_max = 2L**(bits - 1) - 1
-
-                #Compare the max sizes.
-                if pin.file_size > filesystem_max:
-                    raise e_errors.USERERROR, \
-                          "Filesize (%s) larger than filesystem allows (%s)." \
-                          % (pin.file_size, filesystem_max)
-
+                filesystem_check(outputlist[i], inputlist[i])
             else: #WRITES
-                #get the maximum filesize the remote filesystem allows.
-                bits = os.pathconf(os.path.split(outputlist[i])[0],
-                                   os.pathconf_names['PC_FILESIZEBITS'])
-                filesystem_max = 2L**(bits - 1) - 1
+                librarysize_check(outputlist[i], inputlist[i])
+                wrappersize_check(outputlist[i], inputlist[i])
+                filesystem_check(outputlist[i], inputlist[i])
 
-                #Get the local filesize.
-                statinfo = os.stat(inputlist[i])
-                size = statinfo[stat.ST_SIZE]
-
-                #Get the remote pnfs wrapper.  If the maximum size of the
-                # wrapper isn't in the configuration file, assume 2GB-1.
-                pout = pnfs.Pnfs(outputlist[i])
-                pout.get_file_family_wrapper()
-                wrapper_max = wrappersizes.get(pout.file_family_wrapper,
-                                               MAX_FILE_SIZE)
-
-                #Determine the max allowable size for the given library.
-                pout.get_library()
-                library = csc.get(pout.library + ".library_manager", {})
-                library_max = library.get('max_file_size', MAX_FILE_SIZE)
-
-                #Compare the max sizes allowed for these various conditions.
-                if size > wrapper_max:
-                    raise e_errors.USERERROR, \
-                          "Filesize (%s) larger than wrapper (%s) allows " \
-                          "(%s)." % (size, pout.file_family_wrapper,
-                                     wrapper_max)
-                if size > library_max:
-                    raise e_errors.USERERROR, \
-                          "Filesize (%s) larger than library (%s) allows " \
-                          "(%s)." % (size, pout.library, library_max)
-                if size > filesystem_max:
-                    raise e_errors.USERERROR, \
-                          "Filesize (%s) larger than filesystem allows (%s)." \
-                          % (size, filesystem_max)
-                
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
             # In principle, this is already taken care of in the
@@ -948,7 +973,7 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         #Attempt to get the control socket connected with the mover.
         try:
             control_socket, mover_address, ticket = open_control_socket(
-                listen_socket, 1,verbose)#mover_timeout, verbose)
+                listen_socket, mover_timeout, verbose)
 
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
@@ -1192,6 +1217,12 @@ def set_outfile_permissions(ticket):
                                 "Unable to set permissions.")
 
 ############################################################################
+
+#This function prototype looking thing is here so that there is a defined
+# handle_retries() before internal_handle_retries() is defined.  While
+# python handles this without the pre-definition, mylint.py does not.
+def handle_retries(*args):
+    pass
 
 #This internal version of handle retries should only be called from inside
 # of handle_retries().
