@@ -345,6 +345,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     max_summon_attempts = 3
     summon_queue_index = 0
     suspect_volumes = [] # list of suspected volumes
+    max_suspect_movers = 2 # maximal number of movers in the suspect volume
 
     def __init__(self, libman, csc=0, verbose=0, \
                  host=interface.default_host(), port=interface.default_port()):
@@ -708,52 +709,61 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    print "SUSPECT VOLUME LIST BEFORE"
 	    pprint.pprint(self.suspect_volumes)
 	vol_found = 0
-	for item in self.suspect_volumes:
-	    if ticket['external_label'] == item['external_label']:
+	for vol in self.suspect_volumes:
+	    if ticket['external_label'] == vol['external_label']:
 		vol_found = 1
 		break
 	if not vol_found:
-	    item = {'external_label' : ticket['external_label'],
+	    vol = {'external_label' : ticket['external_label'],
 		    'movers' : []
 		    }
 	mv_found = 0
-	for mv in item['movers']:
+	for mv in vol['movers']:
 	    if ticket['mover'] == mv:
 		mv_found = 1
 	if not mv_found:
-	    item['movers'].append(ticket['mover'])
+	    vol['movers'].append(ticket['mover'])
 	if not vol_found:
-	    self.suspect_volumes.append(item)
+	    self.suspect_volumes.append(vol)
 	if debug: 
 	    print "SUSPECT VOLUME LIST AFTER"
 	    pprint.pprint(self.suspect_volumes)
 
         if w:
-	    if (debug or verbose): 
+	    if debug: 
 		print "unbind: work_at_movers"
-	    if verbose:
-		pprint.pprint(w)
+	    if debug: pprint(w)
             work_at_movers.remove(w)
         self.reply_to_caller({"work" : "nowork"})
 
-	# find next mover that can do this job
-	next_mover_found = 0
-	for i in range(0, mover_cnt):
-	    next_mover = idle_mover_next(self)
-	    if debug:
-		print "current mover", ticket['mover'], " next mover", next_mover
-	    if (next_mover != None) and \
-	       (next_mover['mover'] != ticket['mover']):
-		next_mover_found = 1
-		break
-	if next_mover_found:
-	    if debug: 
-		print "unilateral_unbind will summon mover ", next_mover
-	    summon_mover(self, next_mover)
-	else:
+	# TO DO:
+	# determine if all the movers are in suspect volume list and if
+	# yes send a regret: no more movers.
+	if len(vol['movers']) >= self.max_suspect_movers:
 	    w['status'] = (e_errors.NOMOVERS, None)
 	    pending_work.delete_job(w)
 	    send_regret(w)
+	else:
+	
+	    # find next mover that can do this job
+	    next_mover_found = 0
+	    for i in range(0, mover_cnt):
+		next_mover = idle_mover_next(self)
+		if debug:
+		    print "current mover", ticket['mover'], " next mover", next_mover
+		if (next_mover != None) and \
+		   (next_mover['mover'] != ticket['mover']):
+		    next_mover_found = 1
+		    break
+
+	    if next_mover_found:
+		if debug: 
+		    print "unilateral_unbind will summon mover ", next_mover
+		summon_mover(self, next_mover)
+	    else:
+		w['status'] = (e_errors.NOMOVERS, None)
+		pending_work.delete_job(w)
+		send_regret(w)
 	Trace.trace(3,"}unilateral_unbind ")
 
     # what is next on our list of work?

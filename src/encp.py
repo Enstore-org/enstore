@@ -701,6 +701,7 @@ def read_from_hsm(input, output,
 
     files_left = ninput
     retry_flag = 0
+    bytes = 0
     while files_left:
 
 	for vol in vols_needed.keys():
@@ -729,13 +730,14 @@ def read_from_hsm(input, output,
 		# It is dicey to time out, as it is probably legitimate to 
 		# wait for hours....
 
-	    files_left, bytes = read_hsm_files(listen_socket, submitted, 
+	    files_left, brcvd = read_hsm_files(listen_socket, submitted, 
 					       files_left, unique_id, 
 					       inputlist, outputlist, 
 					       file_size, pinfo, finfo, vinfo,
 					       tinfo, wrapper, chk_crc, d0sam,
 					       encp, maxretry, retry, verbose)
-	    print "FILES_LEFT ", files_left
+	    bytes = bytes + brcvd
+	    if verbose: print "FILES_LEFT ", files_left
 	    if files_left > 0:
 	      retry_flag = 1
 
@@ -883,6 +885,9 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
     Trace.trace(7,"{read_hsm_files:"+repr(inputlist))
     files_left = ninput
     bytes = 0
+    control_socket_closed = 0
+    data_path_socket_closed = 0
+    
     for waiting in range(0,submitted):
         if verbose>1:
             print "Waiting for mover to call back",\
@@ -985,6 +990,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                 mycrc = ECRC.ECRC(buf,mycrc)
             f.write(buf)
         data_path_socket.close()
+	data_path_socket_closed = 1
         f.close()
         fsize = l
 
@@ -1008,6 +1014,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         done_ticket = callback.read_tcp_socket(control_socket,\
                       "encp read_from_hsm, mover final dialog")
         control_socket.close()
+	control_socket_closed = 1
         Trace.trace(8,"read_hsm_files final dialog recieved")
 
         # make sure the mover thinks the transfer went ok
@@ -1143,6 +1150,10 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	    print "Done"
 	    pprint.pprint(done_ticket)
     
+    if not data_path_socket_closed:
+	data_path_socket.close()
+	f.close()
+    if not control_socket_closed: control_socket.close()
     Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
     return files_left, bytes
 	    
