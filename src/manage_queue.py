@@ -523,9 +523,6 @@ class Atomic_Request_Queue:
     def get(self, label='',location='', next=0):
         Trace.trace(21,'label %s location %s next %s'%
                     (label, location, next))
-        w,r=self.get_queue()
-        Trace.trace(21,"read %s"%(r,))
-        Trace.trace(21,"write %s"%(w,))
         if label:
             # see if label points to write queue
             if label in self.ref.keys():
