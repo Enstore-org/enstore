@@ -3,7 +3,7 @@
 %module _ftt
 
 %{
-    #include <ftt.h>
+#include <ftt.h>
 
 /*This is a hack*/
 /*copied from ftt_types.h*/
