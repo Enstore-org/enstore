@@ -19,6 +19,7 @@ import traceback
 import select
 import signal
 import random
+import pprint
 
 # enstore modules
 import setpath 
@@ -1917,6 +1918,9 @@ def read_from_hsm(input_files, output,
                                                             tinfo, t0,
                                                             chk_crc, maxretry,
                                                             verbose)
+                if verbose >= 5:
+                    print "Queued: ",
+                    pprint.pprint(request_list)
 
                 files_left = len(request_list)
                 bytes = bytes + brcvd
