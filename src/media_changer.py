@@ -1,16 +1,16 @@
 #! /usr/products/IRIX/python/x1_5/bin/python
 
 #########################################################################
-#									#
-# Media Changer server.							#
-# Media Changer is an abstract object representing a physical device or	#
-# operator who performs mounts / dismounts of tapes on tape drives.	#
-# At startup the media changer process takes its argument from the	#
-# command line and cofigures based on the dictionary entry in the	#
-# Configuration	Server for this type of Media Changer.			#
-# It accepts then requests from its clients and performs tape mounts	#
-# and dismounts								#
-#  $Id$								#
+#                                                                       #
+# Media Changer server.                                                 #
+# Media Changer is an abstract object representing a physical device or #
+# operator who performs mounts / dismounts of tapes on tape drives.     #
+# At startup the media changer process takes its argument from the      #
+# command line and cofigures based on the dictionary entry in the       #
+# Configuration Server for this type of Media Changer.                  #
+# It accepts then requests from its clients and performs tape mounts    #
+# and dismounts                                                         #
+#  $Id$                                                               #
 #########################################################################
 
 
@@ -25,7 +25,7 @@ import string
 
 # create confuguration client object
 
-# Conf = configuration_server_client() 
+# Conf = configuration_server_client()
 
 
 # media loader template class
@@ -34,99 +34,102 @@ class MediaLoaderMethods(DispatchingWorker) :
 # media changer types are described in the Configuration Server Dictionary
 
         # load volume into the drive
-	def load(self, 
-		 external_label,    # volume external label
-		 drive) :           # drive id
-	    raise "Failed to overload method in template"
+        def load(self,
+                 external_label,    # volume external label
+                 drive) :           # drive id
+	    self.reply_to_caller({'status' : 'ok'})
 
-	# unload volume from the drive
-	def unload(self, 
-		   external_label,  # volume external label
-		   drive) :         # drive id
-	    raise "Failed to overload method in template"
+        # unload volume from the drive
+        def unload(self,
+                   external_label,  # volume external label
+                   drive) :         # drive id
+	    self.reply_to_caller({'status' : 'ok'})
 
-	# wrapper method for client - server communication
-	def loadvol(self, 
-		    ticket):        # associative array containing volume and\
-	                            # drive id
-	    self.load(ticket['external_label'], ticket['drive_id'])
+        # wrapper method for client - server communication
+        def loadvol(self,
+                    ticket):        # associative array containing volume and\
+                                    # drive id
+            return self.load(ticket['external_label'], ticket['drive_id'])
 
-	# wrapper method for client - server communication
-	def unloadvol(self, ticket):
-	    self.unload(ticket['external_label'], ticket['drive_id'])
+        # wrapper method for client - server communication
+        def unloadvol(self, ticket):
+            return self.unload(ticket['external_label'], ticket['drive_id'])
 
 class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 
-	def load(self, external_label, drive) :
-		print 'I am load function and my type is IBM3494'
-		return {"status" : "ok"}
+        def load(self, external_label, drive) :
+                print 'I am load function and my type is IBM3494'
+                return {"status" : "ok"}
 
-	def unload(self, external_label, drive) :
-		print 'I am unload function and my type is IBM3494' 
-		return {"status" : "ok"}
+        def unload(self, external_label, drive) :
+                print 'I am unload function and my type is IBM3494'
+                return {"status" : "ok"}
 
- 
+
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
-	def load(self, external_label, tape_drive) :
-		print 'I am load function and my type is STK'
-		# try to get the Enstore path from the system environment
-		try:
-			bin_dir = os.environ['ENSTORE_DIR'] + "/" + "src"
-		except:
-			bin_dir = "."
+        def load(self, external_label, tape_drive) :
+                print 'I am load function and my type is STK'
+                # try to get the Enstore path from the system environment
+                try:
+                        bin_dir = os.environ['ENSTORE_DIR'] + "/" + "src"
+                except:
+                        bin_dir = "."
 
-#		stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
-#			    keys['acls_uname'] + " 'echo que mount " +\
-#				    external_label + " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-		stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
-				    keys['acls_uname'] + " 'echo mount " +\
-				    external_label + " " + \
-				    tape_drive + " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+#               stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
+#                           keys['acls_uname'] + " 'echo que mount " +\
+#                                   external_label + " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+                stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
+                                    keys['acls_uname'] + " 'echo mount " +\
+                                    external_label + " " + \
+                                    tape_drive + " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-		print 'command is:'
-		print stk_mount_command
+                print 'command is:'
+                print stk_mount_command
 
-		returned_message = os.popen(stk_mount_command, "r").readlines()
-		out_ticket = {"status" : "mount_failed"}
-		for line in returned_message:
-		    #print line
-		    if string.find(line, "mounted") != -1 :
-			print line   # TEST
-			out_ticket = {"status" : "ok"}
-			break
-		self.reply_to_caller(out_ticket)
+                returned_message = os.popen(stk_mount_command, "r").readlines()
+                out_ticket = {"status" : "mount_failed"}
+                for line in returned_message:
+                    #print line
+                    if string.find(line, "mounted") != -1 :
+                        print line   # TEST
+                        out_ticket = {"status" : "ok"}
+                        break
+                self.reply_to_caller(out_ticket)
                 print "status " + out_ticket["status"]
 
-	def unload(self, external_label, tape_drive) :
-		print 'I am unload function and my type is STK'
-		# try to get the Enstore path from the system environment
-		try:
-			bin_dir = os.environ['ENSTORE_DIR'] + "/" + "src"
-		except:
-			bin_dir = "."
+        def unload(self, external_label, tape_drive) :
+                print 'I am unload function and my type is STK'
+                # try to get the Enstore path from the system environment
+                try:
+                        bin_dir = os.environ['ENSTORE_DIR'] + "/" + "src"
+                except:
+                        bin_dir = "."
 
-		stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
-				    keys['acls_uname'] + " 'echo dismount " +\
-				    external_label + " " + tape_drive + \
-				    " force" +\
-				    " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+                stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
+                                    keys['acls_uname'] + " 'echo dismount " +\
+                                    external_label + " " + tape_drive + \
+                                    " force" +\
+                                    " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-		print 'command is:'
-		print stk_mount_command
+                print 'command is:'
+                print stk_mount_command
 
-		returned_message = os.popen(stk_mount_command, "r").readlines()
-		out_ticket = {"status" : "dismount_failed"}
-		for line in returned_message:
-		    print line
-		    if string.find(line, "dismount") != -1 :
-			print line   # TEST
-			out_ticket = {"status" : "ok"}
-			break
-		self.reply_to_caller(out_ticket)
+                returned_message = os.popen(stk_mount_command, "r").readlines()
+                out_ticket = {"status" : "dismount_failed"}
+                for line in returned_message:
+                    print line
+                    if string.find(line, "dismount") != -1 :
+                        print line   # TEST
+                        out_ticket = {"status" : "ok"}
+                        break
+                self.reply_to_caller(out_ticket)
                 print "status " + out_ticket["status"]
 
 
 class STK_MediaLoader(STK_MediaLoaderMethods, GenericServer, UDPServer) :
+    pass
+
+class RDD_MediaLoader(MediaLoaderMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
@@ -152,7 +155,7 @@ if __name__ == "__main__" :
         elif opt == "--config_list" :
             config_list = 1
         elif opt == "--help" :
-            print "python ",sys.argv[0], options
+            print "python ",sys.argv[0], options, "media changer"
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
@@ -161,6 +164,12 @@ if __name__ == "__main__" :
 
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
+
+    # bomb out if we don't have a media changer
+    if len(args) < 1 :
+        print "python ",sys.argv[0], options, "media changer"
+        print "   do not forget the '--' in front of each option"
+        sys.exit(1)
 
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
@@ -171,22 +180,17 @@ if __name__ == "__main__" :
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
     if args[0] == 'STK.media_changer' :
-	mls =  STK_MediaLoader((keys['host'], keys['port']), 
-			       STK_MediaLoaderMethods)
+        mls =  STK_MediaLoader((keys['host'], keys['port']),
+                               STK_MediaLoaderMethods)
+    elif args[0] == 'RDD.media_changer' :
+        mls =  RDD_MediaLoader((keys['host'], keys['port']),
+                               MediaLoaderMethods)
     else :
-	raise "Unknown media loader type"
+        raise "Unknown media loader type"
         sys.exit(1)
+
     mls.set_csc(csc)
     #mls.loadvol('VSN001', '0,0,9,1')
     #mls.unloadvol('VSN001', '0,0,9,1')
-    
+
     mls.serve_forever()
-    
-
-
-
-
-
-
-
-

@@ -24,7 +24,8 @@ configdict['fd0.mover'] = { 'status'  : 'ok', \
                             'device'  : './file.fake', \
                             'library' : 'activelibrary', \
                             'driver'  : 'RawDiskDriver', \
-                            'library_device' : '1'}
+                            'library_device' : '1', \
+                            'media_changer' : 'RDD.media_changer' }
 
 configdict['stk0.mover'] = { 'status'  : 'ok', \
                             'device'  : './redwood.fake', \
@@ -36,5 +37,11 @@ configdict['stk0.mover'] = { 'status'  : 'ok', \
 configdict['STK.media_changer'] = { 'status'  : 'ok', \
                                     'host' : 'hppc.fnal.gov', \
                                     'port' : 7506, \
+                                    'acls_host' : 'fntt', \
+                                    'acls_uname' : 'acsss' }
+
+configdict['RDD.media_changer'] = { 'status'  : 'ok', \
+                                    'host' : 'hppc.fnal.gov', \
+                                    'port' : 7507, \
                                     'acls_host' : 'fntt', \
                                     'acls_uname' : 'acsss' }

@@ -5,6 +5,10 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/bin/defaults
 
+libraries="activelibrary red50library"
+media_changers="STK.media_changer RDD.media_changer"
+movers="fd0.mover stk0.mover"
+
 # ok, this is terrible - but let's start always start up in the etc area so files are created there
 place=`pwd`
 cd $ENSTORE_DIR/etc
@@ -34,27 +38,25 @@ python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_p
 echo $! >> `uname -n`-file_clerk_pids
 
 # library manager
-echo "Starting library manager: activelibrary"
-python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
-echo $! >> `uname -n`-library_manager_pids
-
-echo "Starting library manager: red50library"
-python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port red50library &
-echo $! >> `uname -n`-library_manager_pids
+for i in $libraries; do
+  echo "Starting library manager: $i"
+  python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port $i &
+  echo $! >> `uname -n`-library_manager_pids
+done
 
 # stk media changer
-echo "Starting STK media changer"
-python $ENSTORE_DIR/src/media_changer.py --config_host $config_host --config_port $config_port STK.media_changer &
-echo $! >> `uname -n`-media_changer_pids
+for i in $media_changers; do
+  echo "Starting $i media changer"
+  python $ENSTORE_DIR/src/media_changer.py --config_host $config_host --config_port $config_port $i &
+  echo $! >> `uname -n`-media_changer_pids
+done
 
 # mover: raw disk mover
-#echo "Starting Raw Disk Mover"
-#python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
-#echo $! >> `uname -n`-mover_pids
-
-# mover: STK mover
-echo "Starting STK Tape Library Mover"
-python $ENSTORE_DIR/src/mover.py  --config_host $config_host --config_port $config_port stk0.mover & 
+for i in $movers; do
+  echo "Starting $i Mover"
+  python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port $i &
+  echo $! >> `uname -n`-mover_pids
+done
 
 # really need to add a check to make sure they are working
 sleep 1

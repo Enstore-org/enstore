@@ -17,8 +17,8 @@ class Mover :
         def __init__(self, config_host="localhost", config_port=7500):
             self.config_host = config_host
             self.config_port = config_port
-	    self.csc = configuration_client(self.config_host,self.config_port)
-	    self.u = UDPClient()
+            self.csc = configuration_client(self.config_host,self.config_port)
+            self.u = UDPClient()
 
         def move_forever(self, name) :
                 self.name = name
@@ -58,7 +58,7 @@ class Mover :
                 self.driver_name = mconfig["driver"]
                 self.device = mconfig["device"]
                 self.library = mconfig["library"]
-		self.media_changer = mconfig["media_changer"]
+                self.media_changer = mconfig["media_changer"]
 
                 # now get info asssociated with our volume manager
                 self.csc = configuration_client(self.config_host,self.config_port)
@@ -84,10 +84,12 @@ class Mover :
                                   `vticket["remaining_bytes"]` +
                                         ")")
 
-		print "Mover's name is " + self.name
-		print "creating meadia loader client: " + self.meadia_changer
-		ml = MediaLoaderClient(self.csc, self.meadia_changer)
-                lmticket = ml.load(self.external_label, self.library_device)
+                #print "Mover's name is " + self.name
+                #print "creating media loader client: " + self.media_changer
+                ml = MediaLoaderClient(self.csc, self.media_changer)
+                #print "external_label",self.external_label
+                #print "library_device",self.library_device
+                lmticket = ml.loadvol(self.external_label, self.library_device)
                 if lmticket["status"] != "ok" :
                         if lmticket["status"] == "media_in_another_device" :
                         # it is possible under normal functioning of the
@@ -107,12 +109,12 @@ class Mover :
 
         def unbind_volume(self, ticket) :
 
-		ml = MediaLoaderClient(self.csc, self.meadia_changer)
+                ml = MediaLoaderClient(self.csc, self.media_changer)
                 #
                 # do any rewind unload or eject operations on the device
                 #
                 self.driver.unload()
-                ticket = ml.unload(self.external_label,
+                ticket = ml.unloadvol(self.external_label,
                                                 self.library_device)
                 if ticket["status"] != "ok" :
                         raise "media loader cannot unload my volume"
@@ -339,7 +341,7 @@ if __name__ == "__main__" :
         elif opt == "--config_list" :
             config_list = 1
         elif opt == "--help" :
-	    print "python ",sys.argv[0], options,"mover_device"
+            print "python ",sys.argv[0], options,"mover_device"
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
