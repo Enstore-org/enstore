@@ -2305,7 +2305,7 @@ class File:
 			if file.has_key('complete_crc'):
 			    self.complete_crc = file['complete_crc']
 			else:
-			    self.complete_crc = None
+			    self.complete_crc = ''
 			self.p_path = self.path
 		else:
 			self.path = os.path.abspath(file)
@@ -2329,7 +2329,7 @@ class File:
 					self.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid, self.drive = finfo
-					self.complete_crc = None
+					self.complete_crc = ''
 				elif len(finfo) == 9:
 					self.volume,\
 					self.location_cookie,\
@@ -2338,7 +2338,7 @@ class File:
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					self.drive = "unknown:unknown"
-					self.complete_crc = None
+					self.complete_crc = ''
 					
 				# if self.p_path != self.path:
 				#	raise 'DIFFERENT_PATH'
@@ -2355,7 +2355,7 @@ class File:
 				self.pnfs_vid = ""
 				self.bfid = ""
 				self.drive = ""
-				self.complete_crc = None
+				self.complete_crc = ''
 				self.p_path = self.path
 		return
 
