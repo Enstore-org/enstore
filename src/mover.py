@@ -992,6 +992,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
         if not self.client_socket:
+            self.state = save_state
             ## Connecting to client failed
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
@@ -1446,6 +1447,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,"error in connect_client: %s" % (detail,))
+                return None, None
             # we expect a prompt call-back here
             Trace.trace(10, "select: listening for client callback")
             read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
