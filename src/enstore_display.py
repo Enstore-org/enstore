@@ -13,17 +13,16 @@ import string
 import sys
 import time
 
-
 debug = 1 
-
-###
-
 DEFAULTPORT = 60126
+
+CIRCULAR, LINEAR = range(2)
+layout = LINEAR
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
     a window of size w, h"""
-    return (x+1)*(w/2), (1-y)*(h/2)
+    return int((x+1)*(w/2)), int((1-y)*(h/2))
 
 def HMS(s):
     h = s / 3600
@@ -56,21 +55,21 @@ def strip_domain(hostname):
     return string.join(parts,'.')
 
 #######################################################################################
-#Most Of The Functions Will Be Handled By The Mover.
-# Its  functions include:
-#     draw() - Draws Most Features On The Movers
-#     update_state() - As The State Of The Movers Change, Display For State Will Be Updated
-#     update_timer() - Timer Associated W/State, Will Update For Each State
-#     load_tape() - Tape Gets Loaded Onto Mover:
-#                                  Gray Indicates Robot Recognizes Tape And Loaded It
-#                                  Orange Indicates When Client Actually Recognizes Tape     
-#     unload_tape() - Will Unload Tape To Side Of Each Mover, Ready For Robot To Remove F/Screen
-#     show_progress() - Indicates Progress Of Each Data Transfer; Is It Almost Complete?
-#     transfer_rate() - Rate At Which Transfer Being Sent; Calculates A Rate
-#     undraw() - Undraws The Features Fromthe Movers
-#     position() - Calculates The Position For Each Mover
-#     reposition() - Reposition Each Feature After Screen Has Been Moved
-#     __del__() - Calls undraw() Module And Deletes Features
+# ost of the functions will be handled by the mover.
+# its  functions include:
+#     draw() - draws most features on the movers
+#     update_state() - as the state of the movers change, display for state will be updated
+#     update_timer() - timer associated w/state, will update for each state
+#     load_tape() - tape gets loaded onto mover:
+#                                  gray indicates robot recognizes tape and loaded it
+#                                  orange indicates when mover actually recognizes tape     
+#     unload_tape() - will unload tape to side of each mover, ready for robot to remove f/screen
+#     show_progress() - indicates progress of each data transfer; is it almost complete?
+#     transfer_rate() - rate at which transfer being sent; calculates a rate
+#     undraw() - undraws the features fromthe movers
+#     position() - calculates the position for each mover
+#     reposition() - reposition each feature after screen has been moved
+#     __del__() - calls undraw() module and deletes features
 #
 ######################################################################################
 
@@ -101,7 +100,8 @@ class Mover:
         self.progress_percent_display = None
         # This is the numeric value.  "None" means don't show the progress bar.
         self.percent_done = None
-        self.removed = 0
+        self.x, self.y = self.position(N)
+        self.draw()
 
     def draw(self):
         x, y = self.x, self.y
@@ -142,41 +142,40 @@ class Mover:
 
     def load_tape(self, volume):
         self.volume = volume
-        self.volume.x, self.volume.y = self.x + 5, self.y + 2
+        x, y = self.volume_position(ejected=0)
+        self.volume.x, self.volume.y = x, y
         self.volume.draw()
 
     def unload_tape(self, volume):
-        if not self.volume or volume != self.volume.name: 
+        if not self.volume:
             print "Mover does not have this tape : ", volume
+            del volume
             return
-        k=self.index
-        N=self.N
-        angle=math.pi/(N-1)
-        i=(0+1J)
-        coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
-        x,y=coord.real,coord.imag
-        self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
-        self.volume.moveto(self.volume.x, self.volume.y)
-        self.volume.draw()
+        if volume != self.volume.name:
+            print "Mover does not have this tape : ", volume
+            del self.volume #XXX will this undraw it?
+            return
+        
+        self.volume.loaded = 0
+        self.volume.ejected = 1
+        x, y = self.volume_position(ejected=1)
+        self.volume.moveto(x, y)
 
-    def robot_move(self, volume_name, robot_command):
-        robot=self.display.robot
-        k=self.index
-        N=self.N
-        angle=math.pi/(N-1)
-        i=(0+1J)
-        if robot_command == 'moveto':
-            coord =.99+.5*cmath.exp(i*(math.pi/2 + angle*k))
-            x,y=coord.real,coord.imag
-        else: #remove the volume from the screen
-            coord =1.65+.5*cmath.exp(i*(math.pi/2 + angle*k))
-            x,y=coord.real, coord.imag
-            self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
-            self.volume.moveto(self.volume.x-100, self.volume.y)
-            self.volume.draw()
-        robot.x, robot.y = scale_to_display(x, y, self.display.width, self.display.height)
-        robot.moveto(robot.x, robot.y)
-        robot.draw()
+    def volume_position(self, ejected=0):
+        if layout==CIRCULAR:
+            k=self.index
+            N=self.N
+            angle=math.pi/(N-1)
+            i=(0+1J)
+            coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
+            x, y = scale_to_display(coord.real. coord.imag, self.display.width, self.display.height)
+        else:
+            if ejected:
+                x, y = self.x+self.width+5, self.y+2
+            else:
+                x, y = self.x+5, self.y+2
+        return x, y
+
 
     def show_progress(self, percent_done):
         x,y=self.x,self.y
@@ -229,7 +228,7 @@ class Mover:
         self.display.delete(self.progress_bar)
         self.display.delete(self.progress_percent_display)
     
-    def position(self, N):
+    def position_circular(self, N):
         k = self.index
         if N == 1: ## special positioning for a single mover.
             k = 1
@@ -238,19 +237,35 @@ class Mover:
             angle = math.pi / (N-1)
         i=(0+1J)
         coord=.75+.8*cmath.exp(i*(math.pi/2 + angle*k))
-        x, y=coord.real, coord.imag
-        self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
+        return scale_to_display(coord.real, coord.imag, self.display.width, self.display.height)
 
+    def position_linear(self, N):
+        k = self.index
+        if N == 1:
+            y = self.display.height / 2.
+        else:
+            y = (k+0.5) * self.display.height  / (N+1)
+        x = self.display.width - 200
+        return int(x), int(y)
+    
+    def position(self, N):
+        if layout==CIRCULAR:
+            return self.position_circular(N)
+        elif layout==LINEAR:
+            return self.position_linear(N)
+        else:
+            print "Unknown layout", layout
+            sys.exit(-1)
+
+    
     def reposition(self, N):
-        if self.volume:
-            volume_offset = self.volume.x-self.x, self.volume.y - self.y
         self.undraw()
-        self.position(N)
+        self.x, self.y = self.position(N)
         self.draw()
         if self.volume:
-            self.volume.undraw()
-            self.volume.x, self.volume.y = self.x+volume_offset[0], self.y + volume_offset[1]
-            self.volume.draw()
+            x, y = self.volume_position(self.volume.ejected)
+            self.volume.moveto(x,y)
+
         if self.connection:
             self.connection.undraw()
             self.connection.draw()
@@ -258,49 +273,56 @@ class Mover:
     def __del__(self):
         self.undraw()
 
-
-
-######################################
-#
-#                           CLASS: VOLUME
-#
-######################################
-
 class Volume:
-    def __init__(self, name, display):
+    width = 50
+    height = 11
+    def __init__(self, name, display, x=None, y=None):
         self.name = name
         self.display = display
+        self.outline = None
+        self.label = None
         self.loaded = 0
-    
+        self.ejected = 0
+        self.x, self.y = x, y
+        self.draw()
+        
+    def __setattr__(self, attr, value):
+        if attr == 'loaded':
+            if self.outline:
+                if value:
+                    tape_color, label_color = 'orange', 'white'
+                else:
+                    tape_color, label_color = 'grey', 'black'
+                self.display.itemconfigure(self.outline, fill=tape_color)
+                self.display.itemconfigure(self.label, fill=label_color)
+        self.__dict__[attr] = value
+        
     def draw(self):
         x, y = self.x, self.y
+        if x is None or y is None:
+            return
         if self.loaded:
-            tape_color = 'orange'
-            label_color= 'white'
+            tape_color, label_color = 'orange', 'white'
         else:
-            tape_color = 'grey'
-            label_color='black'
-        self.outline = self.display.create_rectangle(x, y, x+50, y+11, fill = tape_color)
-        self.label = self.display.create_text(x+25, y+6, text=self.name, fill = label_color)
-
+            tape_color, label_color = 'grey', 'black'
+        if self.outline or self.label:
+            self.undraw()
+        self.outline = self.display.create_rectangle(x, y, x+self.width, y+self.height, fill=tape_color)
+        self.label = self.display.create_text(x+self.width/2, 1+y+self.height/2, text=self.name, fill=label_color)
+        
     def moveto(self, x, y):
-        self.display.move(self.outline, x, y)
-        self.display.move(self.label, x, y)
+        self.undraw()
         self.x, self.y = x, y
+        self.draw()
 
     def undraw(self):
         self.display.delete(self.outline)
         self.display.delete(self.label)
-
+        self.outline =  self.label = None
+        
     def __del__(self):
         self.undraw()
 
-
-######################################
-#
-#                           CLASS: CLIENT
-#
-######################################
     
 class Client:
 
@@ -353,14 +375,6 @@ class Client:
         
     def __del__(self):
         self.undraw()
-
-
-
-######################################
-#
-#                           CLASS: CONNECTION
-#
-######################################
         
 class Connection:
     """ a line connecting a mover and a client"""
@@ -412,51 +426,6 @@ class Connection:
             self.dashoffset = new_offset
             self.display.itemconfigure(self.line,dashoffset=new_offset)
 
-
-
-######################################
-#
-#                           CLASS: ROBOT
-#
-######################################
-class Robot:
-    def __init__(self,display):
-        self.display = display
-        self.x, self.y = display.width, display.height/2
-        
-
-    def draw(self):
-       
-        self.robot_hand = self.display.create_line(self.x-125,self.y-60, self.x-65,self.y-60, fill='black', width = 15)
-        self.robot_arm = self.display.create_line(self.x-80,self.y, self.x-100,self.y-60, fill='black', width = 15)
-        self.robot_shoulder = self.display.create_line(self.x-80,self.y, self.x,self.y, fill='black', width = 15)
-        self.bolt = self.display.create_oval(self.x-68,self.y-8, self.x-88,self.y+8, fill='grey')
-
-    def moveto(self, x, y):
-        self.display.move(self.robot_hand, x,y)
-        self.display.move(self.robot_arm, x, y)
-        self.display.move(self.robot_shoulder, x, y)
-        self.display.move(self.bolt,x,y)
-        self.x, self.y=x,y
-    
-    def undraw(self):
-        self.display.delete(self.robot_shoulder)
-        self.display.delete(self.robot_arm)
-        self.display.delete(self.robot_hand)
-        self.display.delete(self.bolt)
-  
-    def __del__(self):
-        self.undraw()
-
-
-    
-
-
-######################################
-#
-#                           CLASS: TITLE
-#
-######################################
         
 class Title:
     def __init__(self, text, display):
@@ -475,6 +444,7 @@ class Title:
         self.tk_text = self.display.create_text(self.display.width/2, self.display.height/2,
                                                 text=self.text,
                                                 font=self.font, justify=CENTER)
+
     def animate(self, now=None):
         if now==None:
             now = time.time()
@@ -490,14 +460,8 @@ class Title:
         self.display.itemconfigure(self.tk_text, fill=fill)
     def __del__(self):
         self.display.delete(self.tk_text)
-        
 
-######################################
-#
-#                           CLASS: DISPLAY
-#
-######################################
-    
+        
 class Display(Canvas):
     """  The main state display """
     def __init__(self, master, **attributes):
@@ -527,15 +491,11 @@ class Display(Canvas):
         N = len(mover_names)
         for k in range(N):
             mover_name = mover_names[k]
-            ##These are coordinates on the unit circle
-            M = Mover(mover_name, self, index=k, N=N)
-            self.movers[mover_name] = M
-            M.position(N)
-            M.draw()
+            self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
     def reposition_movers(self):
         items = self.movers.items()
-        N = len(items) #need this to determine angle
+        N = len(items) #need this to determine positioning
         for mover_name, mover in items:
             mover.reposition(N)            
                 
@@ -592,11 +552,6 @@ class Display(Canvas):
                 self.clients[client_name] = client
                 client.waiting = 1
                 client.draw()
-            return
-
-        if words[0]=='robot':
-            self.robot=Robot(self)
-            self.robot.draw()
             return
 
         if words[0]=='title':
@@ -674,16 +629,6 @@ class Display(Canvas):
             mover.unload_tape(what_volume)
             return
 
-        if words[0] =='moveto':
-            what_volume = words[2]
-            mover.robot_move(what_volume,words[0])
-            return
-
-        if words[0] =='remove':
-            what_volume = words[2]
-            mover.robot_move(what_volume,words[0])
-            return
-        
         if len(words)<4: 
             print "Error, bad command", command
             return
