@@ -19,6 +19,7 @@ fi
 rip1=131.225.164.1
 rip2=131.225.164.2
 fntt=131.225.164.13
+rip9=131.225.164.15
 
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 case $drive in
@@ -37,6 +38,8 @@ case $drive in
   de15) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
 # de15) cmd="rsh $fntt 'mt -f /dev/rmt/2cn     $command 2>&1; echo \$?'" ;;
 # de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d4n $command 2>&1; echo \$?'" ;;
+  stk1) cmd="rsh $rip9 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  stk2) cmd="rsh $rip9 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
 esac
 cmd2="x=\"\`$cmd\`\""
 echo $cmd
@@ -61,3 +64,4 @@ done
 stat=`echo $x | awk '{print $NF}'`;
 echo $x
 exit $stat
+/dev/rmt/tps2d1n
