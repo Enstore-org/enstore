@@ -1,34 +1,35 @@
 #!/usr/bin/env python
+'''
+restore.py
 
-# restore.py
-#
-# Restore database files from backup
-# This procedure trusts journal files. That is, using a good backup and
-# replaying all the journal records since then should be able to put
-# database files to a consistent state when the last journal was
-# written.
-#
-# restore.py can be invoked with no arguments other than normal enstore
-# common arguments (--config-host, ... etc.) or with a specific time
-# as argument. In the former case, restore.py uses only the last backup,
-# while in the latter case, it starts from the first backup that was
-# taken after the specified time and all the journals after that backup.
-#
-# The usage is as follows:
-#
-# restore.py [enstore-arguments] [month day time [year]]
-#
-# If a time is specified, at least month day and time must be specified.
-# year is optional and is only useful if you take backup from previous
-# years, which is unlikely available.
-#
-# The format of time could be one of the followings:
-#
-# hh, hh:mm, hh:mm:ss
-#
-# Since backup is taken at 10 minutes after each hour, hh is sufficient.
-# The other formats are good for restoring from non-scheduled backup,
-# such as the ones that were done manually for maintanence reasons.
+Restore database files from backup
+This procedure trusts journal files. That is, using a good backup and
+replaying all the journal records since then should be able to put
+database files to a consistent state when the last journal was
+written.
+
+restore.py can be invoked with no arguments other than normal enstore
+common arguments (--config-host, ... etc.) or with a specific time
+as argument. In the former case, restore.py uses only the last backup,
+while in the latter case, it starts from the first backup that was
+taken after the specified time and all the journals after that backup.
+
+The usage is as follows:
+
+restore.py [enstore-arguments] [month day time [year]]
+
+If a time is specified, at least month day and time must be specified.
+year is optional and is only useful if you take backup from previous
+years, which is unlikely available.
+
+The format of time could be one of the followings:
+
+hh, hh:mm, hh:mm:ss
+
+Since backup is taken at 10 minutes after each hour, hh is sufficient.
+The other formats are good for restoring from non-scheduled backup,
+such as the ones that were done manually for maintanence reasons.
+'''
 
 import db
 import os
@@ -50,6 +51,19 @@ import hostaddr
 #		probably with truncated precision
 
 def ddiff(o1, o2):
+	'''
+ddiff(o1, o2) -- comparing two objects
+		Complex objects, like lists and dictionaries, are
+		compared recurrsively.
+
+		Simple objects are compared by their text representation
+		Truncating error may happen.
+		This is on purpose so that internal time stamp, which is
+		a float, will not be considered different from the same
+		in journal file, which is a text representation and
+		probably with truncated precision
+	'''
+
 	# different if of different types
 	if type(o1) != type(o2):
 		return 1
@@ -207,8 +221,8 @@ def revertDB(dbHome, jouHome):
 
 	cleanUp_jou(jouHome)
 
-# retriveBackup(dbHome, jouHome, bckHost, bckHome, when)
-#	actually retrive backup version of database and journal files
+# retrieveBackup(dbHome, jouHome, bckHost, bckHome, when)
+#	actually retrieve backup version of database and journal files
 #	from bckHost:bckHome
 #
 # "when" is a time stamp, in float, same as returned by time.time()
@@ -217,7 +231,18 @@ def revertDB(dbHome, jouHome):
 # after the specified time will be taken, as well as all the journal
 # files after that backup.
 
-def retriveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
+def retrieveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
+	'''
+retrieveBackup(dbHome, jouHome, bckHost, bckHome, when)
+	actually retrieve backup version of database and journal files
+	from bckHost:bckHome
+
+"when" is a time stamp, in float, same as returned by time.time()
+default value of "when", if unspecified, is -1, meaning taking the
+last backup. If when is specified, the first backup that was taken
+after the specified time will be taken, as well as all the journal
+files after that backup.
+	'''
 
 	compress_op = ""
 
@@ -498,7 +523,7 @@ if __name__ == "__main__":		# main
 	# retriving the backup
 
 	print "Retriving database from backup ..."
-	retriveBackup(dbHome, jouHome, bckHost, bckHome, bckTime)
+	retrieveBackup(dbHome, jouHome, bckHost, bckHome, bckTime)
 	print "done retriving database from backup ..."
 
 	print cctime()
