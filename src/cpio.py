@@ -82,7 +82,7 @@ To extract:   cpio -idmv < archive
 
 def hex_string_to_signed_int(s):
     x=string.atol(s,16)
-    if x > 7fffffffL: x = x - 0x10000000L
+    if x > 0x7fffffffL: x = x - 0x10000000L
     return int(x)
 
 class Cpio :
