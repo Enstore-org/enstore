@@ -1,10 +1,10 @@
 #!/bin/sh
-set -u  # force better programming and ability to use check for not set
+#set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Starts enstore after a machine boots
 
-timeout=10
+timeout=4
 output=/home/enstore/`hostname`.startup
 estat=0
 
@@ -22,21 +22,28 @@ case "$1" in
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\.fnal\.gov//'`
         n2=`uname -n | sed -e 's/\.fnal\.gov//'`
         if [ "$n1" != "$n2" ]; then
-          for server in config log alarm; do
-            enstore $server --alive --timeout=$timeout 2>&1 | tee /dev/console >>$output
-            estat=$?
-            if [ $estat -ne 0 ] ; then
-              echo "`date`: $server not responding, can not continue..." 2>&1 | tee /dev/console >>$output
-              break
-            fi
-          done
+          if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c "0% packet loss"` -eq 1 ]; then
+            for server in config log alarm; do
+              enstore $server --alive --timeout=$timeout --retries=2 2>&1 | tee /dev/console >>$output
+              estat=$?
+              if [ $estat -ne 0 ] ; then
+                echo "`date`: $server not responding, can not continue..." 2>&1 | tee /dev/console >>$output
+                break
+              fi
+            done
+          else
+            echo "`date`: $ENSTORE_CONFIG_HOST does not respond to pings, therefore not starting Enstore automatically" 2>&1 | tee /dev/console >>$output
+            estat=1
+          fi
         fi
         if [ $estat -eq 0 ]; then
-        # we should be enstore when we start this up (at least not root)
-        if [ "`whoami`" = "root" ] ; then
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2" ; fi
-        else
+          # we should be enstore when we start this up (at least not root)
+          if [ "`whoami`" = "root" ] ; then
+            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
+          else
             enstore Estart $n2 
+          fi
+       
         fi
         ;;
 
@@ -50,7 +57,6 @@ case "$1" in
   install)
         . /usr/local/etc/setups.sh
         setup enstore
-        #set -xv
         x=/etc/rc.d/init.d/enstore-boot
         rm -f $x; cp $ENSTORE_DIR/bin/enstore-boot $x
         cd /etc/rc.d/rc3.d
