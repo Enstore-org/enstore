@@ -67,6 +67,9 @@ def go():
 	else:
 	    # put the files in alphabetical order
 	    logfile_names.sort()
+            # if the period was yesterday, we do not need today
+            if logfile == log_client.YESTERDAY:
+                logfile = [logfile[0],]
 	    # for each name, search the file for alarms and then each alarm using
 	    # the search string
 	    enstore_utils_cgi.agrep_html("%sALARM"%(Trace.MSG_TYPE,), search_string, 

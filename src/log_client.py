@@ -29,7 +29,8 @@ import option
 
 MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
-VALID_PERIODS = {"today":1, "week":7, "month":30, "all":-1}
+YESTERDAY = "yesterday"
+VALID_PERIODS = {"today":1, YESTERDAY:2, "week":7, "month":30, "all":-1}
 
 
 #############################################################################################
