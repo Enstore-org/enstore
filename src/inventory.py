@@ -478,11 +478,17 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
         (l, sg, quota, allocated, blank_v, written_v, deleted_v, used,
             active_f, deleted_f, unknown_f) = volume_quotas[key]
 
-        #For each library total up the numbers
-        requested = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
-                    int(library_dict.get(l, (0,) * 13)[2])
-        authorized = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
-                     int(library_dict.get(l, (0,) * 13)[3])
+        #For each library total up the numbers.
+        try: # total up the number of requested tapes.
+            requested = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
+                        int(library_dict.get(l, (0,) * 13)[2])
+        except ValueError:
+            requested = int(library_dict.get(l, (0,) * 13)[2])
+        try: # total up the number of authorized tapes.
+            authorized = int(authorized_tapes.get((l, sg), (0,) * 2)[1]) + \
+                         int(library_dict.get(l, (0,) * 13)[3])
+        except ValueError:
+            authorized = int(library_dict.get(l, (0,) * 13)[3])
         try:
             quota = int(quota) + int(library_dict.get(l, (0,) * 13)[4])
         except:
