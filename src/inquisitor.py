@@ -423,7 +423,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def suspect_vols(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
-	except (socket.error, "TCP connection closed"), detail:
+	except "TCP connection closed", detail:
 	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
 								   detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -443,7 +443,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def work_queue(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.getwork())
-	except (socket.error, "TCP connection closed"), detail:
+	except "TCP connection closed", detail:
 	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
@@ -462,7 +462,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def lm_state(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.get_lm_state())
-	except (socket.error, "TCP connection closed"), detail:
+	except "TCP connection closed", detail:
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
