@@ -51,6 +51,7 @@ import exceptions
 import re
 import statvfs
 import types
+import gc
 
 # enstore modules
 import Trace
@@ -579,6 +580,18 @@ def is_read(ticket_or_interface):
 # if the transfer(s) is/are a write or not.
 def is_write(ticket_or_interface):
     return not is_read(ticket_or_interface)
+
+def collect_garbage():
+    #Force garbage collection while there is a lull in the action.  This
+    # has nothing to do with opening the data tcp socket; just an attept
+    # at optimizing performance.
+    gc.collect()
+    #This seems more accurate than the return from gc.collect().
+    uncollectable_count = len(gc.garbage)
+    #NEVER FORGET THIS.  Otherwise gc.garbage still contains references.
+    del gc.garbage[:]
+    if uncollectable_count > 0:
+        Trace.message(1, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
 ############################################################################
 
@@ -2645,6 +2658,10 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
 
     udp_server.reply_to_caller(udp_ticket)
 
+    #It will most likely be a while, so this would be a good time to
+    # perform this maintenance.
+    collect_garbage()
+
     return udp_ticket
 
 ##############################################################################
@@ -3112,6 +3129,10 @@ def submit_one_request(ticket):
                       "submit_one_request: %s: %s" % (e_errors.MALFORMED,
                                                       str(ticket)))
 
+    #It will most likely be a while, so this would be a good time to
+    # perform this maintenance.
+    collect_garbage()
+    
     return responce_ticket
 
 ############################################################################
@@ -3140,7 +3161,6 @@ def open_local_file(work_ticket, e):
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
         else:
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
-            
         return done_ticket
 
     #Try to grab the os stats of the file.
@@ -3635,8 +3655,8 @@ def set_outfile_permissions(ticket):
 #This internal version of handle retries should only be called from inside
 # of handle_retries().
 def internal_handle_retries(request_list, request_dictionary, error_dictionary,
-                            listen_socket, route_server, control_socket,
-                            encp_intf):
+                            encp_intf, listen_socket = None,
+                            udp_server = None, control_socket = None):
     #Set the encp_intf to internal test values to two.  This means
     # there is only one check made on internal problems.
     remember_retries = encp_intf.max_retry
@@ -3645,9 +3665,10 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
     encp_intf.max_resubmit = 2
     
     internal_result_dict = handle_retries(request_list, request_dictionary,
-                                          error_dictionary, listen_socket,
-                                          route_server, control_socket,
-                                          encp_intf)
+                                          error_dictionary, encp_intf,
+                                          listen_socket = listen_socket,
+                                          udp_server = udp_server,
+                                          control_socket = control_socket)
 
     #Set the max resend parameters to original values.
     encp_intf.max_retry = remember_retries
@@ -3656,8 +3677,8 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
     return internal_result_dict
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
-                   listen_socket, route_server, control_socket, encp_intf):
-    pprint.pprint(request_dictionary)
+                   encp_intf, listen_socket = None, udp_server = None,
+                   control_socket = None, local_filename = None):
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
@@ -3746,12 +3767,61 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             socket_dict = {'status':socket_status}
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
+    lf_status = (e_errors.OK, None)
+    if local_filename:
+        try:
+            #First determine if stat-ing the file produces any errors.
+            stats = os.stat(local_filename)
+
+            #Check to make sure that the inode has not changed either.
+            # Note: This may not catch every user causing problems.  It is
+            # possible to delete a file, then recreate it (quickly) and
+            # the new version may have the same inode as the original.
+            original_inode = request_dictionary.get('local_inode', None)
+            current_inode = stats[stat.ST_INO]
+            if original_inode != None and \
+                   long(original_inode) != long(current_inode):
+                lf_status = (e_errors.FILE_MODIFIED,
+                             "Noticed the local file inode changed from "
+                             "%s to %s for file %s."
+                             % (original_inode, current_inode,
+                                local_filename))
+
+            #Check to make sure that the size has not changed too.
+            if is_read(request_dictionary): #read
+                original_size = 0
+                current_size = stats[stat.ST_SIZE]
+            else:  #write
+                original_size = request_dictionary.get('file_size', None)
+                current_size = stats[stat.ST_SIZE]
+            if long(current_size) != long(original_size):
+                lf_status = (e_errors.FILE_MODIFIED,
+                             "Noticed the local file size changed from "
+                             "%s to %s for file %s."
+                             % (original_size, current_size,
+                                local_filename))
+
+        except OSError, msg:
+            #These four error are likely due to an outside process/user.
+            if getattr(msg, "errno", None) in [errno.EACCES, errno.ENOENT,
+                                               errno.EFBIG, errno.EPERM]:
+                #Local File status.
+                lf_status = (e_errors.FILE_MODIFIED,
+                             "Noticed the local file changed: " + str(msg))
+            else:
+                #Local File status.
+                lf_status = (e_errors.OSERROR,
+                             "Noticed error checking local file:" + str(msg))
+
     #The volume clerk set the volume NOACCESS.
     if not e_errors.is_ok(vc_status):
         status = vc_status
     #Set status if there was an error recieved from control socket.
     elif not e_errors.is_ok(socket_status):
         status = socket_status
+    #Set the status if the local file could not be stat-ed.
+    elif not e_errors.is_ok(lf_status):
+        status = lf_status
     #Use the ticket status.
     else:
         status = dict_status
@@ -3856,9 +3926,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # are updated becuase they are passed in by reference.  There
         # are some cases (most notably when internal_handle_retries()
         # is used) that there isn't a socket passed in to change.
-        if request_list[0].get('route_selection', None) and route_server:
+        if request_list[0].get('route_selection', None) and udp_server:
             udp_callback_addr = get_udp_callback_addr(
-                encp_intf, route_server)[0] #Ignore the returned socket ref.
+                encp_intf, udp_server)[0] #Ignore the returned socket ref.
         else:
             udp_callback_addr = None
 
@@ -3905,8 +3975,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Now it get checked.  But watch out for the recursion!!!
             internal_result_dict = internal_handle_retries([req], req,
                                                            lm_responce,
-                                                           None, None,
-                                                           None, encp_intf)
+                                                           encp_intf)
 
             #If an unrecoverable error occured while resubmitting to LM.
             if e_errors.is_non_retriable(internal_result_dict['status'][0]):
@@ -3975,9 +4044,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #Now it get checked.  But watch out for the recursion!!!
         internal_result_dict = internal_handle_retries([request_dictionary],
                                                        request_dictionary,
-                                                       lm_responce,
-                                                       None, None,
-                                                       None, encp_intf)
+                                                       lm_responce, encp_intf)
 
         
         #If an unrecoverable error occured while retrying to LM.
@@ -4854,7 +4921,8 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     None, None, None, encp_intf)
+                                     encp_intf)
+
         if e_errors.is_ok(result_dict['status'][0]):
 	    ticket['status'] = result_dict['status']
             return ticket
@@ -4891,8 +4959,11 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         overall_start = time.time() #----------------------------Overall Start
 
         #Handle any possible errors that occured so far.
-        result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     listen_socket, route_server, None, e)
+        local_filename = work_ticket.get('wrapper', {}).get('fullname', None)
+        result_dict = handle_retries([work_ticket], work_ticket, ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server,
+                                     local_filename = local_filename)
 
         if e_errors.is_resendable(result_dict['status'][0]):
             continue
@@ -4924,9 +4995,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         done_ticket = open_local_file(work_ticket, e)
 
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, listen_socket, route_server,
-                                     None, e)
+        result_dict = handle_retries([work_ticket], work_ticket, done_ticket,
+                                     e, listen_socket = listen_socket,
+                                     udp_server = route_server)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
@@ -4986,8 +5057,10 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         status_ticket, listen_socket,
-                                         route_server, control_socket, e)
+                                         status_ticket, e,
+                                         listen_socket = listen_socket,
+                                         udp_server = route_server,
+                                         control_socket = control_socket)
             
             close_descriptors(control_socket, data_path_socket, in_fd)
             
@@ -5024,8 +5097,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
 
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
@@ -5045,8 +5119,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -5061,8 +5136,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -6582,7 +6658,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
             
             result_dict = handle_retries(requests_to_submit, req, ticket,
-                                         None, None, None, encp_intf)
+                                         encp_intf)
             if e_errors.is_retriable(result_dict['status'][0]):
                 continue
             elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -6638,9 +6714,12 @@ def read_hsm_files(listen_socket, route_server, submitted,
         overall_start = time.time() #----------------------------Overall Start
 
         done_ticket = request_ticket #Make sure this exists by this point.
+        local_filename = request_ticket.get('wrapper',{}).get('fullname', None)
         result_dict = handle_retries(request_list, request_ticket,
-                                     request_ticket, listen_socket,
-                                     route_server, None, e)
+                                     request_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server,
+                                     local_filename = local_filename)
 
         if e_errors.is_resendable(result_dict['status']):
             continue
@@ -6666,7 +6745,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
             result_dict = handle_retries(request_list, msg.ticket,
-                                         msg.ticket, None, None, None, e)
+                                         msg.ticket, e)
 
             if e_errors.is_resendable(result_dict['status']):
                 continue
@@ -6689,8 +6768,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
         done_ticket = open_local_file(request_ticket, e)
 
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         if e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
@@ -6742,8 +6822,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #Verify that everything went ok with the transfer.
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket, out_fd)
@@ -6769,8 +6850,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket, out_fd)
@@ -6789,8 +6871,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(request_list, request_ticket,
-                                     done_ticket, listen_socket,
-                                     route_server, None, e)
+                                     done_ticket, e,
+                                     listen_socket = listen_socket,
+                                     udp_server = route_server)
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket, out_fd)
             continue
@@ -7802,14 +7885,18 @@ def final_say(intf, done_ticket):
         exc, msg = sys.exc_info()[:2]
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
-        delete_at_exit.quit(1)
+        #delete_at_exit.quit(1)
+        return exit_status
 
     Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
+    return exit_status
+    
     #Quit safely by Removing any zero length file for transfers that failed.
-    delete_at_exit.quit(exit_status)
+    #delete_at_exit.quit(exit_status)
 
 
-
+#The main function takes the interface class instance as parameter and
+# returns an exit status.
 def main(intf):
     #Snag the start time.  t0 is needed by the mover, but its name conveys
     # less meaning.
@@ -7828,7 +7915,7 @@ def main(intf):
     # client).  Create them.
     status_ticket = clients(intf)
     if not e_errors.is_ok(status_ticket):
-        final_say(intf, status_ticket)
+        return final_say(intf, status_ticket)
 
     #Log/print the starting encp information.  This depends on the log
     # from the clients() call, thus it should always be after clients().
@@ -7877,15 +7964,15 @@ def main(intf):
         emsg = "ERROR: Can not process arguments %s" % (intf.args,)
         done_ticket = {'status':("USERERROR", emsg)}
 
-    final_say(intf, done_ticket)
+    return final_say(intf, done_ticket)
 
 
 
 def do_work(intf):
 
     try:
-        main(intf)
-        delete_at_exit.quit(0)
+        exit_status = main(intf)
+        delete_at_exit.quit(exit_status)
     except SystemExit:
         delete_at_exit.quit(1)
     #except:
