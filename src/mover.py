@@ -93,8 +93,9 @@ automatically.  It's confusing in this code when `eod' is a cookie vs a plain ol
 
 """
 
-
-
+WRAPPER_ERROR = 'WRAPPER_ERROR'
+CRC_ERROR = 'CRC_ERROR'
+BUF_SIZE_CH_ERR = 'Buffer error: changing blocksize of nonempty buffer'
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
@@ -283,7 +284,7 @@ class Buffer:
         if blocksize == self.blocksize:
             return
         if self.nbytes() != 0:
-            raise "Buffer error: changing blocksize of nonempty buffer"
+            raise BUF_SIZE_CH_ERR
         self._lock.acquire()
         self._freelist = []
         self.blocksize = blocksize
@@ -348,7 +349,7 @@ class Buffer:
                     header_size = self.wrapper.header_size(data)
                 except (TypeError, ValueError), msg:
                     Trace.log(e_errors.ERROR,"Invalid header %s" %(data[:self.wrapper.min_header_size]))
-                    raise "WRAPPER_ERROR"
+                    raise WRAPPER_ERROR
                 data_ptr = header_size
                 bytes_for_cs = min(bytes_read - header_size, self.bytes_for_crc)
             self.first_block = 0
@@ -380,10 +381,10 @@ class Buffer:
             except:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 Trace.handle_error()
-                raise "CRC_ERROR"
+                raise CRC_ERROR
             if crc_error:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
-                raise "CRC_ERROR"
+                raise CRC_ERROR
                 
         Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
         if data and fill_buffer:
@@ -419,7 +420,7 @@ class Buffer:
                     number_to_skip = self.header_size
                     #bytes_for_cs = bytes_for_cs - self.header_size
                     if len(data) <= self.header_size:
-                        raise "WRAPPER_ERROR"
+                        raise WRAPPER_ERROR
                     self.first_block = 0
                 #Trace.trace(22, "block_write: written in this shot %s" % (bytes_written,))
                 
@@ -451,7 +452,7 @@ class Buffer:
                             #            (self.sanity_crc, self.sanity_bytes))
                     except:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
-                        raise "CRC_ERROR"
+                        raise CRC_ERROR
             self._freespace(data)
             self.bytes_written = self.bytes_written + bytes_written
 
@@ -545,7 +546,7 @@ class Buffer:
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR,
                                   "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" % (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
-                        raise "CRC_ERROR"
+                        raise CRC_ERROR
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
@@ -1879,7 +1880,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
-                    except "CRC_ERROR":
+                    except CRC_ERROR:
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
@@ -2003,7 +2004,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(33,"bytes read %s"%(bytes_read,))
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-            except "CRC_ERROR":
+            except CRC_ERROR:
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                             {'outfile':self.current_work_ticket['outfile'],
                              'infile':self.current_work_ticket['infile'],
@@ -2251,7 +2252,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = 0
                 try:
                     bytes_written = self.buffer.stream_write(nbytes, driver)
-                except "CRC_ERROR":
+                except CRC_ERROR:
                     Trace.alarm(e_errors.ERROR, "CRC error in write client",
                                 {'outfile':self.current_work_ticket['outfile'],
                                  'infile':self.current_work_ticket['infile'],
@@ -2385,7 +2386,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
-            return 0
+            return 
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
@@ -2479,7 +2480,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.need_lm_update = (1, self.state, 1, None)
             self.send_error_msg(error_info=(e_errors.ENCP_GONE, "no client socket"), error_source=NETWORK) 
             #self.update_lm(reset_timer=1)
-            return 0
+            return
 
         self.t0 = time.time()
 
@@ -2539,7 +2540,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
             self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             self.state = self.save_state
-            return 0
+            return
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
         self.wrapper = None
@@ -2556,7 +2557,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             self.state = self.save_state
-            return 0
+            return 
         
         self.buffer.set_wrapper(self.wrapper)
         client_filename = self.current_work_ticket['wrapper'].get('fullname','?')
@@ -4145,7 +4146,7 @@ class MoverInterface(generic_server.GenericServerInterface):
         # bomb out if we don't have a mover
         if len(self.args) < 1 :
             self.missing_parameter(self.parameters())
-            self.print_help(),
+            self.print_help()
             os._exit(1)
         else:
             self.name = self.args[0]
@@ -4450,7 +4451,7 @@ class DiskMover(Mover):
                             #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
-                    except "CRC_ERROR":
+                    except CRC_ERROR:
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
@@ -4538,7 +4539,7 @@ class DiskMover(Mover):
                 t1 = time.time()
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-            except "CRC_ERROR":
+            except CRC_ERROR:
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                             {'outfile':self.current_work_ticket['outfile'],
                              'infile':self.current_work_ticket['infile'],
@@ -4662,7 +4663,7 @@ class DiskMover(Mover):
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
-            except "CRC_ERROR":
+            except CRC_ERROR:
                 Trace.alarm(e_errors.ERROR, "CRC error in write client",
                             {'outfile':self.current_work_ticket['outfile'],
                              'infile':self.current_work_ticket['infile'],
@@ -4786,7 +4787,7 @@ class DiskMover(Mover):
                 self.dismount_time = time.time() + self.default_dismount_delay
             self.need_lm_update = (1, self.state, 1, None)
             #self.update_lm(reset_timer=1)
-            return 0
+            return
 
         self.t0 = time.time()
 
@@ -4854,7 +4855,7 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
             self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             self.state = self.save_state
-            return 0
+            return
 
         self.buffer.set_blocksize(self.vol_info.get('blocksize',self.default_block_size))
         self.wrapper = None
@@ -4871,7 +4872,7 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             self.state = self.save_state
-            return 0
+            return 
         
         self.buffer.set_wrapper(self.wrapper)
         client_filename = self.current_work_ticket['wrapper'].get('fullname','?')
