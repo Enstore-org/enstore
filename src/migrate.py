@@ -394,22 +394,27 @@ def normal_file_family(ff):
 		return ff
 
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
-def compare_metadata(p, f):
+def compare_metadata(p, f, pnfsid = None):
 	if debug:
 		p.show()
 		log(`f`)
-	if p.bfid != f['bfid'] or \
-		p.volume != f['external_label'] or \
-		p.location_cookie != f['location_cookie'] or \
-		long(p.size) != long(f['size']) or \
-		p.pnfs_id != f['pnfsid']:
-		return "inconsistent"
+	if p.bfid != f['bfid']:
+		return "bfid"
+	if p.volume != f['external_label']:
+		return "external_label"
+	if p.location_cookie != f['location_cookie']:
+		return "location_cookie"
+	if long(p.size) != long(f['size']):
+		return "size"
+	if (pnfsid and f['pnfsid'] != pnfsid) or \
+	   (not pnfsid and p.pnfs_id != f['pnfsid']):
+		return "pnfsid"
 	# some of old pnfs records do not have crc and drive information
 	if p.complete_crc and long(p.complete_crc) != long(f['complete_crc']):
-		return "inconsistent (different crc)"
+		return "crc"
 	if p.drive and p.drive != "unknown:unknown" and \
 		p.drive != f['drive']:
-		return "inconsistent (different drive)"
+		return "drive"
 	return None
 
 # swap_metadata(bfid1, src, bfid2, dst) -- swap metadata for src and dst
@@ -435,12 +440,15 @@ def swap_metadata(bfid1, src, bfid2, dst):
 
 	# check if the metadata are consistent
 	res = compare_metadata(p1, f1)
+	# deal with already swapped file record
+	if res == 'pnfsid':
+		res = compare_metadata(p1, f1, p1.pnfs_id)
 	if res:
-		return "metadata %s %s are %s"%(bfid1, src, res)
+		return "metadata %s %s are inconsistent on %s"%(bfid1, src, res)
 
 	res = compare_metadata(p2, f2)
 	if res:
-		return "metadata %s %s are %s"%(bfid2, dst, res)
+		return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
 
 	# cross check
 	if f1['size'] != f2['size']:
@@ -474,8 +482,9 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	# check it again
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid2)
-	if compare_metadata(p1, f1):
-		return "swap_metadata(): %s %s has inconsistent metadata"%(bfid2, src)
+	res = compare_metadata(p1, f1)
+	if res:
+		return "swap_metadata(): %s %s has inconsistent metadata on %s"%(bfid2, src, res)
 
 	return None
 
