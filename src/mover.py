@@ -98,14 +98,16 @@ import udp_client
 import socket_ext
 import hostaddr
 
+##def p(*args):
+##    print args
+##Trace.trace = p
+
 MoverError = "Mover error"
 
-#def p(frame, typ, extra):
-#    print frame.f_code.co_filename, frame.f_lineno,  typ
-#sys.settrace(p)
 
-# for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
-#                            and convert back using just ticket['status']=m_err[exit_status]
+# for status via exit status (initial method), set using
+# exit_status=m_err.index(e_errors.WRITE_NOTAPE),
+# and convert back using just ticket['status']=m_err[exit_status]
 m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
           e_errors.WRITE_NOTAPE,
 	  e_errors.WRITE_TAPEBUSY,
@@ -624,7 +626,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
                 r=driver_object.rewind()
                 x=driver_object.tell()
-                Trace.log(e_errors.ERROR, "CGWDEBUG tell %s"%(x,))
+                Trace.log(e_errors.INFO, "CGWDEBUG tell %s"%(x,))
             ##end of paranoid checks    
             else:
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
