@@ -28,6 +28,7 @@ DEFAULT_SUSP_VOLS_THRESH = 3
 SERVER = "server"
 SUS_VOLS = "suspect_volumes"
 LM = "library_manager"
+ALARM = "alarm"
 
 SEVERITY = "severity"
 ROOT_ERROR = "root_error"
@@ -59,7 +60,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply to the client
         ret_ticket = { 'status' : (e_errors.OK, None),
-                       'alarm'  : repr(theAlarm.get_id()) }
+                       ALARM    : repr(theAlarm.get_id()) }
         self.send_reply(ret_ticket)
 
     # raise the alarm
@@ -80,13 +81,29 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         self.write_patrol_file()
         return theAlarm
 
-    def resolve_alarm(self, ticket):
+    def resolve(self, id):
         # an alarm is being resolved, we must do the following -
         #      remove it from our alarm dictionary
         #      rewrite the entire enstore_alarm file
         #      rewrite the enstore patrol file
         #      log this fact
-        pass
+        if self.alarms.has_key(id):
+            del self.alarms[id]
+            self.write_alarm_file()
+            self.write_patrol_file()
+            return (e_errors.OK, None)
+        else:
+            # don't know anything about this alarm
+            return (e_errors.NOALARM, None)
+
+    def resolve_alarm(self, ticket):
+        # get the unique identifier for this alarm
+        id = ticket.get(ALARM, 0)
+        status = self.resolve(id)
+
+        # send the reply to the client
+        ticket['status'] = status
+        self.send_reply(ticket)
         
     def ens_status(self, ticket):
         # we have been sent some status.  we must examine it for an error
@@ -128,24 +145,33 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                 "uid" : self.uid,
                 "pid" : self.pid }
     
-    def write_alarm_file(self, alarm):
-        self.alarm_file.open()
-        self.alarm_file.write(alarm)
+    def write_alarm_file(self, alarm=None):
+        if alarm:
+            self.alarm_file.open()
+            self.alarm_file.write(alarm)
+        else:
+            self.alarm_file.open('w')
+            self.write_file(self.alarm_file)
+            
         self.alarm_file.close()
 
     def write_patrol_file(self):
         if not self.alarms == {}:
-            keys = self.alarms.keys()
-            keys.sort()
             self.patrol_file.open()
-            for key in keys:
-                self.patrol_file.write(self.alarms[key])
-            else:
-                self.patrol_file.close()
+            self.write_file(self.patrol_file)
+            self.patrol_file.close()
         else:
             # there are no alarms raised.  if the patrol file exists, we
             # need to delete it
             self.patrol_file.remove()
+
+    def write_file(self, file):
+        # write all of the alarms to the specified file
+        if self.alarms:
+            keys = self.alarms.keys()
+            keys.sort()
+            for key in keys:
+                file.write(self.alarms[key])
 
     def get_log_path(self):
         log = self.csc.get("logserver")

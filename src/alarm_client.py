@@ -5,6 +5,7 @@ import os
 import pwd
 
 # enstore imports
+import alarm_server
 import configuration_client
 import generic_client
 import generic_cs
@@ -77,7 +78,7 @@ class AlarmClient(generic_client.GenericClient):
     def resolve(self, id, rcv_timeout=0, tries=0):
         # this alarm has been resolved.  we need to tell the alarm server
         ticket = {'work' : "resolve_alarm",
-                  'id'   : id}
+                  alarm_server.ALARM   : id}
         return self.u.send(ticket, self.server_address, rcv_timeout, tries)
 
     def ens_status(self, info, server="ALARMC", rcv_timeout=0, tries=0):
@@ -101,7 +102,6 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         self.alive_retries = 0
         self.alarm = 0
         self.resolve = 0
-        self.id = 0
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.patrol_file = 0
@@ -115,15 +115,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         Trace.trace(16,"{}options")
         return self.client_options() +\
 	       ["alarm", "severity=", "root_error=", "patrol_file", \
-                "resolve", "id="]
-
-    # we must have an id if the user is trying to resolve an alarm
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        if self.resolve and not self.id:
-            generic_cs.enprint("An alarm id must be entered (--id=value).")
-            self.print_help()
-            sys.exit(1)
+                "resolve="]
 
 if __name__ == "__main__" :
     Trace.init("ALARM client")
@@ -136,12 +128,12 @@ if __name__ == "__main__" :
     alc = AlarmClient(0, intf.verbose, intf.config_host, intf.config_port)
 
     if intf.alive:
-        ticket = alc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = alc.alive(intf.alive_rcv_timeout, intf.alive_retries)
         print repr(ticket)
 	msg_id = generic_cs.ALIVE
 
     elif intf.resolve:
-        ticket = alc.resolve(intf.id, intf.alive_rcv_timeout)
+        ticket = alc.resolve(intf.resolve)
         msg_id = generic_cs.CLIENT
 
     elif intf.got_server_verbose:
