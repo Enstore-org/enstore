@@ -548,7 +548,7 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         print "Read through line %d rate is %.1f keys/S. Read time is %s." % \
               (count_metadata, count_metadata/delta, parse_time(delta))
 
-        break #usefull for debugging
+#        break #usefull for debugging
 
     return count_metadata
 
