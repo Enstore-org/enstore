@@ -44,6 +44,7 @@ main(int argc, char **argv) {
 		case 'e':
 		case 'c':
 		case 's': 
+		case 'i':
 			if (argc != 3) {
 				usage();
 			}
@@ -88,6 +89,10 @@ main(int argc, char **argv) {
 	d->async_pf_parent = stdout;
 
 	switch(command){
+	case 'i':
+		printf("%s\n", d->prod_id );
+		res = 0;
+		break;
 	case 'e':
 		res = ftt_erase(d);
 		break;

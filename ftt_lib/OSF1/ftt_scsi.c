@@ -224,7 +224,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 
     ccb.cam_data_ptr = pcRdWr;
     ccb.cam_dxfer_len = nRdWr;
-    ccb.cam_timeout = delay <= 5 ? CAM_TIME_DEFAULT: CAM_TIME_INFINITY;
+    /* ccb.cam_timeout = delay <= 5 ? CAM_TIME_DEFAULT: CAM_TIME_INFINITY; */
+    ccb.cam_timeout = delay;
     ccb.cam_cdb_len = nCmd;
     ccb.cam_sense_ptr = (u_char *)acSense;
     ccb.cam_sense_len = SENSSIZ;
@@ -270,11 +271,10 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 
     gotstatus = ccb.cam_scsi_status != 0;
 
-    if (successful) {
-        res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
-    } else {
-        res = ftt_scsi_check(n,pcOp, 255, ccb.cam_resid);
+    if (! successful && ccb.cam_scsi_status == 0 ) {
+	ccb.cam_scsi_status = 255; /* bogus system error status number */
     }
+    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
 
     if (pcRdWr != 0 && nRdWr != 0){
 	DEBUG2(stderr,"Read/Write buffer:\n");

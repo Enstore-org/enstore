@@ -81,6 +81,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         cmd.uscsi_bufaddr=(caddr_t)pcRdWr;
         cmd.uscsi_buflen=nRdWr;
         cmd.uscsi_flags=USCSI_SILENT|(iswrite?USCSI_WRITE:USCSI_READ);
+	cmd.uscsi_timeout=delay;
 #ifdef ARQ
         cmd.uscsi_rqbuf = jgp_acSensebuf;
         cmd.uscsi_rqlen = 19;
@@ -94,7 +95,7 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 
         res = ioctl(fd, USCSICMD, &cmd);
 	DEBUG3(stderr, "USCSICMD ioctl returned %d, errno %d\n", res, errno);
-	if (-1 == res ) {
+	if (-1 == res && errno != 5 ) {
                 res = ftt_scsi_check(fd,pcOp, 255,
 				cmd.uscsi_buflen - cmd.uscsi_resid);
         } else {

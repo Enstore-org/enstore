@@ -39,9 +39,8 @@ ftt_open(const char *name, int rdonly) {
     drivid=ftt_get_driveid(basename, os);
     DEBUG2(stderr,"drivid is %s\n", drivid);
     if( 0 == drivid ){
-	ftt_eprintf("ftt_open: unable to determine tape drive type.\n");
-	ftt_errno=FTT_ENODEV;
-	return 0;
+	ftt_eprintf("ftt_open: Warning unable to determine tape drive type.\n");
+	drivid=strdup("unknown");
     }
 
     res = ftt_open_logical(basename, os, drivid, rdonly);

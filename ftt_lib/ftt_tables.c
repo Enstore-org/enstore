@@ -515,25 +515,13 @@ static char OSF1find[] =
    "IFS=\" \t\n\"\n\
     PATH=\"/usr/sbin:/sbin:/etc:/bin:/usr/bin\"\n\
     export PATH\n\
-    dnum=%d\n\
-    entry=0\n\
-    /usr/sbin/uerf -R -r 300 | \n\
-	while read line\n\
-	do\n\
-	    if [ $dnum = -1 ]\n\
-	    then\n\
-		echo $line | sed -e 's/.*[      ]\\([^ ][^ ]*\\)  *\\([^ ][^ ]*\\)).*/\\1/'\n\
-		exit\n\
-	    fi\n\
-	    case \"$line\" in\n\
-	    \\*\\*\\*\\**) 	entry=`expr $entry + 1`;;\n\
-	    tz*)  		dnum=`expr $dnum - 1` ;;\n\
-	    esac\n\
-	    if [ $entry -gt 1 ]\n\
-	    then\n\
-		exit\n\
-	    fi\n\
-	done";
+    minor_num=`ls -l /dev/rmt%dh | sed -e 's/.*,\([0-9]*\).*/\1/'`\n\
+    tmp=`expr $minor_num /  1024`\n\
+    bus=`expr $tmp / 16`\n\
+    target=`expr $tmp %% 16`\n\
+    scu show edt bus $bus target $target lun 0 full | \n\
+	    grep "Product Id" |\n\
+	    sed -e 's/.*: //'\n";
 
 static char SunOSfind_devices[] = 
    "#s\n\
@@ -827,7 +815,7 @@ ftt_dev_entry devtable[] = {
        { "%s/st@%d,0:l", 	  5,  0, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
-    {"OSF1", "EXB-8200", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"OSF1", "EXB-8200", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"dev/%*[nr]mt%d", "dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -844,7 +832,7 @@ ftt_dev_entry devtable[] = {
         { "dev/nrmt%da",         0,  0,0x00, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
 	{ 0 },
      }},
-    {"OSF1", "EXB-8500", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"OSF1", "EXB-8500", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"dev/%*[nr]mt%d","dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -864,7 +852,7 @@ ftt_dev_entry devtable[] = {
 	{ 0 },
      }},
 #ifdef OSF1KERNELTABLES
-    {"OSF1", "EXB-8505", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"OSF1", "EXB-8505", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"dev/%*[nr]mt%d","dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -884,7 +872,7 @@ ftt_dev_entry devtable[] = {
 	{ 0 },
      }},
 #else
-    {"OSF1", "EXB-8505", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"OSF1", "EXB-8505", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"dev/%*[nr]mt%d","dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
@@ -903,7 +891,7 @@ ftt_dev_entry devtable[] = {
 	{ 0 },
      }},
 #endif
-    {"OSF1", "DLT", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"OSF1", "DLT", "SCSI", FTT_FLAG_SUID_DRIVEID|FTT_FLAG_SUID_SCSI|FTT_FLAG_BSIZE_AFTER, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
 	"dev/%*[nr]mt%d","dev/rmt%d", 1, OSF1find,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */

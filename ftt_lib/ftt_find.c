@@ -153,22 +153,29 @@ ftt_get_driveid(char *basename,char *os) {
     if (i < 0) {
 	return 0;
     }
-    if ( devtable[i].drivid[1] == 's') {
-	sprintf(cmdbuf, devtable[i].drividcmd, string, id);
+    if ( devtable[i].flags & FTT_FLAG_SUID_DRIVEID ) {
+
+	sprintf(cmdbuf, "ftt_suid -i %s", basename );
+	pf = popen(cmdbuf, "r");
+	res = fgets(output,pf,255);
+	fclose(pf);
     } else {
-	sprintf(cmdbuf, devtable[i].drividcmd,*(int*)string, id);
-    }
-    DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
-    pf = popen(cmdbuf, "r");
-    if (pf) {
-	res = fgets(output, 255,pf);
-	pclose(pf);
-	if (res != 0) {
-	    output[strlen(output)-1] = 0;
-	    res = strdup(output);
+	if ( devtable[i].drivid[1] == 's') {
+	    sprintf(cmdbuf, devtable[i].drividcmd, string, id);
+	} else {
+	    sprintf(cmdbuf, devtable[i].drividcmd,*(int*)string, id);
 	}
+	DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
+	pf = popen(cmdbuf, "r");
+	if (pf) {
+	    res = fgets(output, 255,pf);
+	    pclose(pf);
+	}
+    }
+    if (res != 0) {
+	output[strlen(output)-1] = 0; /* stomp the newline */
+	res = strdup(output);
     }
     DEBUG3(stderr, "returning %s\n", res);
     return res;
 }
-
