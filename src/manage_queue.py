@@ -156,6 +156,12 @@ class SortedList:
             if key and not key in self.keys: self.keys.append(key)
             self.sorted_list.insort(request)
             stat = e_errors.OK
+        else:
+            # update routing_callback_addr
+            r, err = self.find(request.unique_id,output_file_name)
+            if r and r.ticket.has_key('routing_callback_addr') and request.ticket.has_key('routing_callback_addr'):
+                r.ticket['routing_callback_addr'] = request.ticket['routing_callback_addr']
+                print r.ticket
         return res, stat
 
     # get a record from the list
@@ -783,6 +789,7 @@ if __name__ == "__main__":
 
   t8={}
   t8["encp"]={}
+  t8['routing_callback_addr'] = ('131.225.215.253', 56728)
   t8["times"]={}
   t8['fc'] = {}
   t8['vc'] = {}
@@ -803,7 +810,30 @@ if __name__ == "__main__":
   print "RESULT",res
 
   pending_work.wprint()
-  #os._exit(0)
+  t9={}
+  t9["encp"]={}
+  t9['routing_callback_addr'] = ('131.225.215.253', 40000)
+  t9["times"]={}
+  t9['fc'] = {}
+  t9['vc'] = {}
+  t9['wrapper']={}
+  t9['wrapper']['size_bytes']=150L
+  t9["unique_id"]=8
+  t9["encp"]["basepri"]=450
+  t9["encp"]["adminpri"]=-1
+  t9["encp"]["delpri"]=50
+  t9["encp"]["agetime"]=0
+  t9["times"]["t0"]=time.time()
+  t9['work'] = 'write_to_hsm'
+  t9['vc']['wrapper'] = 'cpio_odc'
+  t9['vc']['storage_group'] = 'D0'
+  t9['vc']['file_family'] = 'family2'
+  t9['wrapper']['pnfsFilename']='file4'
+  res = pending_work.put(t9, t9["times"]["t0"])
+  print "RESULT",res
+  os._exit(0)
+  pending_work.wprint()
+  os._exit(0)
   print "enter volume: ",
   vol = raw_input()
   print "VOL",vol
