@@ -58,6 +58,14 @@ case $cmd in
     python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
+  addvol)
+    python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port --addvol $@
+    stat=$?
+    ;;
+  delvol)
+    python $ENSTORE_DIR/src/volume_clerk_client.py   --config_host $config_host --config_port=$config_port --delvol $@
+    stat=$?
+    ;;
 
 
   pnfs)

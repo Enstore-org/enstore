@@ -108,10 +108,12 @@ if __name__ == "__main__" :
     vol = ""
     vols = 0
     list = 0
+    addvol = 0
+    delvol = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port="\
-               ,"config_list","vols","vol=","list","help"]
+    options = ["config_host=","config_port=","config_list",
+               "vols","vol=","addvol","delvol","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -124,11 +126,19 @@ if __name__ == "__main__" :
             vols = 1
         elif opt == "--vol" :
             vol = value
+        elif opt == "--addvol" :
+            addvol = 1
+        elif opt == "--delvol" :
+            delvol = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
+            print "   addvol arguments: library, file family, media type"\
+                  +", volume name, capacity of this volume (bytes)"\
+                  +", remaining capacity of this volume (bytes)"
+            print "   delvol arguments: volume name"
             sys.exit(0)
 
     # bomb out if can't translate host
@@ -147,6 +157,28 @@ if __name__ == "__main__" :
         ticket = vcc.get_vols()
     elif vol :
         ticket = vcc.inquire_vol(vol)
+    elif addvol:
+        # bomb out if we don't have correct number of add vol arguments
+        if len(args) < 6 :
+            print "   addvol arguments: library, file family, media type"\
+                  +", volume name, capacity of this volume (bytes)"\
+                  +", remaining capacity of this volume (bytes)"
+            sys.exit(1)
+        ticket = vcc.addvol(args[0],              # library
+                            args[1],              # file family
+                            args[2],              # media type
+                            args[3],              # name of this volume
+                            string.atol(args[4]), # cap'y of this vol (bytes)
+                            string.atol(args[5])) # rem cap'y of this volume
+    elif delvol:
+        # bomb out if we don't have correct number of del vol arguments
+        if len(args) < 1 :
+            print "   delvol arguments: volume name"
+            sys.exit(1)
+        ticket = vcc.delvol(args[0])              # name of this volume
 
-    if list:
+    if ticket['status'] != 'ok' :
+        print "Bad status"
+        pprint.pprint(ticket)
+    elif list:
         pprint.pprint(ticket)

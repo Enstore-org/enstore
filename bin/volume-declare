@@ -1,6 +1,7 @@
 # Declare some new volumes
-python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_raw      floppy flop1  1400000 1400000
-python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_raw      floppy flop2  1400000 1400000
-python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_process  floppy flop22 1400000 1400000
-python $ENSTORE_DIR/src/envoltool.py addvol shelf         family_reserved floppy flop3  1400000 1400000
-python $ENSTORE_DIR/src/envoltool.py addvol shelf         family_reserved floppy flop4  1400000 1400000
+ecmd addvol --list --config_list activelibrary family_raw      floppy flop1  1400000 1400000
+ecmd addvol --list --config_list activelibrary family_raw      floppy flop2  1400000 1400000
+ecmd addvol --list --config_list activelibrary family_process  floppy flop22 1400000 1400000
+ecmd addvol --list --config_list shelf         family_reserved floppy flop3  1400000 1400000
+ecmd addvol --list --config_list shelf         family_reserved floppy flop4  1400000 1400000
+ecmd vcc --list --config_list --vols
