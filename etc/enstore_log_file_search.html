@@ -1,0 +1,43 @@
+<HTML><HEAD><TITLE>Enstore Log File Search</TITLE></HEAD>
+<BODY TEXT="#000066" BGCOLOR="#FFFFFF">
+
+
+<CENTER><IMG SRC="elfs.gif" ALIGN=center></CENTER>
+<BR>
+<P>
+<FONT SIZE=+3>Search the entered log file for the entered string.  Full 
+directory specification of the log file is not necessary.  Wildcards are 
+acceptable in the log file name. The log file name may be one of the following:
+<DL>
+<DT>today</DT>
+<DD>today's log file</DD>
+<DT>week</DT>
+<DD>the last 7 log files (if available) including today
+<DT>month</DT>
+<DD>the last 30 log files (if available) including today
+<DT>all</DT>
+<DD>all the log files
+</DL>
+<BR><BR>
+</FONT>
+
+<FORM METHOD="POST" ACTION="http://rip8:/cgi-bin/enstore_log_file_search.cgi">
+<TABLE ALIGN=LEFT NOBORDER NOSAVE>
+<TR>
+<TH>Log file Name</TH>
+<TH>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TH>
+<TH>Search string</TH>
+<TR>
+<TD><INPUT TYPE=TEXT NAME="logfile" VALUE="today"> </TD>
+<TD>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+<TD><INPUT TYPE=Text NAME="search" VALUE=""></TD>
+</TR>
+<TR><TD COLSPAN=3>&nbsp;</TD></TR>
+<TR><TD COLSPAN=3>&nbsp;</TD></TR>
+<TR>
+<TD ALIGN=LEFT><INPUT VALUE="Execute" TYPE="submit"></TD>
+<TD ALIGN=LEFT COLSPAN=2><INPUT VALUE="Reset" TYPE="reset"></TD>
+</TR>
+</TABLE>
+</FORM>
+</BODY></HTML>
