@@ -237,4 +237,3 @@ if __name__ == "__main__" :
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 
     iqc.check_ticket(ticket)
-
