@@ -41,17 +41,16 @@ config_host, config_port = enstore_utils_cgi.find_enstore()
 os.environ['ENSTORE_CONFIG_HOST'] = config_host
 os.environ['ENSTORE_CONFIG_PORT'] = config_port
 print '<h1><font color=#aa0000>', volume, '</font></h1>'
-res1 = os.popen('enstore vol --vol '+volume).readlines()
+res1 = os.popen('enstore vol --gvol '+volume).readlines()
 
 # extract information
 for i in res1:
     k, v = string.split(i, ':')
     if k == " 'last_access'":
-        last_access = float(v[:-2])
-        if last_access < 0:
+        if int(v[-4:]) < 1970:
             la_time = '(never)'
         else:
-            la_time = time.ctime(last_access)
+            la_time = v
     if k == " 'capacity_bytes'":
         capacity = long(v[:-2])
     if k == " 'remaining_bytes'":
