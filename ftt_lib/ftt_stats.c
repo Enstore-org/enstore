@@ -470,7 +470,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		/* remain_tape *can* go negative(!!), so deal with it */
 
 		if (remain_tape & 0x00800000) {
-		    remain_tape = 0x01000000 - remain_tape
+		    remain_tape = 0x01000000 - remain_tape ;
 		}
 
 		set_stat(b,FTT_REMAIN_TAPE,ftt_itoa((long)remain_tape),0);
