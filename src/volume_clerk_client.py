@@ -1009,16 +1009,6 @@ def do_work(intf):
                 intf.wrapper = "null"
             else:
                 intf.wrapper = "cpio_odc"
-        print 'intf.library =', intf.library
-        print 'intf.file_family =', intf.file_family
-        print 'intf.storage_group =', intf.storage_group
-        print 'intf.media_type =', intf.media_type
-        print 'intf.add =', intf.add
-	print 'capacity =', capacity
-        print 'intf.wrapper =', intf.wrapper
-        print 'eod_cookie =', cookie
-        print 'remaining_bytes =', remaining
-
         ticket = vcc.add(intf.library,
                          intf.file_family,
                          intf.storage_group,
