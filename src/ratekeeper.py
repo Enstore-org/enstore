@@ -143,7 +143,7 @@ class Ratekeeper:
                 continue
 
             num_0, denom_0 = prev
-            if denom != denom_0 or num<num_0:
+            if num < num_0: # or denom != denom_0
                 #consider this the beginning of a new transfer
                 continue
             bytes = num - num_0
