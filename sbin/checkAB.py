@@ -137,6 +137,7 @@ def error(msg):
 
 def check(f):
 	global e_count
+	e_count = 0
 	print f, '...',
 
 	# does file exist?
