@@ -91,7 +91,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    time.sleep( self.mc_config['delay'] )
 	    self.enprint( 'continuing with reply' )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
+	return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
     def unload(self,
@@ -102,7 +102,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
+	return (e_errors.OK, 0, None)
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
@@ -152,12 +152,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 #self.enprint( "MOUNT"+repr(ticket))
                 count=2
                 sts=("",0)
-                while count > 0 and sts[0] != e_errors.OK:
-                    count = count - 1
-                    sts = function(
-                        ticket['vol_ticket']['external_label'],
-                        ticket['drive_id'],
-                        ticket['vol_ticket']['media_type'])
+		while count > 0 and sts[0] != e_errors.OK:
+		    count = count - 1
+		    sts = function(
+			ticket['vol_ticket']['external_label'],
+			ticket['drive_id'],
+			ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe to dispatching_worker
                 #self.enprint( "STS"+repr(ticket))
                 Trace.trace(10, '<<< sts'+repr(sts))
