@@ -8,10 +8,7 @@ import string
 OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
 KEYERROR = 'KEYERROR'
-CONFIGDEAD = 'CONFIGDEAD'
 DOESNOTEXIST = 'DOESNOTEXIST'
-DOESNOTEXISTSTILLDONE = 'DOESNOTEXIST MARKED ANYWAY'
-EEXIST = 'EEXIST'
 WRONGPARAMETER = 'WRONGPARAMETER'
 NOWORK = 'nowork'
 NOMOVERS = 'nomovers'
@@ -32,31 +29,46 @@ NOALARM = 'NOALARM'
 SERVERDIED = 'SERVERDIED'
 CANTRESTART = 'CANTRESTART'
 DELETED = 'DELETED'
-NOSPACE = 'NOSPACE'
+NOSPACE = 'NOSPACE'                     #Encp: Output device full on read.
 INPROGRESS = 'INPROGRESS'
 VOL_SET_TO_FULL = 'VOLISSETTOFULL'
+ENCP_GONE       = 'ENCP_GONE'
+TCP_HUNG        = 'TCP_HUNG'
+MOVER_CRASH     = 'MOVER_CRASH'
+BELOW_THRESHOLD = 'BELOW_THRESHOLD'
+ABOVE_THRESHOLD = 'ABOVE_THRESHOLD'
+
+#V2 additions:
+MOVER_STUCK = 'MOVER_STUCK'
+MOVER_BUSY = 'MOVER_BUSY'
+CONFIGDEAD = 'CONFIGDEAD'               #Config server was not found.
+DOESNOTEXISTSTILLDONE = 'DOESNOTEXIST MARKED ANYWAY'
+#EEXIST = 'EEXIST'
 RECYCLE='RECYCLE_VOLUME'
 QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
-CRC_ERROR='CRC MISMATCH'
-NO_CRC_RETURNED = 'mover did not return CRC'
-NET_ERROR="NET_ERROR"
-RETRY="RETRY"
-TOO_MANY_RETRIES="TOO MANY RETRIES"
-TOO_MANY_RESUBMITS="TOO_MANY_RESUBMITS"
+CRC_ERROR='CRC MISMATCH'                #CRC error if caught by mover.
+CRC_ENCP_ERROR='CRC ENCP MISMATCH'      #CRC error if caught by encp.
+NO_CRC_RETURNED = 'mover did not return CRC'  #Encp warning if no crc returned.
+NET_ERROR="NET_ERROR"                   #Blanket error for caught socket.error.
+RETRY="RETRY"                           #Internal encp error.
+RESUBMITTING = "RESUBMITTING"           #Internal encp error.
+TOO_MANY_RETRIES="TOO MANY RETRIES"     #External encp error.
+TOO_MANY_RESUBMITS="TOO_MANY_RESUBMITS" #External encp error.
 BROKEN="BROKEN"
-EPROTO="PROTOCOL_ERROR"
-IOERROR = "IO ERROR"
+EPROTO="PROTOCOL_ERROR"                 #Used for many things...
+IOERROR = "IO ERROR"                    #Used for many things...
 ENSTOREBALLRED = "ENSTORE BALL IS RED"
 MALFORMED = "MALFORMED REQUEST"
-RESUBMITTING = "RESUBMITTING"
-VERSION_MISMATCH="VERSION MISMATCH"
-WRONG_PNFS_FILE_SIZE="CANNOT SET PNFS FILE SIZE"
+VERSION_MISMATCH="VERSION MISMATCH"     #Tells user to update encp.
+#WRONG_PNFS_FILE_SIZE="CANNOT SET PNFS FILE SIZE"
 LOCKED="locked"
 NOREAD="noread"
 NOWRITE="nowrite"
-OSERROR = "OS ERROR"
-PNFS_ERROR = "PNFS ERROR"
-DEVICE_ERROR = "DEVICE ERROR"
+OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
+PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
+
+#V3 additions:
+DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -144,17 +156,6 @@ MC_DRVNOTFOUND = 9993  # volume not found
 
 #---------------------------------------
 
-#Other Errors:
-ENCP_GONE       = 'ENCP_GONE'
-TCP_HUNG        = 'TCP_HUNG'
-MOVER_CRASH     = 'MOVER_CRASH'
-BELOW_THRESHOLD = 'BELOW_THRESHOLD'
-ABOVE_THRESHOLD = 'ABOVE_THRESHOLD'
-MOVER_STUCK     = 'MOVER_STUCK'
-
-#V2 additions:
-MOVER_BUSY = 'MOVER_BUSY'
-
 
 ## Retry policy:
 ## 3 strikes and you're out.  Also, locally-caught errors (permissions, no such file) are not retried.
@@ -169,17 +170,18 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          TOO_MANY_RESUBMITS, #attempts without trying
                          MALFORMED,
                          VERSION_MISMATCH, #ENCP to old
-                         WRONG_PNFS_FILE_SIZE,
+                         #WRONG_PNFS_FILE_SIZE,  #Obsolete???
                          LOCKED,  # Library is locked for the access
                          NOREAD,  # Library is locked for the read access
                          NOWRITE, # Library is locked for the write access
-                         NOSPACE,
+                         NOSPACE, # Local disk full on read.
+                         CRC_ERROR,  #Set by mover
                          )
 
-raise_alarm_errors = ( CRC_ERROR,
-                       UNKNOWNMEDIA,
-                       NOVOLUME,
-                       QUOTAEXCEEDED,
+raise_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
+                       #UNKNOWNMEDIA,
+                       #NOVOLUME,
+                       #QUOTAEXCEEDED,
                        DEVICE_ERROR, #EXfer read/write call stuck in kernel
                        )
 
