@@ -563,9 +563,14 @@ if __name__ == "__main__":
     Trace.trace(1,"mover called with args "+repr(sys.argv))
 
     # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
+    try:
+	config_host = os.environ['ENSTORE_CONFIG_HOST']
+    except:
+	(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    try:
+	config_port = os.environ['ENSTORE_CONFIG_PORT']
+    except:
+	config_port = "7500"
     config_list = 0
     list = 0
 
