@@ -208,7 +208,7 @@ def get_netstat_r():
             for i in range(len(titles)):
                 tmp[titles[i]] = info[i]
             output.append(tmp)
-    print output
+
     return output
 
 _cached_netstat = None
