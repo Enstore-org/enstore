@@ -19,7 +19,7 @@ Makefile.modules: Setup
 	cp ../Setup . ; \
 	if  [ "$(ACI_DIR)"x = x ];  then grep -v ACI Setup > x; mv x Setup; fi ;\
 	if  [ "$(DRIVESTAT_CLIENT_DIR)"x = x ];  then grep -v DRIVESTAT_CLIENT Setup > x; mv x Setup; fi ;\
-	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" ]; then \
+	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
 		cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
 		make -f Makefile.pre.in boot                    ; \
 	else \
@@ -33,7 +33,7 @@ Modules:
 	@echo "MAKING MODULES ================================"
 	cd SWIG && make 
 	@echo "in $$PWD"
-	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" ]; then \
+	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
 		make -f Makefile.modules ; \
 	else \
 		make -f Makefile.modules oldsharedmods; \
