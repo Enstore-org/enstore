@@ -75,7 +75,7 @@ class EnstoreStatus:
     def output_time(self):
         Trace.trace(12,"{output_time "+repr(self.file_name))
 	tm = time.localtime(time.time())
-	atm = "ENSTORE SYSTEM STATUS at %04d-%02d-%02d %02d:%02d:%02d\n" % (tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
+	atm = "\nENSTORE SYSTEM STATUS at %04d-%02d-%02d %02d:%02d:%02d\n" % (tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
  	self.file.write(atm)
         Trace.trace(12,"}output_time ")
 
@@ -103,73 +103,85 @@ class EnstoreStatus:
 	return regsub.gsub("\'", "", string)
         Trace.trace(12,"}unquote ")
 
-    # parse the 'at movers' and 'pending_work' library manager queues
-    def parse_lm_queues(self, work, spacing, string):
-        Trace.trace(13,"{parse_lm_queues")
-	prefix = ""
+    def parse_lm_queues(self, work, spacing, prefix):
+	Trace.trace(13,"{parse_lm_queues")
 	for mover in work:
 	    callback_addr = mover['callback_addr']
 	    encp = mover['encp']
-	    fc = mover['fc']
+	    # not found in pending work
+	    try:
+	        fc = mover['fc']
+	    except:
+	        pass
 	    times = mover['times']
 	    vc = mover['vc']
 	    wrapper = mover['wrapper']
 	    machine = wrapper['machine']
 
-            # now format it all up	
-	    # only exists in 'at mover' ticket
+	    string = prefix
+	    # not found in pending work
 	    try:
-	        string = string+prefix+mover['mover']+": "
+	        string = string+mover['mover']+", "
 	    except:
-	        string = string+prefix
-	    prefix = "            "
+	        pass
+	    string = string+"from NODE: "+self.unquote(machine[1])+" ("+\
+	             self.unquote(machine[0])+"),  PORT: "+\
+	             repr(callback_addr[1])
 	    if mover['work'] == 'write_to_hsm':
-	        string = string+" WRITE to "
+	        string = string+spacing+"WRITE to: "
 	    else:
-		string = string+"READ to "
-	    string = string+wrapper['fullname']+" ("+\
-	               repr(wrapper['size_bytes'])+" bytes)"
-	    string = string+spacing+"on device labeled: "+fc['external_label']
-	    string = string+spacing+"from "+self.unquote(machine[1])+" ("+\
-	             self.unquote(machine[0])+") port "+repr(callback_addr[1])
-	    string = string+spacing+"with a current priority of "+\
-	             repr(encp['curpri'])+", base priority of "+\
-	             repr(encp['basepri'])+","+spacing+\
-	             "   delta priority of "+repr(encp['delpri'])+\
-	             ", and agetime of "+repr(encp['agetime'])
-	    string = string+spacing+"file family is "+vc['file_family']
-	    # only exists in a write ticket
+		string = string+spacing+"READ to: "
+	    string = string+wrapper['fullname']+",  BYTES: "+\
+	             repr(wrapper['size_bytes'])
+	    # not found in pending work
 	    try:
-	        string = string+" and file family width is "+\
+	        string = string+spacing+"DEVICE LABEL: "+fc['external_label']+\
+	             ",  "
+	    except:
+	        string = string+spacing
+	    string = string+"FILE FAMILY: "+vc['file_family']
+	    # not found in reads
+	    try:
+	        string = string+",  FILE FAMILY WIDTH: "+\
 	                 repr(vc['file_family_width'])
 	    except:
 	        pass
-	    string = string+spacing+"job submitted at "+repr(times['t0'])
-	    # only exists in a 'at movers' ticket
+	    string = string+spacing+"PRIORITIES:  CURRENT "+\
+	             repr(encp['curpri'])+",  BASE "+repr(encp['basepri'])+\
+	             ",  DELTA "+repr(encp['delpri'])+"  and  AGETIME: "+\
+	             repr(encp['agetime'])
+	    string = string+spacing+"JOB SUBMITTED: "+repr(times['t0'])
+	    # not found in pending work
 	    try:
-	        string = string+", dequeued at "+repr(times['lm_dequeued'])
+	        string = string+",  DEQUEUED: "+repr(times['lm_dequeued'])
 	    except:
 	        pass
-	    # only exists in a read ticket
+	    # not found in reads
 	    try:
-	        string = string+spacing+"remaining bytes to read: "+\
-	                 repr(vc['remaining_bytes'])
+	        string = string+spacing+"FILE MODIFIED: "+\
+	                 repr(wrapper['mtime'])
+	        # not found in writes
+	        try:
+	            string = string+",  REMAINING BYTES: "+\
+	                     repr(vc['remaining_bytes'])
+	        except:
+	            pass
 	    except:
-	        pass
-	    # only exists in a write ticket
-	    try:
-	        string = string+spacing+"   and file modified at "+\
-	                 repr(wrapper['mtime'])+"\n"
-	    except:
-	        string = string+"\n"
-        Trace.trace(13,"}parse_lm_queues")
+	        # not found in writes
+	        try:
+	            string = string+spacing+"REMAINING BYTES: "+\
+	                     repr(vc['remaining_bytes'])
+	        except:
+	            pass
+	string = string+"\n"
+	Trace.trace(13,"}parse_lm_queues")
 	return string
 
     # format the library manager work queues for output
     def format_lm_queues(self, ticket):
         Trace.trace(12,"{format_lm_queues "+repr(ticket))
-	string = "    Work at "
-	spacing = "\n                    "
+	string = "    Work for: "
+	spacing = "\n              "
 	work = ticket['at movers']
 	if len(work) != 0:
 	    string = self.parse_lm_queues(work, spacing, string)
