@@ -6,6 +6,7 @@ import rexec
 import file_clerk_client
 import configuration_client
 import errno
+import getopt
 
 def readlayer(fullname,layer):
     (dir,fname)=os.path.split(fullname)
@@ -120,10 +121,21 @@ def readtag(fullname, tag):
     return t
 
 def usage():
-    print "usage %s bfid"%(sys.argv[0],)
+    print "usage %s [-q] bfid"%(sys.argv[0],)
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
+    try:
+        options, args = getopt.getopt(sys.argv[1:],'q')
+    except getopt.GetoptError:
+        usage()
+        sys.exit(-1)
+    print options, args
+    interactive = 1
+    for option in options:
+        if '-q' in option:
+            interactive = 0
+    sys.exit(0)
     if len(sys.argv) != 2:
         usage()
         sys.exit(-1)
@@ -154,8 +166,11 @@ if __name__ == "__main__":
     file = change_file_name(bfinfo['pnfs_name0'])
     l1 = readlayer(file, 1)[0]
     if bfinfo['bfid'] != l1:
-        print "l1 %s bfid %s"%(l1,bfinfo['bfid']) 
-        fix_it =  raw_input("fix? [y/n]")
+        print "l1 %s bfid %s"%(l1,bfinfo['bfid'])
+        if interactive:
+            fix_it =  raw_input("fix? [y/n]")
+        else:
+            fix_it = 'y'
         if fix_it == 'y':
             try:
                 write_layer(file, 1, bfinfo['bfid'])
@@ -172,7 +187,10 @@ if __name__ == "__main__":
         ff = readtag(file,'file_family')
         print "l4 %s bfinfo %s"%(l4, bfinfo)
         print "file family",ff
-        fix_it =  raw_input("fix? [y/n]")
+        if interactive:
+            fix_it =  raw_input("fix? [y/n]")
+        else:
+            fix_it = 'y'
         if fix_it == 'y':
             try:
                 value = (10*"%s\n")%(bfinfo['external_label'],
