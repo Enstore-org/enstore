@@ -90,7 +90,7 @@ def aml2_do_work(intf):
     tmp_lp_filename = "%s%s"%(intf.output, TMP)
     lp_file = enstore_files.EnFile(tmp_lp_filename)
     lp_file.open()
-    lp_file.filedes.write(str(lp))
+    lp_file.write(str(lp))
     lp_file.close()
     os.rename(tmp_lp_filename, intf.output)
 
