@@ -2101,7 +2101,7 @@ if __name__  ==  "__main__" :
         print "WARNING: running in test mode"
 
     for x in xrange(6, e.verbose+1):
-        Trace.add_print(x)
+        Trace.do_print(x)
 
     if e.data_access_layer:
         data_access_layer_requested.set()
