@@ -382,7 +382,7 @@ if __name__ == "__main__" :
     lm.set_csc(csc)
 
     # get a logger
-    logc = log_client.LoggerClient(keys["logname"], 'LIBM', 'logserver', 0)
+    logc = log_client.LoggerClient(csc,keys["logname"],  'logserver', 0)
     lm.set_logc(logc)
 
     while 1:
