@@ -47,21 +47,38 @@ if [ -r $done ]; then
     continue
 fi
 
-echo `date` Starting copy to B tape for $tape
-echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1"
-             $ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1
-rcb=$?
-if [ $rcb -ne 0 ]; then
-    echo `date` Trouble copying to b tape - touching $stop and $halt
-    touch $stop
-    touch $halt
-    continue
-fi
+#echo `date` Starting copy to B tape for $tape
+#echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1"
+#             $ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1
+#rcb=$?
+##if [ $rcb -ne 0 ]; then
+##    echo `date` Trouble copying to b tape - touching $stop and $halt
+##    touch $stop
+##    touch $halt
+##    continue
+##fi
+
+max_try=10
+try=0
+while [ $try -le $max_try ]; do
+  try=`expr $try + 1`
+
+  echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -V $tape 2>&1"
+               $ENSTORE_DIR/test/CDF_migration/migrate_tape -V $tape 2>&1
+  rcV=$?
+  if [ $rcV -ne 0 ]; then
+    echo `date` Trouble verifying b tape - trying again...
+    echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1"
+                 $ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape 2>&1
+  else
+    break
+  fi
+done
 
 echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -V $tape 2>&1"
              $ENSTORE_DIR/test/CDF_migration/migrate_tape -V $tape 2>&1
 rcV=$?
-if [ $rcb -ne 0 ]; then
+if [ $rcV -ne 0 ]; then
     echo `date` Trouble verifying b tape - touching $stop and $halt
     touch $stop
     touch $halt
