@@ -373,6 +373,8 @@ if [  $ACTION != "00"  ];then
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
+   # disable the action
+   /home/enstore/ipmi/dogdisarm
 elif [ $QUIET -ne 1 ]; then
    logit  "watchdog action, ok"
 fi
