@@ -65,7 +65,7 @@ def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
 
 def get_mover_status_filename():
-    return "movers.html"
+    return "enstore_movers.html"
 
 def read_schedule_file(html_dir=None):
     if html_dir is None:

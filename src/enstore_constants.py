@@ -121,6 +121,7 @@ AGETIME = "agetime"
 FILE = "file"
 INFILE = "infile"
 BYTES = "bytes"
+USERNAME = "username"
 MODIFICATION = "mod"
 NODE = "node"
 SUBMITTED = "submitted"
@@ -156,6 +157,7 @@ NEVER_ALIVE = -1
 
 LIBRARY_MANAGER = "library_manager"
 MOVER = "mover"
+NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
 		    LOG_SERVER, VOLUME_CLERK]

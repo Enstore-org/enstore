@@ -159,7 +159,7 @@ class EnStatus:
     def unquote(self, s):
         return string.replace(s,"'","")
 
-    def get_common_q_info(self, mover, writekey, readkey, dict):
+    def get_common_q_info(self, mover, worktype, key, writekey, readkey, dict):
 	dict[enstore_constants.ID] = mover['unique_id']
 	dict[enstore_constants.PORT] = mover['callback_addr'][1]
 	if mover['work'] == 'write_to_hsm':
@@ -188,6 +188,7 @@ class EnStatus:
 				       enstore_functions.format_time(wrapper['mtime'])
 	machine = wrapper['machine']
 	dict[enstore_constants.NODE] = self.unquote(machine[1])
+	dict[enstore_constants.USERNAME] = wrapper['uname']
 
 	times = mover['times']
 	dict[enstore_constants.SUBMITTED] = enstore_functions.format_time(times['t0'])
@@ -196,22 +197,24 @@ class EnStatus:
 	# 'file_family' is not present in a read, use volume family instead
 	if vc.has_key('volume_family'):
 	    dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
-	elif vc.has_key('file_family'):
+	if vc.has_key('file_family'):
 	    dict[enstore_constants.FILE_FAMILY] = vc['file_family']
 	    dict[enstore_constants.FILE_FAMILY_WIDTH] = \
 						 repr(vc.get('file_family_width', ""))
-	# 'fc' not found in pending work
 	fc = mover.get('fc', "")
-	# 'external_label' not found in pending work
-	if fc and fc.has_key('external_label'):
-	    if not (worktype is enstore_constants.PENDING and \
-	       dict[enstore_constants.WORK] is enstore_constants.WRITE):
-		dict[enstore_constants.DEVICE] = fc['external_label']
+	if fc:
+	    if fc.has_key('external_label'):
+		if not (worktype is enstore_constants.PENDING and \
+			dict[enstore_constants.WORK] is enstore_constants.WRITE):
+		    dict[enstore_constants.DEVICE] = fc['external_label']
+	    dict[enstore_constants.LOCATION_COOKIE] = fc.get(enstore_constants.LOCATION_COOKIE,
+							     None)
 
-    def get_pend_dict(self, mover, write_key, read_key):
+    def get_pend_dict(self, mover, key, write_key, read_key):
 	# 'mover' not found in pending work
-	dict = {enstore_constants.MOVER : " "}
-	self.get_common_q_info(mover, write_key, read_key, dict)
+	dict = {enstore_constants.MOVER : enstore_constants.NOMOVER}
+	self.get_common_q_info(mover, enstore_constants.PENDING, key, write_key, 
+			       read_key, dict)
 	if mover.has_key(enstore_constants.REJECT_REASON):
 	    dict[enstore_constants.REJECT_REASON] = \
 					    mover[enstore_constants.REJECT_REASON][0]
@@ -223,10 +226,10 @@ class EnStatus:
 						     enstore_constants.WRITE: []}
 	# first the read queue, preserve the order sent from the lm
 	for mover in work['read_queue']:
-	    dict = self.get_pend_dict(mover, writekey, readkey)
+	    dict = self.get_pend_dict(mover, key, writekey, readkey)
 	    self.text[key][enstore_constants.PENDING][enstore_constants.READ].append(dict)
 	for mover in work['write_queue']:
-	    dict = self.get_pend_dict(mover, writekey, readkey)
+	    dict = self.get_pend_dict(mover, key, writekey, readkey)
 	    self.text[key][enstore_constants.PENDING][enstore_constants.WRITE].append(dict)
 
     # information we want and put it in a dictionary
@@ -234,7 +237,8 @@ class EnStatus:
         self.text[key][enstore_constants.WORK] = []
         for mover in work:
             dict = {enstore_constants.MOVER : mover['mover']}
-	    self.get_common_q_info(mover, write_key, read_key, dict)
+	    self.get_common_q_info(mover, enstore_constants.WORK, key, writekey, 
+				   readkey, dict)
  	    dict[enstore_constants.DEQUEUED] = \
 				enstore_functions.format_time(mover['times']['lm_dequeued'])
             self.text[key][enstore_constants.WORK].append(dict)

@@ -270,9 +270,9 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def server_url(self, server, text, suburl=""):
 	if suburl:
-	    txt = "%s.html#%s"%(text, suburl)
+	    txt = "%s#%s"%(text, suburl)
 	else:
-	    txt = "%s.html"%(text,)
+	    txt = "%s"%(text,)
 	return HTMLgen.Href(txt, self.server_font(server))
 
     def server_heading(self, server):
@@ -572,19 +572,20 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	self.align = NO
 
     def read_q_list(self, mover):
-	aMover = mover.get(enstore_constants.MOVER, None)
-	return [mover['fc']['external_label'], mover[enstore_constants.INFILE], 
-		mover['wrapper']['machine'][1], 
-		aMover, mover['encp']['curpri'],
-		mover['fc'][enstore_constants.LOCATION_COOKIE]]
+	aMover = mover.get(enstore_constants.MOVER, enstore_constants.NOMOVER)
+	return [mover[enstore_constants.DEVICE], mover[enstore_constants.FILE], 
+		mover[enstore_constants.NODE], 
+		aMover, mover[enstore_constants.CURRENT],
+		mover[enstore_constants.LOCATION_COOKIE]]
 
     def write_q_list(self, mover):
-	device = mover['fc'].get('external_label', None)
-	aMover = mover.get(enstore_constants.MOVER, None)
-	return [device, mover[enstore_constants.INFILE], mover['wrapper']['machine'][1],
-		aMover, mover['encp']['curpri'],
-		mover['vc'][enstore_constants.FILE_FAMILY],
-		mover['vc'][enstore_constants.FILE_FAMILY_WIDTH]]
+	device = mover.get(enstore_constants.DEVICE, None)
+	aMover = mover.get(enstore_constants.MOVER, enstore_constants.NOMOVER)
+	return [device, mover[enstore_constants.FILE], 
+		mover[enstore_constants.NODE],
+		aMover, mover[enstore_constants.CURRENT],
+		mover[enstore_constants.FILE_FAMILY],
+		mover[enstore_constants.FILE_FAMILY_WIDTH]]
 
     def parse_queues(self):
 	# list of all vols currently being read or to be read
@@ -599,30 +600,30 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	if not self.data_dict[enstore_constants.WORK] == \
 	          enstore_constants.NO_WORK:
 	    for mover in self.data_dict[enstore_constants.WORK]:
-		if mover[enstore_constants.WORK] == enstore_constants.READ_FROM_HSM:
+		if mover[enstore_constants.WORK] == enstore_constants.READ:
 		    self.r_vols.append(self.read_q_list(mover))
-		    self.vols[mover['fc']['external_label']] = []
+		    self.vols[mover[enstore_constants.DEVICE]] = []
 		else:
 		    # this is a write
-		    if self.ff.has_key(mover['vc'][enstore_constants.FILE_FAMILY]):
-			self.ff[mover['vc'][enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
+		    if self.ff.has_key(mover[enstore_constants.FILE_FAMILY]):
+			self.ff[mover[enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
 		    else:
 			self.w_ff.append(self.write_q_list(mover))
-			self.ff[mover['vc'][enstore_constants.FILE_FAMILY]] = []
+			self.ff[mover[enstore_constants.FILE_FAMILY]] = []
 	# parse the pending read queue
-	for mover in self.data_dict[enstore_constants.PENDING]['read']:
-	    if self.vols.has_key(mover['fc']['external_label']):
-		self.vols[mover['fc']['external_label']].append(self.read_q_list(mover))
+	for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.READ]:
+	    if self.vols.has_key(mover[enstore_constants.DEVICE]):
+		self.vols[mover[enstore_constants.DEVICE]].append(self.read_q_list(mover))
 	    else:
 		self.r_vols.append(self.read_q_list(mover))
-		self.vols[mover['fc']['external_label']] = []
+		self.vols[mover[enstore_constants.DEVICE]] = []
 	# parse the write pending queue
-	for mover in self.data_dict[enstore_constants.PENDING]['write']:
-	    if self.ff.has_key(mover['vc'][enstore_constants.FILE_FAMILY]):
-		self.ff[mover['vc'][enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
+	for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.WRITE]:
+	    if self.ff.has_key(mover[enstore_constants.FILE_FAMILY]):
+		self.ff[mover[enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
 	    else:
 		self.w_ff.append(self.write_q_list(mover))
-		self.ff[mover['vc'][enstore_constants.FILE_FAMILY]] = []
+		self.ff[mover[enstore_constants.FILE_FAMILY]] = []
 
     def read_row(self, elem, print_device=0):
 	tr = HTMLgen.TR()
@@ -635,10 +636,11 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	else:
 	    # we do not need to print the volume label, again, must have done it before
 	    tr.append(empty_data())
-	if elem[3] is not None:
+	if elem[3] is not enstore_constants.NOMOVER:
 	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
-					     HTMLgen.Href("enstore_movers.html#%s"%(elem[3],), 
-							  elem[3])), html_escape='OFF'))
+					     HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+								   elem[3],), elem[3])), 
+				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
 	    # not include these.
 	    self.busy_movers.append(elem[3])
@@ -662,10 +664,11 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	else:
 	    # we do not need to print the file family, again, must have done it before
 	    tr.append(empty_data())
-	if elem[3] is not None:
+	if elem[3] is not enstore_constants.NOMOVER:
 	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
-					     HTMLgen.Href("enstore_movers.html#%s"%(elem[3],), 
-							  elem[3])), html_escape='OFF'))
+					     HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+								   elem[3],), elem[3])), 
+				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
 	    # not include these.
 	    self.busy_movers.append(elem[3])
@@ -708,24 +711,29 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 				   av['volume_family']]
 	else:
 	    if other_mv:
-		tr = HTMLgen.TR()
-		for hdr in ["Additional Mover", "State","Volume", "File Family"]:
-		    tr.append(self.make_th(hdr))
-		mv_table = HTMLgen.TableLite(tr, border=1, cellpadding=CELLP,
-					     align="LEFT", bgcolor=AQUA)
+		header_done = 0
 		movers = sort_keys(other_mv)
 		for mv in movers:
 		    if mv not in self.busy_movers:
+			if not header_done:
+			    tr = HTMLgen.TR()
+			    for hdr in ["Additional Mover", "State","Volume", "File Family"]:
+				tr.append(self.make_th(hdr))
+			    mv_table = HTMLgen.TableLite(tr, border=1, cellpadding=CELLP,
+					     align="LEFT", bgcolor=AQUA)
+			    header_done = 1
 			tr = HTMLgen.TR(HTMLgen.TD(mv))
 			tr.append(HTMLgen.TD(other_mv[mv][0]))
 			tr.append(HTMLgen.TD(other_mv[mv][1]))
 			ff = volume_family.extract_file_family(other_mv[mv][2])
 			tr.append(HTMLgen.TD(ff))
 			mv_table.append(tr)
-		table.append(empty_row(5))
-		table.append(empty_row(5))
-		table.append(HTMLgen.TR(HTMLgen.TD(mv_table, colspan=LM_COLS)))
-		table.append(empty_row(5))
+		else:
+		    if header_done:
+			table.append(empty_row(5))
+			table.append(empty_row(5))
+			table.append(HTMLgen.TR(HTMLgen.TD(mv_table, colspan=LM_COLS)))
+			table.append(empty_row(5))
 
     def main_table(self, table):
 	self.busy_movers = []
@@ -748,7 +756,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	else:
 	    for vol in vols:
 		txt = "%s%s-%s%s"%(str(HTMLgen.Href("tape_inventory/%s"%(vol[0],), vol[0])),
-				   NBSP, NBSP, str(HTMLgen.Href("enstore_movers.html#%s"%(vol[1],), vol[1])))
+				   NBSP, NBSP, str(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+									 vol[1],), vol[1])))
 		tr.append(HTMLgen.TD(txt, colspan=4, html_escape='OFF'))
 		table.append(tr)
 		tr = HTMLgen.TR(empty_data())
@@ -916,8 +925,9 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, 
 						html_escape='OFF')))
 	if qelem.has_key(enstore_constants.MOVER) and \
-	   not qelem[enstore_constants.MOVER] == ' ':
-	    tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(qelem[enstore_constants.MOVER],),
+	   not qelem[enstore_constants.MOVER] == enstore_constants.NOMOVER:
+	    tr.append(HTMLgen.TD(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+						       qelem[enstore_constants.MOVER],),
 					      qelem[enstore_constants.MOVER])))
 	else:
 	    tr.append(empty_data())
@@ -1206,7 +1216,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 						   str(mover), NBSP, NBSP,
 		       enstore_functions.strip_node(qelem[enstore_constants.NODE]),
 						   NBSP, NBSP, 
-						   qelem['wrapper']['uname'])
+						   qelem[enstore_constants.USERNAME])
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
     def work_at_movers_row(self, lm, cols):
@@ -1246,16 +1256,22 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 								cols))
 	return rows
 
-    def make_lm_pend_queue_row(self, qelem, cols):
-	if qelem[enstore_constants.WORK] == enstore_constants.WRITE:
-	    type = "Pending%swrite%sof%s"%(NBSP, NBSP, NBSP)
-	else:
-	    type = "Pending%sread%sof%s"%(NBSP, NBSP, NBSP)
+    def make_lm_pend_read_row(self, qelem, cols):
+	type = "Pending%sread%sof%s"%(NBSP, NBSP, NBSP)
 	vol = HTMLgen.Href("tape_inventory/%s"%(qelem[enstore_constants.DEVICE]),
 			   qelem[enstore_constants.DEVICE])
 	txt = "%s%s%sfrom%s%s%sby%s%s%s[%s]"%(type, str(vol), NBSP, NBSP,
 				 enstore_functions.strip_node(qelem[enstore_constants.NODE]),
-				 NBSP, NBSP, qelem['wrapper']['uname'], NBSP,
+				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
+				 qelem.get(enstore_constants.REJECT_REASON, ""))
+	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
+
+    def make_lm_pend_write_row(self, qelem, cols):
+	type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP, 
+					  qelem[enstore_constants.FILE_FAMILY])
+	txt = "%s%sfrom%s%s%sby%s%s%s[%s]"%(type, NBSP, NBSP,
+				 enstore_functions.strip_node(qelem[enstore_constants.NODE]),
+				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
 				 qelem.get(enstore_constants.REJECT_REASON, ""))
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
@@ -1280,12 +1296,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		extra_rows = qlen - self.max_queue_rows
 		    
 	    for qelem in the_work[enstore_constants.READ][0:rows_on_page]:
-		rows.append(self.make_lm_pend_queue_row(qelem, cols))
+		rows.append(self.make_lm_pend_read_row(qelem, cols))
 
 	    if extra_rows > 0:
 		for qelem in  the_work[enstore_constants.READ][rows_on_page:]:
-		    extra_read_rows.append(self.make_lm_pend_queue_row(qelem, 
-								       cols))
+		    extra_read_rows.append(self.make_lm_pend_read_row(qelem, 
+								      cols))
 	if not the_work[enstore_constants.WRITE] == []:
 	    qlen = len(the_work[enstore_constants.WRITE])
 	    if self.max_queue_rows == ALL_LM_ROWS or \
@@ -1297,11 +1313,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		extra_rows = qlen - self.max_queue_rows
 		    
 	    for qelem in the_work[enstore_constants.WRITE][0:rows_on_page]:
-		rows.append(self.make_lm_pend_queue_row(qelem, cols))
+		rows.append(self.make_lm_pend_write_row(qelem, cols))
 
 	    if extra_rows > 0:
 		for qelem in  the_work[enstore_constants.WRITE][rows_on_page:]:
-		    extra_write_rows.append(self.make_lm_pend_queue_row(qelem, 
+		    extra_write_rows.append(self.make_lm_pend_write_row(qelem, 
 									cols))
 	extra_rows = extra_read_rows + extra_write_rows
 	if extra_rows:
@@ -1338,7 +1354,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    words = string.split(lm_d[enstore_constants.LMSTATE])
 	else:
 	    words = ["",]
-	name = self.server_url(lm, lm)
+	name = self.server_url(lm, "%s.html"%(lm,))
 	if words[0] in BAD_LM_STATES:
 	    table.append(self.alive_row(lm, lm_d[enstore_constants.STATUS], 
 					FUSCHIA, link=lm))
@@ -1380,7 +1396,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    if enstore_functions.is_mover(server):
 		# this is a mover. output its info
 		mover_d = self.data_dict[server]
-		name = self.server_url(server, "enstore_movers", server)
+		name = self.server_url(server, enstore_functions.get_mover_status_filename(),
+				       server)
 		if mover_d.has_key(enstore_constants.STATE):
 		    # append the movers state to its status information
 		    # if we are updating the web page faster that receiving the new

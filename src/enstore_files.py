@@ -306,10 +306,10 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    HTMLExtraPages.write(self, doc)
 		    doc = enstore_html.EnLmStatusPage(key, self.refresh, 
 						      self.system_tag, max_lm_rows)
-		    #doc.body(self.text[key])
-		    import q
-		    q.d[enstore_constants.SUSPECT_VOLS] = ['None']
-		    doc.body(q.d)
+		    doc.body(self.text[key])
+		    #import q
+		    #q.d[enstore_constants.SUSPECT_VOLS] = ['None']
+		    #doc.body(q.d)
 		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key), 
 					       self.refresh, self.system_tag)
 		    lm_file.open()
