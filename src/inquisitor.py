@@ -881,6 +881,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(11, "reset       - %s"%(self.reset,))
 	Trace.trace(11, "htmlfile_orig - %s"%(self.htmlfile_orig,))
 	Trace.trace(11, "encpfile_orig - %s"%(self.encpfile_orig,))
+        print "last_update - %s"%(self.last_update,)
+	print "last_alive - %s"%(self.last_alive,)
+	print "intervals  - %s"%(self.intervals,)
+	print "server_keys - %s"%(self.server_keys,)
+	print "reset       - %s"%(self.reset,)
+	print "htmlfile_orig - %s"%(self.htmlfile_orig,)
+	print "encpfile_orig - %s"%(self.encpfile_orig,)
+	print ""
+	import pprint
+	pprint.pprint(self.htmlfile.text)
+	
 	self.send_reply(ticket)
 
     # set the select timeout
