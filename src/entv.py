@@ -71,9 +71,12 @@ def signal_handler(sig, frame):
 
     #flag the threads to stop.
     stop_now = 1
-    status_thread.join()
-    messages_thread.join()
-
+    
+    thread = threading.currentThread()
+    if thread != status_thread:
+        status_thread.join()
+    if thread != messages_thread:
+        messages_thread.join()
     sys.exit(0)
 
 def dict_eval(data):
@@ -216,8 +219,15 @@ def request_mover_status(display):
     movers = get_mover_list()
 
     for mover in movers:
+        #Get the mover client and the mover status.
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
+
+        #If the user said it needs to die, then die.
+        if stop_now or display.stopped:
+            return
+
+        #Process the commands.
         commands = handle_status(mover[:-6], status)
         if not commands:
             continue
@@ -240,14 +250,14 @@ def handle_messages(display):
         #test whether there is a command ready to read, timeout in
         # 1 second.
         try:
-            readable, junk, junk = select.select([erc.sock, 0], [], [], 1)
+            readable, junk, junk = select.select([erc.sock], [], [], 1)
         except select.error:
             exc, msg, tb = sys.exc_info()
             if msg.args[0] == errno.EINTR:
                 erc.unsubscribe()
                 erc.sock.close()
                 sys.stderr.write("Exiting early.\n")
-                return
+                sys.exit(1)
 
         #If nothing received for 60 seconds, resubscribe.
         if count > 60:
@@ -259,23 +269,17 @@ def handle_messages(display):
 
         now = time.time()
         for fd in readable:
-            if fd == 0:
-                # move along, no more to see here
-                erc.unsubscribe()
-                erc.sock.close()
-                sys.stderr.write("Exiting early.\n")
-                return
-            else:
-                msg = enstore_erc_functions.read_erc(erc)
-                if msg and not getattr(msg, "status", None):
-                    command="%s %s" % (msg.type, msg.extra_info)
-                    Trace.trace(1, command)
-                    display.queue_command(command)
+            msg = enstore_erc_functions.read_erc(erc)
+            if msg and not getattr(msg, "status", None):
+                command="%s %s" % (msg.type, msg.extra_info)
+                Trace.trace(1, command)
+                display.queue_command(command)
 
-                ##If read_erc is valid it is a EventRelayMessage instance. If
-                # it gets here it is a dictionary with a status field error.
-                elif getattr(msg, "status", None):
+            ##If read_erc is valid it is a EventRelayMessage instance. If
+            # it gets here it is a dictionary with a status field error.
+            elif getattr(msg, "status", None):
                     Trace.trace(1, msg["status"])
+
         if now - start > TEN_MINUTES:
             # resubscribe
             erc.subscribe()
