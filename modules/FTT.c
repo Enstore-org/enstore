@@ -971,30 +971,6 @@ FTT_rewind(  PyObject *self
 
 /*****************************************************************************
  */
-static char FTT_flush_doc[] = "invoke ftt_flush";
-
-static PyObject*
-FTT_flush(  PyObject *self
-	  , PyObject *args )
-{
-
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_flush device not opened"));
-
-    if (g_buf_bytes && (g_mode_c=='w'))
-    {   /* write out partial block */
-	int sts;
-	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
-	if (sts == -1) return (raise_ftt_exception("FTT_flush - partial block write"));
-	g_buf_bytes = 0;
-    }
-
-    return (Py_BuildValue(""));	/* None */
-}
-
-
-
-/*****************************************************************************
- */
 static char FTT_get_stats_doc[] = "invoke ftt_get_stats";
 
 static PyObject*
@@ -1010,7 +986,7 @@ FTT_get_stats(  PyObject *self
     sts = ftt_get_stats( g_ftt_desc_tp, GG );
     if (sts == -1) return raise_ftt_exception( "FTT_get_stats" );
 
-    rr = Py_BuildValue(  "{s:s,s:s,s:s,s:s,s:s,s:s,s:i}"
+    rr = Py_BuildValue(  "{s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:i}"
 		       , "remain_tape",  ftt_extract_stats(GG,FTT_REMAIN_TAPE)
 		       , "n_reads",      ftt_extract_stats(GG,FTT_N_READS)
 		       , "read_errors",  ftt_extract_stats(GG,FTT_READ_ERRORS)
@@ -1018,6 +994,7 @@ FTT_get_stats(  PyObject *self
 		       , "block_number", ftt_extract_stats(GG,FTT_BLOCK_NUMBER)
 		       , "bloc_loc",     ftt_extract_stats(GG,FTT_BLOC_LOC)
 		       , "fmk",          ftt_extract_stats(GG,FTT_FMK)
+		       , "serial_num",   ftt_extract_stats(GG,FTT_SERIAL_NUM)
 		       , "xferred_bytes",g_xferred_bytes );
     return (rr);
 }
@@ -1073,7 +1050,6 @@ static PyMethodDef FTT_Methods[] = {
     { "skip_rec", FTT_skip_rec, 1, FTT_skip_rec_doc },
     { "locate", FTT_locate, 1, FTT_locate_doc },
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
-    { "flush", FTT_flush, 1, FTT_flush_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
     { 0, 0 }        /* Sentinel */
