@@ -268,9 +268,9 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
-            self.ftt_close_dev()
+            self.ftt.close_dev()
         except:
-            pass
+            Trace.log(e_errors.ERROR, "ftt_close_dev failed")
         try:
             p=os.popen("mt -f %s offline 2>&1" % (self.device),'r')
             r=p.read()
