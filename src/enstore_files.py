@@ -497,9 +497,26 @@ class EnDataFile(EnFile):
                     break
         return self.date, self.lines
 
+    # check the line to see if the date and timestamp on the beginning of it
+    # is between the given start and end values
+    def check_line(self, line, start_time, stop_time, prefix):
+        # split the line into the date/time and all the rest
+        datetime, rest = string.split(line, None, 1)
+        # remove the beginning file prefix
+        l = string.replace(datetime, prefix,"")
+        # now see if the date/time is between the start time and the end time
+        time_ok = TRUE
+        if start_time:
+            if l < start_time:
+                time_ok = FALSE
+        if time_ok and stop_time:
+            if l > stop_time:
+                time_ok = FALSE
+        return time_ok
+
     # read in the given file and return a list of lines that are between a
     # given start and end time
-    def timed_read(self, start_time, stop_time):
+    def timed_read(self, start_time, stop_time, prefix=enstore_constants.LOG_PREFIX):
         do_all = FALSE
         if stop_time is None and start_time is None:
             do_all = TRUE
@@ -512,28 +529,11 @@ class EnDataFile(EnFile):
                         break
                     else:
                         if do_all or \
-                           self.check_line(line, start_time, stop_time):
+                           self.check_line(line, start_time, stop_time, prefix):
                             self.lines.append(line)
             except:
                 pass
         return self.lines
-
-    # check the line to see if the date and timestamp on the beginning of it
-    # is between the given start and end values
-    def check_line(self, line, start_time, stop_time):
-        # split the line into the date/time and all the rest
-        datetime, rest = string.split(line, None, 1)
-        # remove the beginning LOG_PREFIX
-        l = string.replace(datetime, enstore_constants.LOG_PREFIX,"")
-        # now see if the date/time is between the start time and the end time
-        time_ok = TRUE
-        if start_time:
-            if l < start_time:
-                time_ok = FALSE
-        if time_ok and stop_time:
-            if l > stop_time:
-                time_ok = FALSE
-        return time_ok
 
 class EnMountDataFile(EnDataFile):
 
