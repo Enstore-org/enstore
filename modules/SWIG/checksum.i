@@ -10,10 +10,17 @@
 %typedef char * cptr;
 
 %typemap(python,in) zint {
-	$target= (unsigned long) PyLong_AsLong($source);
+    if (PyLong_Check($source))
+	$target= (unsigned long) PyLong_AsUnsignedLong($source);
+    else if (PyInt_Check($source))
+	$target= (unsigned long) PyInt_AsLong($source);
+    else {
+	PyErr_SetString(PyExc_TypeError, "expected integral type");
+	return NULL;
+    }
 }
 %typemap(python,out) zint {
-	$target= PyLong_FromLong((unsigned long)$source);
+	$target= PyLong_FromUnsignedLong((unsigned long)$source);
 }
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
