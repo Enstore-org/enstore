@@ -1411,7 +1411,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 			try:
                             print "mover: freezing trace buffer"
                             os.system( 'traceMode 0>/dev/null' )
-                            Trace.log(e_errors.INFO,'mover: freezing trace buffer")
+                            Trace.log(e_errors.INFO,"mover: freezing trace buffer")
 			except: pass
 			if self.client_obj_inst.mode == 'w':
 			    msg = 'writing mover (rr=%d ww=%d) '%(rr,ww)
