@@ -86,6 +86,29 @@ class dsClient(generic_client.GenericClient):
 
 		self.send2(ticket)
 
+	def test(self):
+		self.log_stat(
+		'12345678',
+		'fermilab',
+		'0000_ABC',
+		'host',
+		'DUMMY_DRIVE',
+		'stat_type',
+		time.time(),
+		'tape_volser',
+		10,
+		5,
+		1,
+		1000,
+		1001,
+		2000,
+		2001,
+		10,
+		11,
+		100,
+		10,
+		1999)
+
 if __name__ == '__main__':
 	intf = option.Interface()
 	dsc = dsClient((intf.config_host, intf.config_port))
