@@ -38,7 +38,7 @@ QUALIFIERS = ""
 
         # the setup of python is tricky
         # if user has python declared via ups, set that up and use it
-        setupOptional("python v1_5_2_E_2")
+        setupOptional("python v1_5_2_E_3")
         # if no python from ups available, we need it from the user's path
         exeAccess("python")
         # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
