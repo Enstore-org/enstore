@@ -28,6 +28,11 @@ class MoverClient(generic_client.GenericClient):
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+        ticket = self.csc.get(name)
+	try:
+            self.print_id = ticket['logname']
+        except:
+            pass
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
         Trace.trace(12,"{send"+repr(ticket))

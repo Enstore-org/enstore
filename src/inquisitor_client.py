@@ -20,10 +20,15 @@ class Inquisitor(generic_client.GenericClient):
                  port=interface.default_port()):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
+	self.print_id = "INQC"
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
-	self.print_id = "INQC"
+        ticket = self.csc.get("inquisitor")
+	try:
+            self.print_id = ticket['logname']
+        except:
+            pass
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):

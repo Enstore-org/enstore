@@ -29,6 +29,11 @@ class FileClient(generic_client.GenericClient, \
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
 	self.verbose = verbose
+        ticket = self.csc.get("file_clerk")
+	try:
+            self.print_id = ticket['logname']
+        except:
+            pass
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):

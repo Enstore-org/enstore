@@ -29,6 +29,11 @@ class MediaChangerClient(generic_client.GenericClient):
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+        ticket = self.csc.get(name)
+	try:
+            self.print_id = ticket['logname']
+        except:
+            pass
 
     # send the request to the Media Changer server and then send answer to user
     #      rcv_timeout is set to 60, the STK mnt/dismnt time is ~35 sec.   This

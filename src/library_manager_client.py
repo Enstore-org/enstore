@@ -80,6 +80,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # we always need to be talking to our configuration server
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+        ticket = self.csc.get(name)
+	try:
+            self.print_id = ticket['logname']
+        except:
+            pass
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
         # who's our library manager that we should send the ticket to?
