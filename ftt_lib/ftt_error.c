@@ -168,6 +168,8 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
     if (errno == 75) {	/* linux gives this when out of buffers... */
 	terrno = ENOMEM;
+        ftt_errno = d->errortrans[opn][terrno];
+        return ftt_describe_error(d, opn, op, res, what, recoverable);
     }
     if (errno >= MAX_TRANS_ERRNO) {
         terrno = MAX_TRANS_ERRNO - 1;

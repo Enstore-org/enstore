@@ -837,11 +837,15 @@ static char Win32find_dev[] = "";
 **         you might as well not have it.  So put your null-string
 **         default cases *last*.
 */
-#define EXB_MAX_BLKSIZE 245760
+#define EXB_MAX_BLKSIZE  245760
 #define IRIX_MAX_BLKSIZE 131072
-#define SUN_MAX_BLKSIZE 65534
-#define WIN_MAX_BLKSIZE 120000
+#define SUN_MAX_BLKSIZE   65534
+#define WIN_MAX_BLKSIZE  120000
+#ifdef NICE_WORLD
 #define LINUX_MAX_BLKSIZE 65536
+#else
+#define LINUX_MAX_BLKSIZE 65536
+#endif
 
 
 ftt_dev_entry devtable[] = {
@@ -853,7 +857,7 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn",    6,  0, 0x84, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,       0,     1, LINUX_MAX_BLKSIZE},
     /* Other Densities */
        { "rmt/tps%dd%dn",    6,  1, 0x85, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
