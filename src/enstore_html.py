@@ -1238,7 +1238,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
     "override the one in the base class, it does not update the data ach time we write"
     def table_top_b(self, table, td):
         td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
-	td.append(HTMLgen.HR())
+	td.append(HTMLgen.HR(size=2, noshade=1))
 	table.append(HTMLgen.TR(td))
 	table.append(empty_row())
 	return table
