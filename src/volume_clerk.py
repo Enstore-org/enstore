@@ -431,7 +431,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         # ticket['status'] = self.__delete_volume(vol)
-        ticket['status'] = (e_errors.INFO, "reply_address: %s"%(self.reply_address))
+        ticket['status'] = (e_errors.INFO, "reply_address: %s"%(`self.reply_address`))
         self.reply_to_caller(ticket)
         return
 
