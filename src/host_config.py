@@ -298,12 +298,23 @@ def is_route_in_table(dest):
         # necessary.
         if route['Destination'] == ip:
             return 1
+
+        #Extract the subnet section of the existing destination route.
+        rt_index = route['Destination'].rfind(".")
+        if rt_index == -1:
+            rt = route['Destination']
+        else:
+            rt = route['Destination'][:rt_index]
+
+        #Extract the subnet part of the ip we're looking for.
+        sn_index = ip.rfind(".")
+        if sn_index == -1:
+            sn = ip
+        else:
+            sn = ip[:sn_index]
+                
         #Test to see if the subnet route already exists.
-        existing_rt = route['Destination'].split("/")[0] #hack for OSF1 
-        rt = string.join(existing_rt.split(".")[:3], ".")
-        rt = string.split(rt, "/")[0]
-        sn = string.join(ip.split(".")[:-1], ".")
-        if rt == existing_rt and rt == sn:
+        if rt == sn:
             return 1
     return 0
 
