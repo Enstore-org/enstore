@@ -251,6 +251,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(10,'}set_at_mover '+str(x))
         return x
 
+    # get the state of the media changer for the volume
+    def update_mc_state(self,external_label):
+        Trace.trace(3,'vcc.update_mc_state label='+str(external_label))
+        ticket= { 'work'           : 'update_mc_state',
+                  'external_label' : external_label }
+        x = self.send(ticket)
+        Trace.trace(3,'}vcc.update_mc_state '+str(x))
+        return x
+
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label):
         Trace.trace(3,'clr_system_inhibit label='+str(external_label))
@@ -368,6 +377,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.clrvol = 0
+        self.statvol = ""
         self.backup = 0
         self.vols = 0
         self.nextvol = 0
@@ -386,8 +396,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def options(self):
         Trace.trace(20,'{}options')
         return self.client_options()+\
-               ["clrvol", "backup", "vols","nextvol","vol=","addvol"] + \
-	       ["delvol","newlib","rdovol","noavol","atmover","decr_file_count="]
+               ["clrvol", "backup", "vols","nextvol","vol=","addvol","statvol=",
+	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -409,6 +419,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
             if len(self.args) < 1:
                 self.print_clr_inhibit_args()
                 sys.exit(1)
+        #elif self.statvol != "":
+        #    if len(self.args) < 1:
+	#        print "vcc.parse_options statvol self.args= ", self.args
+        #        self.print_update_mc_state_args()
+        #        sys.exit(1)
         elif self.rdovol:
             if len(self.args) < 1:
                 self.print_set_system_readonly_args()
@@ -422,6 +437,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 self.print_new_library_args()
                 sys.exit(1)
         Trace.trace(16,'}parse_options')
+
+    # print update_mc_state arguments
+    def print_update_mc_state_args(self):
+        Trace.trace(20,'{}vcc.print_update_mc_state_args')
+        generic_cs.enprint("   update_mc_state arguments: volume_name")
 
     # print clr_inhibit arguments
     def print_clr_inhibit_args(self):
@@ -461,6 +481,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.print_addvol_args()
         self.print_delvol_args()
         self.print_clr_inhibit_args()
+        self.print_update_mc_state_args()
         self.print_set_system_readonly_args()
         self.print_set_system_noaccess_args()
         self.print_new_library_args()
@@ -477,7 +498,7 @@ if __name__ == "__main__":
     # get a volume clerk client
     vcc = VolumeClerkClient(0, intf.verbose, intf.config_host,\
                             intf.config_port)
-
+	
     if intf.alive:
         ticket = vcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
@@ -521,6 +542,14 @@ if __name__ == "__main__":
 	msg_id = generic_cs.CLIENT
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
+	msg_id = generic_cs.CLIENT
+    elif intf.statvol != "":
+        ticket = vcc.update_mc_state(intf.statvol)  # name of this volume
+	try:
+	    if intf.verbose :
+	        generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+	except:
+	    pass
 	msg_id = generic_cs.CLIENT
     elif intf.decr_file_count:
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
