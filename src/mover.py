@@ -1217,7 +1217,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     n_thread = getattr(self, 'net_thread', None)
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
-                        Trace.trace(8, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) 
+                        # Trace.trace(8, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) 
+                        Trace.log(e_errors.INFO, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) # Remove this when problem is fixed !!!!! 
                         # see what thread is active
                         if n_thread.isAlive() and not t_thread.isAlive():
                             # we better do not drop a connection while
@@ -3598,6 +3599,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'transfers_completed'     : self.transfers_completed,
                  'transfers_failed': self.transfers_failed,
                  'bytes_read'     : self.bytes_read,
+                 'bytes_read_last': self.bytes_read_last,
                  'bytes_written'     : self.bytes_written,
                  'bytes_buffered' : bytes_buffered,
                  'successful_writes': self.files_written_cnt,
