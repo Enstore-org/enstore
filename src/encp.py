@@ -983,11 +983,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # until the error is fixed.
     try:
         infile = request_dictionary['infile']
-    except AttributeError, detail:
+    except (AttributeError, KeyError), detail:
         print "request_dictionary:", type(request_dictionary), detail
         pprint.pprint(request_dictionary)
 
-    infile = request_dictionary.get('infile', '')
+    infile = request_dictionary['infile']
+    #request_dictionary.get('infile', '')
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
