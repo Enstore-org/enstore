@@ -5,7 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile udp_send.sh $  $Revision$
 # returns servers configured for a node
 
-opts_wo_args='none' # cant be empty
+opts_wo_args=''
 opts_w_args='work|additional_ticket|tries'
 USAGE="`basename $0` <host> <port>  <timeout> [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 if [ $# -lt 3 ];then 
@@ -21,8 +21,9 @@ while opt=`expr "${1-}" : '--\(.*\)'`;do
     shift
     eval "case \$opt in
     \\?) echo \"$USAGE\"; exit 0;;
-    $opts_wo_args)
-        eval opt_\$opt=1;;
+#uncomment next 2 lines if we get some opts_wo_args
+#NO#$opts_wo_args)
+#NO#    eval opt_\$opt=1;;
     $opts_w_args)
         if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
         eval opt_\$opt=\"'\$1'\";shift ;;
