@@ -58,8 +58,30 @@ def mail_bin(from_add, to_add, subject, file, msg):
 
 	server = smtplib.SMTP('localhost')
 	# server.set_debuglevel(1)	# no debug please
-	server.sendmail(from_add, to_add, mesg)
+	status = None
+	# handle the errors
+	try:
+		res = server.sendmail(from_add, to_add, mesg)
+		# prepare the error message
+		for i in res.keys():
+			err_code, err_reason = res[i]
+			if status:
+				status = status +'\n'+i+' : '+err_reason
+			else:
+				status = i+' : '+err_reason
+	except smtplib.SMTPRecipientsRefused:
+		status = 'All recipients were refused'
+	except smtplib.SMTPHeloError:
+		status = 'The server did not reply properly to the "HELO" greeting'
+	except smtplib.SMTPSenderRefused:
+		status = 'The server did not accept the from_addr'
+	except smtplib.SMTPDataError:
+		status = 'The server replied with an unexpected error code (other than a refusal of a recipient)'
+	except:	# catch all
+		status = 'Unknown error'
+
 	server.quit()
+	return status
 
 # mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
 
@@ -69,5 +91,27 @@ def mail(from_add, to_add, subject, msg):
 
 	server = smtplib.SMTP('localhost')
 	# server.set_debuglevel(1)	# no debug please
-	server.sendmail(from_add, to_add, mesg)
+	status = None
+	# handle the errors
+	try:
+		res = server.sendmail(from_add, to_add, mesg)
+		# prepare the error message
+		for i in res.keys():
+			err_code, err_reason = res[i]
+			if status:
+				status = status +'\n'+i+' : '+err_reason
+			else:
+				status = i+' : '+err_reason
+	except smtplib.SMTPRecipientsRefused:
+		status = 'All recipients were refused'
+	except smtplib.SMTPHeloError:
+		status = 'The server did not reply properly to the "HELO" greeting'
+	except smtplib.SMTPSenderRefused:
+		status = 'The server did not accept the from_addr'
+	except smtplib.SMTPDataError:
+		status = 'The server replied with an unexpected error code (other than a refusal of a recipient)'
+	except:	# catch all
+		status = 'Unknown error'
+
 	server.quit()
+	return status
