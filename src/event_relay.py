@@ -53,7 +53,6 @@ class Relay:
             if not msg:
                 continue
             tok = string.split(msg)
-	    print time.ctime(time.time()), msg
             if not tok:
                 continue
             if tok[0]==NOTIFY:
