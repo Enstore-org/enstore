@@ -94,7 +94,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
     for serv in $PID_DIR/`uname -n`-*-mover_pid; do
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $serv |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $opt_just_ere |sed -e 's/.*://'` $timeout --work quit >/dev/null
 
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff_s "$serv*"           "movers"
@@ -104,7 +104,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
     for serv in $PID_DIR/`uname -n`-*-media_changer_pid; do
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $serv |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $opt_just_ere |sed -e 's/.*://'` $timeout --work quit >/dev/null
 
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff "$serv*"   "media_changers"
@@ -114,15 +114,17 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
     for serv in $PID_DIR/`uname -n`-*-library_manager_pid; do
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $serv |sed -e 's/.*://'` $timeout --work quit >/dev/null
-
         #echo "serv is <$serv>"
+        #echo "opt_just_ere is <$opt_just_ere>"
+	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep $opt_just_ere |sed -e 's/.*://'` $timeout --work quit >/dev/null
+
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff "$serv*" "library managers"
     done
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep conf |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    echo $node_servers
+    udp_sendWaitReply-withTimeout.sh $local_host $ENSTORE_CONFIG_PORT $timeout --work quit >/dev/null
     turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration server"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
