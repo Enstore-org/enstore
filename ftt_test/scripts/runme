@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ftt_run_test ${0}.dat

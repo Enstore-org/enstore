@@ -24,7 +24,7 @@ esac
 
 base="$1"
 
-script="ftt_run_test $1"
+script="$1"
 
 shift
 
