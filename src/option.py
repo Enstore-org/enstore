@@ -190,6 +190,7 @@ ID = "id"                                    #pnfs
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
 IO = "io"                                    #pnfs
+LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
@@ -270,7 +271,6 @@ UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
 UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 USAGE = "usage"
 VOL = "vol"                                  #volume
-VOL_LABELS = "vol-labels"                    #volume
 VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs
 VOL1OK = "VOL1OK"                            #volume
@@ -305,7 +305,7 @@ valid_option_list = [
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
     KEEP, KEEP_DIR,
-    LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
+    LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOT_ALLOWED, NO_MAIL, NOTIFY,
     NOOUTAGE, NOOVERRIDE,
@@ -319,7 +319,7 @@ valid_option_list = [
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
-    VOL, VOL_LABELS, VOLS, VOLUME, VOL1OK,
+    VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,
     XREF,
     ]

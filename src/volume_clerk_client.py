@@ -674,7 +674,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.clear = ""
         self.backup = 0
         self.vols = 0
-        self.vol_labels = 0
+        self.labels = 0
         self.in_state = 0
         self.next = 0
         self.vol = ""
@@ -892,7 +892,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
-        option.VOL_LABELS:{
+        option.LABELS:{
                 option.HELP_STRING:"list all volume labels",
                 option.DEFAULT_VALUE:option.DEFAULT,
                 option.DEFAULT_TYPE:option.INTEGER,
@@ -951,7 +951,7 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
-    elif intf.vol_labels:
+    elif intf.labels:
         ticket = vcc.get_vol_list()
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['volumes']:
