@@ -48,7 +48,7 @@ os.system(cmd)
 
 d1 = None
 d2 = None
-hosts = ("d0ensrv0.fnal.gov","stkensrv6.fnal.gov","cdfensrv0.fnal.gov")
+hosts = ("d0ensrv6.fnal.gov","stkensrv6.fnal.gov","cdfensrv6.fnal.gov")
 
 for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-%y"':
     d = os.popen(when,'r')
