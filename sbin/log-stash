@@ -41,9 +41,9 @@ cd $HISTORY
 find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
 
 
-# now do it again, but this time for the adic robot logs
+# now do it again, but this time for the aml2 robot logs
 if [ -z "${2-}" ] ; then
-  LOGS=/fnal/ups/prd/www_pages/enstore/adiclog
+  LOGS=/fnal/ups/prd/www_pages/enstore/aml2log
 else
   LOGS=$2
 fi
