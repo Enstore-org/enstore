@@ -217,7 +217,7 @@ echo "options have been processed... checking"
 
 if [ -z "${REV-}" ] ; then
    Step="next revision"
-   last=`grep 'CVS $Revision$ENSTORE_DIR/src/get.py | tr -s ' ' ' ' | cut -f 4 -d' ' | cut -c2-`
+   last=`grep 'Revision:' $ENSTORE_DIR/src/get.py | tr -s ' ' ' ' | cut -f 4 -d' ' | cut -c2-`
    major=`echo $last | awk -F_ '{print $1}'`
    minor=`echo $last | awk -F_ '{print $2}'`
    REV=${major}_`expr $minor + 1`
@@ -376,6 +376,8 @@ for try in list doit; do
            fi
            ;;
 
+	6) echo "Step $Step:"
+	    ;;
         #6) echo "Step $Step:   cd volume_import and make clean enstore_tape    `starting`"
         #   if [ "$try" = "doit" ] ; then
         #      cd $ENSTORE_DIR/volume_import
@@ -385,6 +387,8 @@ for try in list doit; do
         #   fi
         #   ;;
 
+	7) echo "Step $Step:"
+	    ;;
         #7) echo "Step $Step:   cd doc/WWW - make all    `starting`"
         #   if [ "$try" = "doit" ] ; then
         #      if [ $product = "enstore" ]; then
@@ -416,6 +420,8 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 
+	9) echo "Step $Step:"
+	    ;;
         #9) echo "Step $Step:   cvs tag -F $TAG    `starting`"
         #   if [ "$try" = "doit" ] ; then
         #      cd $ENSTORE_DIR
@@ -425,7 +431,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
         #   fi
         #   ;;
 
-       10) echo "Step $Step:   install $product into $INSTALLDIR    `starting`"
+       10) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
 	  if [ "$try" = "doit" ] ; then
 	     # check if directory doesn't exist
 	     if [ ! -d $INSTALLDIR ] ; then
