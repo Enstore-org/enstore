@@ -479,7 +479,6 @@ class infoClient(generic_client.GenericClient):
   
 		ticket= callback.read_tcp_obj(data_path_socket)
 		vol = callback.read_tcp_obj_new(data_path_socket)
-		ticket['tape_list'] = vol
 		data_path_socket.close()
 
 		# Work has been read - wait for final dialog with file clerk
@@ -487,6 +486,50 @@ class infoClient(generic_client.GenericClient):
 		control_socket.close()
 		if done_ticket["status"][0] != e_errors.OK:
 			return done_ticket
+
+		# convert to external format
+		ticket['tape_list'] = []
+		for s in vol:
+			if s['deleted'] == 'y':
+				deleted = 'yes'
+			elif s['deleted'] == 'n':
+				deleted = 'no'
+			else:
+				deleted = 'unknown'
+
+			if s['sanity_size'] == -1:
+				sanity_size = None
+			else:
+				sanity_size = s['sanity_size']
+
+			if s['sanity_crc'] == -1:
+				sanity_crc = None
+			else:
+				sanity_crc = s['sanity_crc']
+
+			if s['crc'] == -1:
+				crc = None
+			else:
+				crc = s['crc']
+
+			record = {
+				'bfid': s['bfid'],
+				'complete_crc': crc,
+				'deleted': deleted,
+				'drive': s['drive'],
+				'external_label': s['label'],
+				'location_cookie': s['location_cookie'],
+				'pnfs_name0': s['pnfs_path'],
+				'pnfsid': s['pnfs_id'],
+				'sanity_cookie': (sanity_size, sanity_crc),
+				'size': s['size']
+			}
+
+			if s.has_key('uid'):
+				record['uid'] = s['uid']
+			if s.has_key('gid'):
+				record['gid'] = s['gid']
+			ticket['tape_list'].append(record)
 
 		return ticket
 
@@ -797,16 +840,16 @@ def do_work(intf):
 	elif intf.list:
 		ticket = ifc.tape_list(intf.list)
 		if ticket['status'][0] == e_errors.OK:
-			format = "%%-%ds %%-16s %%10s %%-22s %%-7s %%s"%(len(intf.list))
+			format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
 			# print "%-8s %-16s %10s %-22s %-7s %s\n"%(
 			#	"label", "bfid", "size", "location_cookie", "delflag", "original_name")
 			print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
 			print
 			tape = ticket['tape_list']
 			for record in tape:
-				if record['deleted'] == 'y':
+				if record['deleted'] == 'yes':
 					deleted = 'deleted'
-				elif record['deleted'] == 'n':
+				elif record['deleted'] == 'no':
 					deleted = 'active'
 				else:
 					deleted = 'unknown'
@@ -814,7 +857,7 @@ def do_work(intf):
 				print format % (intf.list,
 					record['bfid'], record['size'],
 					record['location_cookie'], deleted,
-					record['pnfs_path'])
+					record['pnfs_name0'])
 
 	elif intf.ls_active:
 		ticket = ifc.list_active(intf.ls_active)
