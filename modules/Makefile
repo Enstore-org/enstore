@@ -19,6 +19,7 @@ exec_installdir=$(pyinstalldir)
 INCLUDEPY=	$(PYTHONINC) 
 LIBP=		$(PYTHONLIB)
 LIBPL=		$(LIBP)/config
+SRCDIR=		$(PYTHONHOME)/Python-$(PYTHONVERSION)/Modules
 PYMAKE=		make -f $(LIBPL)/Makefile
 
 # LIBSO is the location of platform-dependent dynamically linked 
@@ -29,18 +30,19 @@ PYMAKE=		make -f $(LIBPL)/Makefile
 LIBSO=		`$(PYMAKE) -s echodestshared`
 
 # Put your module name here:
-MODULE=ETape
+MODULE=Devcodes
 
 # Put the object files for your module here:
-OBS=ETape.o
+OBS=Devcodes.o
 
-CFLAGS=-g  -I./ -I$(FTT_DIR)/include -Wall
+CFLAGS=-g  -I./ -I$(FTT_DIR)/include 
 
 # Change this to the location of your libraries....
 OLIB=$(FTT_DIR)/lib
 
 # The libraries to use
-YOURLIBS=$(OLIB)/libftt.a
+#YOURLIBS=$(OLIB)/libftt.a /usr/lib/libds.a
+YOURLIBS=$(OLIB)/libftt.a 
 
 EXTRALD=$(YOURLIBS)
 
@@ -55,6 +57,7 @@ build:
 		'ASHAREDMODULESOBS=$(OBS)' \
 		'ASHAREDMODULESEXTRA=$(EXTRALD)' \
 		'OPT=$(CFLAGS)' \
+		'srcdir=$(SRCDIR)' \
 		asharedmodule; \
 	fi
 
