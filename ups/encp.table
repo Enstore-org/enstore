@@ -11,5 +11,6 @@ QUALIFIERS = ""
 	envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
 	execute("whoami", NO_UPS_ENV, meme)
         execute("mkdir -p /tmp/enstore/$meme", NO_UPS_ENV)
+	execute("chmod 777 /tmp/enstore",NO_UPS_ENV)
 	envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$(hostname)")
         envUnset(meme)
