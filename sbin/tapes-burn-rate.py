@@ -7,6 +7,14 @@ import popen2
 import time
 import pprint
 
+
+# tape capacity in GB
+CAP_9840=20
+CAP_9940=60
+CAP_9940B=200
+CAP_LTO=100
+
+
 def sort_the_file(infile):
     fi = open(infile,'r')
     fo = open('%s.tmp'%(infile,),'w')
@@ -291,6 +299,7 @@ for g in group_fd.keys():
           _9940_wv = _9940_wv + int(wv)
           _9940_bv = _9940_bv + int(bv)
           _9940_su = _9940_su + su
+          cap = CAP_9940
         
             
     elif g == "CD-9840":
@@ -301,6 +310,7 @@ for g in group_fd.keys():
         bv = string.atoi(bv1)+string.atoi(bv2)
         #su = '0.0GB'
         su="%.2f%s"%(eagle_mb / 1024.,"GB")
+        cap = CAP_9840
     elif g == "CD-9940":
         (wv1,bv1,su1,l) = QUOTAS.get('blank-9940.none',('-1','-1','-1','-1'))
         (wv2,bv2,su2,l) = QUOTAS.get('9940.none:',('-1','-1','-1','-1'))
@@ -309,6 +319,7 @@ for g in group_fd.keys():
         bv = string.atoi(bv1)+string.atoi(bv2)
         #su = '0.0GB'
         su="%.2f%s"%(beagle_mb / 1024.,"GB")
+        cap = CAP_9940
     elif g == 'ALL_9940':
         pass
         
@@ -321,21 +332,21 @@ for g in group_fd.keys():
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    if g in ['ALL_9940', 'ALL_9940B']:
+    if g in ['ALL_9940', 'ALL_9940B', 'CD_9940B']:
         pass
     else:
-        cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
+        cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su, cap)
         print cmd
         os.system(cmd)
 sort_the_file('ALL_9940.tapes')
-cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('ALL_9940',d1,d2,_9940_wv,_9940_bv,_9940_su)
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_9940',d1,d2,_9940_wv,_9940_bv,_9940_su, 60)
 print cmd
 os.system(cmd)
 sort_the_file('ALL_9940B.tapes')
-cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('ALL_9940B',d1,d2,_9940b_wv,_9940b_bv,_9940b_su)
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_9940B',d1,d2,_9940b_wv,_9940b_bv,_9940b_su, 200)
 print cmd
 os.system(cmd)
-cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('CD_9940B',d1,d2,cd_9940b_wv,cd_9940b_bv,cd_9940b_su)
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('CD_9940B',d1,d2,cd_9940b_wv,cd_9940b_bv,cd_9940b_su, 200)
 print cmd
 os.system(cmd)
 

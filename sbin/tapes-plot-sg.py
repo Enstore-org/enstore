@@ -35,14 +35,14 @@ try:
 except:
     su = ""
 try:
-    capacity = sys.argv[7] # capacity of the tape
+    capacity = int(sys.argv[7]) # capacity of the tape in GB
 except:
     capacity = 200  # GB
 
 f = open(thefile+".tapes","r")
 o = open(thefile+".data", "w")
 
-when = t_when = None # to make lint happy
+when = None
 start = 0
 tot = 0
 gigs = 0
@@ -68,31 +68,45 @@ while 1:
     tot =  tot  + gb
  
 tapes_written[t_when] = {'date':when, 'tapes':int(gigs/capacity), 'GB':gigs, 'total':tot}
-
 o.write("%s %f %f\n" % (when,gigs ,tot))
 f.close()
 o.close()
 
 
 # what is tape usage per lats month?
-t=time.localtime(time.time())
-today = long(time.mktime((t[0],t[1],t[2],0,0,0,t[6],t[7],t[8])))
-a_month_ago = today - 30*24*3600
+#t=time.localtime(time.time())
+#today = long(time.mktime((t[0],t[1],t[2],0,0,0,t[6],t[7],t[8])))
+keys=tapes_written.keys()
+keys.sort()
+last_time_written = keys[len(keys)-1]
+a_month_ago = last_time_written - 30*24*3600
+a_week_ago = last_time_written - 7*24*3600
+keys = tapes_written.keys()
+if not a_month_ago in keys:
+    for i in range(len(keys)):
+        if keys[i] >= a_month_ago:
+            a_month_ago = keys[i]
+            break
+if not a_week_ago in keys:
+    for i in range(len(keys)):
+        if keys[i] >= a_week_ago:
+            a_week_ago = keys[i]
+            break
+        
 tapes_written_last_month = 0
 tot_m_ago = tapes_written[a_month_ago]['total']
-tot_now = tapes_written[today]['total']
+tot_now = tapes_written[last_time_written]['total']
 f1=open(thefile+".1.data", "w")
 f1.write("%s %f\n"%(tapes_written[a_month_ago]['date'], tapes_written[a_month_ago]['total']))
-f1.write("%s %f\n"%(tapes_written[today]['date'], tapes_written[today]['total']))
+f1.write("%s %f\n"%(tapes_written[last_time_written]['date'], tapes_written[last_time_written]['total']))
 f1.close()
 for key in tapes_written.keys():
-    if key >= a_month_ago and key < today:
+    if key >= a_month_ago and key < last_time_written:
         tapes_written_last_month = tapes_written_last_month + tapes_written[key]['tapes']
 
-a_week_ago = today - 7*24*3600
 tapes_written_last_week = 0
 for key in tapes_written.keys():
-    if key >= a_week_ago and key < today:
+    if key >= a_week_ago and key < last_time_written:
         tapes_written_last_week = tapes_written_last_week + tapes_written[key]['tapes']
         
 
