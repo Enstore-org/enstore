@@ -19,6 +19,9 @@ import volume_clerk_client
 import callback
 import dispatching_worker
 import generic_server
+import event_relay_client
+import monitored_server
+import enstore_constants
 import interface
 import Trace
 import udp_client
@@ -807,7 +810,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
-
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  libman,
+								  self.keys)
         enstore_dir = os.environ.get('ENSTORE_DIR','')
         priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
         self.pri_sel = priority_selector.PriSelector(self.csc)
@@ -829,6 +834,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(self.name, self.alive_interval)
+
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
             sg_limits = self.keys['storage_group_limits']
