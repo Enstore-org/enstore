@@ -197,9 +197,10 @@ def write_to_hsm(input, output,
     fticket = csc.get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
 	print_data_access_layer_format('', '', 0, fticket)
-	jraise(vticket['status'][0], " encp.write_to_hsm: " \
+	jraise(fticket['status'][0], " encp.write_to_hsm: " \
 	       + ", ticket[\"status\"]="+repr(fticket["status"]))
 
+    file_clerk_address = (fticket["hostip"],fticket["port"])
     Trace.trace(10,"write_to_hsm file clerk at host="+\
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
@@ -209,11 +210,33 @@ def write_to_hsm(input, output,
         print "  dt:", tinfo["get_fileclerk"], \
 	      "   cumt=",time.time()-t0
 
+    # ask configuration server what port the volume clerk is using
+    Trace.trace(10,"write_to_hsm calling config server to find "\
+		"volume clerk")
+    vcticket = csc.get("volume_clerk")
+    if vcticket['status'][0] != e_errors.OK:
+	print_data_access_layer_format('', '', 0, vcticket)
+	jraise(vcticket['status'][0], " encp.write_to_hsm: " \
+	       + ", ticket[\"status\"]="+repr(vcticket["status"]))
+
+    volume_clerk_address = (vcticket["hostip"],vcticket["port"])
+    Trace.trace(10,"write_to_hsm volume clerk at host="+\
+                repr(vcticket["hostip"])+" port="+repr(vcticket["port"]))
+
+    tinfo["get_volumeclerk"] = time.time() - t1 #---------------------End
+    if verbose>1:
+        print " ",vcticket["hostip"],vcticket["port"]
+        print "  dt:", tinfo["get_volumeclerk"], \
+	      "   cumt=",time.time()-t0
+
     if verbose>1:
         print "Calling Config Server to find",\
 	      library[0]+".library_manager",\
               "   cumt=",time.time()-t0
+
+
     t1 = time.time() #-------------------------------------------Start
+
 
     # ask configuration server what port library manager is using
     # note again:libraries have are identical since there is 
@@ -284,7 +307,9 @@ def write_to_hsm(input, output,
                 volume_clerk = {"library"            : library[i],\
                                 "file_family"        : file_family[i],\
                                 "file_family_width"  : width[i], # technically width does not belong here, but it associated with the volume
-				"wrapper"            : ff_wrapper[i]}
+				"wrapper"            : ff_wrapper[i],
+				"address"            : volume_clerk_address}
+		file_clerk = {"address": file_clerk_address}
 
                 wrapper["sanity_size"] = 65535
                 wrapper["size_bytes"] = file_size[i]
@@ -292,6 +317,7 @@ def write_to_hsm(input, output,
                 encp["delayed_dismount"] = delayed_dismount
                 work_ticket = {"work"               : "write_to_hsm",
                                "callback_addr"      : callback_addr,
+			       "fc"                 : file_clerk,
                                "vc"                 : volume_clerk,
                                "wrapper"            : wrapper,
                                "encp"               : encp,
@@ -771,6 +797,11 @@ def read_from_hsm(input, output,
     # ask configuration server what port the file clerk is using
     Trace.trace(10,"read_from_hsm calling config server to find file clerk")
     fticket = client['csc'].get("file_clerk")
+    if fticket['status'][0] != e_errors.OK:
+	print_data_access_layer_format('', '', 0, fticket)
+	jraise(fticket['status'][0], " encp.read_from_hsm: " \
+	       + ", ticket[\"status\"]="+repr(fticket["status"]))
+    file_clerk_address = (fticket["hostip"],fticket["port"])
     Trace.trace(10,"read_from_hsm file clerk at host="+\
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
@@ -778,6 +809,22 @@ def read_from_hsm(input, output,
     if verbose>1:
         print " ",fticket["hostip"],fticket["port"]
         print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
+
+    # ask configuration server what port the volume clerk is using
+    Trace.trace(10,"read_from_hsm calling config server to find volume clerk")
+    vticket = client['csc'].get("volume_clerk")
+    if vticket['status'][0] != e_errors.OK:
+	print_data_access_layer_format('', '', 0, vticket)
+	jraise(vticket['status'][0], " encp.read_from_hsm: " \
+	       + ", ticket[\"status\"]="+repr(vticket["status"]))
+    volume_clerk_address = (vticket["hostip"],vticket["port"])
+    Trace.trace(10,"read_from_hsm volume clerk at host="+\
+                repr(vticket["hostip"])+" port="+repr(vticket["port"]))
+
+    tinfo["get_volumeclerk"] = time.time() - t1 #-----------------------------End
+    if verbose>1:
+        print " ",vticket["hostip"],vticket["port"]
+        print "  dt:", tinfo["get_volumeclerk"], "   cumt=",time.time()-t0
 
     if verbose>1:
         print "Calling file clerk for file info", "   cumt=",time.time()-t0
@@ -804,6 +851,8 @@ def read_from_hsm(input, output,
 	    continue
 
 	request = {}
+	binfo['vc']['address'] = volume_clerk_address
+	binfo['fc']['address'] = file_clerk_address
 	request['vinfo'] = binfo['vc']
 	request['finfo'] = binfo['fc']
 	request['volume'] = binfo['fc']['external_label']
