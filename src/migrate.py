@@ -344,7 +344,7 @@ def copy_files(files):
 
 	# copy files one by one
 	for bfid in files:
-		log(MY_TASK, "copying %s"%(bfid))
+		log(MY_TASK, "processing %s"%(bfid))
 		# get file info
 		q = "select bfid, label, location_cookie, pnfs_id, \
 			storage_group, file_family from file, volume \
@@ -362,6 +362,7 @@ def copy_files(files):
 		f = res[0]
 		if debug:
 			log(MY_TASK, `f`)
+		log(MY_TASK, "copying %s %s %s"%(bfid, f['label'], f['location_cookie']))
 		tmp = temp_file(f['label'], f['location_cookie'])
 		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
 		if debug:
@@ -551,9 +552,17 @@ def migrating():
 			cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s %s %s"%(DEFAULT_LIBRARY, sg, ff, tmp, dst)
 			res = encp.encp(cmd)
 			if res:
-				error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
-				job = copy_queue.get(True)
-				continue
+				log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"%(bfid, src, tmp))
+				# delete the target and retry once
+				try:
+					os.remove(dst)
+				except:
+					pass
+				res = encp.encp(cmd)
+				if res:
+					error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
+					job = copy_queue.get(True)
+					continue
 
 			# get bfid of copied file
 			bfid2 = pnfs.File(dst).bfid
