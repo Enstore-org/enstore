@@ -133,7 +133,7 @@ if __name__ == "__main__" :
 	    if  cgi_url:
 		print "Changing the url for the cgi scripts to %s"%(cgi_url,)
 		fix_cgi_url(web_dir, "enstore_user.html", cgi_url)
-		fix_cgi_url(web_dir, "enstore_log_file_search.html", "%s/log"%(cgi_url,))
+		fix_cgi_url(web_dir, "enstore_log_file_search.html", cgi_url)
 		fix_cgi_url(web_dir, "enstore_alarm_search.html", cgi_url)
 		
 	# make an enstore subdir in the cgi area
