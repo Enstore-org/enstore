@@ -898,6 +898,9 @@ def main(e):
                     #Make sure the messages are what we expect.
                     if rticket == None: #Something happened, keep trying.
                         continue
+                    elif e_errors.is_non_retriable(rticket.get('status',
+                                                               None)):
+                        break #Process the error.
                     elif not e_errors.is_ok(rticket.get('status', None)):
                         continue
                     #elif rticket['method'] != "mover_idle" or \
@@ -923,7 +926,7 @@ def main(e):
                     encp.close_descriptors(use_listen_socket)
                     #Tell the calling process, this file failed.
                     error_output(rticket)
-                    #Tell the calling process, of those files not attempted.
+                    #Tell the calling process of files not attempted.
                     untried_output(requests_per_vol[e.volume])
                     #Perform any necessary file cleanup.
                     quit(2)
@@ -972,7 +975,7 @@ def main(e):
                     encp.close_descriptors(use_listen_socket)
                     #Tell the calling process, this file failed.
                     error_output(request)
-                    #Tell the calling process, of those files not attempted.
+                    #Tell the calling process of files not attempted.
                     untried_output(requests_per_vol[e.volume])
                     #Perform any necessary file cleanup.
                     quit(2)
@@ -1008,7 +1011,7 @@ def main(e):
                 encp.close_descriptors(use_listen_socket, control_socket)
                 #Tell the calling process, this file failed.
                 error_output(ticket)
-                #Tell the calling process, of those files not attempted.
+                #Tell the calling process of files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
                 quit(2)
@@ -1058,7 +1061,7 @@ def main(e):
                     encp.close_descriptors(use_listen_socket)
                     #Tell the calling process, this file failed.
                     error_output(request)
-                    #Tell the calling process, of those files not attempted.
+                    #Tell the calling process of files not attempted.
                     untried_output(requests_per_vol[e.volume])
                     #Perform any necessary file cleanup.
                     quit(2)
@@ -1128,7 +1131,7 @@ def main(e):
 
                 #Tell the calling process, this file failed.
                 error_output(mover_ready)
-                #Tell the calling process, of those files not attempted.
+                #Tell the calling process of files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
                 quit(0)
@@ -1275,6 +1278,35 @@ def main(e):
                 #Trace.message(1, "Get exit status: %s" % (0,))
                 #Trace.log(e_errors.INFO, "Get exit status: %s" % (0,))
                 quit(0)
+                
+            #Give up on this file.  If a persistant media problem occurs
+            # skip this and go to the next file.
+            #elif done_ticket['status'][0] == e_errors.TOO_MANY_RETRIES \
+            #     and done_ticket['status'][1][0] in [
+            #    e_errors.POSITIONING_ERROR, e_errors.READ_ERROR, ]:
+            elif done_ticket['status'][0] in [e_errors.POSITIONING_ERROR,
+                                              e_errors.READ_ERROR,
+                                              ]:
+
+                #Tell the user what happend.
+                Trace.message(1, "File %s read failed: %s" %
+                              (request['infile'], done_ticket['status']))
+                Trace.log(e_errors.ERROR, "File %s read failed: %s" %
+                              (request['infile'], done_ticket['status']))
+
+                #We are done with this mover.
+                end_session(udp_socket, control_socket)
+                #Set completion status to failure.
+                request['completion_status'] = FAILURE
+                request['status'] = done_ticket['status']
+                #Store these changes back into the master list.
+                requests_per_vol[e.volume][index] = request
+                
+                #Tell the calling process, this file failed.
+                error_output(request)
+
+                break
+            
             #Give up.
             elif e_errors.is_non_retriable(done_ticket['status'][0]):
                 #Tell the user what happend.
@@ -1297,6 +1329,7 @@ def main(e):
                 #Trace.message(1, "Get exit status: %s" % (2,))
                 #Trace.log(e_errors.INFO, "Get exit status: %s" % (2,))
                 quit(2)
+                
             #Keep trying.
             elif e_errors.is_retriable(done_ticket['status'][0]):
                 #On retriable error go back and resubmit what is left
