@@ -429,7 +429,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# with the suspect volume info
 	lm_table = HTMLgen.TableLite(self.lm_state_row(lm), cellpadding=0, 
 				     cellspacing=0, align="LEFT", 
-				     bgcolor=YELLOW, width="100%")
+				     bgcolor=YELLOW, width="75%")
 	lm_table.append(self.suspect_volume_row(lm))
 	lm_table.append(self.null_row(cols))
 	self.known_mover_rows(lm_table, lm)
@@ -594,17 +594,19 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def blocksize_row(self, table):
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(\
 	     HTMLgen.Name("blocksizes", "Blocksizes")), size="+1")))
-	blsizes = self.data_dict[enstore_status.BLOCKSIZES]
-	blkeys = blsizes.keys()
-	blkeys.sort()
-	bl_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, align="LEFT", 
-				     bgcolor=YELLOW, width="40%")
-	for bl in blkeys:
-	    trb = HTMLgen.TR(HTMLgen.TD(bl))
-	    trb.append(HTMLgen.TD(blsizes[bl]))
-	    bl_table.append(trb)
-	tr.append(HTMLgen.TD(bl_table, colspan=5))
-	table.append(tr)
+	blsizes = self.data_dict.get(enstore_status.BLOCKSIZES, {})
+	if blkeys:
+	    blkeys = blsizes.keys()
+	    blkeys.sort()
+	    bl_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
+					 align="LEFT", bgcolor=YELLOW, 
+					 width="40%")
+	    for bl in blkeys:
+		trb = HTMLgen.TR(HTMLgen.TD(bl))
+		trb.append(HTMLgen.TD(blsizes[bl]))
+		bl_table.append(trb)
+	    tr.append(HTMLgen.TD(bl_table, colspan=5))
+	    table.append(tr)
 
     # generate the main table with all of the information
     def main_table(self):
