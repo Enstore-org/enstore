@@ -21,31 +21,26 @@ import e_errors
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
-                 port=interface.default_port(), bfid=0):
-        # we always need to be talking to our configuration server
-        Trace.trace(10,'{__init__')
+    def __init__( self, csc=0, verbose=0, host=interface.default_host(),
+                  port=interface.default_port(), bfid=0, servr_addr=None ):
+        Trace.trace( 10, '{__init__' )
 	self.print_id = "FILECC"
-        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
 	self.verbose = verbose
-        ticket = self.csc.get("file_clerk")
-	try:
-            self.print_id = ticket['logname']
-        except:
-            pass
-        Trace.trace(10,'}__init')
+        configuration_client.set_csc( self, csc, host, port, verbose )
+        ticket = self.csc.get( "file_clerk" )
+	if servr_addr != None: self.servr_addr = servr_addr
+	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
+	try:    self.print_id = ticket['logname']
+        except: pass
+        Trace.trace( 10, '}__init' )
 
     def send (self, ticket, rcv_timeout=0, tries=0):
-        Trace.trace(12,"{send"+repr(ticket))
-        # who's our file clerk server that we should send the ticket to?
-        vticket = self.csc.get("file_clerk")
-        # send user ticket and return answer back
-        Trace.trace(12,"send addr="+repr((vticket['hostip'], vticket['port'])))
-        s = self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
-        Trace.trace(12,"}send"+repr(s))
-        return s
+        Trace.trace( 12, '{send to volume clerk '+repr(self.servr_addr) )
+        x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
+        Trace.trace( 12, '}send '+repr(x) )
+        return x
 
     def new_bit_file(self, ticket):
         Trace.trace(12,"{new_bit_file")
