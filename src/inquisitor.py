@@ -151,8 +151,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             #    3. if still timed out, try to restart the server
             #    4. if not restarted, raise an alarm
             try:
-                t = self.csc.get_uncached(key, self.alive_rcv_timeout,
-                                          self.alive_retries)
+                t = self.csc.get(key, self.alive_rcv_timeout,
+                                 self.alive_retries)
             except errno.errorcode[errno.ETIMEDOUT]:
                 self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
                 Trace.trace(13,"alive_and_restart - ERROR, getting config dict timed out ")
@@ -538,8 +538,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_inquisitor(self, key, time):
 	# get info on the inquisitor
 	try:
-	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, 
-				      self.alive_retries)
+	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
@@ -573,10 +572,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
 	self.new_intervals = t.get('intervals', {})
-
-	# clear out the cache in the config client so we can get new info on
-	# any of the servers in case the info has changed.
-	self.csc.clear()
 
         # update the configuration file web page
         self.make_config_html_file()
