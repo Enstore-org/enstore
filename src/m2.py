@@ -1,5 +1,49 @@
 #!/usr/bin/env python
-# m2.py -- collection of mammoth-2 related routines
+"""
+m2.py -- collection of mammoth-2 related routines
+
+It contains the following routines:
+
+dump_code(device, path=None, sendto=[], notify=[], comment=None)
+
+	calling m2probe to dump the internal code of a m2 drive
+
+	device: the device that connects to a mammoth-2 drive
+	path:	path to the dump file, default to be CWD
+	sendto:	a list of email addresses to send the code dump to
+	notify:	a list of email addresses to send the notification to
+	comment:extra message that goes into notification
+		This is useful to pass enstore mover information
+
+	return error message or None
+
+	Most of the errors are handled by m2probe
+
+    example:
+
+	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
+		['enstore_admin@fnal.gov'], 'This is mover XXX')
+
+----
+
+This can also be invoked interactively which is useful to dump a local
+drive without going through enstore system ...
+
+m2.py dump device [path [snedto notify comment]]
+
+Examples:
+
+m2.py dump /dev/rmt/tps3d0n
+m2.py dump /dev/rmt/tps3d0n /tmp
+m2.py dump /dev/rmt/tps3d0n /tmp MartinD@Exabyte.COM enstore_admin@fnal.gov 'mover XXX'
+
+Note:
+
+1. To avoid the ambiguity, if one of sendto, notify and comment is specified,
+   all of them should be specified.
+2. If sendto or notify is a list, all e-mail address should be in a space
+   delimited string such as "jon@fnal.gov don@fnal.gov"
+"""
 
 import os
 import string
@@ -9,29 +53,31 @@ import getpass
 import sys
 
 # dump_code(device, path=None, sendto=[], notify=[], comment=None)
-#
-#	calling m2probe to dump the internal code of a m2 drive
-#
-#	device: the device that connects to a mammoth-2 drive
-#	path:	path to the dump file, default to be CWD
-#	sendto:	a list of email addresses to send the code dump to
-#	notify:	a list of email addresses to send the notification to
-#	comment:extra message that goes into notification
-#		This is useful to pass enstore mover information
-#
-#	return error message or None
-#
-#	Most of the errors are handled by m2probe
-#
-#	example:
-#
-#	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
-#		['enstore_admin@fnal.gov'], 'This is mover XXX')
-#
+#	-- calling m2probe to dump the internal code of a m2 drive
 
 def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 
-	# print 'dump_code(device='+`device`+', path='+`path`+', sendto='+`sendto`+', notify='+`notify`+', comment='+`comment`+')'
+	"""
+	dump_code(device, path=None, sendto=[], notify=[], comment=None)
+
+	calling m2probe to dump the internal code of a m2 drive
+
+	device: the device that connects to a mammoth-2 drive
+	path:	path to the dump file, default to be CWD
+	sendto:	a list of email addresses to send the code dump to
+	notify:	a list of email addresses to send the notification to
+	comment:extra message that goes into notification
+		This is useful to pass enstore mover information
+
+	return error message or None
+
+	Most of the errors are handled by m2probe
+
+	example:
+
+	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
+		['enstore_admin@fnal.gov'], 'This is mover XXX')
+	"""
 
 	# use prefix to fake the path
 	if path:
