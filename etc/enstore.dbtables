@@ -48,7 +48,9 @@ create table file (
 	pnfs_id		varchar,
 	sanity_size	bigint default -1,
 	sanity_crc	bigint default -1,
-	size		bigint default 0
+	size		bigint default 0,
+	uid		int default -1,
+	gid		int default -1
 );
 create index file_volume_idx on file(volume);
 create index file_pnfs_path_idx on file(pnfs_path);
