@@ -118,6 +118,8 @@ class File(pnfs.File):
 			f.write(self.pnfs_vid+'\n')
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
+			if self.complete_crc:
+				f.write(self.complete_crc+'\n')
 			f.close()
 			# set file size
 			self.set_size()
@@ -137,7 +139,17 @@ class File(pnfs.File):
 			f.close()
 			self.update()
 
+# to deal with /pnfs/fs/usr/...
+def n_path(p):
+	pl = string.split(p, '/')
+	if pl[2] == 'fs' and pl[3] == 'usr':
+		del pl[2]
+		del pl[2]
+		return string.join(pl, '/')
+	else:
+		return p
 
+	
 def usage():
 	print "usage:"
 	print '\t'+sys.argv[0], "file [file [...]]    swap individual files"
@@ -147,7 +159,8 @@ def usage():
 # a_path(p):
 #    p = f_prefix/X/... --> f_prefix/_A_X/...
 #
-def a_path(p):
+def a_path(p1):
+	p = n_path(p1)
 	pl = string.split(p, '/')
 	# check prefix
 	if pl[:f_n] != f_p:
@@ -155,7 +168,8 @@ def a_path(p):
 	pl[f_n] = '.A_'+pl[f_n]
 	return string.join(pl, '/')
 
-def b_path(p):
+def b_path(p1):
+	p = n_path(p1)
 	pl = string.split(p, '/')
 	# check prefix
 	if pl[:f_n] != f_p:
