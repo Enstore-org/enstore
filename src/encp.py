@@ -1713,7 +1713,8 @@ def read_from_hsm(input_files, output,
     requests_per_vol = {}
     
     maxretry = 2
-
+    retry_flag = 0
+    
     if verbose>2:
         print "Checking input pnfs files:",input_files, "   elapsed=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
@@ -1892,6 +1893,7 @@ def read_from_hsm(input_files, output,
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
+        retry_flag = 0
         request_list = requests_per_vol[vol]
         files_left = len(request_list)
         while files_left:
