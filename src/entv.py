@@ -17,19 +17,11 @@ event_relay_port = 55510
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
-def get_config():
-    pipe = os.popen("enstore config --show", 'r') #run the command and give us
-                                                                           ## a way to access to its output
-    data = pipe.read() #get the output of the command (will be a string)
-    configdict = eval(data) # Turn the string back into a Python object
+configdict = eval (os.popen("enstore config --show", 'r').read())
 
 
-## TODO: write "get_mover_status" which works the same way, running
-    ## enstore mover --status <whatever>.mover
-    
 def get_movers():
     movers = []
-    configdict = get_config()
     for item, value in configdict.items():
         if endswith(item, '.mover') and string.find(item, 'null')<0:
             mover = item[:-6]
@@ -40,6 +32,7 @@ def get_movers():
 s = None
 dst = None
 
+
 #This function sends a string to the enstore_display, as
 # well as printing it for debugging purposes
 def send(msg):
@@ -47,6 +40,24 @@ def send(msg):
     s.sendto(msg, dst)
 
 DEFAULTPORT = 60126 #same as enstore_display.py
+
+
+def get_mover_state():
+    movers=get_movers()
+    for m in movers:
+        file="enstore mover --status ",m+".mover"
+        file=string.join(file)
+        status_dict=eval(os.popen(file,'r').read())
+        mover_status=[]
+        last_volume=[]
+        mover_status =status_dict.values()
+        last_state=mover_status[8]
+        last_volume=mover_status[9]
+        send("state " + m + " " + (last_state))
+        if last_volume ==None:
+            pass
+        else:
+            send("loaded " + m + " " + (last_volume))
     
 def main():
     global s, dst
@@ -66,14 +77,14 @@ def main():
     #Tell enstore_display what the movers are
     movers = get_movers()
     send("movers "+string.join(movers))
+
+    #Get the state of each mover before continueing
+    state = get_mover_state()
+
     
     #give it a little time to draw the movers
     time.sleep(3)
 
-    # XXX Now, before we register with the event_relay, it would
-    # be really nice to use "enstore mover --status" to get current
-    # status of all the Movers!
-    
     #Tell the event_relay that we want to hear about Enstore
     #events.
     #This gets us 15 minutes worth of update messages
