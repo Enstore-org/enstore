@@ -64,7 +64,7 @@ def main():
     else:
         uncopied_files = []
         for item in files:
-            if not os.path.exits(os.path.join(outputDir, item[1])):
+            if not os.path.exists(os.path.join(outputDir, item[1])):
                 uncopied_files.append(item)
             else:
                 print "File", item, "already copied.  Skipping."
