@@ -40,7 +40,7 @@ def set_max_recv_buffersize(sock):
 
         #Note: In at least one case (Linux LTS) the value returned by
         # fpathconf() is -1.
-    except ValueError:
+    except (ValueError, KeyError):
         #The string 'PC_SOCK_MAXBUF' is not recognized by this system.
         max_buffer_size = -1
     except OSError:
