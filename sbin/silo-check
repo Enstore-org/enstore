@@ -139,7 +139,7 @@ egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while r
   vf=`echo $line|awk '{print $NF}'`
   sg=`echo $vf | cut -f1 -d.`
   if [ $sg = 'test' ]; then continue;fi
-  if [ $lib = 'cdf' -o $lib = 'CDF-9940B' -o $lib = 'test'  -o $lib = 'CDF-Migration' -o $lib = 'A-Loan' ];then continue; fi
+  if [ $lib = 'cdf' -o $lib = 'CDF-9940B' -o $lib = 'test'  -o $lib = 'CDF-Migration' -o $lib = 'A-Loan' -o $lib = 'CD-9940B' ];then continue; fi
   if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   echo $line
 done
