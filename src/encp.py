@@ -29,7 +29,7 @@ import Trace
 def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(3,"{write_to_hsm input="+repr(input)+\
+    Trace.trace(6,"{write_to_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" list="+repr(list)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -118,9 +118,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
+    listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
-    listen_socket.listen(4)
 
     tinfo["get_callback"] = time.time() - t1 #------------------------------End
     if list>1:
@@ -137,7 +137,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     Trace.trace(10,"write_to_hsm calling config server to find "+\
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
-    Trace.trace(10,"write_to hsm."+ library[0]+".library_manager at host="+\
+    Trace.trace(10,"write_to_hsm."+ library[0]+".library_manager at host="+\
                 repr(vticket["host"])+" port="+repr(vticket["port"]))
 
     tinfo["get_libman"] = time.time() - t1 #--------------------------------End
@@ -200,7 +200,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             # send the work ticket to the library manager
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 -t0
             system_enabled(p) # make sure system still enabled before submitting
-            Trace.trace(3,"write_to_hsm q'd:"+repr(work_ticket))
+            Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
             ticket = u.send(work_ticket, (vticket['host'], vticket['port']))
             if ticket['status'] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
@@ -273,7 +273,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             mycrc = 0
             fsize = file_size[i]
             bufsize = 65536*4
-            Trace.trace(3,"write_to_hsm: sending data to EXfer file="+\
+            Trace.trace(7,"write_to_hsm: sending data to EXfer file="+\
                         inputlist[i]+" socket="+repr(data_path_socket)+\
                         " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
             try:
@@ -416,14 +416,14 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
 
-    Trace.trace(3,"}write_to_hsm "+msg)
+    Trace.trace(6,"}write_to_hsm "+msg)
 
 ##############################################################################
 
 def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(3,"{read_from_hsm input="+repr(input)+\
+    Trace.trace(6,"{read_from_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" list="+repr(list)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -491,8 +491,11 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     t1 = time.time() #----------------------------------------------------Start
 
     # get a port to talk on and listen for connections
+    Trace.trace(10,'read_from_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
+    Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
+                ' port='+repr(port)+' listen_socket='+repr(listen_socket))
 
     tinfo["get_callback"] = time.time() - t1 #------------------------------End
     if list>2:
@@ -505,7 +508,10 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     t1 = time.time() #----------------------------------------------------Start
 
     # ask configuration server what port the file clerk is using
+    Trace.trace(10,"read_from_hsm calling config server to find file clerk")
     fticket = csc.get("file_clerk")
+    Trace.trace(10,"read_from_hsm file clerk at host="+\
+                repr(fticket["host"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
     if list>1:
@@ -520,12 +526,16 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     for i in range(0,ninput):
         t2 = time.time() # -------------------------------------------Lap-Start
         unique_id.append(0) # will be set later when submitted
+        Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
+                    repr(bfid[i]))
         binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['host'],fticket['port']))
         if binfo['status']!='ok':
             pprint.pprint(binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
+        Trace.trace(7,"read_from_hsm on volume="+\
+                    repr(binfo['file_clerk']['external_label']))
         vinfo.append(binfo['volume_clerk'])
         finfo.append(binfo['file_clerk'])
         label = binfo['file_clerk']['external_label']
@@ -571,6 +581,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                                }
 
                 # send ticket to file clerk who sends it to right library manger
+                Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
                 ticket = u.send(work_ticket, (fticket['host'], fticket['port']))
                 if ticket['status'] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
@@ -619,6 +630,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             # listen for a mover - see if id corresponds to one of the tickets
             #   we submitted for the volume
             while 1 :
+                Trace.trace(10,"read_from_hsm listening for callback")
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp read_from_hsm, mover call back")
@@ -630,10 +642,16 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                         forus = 1
                         break
                 if forus==1:
+                    Trace.trace(10,"read_from_hsm mover called back on "+\
+                                "control_socket="+repr(control_socket)+\
+                                " address="+repr(address))
                     break
                 else:
                     print ("encp read_from_hsm: imposter called us back, "\
                            +"trying again")
+                    Trace.trace(10,"write_to_hsm mover imposter called us "+\
+                                "control_socket="+repr(control_socket)+\
+                                " address="+repr(address))
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
@@ -661,9 +679,13 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             # crc the data if user has request crc check
             l = 0
             mycrc = 0
+            bufsize = 65536*4
             f = open(outputlist[j],"w")
+            Trace.trace(7,"read_from__hsm: reading data to  file="+\
+                        inputlist[i]+" socket="+repr(data_path_socket)+\
+                        " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
             while 1:
-                buf = data_path_socket.recv(65536*4)
+                buf = data_path_socket.recv(bufsize)
                 l = l + len(buf)
                 if len(buf) == 0 : break
                 if chk_crc != 0 :
@@ -688,9 +710,12 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             t2 = time.time() #----------------------------------------Lap-Start
 
             # File has been read - wait for final dialog with mover.
+            Trace.trace(10,"read_from_hsm waiting for final mover dialog on"+\
+                        repr(control_socket))
             done_ticket = callback.read_tcp_socket(control_socket,\
                           "encp read_from_hsm, mover final dialog")
             control_socket.close()
+            Trace.trace(10,"read_from_hsm final dialog recieved")
 
             # make sure the mover thinks the transfer went ok
             if done_ticket["status"] != "ok" :
@@ -768,10 +793,13 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     else:
         done_ticket["MB_per_S"] = 0.0
 
+    msg = "Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
+          " in"+repr(tf-t0)+"S.  Overall rate = "+\
+          repr(done_ticket["MB_per_S"])+" MB/s"
     if list or ninput>1:
-        print "Complete: ",total_bytes," bytes in ",ninput," files",\
-              " in",tf-t0,"S.  Overall rate = ",\
-              done_ticket["MB_per_S"]," MB/s"
+        print msg
+
+    Trace.trace(6,"}read_from_hsm "+msg)
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
@@ -834,7 +862,7 @@ def clients(config_host,config_port,list):
 # check if the system is still running by checking the wormhole file
 
 def system_enabled(p):                 # p is a  pnfs object
-    Trace.trace(16,"{system_enabled p="+repr(p))
+    Trace.trace(10,"{system_enabled p="+repr(p))
 
     running = p.check_pnfs_enabled()
     if running != pnfs.enabled :
@@ -1160,6 +1188,7 @@ class encp(base_defaults.BaseDefaults):
 
 if __name__  ==  "__main__" :
     t0 = time.time()
+    Trace.init("encp")
     Trace.trace(1,"encp called at "+repr(t0)+":"+repr(sys.argv))
 
     # use class to get standard way of parsing options
