@@ -8,9 +8,36 @@
 	<META NAME="CHANGED" CONTENT="19981029;13275900">
 </HEAD>
 <BODY>
-<P><A NAME="error"></A>&gt; 4 Error Control 
+<h1><A NAME="error"></A>Error Control </h1> 
 </P>
-<P>This section describes Enstore's error control policy and plan.</P>
+<P>This section describes Enstore's error control policy and plan.
+
+<h2>Assumptions</h2>
+The behavior of the product is thought to conform to (oral) statements
+made about Run II operating conditions:
+<UL>
+	<LI>No single error when reading a tape is fatal to upper level
+		software.
+
+	<LI>When writing, errors should be handled by re-tries
+		on different media.
+
+	<LI>Mover nodes may crash, with minimal disruption of the system.
+
+	<LI>The system should generate alarms and recieve immediate service
+	   when its thoughput faLls below pre-defined levels.
+
+	<LI>Routine error conditions should be cleared in normal
+	   business hours.
+
+	<LI> It shall be possible to re-direct writes to another library
+	   in case of library failure.
+
+</UL>
+</P>
+
+<h2>Overview</h2>
+
 <P>Much of the system state is stored within the user's encp client.
 This allows the encp client to retry on a large number of different
 errors. This retry is given a very high priority when it is received
@@ -92,12 +119,11 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2><B>WRITE_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Request volume was not found. Volume data base is
-			inconsistent with reality. </FONT>
+			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Check volume in morning </FONT>
-		</TD>
+		</TD> 
 		<TD>
 			<P><FONT SIZE=2>Mark volume no access</FONT></P>
 			<P><BR>
@@ -430,7 +456,7 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Mark volume as no access </FONT>
+			<P><FONT SIZE=2>Mark volume as no access, retry </FONT>
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Yes </FONT>
@@ -458,8 +484,8 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2><B>READ_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Requested volume was not found. Volume data base
-			is inconsistent with reality. </FONT>
+			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Check volume in morning </FONT>
