@@ -164,7 +164,10 @@ class EncpLine:
 		self.mover = string.replace(self.mover, ".%s"%(enstore_constants.MOVER,),
 					    "")
 		tmp_list = string.splitfields(tmp_list[6], "=")
-		self.drive_id = tmp_list[1]
+		try:
+		    self.drive_id = tmp_list[1]
+		except:
+		    self.drive_id = ""
                 self.valid = 1
             except ValueError:
                 # we do not handle this formatting
