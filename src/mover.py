@@ -696,9 +696,14 @@ def forked_read_from_hsm( self, ticket ):
 	    Trace.log(e_errors.INFO,'done with read fd_xfers')
 	    
 	    if ticket['mover']['local_mover']:
-		# give the file to the user
-		posix.chown( ticket['mover']['lcl_fname'],
-			     ticket['wrapper']['uid'],ticket['wrapper']['gid'] )
+		# try to give the file to the user
+		# Note: IRIX fs (and nfs) allow user to give file to other
+		# user but LINUX fs does not.
+		try:
+		    posix.chown( ticket['mover']['lcl_fname'],
+				 ticket['wrapper']['uid'],
+				 ticket['wrapper']['gid'] )
+		except: pass
 		pass
 
 	    if     self.crc_flag != None \
