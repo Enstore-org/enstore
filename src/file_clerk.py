@@ -58,7 +58,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_pnfsid %s"%ticket["status"])
+            Trace.trace(10,"set_pnfsid %s"%(ticket["status"],))
             return
 
         # also need new pnfsid - make sure we have this
@@ -76,7 +76,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_pnfsid %s"%ticket["status"])
+            Trace.trace(10,"set_pnfsid %s"%(ticket["status"],))
             return
 
         # look up in our dictionary the request bit field id
@@ -86,7 +86,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR,"File Clerk: bfid %s not found"%bfid)
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # add the pnfsid
@@ -196,7 +196,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted %s"%ticket["status"])
+            Trace.trace(10,"set_deleted %s"%(ticket["status"],))
             return
 
         # also need new value of the delete element- make sure we have this
@@ -207,7 +207,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted status %s"%ticket["status"])
+            Trace.trace(10,"set_deleted status %s"%(ticket["status"],))
             return
 
 	status, fc, vc = self.set_deleted_priv(bfid, deleted, restore_dir)
@@ -232,7 +232,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%ticket["status"])
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
             return
 	# find the file in db
 	bfid = None
@@ -249,14 +249,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    ticket["status"] = "ENOENT", "File %s not found"%fname
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%ticket["status"])
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
             return
 
 	if string.find(value["external_label"],'deleted') !=-1:
 	    ticket["status"] = "EACCES", "volume %s is deleted"%value["external_label"]
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file %s"%ticket["status"])
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
 
 	status, fc, vc = self.set_deleted_priv(bfid, "no", restore_dir)
 	ticket["status"] = status
@@ -290,7 +290,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             exc,msg,tb=sys.exc_info()
             ticket["status"] = str(exc),str(msg)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"get_bfids %s"%ticket["status"])
+            Trace.trace(10,"get_bfids %s"%(ticket["status"],))
             return
         self.get_user_sockets(ticket)
         ticket["status"] = (e_errors.OK, None)
@@ -321,7 +321,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # look up in our dictionary the request bit field id
@@ -332,7 +332,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: bfid %s not found"%bfid)
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # copy all file information we have to user's ticket
@@ -352,7 +352,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # ask the volume clerk server which library has "external_label" in it
@@ -361,7 +361,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if vticket["status"][0] != e_errors.OK:
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(vticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
         library = vticket["library"]
         Trace.trace(11,"bfid_info volume=%s in library %s"%
@@ -386,7 +386,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # look up in our dictionary the request bit field id
@@ -397,7 +397,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: bfid %s not found"%bfid)
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info %s"%ticket["status"])
+            Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
         # copy all file information we have to user's ticket
@@ -405,7 +405,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
 
 	self.reply_to_caller(ticket)
-	Trace.trace(10,"get_volmap_name %s"%ticket["status"])
+	Trace.trace(10,"get_volmap_name %s"%(ticket["status"],))
 	return
 
     # change the delete state element in the dictionary
@@ -419,7 +419,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"del_bfid: status %s"%ticket["status"])
+            Trace.trace(10,"del_bfid: status %s"%(ticket["status"],))
             return
 
         # now just delete the bfid
@@ -452,7 +452,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"rename_volume %s"%ticket["status"])
+            Trace.trace(10,"rename_volume %s"%(ticket["status"],))
             return
 
 	record = self.dict[bfid] ## was deepcopy
@@ -504,7 +504,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = (e_errors.KEYERROR,"File Clerk: "+key+" key is missing")
          Trace.log(e_errors.INFO, "%s"%ticket)
          self.reply_to_caller(ticket)
-         Trace.trace(10,"tape_list %s"%ticket["status"])
+         Trace.trace(10,"tape_list %s"%(ticket["status"],))
          return
 
      if self.fork() != 0:
