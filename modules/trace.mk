@@ -33,8 +33,14 @@ traceShow.o:	traceShow.c trace.h
 		cc -g $(WARN) -o traceShow.o -c traceShow.c
 
 reset:
-		ipcrm shm `od -A n      -N 4 -t d4 trace.buffer`
-		ipcrm sem `od -A n -j 4 -N 4 -t d4 trace.buffer`
-		rm -f trace.buffer
+		@key_file=trace.key;\
+		if [ `uname` = Linux ];then \
+		    ipcrm shm `od -A n      -N 4 -t d4 $$key_file`;\
+		    ipcrm sem `od -A n -j 4 -N 4 -t d4 $$key_file`;\
+		else \
+		    ipcrm -m `expr "\`od -D $$key_file 0\`" : '[^ ]* *\([0-9]*\)'`;\
+		    ipcrm -s `expr "\`od -D $$key_file 4\`" : '[^ ]* *\([0-9]*\)'`;\
+		fi;\
+		rm -f $$key_file
 
 
