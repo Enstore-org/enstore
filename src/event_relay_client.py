@@ -62,9 +62,17 @@ class EventRelayClient:
 
     # read a message from the socket
     def read(self, fd=None):
+        import sys
+        import traceback
+        import timeofday
+        import e_errors
+        import Trace
         if not fd:
             fd = self.sock
-        msg = fd.recv(1024)
+        try:
+            msg = fd.recv(1024)
+        except socket.error, detail:
+            return None
         # now decode the message based on the message type, which is always the first
         # word in the text message
         return event_relay_messages.decode(msg)

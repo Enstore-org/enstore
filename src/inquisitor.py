@@ -534,17 +534,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 				     ALIVE, now, enstore_constants.EVENT_RELAY)
 	self.event_relay.alive(now)
 	msg = self.erc.read(fd)
-	if msg.type == event_relay_messages.ALIVE:
-	    server = self.server_is_alive(msg.server)
-	    # if server is a mover, we need to get some extra status
-	    if enstore_functions.is_mover(msg.server):
-		self.update_mover(server)
-	    # if server is a library_manager, we need to get some extra status
-	    if enstore_functions.is_library_manager(msg.server):
-		self.update_library_manager(server)
-	elif msg.type == event_relay_messages.NEWCONFIGFILE:
-	    # a new config file was loaded into the config server, get it
-	    self.make_config_html_file()
+        if msg:
+            if msg.type == event_relay_messages.ALIVE:
+                server = self.server_is_alive(msg.server)
+                # if server is a mover, we need to get some extra status
+                if enstore_functions.is_mover(msg.server):
+                    self.update_mover(server)
+                # if server is a library_manager, we need to get some extra status
+                if enstore_functions.is_library_manager(msg.server):
+                    self.update_library_manager(server)
+            elif msg.type == event_relay_messages.NEWCONFIGFILE:
+                # a new config file was loaded into the config server, get it
+                self.make_config_html_file()
 
     # these are the things we do periodically, this routine is called when an
     # interval is up, from within dispatching_worker  -
