@@ -644,8 +644,30 @@ class Pnfs:
 
             #dir_elements = string.split(self.dir,'/')
             #self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ ff+'/'+volume
+
+            # this is horrible --- PLATFORM DEPENDENT ----------------------------------------------------------<--
+            machtypelf = os.popen('uname','r').readlines()
+            machtype = regsub.sub("\012","",machtypelf[0])
+            if machtype=="AIX":
+                k = ""
+                item = "7"
+            elif machtype=="IRIX":
+                k = ""
+                item = "7"
+            elif machtype=="SunOS":
+                k = "-k"
+                item = "6"
+            elif machtype=="Linux":
+                k = ""
+                item = "6"
+            else:
+                k = ""
+                item = "6"
+                print "unknown OS:",machtype
+
             # we need to find the mount point and create the volume file there
-            mountpoints = os.popen('df | grep /pnfs| awk "{print \$6}" ','r').readlines()
+            command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
+            mountpoints = os.popen(command,'r').readlines()
             mpchoose = ""
             for mplf in mountpoints:
                 mp = regsub.sub("\012","",mplf)
@@ -681,7 +703,7 @@ class Pnfs:
                         os.mkdir(dir)
                         # we already written to the user's file space, let everyone write to directory
                         # later the actual file will be given to root and there will be no access
-                        os.chmod(dir,0777) 
+                        os.chmod(dir,0777)
 
             # create the volume map file and set its size the same as main file
             self.volume_fileP = Pnfs(self.volume_file)
