@@ -113,9 +113,12 @@ if __name__=="__main__":
 	ago=100
 
     try:
+	#dbHome = configuration_client.ConfigurationClient(\
+	#		(interface.default_host(),\
+	#		interface.default_port()), 3).get('database')['db_dir']
 	dbHome = configuration_client.ConfigurationClient(\
 			(interface.default_host(),\
-			interface.default_port()), 3).get('database')['db_dir']
+			interface.default_port())).get('database')['db_dir']
 
     except:
 	dbHome=os.environ['ENSTORE_DIR']
@@ -127,9 +130,12 @@ if __name__=="__main__":
                   str(sys.exc_info()[0])+(sys.exc_info()[1]))
 	sys.exit(1)
 
+    #backup_config = configuration_client.ConfigurationClient(\
+    #                    (interface.default_host(),\
+    #                    interface.default_port()), 3).get('backup')
     backup_config = configuration_client.ConfigurationClient(\
                         (interface.default_host(),\
-                        interface.default_port()), 3).get('backup')
+                        interface.default_port())).get('backup')
 
     try:
         bckHome = backup_config['dir']
