@@ -2434,7 +2434,7 @@ def verify_read_request_consistancy(requests_per_vol):
                         'pnfs_origdrive':p.origdrive,
                         'status':"Missing data in pnfs layer 4."}
                 sys.stderr.write(rest['status'] + "  Continuing.\n")
-                Trace.alarm(e_errors.ERROR, e_errors.UNKNOWN, rest)
+                Trace.alarm(e_errors.ERROR, e_errors.PNFS_ERROR, rest)
 
             #If there is a layer 4, but the data does not match that in
             # the file and volume clerk databases, then raise alarm and exit.
@@ -2487,6 +2487,10 @@ def get_clerks_info(vcc, fcc, bfid):
     fc_ticket = fcc.bfid_info(bfid=bfid)
 
     if fc_ticket['status'][0] != e_errors.OK:
+        raise EncpError(None,
+                        "Failed to obtain information for bfid %s" % bfid,
+                        e_errors.EPROTO, fc_ticket)
+    if not fc_ticket.get('external_label', None):
         raise EncpError(None,
                         "Failed to obtain information for bfid %s" % bfid,
                         e_errors.EPROTO, fc_ticket)
