@@ -21,6 +21,16 @@ ascii_file = 0
 html_file = 1
 force = 1
 
+# ENCP line pieces
+ETIME = 0
+ENODE = 1
+EUSER = 2
+ESTATUS = 3
+EXRATE = 4
+EBYTES = 5
+EDEV = 6
+EURATE = 7
+
 bg_color = "FFFFFF"
 
 html_header1 = "<title>Enstore Status</title>\n"+\
@@ -367,14 +377,15 @@ class EnStatus:
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
 	    einfo = parse_encp_line(line)
-	    str = str+spacing+einfo[0]+" on "+einfo[1]+" by "+einfo[2]
+	    str = str+spacing+einfo[ETIME]+" on "+einfo[ENODE]+" by "+\
+	          einfo[EUSER]
 	    spacing = "                  "
-	    if einfo[3] == log_client.sevdict[log_client.INFO]:
-	        str = str+" (Data Transfer Rate : "+einfo[4]+" MB/S)"
+	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	        str = str+" (Data Transfer Rate : "+einfo[EXRATE]+" MB/S)"
 	        # what's left in erest2 is what we want, but make it clearer
 	        # that the rate in this line is the user rate
-	        str = str+prefix+einfo[5]+" bytes copied to "+einfo[6]+ \
-	              " at a user rate of "+einfo[7]+" MB/S\n"
+	        str = str+prefix+einfo[EBYTES]+" bytes copied to "+\
+	              einfo[EDEV]+" at a user rate of "+einfo[EURATE]+" MB/S\n"
 	    else:
 	        # there was an error or warning
 	        if len(einfo) == 7:
