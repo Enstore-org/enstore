@@ -1065,7 +1065,7 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
     t2 = time.time() #--------------------------------------------Lap-Start
     rq_list = []
     for rq in requests: 
-	Trace.trace(7,"read_hsm_files:"+repr(rq['infile'])+" t2="+repr(t2))
+	Trace.trace(7,"submit_read_requests:"+repr(rq['infile'])+" t2="+repr(t2))
     Qd=""
     current_library = ''
     submitted = 0
@@ -1538,7 +1538,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             tinfo['transrate'+repr(j)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
         else:
             tinfo['rate'+repr(j)] = 0.0
-        format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f"
+        format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f  {'media_changer' : '%s'}"
 
         if verbose:
             print format %\
@@ -1546,7 +1546,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                    done_ticket["fc"]["external_label"],
                    tinfo["rate"+repr(j)],
                    tinfo["transrate"+repr(j)],
-                   time.time()-t0)
+                   time.time()-t0,
+                   done_ticket["mover"]["media_changer"])
         if data_access_layer:
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            fsize, done_ticket)
@@ -1556,7 +1557,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 					 done_ticket["fc"]["external_label"],
 					 tinfo["rate"+repr(j)], 
 					 tinfo["transrate"+repr(j)],
-					 time.time()-t0),
+					 time.time()-t0,
+                                         done_ticket["mover"]["media_changer"]),
                   Trace.MSG_ENCP_XFER )
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
