@@ -508,12 +508,10 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    mycrc = EXfer.fd_xfer( in_file.fileno(),
 					   data_path_socket.fileno(), 
 					   fsize, bufsize, crc_flag, 0, ipc_flag )
-		except (EXfer.error), err_msg:
+		except EXfer.error, msg:
                     # this error used to be a 0
-		    Trace.trace(6,"write_to_hsm EXfer error:"+
-				str(sys.argv)+" "+
-				str(sys.exc_info()[0])+" "+
-				str(sys.exc_info()[1]))
+		    Trace.trace(6,"write_to_hsm EXfer error: %s %s"%
+                                (sys.argv, msg))
 
 		    # might as well close our end --- we will either exit or
 		    # loop back around
@@ -565,7 +563,8 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    else:
 		        #some other error that needs coding
 			traceback.print_exc()
-			raise sys.exc_info()[0], sys.exc_info()[1]
+                        exc,msg,tb=sys.exc_info()
+			raise exc,msg
 		    pass
 
 		# close the data socket and the file, we've sent it 
@@ -662,8 +661,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                                  done_ticket["fc"]["location_cookie"],
                                  done_ticket["fc"]["size"])
             except:
-                print  "Trouble with pnfs.set_xreference",\
-                      sys.exc_info()[0],sys.exc_info()[1], "continuing..."
+                exc,msg,tb=sys.exc_info()
+                print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
 	    # add the pnfs ids and filenames to the file clerk ticket and store it
 	    done_ticket["fc"]["pnfsid"] = p.id
             done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
@@ -1328,8 +1327,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         if verbose: print "Receiving data for file ", requests[j]['outfile'],\
 	   "   cumt=",time.time()-t0
 
-
-	tempname = requests[j]['outfile']+'.'+requests[j]['unique_id']
+	tempname = requests[j]['outfile']
+        if tempname != '/dev/null':
+            tempname = tempname+'.'+requests[j]['unique_id']
 	if ticket['mover']['local_mover']:
 	    # option is not applicable -- make sure it is disabled
 	    chk_crc = 0
@@ -1349,9 +1349,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 done_ticket  = {'status':(e_errors.NOACCESS,None)}
                 error = e_errors.NOACCESS
                 
-	    Trace.trace(8,"read_hsm_files: reading data to  file="+
-			requests[j]['infile']+" socket="+repr(data_path_socket)+
-			" bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
+	    Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
+                        (tempname,data_path_socket.getsockname(),bufsize,chk_crc))
 
 	    # read file, crc the data if user has request crc check
             if not error:
@@ -1364,23 +1363,24 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 					   _f_.fileno(),
 					   requests[j]['file_size'], bufsize,
 					   crc_flag, 0, ipc_flag )
-                except: 
-                    exc, err_msg, tb = sys.exc_info()
+                except EXfer.error, msg: 
 
-                    # this error used to be a 0
-                    Trace.trace(6,"read_from_hsm EXfer error:"+
-                                str(sys.argv)+" "+
-                                str(sys.exc_info()[0])+" "+
-                                str(sys.exc_info()[1]))
+                    Trace.trace(6,"read_from_hsm EXfer error: %s %s %s"%
+                                (sys.argv,exc,msg))
+                    
                     if verbose > 1: traceback.print_exc()
 
-                    if err_msg.args[1]==errno.ENOSPC:
+                    if msg.args[1]==errno.ENOSPC:
+                        try:
+                            os.unlink(tempname)
+                        except:
+                            pass
                         print_data_access_layer_format(
                             requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                             {'status':("ENOSPC", "No space left on device")})
                         jraise(errno.errorcode[errno.ENOSPC], "no space left on device");
                     ###XXX we shouldn't be matching literal strings here... this is really wrong                        
-                    if err_msg.args[0] == "fd_xfer - read EOF unexpected":
+                    if msg.args[0] == "fd_xfer - read EOF unexpected":
                         error = 1
                         data_path_socket.close()
                         try:
@@ -1936,9 +1936,12 @@ def outputfile_check(ninput,inputlist,output):
     for i in range(0,ninput):
         outputlist.append(output[0])
 
+        if outputlist[i] == '/dev/null':
+            continue
+            
         # see if output file exists as user specified
-        itexists = os.path.exists(outputlist[i])
-
+        itexists = os.path.exists(outputlist[i]) 
+        
         if not itexists:
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
             if not os.path.exists(odir):
@@ -1981,7 +1984,7 @@ def outputfile_check(ninput,inputlist,output):
 
         # need to check that directory is writable
         # since all files go to one output directory, one check is enough
-        if i==0:
+        if i==0 and outputlist[0]!='/dev/null':
             if not access.access(odir,access.W_OK):
                 print_data_access_layer_format("",odir,0,{'status':('EEXIST',None)})
                 jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "+
