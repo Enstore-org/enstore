@@ -11,6 +11,7 @@
 # system imports
 import sys
 import string
+import pprint
 
 #enstore imports
 import udp_client
@@ -100,7 +101,7 @@ def do_work(intf):
                             intf.alive_retries)
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
-	print repr(ticket)
+	pprint.pprint(ticket)
     elif intf.local_mover:
         ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
                                   intf.alive_retries)
