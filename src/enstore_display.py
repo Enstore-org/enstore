@@ -2051,9 +2051,6 @@ if __name__ == "__main__":
     else:
         title = "Enstore"
 
-    display = Display(master=None, title=title,
-                      window_width=700, window_height=1600,
-                      canvas_width=1000, canvas_height=2000,
-                      background=rgbtohex(173, 216, 230))
+    display = Display({}, background=rgbtohex(173, 216, 230))
     display.mainloop()
 
