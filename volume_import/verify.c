@@ -132,7 +132,7 @@ search_db_destination(char *db_dir, char *target){
     DIR *vold, *subd, *filed, *itemd;
     struct dirent *vol, *sub, *file, *item;
 
-    verbage("checking to see if %s is in tape_db\n",path);
+    verbage("checking to see if %s is in tape_db\n",target);
 
     sprintf(path,"%s/volumes",tape_db);
     
