@@ -92,14 +92,6 @@ def print_error(errcode,errmsg,fatal=0) :
     sys.stderr.write(format)
     sys.stderr.flush()
 
-    if data_access_layer_requested:
-        return #prevent duplicate log messages
-
-    try:
-        Trace.log(e_errors.ERROR, format)
-    except:
-        pass
-
     
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
@@ -1233,8 +1225,6 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
       lmticket = client['csc'].get(current_library+".library_manager")
       if lmticket["status"][0] != e_errors.OK:
           pprint.pprint(lmticket)
-          # this error used to be a 0
-          Trace.trace(6,"submit_read_requests. lmget failed %s"%(lmticket["status"],))
           print_data_access_layer_format(rq_list[j]["infile"], 
                                          rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
                                          rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
