@@ -1593,8 +1593,8 @@ ftt_dev_entry devtable[] = {
        { "rmt/%dubn", 	  1,  0, 0x31,  1,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Usable */
        { "rmt/%dlbn", 	  0,  0, 0x30,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dlbn", 	  1,  1, 0x31,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
-       { "rmt/%dlbn", 	  0,  1, 0x30,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
+       { "rmt/%dlcbn", 	  1,  1, 0x31,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
+       { "rmt/%dlcbn", 	  0,  1, 0x30,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/%dub", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dhb", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},

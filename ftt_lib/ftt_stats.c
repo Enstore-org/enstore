@@ -266,7 +266,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 	for(i = 0; i < thislength ; i++) {
 	    value = value * 256 + page[4+i];
 	}
-	DEBUG3(stderr, "parameter %d, length %d value %f\n", thisparam, thislength, value);
+	DEBUG3(stderr, "parameter %d, length %d value %g\n", thisparam, thislength, value);
 	if ( thisparam == param ) {
 	    if ( value / divide > 1.0e+127 ) {
 		/* do something if its really huge... */
@@ -275,7 +275,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 		sprintf(printbuf, "%.0f", value / divide);
             }
 	    set_stat(b,stat,printbuf,0);
-	    DEBUG3(stderr," stat %d - value %s = %.0f \n",stat,printbuf,value / divide);
+	    DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
 	}
 	page += 4 + thislength;
     }
@@ -586,7 +586,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
 
 	    if (0 == b->value[FTT_TNP]) {
-		if (buf[1] == 0) {
+		if (hwdens == 0) {
 		   set_stat(b,FTT_TNP,  "1", 0);
 		} else {
 		   set_stat(b,FTT_TNP,  "0", 0);

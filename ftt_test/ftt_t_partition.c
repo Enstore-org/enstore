@@ -212,6 +212,22 @@ FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 ftt_set_nparts(parttab,partno);
 return 0;
 }
+int
+ftt_t_set_maxparts(int argc, char **argv)
+{
+int 		status;				/* status */
+int 		estatus = 0;			/* expected status */
+static char	*estatus_str;			/* expected status string */
+static int	partno;				/* number to skip */
+ftt_t_argt	argt[] = {
+	{"<maxparts>",	FTT_T_ARGV_INT,		NULL,		&partno},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+if (!parttab) { printf("You must get a partition table first!\n"); return 0; }
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+ftt_set_maxparts(parttab,partno);
+return 0;
+}
 
 int ftt_t_undump_partitions(int argc, char **argv)
 {
