@@ -47,7 +47,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.brand = brand
         return
 
-    def get_brand(slef, ticket):
+    def get_brand(self, ticket):
         ticket['brand'] = self.brand
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
