@@ -4,6 +4,7 @@ import timeofday
 import pprint
 import copy
 import log_client
+import traceback
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from library_manager_client import LibraryManagerClient
@@ -281,6 +282,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except:
+            traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
