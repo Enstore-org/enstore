@@ -21,7 +21,8 @@ import cleanUDP
 import Trace
 import e_errors
 
-MAX_CHILDREN = 64 #Do not allow forking more than this many child processes
+MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
+DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -112,7 +113,7 @@ class DispatchingWorker:
         except os.error, msg:
             Trace.log(e_errors.ERROR, "kill %d: %s" %(pid, msg))
         
-    def fork(self, ttl=300):
+    def fork(self, ttl=DEFAULT_TTL):
         """Fork off a child process.  Use this instead of os.fork for safety"""
         if self.n_children >= MAX_CHILDREN:
             Trace.log(e_errors.ERROR, "Too many child processes!")
