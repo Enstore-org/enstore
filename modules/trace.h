@@ -20,8 +20,8 @@ trace(  int		lvl
       , const char	*msg
       , ... );
 
-#define TRACE_GET_MODE		trc_cntl_sp->mode
-#define TRACE_SET_MODE( mode )  (trc_cntl_sp->mode = mode)
+#define TRACE_MODE		trc_cntl_sp->mode
+#define TRACE_MODE_SET( mode )  (trc_cntl_sp->mode = mode)
 
 
 
