@@ -13,25 +13,16 @@ import traceback
 import Trace
 import e_errors
 
-def default_timeout():
-    return 60
-
-def default_alive_rcv_timeout():
-    return 5
-
-def default_alive_retries():
-    return 2
-
-def default_file_dir():
+def default_file():
     return "./"
 
 class EnstoreStatus:
 
-    def __init__(self, dir=default_file_dir(), list=0):
-        Trace.trace(10,'{__init__ essfile')
+    def __init__(self, dir=default_file(), list=0):
+        Trace.trace(10,'{__init__ essfile '+dir)
 	if dir == "":
-	    dir = "/tmp"
-        self.file_name = dir + "/" + "enstore_system_status.txt"
+	    dir = default_file()
+        self.file_name = dir 
         if list :
             print "opening " + self.file_name
         # try to open status file for append

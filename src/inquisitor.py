@@ -36,8 +36,11 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
-def default_file_dir():
-    return "./"
+def default_ascii_file():
+    return "./inquisitor.txt"
+
+def default_html_file():
+    return "./inquisitor.html"
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
@@ -138,6 +141,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.essfile.output_etimedout((t['host'], t['port']), "media changer   : ")
         Trace.trace(12,"}update_media_changer ")
 
+    # get the information from the inquisitor
+    def update_inquisitor(self, key):
+        Trace.trace(12,"{update_inquisitor "+repr(self.essfile.file_name)+" "+repr(key))
+	# get info on the inquisitor
+	t = self.csc.get(key)
+	# just output our info, if we are doing this, we are alive.
+	self.essfile.output_alive(t['host'], "inquisitor      : ",\
+	                          { 'work' : "alive",\
+	                            'address' : (t['host'], t['port']), \
+                                    'status' : (e_errors.OK, None)})
+        Trace.trace(12,"}update_inquisitor ")
+
     # get the information from the volume clerk server
     def update_volume_clerk(self, key):
         Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
@@ -157,6 +172,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.update_config()
 	self.update_admin_clerk("admin_clerk")
 	self.update_file_clerk("file_clerk")
+	self.update_inquisitor("inquisitor")
 	self.update_log_server("logserver")
 	self.update_volume_clerk("volume_clerk")
 
@@ -255,8 +271,8 @@ class Inquisitor(InquisitorMethods,
                 SocketServer.UDPServer):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
-                 port=interface.default_port(), timeout=-1, file_dir="", \
-                 alive_rcv_to=-1, alive_retries=-1):
+                 port=interface.default_port(), timeout=-1, ascii_file="", \
+                 html_file="", alive_rcv_to=-1, alive_retries=-1):
 	# get the config server
 	Trace.trace(10, '{__init__')
 	configuration_client.set_csc(self, csc, host, port, list)
@@ -277,7 +293,7 @@ class Inquisitor(InquisitorMethods,
 	    try:
 	        self.rcv_timeout = keys["timeout"]
 	    except:
-	        self.rcv_timeout = inquisitor.default_timeout()
+	        self.rcv_timeout = default_timeout()
 	else:
 	    self.rcv_timeout = timeout
 
@@ -287,7 +303,7 @@ class Inquisitor(InquisitorMethods,
 	    try:
 	        self.alive_rcv_timeout = keys["alive_rcv_timeout"]
 	    except:
-	        self.alive_rcv_timeout = inquisitor.default_alive_rcv_timeout()
+	        self.alive_rcv_timeout = default_alive_rcv_timeout()
 	else:
 	    self.alive_rcv_timeout = alive_rcv_to
 
@@ -297,24 +313,32 @@ class Inquisitor(InquisitorMethods,
 	    try:
 	        self.alive_retries = keys["alive_retries"]
 	    except:
-	        self.alive_retries = inquisitior.default_alive_retries()
+	        self.alive_retries = default_alive_retries()
 	else:
 	    self.alive_retries = alive_retries
 
 	# get the directory where the files we create will go.  this should
 	# be in the configuration file.
-	if file_dir == "":
+	if ascii_file == "":
 	    try:
-	        file_dir = keys["file_dir"]
+	        ascii_file = keys["ascii_file"]
 	    except:
-	        file_dir = inquisitor.default_file_dir()
+	        ascii_file = default_ascii_file()
+
+	# get the directory where the files we create will go.  this should
+	# be in the configuration file.
+	if html_file == "":
+	    try:
+	        html_file = keys["html_file"]
+	    except:
+	        html_file = default_html_file()
 
 	# get a logger
 	self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
 	                                    'logserver', 0)
 
 	# get a system status file
-	self.essfile = enstore_status.EnstoreStatus(file_dir, list)
+	self.essfile = enstore_status.EnstoreStatus(ascii_file, list)
 
 	Trace.trace(10, '}__init__')
 
@@ -324,7 +348,8 @@ class InquisitorInterface(interface.Interface):
 	Trace.trace(10,'{iqsi.__init__')
 	# fill in the defaults for possible options
 	self.config_list = 0
-	self.file_dir = ""
+	self.ascii_file = ""
+	self.html_file = ""
 	self.alive_rcv_timeout = -1
 	self.alive_retries = -1
 	self.timeout = -1
@@ -339,7 +364,7 @@ class InquisitorInterface(interface.Interface):
     def options(self):
 	Trace.trace(16, "{}options")
 	return self.config_options()+self.list_options() +\
-	       ["config_list","file_dir=","timeout="] +\
+	       ["config_list", "ascii_file=","html_file=","timeout="] +\
 	       self.alive_rcv_options()+self.help_options()
 
 if __name__ == "__main__":
@@ -351,7 +376,7 @@ if __name__ == "__main__":
 
     # get the inquisitor
     inq = Inquisitor(0, intf.config_list, intf.config_host, intf.config_port, \
-                     intf.timeout, intf.file_dir, \
+                     intf.timeout, intf.ascii_file, intf.html_file,\
                      intf.alive_rcv_timeout, intf.alive_retries)
 
     while 1:
