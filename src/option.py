@@ -591,6 +591,10 @@ class Interface:
         list = self.options.keys()
         list.sort()
         for key in list:
+            #Ignore admin options if in user mode.
+            if self.options[key].get(USER_LEVEL, USER) == ADMIN \
+               and self.user_level == USER:
+                continue
 
             #Deterimine if the option needs an "=" or "[=]" after it.
             has_value = self.options[key].get(VALUE_USAGE, IGNORED)

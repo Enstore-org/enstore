@@ -218,7 +218,7 @@ class EnstoreInterface:
     def get_valid_servers(self):
         if self.user_mode:
             # user mode
-            servers = self.server_options.keys()
+            servers = server_functions.keys()
             servers.sort()
         else:
             # admin mode, all are allowed
