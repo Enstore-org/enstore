@@ -49,7 +49,7 @@ ftt_fork(ftt_descriptor d) {
 	        res = fscanf(d->async_pf, "\n%d", &d->async_pid);
 	    }
 	    DEBUG3(stderr,"got pid %d\n", d->async_pid);
-	    wait(0);
+	    waitpid(res,0,0);
 	    break;
 
 	case -1:
