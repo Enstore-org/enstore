@@ -1,170 +1,245 @@
-import shelve
+import libtpshelve
 import os
 import time
 import copy
 import log_client
 from  journal import JournalDict
+from table import Index
 
-JOURNAL_LIMIT=1000
+JOURNAL_LIMIT=1000 
 backup_flag=1
-
+cursor_open=0
+class myIndex(Index):
+  def __init__(self,db,name):
+	Index.__init__(self,db,name)
+  def valToStr(self,val):
+	if val==None:
+		return None
+	return val
+  def strToVal(self,str):
+	if str==None:
+		return None
+	return str
 class dBTable:
-	def __init__(self,dbname,logc):
-		self.db=shelve.open( os.environ['ENSTORE_DB']+"/"+dbname)
-	        self.jou=JournalDict({},dbname+".jou")
-                self.count=0
-                self.name=dbname
-		self.logc=logc
-		if len(self.jou) :
-			self.start_backup()
-			self.checkpoint()
-			self.stop_backup()
-        def keys(self):
-                keylist=[]
-                for key in self.db.keys():
-                   if self.jou.has_key(key):
-                      if self.jou[key]['db_flag']=='delete':
-                         continue
-                   keylist.append(key)
-                for key in self.jou.keys():
-                      if self.jou[key]['db_flag']=='add':
-                         keylist.append(key)
-                return keylist
-        def __len__(self):
-                num_del=0
-                num_add=0
-                for key in self.jou.keys():
-                    if self.jou[key]['db_flag']=='add': num_add=num_add+1
-                    if self.jou[key]['db_flag']=='delete': num_del=num_del+1   
-                length=len(self.db)+num_add-num_del
-                return length
-        def has_key(self,key):
-                if self.jou.has_key(key):
-		    if self.jou[key]['db_flag'] !='delete':
-                        return self.jou.has_key(key)
-		    else :
-			return 0
-                return self.db.has_key(key)
-        def __setitem__(self,key,value) :
-                if 'db_flag' in value.keys(): del value['db_flag']
-                self.jou[key]=value               
-                self.jou[key]['db_flag']='add'
-                self.count=self.count+1
-                if self.count > JOURNAL_LIMIT and backup_flag :
-                       self.checkpoint()
-        def __getitem__(self,key):
-               if self.jou.has_key(key) == 0:
-                   self.jou[key]=copy.deepcopy(self.db[key])
-                   self.jou[key]['db_flag']='0'
-                   self.count=self.count+1
-                   if self.count > JOURNAL_LIMIT and backup_flag :
-                       self.checkpoint()
-		       return self.db[key]
-               return self.jou[key]
-        def __delitem__(self,key):
-              if self.jou.has_key(key) == 0:
-                   self.jou[key]=copy.deepcopy(self.db[key])
-	      else :
-		if self.jou[key]['db_flag']=='delete':
-			return      
-              self.jou[key]['db_flag']='delete'
-              del self.jou[key]
-	      self.count=self.count+1
-              if self.count > JOURNAL_LIMIT and backup_flag :
-                   self.checkpoint()
+  def __init__(self,dbname,logc,indlst=[]):
+    try:
+	dbHome=os.environ['ENSTORE_DB']
+    except:
+	dbHome=os.environ['ENSTORE_DIR']
+    dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
+    dbEnv=libtpshelve.env(dbHome,dbEnvSet)
+    self.db=libtpshelve.open(dbEnv,dbname,type='btree')
+    self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
+    self.inx={}
+    for name in indlst :
+    	self.inx[name]=myIndex(self.dbindex,name)
+    self.jou=JournalDict({},dbname+".jou")
+    self.count=0
+    self.name=dbname
+    self.logc=logc
+    if len(self.jou) :
+    	self.start_backup()
+	self.checkpoint()
+	self.stop_backup()
+  def next(self):
+    if cursor_open==0:
+	return self.cursor("open")
+    return self.cursor("next")
+  def cursor(self,action,key="None",value=0):
+    global c
+    global t
+    global cursor_open
+    if action=="open":
+       if cursor_open==0 :
+          t=self.db.txn()
+          c=self.db.cursor(t)
+          key,value=c.first()
+          cursor_open=1
+          return key
+    if action=="close":
+       if cursor_open :
+          c.close()
+          t.commit()
+          cursor_open=0
+          return 0
+    if action=="len" :
+       if cursor_open:
+          pos,value=c.get()
+          len=0
+          last,value=c.last()
+          key,value=c.first()
+          while key!=last:
+             key,val=c.next()
+             len=len+1
+             c.set(pos)
+          return len
+    if action=="has_key":
+       if cursor_open:
+          pos,value=c.get()
+          key,value=c.set(key)
+          c.set(pos)
+          if key :
+		return 1
+          else :
+                return 0
 
-	def dump(self):
-	      for key in self.db.keys():
-	           print key,"  -  ",self.db[key]
-              for key in self.jou.keys():
-                   print key,"  -  ",self.jou[key]
-	def close(self):
-              self.jou.close()
-	      self.db.close()
-        def add(self,key,value):
-                tmp=copy.deepcopy(value)
-                if 'db_flag' in tmp.keys():
-                        del tmp['db_flag']
-                self.db[key]=tmp
-        def delete(self,key):
-                del self.db[key]
+    if action=="delete":
+        pass
+
+    if action=="get":
+        key,value=c.set(key)
+        return value
+    if action=="update" :
+        c.set(key)
+        c.update(value)
+        return key
+    if action=="next":
+        key,value=c.next()
+        if key :
+           pass
+        else :
+           self.cursor("close")
+        return key
 
 
-        def checkpoint(self):
-	      import regex,string
-	      import time
-	      del self.jou
-	      self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name)
-	      file = open( os.environ['ENSTORE_DB']+"/"+self.name+".jou","r")
-	      while 1:
-		    l = file.readline()
-		    if len(l) == 0 : break
-		    if regex.search('del',l):
-			t1,t2=string.splitfields(l,' = ')
-			exec('key=' + t1[regex.search("\[",t1)+1:regex.search("\]",t1)])
-			exec('value=' + t2)
-			self.add(key,value)
-		    else:
-			exec('key=' + l[regex.search("\[",l)+1:regex.search("\]",l)])
-			self.delete(key)
+  def keys(self):
+    return self.db.keys()
+  def __len__(self):
+    if cursor_open==1 :
+        return self.cursor("len")
+    t=self.db.txn()
+    c=self.db.cursor(t)
+    last,val=c.last()
+    key,val=c.first()
+    len=0
+    while key!=last:
+	key,val=c.next()
+	len=len+1
+    c.close()
+    t.commit()
+    return len
+  def has_key(self,key):
+     return self.db.has_key(key)
+  def __setitem__(self,key,value) :
+     if 'db_flag' in value.keys(): del value['db_flag']
+     self.jou[key]=copy.deepcopy(value)               
+     self.jou[key]['db_flag']='add'
+     self.count=self.count+1
+     if self.count > JOURNAL_LIMIT and backup_flag :
+           self.checkpoint()
+     for name in self.inx.keys():
+        self.inx[name][value[name]]=key
+     if cursor_open==1 :
+           self.cursor("update",key,value)
+	   return
+     t=self.db.txn()
+     self.db[(key,t)]=value
+     t.commit()
 
-	      file.close()
-	      cmd="mv " + os.environ['ENSTORE_DB'] +"/"+self.name+".jou " + \
+  def is_index(self,key):
+	if self.inx.has_key(key):
+		return 1
+	return 0
+  def index(self,field,field_val):
+       try:
+	return self.inx[field][field_val]
+       except:
+	return []
+	
+  def __getitem__(self,key):
+     if cursor_open==1 :
+     	return self.cursor("get",key)
+     return self.db[key]
+
+  def __delitem__(self,key):
+     value=self.db[key]
+     if self.jou.has_key(key) == 0:
+      	self.jou[key]=copy.deepcopy(self.db[key])
+     else :
+	if self.jou[key]['db_flag']=='delete':
+		return      
+     self.jou[key]['db_flag']='delete'
+     del self.jou[key]
+     t=self.db.txn()
+     del self.db[(key,t)]
+     t.commit()      
+     self.count=self.count+1
+     if self.count > JOURNAL_LIMIT and backup_flag :
+      	self.checkpoint()
+     for name in self.inx.keys():
+        del self.inx[name][(key,value[name])] 
+  def dump(self):
+     t=self.db.txn()
+     c=self.db.cursor(t)
+     print c.first()
+     while c:
+	 print c.next()
+     c.close()
+     t.commit()
+  def close(self):
+     self.jou.close()
+     if cursor_open==1 :
+	self.cursor("close")
+     self.db.close()
+  def checkpoint(self):
+     import regex,string
+     import time
+     del self.jou
+     self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
+     cmd="mv " + os.environ['ENSTORE_DB'] +"/"+self.name+".jou " + \
                         os.environ['ENSTORE_DB'] +"/"+self.name+".jou."+ \
                         repr(time.time())
-	      os.system(cmd)
-	      self.jou = JournalDict({},self.name+".jou")
-	      self.count=0
-	      self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
-	def start_backup(self):
-	     global  backup_flag            
-	     backup_flag=0
-             self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
-             self.checkpoint()
-        def stop_backup(self):
-	     global  backup_flag           
-             backup_flag=1
-	     self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
+     os.system(cmd)
+     self.jou = JournalDict({},self.name+".jou")
+     self.count=0
+     self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
+  def start_backup(self):
+     global  backup_flag            
+     backup_flag=0
+     self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
+     self.checkpoint()
+  def stop_backup(self):
+     global  backup_flag           
+     backup_flag=1
+     self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
-	import time
-        cwd=os.getcwd()
-	os.chdir(os.environ['ENSTORE_DB'])
-	cmd="tar cvf "+name+".tar "+name+".dat "+name+".dir "+name+".bak "+ \
-                      name+".jou.*"
-	print cmd
-	os.system(cmd)
-	cmd="mv " + name +".tar  /tmp/backup/"+name+".tar."+ \
-                        repr(time.time())
-	print cmd
-	os.system(cmd)
-	cmd="rm "+name +".jou.*"
-	print cmd
-	os.system(cmd)
-	os.chdir(cwd)
+     import time
+     try:
+    	   import SOCKS; socket = SOCKS
+     except ImportError:
+    	   import socket
+
+     try:
+	   dir_bck=os.environ['ENSTORE_DB_BACKUP']
+     except:
+	   dir_bck="/tmp/backup"
+     try:
+	   hst_bck=os.environ['ENSTORE_BCKP_HST']
+     except:
+	   hst_bck=socket.gethostname()
+     cwd=os.getcwd()
+     os.chdir(os.environ['ENSTORE_DB'])
+     cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
+     print cmd
+     os.system(cmd)
+     cmd="rm "+name +".jou.*"
+     print cmd
+     os.system(cmd)
+     os.chdir(cwd)
 if __name__=="__main__":
-	db=dBTable("volume")
-	for i in range(1,100):
-	  db[i]={'1':'a','2':'b'}
-	db.dump()
-        key='1'
-        if db.has_key(key):
-          print "found key",key
-        db['200']={'1':'a','2':'b'}
-        record=db['2']
-        del record['1']
-        db['2']=record
-        del db['3'] 
-        db.checkpoint()
-	db.dump()
-	db[210]={'1':'a','2':'b'}
-	db.dump()
-	db.start_backup()
-        do_backup("volume")
-        db.stop_backup()
-	db[211]={'1':'a','2':'b'}
-        db[212]={'1':'a','2':'b'}
-	db.close()
-			
+	import sys
+	dict= dBTable(sys.argv[1],0)
+	dict.dump()
+
+
+
+
+
+
+
+
+
+
 
 
 

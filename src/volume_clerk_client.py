@@ -1,5 +1,6 @@
 import time
 import callback
+import dict_to_a
 from configuration_client import configuration_client
 from udp_client import UDPClient
 from db import do_backup
@@ -72,7 +73,10 @@ class VolumeClerkClient :
 
 
     # get a list of all volumnes
+
+
     def get_vols(self):
+	import string
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -113,13 +117,26 @@ class VolumeClerkClient :
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.volume_clerk_callback_socket(ticket)
-        worklist = callback.read_tcp_socket(data_path_socket,"volume clerk "+\
-                                    "client get_vols, reading worklist")
-        data_path_socket.close()
+	ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
+		  +"client get_vols, vc final dialog")
+#	workmsg=""
+        while 1:
+	  msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+"client get_vols, reading worklist")
+	  if len(msg)==0 :
+#		pprint.pprint(workmsg)
+		break
+#	  workmsg=workmsg+msg
+#	  pprint.pprint(workmsg[:string.rfind(workmsg,',',0)])
+#	  workmsg=msg[string.rfind(msg,',',0)+1:]
+	  pprint.pprint(msg)
+#	ticket['vols']=workmsg
+	worklist = ticket
+	data_path_socket.close()
+
 
         # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"+\
-                                      "client get_vols, vc final dialog")
+        done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"\
+		  +"client get_vols, vc final dialog")
         control_socket.close()
         if done_ticket["status"] != "ok" :
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
@@ -184,12 +201,8 @@ class VolumeClerkClient :
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, vol_veto_list,first_found) :
-        ticket = { 'work'                : 'next_write_volume',
-                   'library'             : library,
-                   'min_remaining_bytes' : min_remaining_bytes,
-                   'file_family'         : file_family,
-                   'vol_veto_list'       : `vol_veto_list`,
-                   'first_found'         : first_found }
+ 
+
         return self.send(ticket)
 
 
@@ -225,6 +238,7 @@ if __name__ == "__main__" :
     config_list = 0
     vol = ""
     vols = 0
+    nextvol = 0
     list = 0
     addvol = 0
     delvol = 0
@@ -234,9 +248,10 @@ if __name__ == "__main__" :
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
-               "vols","vol=","addvol","delvol","list","verbose",
+               "vols","nextvol","vol=","addvol","delvol","list","verbose",
                "clrvol","alive","backup","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
+ 
     for (opt,value) in optlist :
         if opt == "--config_host" :
             config_host = value
@@ -246,6 +261,8 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--vols" :
             vols = 1
+        elif opt == "--nextvol" :
+            nextvol = 1	
         elif opt == "--vol" :
             vol = value
         elif opt == "--addvol" :
@@ -288,6 +305,13 @@ if __name__ == "__main__" :
 	ticket = vcc.stop_backup()
     elif vols :
         ticket = vcc.get_vols()
+    elif nextvol:
+	ticket = vcc.next_write_volume(args[0], #library
+				       string.atol(args[1]), #min_remaining_byte
+				       args[2], #file_family
+				            [], #vol_veto_list
+                                             1) #first_found
+
     elif vol :
         ticket = vcc.inquire_vol(vol)
     elif addvol:
@@ -323,6 +347,13 @@ if __name__ == "__main__" :
     elif list:
         pprint.pprint(ticket)
         sys.exit(0)
+
+
+
+
+
+
+
 
 
 

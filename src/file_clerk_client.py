@@ -1,6 +1,8 @@
 from configuration_client import configuration_client
 from udp_client import UDPClient
 from db import do_backup
+import callback
+import time
 class FileClerkClient :
 
     def __init__(self, configuration_client) :
@@ -28,6 +30,78 @@ class FileClerkClient :
                           "complete_crc"     : complete_crc })
 
     def get_bfids(self):
+
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"               : "get_bfids",
+                  "user_callback_port" : port,
+                  "user_callback_host" : host,
+                  "unique_id"          : time.time() }
+        # send the work ticket to the library manager
+        ticket = self.send(ticket)
+        if ticket['status'] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket"+repr(ticket)
+
+        # We have placed our request in the system and now we have to wait.
+        # All we  need to do is wait for the system to call us back,
+        # and make sure that is it calling _us_ back, and not some sort of old
+        # call-back to this very same port. It is dicey to time out, as it
+        # is probably legitimate to wait for hours....
+        while 1 :
+            control_socket, address = listen_socket.accept()
+            new_ticket = callback.read_tcp_socket(control_socket, "file"+\
+                                  "clerk client get_bfids,  fc call back")
+            import pprint
+            if ticket["unique_id"] == new_ticket["unique_id"] :
+                listen_socket.close()
+                break
+            else:
+                print ("fcc:get_bfids: imposter called us back, trying again")
+                control_socket.close()
+        ticket = new_ticket
+        if ticket["status"] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"fcc:get_bfids: "\
+                  +"1st (pre-work-read) file clerk callback on socket "\
+                  +repr(address)+", failed to setup transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+
+        # If the system has called us back with our own  unique id, call back
+        # the library manager on the library manager's port and read the
+        # work queues on that port.
+        data_path_socket = callback.file_clerk_callback_socket(ticket)
+	ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
+		  +"client get_bfids, fc final dialog")
+	workmsg=""
+        while 1:
+	  msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
+	  if len(msg)==0 :
+		pprint.pprint(workmsg)
+		break
+	  workmsg = workmsg+msg
+	  pprint.pprint( workmsg[:string.rfind( workmsg,',',0)])
+	  workmsg=msg[string.rfind(msg,',',0)+1:]
+	worklist = ticket
+	data_path_socket.close()
+
+
+        # Work has been read - wait for final dialog with file clerk
+        done_ticket = callback.read_tcp_socket(control_socket, "file clerk"\
+		  +"client get_bfids, fc final dialog")
+        control_socket.close()
+        if done_ticket["status"] != "ok" :
+            raise errno.errorcode[errno.EPROTO],"fcc.get_bfids "\
+                  +"2nd (post-work-read) file clerk callback on socket "\
+                  +repr(address)+", failed to transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+        return worklist
+
+
+
+
+
+
+
+
         return self.send({"work" : "get_bfids"} )
 
     def bfid_info(self,bfid):
@@ -128,3 +202,24 @@ if __name__ == "__main__" :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

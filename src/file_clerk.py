@@ -5,6 +5,7 @@ import pprint
 import copy
 import log_client
 import traceback
+import callback
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from library_manager_client import LibraryManagerClient
@@ -129,21 +130,49 @@ class FileClerkMethods(DispatchingWorker) :
          self.reply_to_caller(ticket)
          return
 
-
+    def get_user_sockets(self, ticket) :
+        file_clerk_host, file_clerk_port, listen_socket =\
+                           callback.get_callback()
+        listen_socket.listen(4)
+        ticket["file_clerk_callback_host"] = file_clerk_host
+        ticket["file_clerk_callback_port"] = file_clerk_port
+        self.control_socket = callback.user_callback_socket(ticket)
+        data_socket, address = listen_socket.accept()
+        self.data_socket = data_socket
+        listen_socket.close()
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket) :
+     ticket["status"] = "ok"
      try:
-        self.reply_to_caller({"status" : "ok",\
-                              "bfids"  :repr(dict.keys()) })
-        return
-
+	self.reply_to_caller(ticket)
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         pprint.pprint(ticket)
-         self.reply_to_caller(ticket)
-         return
+	ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+	self.reply_to_caller(ticket)
+        return  
+     self.get_user_sockets(ticket)
+     ticket["status"] = "ok"
+     callback.write_tcp_socket(self.data_socket,ticket,
+                                  "file_clerk get bfids, controlsocket")
+     msg=""   
+     key=dict.next()
+     while key :
+	msg=msg+repr(key)+","
+	key=dict.next()
+	if len(msg) >= 16384:
+	   callback.write_tcp_buf(self.data_socket,msg,
+                                  "file_clerk get bfids, datasocket")
+	   msg=""
+
+     msg=msg[:-1]
+     callback.write_tcp_buf(self.data_socket,msg,
+                                  "file_clerk get bfids, datasocket")
+     self.data_socket.close()
+     callback.write_tcp_socket(self.control_socket,ticket,
+                                  "file_clerk get bfids, controlsocket")
+     self.control_socket.close()
+     return
 
 
     # return all info about a certain bfid - this does everything that the
@@ -290,7 +319,8 @@ if __name__ == "__main__" :
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     fc.set_logc(logc)
-    dict = dBTable("file",logc)
+    indlst=['external_lablel']
+    dict = dBTable("file",logc,indlst)
     while 1:
         try:
             logc.send(log_client.INFO, 1, "File Clerk (re)starting")

@@ -13,8 +13,6 @@ from generic_server import GenericServer
 from db import dBTable
 import pprint
 
-#dict = dBTable("volume")
-
 class VolumeClerkMethods(DispatchingWorker) :
 
     # add : some sort of hook to keep old versions of the s/w out
@@ -192,7 +190,10 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # go through the volumes and find one we can use for this request
         vol = {}
-        for label in dict.keys() :
+        while 1:
+	    label=dict.next()
+	    if label : 	pass
+	    else : break
             v = copy.deepcopy(dict[label])
             if v["library"] != library :
                 continue
@@ -247,7 +248,10 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # nothing was available - see if we can assign a blank one.
         vol = {}
-        for label in dict.keys() :
+        while 1 :
+	    label=dict.next()
+	    if label : pass
+	    else : break
             v = copy.deepcopy(dict[label])
             if v["library"] != library :
                 continue
@@ -599,8 +603,21 @@ class VolumeClerkMethods(DispatchingWorker) :
             return
         self.get_user_sockets(ticket)
         ticket["status"] = "ok"
-        ticket["vols"] = repr(dict.keys())
-        callback.write_tcp_socket(self.data_socket,ticket,
+	callback.write_tcp_socket(self.data_socket,ticket,
+                                  "volume_clerk get_vols, controlsocket")
+	msg=""
+	key=dict.next()
+	while key :
+		msg=msg+repr(key)+","
+		key=dict.next()
+		#send 16K message
+		if len(msg) >= 8192:
+		   callback.write_tcp_buf(self.data_socket,msg,
+                                  "volume_clerk get_vols, datasocket")
+		   msg=""
+        #send the last message
+        msg=msg[:-1]
+	callback.write_tcp_buf(self.data_socket,msg,
                                   "volume_clerk get_vols, datasocket")
         self.data_socket.close()
         callback.write_tcp_socket(self.control_socket,ticket,
@@ -685,7 +702,8 @@ if __name__ == "__main__" :
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     vc.set_logc(logc)
-    dict = dBTable("volume",logc)
+    indlst=['media_type','file_family','library']
+    dict = dBTable("volume",logc,indlst)
     while 1:
         try:
             logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
@@ -700,3 +718,4 @@ if __name__ == "__main__" :
             print format
             logc.send(log_client.ERROR, 1, format)
             continue
+

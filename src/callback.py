@@ -70,6 +70,16 @@ def volume_clerk_callback_socket(ticket) :
                  ticket['volume_clerk_callback_port'])
     return sock
 
+def file_clerk_callback_socket(ticket) :
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(ticket['file_clerk_callback_host'], \
+                 ticket['file_clerk_callback_port'])
+    return sock
+def admin_clerk_callback_socket(ticket) :
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(ticket['admin_clerk_callback_host'], \
+                 ticket['admin_clerk_callback_port'])
+    return sock
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,6 +94,14 @@ def send_to_user_callback(ticket) :
     write_tcp_socket(sock,ticket,"callback send_to_user_callback")
     sock.close()
 
+def write_tcp_buf(sock,buffer,errmsg=""):
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print errmsg,"pre-send error:", errno.errorcode[badsock]
+    sock.send(buffer)
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+        print errmsg,"pre-send error:", errno.errorcode[badsock]
 # send a message on a tcp socket
 def write_tcp_socket(sock,buffer,errmsg=""):
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
@@ -95,6 +113,15 @@ def write_tcp_socket(sock,buffer,errmsg=""):
         print errmsg,"pre-send error:", errno.errorcode[badsock]
 
 # read a complete message in a  tcp socket
+def read_tcp_buf(sock,errmsg="") :
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+       print errmsg,"pre-recv error:", errno.errorcode[badsock]
+    buf = sock.recv(65536*4)
+    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if badsock != 0 :
+       print errmsg,"post-recv error:", errno.errorcode[badsock]
+    return buf	
 def read_tcp_socket(sock,errmsg="") :
     workmsg = ""
     while 1:
