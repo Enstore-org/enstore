@@ -321,7 +321,6 @@ class Volume:
         self.display.delete(self.outline)
         self.display.delete(self.label)
         self.outline =  self.label = None
-        self.loaded = self.ejected = 0
         self.x = self.y = None
         
     def __del__(self):
