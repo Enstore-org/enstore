@@ -298,6 +298,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.doupdate_server_dict = 1
 	self.new_timeouts = t['timeouts']
 	self.set_default_server_timeout(t)
+
+	# clear out the cache in the config client so we can get new info on
+	# any of the servers in case the info has changed.
+	self.csc.clear()
         Trace.trace(12,"}update_inquisitor ")
 
     # update any encp information from the log files
@@ -451,7 +455,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.timeouts["config_server"] = self.default_server_timeout
 	if not self.timeouts.has_key("encp"):
 	    self.timeouts["encp"] = self.default_server_timeout
-
         Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
@@ -465,8 +468,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # a function for
     def update_nofunc(self, server):
 	Trace.trace(12,"{update_nofunc "+server)
-	self.essfile.output_nofunc(server)
-	self.htmlfile.output_nofunc(server)
+	# if the config file entry had a keyword 'inq_ignore' (set to 
+	# anything), then this information is not to be displayed anyway.
+	ticket = self.csc.get(server)
+	if not ticket.has_key("inq_ignore"):
+	    self.essfile.output_nofunc(server)
+	    self.htmlfile.output_nofunc(server)
+	else:
+	    # we should not display this info, however we may have been
+	    # displaying it until recently, so we need to remove it from the
+	    # file info.
+	    self.essfile.remove_key(server)
+	    self.htmlfile.remove_key(server)
 	Trace.trace(12,"}update_nofunc ")
 
     # update the enstore system status information
@@ -518,7 +531,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                    self.last_update[key] = ctime
 	                    did_some_work = 1
 	                else:
-	                    # it was not a function
 	                    self.update_nofunc(key)
 	            else:
 	                # apparently we do not.
@@ -538,7 +550,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	# now we must close the html file and move it to itself without the
 	# suffix tacked on the end. i.e. the file becomes for example inq.html
-	# not inq.html.new. only mover the file if we actually did something
+	# not inq.html.new. only move the file if we actually did something
 	self.htmlfile.close()
 	try:
 	    if did_some_work:
