@@ -49,7 +49,7 @@ ftt_scsi_open(const char *pcDevice)
 int 
 ftt_scsi_close(scsi_handle n)
 {
-	close(n);
+	return close(n);
 }
 
 int
