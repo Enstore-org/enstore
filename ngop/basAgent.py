@@ -16,7 +16,7 @@ import time
 import sys
 import os
 import string
-#import HTMLgen
+import HTMLgen
 import regsub
 
 import re
