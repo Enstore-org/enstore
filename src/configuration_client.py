@@ -1,4 +1,4 @@
-###############################################################################
+t###############################################################################
 # src/$RCSfile$   $Revision$
 #
 # system imports
@@ -27,17 +27,7 @@ class ConfigurationClient(generic_client.GenericClient):
         self.server_address=address
         self.u = udp_client.UDPClient()
 
-    # get rid of all cached values - go back to server for information
-    def clear(self):
-        self.cache = {}
-
-    # get value for requested item from server, store locally in own cache
-    def get_uncached(self, key, timeout=0, retry=0):
-        request = {'work' : 'lookup', 'lookup' : key }
-        ret = self.send(request, timeout, retry)
-        return ret
-
-    # return cached (or get from server) value for requested item
+    # return value for requested item
     def get(self, key, timeout=0, retry=0):
         if key=='configuration_server':
             ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
