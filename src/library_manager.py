@@ -940,6 +940,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             del(ticket['mover'])
         if ticket['vc'].has_key('external_label'):
             del(ticket['vc']['external_label'])
+        if ticket['fc'].has_key('external_label'):
+            del(ticket['fc']['external_label'])
             
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
