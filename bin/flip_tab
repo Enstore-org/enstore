@@ -45,7 +45,7 @@ cd $work
 
 for i in `ls -vI \*.\*`; do
   t0=`date  +'%s'`
-  . $i |tee $output 2>&1
+  . $i |tee -a $output 2>&1
   echo
   echo
   case $node in
@@ -74,12 +74,14 @@ for i in `ls -vI \*.\*`; do
   echo That cycle took $deltam minutes $deltas seconds.
   /bin/echo -n "Were all of these steps successful [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-     echo "now updating write protect-status in enstore..."
+     echo "... success acknowledged"
+     echo
+     echo "Now updating write-protect status in enstore..."
      # extract the volumes successfully entered, and set them as write-protected
      awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | while read vol; do
        enstore vol --write-protect-on $vol
      done
-     echo "... success acknowledged"
+     touch $i
      mv $i ${i}.done
   else
      echo "... failure acknowledged"
@@ -94,9 +96,9 @@ for i in `ls -vI \*.\*`; do
   else
      /bin/echo -n "There are `expr $rem` groups remaining.  Do another [y/n]? "
      if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-     	continue
+	continue
      else
-     	break
+	break
      fi
   fi
 done
@@ -109,7 +111,7 @@ case $node in
       capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
       if [ "$capstate" = "available" ]; then break; fi
       if [ -z "$msgflag" ]; then
-        echo `date` Waiting for cap to be unloaded ...
+	echo `date` Waiting for cap to be unloaded ...
 	msgflag=done
       fi
       sleep 5
