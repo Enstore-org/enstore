@@ -758,7 +758,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
 
-        enstore_dir = os.environ['ENSTORE_DIR']
+        enstore_dir = os.environ.get('ENSTORE_DIR','')
         priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
         self.pri_sel = priority_selector.PriSelector(priority_config_file)
 
