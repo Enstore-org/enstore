@@ -243,7 +243,6 @@ def move_file(input_filename, output_filename):
     except OSError, msg:
         print_error(e_errors.OSERROR,
                     "Pnfs layer 1 update failed: %s" % str(msg))
-        sys.stderr.flush()
         sys.exit(1)
 
     try:
@@ -255,7 +254,6 @@ def move_file(input_filename, output_filename):
     except OSError, msg:
         print_error(e_errors.OSERROR,
                     "Pnfs layer 4 update failed: %s" % str(msg))
-        sys.stderr.flush()
         sys.exit(1)
 
     if in_fd: #If the rename failed and we did it the hard way.
@@ -268,7 +266,6 @@ def move_file(input_filename, output_filename):
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "Pnfs filesize update failed: %s" % str(msg))
-            sys.stderr.flush()
             sys.exit(1)
 
         try:
@@ -276,18 +273,6 @@ def move_file(input_filename, output_filename):
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
-
-            sys.stderr.flush()
-            sys.exit(1)
-
-        try:
-            os.chown(output_filename, p.pstat[stat.ST_UID],
-                     p.pstat[stat.ST_GID])
-        except OSError, msg:
-            print_error(e_errors.OSERROR,
-                        "File ownership update failed: %s" % str(msg))
-
-            sys.stderr.flush()
             sys.exit(1)
 
         try:
@@ -296,8 +281,6 @@ def move_file(input_filename, output_filename):
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File ownership update failed: %s" % str(msg))
-
-            sys.stderr.flush()
             sys.exit(1)
 
         try:
@@ -307,8 +290,6 @@ def move_file(input_filename, output_filename):
             print_error(e_errors.OSERROR,
                         "File access and modification time update failed: %s" \
                         % str(msg))
-
-            sys.stderr.flush()
             sys.exit(1)
 
     #Update the file clerk information.  This must be last.  If any of the
@@ -352,7 +333,6 @@ def move_file(input_filename, output_filename):
     except OSError:
         print_error(e_errors.OSERROR,
                     "Unable to remove original file %s." % input_filename)
-        sys.stderr.flush()
         sys.exit(1)
 
 class EnmvInterface(option.Interface):
