@@ -1540,7 +1540,11 @@ def check_library(library, e):
             csc, lib, logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 20)
 
-        status_ticket = lmc.get_lm_state()
+        if lmc.server_address == None:
+            status_ticket = {'status' : (e_errors.KEYERROR,
+                                         "No LM %s found." % lib)}
+        else:
+            status_ticket = lmc.get_lm_state()
 
         if e_errors.is_ok(status_ticket):
             state = status_ticket.get("state", e_errors.UNKNOWN)
@@ -5450,7 +5454,7 @@ def write_to_hsm(e, tinfo):
     # thing to do is see if the LM is up and accepting requests.
     if e.check:
         try:
-            return check_library(check_lib, e)
+            return check_library(check_lib, e), request_list
         except EncpError, msg:
             return {'status' : (msg.type, str(msg))}, request_list
 
@@ -7028,7 +7032,7 @@ def read_from_hsm(e, tinfo):
     # thing to do is see if the LM is up and accepting requests.
     if e.check:
         try:
-            return check_library(check_lib, e)
+            return check_library(check_lib, e), requests_per_vol
         except EncpError, msg:
             return {'status' : (msg.type, str(msg))}, requests_per_vol
 
