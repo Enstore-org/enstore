@@ -35,6 +35,14 @@ import string_driver
 
 import Trace
 
+"""TODO:
+
+   Create a change_state function, so all state transitions can be logged.
+   Find out why --clean doesn't work
+   
+
+"""
+
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
@@ -519,7 +527,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
-            if self.buffer.nbytes() >= self.buffer.min_bytes:
+            if not self.buffer.low():
                 self.buffer.write_ok.set()
                 
         if self.bytes_read == self.bytes_to_read:
@@ -540,7 +548,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
 
-            if self.bytes_read < self.bytes_to_read and self.buffer.low():
+            if self.buffer_empty() or self.bytes_read < self.bytes_to_read and self.buffer.low():
                 Trace.trace(15,"write_tape: buffer low %s/%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes))
                 self.buffer.write_ok.clear()
@@ -652,7 +660,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(15, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
-                
+            # writing to "None" will discard headers, leaving stream positioned at
+            # start of data
             self.buffer.stream_write(self.buffer.header_size, None)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
