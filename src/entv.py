@@ -716,7 +716,7 @@ def main(intf):
     entvrc_dict['title'] = system_name #For simplicity put this here.
     
     #Get the main window and set it size.
-    master = Tkinter.Tk(screenName=":0.0")
+    master = Tkinter.Tk()
     set_geometry(master, entvrc_dict)
     
     continue_working = 1
