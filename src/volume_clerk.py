@@ -84,7 +84,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         q = "insert into state (volume, type, value) values (\
              lookup_vol('%s'), lookup_stype('%s'), '%s');" % \
              (volume, type, value)
-	res = self.dict.db.query(q)
+        try:
+	    res = self.dict.db.query(q)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = "change_state(): "+exc_type+' '+exc_value+' query: '+q
+            Trace.log(e_errors.ERROR, msg)
+
 
     # check if volume is full #### DONE
     def is_volume_full(self, v, min_remaining_bytes):
@@ -136,7 +142,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         try:
             res = self.dict.db.query(q).dictresult()
         except:
-            msg = `sys.exc_type`+' '+`sys.exc_value`+' query: '+q
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = '__history(): '+exc_type+' '+exc_value+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             res = []
         return res
@@ -180,7 +187,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res = self.change_state(vol, 'write_protect', 'ON')
             ticket['status'] = (e_errors.OK, None)
         except:
-            msg = `sys.exc_type`+' '+`sys.exc_value`
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = exc_type+' '+exc_value
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -201,7 +209,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             res = self.change_state(vol, 'write_protect', 'OFF')
             ticket['status'] = (e_errors.OK, None)
         except:
-            msg = `sys.exc_type`+' '+`sys.exc_value`
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = exc_type+' '+exc_value
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -234,7 +243,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 status = res[0]['value']
             ticket['status'] = (e_errors.OK, status)
         except:
-            msg = `sys.exc_type`+' '+`sys.exc_value`
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = 'write_protect_status(): '+exc_type+' '+exc_value+' query: '+q
             Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         self.reply_to_caller(ticket)
@@ -383,8 +393,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return e_errors.OK, 'volume %s has been deleted already'%(vol)
 
         # check if all files are deleted
-        if self.has_undeleted_file(vol):
-            msg = 'can not delete non-empty volume %s'%(vol)
+        try:
+            if self.has_undeleted_file(vol):
+                msg = 'can not delete non-empty volume %s'%(vol)
+                Trace.log(e_errors.ERROR, msg)
+                return e_errors.ERROR, msg
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = 'has_undeleted_file(): '+exc_type+' '+exc_value
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
@@ -1046,7 +1062,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 order by declared ;"%(library, storage_group,
                     file_family, wrapper, vito_q)
         Trace.trace(20, "start query: %s"%(q))
-        res = self.dict.db.query(q).dictresult()
+        try:
+            res = self.dict.db.query(q).dictresult()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = 'find_matching_volume(): '+exc_type+' '+exc_value+' query: '+q
+            Trace.log(e_errors.ERROR, msg)
+            res = []
         Trace.trace(20, "finish query: found %d exact_match=%d"%(len(res), exact_match))
         if len(res):
             if exact_match:
@@ -1865,7 +1887,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         q = q + ' order by label;'
 
-        res = self.dict.db.query(q).dictresult()
+        try:
+            res = self.dict.db.query(q).dictresult()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            mesg = 'get_vols(): '+exc_type+' '+exc_value+' query: '+q
+            Trace.log(e_errors.ERROR, mesg)
+            res = []
+
         msg['volumes'] = []
         for v2 in res:
             vol2 = {'volume': v2['label']}
@@ -1970,7 +1999,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     #### DONE
     def __get_vol_list(self):
         q = "select label from volume order by label;"
-        res2 = self.dict.db.query(q).getresult()
+        try:
+            res2 = self.dict.db.query(q).getresult()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = '__get_vol_list(): '+exc_type+' '+exc_value+' query: '+q
+            Trace.log(e_errors.ERROR, msg)
+            return []
         res = []
         for i in res2:
             res.append(i[0])
@@ -2225,8 +2260,17 @@ class VolumeClerk(VolumeClerkMethods):
         db_port = dbInfo['db_port']
 
         Trace.log(e_errors.INFO,"opening volume database using edb.VolumeDB")
-        self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome)
-        self.sgdb = esgdb.SGDb(self.dict.db)
+        try:
+            self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome)
+            self.sgdb = esgdb.SGDb(self.dict.db)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = exc_type+' '+exc_value+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR,msg)
+            Trace.alarm(e_errors.ERROR,msg, {})
+            Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+            sys.exit(1)
+
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:
             self.sgdb.rebuild_sg_count()
