@@ -69,7 +69,13 @@ int
 set_variable_blocksize(){
     verbage("%s: setting variable blocksize on %s\n", progname,
 			tape_device);
+#ifdef MTSETBLK    
     return check_tape_ioctl(MTSETBLK, 0, "set block size");
+#else
+    verbage("Don't know how to set variable block size\n");
+    return 0;
+#endif
+    
 }
 
 int 
