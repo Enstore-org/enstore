@@ -1198,7 +1198,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
-                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
+                (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 if self.state == ACTIVE:
                     self.too_long_in_state_sent = 0 # set this to avoid sending a false alarm
                     transfer_stuck = 0 
@@ -4683,7 +4683,7 @@ class DiskMover(Mover):
         else:
             volume_label = self.last_volume
             volume_family = self.last_volume_family
-
+        
         if state is IDLE:
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
@@ -4692,8 +4692,13 @@ class DiskMover(Mover):
             work = "mover_busy"
             if state == SETUP:
                 try:
-                    volume_label = self.tmp_vol
-                    volume_family = self.tmp_vf
+                    # self.tmp_vol and self.tmp_vf may be None, None
+                    # because of the resynchronization of threads
+                    # check again and make the best guess
+                    if self.tmp_vol:
+                        volume_label = self.tmp_vol
+                    if self.tmp_vf:
+                        volume_family = self.tmp_vf
                 except AttributeError:
                     volume_label = None
                     
