@@ -156,17 +156,20 @@ if __name__=="__main__":
 
 	if database>0:
            for db in range(mindb,maxdb):
-                rates = pnfsRate(mountpoint,"%d"%db,sleeptime,once)
-                if genhtml:
-                        if col == ncolumns:
-                                print '</tr>\n <tr>'
-                                col = 0
-                        col = col + 1
-                        print '<td> <pre>'
-                print rates
-                if genhtml:
-                        print '</pre> </td>'
-
+		#print 'enrsh '+node+' "/usr/local/bin/isPnfsDbEnabled %s"'%db
+                enabled = os.popen('enrsh '+node+' "/usr/local/bin/isPnfsDbEnabled %s" 2>/dev/null '%db,'r').readlines()
+		#print enabled
+		if string.find(enabled[0],"1\n") == 0:
+                  rates = pnfsRate(mountpoint,"%d"%db,sleeptime,once)
+                  if genhtml:
+                          if col == ncolumns:
+                                  print '</tr>\n <tr>'
+                                  col = 0
+                          col = col + 1
+                          print '<td> <pre>'
+                  print rates
+                  if genhtml:
+                          print '</pre> </td>'
         if genhtml:
                 print '</table>'
                 print '<h1><center>PNFS Counter Fetch Done: %s</center><h1><hr>' % tod()
