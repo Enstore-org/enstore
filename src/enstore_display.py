@@ -211,6 +211,7 @@ color_dict = {
     'mover_error_color':    rgbtohex(255, 0, 0), # red
     'mover_offline_color':  rgbtohex(169, 169, 169), # grey
     'mover_stable_color':   rgbtohex(0, 0, 0), # black
+    'mover_label_color':    rgbtohex(255, 50, 50), # maroon
     'percent_color':        rgbtohex(0, 255, 0), # green
     'progress_bar_color':   rgbtohex(255, 255, 0), # yellow
     'progress_bg_color':    rgbtohex(255, 0, 255), # magenta
@@ -404,14 +405,16 @@ class Mover:
                                                     outline=self.library_color)
         #Display the mover name label.
         if self.label:
-            self.display.coords(self.label, x+self.label_offset.x,
-                                y+self.label_offset.y)
+            self.display.coords(self.label, x + self.label_offset.x,
+                                y + self.label_offset.y)
         else:
-            self.label   = self.display.create_text(x+self.label_offset.x,
-                                                    y+self.label_offset.y,
-                                                    text=self.name,
-                                                    anchor=Tkinter.SW,
-                                                    font = self.label_font)
+            self.label = self.display.create_text(x+self.label_offset.x,
+                                                  y+self.label_offset.y,
+                                                  text = self.name,
+                                                  #anchor = Tkinter.CENTER,
+                                                  anchor = Tkinter.E,
+                                                  font = self.font,
+                                                  fill = self.label_color)
 
     def draw_state(self):
         x, y                    = self.x, self.y
@@ -861,6 +864,7 @@ class Mover:
                             'Unknown':state_idle_color,
                             'IDLE':state_idle_color}.get(self.state,
                                                          state_stable_color)
+        self.label_color = colors('mover_label_color')
         self.library_color = self.display.get_mover_color(self.library)
         
         #Update the time in state counter for the mover.
@@ -1013,13 +1017,10 @@ class Mover:
         #This line assumes that their will not be 40 or more movers.
         self.width = (self.display.number_of_movers / 20)
         self.width = (self.display.width/(self.width + 3))
-        #Font geometry.
-        self.font = get_font(self.height/2.5, 'arial',
+        #Font geometry. (state, label, timer)
+        self.font = get_font(self.height/3.5, 'arial',
                              width_wanted=self.max_font_width(),
                              fit_string="DISMOUNT_WAIT")
-        self.label_font = get_font(self.height/2.5, 'arial',
-                                   width_wanted=self.max_label_font_width(),
-                                   fit_string=self.name)
 
         #Size of the volume portion of mover display.
         self.vol_height = (self.height)/2.5
@@ -1038,11 +1039,13 @@ class Mover:
         self.volume_label_offset   = XY(
                     self.volume_offset.x+(self.vol_width / 2.0),
                     self.volume_offset.y+(self.vol_height / 2.0))
-        self.label_offset          = XY(self.width+5, self.height)
+        self.label_offset          = XY(
+            self.width - 2,
+            self.height / 2.0)
         self.img_offset            = XY(4 + self.vol_width, 0)
         self.state_offset          = XY(
             ((self.width - self.vol_width - 6) / 2) + (4 + self.vol_width),
-            (4 + self.vol_height) / 2.0)
+            (self.vol_height / 2.0) + 0)
         self.timer_offset          = XY(self.width - 2, self.height - 0)
         self.rate_offset           = XY(self.width - 2, 2) #green
 
