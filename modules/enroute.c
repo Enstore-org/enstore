@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include "enrouteError.h"
 
 /* errstr(errno) -- return error message for the errno */
@@ -144,9 +145,9 @@ static char *keygen(char *key)
 
 /* route() -- python interface to route */
 
-static int route(char *cmd, char *dest, char *gw)
+static int route(char *cmd, char *dest, char *gw, char *if_name)
 {
-	char path[512];
+	char path[PATH_MAX + 1];
 	int pid, child;
 	char key[64];
 	int status;
@@ -159,7 +160,8 @@ static int route(char *cmd, char *dest, char *gw)
 	if ((pid = fork()) == 0)	/* child */
 	{
 		(void) keygen(key);	/* generate a key */
-		if(execl(path, "phantom-encp", key, cmd, dest, gw, NULL) < 0)
+		if(execl(path, "phantom-encp", key,
+			 cmd, dest, gw, if_name, NULL) < 0)
 		{
 			return(FailedExecution);
 		}
@@ -179,17 +181,17 @@ static int route(char *cmd, char *dest, char *gw)
 	return(OK);
 }
 
-int routeAdd(char *dest, char *gw)
+int routeAdd(char *dest, char *gw, char *if_name)
 {
-	return route("add", dest, gw);
+	return route("add", dest, gw, if_name);
 }
 
 int routeDel(char *dest)
 {
-	return route("del", dest, NULL);
+	return route("del", dest, NULL, NULL);
 }
 
-int routeChange(char *dest, char *gw)
+int routeChange(char *dest, char *gw, char *if_name)
 {
-	return route("change", dest, gw);
+	return route("change", dest, gw, if_name);
 }
