@@ -126,7 +126,7 @@ class accDB:
 		overall_rate, transfer_rate, mover,
 		drive_id, drive_sn, elapsed, media_changer,
 		mover_interface, driver, storage_group, encp_ip,
-		encp_id, rw, encp_version='unknown'):
+		encp_id, rw, encp_version='unknown', file_family='unknown', wrapper='unknown'):
 
 		if type(date) != type(""):
 			date = time2timestamp(date)
@@ -155,7 +155,9 @@ class accDB:
 			'encp_ip'	: encp_ip,
 			'encp_id'	: encp_id,
 			'rw'		: rw,
-			'encp_version'	: encp_version}
+			'encp_version'	: encp_version,
+			'file_family'	: file_family,
+			'wrapper'	: wrapper}
 
 		self.insert('encp_xfer', xfer)
 

@@ -26,8 +26,11 @@ import accounting
 import monitored_server
 import event_relay_messages
 import time
+import volume_clerk_client
 
 MY_NAME = enstore_constants.ACCOUNTING_SERVER    #"accounting_server"
+
+vcc = None
 
 # err_msg(fucntion, ticket, exc, value) -- format error message from
 # exceptions
@@ -186,85 +189,47 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
-			if ticket.has_key('encp_version'):
-				self.accDB.log_encp_xfer(
-					ticket['date'],
-					ticket['node'],
-					ticket['pid'],
-					ticket['username'],
-					ticket['src'],
-					ticket['dst'],
-					ticket['size'],
-					ticket['volume'],
-					ticket['network_rate'],
-					ticket['drive_rate'],
-					ticket['disk_rate'],
-					ticket['overall_rate'],
-					ticket['transfer_rate'],
-					ticket['mover'],
-					ticket['drive_id'],
-					ticket['drive_sn'],
-					ticket['elapsed'],
-					ticket['media_changer'],
-					ticket['mover_interface'],
-					ticket['driver'],
-					ticket['storage_group'],
-					ticket['encp_ip'],
-					ticket['encp_id'],
-					ticket['rw'],
-					ticket['encp_version'])
-			elif ticket.has_key('overall_rate'):
-				self.accDB.log_encp_xfer(
-					ticket['date'],
-					ticket['node'],
-					ticket['pid'],
-					ticket['username'],
-					ticket['src'],
-					ticket['dst'],
-					ticket['size'],
-					ticket['volume'],
-					ticket['network_rate'],
-					ticket['drive_rate'],
-					ticket['disk_rate'],
-					ticket['overall_rate'],
-					ticket['transfer_rate'],
-					ticket['mover'],
-					ticket['drive_id'],
-					ticket['drive_sn'],
-					ticket['elapsed'],
-					ticket['media_changer'],
-					ticket['mover_interface'],
-					ticket['driver'],
-					ticket['storage_group'],
-					ticket['encp_ip'],
-					ticket['encp_id'],
-					ticket['rw'])
-			else:	# backward comaptible
-				self.accDB.log_encp_xfer(
-					ticket['date'],
-					ticket['node'],
-					ticket['pid'],
-					ticket['username'],
-					ticket['src'],
-					ticket['dst'],
-					ticket['size'],
-					ticket['volume'],
-					ticket['net_rate'],
-					ticket['drive_rate'],
-					0,
-					ticket['rate'],
-					0,
-					ticket['mover'],
-					ticket['drive_id'],
-					ticket['drive_sn'],
-					ticket['elapsed'],
-					ticket['media_changer'],
-					ticket['mover_interface'],
-					ticket['driver'],
-					ticket['storage_group'],
-					ticket['encp_ip'],
-					ticket['encp_id'],
-					ticket['rw'])
+			if not ticket.has_key('encp_version'):
+				ticket['encp_version'] = 'unknown'
+
+			if not ticket.has_key('overall_rate'):
+				ticket['overall_rate'] = ticket['rate']
+				ticket['transfer_rate'] = 0
+				ticket['disk_rate'] = 0
+				ticket['network_rate'] = ticket['net_rate']
+
+			if not ticket.has_key('file_family'):
+				v = vcc.inquire_vol(ticket['volume'])
+				sg, ticket['file_family'], ticket['wrapper'] = string.split(v['volume_family'], ".")
+
+			self.accDB.log_encp_xfer(
+				ticket['date'],
+				ticket['node'],
+				ticket['pid'],
+				ticket['username'],
+				ticket['src'],
+				ticket['dst'],
+				ticket['size'],
+				ticket['volume'],
+				ticket['network_rate'],
+				ticket['drive_rate'],
+				ticket['disk_rate'],
+				ticket['overall_rate'],
+				ticket['transfer_rate'],
+				ticket['mover'],
+				ticket['drive_id'],
+				ticket['drive_sn'],
+				ticket['elapsed'],
+				ticket['media_changer'],
+				ticket['mover_interface'],
+				ticket['driver'],
+				ticket['storage_group'],
+				ticket['encp_ip'],
+				ticket['encp_id'],
+				ticket['rw'],
+				ticket['encp_version'],
+				ticket['file_family'],
+				ticket['wrapper'])
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_encp_xfer()', ticket, e, v))
@@ -342,6 +307,7 @@ if __name__ == '__main__':
 	csc = (intf.config_host, intf.config_port)
 	accServer = Server(csc)
 	accServer.handle_generic_commands(intf)
+	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
 	while 1:
 		try:
