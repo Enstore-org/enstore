@@ -40,6 +40,7 @@ CRC_ERROR='CRC MISMATCH'
 NET_ERROR="NET_ERROR"
 RETRY="RETRY"
 TOO_MANY_RETRIES="TOO MANY RETRIES"
+TOO_MANY_RESUBMITS="TOO_MANY_RESUBMITS"
 BROKEN="BROKEN"
 EPROTO="PROTOCOL_ERROR"
 IOERROR = "IO ERROR"
@@ -155,6 +156,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          DELETED,
                          QUOTAEXCEEDED,
                          TOO_MANY_RETRIES,
+                         TOO_MANY_RESUBMITS,
                          MALFORMED)
 
 
