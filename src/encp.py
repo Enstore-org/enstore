@@ -202,7 +202,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback()
+    host, port, listen_socket = callback.get_callback(use_multiple=1)
     callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+
@@ -527,7 +527,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 				    "mover callback on socket "+
 				    repr(address)+", failed to transfer: "+
 				    "done_ticket[\"status\"]="+
-				    repr(done_ticket["status"]))
+				    repr(done_ticket["status"]),fatal=0)
 			retry = retry - 1
 			continue
 
@@ -590,7 +590,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 			    "mover callback on socket "+
 			    repr(address)+", failed to transfer: "+
 			    "done_ticket[\"status\"]="+
-			    repr(done_ticket["status"]))
+			    repr(done_ticket["status"]),fatal=(retry<2))
 		retry = retry - 1
 		continue
 
@@ -837,7 +837,7 @@ def read_from_hsm(input_files, output,
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback()
+    host, port, listen_socket = callback.get_callback(use_multiple=1)
     client['callback_addr'] = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+
@@ -1143,7 +1143,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 					 lmticket)
 	  print_error(errno.errorcode[errno.EPROTO],
 		      " submit_read_requests. lmget failed "+
-		      repr(lmticket["status"]))
+		      repr(lmticket["status"]),fatal=0)
 	  continue
 
       Trace.trace(8,"submit_read_requests "+ current_library+
@@ -1165,7 +1165,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 		      " encp.read_from_hsm: from"
 		      "u.send to LM at "+lmticket['hostip']+"/"+
 		      repr(lmticket['port']) +", ticket[\"status\"]="+
-		      repr(ticket["status"]))
+		      repr(ticket["status"]),fatal=0)
 	  continue
       submitted = submitted+1
 
@@ -1260,13 +1260,13 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
                              "1st (pre-file-read) mover callback on socket "+
                              repr(address)+", failed to setup transfer: "
-                             "ticket[\"status\"]="+repr(ticket["status"]))
+                             "ticket[\"status\"]="+repr(ticket["status"]),fatal=0)
 		continue
 
 	    print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
                          "1st (pre-file-read) mover callback on socket "+
                          repr(address)+", failed to setup transfer: "+
-                         "ticket[\"status\"]="+repr(ticket["status"]))
+                         "ticket[\"status\"]="+repr(ticket["status"]),fatal=0)
 
 	    if ticket['retry_cnt'] >= maxretry:
 		del(requests[j])
@@ -1369,7 +1369,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                          "mover callback on socket "+
                                          repr(address)+", failed to transfer: "+
                                          "done_ticket[\"status\"]="+
-                                         repr(done_ticket["status"]))
+                                         repr(done_ticket["status"]),fatal=1)
                             continue
 
                         print_error('EPROTO',
@@ -1431,14 +1431,14 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                              "2nd (post-file-read) mover callback on socket "+
                              repr(address)+", failed to transfer: "+
                              "done_ticket[\"status\"]="+
-                             repr(done_ticket["status"]))
+                             repr(done_ticket["status"]),fatal=1)
 		continue
 
 
             print_error(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "
                         "2nd (post-file-read) mover callback on socket "+
                         repr(address)+", failed to transfer: "+
-                        "done_ticket[\"status\"]="+repr(done_ticket["status"]))
+                        "done_ticket[\"status\"]="+repr(done_ticket["status"]),fatal=0)
 
 	    if ticket['retry_cnt'] >= maxretry:
 		del(requests[j])
@@ -1467,7 +1467,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
                 print_error('EPROTO',
                        " encp.read_from_hsm: CRC's mismatch: %s %s"%
-                            (mover_crc, mycrc))
+                            (mover_crc, mycrc),fatal=0)
 
 		# no retry for this case
 		bytes = bytes+requests[j]['file_size']
@@ -1475,7 +1475,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 try: os.remove(tempname)
                 except os.error:
                     print_error('EACCES',
-                                "cannot remove temporary file %s" %tempname)
+                                "cannot remove temporary file %s" %tempname,fatal=0)
 		if files_left > 0:
 		    files_left = files_left - 1
 
@@ -1580,8 +1580,12 @@ def compare_location(t1,t2):
 
 # log the error to the logger and print it to the stderr
 
-def print_error(errcode,errmsg) :
-    format = "Fatal error:"+str(errcode)+str(errmsg)
+def print_error(errcode,errmsg,fatal=0) :
+    format = str(errcode)+str(errmsg)
+    if fatal:
+        format = "Fatal error: "+format
+    else:
+        format = "Error:"+format
     x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
