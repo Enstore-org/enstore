@@ -162,7 +162,20 @@ class ConfigurationClient(generic_client.GenericClient):
 	        self.output_socket_error("get_movers")
         Trace.trace(16,'}get_movers')
 	
-
+    #get list of library managers
+    def get_library_managers(self, ticket):
+        Trace.trace(10,"{get_library_managers")
+        ret = []
+        request = {'work': 'get_library_managers'}
+        while 1:
+            try:
+                x = self.u.send(request, self.config_address, timeout, retry)
+                Trace.trace(16,'}get_library_managers'+repr(x))
+                return x
+            except socket.error:
+	        self.output_socket_error("get_library_managers")
+        Trace.trace(10,'}get_library_managers')
+        
 def set_csc(self, csc=0, host=interface.default_host(),\
             port=interface.default_port(), verbose=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
