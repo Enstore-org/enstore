@@ -1,15 +1,6 @@
 #include <Python.h>
-#include <ftt.h>
 
-typedef struct ET_descriptor 
-{
-	ftt_descriptor ftt_desc;
-	char *buffer;
-	int block_size;
-	char *bufptr;		/* buffer to build output block - write only */
-        int hadeof;		/* seen an eof on this file - read only */
-        long filesize;		/* # of bytes */
-} ET_descriptor;
+#include "ETape.h"	/* get ET_descriptor typedef definition */
 
 #define CKALLOC(malloc_call) if ( !(malloc_call) ) {PyErr_NoMemory(); return NULL;} 
 
@@ -241,7 +232,7 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
 */
 static char ET_WriteBlock_Doc[] = "Write a block to tape";
 
-static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
+static PyObject * ET_WriteBlock(PyObject *self, PyObject *args)
 {
   ET_descriptor *ET_desc;
   int sts;
@@ -251,7 +242,7 @@ static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
 
   PyArg_ParseTuple(args, "ls#", &ET_desc, &data_buff, &length);
   ET_desc->filesize += length;
-  printf("DEBUG write %d\n",length);
+  /*printf("DEBUG write %d\n",length);*/
   while (length > 0)
   {
     if (ET_desc->bufptr + length < ET_desc->buffer + ET_desc->block_size) 
