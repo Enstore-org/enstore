@@ -1548,7 +1548,7 @@ def submit_one_request(ticket):
 ############################################################################
 
 #mode should only contain two values, "read", "write".
-def open_local_file(filename, mode):
+def open_local_file(filename, e):
     #If the file descriptor will be memory mapped, we need both read and
     # write permissions on the descriptor.
     flags = os.O_RDWR
@@ -1557,14 +1557,14 @@ def open_local_file(filename, mode):
     # This must be done when the file is opened.  It doesn't work if it
     # is set by fcntl() later on.
     sysname = os.uname()[0]
-    if sysname == "Linux":
+    if sysname == "Linux" and e.direct_io:
         #On linix this is generally ignored.  XFS on linux seems to use it,
         # since the rates on the terabyte filesystems are improved with its
         # use.
         O_DIRECT = 16384     #O_DIRECT
     #Setting this on IRIX using a filesystem that doesn't support O_DIRECT 
     # will result in EINVAL error.  (ie. XFS would work, but NFS would fail.)
-    elif sysname == "IRIX64":
+    elif sysname == "IRIX64" and e.direct_io:
         O_DIRECT = 32768     #O_DIRECT
     else:
 	O_DIRECT = 0
@@ -1578,6 +1578,8 @@ def open_local_file(filename, mode):
 	    # does not support direct i/o.  Try without it.
 	    try:
 		local_fd = os.open(filename, flags, 0666)
+		e.direct_io = 0  #Direct io failed, using posix io.
+		sys.stderr.write("Direct io failed, using posix io.\n")
 	    except OSError, detail:
 		#USERERROR is on the list of non-retriable errors.  Because of
 		# this the return from handle_retries will remove this request
@@ -1629,8 +1631,13 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         else:
             crc_flag = 0
 
-        EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
-                                  e.bufsize, crc_flag, e.mover_timeout, 0)
+        #EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
+        #                          e.buffer_size, crc_flag, e.mover_timeout, 0)
+
+	EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
+                                  crc_flag, e.mover_timeout,
+				  e.buffer_size, e.array_size,
+				  e.direct_io, e.mmap_io, e.threaded_exfer, 0)
 
         #Exfer_rtn is a tuple.
         # [0] exit_status (1 or 0)
@@ -2178,9 +2185,9 @@ def calculate_rate(done_ticket, tinfo):
     # write time calculation bug.
     if done_ticket['work'] == "read_from_hsm":
         nsa = 0
-        dsa = 0 #intf_encp.bufsize
+        dsa = 0 #intf_encp.buffer_size
     else:
-        nsa = 0 #intf_encp.bufsize
+        nsa = 0 #intf_encp.buffer_size
         dsa = 0
     """
     
@@ -2722,7 +2729,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         #maybe this isn't a good idea...
         work_ticket = combine_dict(ticket, work_ticket)
 
-        done_ticket = open_local_file(work_ticket['infile'], "write")
+        done_ticket = open_local_file(work_ticket['infile'], e)
 
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, listen_socket, route_server,
@@ -3477,7 +3484,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
 
         #Open the output file.
-        done_ticket = open_local_file(request_ticket['outfile'], "read")
+        done_ticket = open_local_file(request_ticket['outfile'], e)
 
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
@@ -3780,7 +3787,11 @@ class encp(interface.Interface):
         self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
         self.verbose = 0
-        self.bufsize = 65536*4     #XXX CGW Investigate this
+        self.buffer_size = 65500*4 #XXX CGW Investigate this
+	self.array_size = 1
+	self.direct_io = 1
+	self.mmap_io = 0
+	self.threaded_exfer = 1
         self.delayed_dismount = None
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
