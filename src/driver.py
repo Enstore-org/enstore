@@ -20,11 +20,8 @@ class GenericDriver:
     def __init__(self, device, eod_cookie,remaining_bytes):
         self.device = device
         self.remaining_bytes = remaining_bytes
-           # When a volume is ceated, the system sets EOD cookie to "none"
-        if eod_cookie == "none" :
-            self.eod = 0
-        else:
-            self.eod = eval(eod_cookie)
+	# When a volume is ceated, the system sets EOD cookie to "none"
+	self.set_eod()
         self.wr_err = 0
         self.rd_err = 0
         self.wr_access = 0
@@ -48,6 +45,15 @@ class GenericDriver:
 
     def get_eod(self):
         return repr(self.eod)
+
+    def set_eod(self, eod_cookie) :
+        # When a volume is ceated, the system sets EOD cookie to "none"
+        if eod_cookie == "none" :
+            self.eod = 0
+        else:
+	    # use eval as eod may be a string (could use atoi
+	    # but eod could be larger than 2 or 4 Gig
+            self.eod = eval(eod_cookie)
 
     def get_errors(self) :
          # return error count and # of files accesses
@@ -147,13 +153,6 @@ class  RawDiskDriver(GenericDriver) :
     def unload(self):
         #print "closing file"
         self.df.close()
-
-    def set_eod(self, eod_cookie) :
-        # When a volume is ceated, the system sets EOD cookie to "none"
-        if eod_cookie == "none" :
-            self.eod = 0
-        else:
-            self.eod = eval(eod_cookie)
 
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
