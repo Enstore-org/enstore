@@ -153,12 +153,17 @@ ftt_get_driveid(char *basename,char *os) {
     if (i < 0) {
 	return 0;
     }
-    if ( devtable[i].flags & FTT_FLAG_SUID_DRIVEID ) {
+    if ( 0 != geteuid() && (devtable[i].flags & FTT_FLAG_SUID_DRIVEID) ) {
 
+	DEBUG3( stderr, "Running ftt_suid...\n" );
 	sprintf(cmdbuf, "ftt_suid -i %s", basename );
 	pf = popen(cmdbuf, "r");
-	res = fgets(output,pf,255);
-	fclose(pf);
+        if (pf != 0) {
+	    res = fgets(output,255,pf);
+	    pclose(pf);
+	} else {
+	    res = 0;
+	}
     } else {
 	if ( devtable[i].drivid[1] == 's') {
 	    sprintf(cmdbuf, devtable[i].drividcmd, string, id);
