@@ -153,7 +153,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     fi
 
     echo "Checking Log Server"
-    #ecmd log --alive --list
     udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep logserver | cut -d: -f2` \
                                      `echo "$nodeplus_servers" | grep logserver | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
@@ -185,7 +184,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
     fi
 
     echo "Checking Volume Clerk"
-    #ecmd vcc --alive --list
     udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f2` \
                                      `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
@@ -217,7 +215,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
     fi
 
     echo "Checking  File Clerk"
-    #ecmd fcc --alive --list
     udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f2` \
                                      `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
@@ -249,7 +246,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
             fi
         fi
         echo "Checking $i Library Manager"
-        #ecmd lmc --alive --list $i
         udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
                                          `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
         if [ $? -ne 0 ]; then
@@ -283,7 +279,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
             fi
         fi
         echo "Checking $i Media Changer"
-        #ecmd mcc --alive --list $i
         udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
                                          `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
         if [ $? -ne 0 ]; then
@@ -323,7 +318,7 @@ fi
 ###################################################################################################################################
 
 # inquisitor
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
     if [ "${opt_ping-}" != 1 -a $enstore_start_inquisitor = 1 ];then
       if   [ ! "${opt_nocheck-}" ]\
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inquisitor|sed -e 's/.*://'` $timeout >/dev/null
@@ -379,7 +374,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
         fi
     fi
     echo "Checking DB Admin Server"
-    #ecmd acc --alive
     udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f2` \
                                      `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f3` $timeout --tries $tries
     if [ $? -ne 0 ] ; then
