@@ -1478,8 +1478,12 @@ def outputfile_check(inputlist, outputlist, e):
                                         % (inputlist[i]),
                                         e_errors.OSERROR)
 
+                    if ofilesize == 1 and ifilesize > TWO_G:
+                        #If the file is large, there is nothing to compare.
+                        # Drop in here to skip the following elif statement.
+                        pass
                     #Test if the output file size matches the input file size.
-                    if ifilesize != ofilesize:
+                    elif ifilesize != ofilesize:
                         raise EncpError(None,
                                         "Expected local file size (%s) to "
                                         "equal remote file size (%s)." %
@@ -1543,7 +1547,7 @@ def outputfile_check(inputlist, outputlist, e):
 
 #######################################################################
 
-def create_zero_length_files(filenames):
+def create_zero_length_files(filenames, raise_error = None):
     if type(filenames) != types.ListType:
         filenames = [filenames]
 
@@ -1557,13 +1561,19 @@ def create_zero_length_files(filenames):
             os.close(fd)
 
         except OSError:
-            exc, msg = sys.exc_info()[:2]
-            error = errno.errorcode.get(getattr(msg, "errno", None),
-                                        errno.errorcode[errno.ENODATA])
-            print_data_access_layer_format('', f, 0,
-                                           {'status': (error, str(msg))})
-
-            quit()
+            if raise_error:
+                #Originally needed for "Get", don't abort.
+                exc, msg = sys.exc_info()[:2]
+                raise exc, msg
+            else:
+                #Keep the default action the same.
+                exc, msg = sys.exc_info()[:2]
+                error = errno.errorcode.get(getattr(msg, "errno", None),
+                                            errno.errorcode[errno.ENODATA])
+                print_data_access_layer_format('', f, 0,
+                                               {'status': (error, str(msg))})
+                
+                quit()
 
 #######################################################################
 
@@ -3351,6 +3361,8 @@ def set_pnfs_settings(ticket, intf_encp):
 
     #The first piece of metadata to set is the bit file id which is placed
     # into layer 1.
+    Trace.message(INFO_LEVEL, "Setting layer 1: %s" %
+                  ticket["fc"]["bfid"])
     try:
         #p=pnfs.Pnfs(ticket['outfile'])
         #t=pnfs.Tag(os.path.dirname(ticket['outfile']))
@@ -3384,6 +3396,7 @@ def set_pnfs_settings(ticket, intf_encp):
     else:
         crc = ticket['fc']['complete_crc']
     #Write to the metadata layer 4 "file".
+    Trace.message(INFO_LEVEL, "Setting layer 4.")
     try:
         #t.get_file_family()
         p.get_bit_file_id()
@@ -3415,6 +3428,7 @@ def set_pnfs_settings(ticket, intf_encp):
     filedb_start_time = time.time() # Start time of updating file database.
 
     #Update the file database with the transfer info.
+    Trace.message(INFO_LEVEL, "Setting file db pnfs fields.")
     try:
         # add the pnfs ids and filenames to the file clerk ticket and store it
         fc_ticket = {}
@@ -3432,7 +3446,7 @@ def set_pnfs_settings(ticket, intf_encp):
         if not e_errors.is_ok(fc_reply['status'][0]):
             Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
 
-        Trace.message(TICKET_LEVEL, "PNFS SET")
+        Trace.message(TICKET_LEVEL, "FILE DB PNFS FIELDS SET")
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
 
         ticket['status'] = fc_reply['status']
@@ -3451,6 +3465,7 @@ def set_pnfs_settings(ticket, intf_encp):
     filesize_start_time = time.time() # Start time of setting the filesize.
 
     # file size needs to be the LAST metadata to be recorded
+    Trace.message(INFO_LEVEL, "Setting filesize.")
     try:
         #The dcache sets the file size.  If encp tries to set it again, pnfs
         # sets the size to zero.  Thus, only do this for normal transfers.
@@ -4504,6 +4519,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             try:
                 #Get the number and filename for the next line on the file.
                 number, filename = list_of_files[i].split()[:2]
+                filename = os.path.basename(filename)
                 
                 #If everything is okay, search the listing for the location
                 # of the file requested.
