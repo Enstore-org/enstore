@@ -639,15 +639,15 @@ class BpdDataFile(EnPlot):
 
     def install(self, dir):
 	EnPlot.install(self, dir)
-	filer = string.replace(self.name, enstore_constants.BPD_FILE,
-			       enstore_constants.BPD_FILE_R)
-	psfiler = "%s/%s%s"%(self.dir, filer, enstore_constants.PS)
-	filew = string.replace(self.name, enstore_constants.BPD_FILE,
-			       enstore_constants.BPD_FILE_W)
-	psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
-	os.system("cp %s %s %s"%(psfiler, psfilew, dir))
-	convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
-	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
+	#filer = string.replace(self.name, enstore_constants.BPD_FILE,
+	#		       enstore_constants.BPD_FILE_R)
+	#psfiler = "%s/%s%s"%(self.dir, filer, enstore_constants.PS)
+	#filew = string.replace(self.name, enstore_constants.BPD_FILE,
+	#		       enstore_constants.BPD_FILE_W)
+	#psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	#os.system("cp %s %s %s"%(psfiler, psfilew, dir))
+	#convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
+	#convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
 
 
 class SgGnuFile(enstore_files.EnFile):
