@@ -944,7 +944,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
-                self.state = HAVE_BOUND
+                if self.state is not DRAINING: self.state = HAVE_BOUND
+                # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, None)
                 return
             self.bytes_read = self.bytes_read + bytes_read
@@ -1170,11 +1171,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
-                self.state = HAVE_BOUND
+                if self.state is not DRAINING: self.state = HAVE_BOUND
+                # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 break
             if bytes_written < 0:
-                self.state = HAVE_BOUND
+                if self.state is not DRAINING: self.state = HAVE_BOUND
+                # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
                 break
             if bytes_written != nbytes:
@@ -1865,11 +1868,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         broken = ""
         self.dismount_time = None
-        save_state = self.state
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
             ### Do not eject if specified
             Trace.log(e_errors.INFO, "Do not eject specified")
+            self.state = HAVE_BOUND
             return
             self.current_volume = None
             self.volume_family = None
