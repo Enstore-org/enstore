@@ -32,7 +32,7 @@ class AdminClerkClient(generic_client.GenericClient) :
         listen_socket.listen(4)
         uinfo = {"callback_addr" : (host, port)}
         ticket = {"work"               : "select",
-                  "user_info"          : uinfo,
+                  "uinfo"              : uinfo,
                   "unique_id"          : time.time(),
 		  "dbname"	       : dbname, 
 		  "criteria"           : criteria}

@@ -115,7 +115,7 @@ def next_work_any_volume(csc):
             vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
-            v = vc.next_write_volume (w["library"], w["user_info"]\
+            v = vc.next_write_volume (w["library"], w["uinfo"]\
 				      ["size_bytes"],\
                                       w["file_family"], vol_veto_list,\
                                       first_found)
@@ -153,7 +153,7 @@ def next_work_this_volume(v):
             w["file_family"]    == v["file_family"]  and
             v["user_inhibit"]   == "none"            and
             v["system_inhibit"] == "none"            and
-            w["user_info"]["size_bytes"]    <= v["remaining_bytes"]):
+            w["uinfo"]["size_bytes"]    <= v["remaining_bytes"]):
             w["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
             return w
@@ -178,10 +178,10 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
-                                   repr(ticket["user_info"]["fullname"]),
+                                   repr(ticket["uinfo"]["fullname"]),
                                    ticket["pnfs_info"]["pnfsFilename"],
                                    ticket["library"],ticket["file_family"],
-                                   ticket["user_info"]["uname"])
+                                   ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
 
     def read_from_hsm(self, ticket):
@@ -190,10 +190,10 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    ticket["pnfs_info"]["pnfsFilename"],
-                                   repr(ticket["user_info"]["fullname"]),
+                                   repr(ticket["uinfo"]["fullname"]),
                                    ticket["fc"]["external_label"],
 				   ticket["fc"]["bfid"],
-                                   ticket["user_info"]["uname"])
+                                   ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
 
 
@@ -214,7 +214,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["fc"]["external_label"],
                                        w["work"],
                                        mticket["mover"],
-                                       w["user_info"]["uname"])
+                                       w["uinfo"]["uname"])
             self.reply_to_caller({"work"           : "bind_volume",
                                   "external_label" : w["fc"]\
 				  ["external_label"] })
@@ -246,7 +246,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["work"],
                                        w["fc"]["external_label"],
                                        mticket["mover"],
-                                       w["user_info"]["uname"])
+                                       w["uinfo"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
             work_awaiting_bind.remove(w)
             w['mover'] = mticket['mover']
@@ -261,7 +261,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["work"],
                                        w["fc"]["external_label"],
                                        mticket["mover"],
-                                       w["user_info"]["uname"])
+                                       w["uinfo"]["uname"])
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.remove(w)
             w['mover'] = mticket['mover']

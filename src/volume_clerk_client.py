@@ -106,10 +106,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        user_info = {"callback_addr" : (host, port)}
-        ticket = {"work"             : "get_vols",
-                  "user_info"        : user_info,
-                  "unique_id"        : time.time() }
+        uinfo = {"callback_addr" : (host, port)}
+        ticket = {"work"         : "get_vols",
+                  "uinfo"        : uinfo,
+                  "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok":

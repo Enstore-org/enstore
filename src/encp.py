@@ -186,22 +186,21 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                 uinfo["callback_addr"] = (host, port)
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
+                uinfo["delayed_dismount"] = delayed_dismount
+                uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",\
-                               "delayed_dismount"   : delayed_dismount,\
                                "priority"           : 1,\
                                "library"            : library[i],\
                                "fc"                 : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
-                               "orig_filename"      : inputlist[i],\
                                "pnfs_info"          : pinfo[i],\
-                               "user_info"          : uinfo,\
-                               "mtime"              : int(time.time()),\
+                               "info"               : uinfo,\
                                "unique_id"          : unique_id[i]
                                }
 
             # send the work ticket to the library manager
-            tinfo1["tot_to_send_ticket"+repr(i)] = t1 -t0
+            tinfo1["tot_to_send_ticket"+repr(i)] = t1 - t0
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
             ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
@@ -448,6 +447,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     volume = []
     unique_id = []
     vols_needed = {}
+    delayed_dismount = 0
     global logc
     (csc,u,uinfo) = clients(config_host,config_port,list)
 
@@ -577,14 +577,15 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 uinfo["callback_addr"] = (host, port)
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
+                uinfo["delayed_dismount"] = delayed_dismount
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
-                work_ticket = {"work"               : "read_from_hsm",\
-                               "user_info"          : uinfo,\
-                               "fc"                 : file_clerk,\
-                               "pnfs_info"          : pinfo[i],\
-                               "unique_id"          : unique_id[i]
+                work_ticket = {"work"              : "read_from_hsm",\
+                               "uinfo"             : uinfo,\
+                               "fc"                : file_clerk,\
+                               "pnfs_info"         : pinfo[i],\
+                               "unique_id"         : unique_id[i]
                                }
 
                 # send ticket to file clerk who sends it to right library manger

@@ -39,9 +39,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         uinfo = {"callback_addr" : (host, port)}
-        ticket = {"work"               : "getwork",
-                  "user_info"          : uinfo,
-                  "unique_id"          : time.time() }
+        ticket = {"work"         : "getwork",
+                  "uinfo"        : uinfo,
+                  "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok" :

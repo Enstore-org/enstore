@@ -53,9 +53,9 @@ class FileClerkClient(generic_client.GenericClient, \
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         uinfo = {"callback_addr" : (host, port)}
-        ticket = {"work"               : "get_bfids",
-                  "user_info"          : uinfo,
-                  "unique_id"          : time.time() }
+        ticket = {"work"         : "get_bfids",
+                  "uinfo"        : uinfo,
+                  "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok":

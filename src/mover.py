@@ -192,9 +192,9 @@ class Mover:
             raise "volume clerk forgot about this volume"
 
         # setup values before transfer
-        nb = ticket["user_info"]["size_bytes"]
+        nb = ticket["uinfo"]["size_bytes"]
         wr_size = 0
-        sanity_size = ticket["user_info"]["sanity_size"]
+        sanity_size = ticket["uinfo"]["sanity_size"]
         media_error = 0
         media_full  = 0
         drive_error = 0
@@ -221,8 +221,9 @@ class Mover:
 	    # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
             (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
-                inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
-                ticket["user_info"]["size_bytes"], pnfs["major"], 
+                inode, pnfs["mode"], pnfs["uid"], pnfs["gid"],
+                ticket["uinfo"]["mtime"],
+                ticket["uinfo"]["size_bytes"], pnfs["major"], 
 		pnfs["minor"], pnfs["rmajor"], pnfs["rminor"], 
 		pnfs["pnfsFilename"], sanity_size)
             file_cookie = self.driver.close_file_write()
@@ -240,16 +241,16 @@ class Mover:
         
         # check for errors and inform volume clerk
         if media_error:
-            vcc.update_counts(ticket["external_label"],
+            vcc.update_counts(ticket["fc"]["external_label"],
                               wr_err,rd_err,wr_access,rd_access)
-            vcc.set_system_readonly(ticket["external_label"])
+            vcc.set_system_readonly(ticket["fc"]["external_label"])
             self.unilateral_unbind_next(ticket)
-            msg = "Volume "+repr(ticket["external_label"])
+            msg = "Volume "+repr(ticket["fc"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
 
-        if wr_size != ticket["user_info"]["size_bytes"]:
-            msg = "Expected "+repr(ticket["user_info"]["size_bytes"])+\
+        if wr_size != ticket["uinfo"]["size_bytes"]:
+            msg = "Expected "+repr(ticket["uinfo"]["size_bytes"])+\
 		  " bytes  but only" +" stored"+repr(wr_size)
             self.logc.send(log_client.ERROR,1,msg)
             # tell user we're done, but there has been an error
