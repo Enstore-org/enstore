@@ -60,7 +60,6 @@ import pprint
 import signal				# signal - to del shm on sigterm, etc
 import sys				# exit
 import time				# .sleep
-import traceback			# print_exc == stack dump
 import string				# find
 import select
 import types				
@@ -741,7 +740,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 exc,msg,tb=sys.exc_info()
                 Trace.log( e_errors.ERROR,
                            'FTT or Exfer exception: %s %s '%(exc,msg))
-                #traceback.print_exc()
 
                 if msg.args[0] == 'fd_xfer - read EOF unexpected':
                     # assume encp dissappeared
@@ -768,7 +766,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.return_or_update_and_exit( self.lm_origin_addr, e_errors.WRITE_ERROR )
                 pass
             except:
-                traceback.print_exc()
+                e_errors.handle_error()
                 wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
                 self.vcc.update_counts( self.vol_info['external_label'],
                                    wr_err, rd_err, wr_access, rd_access )
@@ -972,9 +970,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     ticket['status']=(e_errors.BROKENPIPE,None)
                 else:
                     err = e_errors.READ_ERROR
-                    traceback.print_exc()
-                Trace.log( e_errors.ERROR,
-                           'FTT or Exfer exception: %s %s'%(exc,msg))
+                e_errors.handle_error()
                 self.usr_driver.close()
                 self.send_user_done( ticket, err)
                 self.return_or_update_and_exit( self.lm_origin_addr, e_errors.OK )
@@ -989,7 +985,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 pass
             except:
                 # unanticipated exception: guess a cause and hope we can continue
-                #traceback.print_exc()
                 e_errors.handle_error()
                 media_error = 1
                 wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
@@ -1431,9 +1426,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
                 Trace.log( e_errors.WARNING,format)
 
-                #traceback.print_exc()
-                #os.system( 'ps alxwww' )
-                #raise
                 pass
             if pid == self.pid:
                 self.pid = 0
