@@ -210,7 +210,7 @@ def check(mover):
     elif status and status[0]=='TIMEDOUT':
         return -2, "Status request timed out"
     elif status  != ("ok", None):
-        return -3, "Status request returned %s.\n\nFull status: %s" % status, pprint.pformat(d)
+        return -3, "Status request returned %s.\n\nFull status: %s" % (status, pprint.pformat(d))
     else:
         return 0, None
     
