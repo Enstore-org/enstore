@@ -584,9 +584,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             nbytes = self.buffer.header_size
             ##XXX this will fail if nbytes>block_size.
             bytes_read = self.buffer.stream_read(nbytes,self.header)
-
+        bytes_notified = 0L
+        threshold = self.notify_transfer_threshold
+        if threshold * 5 > self.bytes_to_read:
+            threshold = self.bytes_to_read/5
+        elif threshold * 100 < self.bytes_to_read:
+            threshold = self.bytes_to_read/100
+            
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-
+            if self.bytes_read - bytes_notified > threshold:
+                bytes_notified = self.bytes_read
+                Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_read, self.bytes_to_read))
             if self.buffer.full():
                 Trace.trace(9, "read_client: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -631,16 +639,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.tape_driver
         count = 0
-        bytes_notified = 0L
-        threshold = self.notify_transfer_threshold
-        
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
-            if self.bytes_written - bytes_notified > threshold:
-                bytes_notified = self.bytes_written
-                Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_written, self.bytes_to_write))
                 
-            if (self.bytes_read == self.bytes_to_read and self.buffer.empty()
-                or self.bytes_read < self.bytes_to_read and self.buffer.low()):
+            if (self.buffer.empty() or
+                (self.bytes_read < self.bytes_to_read and self.buffer.low())):
                 Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
                              self.bytes_read, self.bytes_to_read))
@@ -711,13 +714,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def read_tape(self):
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.tape_driver
-        bytes_notified = 0L
-        threshold = self.notify_transfer_threshold
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-            if self.bytes_read - bytes_notified > threshold:
-                bytes_notified = self.bytes_read
-                #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read))
             if self.buffer.full():
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -777,7 +774,19 @@ class Mover(dispatching_worker.DispatchingWorker,
             # start of data
             self.buffer.stream_write(self.buffer.header_size, None)
 
+        bytes_notified = 0L
+        threshold = self.notify_transfer_threshold
+        if threshold * 5 > self.bytes_to_write:
+            threshold = self.bytes_to_write/5
+        elif threshold * 100 < self.bytes_to_write:
+            threshold = self.bytes_to_write/100
+           
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
+            if self.bytes_written - bytes_notified > threshold:
+                bytes_notified = self.bytes_written
+                #negative byte-count to indicate direction
+                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_written, self.bytes_to_write))
+
             if self.buffer.empty():
                 Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
                             (self.bytes_written, self.bytes_to_write))
@@ -1386,8 +1395,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = None
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
-        
-        Trace.log(e_errors.INFO, "mounting %s, after_function=%s" % (volume_label,after_function))
+
+        Trace.notify("loading %s %s" % (self.shortname, volume_label))        
+        Trace.log(e_errors.INFO, "mounting %s"%(volume_label,),
+                  msg_type=Trace.MSG_MC_LOAD_REQ)
         self.timer('mount_time')
         
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
@@ -1395,7 +1406,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'mc replies %s' % (status,))
 
         if status and status[0] == e_errors.OK:
-            Trace.notify("load %s %s" % (self.shortname, volume_label))
+            Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
+            Trace.log(e_errors.INFO, "mounted %s"%(volume_label,),
+                  msg_type=Trace.MSG_MC_LOAD_DONE)
+
             if self.mount_delay:
                 Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
                 time.sleep(self.mount_delay)
