@@ -98,8 +98,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 					       monitored_server.HUNG_INTERVAL_DEFAULT)
 
     def mark_event_relay(self, state):
-	self.serverfile.output_etimedout(self.erc.event_relay_host, 
-					 self.erc.event_relay_port, state,
+	self.serverfile.output_etimedout(self.erc.event_relay_addr[0], 
+					 self.erc.event_relay_addr[1], state,
 					 time.time(), enstore_constants.EVENT_RELAY, 
 					 self.event_relay.last_alive)
 
@@ -493,7 +493,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def process_event_message(self, fd):
 	# the event relay is alive
 	now = time.time()
-	self.serverfile.output_alive(self.erc.event_relay_host, self.erc.event_relay_port,
+	self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+				     self.erc.event_relay_addr[1],
 				     ALIVE, now, enstore_constants.EVENT_RELAY)
 	self.event_relay.alive(now)
 	msg = self.erc.read(fd)
