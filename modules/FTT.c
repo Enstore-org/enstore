@@ -1052,7 +1052,7 @@ FTT_status(  PyObject *self
 
 /*****************************************************************************
  */
-static char FTT_format_label_doc[] = "invoke ftt_stats";
+static char FTT_format_label_doc[] = "invokes ftt_format_label";
 
 static PyObject*
 FTT_format_label(  PyObject *self
@@ -1079,6 +1079,26 @@ FTT_format_label(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_unload_doc[] = "invokes ftt_unload";
+
+static PyObject*
+FTT_unload(  PyObject *self
+	   , PyObject *args )
+{
+	int		sts;	/* general status */
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_unload device not opened"));
+
+    sts = ftt_unload( g_ftt_desc_tp );
+    if (sts == -1) return (raise_ftt_exception("FTT_unload"));
+
+    Py_INCREF(Py_None); return (Py_None);
+}
+
+
+
+/*****************************************************************************
+ */
 
 static PyMethodDef FTT_Methods[] = {
     { "set_debug", FTT_set_debug, 1, FTT_set_debug_doc },
@@ -1096,6 +1116,7 @@ static PyMethodDef FTT_Methods[] = {
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
     { "format_label", FTT_format_label, 1, FTT_format_label_doc },
+    { "unload", FTT_unload, 1, FTT_unload_doc },
     { 0, 0 }        /* Sentinel */
 };
 
