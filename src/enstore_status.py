@@ -103,16 +103,6 @@ def parse_mount_line(line):
 
 class EnStatus:
 
-    # output the encp info
-    def output_encp(self, lines, key, verbose):
-	Trace.trace(12,"{output_html_encp ")
-	if lines != []:
-	    str = self.format_encp(lines, key)
-	else:
-	    str = "encp            : NONE\n"
-	self.text[key] = str+"\n"
-	Trace.trace(12,"}output_html_encp ")
-
     # output the blocksize info
     def output_blocksizes(self, info, prefix, key):
         Trace.trace(12,"{output_blocksizes ")
@@ -207,11 +197,6 @@ class EnStatus:
 	                   verbose)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmmoverlist ")
-
-    # remove something from the text hash that will be written to the files
-    def remove_key(self, key):
-	if self.text.has_key(key):
-	    del self.text[key]
 
     # remove all single quotes
     def unquote(self, string):
@@ -450,25 +435,21 @@ class EnStatusFile(EnFile):
 	self.file.flush()
         Trace.trace(10,'}flush')
 
+    # remove something from the text hash that will be written to the files
+    def remove_key(self, key):
+	if self.text.has_key(key):
+	    del self.text[key]
 
-class HTMLStatusFile(EnStatusFile, EnStatus):
+class EnHTMLFile:
 
-    def __init__(self, file, refresh, verbose=0):
-        Trace.trace(10,'{__init__ htmlstatusfile ')
+    def __init__(self, refresh, verbose=0):
+        Trace.trace(10,'{__init__ enhtmlfile ')
 	if refresh == -1:
 	    self.refresh = 120
 	else:
 	    self.refresh = refresh
 	self.set_header()
-	EnStatusFile.__init__(self, file)
         Trace.trace(10,'}__init__')
-
-    # open the file and write the header to the file
-    def open(self, verbose=0):
-        Trace.trace(12,"{open "+self.header)
-	EnStatusFile.open(self, verbose)
-	self.file.write(self.header)
-        Trace.trace(12,"}write_header ")
 
     # close the file
     def close(self):
@@ -490,46 +471,34 @@ class HTMLStatusFile(EnStatusFile, EnStatus):
     def get_refresh(self):
 	return self.refresh
 
-    # format the encp info taken from the log file
-    def format_encp(self, lines, key):
-	Trace.trace(13,"{format_encp ")
-	# include a </pre> here to finish the one started in the header
-	str = "</pre><P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
-	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
-	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
-	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
-	      "<TD NOSAVE><B>BYTES</B></TD>\n<TD NOSAVE><B>VOLUME</B></TD>\n"+\
-	      "<TD NOSAVE><B>DATA TRANSFER RATE (MB/S)</B></TD>\n"+ \
-	      "<TD NOSAVE><B>USER RATE (MB/S)</B></TD>\n</TR>\n"
-	str2 = "<P><PRE>\n"
-	# break up each line into it's component parts, format it and save it
-	for line in lines:
-	    einfo = parse_encp_line(line)
-	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
-	        str = str+trow+tdata+einfo[ETIME]+tdata_end+ \
-	                       tdata+einfo[ENODE]+tdata_end+ \
-	                       tdata+einfo[EUSER]+tdata_end+ \
-	                       tdata+einfo[EBYTES]+tdata_end+ \
-	                       tdata+einfo[EDEV]+tdata_end+ \
-	                       tdata+einfo[EXRATE]+tdata_end+ \
-	                       tdata+einfo[EURATE]+tdata_end+"</TR>\n"
-	    else:
-	        str2 = str2+einfo[ETIME]+" on "+einfo[ENODE]+" by "+einfo[EUSER]
- 	        # there was an error or warning
-	        if len(einfo) == 7:
-	            str2 = str2+"\n  "+einfo[4]+" : "+einfo[5]+"\n  "+\
-	                   einfo[6]+"\n"
-	        else:
-	            # the leftover text was formatted funny, just output it
-	            str2 = str2+"\n  "+einfo[4]+"\n"
+class EncpFile:
+
+    # output the encp info
+    def output_encp(self, lines, key, verbose):
+	Trace.trace(12,"{output_html_encp ")
+	if lines != []:
+	    str = self.format_encp(lines, key)
 	else:
-	    str = str+"</TABLE></CENTER>\n"
-	str = str+str2+"\n"
-	Trace.trace(13,"}format_encp ")
-	return str
+	    str = "encp            : NONE\n"
+	self.text[key] = str+"\n"
+	Trace.trace(12,"}output_html_encp ")
 
+class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 
-class AsciiStatusFile(EnStatusFile, EnStatus):
+    def __init__(self, file, refresh, verbose=0):
+        Trace.trace(10,'{__init__ htmlstatusfile ')
+	EnStatusFile.__init__(self, file)
+	EnHTMLFile.__init__(self, refresh, verbose)
+        Trace.trace(10,'}__init__')
+
+    # open the file and write the header to the file
+    def open(self, verbose=0):
+        Trace.trace(12,"{open "+self.header)
+	EnStatusFile.open(self, verbose)
+	self.file.write(self.header)
+        Trace.trace(12,"}write_header ")
+
+class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
     def __init__(self, file, max_ascii_size, verbose=0):
         Trace.trace(10,'{__init__ asciifile ')
@@ -585,12 +554,51 @@ class AsciiStatusFile(EnStatusFile, EnStatus):
     def get_max_ascii_size(self):
 	return self.max_ascii_size
 
-class EncpStatusFile(HTMLStatusFile):
+class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
     def __init__(self, file, refresh, verbose=0):
         Trace.trace(10,'{__init__ encpstatusfile ')
-	HTMLStatusFile.__init__(self, file, refresh, verbose)
+	EnStatusFile.__init__(self, file)
+	EnHTMLFile.__init__(self, refresh, verbose)
         Trace.trace(10,'}__init__')
+
+    # format the encp info taken from the log file
+    def format_encp(self, lines, key):
+	Trace.trace(13,"{format_encp ")
+	# include a </pre> here to finish the one started in the header
+	str = "</pre><P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
+	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
+	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
+	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
+	      "<TD NOSAVE><B>BYTES</B></TD>\n<TD NOSAVE><B>VOLUME</B></TD>\n"+\
+	      "<TD NOSAVE><B>DATA TRANSFER RATE (MB/S)</B></TD>\n"+ \
+	      "<TD NOSAVE><B>USER RATE (MB/S)</B></TD>\n</TR>\n"
+	str2 = "<P><PRE>\n"
+	# break up each line into it's component parts, format it and save it
+	for line in lines:
+	    einfo = parse_encp_line(line)
+	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	        str = str+trow+tdata+einfo[ETIME]+tdata_end+ \
+	                       tdata+einfo[ENODE]+tdata_end+ \
+	                       tdata+einfo[EUSER]+tdata_end+ \
+	                       tdata+einfo[EBYTES]+tdata_end+ \
+	                       tdata+einfo[EDEV]+tdata_end+ \
+	                       tdata+einfo[EXRATE]+tdata_end+ \
+	                       tdata+einfo[EURATE]+tdata_end+"</TR>\n"
+	    else:
+	        str2 = str2+einfo[ETIME]+" on "+einfo[ENODE]+" by "+einfo[EUSER]
+ 	        # there was an error or warning
+	        if len(einfo) == 7:
+	            str2 = str2+"\n  "+einfo[4]+" : "+einfo[5]+"\n  "+\
+	                   einfo[6]+"\n"
+	        else:
+	            # the leftover text was formatted funny, just output it
+	            str2 = str2+"\n  "+einfo[4]+"\n"
+	else:
+	    str = str+"</TABLE></CENTER>\n"
+	str = str+str2+"\n"
+	Trace.trace(13,"}format_encp ")
+	return str
 
 class EncpDataFile(EnFile):
 
@@ -618,3 +626,4 @@ class EncpDataFile(EnFile):
 	            break
 	    encpfile.close()
 	return self.lines
+
