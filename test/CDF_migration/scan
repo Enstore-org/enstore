@@ -10,8 +10,6 @@ n=0
 cat $files | while read f; do
   n=`expr $n + 1`
   echo `date` $n $f
-  ENSTORE_SPECIAL_LIB=CDF-Migration
-  export ENSTORE_SPECIAL_LIB
   encp --delayed=3 $f /dev/null &pid=$!
   echo $pid >> $pids
 done
