@@ -36,7 +36,7 @@ def next_minute(t=None):
 class Ratekeeper:
     interval = 15
     resubscribe_interval = 10*60 
-    def __init__(self, event_relay_addr, filename_base, output_dir='/tmp'):
+    def __init__(self, event_relay_addr, filename_base, output_dir='/tmp/RATES'):
         self.event_relay_addr = event_relay_addr
         self.filename_base = filename_base
         self.output_dir = output_dir
@@ -143,7 +143,7 @@ class Ratekeeper:
                 continue
 
             num_0, denom_0 = prev
-            if num < num_0: # or denom != denom_0
+            if num < num_0 or denom != denom_0:
                 #consider this the beginning of a new transfer
                 continue
             bytes = num - num_0
