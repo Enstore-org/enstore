@@ -137,12 +137,16 @@ class DbTable:
       if self.auto_journal:
         if 'db_flag' in KeyOrValue.keys(): del KeyOrValue['db_flag']
         self.jou[c.Key]=KeyOrValue  ## was deepcopy
-        self.jou[c.Key]['db_flag']='add'
         self.count=self.count+1
         if self.count > JOURNAL_LIMIT and backup_flag:
           self.checkpoint()
 
-      return c.update(KeyOrValue)
+      status = c.update(KeyOrValue)
+
+      if self.auto_journal:
+        self.jou[c.Key]['db_flag']='add'
+
+      return status
 
   def keys(self):
     return self.db.keys()
@@ -168,7 +172,6 @@ class DbTable:
      if self.auto_journal:
        if 'db_flag' in value.keys(): del value['db_flag']
        self.jou[key]=value  ## was deepcopy
-       self.jou[key]['db_flag']='add'
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
@@ -179,6 +182,9 @@ class DbTable:
      t=self.db.txn()
      self.db[(key,t)]=value
      t.commit()
+
+     if self.auto_journal:
+       self.jou[key]['db_flag']='add'
 
 #junk   def is_index(self,key):
 #junk         if self.inx.has_key(key):
