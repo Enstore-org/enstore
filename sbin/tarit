@@ -102,25 +102,35 @@ thisnode=\`uname -n| sed -e 's/\([^\.]\)\..*/\1/'\`
 F=/tmp/\${thisnode}.special.tgz
 rm -fr \$F
 tar -czf \$F \\
-  /var/adm/krb5/* \\
   /etc/fstab \\
   /etc/rc.d/rc.local \\
   /etc/rc.d/rc.sysinit \\
+  /etc/rc.d/init.d/pnfs \\
+  /etc/rc.d/init.d/dcache-boot \\
+  /etc/rc.d/rc6.d/K94pnfs \\
+  /etc/rc3.d/K01aaapnfs \\
+  /etc/rc3.d/K02bbbdcache-boot \\
+  /etc/lilo.conf \\
+  /etc/raidtab \\
   /etc/hosts.* \\
   /etc/HOSTNAME \\
   /etc/ntp.conf \\
   /etc/ntp \\
-  /fnal/ups/kt/*  \\
   /etc/krb5.keytab \\
   /etc/krb5.conf \\
-  /home/*/.k5login \\
-  /root/.k5login \\
-  /home/*/.k5user \\
-  /root/.k5user \\
   /etc/sysconfig/network \\
   /etc/sysconfig/network-scripts/ifcfg* \\
+  /fnal/ups/kt/  \\
+  /home/*/.k5login \\
+  /home/*/.k5user \\
+  /home/enstore/CRON/ \\
+  /root/enstore/CRON/ \\
+  /root/.k5login \\
+  /root/.k5user \\
   /usr/local/etc/farmlets \\
-  /var/spool/cron/*
+  /usr/etc/ \\
+  /var/adm/krb5/ \\
+  /var/spool/cron/
 enrcp \$F $node:$SPECIAL
 "
   chmod +x $SF
