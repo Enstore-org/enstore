@@ -7,8 +7,8 @@ usage="
 ecmd start   [--ping]
 ecmd ping    [timeout_seconds]
 ecmd qping   [timeout_seconds]
-ecmd stop    (no options/arguments)
-ecmd restart (no options/arguments)
+ecmd stop    [--just server --xterm server ]
+ecmd restart [--just server --xterm server ]
 
 ecmd encp    [--verbose= --help ] inputfilename outputfilename
 
@@ -18,34 +18,18 @@ ecmd vcc     [--server_verbose= --vols  --vol=  --verbose= --alive --backup --he
 ecmd lmc     [--server_verbose= --getwork --verbose= --alive --help '] library
 ecmd mcc     [--server_verbose= --verbose= --alive --help ']  media_changer volume drive
 ecmd mov     [--server_verbose= --verbose= --status --alive --help'] mover
+ecmd log     [--server_verbose= --test --alive  --verbose= --logit --help]
+ecmd inq     [--server_verbose= --alive --refresh=secs --get_refresh --update --timeout=secs --get_timeout --reset_timeout --timestamp --max_ascii_size --get_max_ascii_size --dump --help]
 
-ecmd bfids   [--verbose= --help']
+ecmd bfids   
+ecmd bfid    bfid
 
-ecmd bfid    bfid [--verbose= --help']
-
-ecmd vols    [--verbose= --help']
-
-ecmd vol    external_label [--verbose= --help']
-
-ecmd addvol  [--vols  --vol=  --verbose= --help'] library file_family
-             media_type  volume_name, volume_byte_capacity remaining_capacity
-ecmd delvol  [--vols  --vol=  --verbose= --help'] volume_name
-ecmd clrvol  [--vols  --vol=  --verbose= --help'] volume_name
-
-ecmd log    [--server_verbose= --test --alive  --verbose= --logit --help]
-
-ecmd inq    [--server_verbose= --alive --refresh=secs --get_refresh --update --timeout=secs --get_timeout --reset_timeout --timestamp --max_ascii_size --get_max_ascii_size --dump --help]
-
-ecmd pnfs    [--test --status --file= --restore=file --verbose= --help]
-
-ecmd rawdriver-test [--size= --device= --eod_cookie= --verbose= --help]
-ecmd callback       (no options/arguments)
-ecmd udp-test       [--msg= --host= --port= --verbose= --help]
-ecmd random-file    [--size= --file= --verbose= --help']
-ecmd ndup           [--infile= --outfile= --count= --verbose= --help']
-ecmd cpio    inputfilename outputarchive
-ecmd acc  [--dbname [volume/file] -v:f:l:m:w:u:s: --faccess= --laccess= --declared= --capacity= --rem_bytes= --alive --help]
-ecmd zero    (no options/arguments)
+ecmd vols   
+ecmd vol     external_label
+ecmd addvol  library file_family media_type  volume_name, volume_byte_capacity remaining_capacity
+ecmd delvol  volume_name
+ecmd clrvol  volume_name
+ecmd newlib  volume_name new_library_name
 "
 
 if [ -z "${1-}" ] ; then
@@ -118,6 +102,10 @@ case $cmd in
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --clrvol $@
     stat=$?
     ;;
+  newlib)
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --newlib $@
+    stat=$?
+    ;;
   vols)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --vols $@
     stat=$?
@@ -157,50 +145,6 @@ case $cmd in
     python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
-
-
-  pnfs)
-    python $ENSTORE_DIR/src/pnfs.py $@
-    stat=$?
-    ;;
-
-
-  rddt|rawdriver-test)
-    python $ENSTORE_DIR/src/driver.py $@
-    stat=$?
-    ;;
-
-  clbk|callback)
-    python $ENSTORE_DIR/src/callback.py $@
-    stat=$?
-    ;;
-
-  udpc|udp-test)
-    python $ENSTORE_DIR/src/udp_client.py $@
-    stat=$?
-    ;;
-
-  ranf|random-file)
-    python $ENSTORE_DIR/test/ranfile.py $@
-    stat=$?
-    ;;
-
-  ndup)
-    python $ENSTORE_DIR/test/ndup.py $@
-    stat=$?
-    ;;
-
-   cpio)
-    python $ENSTORE_DIR/src/cpio.py $@
-    stat=$?
-    ;;
-
-  zero)
-    ecmd stop
-    (cd $ENSTORE_DB; rm *.fake *.jou)
-    stat=$?
-    ;;
-
 
 
   help)

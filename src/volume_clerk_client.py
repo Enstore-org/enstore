@@ -317,7 +317,7 @@ class VolumeClerkClientInterface(interface.Interface):
         self.vol = ""
         self.addvol = 0
         self.delvol = 0
-        self.new_library = 0
+        self.newlib = 0
 	self.verbose = 0
 	self.got_server_verbose = 0
         interface.Interface.__init__(self)
@@ -331,7 +331,7 @@ class VolumeClerkClientInterface(interface.Interface):
         Trace.trace(20,'{}options')
         return self.config_options() + self.verbose_options()+\
                ["clrvol", "backup"] +\
-	       ["vols","nextvol","vol=","addvol","delvol","new_library" ] +\
+	       ["vols","nextvol","vol=","addvol","delvol","newlib" ] +\
                self.alive_options()+self.help_options()
 
     # parse the options like normal but make sure we have necessary params
@@ -354,7 +354,7 @@ class VolumeClerkClientInterface(interface.Interface):
             if len(self.args) < 1:
                 self.print_clr_inhibit_args()
                 sys.exit(1)
-        elif self.new_library:
+        elif self.newlib:
             if len(self.args) < 2:
                 self.print_new_library_args()
                 sys.exit(1)
@@ -438,7 +438,7 @@ if __name__ == "__main__":
                             string.atol(intf.args[4]), # cap'y of vol (bytes)
                             string.atol(intf.args[5])) # rem cap'y of volume
 	msg_id = generic_cs.CLIENT
-    elif intf.new_library:
+    elif intf.newlib:
         ticket = vcc.new_library(intf.args[0],         # volume name
                                  intf.args[1])         # new library name
 	msg_id = generic_cs.CLIENT
