@@ -1,0 +1,19 @@
+#!/bin/sh
+#===============================================================================
+# This will verify that no tape is mounted
+#===============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open
+ftt_unload
+ftt_rewind -status FTT_ENOTAPE
+ftt_close
+EOD

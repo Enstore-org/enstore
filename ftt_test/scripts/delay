@@ -1,0 +1,24 @@
+#!/bin/sh
+#===============================================================================
+# This will read/write with a random delay to see if we can dredge up
+# any bugs.
+#===============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open
+ftt_rewind
+
+ftt_write_tblock -nblock 10000 -bsize 8096 -delta 8096 -delay 5
+ftt_rewind
+ftt_verify_tblock -nblock 10000 -delay 5
+ftt_rewind
+ftt_close
+EOD

@@ -1,0 +1,24 @@
+#!/bin/sh 
+#==============================================================================
+# This will test all the commands that will write to
+# tape. They should all fail with FTT_EROFS
+#==============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open -readonly
+ftt_rewind
+ftt_test_status -FTT_ABOT
+ftt_write_vol_label -label junk -status FTT_EROFS
+ftt_write_tblock -nblock 1 -bsize 100 -status FTT_EROFS
+ftt_writefm -status FTT_EROFS
+ftt_close
+EOD
+

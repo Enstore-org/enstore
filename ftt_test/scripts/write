@@ -1,0 +1,23 @@
+#!/bin/sh
+#===============================================================================
+# This will test writing a test tape.
+#===============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open
+ftt_write_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_write_tblock -nblock 1000 -bsize 4000 -delta 1000
+ftt_writefm 
+ftt_write_tblock -nblock 2000 -bsize 8000 -delta 2000
+ftt_writefm 
+ftt_write_tblock -nblock 3000 -bsize 16000 -delta 3000
+ftt_close
+EOD

@@ -1,0 +1,32 @@
+#!/bin/sh
+#===============================================================================
+# This will test reading writing with various alignments
+#===============================================================================
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+ftt_test << EOD
+ftt_open
+ftt_rewind
+
+ftt_echo "writing longword aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 3
+ftt_echo "writing word aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 1
+ftt_echo "writing byte aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 0
+ftt_rewind
+ftt_echo "reading longword aligned"
+ftt_verify_tblock -nblock 100 
+ftt_echo "reading word aligned"
+ftt_verify_tblock -nblock 100 
+ftt_echo "reading byte aligned"
+ftt_verify_tblock -nblock 100 
+ftt_close
+EOD

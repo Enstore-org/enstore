@@ -1,0 +1,99 @@
+#!/bin/sh
+# ============================================================================
+# test routine to run all of the reasonably fast ftt tests.
+# it requires no human intervention; however, at the end the
+# tape may be unloaded if the user specified "notape"
+# ============================================================================
+
+device=${FTT_TAPE:-""}
+usage="ftt_fast [-u] [-a] [devfile]
+		-u = do unload test at end (will leave tape unloaded)
+		-a = do alignment tests (may cause scsi resets)
+		[devfile] = name of device to use. FTT_TAPE is default"
+align=false
+unload=false
+
+while getopts au i               # list valid options
+do
+   case $i in
+   u)  unload=true
+       ;;
+   a)  align=true
+       ;;
+   \?) echo "Usage: $usage"
+       exit 2
+       ;;
+   esac
+done
+shift `expr $OPTIND - 1`
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+echo "==============================================================="
+echo "doing all of the [reasonably] fast ftt tests using $FTT_TAPE"
+
+if $align
+then
+   echo "==============================================================="
+   echo "align test - may cause scsi resets!"
+   echo "==============================================================="
+   $FTT_DIR/ftt_test/scripts/align
+fi
+echo "==============================================================="
+echo "mode test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/mode
+
+echo "==============================================================="
+echo "label test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/label
+
+echo "==============================================================="
+echo "stats test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/stats
+
+echo "==============================================================="
+echo "write test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/write
+
+echo "==============================================================="
+echo "read_only test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/read_only
+
+echo "==============================================================="
+echo "verify test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/verify
+
+echo "==============================================================="
+echo "position test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/position
+
+echo "==============================================================="
+echo "async test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/async
+
+echo "==============================================================="
+echo "root test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/root
+
+if $unload 
+then
+   echo "==============================================================="
+   echo "notape test"
+   echo "==============================================================="
+   $FTT_DIR/ftt_test/scripts/notape
+fi

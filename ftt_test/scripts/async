@@ -1,0 +1,46 @@
+#!/bin/sh
+#===============================================================================
+# This will test the async mode it uses a test tape written by write.ftt.
+#===============================================================================
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+ftt_test << EOD
+ftt_open
+# =====================================
+# first we'll go to double fm and then
+# issue and async rewind
+# =====================================
+ftt_rewind
+ftt_skip_to_double_fm
+ftt_echo "look at the next three time stamps. the first two should be very"
+ftt_echo "   close together, and the third one several seconds later."
+ftt_date
+ftt_rewind -async
+ftt_date
+# =============================================
+# let's issue a coomand that should return busy
+# =============================================
+ftt_check -status FTT_EBUSY
+ftt_echo "wait for it to complete"
+ftt_wait
+ftt_date
+# =================================================
+# issue a command in the backgroup that should fail
+# =================================================
+ftt_rewind
+ftt_skip_fm -2 -async
+ftt_wait -status FTT_ELEADER
+# =================================================
+# wait should fail if nothing there
+# =================================================
+ftt_rewind
+ftt_wait -status FTT_ENXIO
+ftt_close
+EOD

@@ -1,0 +1,40 @@
+#!/bin/sh
+#===============================================================================
+# This will test writing all of the various label types.
+#===============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open
+# ==========
+# good labels
+# ===========
+ftt_write_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_verify_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_write_vol_label -label mydog -type FTT_FMB_HEADER
+ftt_verify_vol_label -label mydog -type FTT_FMB_HEADER 
+ftt_write_vol_label -label mydog -type FTT_TAR_HEADER
+ftt_verify_vol_label -label mydog -type FTT_TAR_HEADER 
+ftt_write_vol_label -label mydog -type FTT_CPIO_HEADER
+ftt_verify_vol_label -label mydog -type FTT_CPIO_HEADER 
+ftt_rewind
+ftt_write_tblock -nblock 1
+ftt_verify_vol_label -label mydog -type FTT_UNKNOWN_HEADER 
+# ==========
+# bad labels
+# ==========
+ftt_write_vol_label -type FTT_ANSI_HEADER -status FTT_EFAULT
+ftt_write_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_verify_vol_label -label fttes -type FTT_FMB_HEADER -status FTT_EWRONGVOLTYP
+ftt_verify_vol_label -label fttes -type FTT_ANSI_HEADER -status FTT_EWRONGVOL
+ftt_verify_vol_label -label fttestt -type FTT_ANSI_HEADER -status FTT_EWRONGVOL
+ftt_verify_vol_label -type FTT_ANSI_HEADER -status FTT_EFAULT
+ftt_close
+EOD

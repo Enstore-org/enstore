@@ -1,0 +1,61 @@
+#!/bin/sh
+# ============================================================================
+# test routine to run all of the ftt tests.
+# this will be VERY slow
+# it requires no human intervention; however, at the end the
+# tape may be unloaded if the user specified "notape"
+# ============================================================================
+
+device=${FTT_TAPE:-""}
+usage="ftt_slow [-u] [-a] [devfile]
+		-u = do unload test at end (will leave tape unloaded)
+		-a = do alignment tests (may cause scsi resets)
+		[devfile] = name of device to use. FTT_TAPE is default"
+fastswitch=""
+
+while getopts au i               # list valid options
+do
+   case $i in
+   u)  fastswitch="$fastswitch -u"
+       ;;
+   a)  fastswitch="$fastswitch -a"
+       ;;
+   \?) echo "Usage: $usage"
+       exit 2
+       ;;
+   esac
+done
+shift `expr $OPTIND - 1`
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+echo "==============================================================="
+echo "doing all of the fast ftt tests using $FTT_TAPE. This will be "
+echo "VERY slow. It may echo "take several hours"
+echo "==============================================================="
+
+echo "==============================================================="
+echo "delay test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/delay
+
+echo "==============================================================="
+echo "write full test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/full
+
+echo "==============================================================="
+echo "erase test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/erase
+
+echo "==============================================================="
+echo "fast tests"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/ftt_fast $fastswitches

@@ -1,0 +1,35 @@
+#!/bin/sh
+# ============================================================================
+# test routine to exercise a drive
+# ============================================================================
+
+device=${FTT_TAPE:-""}
+usage="ftt_exercise [devfile]
+		[devfile] = name of device to use. FTT_TAPE is default"
+
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+echo "==============================================================="
+echo "excersizing $FTT_TAPE"
+
+echo "==============================================================="
+echo "write test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/write
+
+echo "==============================================================="
+echo "verify test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/verify
+
+echo "==============================================================="
+echo "position test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/position
+
