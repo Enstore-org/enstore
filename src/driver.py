@@ -127,7 +127,7 @@ class  FTTDriver(GenericDriver) :
         if stats[0] != "Invalid" :
            self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
         else :
-          self.remaining_bytes = self.remaining_bytes - stats[3] - 1048576L
+          self.remaining_bytes = self.remaining_bytes - stats[3]
         self.wr_access = string.atoi(stats[1])
         if stats[2] != "Invalid" :
           self.wr_err = string.atoi(stats[2])
