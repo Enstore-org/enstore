@@ -465,7 +465,6 @@ class  FTTDriver(GenericDriver) :
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
 	try:
-            print "XXX:calling FTT.fd_xfer"
 	    crc = FTT.fd_xfer( fd, siz_bytes, crc_flag, crc, self.shm )
 	    if self.mode != 'r':
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
