@@ -1113,6 +1113,11 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     return n_vols, n_files, n_unchanged, n_changed
 
 
+def is_b_library(lib):
+    if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
+        return 1
+    return 0
+
 
 def inventory_dirs():
     csc = configuration_client.ConfigurationClient()
