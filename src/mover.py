@@ -2998,15 +2998,26 @@ class Mover(dispatching_worker.DispatchingWorker,
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
             status_info = self.last_error
-        if self.buffer:
-            bytes_buffered = self.buffer.nbytes()
-            buffer_min_bytes = self.buffer.min_bytes
-            buffer_max_bytes = self.buffer.max_bytes
-        else:
-            bytes_buffered = 0
-            buffer_min_bytes = 0
-            buffer_max_bytes = 0
-            
+        try:
+            if self.buffer:
+                bytes_buffered = self.buffer.nbytes()
+                buffer_min_bytes = self.buffer.min_bytes
+                buffer_max_bytes = self.buffer.max_bytes
+            else:
+                bytes_buffered = 0
+                buffer_min_bytes = 0
+                buffer_max_bytes = 0
+        except AttributeError:
+            # try it again
+            time.sleep(3)
+            if self.buffer:
+                bytes_buffered = self.buffer.nbytes()
+                buffer_min_bytes = self.buffer.min_bytes
+                buffer_max_bytes = self.buffer.max_bytes
+            else:
+                bytes_buffered = 0
+                buffer_min_bytes = 0
+                buffer_max_bytes = 0
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
@@ -4139,14 +4150,27 @@ class DiskMover(Mover):
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
             status_info = self.last_error
-        if self.buffer:
-            bytes_buffered = self.buffer.nbytes()
-            buffer_min_bytes = self.buffer.min_bytes
-            buffer_max_bytes = self.buffer.max_bytes
-        else:
-            bytes_buffered = 0
-            buffer_min_bytes = 0
-            buffer_max_bytes = 0
+        try:
+            if self.buffer:
+                bytes_buffered = self.buffer.nbytes()
+                buffer_min_bytes = self.buffer.min_bytes
+                buffer_max_bytes = self.buffer.max_bytes
+            else:
+                bytes_buffered = 0
+                buffer_min_bytes = 0
+                buffer_max_bytes = 0
+        except AttributeError:
+            # try it again
+            time.sleep(3)
+            if self.buffer:
+                bytes_buffered = self.buffer.nbytes()
+                buffer_min_bytes = self.buffer.min_bytes
+                buffer_max_bytes = self.buffer.max_bytes
+            else:
+                bytes_buffered = 0
+                buffer_min_bytes = 0
+                buffer_max_bytes = 0
+
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
