@@ -60,7 +60,7 @@ def go():
 	    # put the files in alphabetical order
 	    logfile_names.sort()
 	    # for each name, search the file using the  search string
-	    enstore_utils_cgi.pgrep_html(search_string, logfile_names)
+	    enstore_utils_cgi.pgrep_html(search_string, logfile_names, 0)
     finally:
         print "</BODY></HTML>"
 

@@ -63,9 +63,14 @@ def find_enstore():
     return (config_host, config_port)
 
 
-def pgrep_html(pat, files):
+def pgrep_html(pat, files, sensit):
     regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP)
-    patr = regex.compile(pat)
+    if sensit:
+	# case sensitive pattern matching.
+	patr = regex.compile(pat)
+    else:
+	# case insensitive pattern matching
+	patr = regex.compile(pat, regex.casefold)
     for file in files:
 	print "<H3>%s</H3><BR>"%(file,)
 	lineno = 1
