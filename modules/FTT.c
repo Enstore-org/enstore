@@ -76,7 +76,6 @@ struct s_msg
   in order to save a strcpy  -  cgw 1990428 */
 unsigned int adler32(unsigned int, char *, int);
 
-
 static	PyObject	*FTTErrObject;
 	ftt_descriptor	g_ftt_desc_tp = 0;
 	int		g_blocksize = 1024;
@@ -503,7 +502,8 @@ do_read(  int 		rd_fd
 	    case 0:
 		break;
 	    case 1:
-		crc_i=adler32(crc_i,g_shmaddr_p+shm_off, sts);
+		crc_i=adler32(crc_i,g_shmaddr_p+shm_off+g_buf_bytes
+			      ,shm_bytes-g_buf_bytes);
 		break;
 	    default:
 		printf("fd_xfer: invalid crc flag");
@@ -536,7 +536,7 @@ do_read(  int 		rd_fd
 	    case 0:
 		break;
 	    case 1:
-		crc_i=adler32(crc_i,g_shmaddr_p+shm_off, sts);
+		crc_i=adler32(crc_i,g_shmaddr_p+shm_off, user_bytes);
 		break;
 	    default:
 		printf("fd_xfer: invalid crc flag");
@@ -623,7 +623,7 @@ FTT_fd_xfer(  PyObject *self
 	PyObject	*crc_tp;    /*  /  */
 	PyObject	*shm_tp;    /* /   */
 
-	unsigned int	 crc_i;
+	unsigned int	 crc_i=0;
 	int              crc_flag=0;
 	int		 sts;	/* general status */
 	struct sigaction newSigAct_sa[32];
@@ -1073,5 +1073,6 @@ initFTT()
 
     g_buf_p = malloc( 2*g_blocksize );
     g_stbuf_tp = ftt_alloc_stat();
+
     return;
 }
