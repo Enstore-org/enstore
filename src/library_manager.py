@@ -145,11 +145,11 @@ class AtMovers:
                 return
         self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
-        Trace.trace(31,"AtMovers put: at_movers: %s" % (self.at_movers,))
+        Trace.trace(32,"AtMovers put: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers put: sg_vf: %s" % (self.sg_vf,))
 
     def delete(self, mover_info):
-        Trace.trace(31, "AtMovers delete. before: %s" % (self.at_movers,))
+        Trace.trace(32, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(31, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
@@ -172,7 +172,7 @@ class AtMovers:
             storage_group = volume_family.extract_storage_group(vol_family)
             self.sg_vf.delete(mover, label, storage_group, vol_family) 
             del(self.at_movers[mover])
-        Trace.trace(31,"AtMovers delete: at_movers: %s" % (self.at_movers,))
+        Trace.trace(32,"AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
 
    # return a list of busy volumes for a given volume family
