@@ -68,13 +68,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.configdict=copy.deepcopy(xconfigdict)
         self.serverlist = {}
         for key in self.configdict.keys():
-	      self.configdict[key]['status'] = (e_errors.OK, None)
-              for insidekey in self.configdict[key].keys():
-                  if insidekey == 'host':
-                     self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
-		     self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
-                     break
-
+	    if not self.configdict[key].has_key('status'):
+		self.configdict[key]['status'] = (e_errors.OK, None)
+	    for insidekey in self.configdict[key].keys():
+		if insidekey == 'host':
+		    self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
+		    self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
+		    break
+		
         Trace.trace(6,"}load_config ok")
         return (e_errors.OK, None)
 
