@@ -562,8 +562,13 @@ class EnMountDataFile(EnDataFile):
 
     # parse the mount line
     def parse_line(self, line):
-        [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
-                                                   string.split(line, None, 8)
+	try:
+	    [etime, enode, epid, euser, estatus, mover, type, request, volume] = \
+		    string.split(line, None, 8)
+	except ValueError:
+	    # this line has a bad syntax, ignore it
+	    Trace.trace(enstore_constants.INQPLOTDBG, "Plot line has evil syntax (%s)"%(line,))
+	    return []
 	# if this is a null mover, ignore it
 	if not self.is_null_mover(mover):
 	    if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
