@@ -16,9 +16,20 @@ def endswith(s1,s2):
 
 def get_config():
     p=os.popen("enstore config --show", 'r')
-    dict=eval(p.read())
+    dict=dict_eval(p.read())
     p.close()
     return dict
+
+def dict_eval(data):
+    ##This is like "eval" but it assumes the input is a
+    ## dictionary; any trailing junk will be ignored.
+    last_brace = string.rindex(data, '}')
+    try:
+        d = eval(data[:last_brace+1])
+    except:
+        print "Error", data,
+        d = {}
+    return d
 
 def get_movers(config=None):
     movers = []
@@ -46,11 +57,54 @@ def get_mover_status(mover):
     try:
         file="enstore mover --status %s.mover" % mover
         p = os.popen(file,'r')
-        status_dict = eval(p.read())
+        status_dict = dict_eval(p.read())
         p.close()
     except:
         pass
     return status_dict
+
+
+# This function requests status for all the movers at once
+#   and returns a dictionary {mover_name: status }
+# If movers take longer than "timeout" to reply, they are ignored
+
+def get_mover_status_parallel(movers, timeout=15):
+    ret = {}
+    start_time = time.time()
+    end_time = start_time + timeout
+    pipe_dict = {} #Key is a pipe object, value is mover name
+    waiting = [] #These are the movers we're still waiting for
+    
+    for mover in movers:
+        cmd = "enstore mover --status %s.mover" % mover
+        try:
+            print "Running command", cmd
+            pipe =  os.popen(cmd,'r')
+            pipe_dict[pipe] = mover
+            waiting.append(mover)
+        except:
+            print "Cannot run", cmd
+            pass
+        
+    while waiting:
+        time_remaining = end_time - time.time()
+        if time_remaining<0:
+            break
+        
+        r, w, x = select.select(pipe_dict.keys(), [], [], time_remaining)
+        for p in r:
+            try:
+                mover = pipe_dict[p]
+                del pipe_dict[p]
+                data = p.read()
+                print "read reply on", p, data
+                p.close()
+                ret[mover] = dict_eval(data)
+                waiting.remove(mover)
+            except:
+                pass
+    print "All done, returning", ret
+    return ret
             
 def main():
     global s, dst
@@ -89,16 +143,13 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
-    #ask for events
-    try:
-        s.sendto("notify %s %s" % (target_ip, target_port),
-                 (event_relay_host, event_relay_port))
-    except:
-        pass
     
     #Get the state of each mover before continuing
-    for mover in movers:
-        status = get_mover_status(mover)
+##    for mover in movers:
+##        status = get_mover_status(mover)
+
+    mover_status = get_mover_status_parallel(movers)
+    for mover, status in mover_status.items():
         state = status.get('state','Unknown')
         send("state %s %s" % (mover, state))
         volume = status.get('current_volume', None)
