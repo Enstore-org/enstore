@@ -23,34 +23,16 @@ UDPError = "UDP Error"
 
 TRANSFER_MAX=16384
 
-# see if we can allocate a specific port on a specific host
-def try_a_port(host, port) :
-    try:
-	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((host, port))
-    except:
-	try:
-            sock.close()
-	except:
-	    pass
-        return (0, 0) # failure
-    return (1, sock)     # success
-
 
 # try to get a port from a range of possibilities
 def get_client() :
     (hostname,ha,hi) = hostaddr.gethostinfo()
     host = hi[0]
-    port1 = 7000
-    port2 = 8000
-    while  1:
-        for port in range (port1, port2) : 
-            success, sockt = try_a_port (host, port)
-            if success :
-                return host, port, sockt
-        Trace.log(e_errors.INFO,'get_client sleeping for 10 - all ports from %s to %s used '%
-                  (port1, port2))
-        time.sleep(10) # tried all ports, try later.
+
+    sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((host, 0))
+    host, port = sock.getsockname()
+    return host, port, sock
 
 
 def wait_rsp( sock, address, rcv_timeout ):
@@ -66,7 +48,6 @@ def wait_rsp( sock, address, rcv_timeout ):
                   (address,x,exc,msg))
 	raise UDPError, "impossible to get these set w/out [r]"
     return reply, server, rcv_timeout
-
 
 
 class UDPClient:
