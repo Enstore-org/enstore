@@ -251,9 +251,9 @@ code_args_as_string(PyFrameObject *frame,
 
     nargs = code->co_argcount;
     for (i=0;i<nargs;++i){
-        varname = PyString_AsString(PyObject_Repr(
+        varname = PyString_AsString_Safe(PyObject_Repr(
             PyTuple_GetItem(code->co_varnames,i)));
-        value = PyString_AsString(PyObject_Repr(
+        value = PyString_AsString_Safe(PyObject_Repr(
             frame->f_localsplus[i]));
         wlen = strlen(varname)+strlen(value)+1;
 
@@ -289,6 +289,16 @@ code_args_as_string(PyFrameObject *frame,
  ******************************************************************************/
 
 
+static char *
+PyString_AsString_Safe(PyObject *s){
+    if (!s){
+	return "NULL";
+    } else {
+	return PyString_AsString(s);
+    }
+}
+
+
 int
 get_msg(  PyObject	*args
 	  , char		*msg)
@@ -299,9 +309,6 @@ get_msg(  PyObject	*args
 	PyObject	*arg_arg;
 	PyFrameObject   *frame;
 	PyCodeObject	*code;
-	PyObject        *co_name_o;
-	PyObject	*arg_str_o=0;
-	char		*arg_s="";
 	char            *function_name;
 	char            *module_name;
 	char            *source_file;
@@ -309,7 +316,6 @@ get_msg(  PyObject	*args
 	int             from_line_no;
 	char            *from_source_file;
 	char            buf[201];
-	PyObject	*tt[2];
 	int             nargs;
 
     sts = PyArg_ParseTuple( args, "OsO", &arg_frame, &arg_event, &arg_arg );
@@ -320,18 +326,18 @@ get_msg(  PyObject	*args
        I expect -- I will not do error checking */
     frame = (PyFrameObject*)arg_frame;
     code = frame->f_code;
-    function_name = PyString_AsString(code->co_name);
-    module_name = PyString_AsString(
+    function_name = PyString_AsString_Safe(code->co_name);
+    module_name = PyString_AsString_Safe(
 	PyMapping_GetItemString(
 	    frame->f_globals,"__name__")
 	);
 
     
-    source_file = PyString_AsString(frame->f_code->co_filename);
+    source_file = PyString_AsString_Safe(frame->f_code->co_filename);
     line_no = frame->f_lineno;
 
     if (frame->f_back){
-	from_source_file = PyString_AsString(frame->f_back->f_code->co_filename);
+	from_source_file = PyString_AsString_Safe(frame->f_back->f_code->co_filename);
 	from_line_no = frame->f_back->f_lineno;
     } else {
 	from_source_file = "?";
@@ -348,7 +354,7 @@ get_msg(  PyObject	*args
 	break;
     case 'r':
 	sprintf(  msg, "ret  %s.%s %s", module_name, function_name, 
-		  PyString_AsString(PyObject_Repr(arg_arg)));
+		  PyString_AsString_Safe(PyObject_Repr(arg_arg)));
 	break;
     case 'e':
 	sprintf(  msg, "exc  %s.%s at %s:%d"
@@ -432,7 +438,8 @@ profile_function(  PyObject	*self
 	       , &traceLvlStr[32-depth]
 	       , msg );
     }
-    if (have_argT) Py_DECREF( argsTuple );
+    if (have_argT) { Py_DECREF( argsTuple ); }
+
 
     Py_INCREF(Py_None);
     return (Py_None);
