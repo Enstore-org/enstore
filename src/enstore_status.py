@@ -179,7 +179,7 @@ class EnStatus:
 	if dict[enstore_constants.WORK] == enstore_constants.READ:
 	    dict[enstore_constants.FILE] = mover[enstore_constants.OUTFILE]
 	else:
-	    dict[enstore_constants.FILE] = mover[enstore_constants.INFILE]
+	    dict[enstore_constants.FILE] = mover.get(enstore_constants.INFILE, "")
 		
 	wrapper = mover['wrapper']
 	dict[enstore_constants.BYTES] = add_commas(str(wrapper['size_bytes']))
