@@ -40,11 +40,15 @@ class GenericClient:
 
     def __init__(self, csc, name):
         global init_done
-        if init_done:
-            return
-        # we only want to get these clients once per process
-        init_done = 1
+
         import configuration_client
+
+        if init_done:
+            self.csc = csc
+            return
+        
+        init_done = 1
+            
         if csc:
             if type(csc) == type(()):
                 self.csc = configuration_client.ConfigurationClient(csc)
@@ -58,6 +62,8 @@ class GenericClient:
                         string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
             self.csc = configuration_client.ConfigurationClient( def_addr )
 
+
+        
         # try to find the logname for this object in the config dict.  use
         # the lowercase version of the name as the server key.  if this
         # object is not defined in the config dict, then just use the
