@@ -9,7 +9,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 ensudo=""
 case $node in
-  stken*|d0en*|rip[0-9]*)
+  cdfen*|stken*|d0en*|rip[0-9]*)
      ensudo="sudo"
      if [ `whoami` = "root" ]; then
 	# if running as root, rerun as enstore
