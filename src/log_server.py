@@ -57,6 +57,7 @@ import option
 """
 MY_NAME = "log_server"
 FILE_PREFIX = "LOG-"
+NO_MAX_LOG_FILE_SIZE = -1
 
 def format_date(tm=None):
     if not tm:
@@ -70,6 +71,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	flags = enstore_constants.NO_LOG
         generic_server.GenericServer.__init__(self, csc, MY_NAME, flags=flags)
         self.repeat_count = 0
+        self.index = 1
         self.last_message = ''
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -94,6 +96,10 @@ class Logger(  dispatching_worker.DispatchingWorker
 	else:
 	    self.logfile_dir_path =  keys["log_file_path"]
 	self.test = test
+
+        # get the value for max size of a log file
+        self.max_log_file_size = keys.get(enstore_constants.MAX_LOG_FILE_SIZE,
+                                          NO_MAX_LOG_FILE_SIZE)
 
 	# get the dictionary of ancillary log files
 	self.msg_type_logs = keys.get('msg_type_logs', {})
@@ -246,6 +252,7 @@ class Logger(  dispatching_worker.DispatchingWorker
             fn = fn + ft
 
         self.logfile_name = self.logfile_dir_path + "/" + fn
+        self.logfile_name_orig = self.logfile_name
 	self.last_logfile_name = ""
         # open log file
         self.open_logfile(self.logfile_name)
@@ -267,10 +274,23 @@ class Logger(  dispatching_worker.DispatchingWorker
 		    self.close_extra_logs()
 	            self.last_logfile_name = self.logfile_name
                     current_day = day;
+                    self.index = 1
                     # and open the new one
                     fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], tm[2])
                     self.logfile_name = self.logfile_dir_path + "/" + fn
+                    self.logfile_name_orig = self.logfile_name
                     self.open_logfile(self.logfile_name)
+                # check if current log file is > config specified value.
+                # if no value in config file, do nothing
+                elif self.max_log_file_size != NO_MAX_LOG_FILE_SIZE:
+                    # get current file size
+                    size = os.stat(self.logfile_name)[6]
+                    if size >= self.max_log_file_size:
+                        self.logfile.close()
+                        # and open the new one
+                        self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
+                        self.index = self.index + 1
+                        self.open_logfile(self.logfile_name)        
             else :
                 # if test flag is set reopen log file every minute
                 if min != current_min :
@@ -284,6 +304,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                     ft = '-%02d-%02d' % (tm[3], tm[4])
                     fn = fn + ft
                     self.logfile_name = self.logfile_dir_path + "/" + fn
+                    self.logfile_name_orig = self.logfile_name
                     self.open_logfile(self.logfile_name)
 
 
