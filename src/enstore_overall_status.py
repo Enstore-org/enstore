@@ -13,6 +13,7 @@ nodes = {'d0ensrv2' : ' enstore on d0en',
 	 'cdfensrv2' : ' enstore on cdfen',
 	 }
 DESTDIR = "/tmp/enstore_overall_status"
+MYNAME = "EN_OVERALL_STAT"
 
 def setup_for_files():
     if not os.path.isdir(DESTDIR):
@@ -29,6 +30,9 @@ def mark_enstore_down(status_d, node):
                       enstore_constants.NONE,
                       enstore_constants.NONE,
                       enstore_constants.NONE]
+    # send mail about this
+    enstore_functions.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
+				"Overall status page has Enstore ball for %s as red"%(node,))
     
 def do_work():
     # where are we running, don't have to rcp to there
