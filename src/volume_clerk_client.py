@@ -382,6 +382,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket)
 
+    # update the last_access time
+    def touch(self, external_label):
+        ticket= { 'work'           : 'touch',
+                  'external_label' : external_label }
+        return self.send(ticket)
+
     # move a volume to a new library
     def new_library(self, external_label,new_library):
         ticket= { 'work'           : 'new_library',
@@ -796,6 +802,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
+        option.TOUCH:{option.HELP_STRING:"set last_access time as now",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
         option.VOL:{option.HELP_STRING:"get info of a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -873,6 +884,8 @@ def do_work(intf):
                                              1) #first_found
     elif intf.assign_sg and intf.volume:
         ticket = vcc.assign_sg(intf.volume, intf.assign_sg)
+    elif intf.touch:
+        ticket = vcc.touch(intf.touch)
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:

@@ -272,6 +272,7 @@ TAGS = "tags"                                #pnfs
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
 TITLE = "title"                              #enstore_make_log_plot
+TOUCH = "touch"                              #volume
 UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
@@ -326,7 +327,7 @@ valid_option_list = [
     SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
-    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE,
+    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE, TOUCH,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,

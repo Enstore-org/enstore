@@ -1322,6 +1322,35 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+    # touch(self, ticket) -- update last_access time
+    def touch(self, ticket):
+        try:
+            external_label = ticket["external_label"]
+        except KeyError, detail:
+            msg="touch(): key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]
+            record['last_access'] = time.time()
+            if record['first_access'] == -1:
+                record['first_access'] == record['last_access']
+            self.dict[external_label] = record
+            ticket["last_access"] = record['last_access']
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            return
+        except KeyError, detail:
+            msg="touch(): no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
         try:
