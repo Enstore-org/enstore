@@ -43,15 +43,15 @@ configdict['STK.media_changer']          = { 'host':'fntt2',    'port':7538, 'lo
 
 configdict['hppcdisk.mover'] = { 'host':'hppc', 'port':7540, 'logname':'HPMOV ',\
                                  'library':'hppcdisk.library_manager', 'device':'./hppcdisk.fake', 'driver':'RawDiskDriver', \
-                                 'mc_device':'./hppcdisk.fake', 'media_changer':'hppcdisk.media_changer' }
+                                 'mc_device':'-1', 'media_changer':'hppcdisk.media_changer' }
 
 configdict['fntt1disk.mover'] = { 'host':'fntt1', 'port':7541, 'logname':'T1MOV ', \
                                   'library':'fntt1disk.library_manager', 'device':'./fntt1disk.fake', 'driver':'RawDiskDriver', \
-                                  'mc_device':'./fntt1disk.fake', 'media_changer':'fntt1disk.media_changer'}
+                                  'mc_device':'-1', 'media_changer':'fntt1disk.media_changer'}
 
 configdict['fndaprdisk.mover'] = { 'host':'fndapr', 'port':7543, 'logname':'PRMOV ', \
                                    'library':'fndaprdisk.library_manager', 'device':'./fndaprdisk.fake', 'driver':'RawDiskDriver', \
-                                   'mc_device':'fndaprdisk.fake', 'media_changer':'fndaprdisk.media_changer' }
+                                   'mc_device':'-1', 'media_changer':'fndaprdisk.media_changer' }
 
 configdict['airedaledisk.mover'] = { 'host':'airedale', 'port':7544, 'logname':'ADMOV ', \
                                      'library':'airedaledisk.library_manager', 'device':'/jon/enstore/airedaledisk.fake', 'driver':'RawDiskDriver', \
@@ -59,19 +59,19 @@ configdict['airedaledisk.mover'] = { 'host':'airedale', 'port':7544, 'logname':'
 
 configdict['fndapndisk.mover'] = { 'host':'fndapn', 'port':7545, 'logname':'PNMOV ', \
                                    'library':'fndapndisk.library_manager', 'device':'/enstore/fndapndisk.fake', 'driver':'RawDiskDriver', \
-                                   'mc_device':'/enstore/fndapndisk.fake', 'media_changer':'fndapndisk.media_changer' }
+                                   'mc_device':'-1', 'media_changer':'fndapndisk.media_changer' }
 
 configdict['b0du02disk.mover'] = { 'host':'b0du02', 'port':7546, 'logname':'B0MOV ', \
                                    'library':'b0du02disk.library_manager', 'device':'/data1/bakken/enstore/b0du02disk.fake', 'driver':'RawDiskDriver', \
-                                   'mc_device':'/data1/bakken/enstore/b0du02disk.fake', 'media_changer':'b0du02disk.media_changer' }
+                                   'mc_device':'-1', 'media_changer':'b0du02disk.media_changer' }
 
 configdict['igordisk.mover'] = { 'host':'igor', 'port':7547, 'logname':'IGMOV ', \
                                  'library':'igordisk.library_manager', 'device':'/var/enstore.fakedisk/igordisk.fake', 'driver':'RawDiskDriver', \
-                                 'mc_device':'/var/enstore.fakedisk/igordisk.fake', 'media_changer':'igordisk.media_changer' }
+                                 'mc_device':'-1', 'media_changer':'igordisk.media_changer' }
 
 configdict['pcfarm5disk.mover'] = { 'host':'pcfarm5', 'port':7548, 'logname':'P5MOV ', \
                                     'library':'pcfarm5disk.library_manager', 'device':'./pcfarm5disk.fake', 'driver':'RawDiskDriver', \
-                                    'mc_device':'./pcfarm5disk.fake', 'media_changer':'pcfarm5disk.media_changer' }
+                                    'mc_device':'-1', 'media_changer':'pcfarm5disk.media_changer' }
 
 configdict['stk0.mover'] = { 'host':'fntt2', 'port':7549, 'logname':'RW0MOV', \
                              'library':'redwood50.library_manager', 'device':'/dev/nst0', 'driver':'FTTDriver', \
