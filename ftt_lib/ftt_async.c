@@ -1,8 +1,15 @@
 static char rcsid[] = "@(#)$Id$";
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/wait.h> 
 #include <ftt_private.h>
 #include <string.h>
+
+#ifndef WIN32
+#include <signal.h>
+#include <unistd.h>
+#endif
 
 /*
 ** this process starts an asynchronous process to do ftt operations
@@ -128,7 +135,7 @@ ftt_report(ftt_descriptor d) {
     */
     char *_name = "ftt_report";			
     DEBUG1(stderr,"Entering ftt_report");
-    VCKNULL("ftt_descriptor", d);
+    CKNULL("ftt_descriptor", d);
 
     if (d->async_pf_parent) {
 	p = ftt_get_error(&e);
@@ -143,4 +150,5 @@ ftt_report(ftt_descriptor d) {
 	ftt_errno = FTT_ENXIO;
 	return -1;
     }
+    return 0;
 }

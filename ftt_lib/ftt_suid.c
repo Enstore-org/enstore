@@ -4,6 +4,10 @@ static char rcsid[] = "@(#)$Id$";
 #include <stdlib.h>
 #include <ftt_private.h>
 
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
 void
 usage(void) {
    fprintf(stderr, "usage: ftt_suid [-w] -s basename	 # print stats\n");

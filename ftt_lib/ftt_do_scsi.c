@@ -1,4 +1,5 @@
 static char rcsid[] = "@(#)$Id$";
+
 #include <stdio.h>
 #include <string.h>
 #include <ftt_private.h>
@@ -7,6 +8,8 @@ static char rcsid[] = "@(#)$Id$";
 #include <io.h>
 #include <process.h>
 #define geteuid() -1
+#else
+#include <unistd.h>
 #endif
 
 int ftt_close_scsi_dev(ftt_descriptor d) ;
@@ -228,6 +231,7 @@ ftt_all_scsi(ftt_descriptor d) {
     return 0;
 }
 
+int
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     static unsigned char 
@@ -236,12 +240,12 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	mod_sen0f[6] = { 0x1a, 0x00, 0x0f, 0x00, 28, 0x00},
 	mod_sel0f[6] = { 0x15, 0x0f, 0x00, 0x00, 28, 0x00},
 	buf [28];
-    int res;
+    int res = 0;
 
     ENTERING("ftt_set_compression");
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_set_compression\n");
-    res = 0;
+
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px0f) {
 	    DEBUG3(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
@@ -307,9 +311,10 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
     return res;
 }
 
+int
 ftt_scsi_locate( ftt_descriptor d, int blockno) {
 
-    int res;
+    int res = 0;
     static unsigned char 
         locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
      

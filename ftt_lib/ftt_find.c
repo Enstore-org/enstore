@@ -27,6 +27,7 @@ char * ftt_get_os() {
 
 #else                /* this is UNIX */
 
+#include <unistd.h>
 #include <sys/utsname.h>
 
 char *
@@ -90,7 +91,6 @@ ftt_strip_to_basename(const char *basename,char *os) {
     static union { int n; char s[512];} s1, s2, s3;
  
     int i;
-    int maxlinks=512;
     char *lastpart;
 
     DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
@@ -101,23 +101,27 @@ ftt_strip_to_basename(const char *basename,char *os) {
     strncpy(buf, basename, 512);
 
 #ifdef WIN32
-	strlwr( buf);
+    strlwr( buf);
 #endif 
 
 #ifdef DO_SKIP_SYMLINKS
-    while( 0 <  readlink(buf, buf2, 512) && maxlinks-- >0 ) {
+    {
+      int maxlinks=512;
+	  
+      while( 0 <  readlink(buf, buf2, 512) && maxlinks-- >0 ) {
 	if( buf2[0] == '/' ) {
-	    /* absolute pathname, replace the whole buffer */
-	    strncpy(buf,buf2,512);
+	  /* absolute pathname, replace the whole buffer */
+	  strncpy(buf,buf2,512);
 	} else {
-	    /* relative pathname, replace after last /, if any */
-	    if ( 0 == (p = strrchr(buf,'/'))) {
-	       p = buf;
-	    } else {
-	       p++;
-	    }
-	    strncpy(p, buf2, 512 - (p - buf));
+	  /* relative pathname, replace after last /, if any */
+	  if ( 0 == (p = strrchr(buf,'/'))) {
+	    p = buf;
+	  } else {
+	    p++;
+	  }
+	  strncpy(p, buf2, 512 - (p - buf));
 	}
+      }
     }
 #endif
 

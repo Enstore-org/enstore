@@ -129,7 +129,7 @@ ftt_format_label_version( char *buf, int length, char *vol, int vlen, int type, 
 	}
 	ftt_to_upper(volbuf);
 	if (length >= 80) {
-	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1c", 
+	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1d", 
 				volbuf, " ", " ", "ftt", " ", " " , version);
 	    return 80;
 	 } else {

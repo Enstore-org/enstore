@@ -370,7 +370,7 @@ ftt_next_supported(int *pi) {
 	(*pi)++;
 	return res;
 }
-
+int
 ftt_list_supported(FILE *pf) {
     ftt_descriptor d;
     char *last_os, *last_prod_id, *last_controller;
@@ -380,7 +380,7 @@ ftt_list_supported(FILE *pf) {
     last_os = strdup("-");
     last_prod_id = strdup("-"); 
     last_controller = strdup("-"); 
-    for(ftt_first_supported(&i); d = ftt_next_supported(&i); ) {
+    for(ftt_first_supported(&i); (d = ftt_next_supported(&i) ); ) {
 	for( dens = 20; dens > -1; dens-- ) {
 	    flags = 0;
 
@@ -414,21 +414,22 @@ ftt_list_supported(FILE *pf) {
 	    }
 
 	    /* only print controller if different */
-	    if (0 != d->controller && 0 != strcmp(last_controller, d->controller) || 0 != strcmp(last_os,d->os)) {
+	    if (0 != d->controller && ( 0 != strcmp(last_controller, d->controller) || 0 != strcmp(last_os,d->os) )) {
 	        fprintf(pf,"%s\t", d->controller);
 	    } else {
 		fprintf(pf, "\t");
 	    }
 
 	    /* only print prod_id if different */
-	    if (0 != d->prod_id && 0 != strcmp(last_prod_id, d->prod_id) || 0 != strcmp(last_controller,d->controller) 
-			|| 0 != strcmp(last_os,d->os)) {
+	    if (0 != d->prod_id && ( 0 != strcmp(last_prod_id, d->prod_id) 
+				     || 0 != strcmp(last_controller,d->controller) 
+				     || 0 != strcmp(last_os,d->os) ) ) {
 		if( strlen(d->prod_id) > 7 ) {
 		    fprintf(pf, "%s\t", d->prod_id);
 		} else if (strlen(d->prod_id) > 0 ) {
 		    fprintf(pf, "%s\t\t", d->prod_id);
 		} else {
-		    fprintf(pf, "(unknown)\t", d->prod_id);
+		    fprintf(pf, "(unknown)\t");
 		}
 		free(last_os);
 		free(last_prod_id);

@@ -1,4 +1,5 @@
 static char rcsid[] = "@(#)$Id$";
+
 #include <stdio.h>
 #include <ftt_private.h>
 #include <string.h>
@@ -6,6 +7,7 @@ static char rcsid[] = "@(#)$Id$";
 void ftt_check_table();
 
 static int table_debug;
+int
 main() {
    
     table_debug = 0;
@@ -23,7 +25,7 @@ void ftt_check_table(FILE *pf) {
 
     fprintf( pf, "Stage 0: whole table reachable check\n");
 
-    for(ftt_first_supported(&i); d1 = ftt_next_supported(&i) ; ) {
+    for(ftt_first_supported(&i); (d1 = ftt_next_supported(&i)) ; ) {
 	if (table_debug) fprintf(pf, 
 	     "DEBUG: os '%s' basename '%s' prod_id '%s' controller '%s':\n",
 		      d1->os, d1->basename, d1->prod_id, d1->controller);
@@ -35,7 +37,7 @@ void ftt_check_table(FILE *pf) {
 
     fprintf( pf, "Stage 1: 'first' flag checks\n");
 
-    for(ftt_first_supported(&i); d1 = ftt_next_supported(&i) ; ) {
+    for(ftt_first_supported(&i); (d1 = ftt_next_supported(&i)) ; ) {
 	if (table_debug) fprintf(pf, 
 	     "DEBUG: os '%s' basename '%s' prod_id '%s' controller '%s':\n",
 		      d1->os, d1->basename, d1->prod_id, d1->controller);
@@ -72,7 +74,7 @@ void ftt_check_table(FILE *pf) {
 
     fprintf( pf, "Stage 2: obscured entry checks\n");
 
-    for(ftt_first_supported(&i); d1 = ftt_next_supported(&i); ) {
+    for(ftt_first_supported(&i); (d1 = ftt_next_supported(&i) ); ) {
 	if (table_debug) fprintf(pf, 
 	     "DEBUG: os '%s' basename '%s' prod_id '%s' controller '%s':\n",
 		      d1->os, d1->basename, d1->prod_id, d1->controller);

@@ -9,7 +9,8 @@ static char rcsid[] = "@(#)$Id$";
 #include <winioctl.h>
 
 int ftt_translate_error_WIN();
-
+#else
+#include <unistd.h>
 #endif
 
 int	 ftt_describe_error();

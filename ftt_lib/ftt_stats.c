@@ -13,6 +13,8 @@ static char rcsid[] = "@(#)$Id$";
 #define geteuid() -1
 DWORD ftt_win_get_paramters();
 
+#else
+#include <unistd.h>
 #endif
 
 int ftt_open_io_dev();

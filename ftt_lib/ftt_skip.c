@@ -1,4 +1,6 @@
 static char rcsid[] = "@(#)$Id$";
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <ftt_private.h>
 #include <string.h>
@@ -15,6 +17,8 @@ int ftt_translate_error_WIN();
 
 #define geteuid() -1
 
+#else
+#include <unistd.h>
 #endif
 
 extern int errno;
@@ -409,7 +413,7 @@ ftt_skip_to_double_fm(ftt_descriptor d) {
 
 int
 ftt_write_fm_if_needed(ftt_descriptor d) {
-    int n = 0, res;
+    int res=0;
     int savefile, saveblock, savedir;
 
     CKOK(d,"ftt_write_fm_if_needed",0,0);

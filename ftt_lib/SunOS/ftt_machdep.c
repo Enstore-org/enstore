@@ -1,10 +1,18 @@
-static char rcsid[] = "@(#)$Id$";
+static char rcsid[] = "@(#) $Id$";
+
+
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
+#include <stdlib.h>
 #include <sys/utsname.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <ftt_private.h>
 
+int ftt_scsi_set_compression(ftt_descriptor d, int compression);
 
 int
 ftt_status(ftt_descriptor d, int time_out) {
@@ -61,13 +69,13 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
    return 0;
 }
 
+int 
 ftt_set_compression(ftt_descriptor d, int compression) {
-    ftt_scsi_set_compression(d, compression);
+    return ftt_scsi_set_compression(d, compression);
 }
 
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-    int res;
 
     /* ignore blocksize, 'cause we opened the right device node */
     return 0;

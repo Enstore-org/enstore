@@ -2,8 +2,10 @@ static char rcsid[] = "@(#)$Id$";
 /*
  * ftt_scsi_sun.c
  */
-
+#include <unistd.h>
 #include <stdio.h>
+#include <strings.h>
+
 #ifdef FILENAME_MAX     /* defined in stdio.h only in SYSV systems */
 #define SYSV
 #endif
@@ -41,7 +43,7 @@ ftt_scsi_open(const char *pcDevice)
 	scsi_handle n;
         DEBUG2(stderr,"entering ftt_scsi_open(%s,..)\n",pcDevice);
         n = (scsi_handle)open(pcDevice, O_RDONLY|O_NDELAY|O_NONBLOCK, 0);
-        DEBUG2(stderr,"filehandle == %d\n",  n );
+        DEBUG2(stderr,"filehandle == %d\n",  (int)n );
 	return n;
 
 }
@@ -56,7 +58,6 @@ int
 ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite)
 {
         struct uscsi_cmd cmd;
-        union scsi_cdb cdb;
 	int scsistat, res;
 #ifdef ARQ
 	static int havesense;

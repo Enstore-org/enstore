@@ -17,7 +17,9 @@ extern int errno;
 int ftt_translate_error_WIN();
 
 #else
+#include <ctype.h>
 #include <sys/file.h>
+#include <unistd.h>
 #endif
 
 ftt_descriptor
@@ -399,7 +401,7 @@ ftt_open_io_dev(ftt_descriptor d) {
 }
 int
 ftt_open_dev(ftt_descriptor d) {
-    int res = 0, status_res = 0;
+    int status_res = 0;
 
     ENTERING("ftt_open_dev");
     CKNULL("ftt_descriptor" , d);
@@ -445,7 +447,7 @@ ftt_open_dev(ftt_descriptor d) {
 		if ( 0 > ftt_open_set_blocksize(d) ) return -1;
 	}
 	    
-    DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);
+    DEBUG2(stderr,"Returing %d\n", d->file_descriptor);
     return d->file_descriptor;
 }
 

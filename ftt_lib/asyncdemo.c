@@ -1,6 +1,12 @@
 static char rcsid[] = "@(#)$Id$";
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <ftt_private.h>
+
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 void
 demo_with_delay(char *dev, int n) {

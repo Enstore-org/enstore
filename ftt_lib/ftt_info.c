@@ -5,6 +5,10 @@ static char rcsid[] = "@(#)$Id$";
 #include <sys/stat.h>
 #include <ftt_private.h>
 
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
 extern int errno;
  
 int 
@@ -301,6 +305,7 @@ ftt_set_mode_dev(ftt_descriptor d, const char *devname, int force) {
     return -1;
 }
 
+int
 ftt_set_data_direction( ftt_descriptor d, int value ) {
     ENTERING("ftt_set_data_direction");
     CKNULL("ftt_descriptor", d);
