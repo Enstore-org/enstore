@@ -1066,7 +1066,8 @@ class LibraryManagerMethods:
         self.init_request_selection()
         self.process_for_bound_vol = external_label
         #self.pending_work.wprint()
-        Trace.trace(14, "%s\n%s"%("PENDING QUEUE",self.pending_work.sprint())) 
+        # can be uncommented only for the test reason. Sprint tapes a lot of cpu in case of a big queue
+        #Trace.trace(14, "%s\n%s"%("PENDING QUEUE",self.pending_work.sprint())) 
         # first see if there are any HiPri requests
         rq =self.pending_work.get_admin_request()
         while rq:
