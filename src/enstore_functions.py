@@ -3,6 +3,7 @@ import string
 import os
 
 import configuration_server
+import enstore_constants
 
 DEFAULTHTMLDIR = "."
 
@@ -44,3 +45,35 @@ def strip_file_dir(str):
 # remove the string .fnal.gov if it is in the input string
 def strip_node(str):
     return string.replace(str, ".fnal.gov", "")
+
+def is_this(server, suffix):
+    stype = string.split(server, ".")
+    if stype[len(stype)-1] == suffix:
+	return 1
+    return 0
+
+# return true if the passed server name ends in "library_manager"
+def is_library_manager(server):
+    return is_this(server, enstore_constants.LIBRARY_MANAGER)
+
+# return true if the passed server name ends in "mover"
+def is_mover(server):
+    return is_this(server, enstore_constants.MOVER)
+
+# return true if the passed server name ends in "media_changer"
+def is_media_changer(server):
+    return is_this(server, enstore_constants.MEDIA_CHANGER)
+
+# return true if the passed server name is one of the following -
+#   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
+#   server
+def is_generic_server(server):
+    if server in enstore_constants.GENERIC_SERVERS:
+	return 1
+    return 0
+
+# return try if this server is the blocksizes
+def is_blocksizes(server):
+    if server == enstore_constants.BLOCKSIZES:
+	return 1
+    return 0

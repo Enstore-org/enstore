@@ -45,6 +45,7 @@ BASENODE = "base_node"
 UP = 0
 WARNING = 2
 DOWN = 1
+SEEN_DOWN = 4
 NOSCHEDOUT = -1
 OFFLINE = 1
 ENSTORE = "enstore"
@@ -95,10 +96,16 @@ LAST_READ = "last_read"
 LAST_WRITE = "last_write"
 WRITE = "write"
 READ = "read"
-BLOCKSIZES = "blocksizes"
 LMSTATE = "lmstate"
 
 NO_INFO = "------"
 NO_WORK = "No work at movers"
 NO_PENDING = "No pending work"
+
+BLOCKSIZES = "blocksizes"
+LIBRARY_MANAGER = "library_manager"
+MOVER = "mover"
+MEDIA_CHANGER = "media_changer"
+GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
+		   "inquisitor", "log_server", "volume_clerk"]
 

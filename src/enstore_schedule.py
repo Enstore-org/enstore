@@ -98,7 +98,7 @@ def do_work(intf):
 	return
 
     sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-    outage_d, offline_d = sfile.read()
+    outage_d, offline_d, seen_down_d = sfile.read()
 
     # mark things as up if indicated
     if intf.up:
@@ -172,7 +172,7 @@ def do_work(intf):
 		    print_error(key)
 
 
-    if not sfile.write(outage_d, offline_d):
+    if not sfile.write(outage_d, offline_d, seen_down_d):
 	print "ERROR: Could not write to file %s/%s"%(html_dir, 
 						      enstore_constants.OUTAGEFILE)
 
@@ -195,6 +195,17 @@ def do_work(intf):
 		print "   %s"%(key,)
 	    else:
 		print ""
+	# output the servers that we have seen down and been monitoring
+	keys = seen_down_d.keys()
+	if keys:
+	    keys.sort()
+	    print "\n Enstore Items Down and the Number of Times Seen Down"
+	    print   " ----------------------------------------------------"
+	    for key in keys:
+		print "   %s : %s"%(key, seen_down_d[key])
+	    else:
+		print ""
+	
 
 
 if __name__ == "__main__" :

@@ -37,17 +37,25 @@ def do_work(intf):
     # we do not want anything printed out
     summary = 1
 
-    # gather all of the latest status of the enstore system
-    (rtn, enstat) = enstore_up_down.do_real_work(summary)
-    netstat = monitor_client.do_real_work(summary, intf.config_host, intf.config_port,
-					  intf.html_gen_host)
-    # no media status yet.
-    medstat = {}
-
     # get the location of where the html file should go.  we do not want to
     # go thru an enstore server because we need to do this even when enstore
     # is down.  so get the config file ourselves.
     html_dir = enstore_functions.get_html_dir()
+
+    # get the information on any scheduled down time. 
+    sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
+    outage_d, offline_d, seen_down_d = sfile.read()
+
+    # gather all of the latest status of the enstore system
+    (rtn, enstat) = enstore_up_down.do_real_work()
+    # and the network if it is not marked as down
+    if not offline_d.has_key(enstore_constants.NETWORK):
+	netstat = monitor_client.do_real_work(summary, intf.config_host, intf.config_port,
+					      intf.html_gen_host)
+    else:
+	netstat = {}
+    # no media status yet.
+    medstat = {}
 
     # get the name and location of the alarm file so we can determine if there are any
     # alarms in it.  if yes, the alarm button goes red.
@@ -63,11 +71,6 @@ def do_work(intf):
 	alarms = {enstore_constants.ANYALARMS : enstore_constants.UP}
     # add the alarm html file so a link can be created to it on the main page.
     alarms[enstore_constants.URL] = alarm_server.DEFAULT_HTML_ALARM_FILE
-
-    # now we have the status information, get the information on any scheduled
-    # down time. first add the www area to the python path so we can import
-    sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-    outage_d, offline_d = sfile.read()
 
     system_tag = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
 							www_server.SYSTEM_TAG,

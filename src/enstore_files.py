@@ -162,7 +162,11 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 	self.refresh = refresh
 
     def set_alive_error_status(self, key):
-	self.text[key][enstore_constants.STATUS][0] = "error"
+	try:
+	    self.text[key][enstore_constants.STATUS][0] = "error"
+	except KeyError:
+	    # the 'update_commands' for example does not have a STATUS
+	    pass
 
     # write the status info to the file
     def write(self):
@@ -517,14 +521,19 @@ class ScheduleFile(EnFile):
 		offline_d = enstore_outage.offline
 	    except AttributeError:
 		offline_d = {}
+	    try:
+		seen_down_d = enstore_outage.seen_down
+	    except AttributeError:
+		seen_down_d = {}
 	except ImportError:
 	    # can't find the module
 	    outage_d = {}
 	    offline_d = {}
-	return outage_d, offline_d
+	    seen_down_d = {}
+        return outage_d, offline_d, seen_down_d
 
     # turn the dictionary into python code to be written out to the file
-    def write(self, dict1, dict2):
+    def write(self, dict1, dict2, dict3):
 	# open the file for writing
 	self.open()
 
@@ -532,6 +541,7 @@ class ScheduleFile(EnFile):
 	if self.openfile:
 	    self.openfile.write("outage = %s\n"%(dict1,))
 	    self.openfile.write("offline = %s\n"%(dict2,))
+	    self.openfile.write("seen_down = %s\n"%(dict3,))
 	    rtn = 1
 	    # close the file
 	    self.close()
