@@ -114,7 +114,6 @@ class ConfigurationClient(generic_client.GenericClient):
 
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
-        Trace.trace(10,'alive config_address='+repr(self.config_address))
         try:
             x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,
                           tries)
