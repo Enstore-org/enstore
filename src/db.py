@@ -486,9 +486,14 @@ class DbTable:
   def backup(self):
      cwd=os.getcwd()
      os.chdir(self.dbHome)
-     cmd="tar cf "+self.name+".tar "+self.name
-     Trace.log(e_errors.INFO, repr(cmd))
-     os.system(cmd)
+
+     # Do not backup database files any more. Those would be done in
+     # system's database backup.
+
+     # cmd="tar cf "+self.name+".tar "+self.name
+     # Trace.log(e_errors.INFO, repr(cmd))
+     # os.system(cmd)
+
      os.chdir(self.jouHome)
      cmd="tar rf "+self.dbHome+"/"+self.name+".tar"+" "+self.name+".jou.*"
      Trace.log(e_errors.INFO, repr(cmd))
