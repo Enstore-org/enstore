@@ -525,6 +525,11 @@ if __name__ == "__main__":
     elif intf.decr_file_count:
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
 	msg_id = generic_cs.CLIENT
+        try:
+            if intf.verbose:
+                generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+        except:
+            pass
     elif intf.rdovol:
         ticket = vcc.set_system_readonly(intf.args[0])  # name of this volume
 	msg_id = generic_cs.CLIENT

@@ -193,6 +193,11 @@ if __name__ == "__main__" :
 
     elif intf.deleted and intf.bfid:
         ticket = fcc.set_deleted(intf.deleted)
+        try:
+            if intf.verbose:
+                generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+        except:
+            pass
 	msg_id = generic_cs.CLIENT
 
     elif intf.bfids:
