@@ -34,6 +34,8 @@ def write_request_ok(ticket):
     inode_type = 0L
     if type(ticket['wrapper']['inode']) == type(0):
         inode_type = 0
+    if type(ticket['wrapper']['inode']) == type(None):
+        inode_type = None
 
     wrapper_keys = {'fullname': '',
                     'gid': 0,
@@ -143,6 +145,8 @@ def read_request_ok(ticket):
     inode_type = 0L
     if type(ticket['wrapper']['inode']) == type(0):
         inode_type = 0
+    if type(ticket['wrapper']['inode']) == type(None):
+        inode_type = None
 
     wrapper_keys = {'fullname': '',
                     'gid': 0,
