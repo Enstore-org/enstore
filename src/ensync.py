@@ -133,7 +133,7 @@ def ensync(original_dir, pnfs_backup_dir):
 ############################################################################
 ############################################################################
 
-class EnsyncInterface(option.Interface):
+class EnsyncInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
