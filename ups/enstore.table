@@ -64,7 +64,7 @@ QUALIFIERS = ""
         exeAccess("swig")
 	
         # set the libtp and libtppy products up after python
-        setupRequired("libtppy v1_2_1")
+        setupRequired("libtppy v1_2_2")
         # setupRequired("libtp v2_7_4") # libtp is set up by libtppy
 
         # now set the python module search path, need to do these in separate
