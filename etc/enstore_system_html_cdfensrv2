@@ -1,3 +1,5 @@
 $ENSTORE_DIR/etc/enstore_system_top.html
+$ENSTORE_DIR/etc/enstore_system_cdfen.html
+$ENSTORE_DIR/etc/enstore_system_middle.html
 $ENSTORE_DIR/etc/cdf_dcache_link.html
 $ENSTORE_DIR/etc/enstore_system_info.html
