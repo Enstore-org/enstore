@@ -28,103 +28,54 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 case $node in
   stken*) gang=stken
-	  V8()     { enstore lib --vols eagle.library_manager
-		     enstore med --get_work stk.media_changer
-		     stk_qd| grep "9840"
-		     enstore lib --status eagle.library_manager
-		     if [ -n "${1-}" ]; then enstore lib --get_queue "" eagle.library_manager; fi
-		   }
-	  VT8()    { enstore lib --vols test.library_manager
-		     enstore med --get_work stk.media_changer
-		     stk_qd| grep "9840"
-		     enstore lib --status test.library_manager
-		     if [ -n "${1-}" ]; then enstore lib --get_queue "" test.library_manager; fi
-		   }
-	  V9 ()    { enstore lib --vols 9940.library_manager
+	  fntt=fntt
+	  V9()     { enstore lib --vols 9940.library_manager
 		     enstore med --get_work stk.media_changer
 		     stk_qd| grep "9940"
 		     enstore lib --status 9940.library_manager
 		     if [ -n "${1-}" ]; then enstore lib --get_queue "" 9940.library_manager; fi
 		   }
-	  nospaces()     { echo "$1" | sed -e 's/ //g' ; }
-	  stk_qd()       { /usr/bin/rsh fntt -l acsss "(echo query drive  `nospaces "${1:-all}"`; echo logoff)            |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_qv()       { /usr/bin/rsh fntt -l acsss "(echo query vol    ${1:-VOLUME}; echo logoff)                     |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_mount()    { /usr/bin/rsh fntt -l acsss "(echo mount ${1:-VOLUME} `nospaces "${2:-DRIVE}"`;echo logoff)    |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_dismount() { /usr/bin/rsh fntt -l acsss "(echo dismount VOLUME `nospaces "${1:-DRIVE}"` force; echo logoff) |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_msg()      { /usr/bin/rsh fntt -l acsss "tail -${1:-50} log/acsss_event.log" |awk '/20[0-9][0-9]/ {printf("%s",$0); getline; getline; printf("\t%s\n",$0)}'; }
-	  stk_log_get()  { /usr/bin/rcp acsss@fntt:log/acsss_event.log . ; }
-	  stk_log()      { /usr/bin/rsh -l acsss fntt 'tail -175 log/acsss_event.log ' | more ; }
+	  V()      { enstore lib --vols dlt.library_manager
+		     enstore med --get_work aml2r1.media_changer
+		     dasadmin listd2| grep -v "volser:   cleaning"| grep DC
+		     enstore lib --status dlt.library_manager
+		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" dlt.library_manager; fi
+		   }
 	  ;;
   cdfen*) gang=cdfen
-	  V  ()    { enstore lib --vols cdf.library_manager
+	  fntt=fntt2
+	  V9()     { enstore lib --vols cdf.library_manager
 		     enstore med --get_work stk.media_changer
 		     stk_qd| grep "9940"
 		     enstore lib --status cdf.library_manager
 		     if [ -n "${1-}" ]; then enstore lib --get_queue "" cdf.library_manager; fi
 		   }
-	  VT ()    { enstore lib --vols test.library_manager
-		     enstore med --get_work stk.media_changer
-		     stk_qd| grep "9940"
-		     enstore lib --status test.library_manager
-		     if [ -n "${1-}" ]; then enstore lib --get_queue "" test.library_manager; fi
-		   }
-	  nospaces()     { echo "$1" | sed -e 's/ //g' ; }
-	  stk_qd()       { /usr/bin/rsh fntt2 -l acsss "(echo query drive  `nospaces "${1:-all}"`; echo logoff)            |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_qv()       { /usr/bin/rsh fntt2 -l acsss "(echo query vol    ${1:-VOLUME}; echo logoff)                      |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_mount()    { /usr/bin/rsh fntt2 -l acsss "(echo mount ${1:-VOLUME} `nospaces "${2:-DRIVE}"`; echo logoff)    |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_dismount() { /usr/bin/rsh fntt2 -l acsss "(echo dismount VOLUME `nospaces "${1:-DRIVE}"` force; echo logoff) |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_msg()      { /usr/bin/rsh fntt2 -l acsss "tail -${1:-50} log/acsss_event.log" |awk '/20[0-9][0-9]/ {printf("%s",$0); getline; getline; printf("\t%s\n",$0)}'; }
-	  stk_log_get()  { /usr/bin/rcp acsss@fntt2:log/acsss_event.log . ;}
-	  stk_log()      { /usr/bin/rsh -l acsss fntt2 'tail -175 log/acsss_event.log ' | more ; }
 	  ;;
    d0en*) gang=d0en
-	  V2 ()    { enstore lib --vols samm2.library_manager
-		     enstore med --get_work aml2r2.media_changer
-		     enstore med --get_work aml2r1.media_changer
-		     dasadmin listd2| grep -v "volser:   cleaning"| grep DI
-		     enstore lib --status samm2.library_manager
-		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" samm2.library_manager; fi
-		   }
-	  VT()     { enstore lib --vols test.library_manager
-		     enstore med --get_work aml2r2.media_changer
-		     enstore med --get_work aml2r1.media_changer
+	  fntt=fntt
+	  V()      { enstore lib --vols samlto.library_manager
+		     enstore med --get_work aml2.media_changer
 		     dasadmin listd2| grep -v "volser:   cleaning"| grep DC
-		     enstore lib --status test.library_manager
-		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" test.library_manager; fi
+		     enstore lib --status samlto.library_manager
+		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" samlto.library_manager; fi
 		   }
-
-	  VT2()    { enstore lib --vols testm2.library_manager
-		     enstore med --get_work aml2r2.media_changer
-		     enstore med --get_work aml2r1.media_changer
-		     dasadmin listd2| grep -v "volser:   cleaning"| grep DI
-		     enstore lib --status testm2.library_manager
-		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" testm2.library_manager; fi
-		   }
-
-	  VN ()    { enstore lib --vols samnull.library_manager
+	  VN()     { enstore lib --vols samnull.library_manager
 		     enstore med --get_work samnull.media_changer
 		     enstore lib --status samnull.library_manager
 		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" samnull.library_manager; fi
 		   }
-
-	  VTO()    { enstore lib --vols testlto.library_manager
-		     #enstore med --get_work aml2r2.media_changer
-		     #enstore med --get_work aml2r1.media_changer
-		     #dasadmin listd2| grep -v "volser:   cleaning"| grep DI
-		     enstore lib --status testlto.library_manager
-		     if [ -n "${1-}" ]; then  enstore lib --get_queue "" testlto.library_manager; fi
-		   }
-	  nospaces()     { echo "$1" | sed -e 's/ //g' ; }
-	  stk_qd()       { /usr/bin/rsh fntt -l acsss "(echo query drive  `nospaces "${1:-all}"`; echo logoff)            |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_qv()       { /usr/bin/rsh fntt -l acsss "(echo query vol    ${1:-VOLUME};echo logoff)                      |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_mount()    { /usr/bin/rsh fntt -l acsss "(echo mount ${1:-VOLUME} `nospaces "${2:-DRIVE}"`; echo logoff)    |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_dismount() { /usr/bin/rsh fntt -l acsss "(echo dismount VOLUME `nospaces "${1:-DRIVE}"` force; echo logoff) |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null; }
-	  stk_msg()      { /usr/bin/rsh fntt -l acsss "tail -${1:-50} log/acsss_event.log" |awk '/20[0-9][0-9]/ {printf("%s",$0); getline; getline; printf("\t%s\n",$0)}'; }
-	  stk_log_get()  { /usr/bin/rcp acsss@fntt:log/acsss_event.log . ; }
-	  stk_log()      { /usr/bin/rsh -l acsss fntt 'tail -175 log/acsss_event.log ' | more ; }
 	  ;;
        *) gang=UNKNOWN
 	  ;;
 esac
+
+stk_qd()	{ /usr/bin/rsh $fntt -l acsss "echo query drive   ${1:-all}    '\r' logoff | bin/cmd_proc -l -q 2> /dev/null" < /dev/null; }
+stk_qr()	{ /usr/bin/rsh $fntt -l acsss "echo query request ${1:-all}    '\r' logoff | bin/cmd_proc -l -q 2> /dev/null" < /dev/null; }
+stk_qv()	{ /usr/bin/rsh $fntt -l acsss "echo query volume  ${1:-VOLUME} '\r' logoff | bin/cmd_proc -l -q 2> /dev/null" < /dev/null; }
+stk_mount()	{ /usr/bin/rsh $fntt -l acsss "echo mount ${1:-VOLUME} ${2:-DRIVE} '\r' logoff | bin/cmd_proc -l -q 2> /dev/null" < /dev/null; }
+stk_dismount()	{ /usr/bin/rsh $fntt -l acsss "echo dismount ${2:-VOLUME} ${1:-DRIVE} force '\r' logoff | bin/cmd_proc -l -q 2> /dev/null" < /dev/null; }
+stk_msg()	{ /usr/bin/rsh $fntt -l acsss "tail -${1:-64}  log/acsss_event.log" | awk '/^20[0-9][0-9]-/ { printf("%s",$0); getline; getline; printf("\t%s\n",$0)}'; }
+stk_log()	{ /usr/bin/rsh $fntt -l acsss 'tail -${1:-256} log/acsss_event.log' | more; }
+stk_log_get()	{ /usr/bin/rcp acsss@$fntt:log/acsss_event.log . ; }
 
 bakken() { . /home/bakken/.bash_profile; }
