@@ -758,7 +758,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 						 enstore_functions2.get_status(ticket)))
 
     # get the initial statistics
-    def init_stat(self, drive, drive_name):
+    def init_stat(self, drive_name):
         self.stats_on = 0
         self.send_stats = self.config.get('send_stats',None)
         if not self.stat_file: return
@@ -1035,7 +1035,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
 
                 if have_tape == 1:
-                    self.init_stat(self.device, self.logname)
+                    self.init_stat(self.logname)
                     status = self.tape_driver.verify_label(None)
                     if status[0]==e_errors.OK:
                         self.current_volume = status[1]
@@ -2326,7 +2326,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 thread_name = thread.getName()
                 Trace.trace(87,"setup_transfer: Thread %s is running" % (thread_name,))
             else:
-                Trace.trace(87,"setup_transfer: Thread is dead"%(thread_name,))
+                Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
             
         
         self.lock_state()
@@ -3748,7 +3748,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vcc.update_counts(self.current_volume, mounts=1)
             self.asc.log_finish_mount(self.current_volume)
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
-            self.init_stat(self.device, self.logname)
+            self.init_stat(self.logname)
             tm = time.localtime(time.time()) # get the local time
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "mounted %s %s %s"%(volume_label,self.config['product_id'], time_msg),
