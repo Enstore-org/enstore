@@ -1244,8 +1244,7 @@ if __name__ == '__main__':
                 Trace.log(e_errors.INFO, "restarting after exception")
             except:
                 pass
-            except:
-                pass
+
             
     Trace.log(e_errors.INFO, 'ERROR returned from serve_forever')
     
