@@ -76,4 +76,4 @@ EMASS EMASS.c -I. -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 derrno derrno_wrap.c -I$(ACI_DIR)/inc
 
-Trace Trace.c trace.a -lc
+Ptrace Ptrace.c trace.a -lc

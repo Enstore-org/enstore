@@ -1,4 +1,4 @@
-/*  This file (Trace.c) was created by Ron Rechenmacher <ron@fnal.gov> on
+/*  This file (Ptrace.c) was created by Ron Rechenmacher <ron@fnal.gov> on
     Jul 27, 1998. "TERMS AND CONDITIONS" governing this file are in the README
     or COPYING file. If you do not have such a file, one can be obtained by
     contacting Ron or Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
@@ -22,7 +22,7 @@
  *	    2)  (dataCRC,sanitySts) = obj.frmHSM(  frmDriverObj, to_DriverObj
  *						 , dataSz, sanitySz, sanityCRC )
  */
-static char Trace_Doc[] = "Trace is a module which interfaces to a global trace buffer";
+static char Ptrace_Doc[] = "Ptrace is a module which interfaces to a global trace buffer";
 
 
 /******************************************************************************
@@ -34,7 +34,7 @@ static char Trace_Doc[] = "Trace is a module which interfaces to a global trace 
  *
  ******************************************************************************/
 
-static PyObject *TraceErrObject;
+static PyObject *PtraceErrObject;
 
 static PyObject *
 #ifdef HAVE_STDARG_PROTOTYPES
@@ -50,7 +50,7 @@ raise_exception( method_name, ETdesc, va_alist )
 
     /*  dealloc and raise exception fix */
     sprintf(  errbuf, "Error in %s\n", method_name );
-    PyErr_SetString( TraceErrObject, errbuf );
+    PyErr_SetString( PtraceErrObject, errbuf );
     return (NULL);
 }   /* raise_exception */
 
@@ -312,7 +312,7 @@ off_function(  PyObject	*self
 	  4 - method documentation string
 	  */
 
-static PyMethodDef Trace_Functions[] = {
+static PyMethodDef Ptrace_Functions[] = {
     { "init",  init_function,  1, init_function_Doc},
     { "trace",  trace_function,  1, trace_function_Doc},
     { "mode",  mode_function,  1, mode_function_Doc},
@@ -340,16 +340,16 @@ static PyMethodDef Trace_Functions[] = {
     */
 
 void
-initTrace()
+initPtrace()
 {
 	PyObject	*m, *d;
 
-    m = Py_InitModule4(  "Trace", Trace_Functions, Trace_Doc
+    m = Py_InitModule4(  "Ptrace", Ptrace_Functions, Ptrace_Doc
 		       , (PyObject*)NULL, PYTHON_API_VERSION );
     d = PyModule_GetDict(m);
-    TraceErrObject = PyErr_NewException("Trace.error", NULL, NULL);
-    if (TraceErrObject != NULL)
-	PyDict_SetItemString(d,"error",TraceErrObject);
+    PtraceErrObject = PyErr_NewException("Ptrace.error", NULL, NULL);
+    if (PtraceErrObject != NULL)
+	PyDict_SetItemString(d,"error",PtraceErrObject);
 
     trace_init( "python", "" );
 }
