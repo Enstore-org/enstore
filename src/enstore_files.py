@@ -456,9 +456,10 @@ class HTMLPlotFile(EnFile):
         self.file_name = "%s.new"%(file,)
 
     # format the config entry and write it to the file
-    def write(self, jpgs, stamps, pss):
+    def write(self, jpgs, stamps, pss, mount_label):
         if self.openfile:
-            doc = enstore_html.EnPlotPage(system_tag=self.system_tag)
+            doc = enstore_html.EnPlotPage(system_tag=self.system_tag,
+					  mount_label=mount_label)
             doc.body(jpgs, stamps, pss)
 	    self.do_write(str(doc))
 

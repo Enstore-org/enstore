@@ -2079,13 +2079,14 @@ class EnPlotPage(EnBaseHtmlDoc):
     bpd = "%s%s"
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
-		 system_tag="", description=""):
+		 system_tag="", description="", mount_label=None):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
 			       system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
 	self.source_server = THE_INQUISITOR
 	self.description = description
+	self.mount_label = mount_label
 
     def find_label(self, text):
         # compare the passed text with the files listed in PLOT_INFO. if there
@@ -2105,6 +2106,13 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    # get rid of _stamp.jpg too
 		    index = string.find(just_mover, enstore_constants.STAMP)
 		    return "%s (%s)"%(file_label[1], just_mover[0:index])
+		elif file_label[0] == enstore_constants.MPD_FILE or \
+		     file_label[0] == enstore_constants.MPD_MONTH_FILE:
+		    # add the mount_label to the front
+		    if self.mount_label:
+			return "%s %s"%(self.mount_label, file_label[1])
+		    else:
+			return file_label[1]
 		else:
 		    return file_label[1]
         else:

@@ -157,8 +157,11 @@ class EncpLine:
                 self.volume = tmp_list[4]
                 self.user_rate = tmp_list[6]
 		tmp_list = string.splitfields(tmp2, " ")
-		tmp_list = string.splitfields(tmp_list[6], "=")
+		tmp_list = string.splitfields(tmp_list[5], "=")
 		self.mover = tmp_list[1]
+		# remove .mover
+		self.mover = string.replace(self.mover, ".%s"%(enstore_constants.MOVER,),
+					    "")
                 self.valid = 1
             except ValueError:
                 # we do not handle this formatting

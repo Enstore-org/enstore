@@ -23,7 +23,7 @@ class InquisitorPlots:
 	self.plotfile.open()
 	# get the list of stamps and jpg files
 	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
-	self.plotfile.write(jpgs, stamps, pss)
+	self.plotfile.write(jpgs, stamps, pss, self.mount_label)
 	self.plotfile.close()
 	self.plotfile.install()
 
@@ -60,14 +60,15 @@ class InquisitorPlots:
         # only do the plotting if we have some data
         if mountfile.data:
             # create the data files
-            mphfile = enstore_plots.MphDataFile(self.output_dir)
+            mphfile = enstore_plots.MphDataFile(dir=self.output_dir, 
+						mount_label=self.mount_label)
             mphfile.open()
             mphfile.plot(mountfile.data)
             mphfile.close()
             mphfile.install(self.html_dir)
             mphfile.cleanup(self.keep, self.keep_dir)
 
-            mlatfile = enstore_plots.MlatDataFile(self.output_dir)
+            mlatfile = enstore_plots.MlatDataFile(self.output_dir, self.mount_label)
             mlatfile.open()
             mlatfile.plot(mphfile.latency)
             mlatfile.close()
@@ -76,13 +77,13 @@ class InquisitorPlots:
 
 	    # now save any new mount count data for the continuing total count. and create the
 	    # overall total mount plot
-	    mpdfile = enstore_plots.MpdDataFile(self.output_dir)
+	    mpdfile = enstore_plots.MpdDataFile(self.output_dir, self.mount_label)
             mpdfile.open()
             mpdfile.plot(mphfile.total_mounts)
             mpdfile.close()
             mpdfile.install(self.html_dir)
 
-	    mmpdfile = enstore_plots.MpdMonthDataFile(self.output_dir)
+	    mmpdfile = enstore_plots.MpdMonthDataFile(self.output_dir, self.mount_label)
             mmpdfile.open()
             mmpdfile.plot()
             mmpdfile.close()

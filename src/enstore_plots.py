@@ -35,6 +35,45 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
+# init the following hash from the first date given to the last date
+def init_date_hash(sdate, edate):
+    ndate = {}
+    ndate[sdate[0:10]] = 0.0
+    ndate[edate[0:10]] = 0.0
+    imon = string.atoi(sdate[5:7])
+    iday = string.atoi(sdate[8:10])
+    iday = iday - 1 # we will increment this at the beginning of the loop
+    iyr = string.atoi(sdate[0:4])
+    is_leap = calendar.isleap(iyr)
+    emon = string.atoi(edate[5:7])
+    eday = string.atoi(edate[8:10])
+    # there is a possible problem if the start date is after the end date
+    while 1:
+	if (imon == emon) and (iday == eday):
+	    break
+	iday = iday + 1
+	if imon == 2:
+	    mday = calendar.mdays[imon] + is_leap 
+	else:
+	    mday = calendar.mdays[imon]
+	if iday <= mday:
+	    tmp = "%i-%02i-%02i" % (iyr, imon, iday)
+	    ndate[tmp] = {TOTAL: 0.0}
+	    ndate[tmp][READS] = 0.0
+	    ndate[tmp][WRITES] = 0.0
+	    ndate[tmp][LARGEST] = 0.0
+	    ndate[tmp][SMALLEST] = -1
+	    ndate[tmp][CTR] = 0
+	    continue
+	else:
+	    imon = imon + 1
+	    iday = 0
+	    if imon > 12:
+		imon = 1
+		iyr = iyr + 1
+		is_leap = calendar.isleap(iyr)
+    return ndate
+
 def sort_stamp_files(tmp_stamps):
     # sort the stamp files so that all mount per hour stamps are at the end in
     # descending date order.  first get the other plots to the front.
@@ -145,22 +184,33 @@ class EnPlot(enstore_files.EnFile):
                 os.system("mv %s %s;mv %s* %s"%(self.gnufile, pts_dir,
                                                 self.ptsfile, pts_dir))
 
+class BpdMoverDataFile(EnPlot):
+
+    def __init__(self, dir, mover):
+	EnPlot.__init__(self, dir, "%s-%s"%(enstore_constants.BPD_FILE, mover))
+
+
 class MphGnuFile(enstore_files.EnFile):
 
-    def write(self, gnuinfo):
+    def write(self, gnuinfo, mount_label):
+	if mount_label is None:
+	    mount_label = ""
 	self.openfile.write("set terminal postscript color solid\n"+ \
 	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
 	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
 	for info in gnuinfo:
 	    self.openfile.write("set output '"+info[3]+ \
-			       "'\nset title 'Mount Count For "+info[0]+ \
-	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+info[2]+ \
+			       "'\nset title '%s Mount Count For "%(mount_label,)+ \
+				info[0]+ \
+	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+ \
+				info[2]+ \
 	                       "' using 1:2 t '' with impulses lw 20\n")
 
 class MphDataFile(EnPlot):
 
-    def __init__(self, dir, filename=enstore_constants.MPH_FILE):
+    def __init__(self, dir, filename=enstore_constants.MPH_FILE, mount_label=None):
 	EnPlot.__init__(self, dir, filename)
+	self.mount_label = mount_label
 
     # do not do the actual open here, we will do it when plotting because we
     # may need to open more than one file.  
@@ -253,13 +303,15 @@ class MphDataFile(EnPlot):
 	    # we must create our gnu plot command file too
 	    gnucmds = MphGnuFile(self.gnufile)
 	    gnucmds.open('w')
-	    gnucmds.write(gnuinfo)
+	    gnucmds.write(gnuinfo, self.mount_label)
 	    gnucmds.close()
 
 
 class MpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total_mounts):
+    def write(self, outfile, ptsfile, total_mounts, mount_label):
+	if mount_label is None:
+	    mount_label = ""
 	self.openfile.write("set terminal postscript color solid\n"+ \
 			    "set xlabel 'Date'\n"+\
 			    "set timefmt \"%Y-%m-%d\"\n"+ \
@@ -270,14 +322,15 @@ class MpdGnuFile(enstore_files.EnFile):
 			    "set ylabel 'Mounts'\n"+\
 			    "set grid\n"+ \
 			    "set output '"+outfile+"'\n"+\
-			    "set title 'Mounts/Day (Total = "+\
+			    "set title '%s Mounts/Day (Total = "%(mount_label,)+\
 			    total_mounts+") "+plot_time()+"'\n"+\
 			    "plot '"+ptsfile+"' using 1:2 t '' with impulses lw 20\n")
 
 class MpdDataFile(EnPlot):
 
-    def __init__(self, dir):
+    def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_FILE)
+	self.mount_label = mount_label
 
     def get_all_mounts(self, new_mounts_d):
 	mounts_l = []
@@ -327,14 +380,15 @@ class MpdDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
 	gnucmds.close()
 
 
 class MpdMonthDataFile(EnPlot):
 
-    def __init__(self, dir):
+    def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_MONTH_FILE)
+	self.mount_label = mount_label
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -375,7 +429,7 @@ class MpdMonthDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
 	gnucmds.close()
 
 
@@ -397,8 +451,9 @@ class MlatGnuFile(enstore_files.EnFile):
 
 class MlatDataFile(EnPlot):
 
-    def __init__(self, dir):
+    def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MLAT_FILE)
+	self.mount_label = mount_label
 
     # make the mount latency plot file
     def plot(self, data_d):
@@ -435,7 +490,8 @@ class XferGnuFile(enstore_files.EnFile):
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
 	self.openfile.write("set output '"+outfile2+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
-	                   "set title 'Individual Transfer Activity (no null mvs)"+plot_time()+"'\n"+ \
+	                   "set title 'Individual Transfer Activity (no null mvs)"+\
+			    plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 	                   "set xdata time\n"+ \
@@ -497,7 +553,8 @@ class BpdGnuFile(enstore_files.EnFile):
 				 enstore_constants.BPD_FILE_W)
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
-	                   "set title 'Total Bytes Transferred Per Day (no null mvs) "+plot_time()+"'\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day (no null mvs) "+\
+			    plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
@@ -510,8 +567,9 @@ class BpdGnuFile(enstore_files.EnFile):
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
-	                   "plot '"+ptsfile+"' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
-			          "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			   "plot '"+ptsfile+\
+			   "' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
 			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
 			   # "set output '"+psfiler+"'\n"+ \
 			   # "set title 'Total Bytes Read Per Day (no null mvs) "+plot_time()+"'\n"+ \
@@ -530,59 +588,65 @@ class BpdGnuFile(enstore_files.EnFile):
 			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
 			    )
 
+
+class BpdMoverGnuFile(enstore_files.EnFile):
+
+    def write(self, mover, outfile, ptsfile, total, meansize, xfers):
+	self.openfile.write("set output '"+outfile+"'\n"+ \
+	                   "set terminal postscript color solid\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day for %s "%(mover,)+ \
+			    plot_time()+"'\n"+ \
+	                   "set xlabel 'Date'\n"+ \
+	                   "set timefmt \"%Y-%m-%d\"\n"+ \
+	                   "set xdata time\n"+ \
+	                   "set xrange [ : ]\n"+ \
+	                   "set ylabel 'Bytes'\n"+ \
+	                   "set grid\n"+ \
+	                   "set yrange [0: ]\n"+ \
+	                   "set format x \"%m-%d\"\n"+ \
+			   "set key right top Right samplen 1 title \"Total Bytes : "+\
+			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
+			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
+			      repr(xfers)+"\"\n"+\
+	                   "plot '"+ptsfile+\
+			   "' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			    )
+
+
 class BpdDataFile(EnPlot):
 
     def __init__(self, dir):
 	EnPlot.__init__(self, dir, enstore_constants.BPD_FILE)
+	self.per_mover_files_d = {}
+	self.movers_d = {}
 
-    # init the following hash from the first date given to the last date
-    def init_date_hash(self, sdate, edate):
-	ndate = {}
-	ndate[sdate[0:10]] = 0.0
-	ndate[edate[0:10]] = 0.0
-	imon = string.atoi(sdate[5:7])
-	iday = string.atoi(sdate[8:10])
-	iday = iday - 1 # we will increment this at the beginning of the loop
-	iyr = string.atoi(sdate[0:4])
-	is_leap = calendar.isleap(iyr)
-	emon = string.atoi(edate[5:7])
-	eday = string.atoi(edate[8:10])
-	# there is a possible problem if the start date is after the end date
-	while 1:
-	    if (imon == emon) and (iday == eday):
-	        break
-	    iday = iday + 1
-	    if imon == 2:
-		mday = calendar.mdays[imon] + is_leap 
-	    else:
-		mday = calendar.mdays[imon]
-	    if iday <= mday:
-	        tmp = "%i-%02i-%02i" % (iyr, imon, iday)
-		ndate[tmp] = {TOTAL: 0.0}
-	        ndate[tmp][READS] = 0.0
-	        ndate[tmp][WRITES] = 0.0
-		ndate[tmp][LARGEST] = 0.0
-		ndate[tmp][SMALLEST] = -1
-		ndate[tmp][CTR] = 0
-	        continue
-	    else:
-	        imon = imon + 1
-	        iday = 0
-	        if imon > 12:
-	            imon = 1
-	            iyr = iyr + 1
-		    is_leap = calendar.isleap(iyr)
-	return ndate
+    # write out the files for each movers' bytes/day
+    def per_mover(self, date_d):
+	movers_l = self.movers_d.keys()
+	dates = date_d.keys()
+	dates.sort()
+	for mover in movers_l:
+	    mover_d = self.movers_d[mover]
+	    # open a file to write the data to
+	    openfile = BpdMoverDataFile(self.dir, mover)
+	    openfile.open()
+	    for day in dates:
+		if mover_d.has_key(day):
+		    # add the reads and the writes
+		    total = mover_d[day][0] + mover_d[day][1]
+		    openfile.write(day+" "+repr(total)+" "+\
+				   repr(mover_d[day][0])+" "+\
+				   repr(mover_d[day][1])+" "+"\n")
+		else:
+		    # no writes were done on this day for this mover
+		    openfile.write(day+"\n")
+	    openfile.close()
+	    self.per_mover_files_d[mover] = openfile
 
-    # make the file with the bytes per day format, first we must sum the data
-    # that we have based on the day
-    def plot(self, data):
-	# initialize the new data hash
-	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
-	# sum the data together based on day boundaries. also save the largest
-	# smallest and average sizes and sum up reads and writes separately
-	read_ctr = 0
-	write_ctr = 0
+    def sum_data(self, ndata, data):
+	self.read_ctr = 0
+	self.write_ctr = 0
 	for [xpt, ypt, type, mover] in data:
 	    adate = xpt[0:10]
 	    fypt = string.atof(ypt)
@@ -596,24 +660,34 @@ class BpdDataFile(EnPlot):
 		if fypt < day[SMALLEST]:
 		    day[SMALLEST] = fypt
 	    day[TOTAL] = day[TOTAL] + fypt
+
+	    # save the data for the movers' bytes/day plots too
+	    if self.movers_d.has_key(mover):
+		if not self.movers_d[mover].has_key(adate):
+		    self.movers_d[mover][adate] = [0.0, 0.0]
+	    else:
+		self.movers_d[mover] = {adate : [0.0, 0.0],
+					TOTAL : 0.0, CTR : 0 }
+
 	    if type == WRITE:
 		day[WRITES] = day[WRITES] + fypt
-		write_ctr = write_ctr + 1
+		self.movers_d[mover][adate][1] = self.movers_d[mover][adate][1] + fypt
+		self.write_ctr = self.write_ctr + 1
 	    else:
 		day[READS] = day[READS] + fypt
-		read_ctr = read_ctr + 1
-	    if day.has_key(mover):
-		if type == WRITE:
-		    day[mover][1] = day[mover][1] + fypt
-		else:
-		    day[mover][0] = day[mover][0] + fypt
-	    else:
-		if type == WRITE:
-		    day[mover] = [0, fypt]
-		else:
-		    day[mover] = [fypt, 0]
+		self.movers_d[mover][adate][0] = self.movers_d[mover][adate][0] + fypt
+		self.read_ctr = self.read_ctr + 1
+	    self.movers_d[mover][TOTAL] = self.movers_d[mover][TOTAL] + fypt
+	    self.movers_d[mover][CTR] = self.movers_d[mover][CTR] + 1
 
-
+    # make the file with the bytes per day format, first we must sum the data
+    # that we have based on the day
+    def plot(self, data):
+	# initialize the new data hash
+	ndata = init_date_hash(data[0][0], data[len(data)-1][0])
+	# sum the data together based on day boundaries. also save the largest
+	# smallest and average sizes and sum up reads and writes separately
+	self.sum_data(ndata, data)
 	# write out the data points
 	keys = ndata.keys()
 	keys.sort()
@@ -643,11 +717,27 @@ class BpdDataFile(EnPlot):
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
 	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers,
-		      read_ctr, write_ctr)
+		      self.read_ctr, self.write_ctr)
 	gnucmds.close()
+
+	# now output the data to make the bytes/day/mover plots
+	self.per_mover(ndata)
+	for mover in self.movers_d.keys():
+	    mover_d = self.movers_d[mover]
+	    datafile = self.per_mover_files_d[mover]
+	    gnucmds = BpdMoverGnuFile(datafile.gnufile)
+	    gnucmds.open('w')
+	    gnucmds.write(mover, datafile.psfile, datafile.ptsfile, mover_d[TOTAL],
+			  mover_d[TOTAL]/mover_d[CTR], mover_d[CTR])
+	    gnucmds.close()
 
     def install(self, dir):
 	EnPlot.install(self, dir)
+
+	# now make the plots for bytes/day/mover
+	for mover in self.per_mover_files_d.keys():
+	    self.per_mover_files_d[mover].install(dir)
+
 	#filer = string.replace(self.name, enstore_constants.BPD_FILE,
 	#		       enstore_constants.BPD_FILE_R)
 	#psfiler = "%s/%s%s"%(self.dir, filer, enstore_constants.PS)
@@ -657,6 +747,12 @@ class BpdDataFile(EnPlot):
 	#os.system("cp %s %s %s"%(psfiler, psfilew, dir))
 	#convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
 	#convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
+
+    def cleanup(self, keep, pts_dir):
+	EnPlot.cleanup(self, keep, pts_dir)
+
+	for mover in self.per_mover_files_d.keys():
+	    self.per_mover_files_d[mover].cleanup(keep, pts_dir)
 
 
 class SgGnuFile(enstore_files.EnFile):
@@ -672,7 +768,8 @@ class SgGnuFile(enstore_files.EnFile):
 	    plot_command = plot_command[0:-1]
 	self.openfile.write("set output '"+outfile+"\n"+ \
 			    "set terminal postscript color solid\n"+ \
-			    "set title 'Pending->Active Jobs By Storage Group "+plot_time()+"'\n"+ \
+			    "set title 'Pending->Active Jobs By Storage Group "+\
+			    plot_time()+"'\n"+ \
 			    "set xlabel 'Date'\n"+ \
 			    "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 			    "set xdata time\n"+ \
