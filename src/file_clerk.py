@@ -130,7 +130,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # change the delete state element in the dictionary
     # this method is for private use only
-    def set_deleted_priv(self, bfid, deleted):
+    def set_deleted_priv(self, bfid, deleted, restore_dir="no"):
      try:
         # look up in our dictionary the request bit field id
         try:
@@ -142,6 +142,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"set_deleted "+repr(status))
             return status, None, None
         
+
 	if string.find(string.lower(deleted),'y') !=-1 or \
 	   string.find(string.lower(deleted),'Y') !=-1:
 	    deleted = "yes"
@@ -161,18 +162,29 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,'set_deleted_priv '+repr(status))
             return status, None, None
             
-        # mod the delete state
-        record["deleted"] = deleted
-
 	if deleted == "no":
 	    # restore pnfs entry
 	    import pnfs
 	    map = pnfs.Pnfs(record["pnfs_mapname"])
-	    map.restore_from_volmap()
+	    status = map.restore_from_volmap(restore_dir)
 	    del map
+	    if status[0] != e_errors.OK:
+		Trace.log(e_errors.ERROR, 
+			  "restore_from_volmap failed. Status: "+\
+			  repr(status))
+		return status, None, None 
+
+        # mod the delete state
+        record["deleted"] = deleted
+
         # become a client of the volume clerk and decrement the non-del files on the volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         vticket = vcc.decr_file_count(record['external_label'],decr_count)
+	status = vticket["status"]
+	if status[0] != e_errors.OK: 
+	    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: "+\
+		      repr(status))
+	    return status, None, None 
 
         # record our changes
         dict[bfid] = record ## was deepcopy
@@ -203,6 +215,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             key="bfid"
             bfid = ticket[key]
+            key="deleted"
+            deleted = ticket[key]
+	    key="restore_dir"
+	    restore_dir = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
@@ -222,7 +238,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"set_deleted "+repr(ticket["status"]))
             return
 
-	status, fc, vc = self.set_deleted_priv(bfid, deleted)
+	status, fc, vc = self.set_deleted_priv(bfid, deleted, restore_dir)
 	ticket["status"] = status
 	if fc: ticket["fc"] = fc
 	if vc: ticket["vc"] = fc
@@ -246,6 +262,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             key="file_name"
             fname = ticket[key]
+            key = "restore_dir"
+	    restore_dir = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
@@ -277,8 +295,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
             Trace.trace(10,"restore_file "+repr(ticket["status"]))
-	    
-	status, fc, vc = self.set_deleted_priv(bfid, "no")
+
+	status, fc, vc = self.set_deleted_priv(bfid, "no", restore_dir)
 	ticket["status"] = status
 	if fc: ticket["fc"] = fc
 	if vc: ticket["vc"] = fc
@@ -501,6 +519,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    set_deleted = ticket[key]
 	    key = "restore"
 	    restore_volmap = ticket[key]
+	    key = "restore_dir"
+	    restore_dir = ticket["key"]
+
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
@@ -521,20 +542,25 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    # restore pnfs entry
 	    import pnfs
 	    map = pnfs.Pnfs(record["pnfs_mapname"])
-	    map.restore_from_volmap()
+	    status = map.restore_from_volmap(restore_dir)
 	    del map
+	    if status[0] != e_errors.OK:
+		ticket["status"] = status
+		self.reply_to_caller(ticket)
+		Trace.log(e_errors.ERROR,'rename_volume failed '+repr(ticket))
+		return
 	dict[bfid] = record ## was deepcopy
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'rename_volume '+repr(ticket))
+        Trace.log(e_errors.INFO,'volume renamed for '+repr(ticket))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         Trace.log(e_errors.INFO, repr(ticket))
+         Trace.log(e_errors.ERROR, repr(ticket))
          self.reply_to_caller(ticket)
          Trace.trace(10,"bfid_info "+repr(ticket["status"]))
          return

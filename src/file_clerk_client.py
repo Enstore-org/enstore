@@ -175,25 +175,29 @@ class FileClient(generic_client.GenericClient, \
                        "bfid" : self.bfid } )
         return r
 
-    def set_deleted(self,deleted):
-        r = self.send({"work"   : "set_deleted",
-                       "bfid"   : self.bfid,
-                       "deleted": deleted} )
+    def set_deleted(self, deleted, restore_dir="no"):
+        r = self.send({"work"        : "set_deleted",
+                       "bfid"        : self.bfid,
+                       "deleted"     : deleted,
+		       "restore_dir" : restore_dir } )
         return r
 
     # rename volume and volume map
-    def rename_volume(self, bfid, external_label, set_deleted, restore_vm):
+    def rename_volume(self, bfid, external_label, 
+		      set_deleted, restore_vm, restore_dir):
         r = self.send({"work"           : "rename_volume",
                        "bfid"           : bfid,
 		       "external_label" : external_label,
 		       "set_deleted"    : set_deleted,
-		       "restore"        : restore_vm} )
+		       "restore"        : restore_vm,
+		       "restore_dir"    : restore_dir } )
 	return r
 
     # rename volume and volume map
-    def restore(self, file_name):
+    def restore(self, file_name, restore_dir="no"):
         r = self.send({"work"           : "restore_file",
-                       "file_name"      : file_name} )
+                       "file_name"      : file_name,
+		       "restore_dir"    : restore_dir } )
 	return r
 
     # get volume map name for given bfid
@@ -224,7 +228,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup", "restore="]
+        return self.client_options()+["bfids","bfid=","deleted=","tape_list=","backup", "restore=", "r"]
 
 
 if __name__ == "__main__" :
@@ -249,7 +253,12 @@ if __name__ == "__main__" :
         ticket = fcc.stop_backup()
 
     elif intf.deleted and intf.bfid:
-        ticket = fcc.set_deleted(intf.deleted)
+	try:
+	    if intf.restore_dir: dir ="yes"
+	except AttributeError:
+	    dir = "no"
+	print "DIR",dir
+        ticket = fcc.set_deleted(intf.deleted, dir)
         Trace.trace(13, repr(ticket))
 
     elif intf.bfids:
@@ -268,10 +277,16 @@ if __name__ == "__main__" :
 	    print repr(ticket['fc'])
 	    print repr(ticket['vc'])
     elif intf.restore:
+	try:
+	    if intf.restore_dir: dir="yes"
+	except AttributeError:
+	    dir = "no"
 	print "file",intf.file 
-        ticket = fcc.restore(intf.file)
+        ticket = fcc.restore(intf.file, dir)
     else:
 	intf.print_help()
         sys.exit(0)
 
     fcc.check_ticket(ticket)
+
+

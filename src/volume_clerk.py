@@ -68,9 +68,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
 	 # rename map files
 	 os.rename(old_vm_dir, new_vm_dir)
+	 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%\
+		   (old_vm_dir, new_vm_dir))
 	 # replace file clerk database entries
 	 for bfid in cur_rec['bfids']:
-	     ret = fcc.rename_volume(bfid, new_label, set_deleted, restore)
+	     ret = fcc.rename_volume(bfid, new_label, 
+				     set_deleted, restore, "yes")
+	     if ret["status"][0] == e_errors.OK:
+		 print "RET", ret
+		 
 	 # create new record in the database
 	 dict[new_label] = cur_rec
 	 # remove current record from the database

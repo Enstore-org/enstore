@@ -767,8 +767,45 @@ class Pnfs:
             Trace.trace(11,'changing to roor.root ownership')
             os.chown(self.volume_file,0,0)   # make the owner root.root
 
+    # create a directory
+    def make_dir(self, dir_path):
+      try:	
+	if os.path.exists(dir_path) == 0:
+	    dir = ""
+	    dir_elements = string.split(dir_path,'/')
+	    for element in dir_elements:
+		dir=dir+'/'+element
+		#Trace.log(e_errors.INFO, dir)
+		if os.path.exists(dir) == 0:
+		    # try to make the directory - just bomb out if we fail
+		    #   since we probably require user intervention to fix
+		    dir = string.replace(dir,"//","/")
+		    Trace.trace(11,'dir='+repr(dir)+" path="+repr(dir_path))
+		    os.mkdir(dir)
+		    os.chmod(dir,0755)
+		    return e_errors.OK, None
+      except:
+	  return str(sys.exc_info()[0]), str(sys.exc_info()[1])
+
+
+
+
+
     # retore the original entry based on info from the duplicate
-    def restore_from_volmap(self):
+    def restore_from_volmap(self, restore_dir):
+      try:
+	# check if directory exists
+	(dir,file) = os.path.split(self.origname)
+	if os.path.exists(dir) == 0:  # directory does not exist
+	    if restore_dir == "yes":
+		status = self.make_dir(dir)
+	    else:
+		status = "ENOENT", None
+	    if status[0] != e_errors.OK:
+		Trace.log(e_errors.INFO,
+			  "restore_from_volmap: directory %s does not exist"%\
+			  dir)
+		return status
         # create the original entry and set its size
         orig = Pnfs(self.origname)
         orig.touch()
@@ -781,6 +818,14 @@ class Pnfs:
             for e in range(0,len(inlayer)):
                 value=value+inlayer[e]
                 orig.writelayer(layer,value)
+	Trace.log(e_errors.INFO, 
+		  "file %s restored from volmap"%self.origname)
+	return e_errors.OK, None
+      except:
+	  Trace.log(e_errors.ERROR,
+		    "restore_from_volmap failed for %s with %s %s"%\
+		    (self.origname, str(sys.exc_info()[0]), str(sys.exc_info()[1])))
+	  return str(sys.exc_info()[0]), str(sys.exc_info()[1])
 
 
 ##############################################################################
@@ -863,7 +908,7 @@ if __name__ == "__main__":
 
     elif intf.restore:
         p=Pnfs(intf.file)
-        p.restore_from_volmap()
+        p.restore_from_volmap("no")
 
     elif intf.test:
 

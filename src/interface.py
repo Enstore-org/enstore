@@ -273,6 +273,8 @@ class Interface:
             elif opt == "--restore" :
                 self.restore = 1
 		self.file = value
+            elif opt == "--r" :
+                self.restore_dir = 1
             elif opt == "--all" :
                 self.all = 1
             elif opt == "--force" :
