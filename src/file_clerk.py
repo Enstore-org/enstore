@@ -514,6 +514,56 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      msg="     label            bfid       size        location_cookie delflag original_name\n"
      callback.write_tcp_raw(self.data_socket, msg)
      # now get a cursor so we can loop on the database quickly:
+     c = self.dict.inx['external_label'].cursor()
+     key, pkey = c.set(external_label)
+
+     while key:
+         value = self.dict[pkey]
+         if value.has_key('deleted'):
+             if value['deleted']=="yes":
+                 deleted = "deleted"
+             else:
+                 deleted = " active"
+         else:
+             deleted = "unknown"
+         if not value.has_key('pnfs_name0'):
+             value['pnfs_name0'] = "unknown"
+         msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+                                                      value['size'],value['location_cookie'],
+                                                      deleted,value['pnfs_name0'])
+         callback.write_tcp_raw(self.data_socket, msg)
+         key,pkey = c.nextDup()
+     c.close()
+     callback.write_tcp_raw(self.data_socket, "")
+     self.data_socket.close()
+     callback.write_tcp_obj(self.control_socket,ticket)
+     self.control_socket.close()
+     return
+
+    # This is a backup for previous implementation
+
+    def tape_list2(self,ticket):
+     # everything is based on external_label - make sure we have this
+     try:
+         key="external_label"
+         external_label = ticket[key]
+         ticket["status"] = (e_errors.OK, None)
+         self.reply_to_caller(ticket)
+     except KeyError:
+         ticket["status"] = (e_errors.KEYERROR,"File Clerk: %s key is missing"%(key,))
+         Trace.log(e_errors.INFO, "%s"%(ticket,))
+         self.reply_to_caller(ticket)
+         Trace.trace(10,"tape_list %s"%(ticket["status"],))
+         return
+
+     if self.fork() != 0:
+         return
+     # get a user callback
+     self.get_user_sockets(ticket)
+     callback.write_tcp_obj(self.data_socket,ticket)
+     msg="     label            bfid       size        location_cookie delflag original_name\n"
+     callback.write_tcp_raw(self.data_socket, msg)
+     # now get a cursor so we can loop on the database quickly:
      self.dict.cursor("open")
      key,value=self.dict.cursor("first")
      while key:
@@ -634,7 +684,7 @@ if __name__ == "__main__":
         jouHome = dbHome
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    fc.dict = db.DbTable("file", dbHome, jouHome, [])
+    fc.dict = db.DbTable("file", dbHome, jouHome, ['external_label'])
     Trace.log(e_errors.INFO,"hurrah, file database is open")
 
     while 1:
