@@ -149,6 +149,10 @@ class Interface:
                 self.vol = value
             elif opt == "--newlib" :
                 self.newlib = 1
+            elif opt == "--rdovol" :
+                self.rdovol = 1
+            elif opt == "--noavol" :
+                self.noavol = 1
             elif opt == "--addvol" :
                 self.addvol = 1
             elif opt == "--delvol" :

@@ -318,6 +318,8 @@ class VolumeClerkClientInterface(interface.Interface):
         self.addvol = 0
         self.delvol = 0
         self.newlib = 0
+        self.rdovol = 0
+        self.noavol = 0
 	self.verbose = 0
 	self.got_server_verbose = 0
         interface.Interface.__init__(self)
@@ -331,7 +333,7 @@ class VolumeClerkClientInterface(interface.Interface):
         Trace.trace(20,'{}options')
         return self.config_options() + self.verbose_options()+\
                ["clrvol", "backup"] +\
-	       ["vols","nextvol","vol=","addvol","delvol","newlib" ] +\
+	       ["vols","nextvol","vol=","addvol","delvol","newlib","rdovol","noavol"] +\
                self.alive_options()+self.help_options()
 
     # parse the options like normal but make sure we have necessary params
@@ -354,6 +356,14 @@ class VolumeClerkClientInterface(interface.Interface):
             if len(self.args) < 1:
                 self.print_clr_inhibit_args()
                 sys.exit(1)
+        elif self.rdovol:
+            if len(self.args) < 1:
+                self.print_set_system_readonly_args()
+                sys.exit(1)
+        elif self.noavol:
+            if len(self.args) < 1:
+                self.print_set_system_noaccess_args()
+                sys.exit(1)
         elif self.newlib:
             if len(self.args) < 2:
                 self.print_new_library_args()
@@ -365,10 +375,20 @@ class VolumeClerkClientInterface(interface.Interface):
         Trace.trace(20,'{}print_clr_inhibit_args')
         generic_cs.enprint("   clr_inhibit arguments: volume_name")
 
+    # print rdovol arguments
+    def print_set_system_readonly_args(self):
+        Trace.trace(20,'{}print_set_system_readonly_args')
+        generic_cs.enprint("   rdovol arguments: volume_name")
+
+    # print noavol arguments
+    def print_set_system_noaccess_args(self):
+        Trace.trace(20,'{}print_set_system_noaccess_args')
+        generic_cs.enprint("   noavol arguments: volume_name")
+
     # print new library arguments
     def print_new_library_args(self):
         Trace.trace(20,'{}print_new_library_args')
-        generic_cs.enprint("   new_library arguments: volume_name new_library_name")
+        generic_cs.enprint("   newlib arguments: volume_name new_library_name")
 
     # print addvol arguments
     def print_addvol_args(self):
@@ -388,6 +408,8 @@ class VolumeClerkClientInterface(interface.Interface):
         self.print_addvol_args()
         self.print_delvol_args()
         self.print_clr_inhibit_args()
+        self.print_set_system_readonly_args()
+        self.print_set_system_noaccess_args()
         self.print_new_library_args()
         Trace.trace(16,'}print_help')
 
@@ -447,6 +469,12 @@ if __name__ == "__main__":
 	msg_id = generic_cs.CLIENT
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
+	msg_id = generic_cs.CLIENT
+    elif intf.rdovol:
+        ticket = vcc.set_system_readonly(intf.args[0])  # name of this volume
+	msg_id = generic_cs.CLIENT
+    elif intf.noavol:
+        ticket = vcc.set_system_noaccess(intf.args[0])  # name of this volume
 	msg_id = generic_cs.CLIENT
 
     vcc.check_ticket(ticket, msg_id)
