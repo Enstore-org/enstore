@@ -127,11 +127,6 @@ d0ensrv3 for now.
 
     </ul>
 
-<p>
-<li> There is a local mammoth-1 tape drive that allows administrators
-to examine and/or copy tapes.  This allows detailed investigation
-outside the AML/2 and without affecting the users.
-
 
 <p>
 <li> Provide a netscape browser for examining Enstore's current state.
@@ -172,6 +167,11 @@ the other ones.
           for more details on controlling enstore.
 
     </ul>
+
+<p>
+<li> There is a local mammoth-1 tape drive that allows administrators
+to examine and/or copy tapes.  This allows detailed investigation
+outside the AML/2 and without affecting the users.
 
 </ul>
 
@@ -248,10 +248,31 @@ clear. If that doesn't work, type "cylines -r" and check for errors.
 type "/etc/rc.d/init.d/conserver stop" or "/etc/rc.d/init.d/conserver
 start".
 
+</ul>
 
 
+
+<br>
+<br>
+<br>
+Bootup
+<ul>
+
+<li> The console server software is started.
+
+<li> FTT makes /dev/rmt scsi devices.
+
+<li> The BMC watchdog is armed and deadman is started at real-time
+priority.
+
+<li> You need to start the window manager manually by logging in and
+typing "startx".
 
 </ul>
+
+
+
+
 <br>
 <br>
 <br>
@@ -268,9 +289,14 @@ console output to ttyS0. The kernel sends its output to ttyS0 by
 adding "append="console=ttyS0,19200 console=tty0 ..." to the kernel
 stanza.
 
+<li> The barracuda 9 GB hard drive needs to have several options
+enabled to operate efficiently.  Do this by adding a line to each
+stanza of lilo.conf: append=".... console=tty0
+ncr53c8xx=tags:4,sync:10,ultra:y"
+
 <li> The bios needs to be configured to use vt100 terminals, xon/xoff
 flow control, and ???.  Also lilo needs to have the following line
-ahead of all stanzas "serial=0,19200n8".
+once, ahead of all stanzas, "serial=0,19200n8".
 
 <li> Gettys need to be running on in order to open a tty session. The
 /etc/inittab has to have "c:12345:respawn:/sbin/mingetty ttyS0" line.
@@ -290,13 +316,17 @@ failed node. Procedures (tarit and loadit in /root) are in place to do
 this; One also needs the d0enrtbt floppy to create a replacement
 system disk.
 
+<li> Although a system disk backup is made daily, the user's home
+directory files are not copied. No one should be saving files on these
+nodes without copies in appropriately backed up machines.
+
 <li> The console server nodes can be booted without affecting normal
 enstore operations. You might get some errors from the cron jobs when
 you boot the node.
 
 <li> The xscreensaver (http://www.jwz.org/xscreensaver) software is
-running in the background in the background to help identify which the
-console server on its monitor.
+running in the background in the background. This software helps
+identify the console server on its monitor.
 
 </ul>
 
