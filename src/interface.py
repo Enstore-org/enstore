@@ -317,6 +317,8 @@ class Interface:
 	        self.output_file_family=value
             elif opt == "--mail_node":
 	        self.mail_node=value
+            elif opt == "--alarm" :
+                self.alarm = 1
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
