@@ -1,10 +1,30 @@
-export PYTHON_DIR=/usr/local
+#!/bin/sh
 
-# cd ~bakken/enstore
-export ENSTORE_DIR=`pwd`
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming and ability to use check for not set
 
-. ups/setup.sh
+if [ -z "${ENSTORE_DIR-}" ] ; then
+  echo "Setting up enstore"
+  place=`pwd`
+  cd ~bakken/enstore
+  setup -r `pwd` enstore
+  if [ $? -ne 0 ] ; then
+    export ENSTORE_DIR=`pwd`
+    . ups/setup.sh
+  fi
+  cd $place
+fi
+
+if [ -z "${PYTHON_DIR-}" ] ; then
+  echo "Setting up python"
+  setup python
+  if [ $? -ne 0 ] ; then
+    export PYTHON_DIR=/usr/local
+  fi
+fi
+
 
 export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
 export ENSTORE_CONFIG_PORT=7510
-export ENSTORE_CONFIG_HOST=localhost
+export ENSTORE_CONFIG_HOST=pcfarm4.fnal.gov
+
