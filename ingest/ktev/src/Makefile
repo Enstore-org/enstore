@@ -29,10 +29,9 @@ $(LIB_OBJS): $(LIB_SRC) $(KTEV_DCAP_API_DIR)/inc/ktevapi.h
 	$(CC) $(CFLAGS) $(INC) -c $(LIB_SRC)
 
 install:
-	mv $(KTEV_DCAP_API_DIR)/src/libktev.* $(KTEV_DCAP_API_DIR)/lib
-	mv $(KTEV_DCAP_API_DIR)/src/ktev_main $(KTEV_DCAP_API_DIR)/test
-	rm $(KTEV_DCAP_API_DIR)/src/*.o
+	mv libktev.* ../lib
+	mv ktev_main ../test
+	rm *.o
 
 clean:
-	rm -f $(KTEV_DCAP_API_DIR)/test/* $(KTEV_DCAP_API_DIR)/src/*.o $(KTEV_DCAP_API_DIR)/src/*.so
-	rm -f $(KTEV_DCAP_API_DIR)/src/*.a $(KTEV_DCAP_API_DIR)/lib/*
+	rm -f ../test/* *.o *.so *.a ../lib/*
