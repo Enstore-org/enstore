@@ -1126,7 +1126,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 v_info[4] + blank_vol,
                 v_info[5] + written_vol,
                 v_info[6] + deleted_vol,
-                v_info[7] + total,
+                v_info[7] + total_size,
                 v_info[8] + active,
                 v_info[9] + deleted,
                 v_info[10] + unknown)
@@ -1139,7 +1139,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 blank_vol,
                 written_vol,
                 deleted_vol,
-                vv['capacity_bytes'] - vv['remaining_bytes'],
+                total_size,
                 active,
                 deleted,
                 unknown)
