@@ -50,17 +50,17 @@ can in some cases trigger an exception, which is very hard to debug,
 since the Python traceback doesn't point to "Trace"  */
 
 static char * 
-PyObject_ReprAsString_Safe(PyObject *obj)
+PyObject_StrAsString_Safe(PyObject *obj)
 {
     PyObject *err; PyObject *rep; 
     char *r;
 
     err = PyErr_Occurred(); /*we are tracing  an exception */
 
-    rep = PyObject_Repr(obj);
+    rep = PyObject_Str(obj);
     if (PyErr_Occurred() && !err){  /* a new error just occurred */
 	PyErr_Clear();
-	return "<repr failed>";
+	return "<unprintable>";
     }
     if (!rep || !PyString_Check(rep)){
 	return "NULL";
@@ -87,7 +87,7 @@ raise_exception(  char		*method_name )
 void
 print_type( PyObject *obj )
 {
-    printf("%s\n", PyObject_ReprAsString_Safe(PyObject_Type(obj)));
+    printf("%s\n", PyObject_StrAsString_Safe(PyObject_Type(obj)));
 }
 
 /******************************************************************************
@@ -278,9 +278,8 @@ code_args_as_string(PyFrameObject *frame,
     nargs = code->co_argcount;
     for (i=0;i<nargs;++i){
 	
-        varname = PyObject_ReprAsString_Safe(PyTuple_GetItem(code->co_varnames,i));
-	value = PyObject_ReprAsString_Safe(frame->f_localsplus[i]);
-        wlen = strlen(varname)+strlen(value)+1;
+	value = PyObject_StrAsString_Safe(frame->f_localsplus[i]);
+        wlen = strlen(value)+1;
 
         if (pos)
             wlen+=2; /* space for comma and space */
@@ -289,8 +288,6 @@ code_args_as_string(PyFrameObject *frame,
             if (pos){
                 strcat(buf,", ");
             }
-            strcat(buf,varname);
-            strcat(buf,"=");
             strcat(buf,value);
             pos+=wlen;
         } else {
@@ -332,6 +329,9 @@ get_msg(  PyObject	*args
 	char		*arg_event;
 	PyObject        *arg_frame;
 	PyObject	*arg_arg;
+	PyObject        *exc;
+	PyObject        *detail;
+	PyObject        *traceback;
 	PyFrameObject   *frame;
 	PyCodeObject	*code;
 	char            *function_name;
@@ -390,11 +390,13 @@ get_msg(  PyObject	*args
     case 'r':
 	sprintf(  msg, "ret  %.50s.%.50s %.500s", module_name, 
 		  function_name, 
-		  PyObject_ReprAsString_Safe(arg_arg));
+		  PyObject_StrAsString_Safe(arg_arg));
 	break;
     case 'e':
+	PyArg_ParseTuple(arg_arg,"OOO", &exc, &detail, &traceback);
 	sprintf(  msg, "exc  %.50s.%.50s at %.50s:%d", 
-		  module_name, function_name, source_file,line_no );
+		  PyObject_StrAsString_Safe(exc),
+		  PyObject_StrAsString_Safe(detail), source_file,line_no );
 	break;
 
     default:			/* must be 'l' as in "line" */
