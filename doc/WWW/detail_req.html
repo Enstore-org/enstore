@@ -1,68 +1,55 @@
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>DETAILED REQUIREMENTS</FONT></FONT></U></I></B></CENTER>
 <p>
-A series of Run II requirements were developed to evaluated HPSS as a possible
-MSS solution.  This section attempts to address the same requirements from
-Enstore's perspective.
+
+One of the outcomes of the April 98 HPSS workshop at Fermilab was an attempt
+by IBM to try and understand what Fermilab needed out of mass storage system
+and how/if HPSS could meet the requirements.  Numerous meetings took place in
+which IBM people (Otis Graf + Harry Hulen), CD people (primarily Don P), and
+CDF/D0 people tried to specify what Run II requirements are. The report from
+these meetings is "Functional Requirements for the Fermilab Run II Mass
+Storage System" and is available at
+<a href=http://www5.clearlake.ibm.com:6001/Fermilab/FermiReq5.html">http://www5.clearlake.ibm.com:6001/Fermilab/FermiReq5.html</a>.
+The work is by all the people who participated, but the actual writing was
+done by Otis Graf at IBM; and because of this certain HPSS biases and non
+Fermilab requirements remain.
+
+<p>
+
+A list of "shalls/musts" was extracted from the document - this
+resulted in the "100 Bullet List".  The goal of doing this was to try
+and see if the report could be distilled into a list that could be
+prioritized.  The numbers in parentheses you see in the paragraphs
+below correspond to order that "shall" was found in the original
+report.  Since 100 items is a large number to consider individually
+and to match other attempts at synthesis of the critical requirements
+for a mass storage system, the "100 Bullet List" was then reordered
+into 9 broad categories and this is what you will find below.
+
+<p>
+
+There are 2 clear IBM/HPSS biases that should be noted in the list, others
+probably exist as well:
+<menu>
+  <li> Requiring files to not span tapes would be desireable for our
+       applications, but VERY difficult for HPSS to meet.
+
+   <li> GUI interfaces/displays should be low priority; CLI interfaces are
+        the main interface and are needed at startup.
+</menu>
+
+<p>
+<p>
+This section attempts to address these same requirements from Enstore's
+perspective.
+<p>
+<p>
 
 <table>
 <tr>
-<td align=left valign=top><strong>Category </strong></td>
+<td align=left valign=top><strong>Category and Requirement</strong></td>
 <td align=left valign=top><strong>Enstore Remarks </strong></td>
 <td align=left valign=top><strong>Difficulty </strong></td>
 </tr>
-<tr><tr><tr>
-
-<!============================================================================= >
-<! NO CATEGORY YET >
-
-<tr><td align=left valign=top><strong>
-No Category
-</strong></td></tr>
-
-<tr><td align=left valign=top>
-(9) Evaluation of tape drives and associated media is still
-    ongoing. Therefore, the required tape cartridges (or cassettes), drives,
-    and robotic libraries have not yet been determined. These components will
-    be specified in a later version of the MSS requirements.
-</td><td align=left valign=top>
-Enstore is designed to be a layered product. It uses a ftt layer to access
-tapes and determine error counts and media capacity. New and unusual drives
-will require implementation in ftt and possibly changes in the mover.
-</td><td align=left valign=top>  Medium </td></tr>
-
-<tr><td align=left valign=top>
-(63) The MSS shall be scalable so as to provide the anticipated performance
-     required by the Fermilab Run II experiments.
-</td><td align=left valign=top>
-Enstore is based on distributed movers and as such is very scalable in data
-moving.  Bottlenecks will happen due to hardware limitations before the
-software hinders performance. Database contention is possible - this can be
-addressed by splitting them into several servers, but needs to be studied in detail.
-</td><td align=left valign=top>  Medium </td></tr>
-
-<tr><tr><tr>
-
-<!============================================================================= >
-<! Data Migration (HSM) >
-
-<tr><td align=left valign=top><strong>
-Data Migration (HSM)
-</strong></td></tr>
-
-<tr><td align=left valign=top>
-(12) The MSS shall provide the capability to build storage hierarchies
-     containing a list of storage resource classes together with associated
-     policies that shall be used to control data movement between those
-     resources (e..g., a storage hierarchy containing disk at the top level of
-     the hierarchy with tape at the second, lowest level; migration, purge and
-     stage policies that control when file data is moved between levels and
-     removed from the higher level)
-</td><td align=left valign=top>
-Enstore does not attempt to manage all levels of the storage
-hierarchies. Enstore can be used as a front end to products that do attempt to
-manage disks. A disk caching/buffer extension to Enstore is planned.
-</td><td align=left valign=top>Very difficult</td></tr>
-
 <tr><tr><tr>
 
 <!============================================================================= >
@@ -936,6 +923,59 @@ to be developed.
 This info is all available, utilities  for keeping and presenting it need
 to be developed.
 </td><td align=left valign=top>  Easy <td align=left valign=top></tr>
+
+<tr><tr><tr>
+
+<!============================================================================= >
+<! Data Migration (HSM) >
+
+<tr><td align=left valign=top><strong>
+Data Migration (HSM)
+</strong></td></tr>
+
+<tr><td align=left valign=top>
+(12) The MSS shall provide the capability to build storage hierarchies
+     containing a list of storage resource classes together with associated
+     policies that shall be used to control data movement between those
+     resources (e..g., a storage hierarchy containing disk at the top level of
+     the hierarchy with tape at the second, lowest level; migration, purge and
+     stage policies that control when file data is moved between levels and
+     removed from the higher level)
+</td><td align=left valign=top>
+Enstore does not attempt to manage all levels of the storage
+hierarchies. Enstore can be used as a front end to products that do attempt to
+manage disks. A disk caching/buffer extension to Enstore is planned.
+</td><td align=left valign=top>Very difficult</td></tr>
+
+<tr><tr><tr>
+
+<!============================================================================= >
+<! NO CATEGORY YET >
+
+<tr><td align=left valign=top><strong>
+No Category
+</strong></td></tr>
+
+<tr><td align=left valign=top>
+(9) Evaluation of tape drives and associated media is still
+    ongoing. Therefore, the required tape cartridges (or cassettes), drives,
+    and robotic libraries have not yet been determined. These components will
+    be specified in a later version of the MSS requirements.
+</td><td align=left valign=top>
+Enstore is designed to be a layered product. It uses a ftt layer to access
+tapes and determine error counts and media capacity. New and unusual drives
+will require implementation in ftt and possibly changes in the mover.
+</td><td align=left valign=top>  Medium </td></tr>
+
+<tr><td align=left valign=top>
+(63) The MSS shall be scalable so as to provide the anticipated performance
+     required by the Fermilab Run II experiments.
+</td><td align=left valign=top>
+Enstore is based on distributed movers and as such is very scalable in data
+moving.  Bottlenecks will happen due to hardware limitations before the
+software hinders performance. Database contention is possible - this can be
+addressed by splitting them into several servers, but needs to be studied in detail.
+</td><td align=left valign=top>  Medium </td></tr>
 
 <tr><tr><tr>
 
