@@ -241,6 +241,7 @@ ROOT_ERROR = "root-error"                    #alarm
 SAAG_STATUS = "saagstatus"                   #inquisitor
 SENDTO = "sendto"                            #mover
 SET_CRCS = "set-crcs"                        #file
+SET_COMMENT = "set-comment"                  #volume
 SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHOW = "show"                                #configuration, inquisitor, media
@@ -311,7 +312,7 @@ valid_option_list = [
     PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
+    SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG, SHOW, SHOWID, SIZE,
     SHOW_IGNORED_STORAGE_GROUPS, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,

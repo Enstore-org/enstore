@@ -259,17 +259,24 @@ class VolumeClerkClient(generic_client.GenericClient,
                     "label","avail.", "system_inhibit","user_inhibit",
                     "library","    volume_family")
                 for v in volumes["volumes"]:
-                    # if v['volume'] == 'huang006':
-                    #    pprint.pprint(v)
                     print "%-10s"%(v['volume'],),
                     print capacity_str(v['remaining_bytes']),
-                    print " (%-08s %08s) (%-08s %08s) %-012s %012s"%(
-                        v['system_inhibit'][0],v['system_inhibit'][1],
-                        v['user_inhibit'][0],v['user_inhibit'][1],
-                        v['library'],v['volume_family']),
+                    si0t = ''
+                    si1t = ''
                     if v.has_key('si_time'):
-                        print time.strftime("%y.%m.%d %H:%M:%S", time.localtime(v['si_time'][0])),
-                        print time.strftime("%y.%m.%d %H:%M:%S", time.localtime(v['si_time'][1]))
+                        if v['si_time'][0] > 0:
+                            si0t = time.strftime("%m%d-%H%M",
+                                time.localtime(v['si_time'][0]))
+                        if v['si_time'][1] > 0:
+                            si1t = time.strftime("%m%d-%H%M",
+                                time.localtime(v['si_time'][1]))
+                    print " (%-010s %9s %08s %9s) %-012s %012s"%(
+                        v['system_inhibit'][0], si0t,
+                        v['system_inhibit'][1], si1t,
+                        # v['user_inhibit'][0],v['user_inhibit'][1],
+                        v['library'],v['volume_family']),
+                    if v.has_key('comment'):
+                        print v['comment']
                     else:
                         print
         else:
@@ -460,6 +467,12 @@ class VolumeClerkClient(generic_client.GenericClient,
 
     def list_ignored_sg(self):
         ticket = {'work': 'list_ignored_sg'}
+        return self.send(ticket)
+
+    def set_comment(self, vol, comment):
+        ticket = {'work': 'set_comment',
+                  'vol': vol,
+                  'comment': comment}
         return self.send(ticket)
 
 """
@@ -704,6 +717,16 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
+        option.SET_COMMENT:{
+                        option.HELP_STRING:"set comment for a volume",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"comment",
+                        option.USER_LEVEL:option.ADMIN,
+                        option.EXTRA_VALUES:[{option.VALUE_NAME:"vol",
+                                          option.VALUE_LABEL:"volume_name",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED}]},
         option.SHOW_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
                       "show all ignored storage group",
                       option.VALUE_TYPE:option.INTEGER,
@@ -831,6 +854,10 @@ def do_work(intf):
                                    capacity_str(ticket['remaining_bytes']),
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
+    elif intf.set_comment: # set comment of vol
+        if len(sys.argv) != 4:
+            print "Error! usage: enstore %s --set-comment <comment> <vol>"%(sys.argv[0])
+        ticket = vcc.set_comment(intf.vol, intf.set_comment)
     elif intf.export: # volume export
         # check for correct syntax
         if len(sys.argv) != 3:	# wrong number of arguments

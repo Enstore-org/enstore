@@ -469,6 +469,40 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    # set_comment() -- set comment to a volume record
+
+    def set_comment(self, ticket):
+        try:
+            vol = ticket['vol']
+            comment = ticket['comment']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # comment will be truncked at 80 characters
+        if len(comment) > 80:
+            comment = comment[:80]
+        try:
+	    record = self.dict[vol]
+        except:
+            msg = "trying to set comment for non-existing volume %s"%(vol)
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        if comment:
+            record['comment'] = comment
+        elif record.has_key('comment'):
+            del record['comment']
+        self.dict[vol] = record
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
@@ -1501,8 +1535,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     for k in ["capacity_bytes","remaining_bytes", "system_inhibit",
                               "user_inhibit", "library", "volume_family", "non_del_files"]:
                         dict[k]=value[k]
-                        if value.has_key('si_time'):
-                            dict['si_time'] = value['si_time']
+                    if value.has_key('si_time'):
+                        dict['si_time'] = value['si_time']
+                    if value.has_key('comment'):
+                        dict['comment'] = value['comment']
                     if msg:
                         msg["volumes"].append(dict)
                     else:
