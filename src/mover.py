@@ -478,7 +478,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_read = 0L
         self.bytes_written = 0L
         self.volume_family = None 
-        self.volume_status = (['none', 'none'], ['none', 'none'])
         self.files = ('','')
         self.transfers_completed = 0
         self.transfers_failed = 0
@@ -672,7 +671,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         self.state = IDLE
         self.mode = None
-        self.volume_status = (['none', 'none'], ['none','none'])
         self.vol_info = {}
         self.update() 
 
@@ -1398,15 +1396,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
-        if self.current_volume:
-            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+        if self.current_volume: ####XXX CGW why do this, set_remaining returns volume info....
+            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))  
         else:
             Trace.log(e_errors.ERROR, "update_after_writing: volume=%s" % (self.current_volume,))
-        self.volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
-                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
         return 1
 
-    
     def malformed_ticket(self, ticket, expected_keys=None):
         msg = "Missing keys "
         if expected_keys is not None:
@@ -1529,7 +1524,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             now = time.time()
             if time.time() - self.state_change_time > 300:
                 self.unique_id = None
-                
+
+        if not self.vol_info:
+            volume_status = (['none', 'none'], ['none','none'])
+        else:
+            volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                             self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+            
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -1540,7 +1541,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "state": state_name(self.state),
             "status": status,
             "volume_family": self.volume_family,
-            "volume_status": self.volume_status,
+            "volume_status": volume_status,
             "operation": mode_name(self.mode),
             "error_source": error_source,
             "unique_id": self.unique_id,
