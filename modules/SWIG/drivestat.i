@@ -10,6 +10,7 @@
 #include <string.h>
 #include "drivestat.h"
 #include "ds_api.h"
+#include "ftt.h"
 
 int ds_print_report(void) {
    DS_REPORT *report;
@@ -86,7 +87,7 @@ DS_DESCRIPTOR *ds_alloc();
  *   translate ftt drive id                                              *
  *                                                                       *
  *************************************************************************/
-int ds_translate_ftt_drive_id(DS_DESCRIPTOR* ds_desc,ftt_stat_buf ftt_stat_buff);
+int ds_translate_ftt_drive_id(DS_DESCRIPTOR*,ftt_stat_buf);
 
 /*************************************************************************
  *                                                                       *
