@@ -321,23 +321,10 @@ def combine_dict(*dictionaries):
 
     return new
 
-# generate the full path name to the file
-def fullpath(filename):
-    if not filename:
-        return None, None, None, None
+#Make this shortcut so there is less to type.
+fullpath = enstore_functions2.fullpath
 
-    machine = hostaddr.gethostinfo()[0]
-
-    #Expand the path to the complete absolute path.
-    filename = os.path.expandvars(filename)
-    filename = os.path.expanduser(filename)
-    filename = os.path.abspath(filename)
-    filename = os.path.normpath(filename)
-
-    dirname, basename = os.path.split(filename)
-
-    return machine, filename, dirname, basename
-
+#Close all desriptors, but handle different types correctly.
 def close_descriptors(*fds):
 
     routes_to_close = {}
@@ -1353,18 +1340,24 @@ def outputfile_check(inputlist, outputlist, e):
             #Test case when used by a user and the file does not exist (as is
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
+
+                directory = os.path.dirname(outputlist[i])
+                
                 #Check for existance and write permissions to the directory.
-                if access_check(os.path.dirname(outputlist[i]), os.F_OK):
-                    if access_check(os.path.dirname(outputlist[i]), os.W_OK):
-                        outputlist.append(outputlist[i])
-                    else:
-                        raise EncpError(errno.EACCES,
-                                        os.path.dirname(outputlist[i]),
-                                        e_errors.USERERROR)
-                else:
-                    raise EncpError(errno.ENOENT,
-                                    os.path.dirname(outputlist[i]),
+                if not access_check(directory, os.F_OK):
+                    raise EncpError(errno.ENOENT, directory,
                                     e_errors.USERERROR)
+
+                if not os.path.isdir(directory):
+                    raise EncpError(errno.ENOTDIR, directory,
+                                    e_errors.USERERROR)
+                                        
+                if not access_check(directory, os.W_OK):
+                    raise EncpError(errno.EACCES, directory,
+                                    e_errors.USERERROR)
+
+                #Looks like the file is good.
+                outputlist.append(outputlist[i])
                 
             #File exists when run by a normal user.
             elif access_check(outputlist[i], os.F_OK) and not dcache:
@@ -5506,11 +5499,9 @@ class EncpInterface(option.Interface):
             # of their name.  Scan input files for /pnfs/ - all have to be the
             # same.  Pass check_name_only a python true value to skip file
             # existance/permission tests at this time.
-            if os.path.exists(fullname) and os.path.isdir(fullname):
-                p.append(pnfs.is_pnfs_path(fullname, check_name_only = 1))
-            else:
-                p.append(pnfs.is_pnfs_path(directory, check_name_only = 1))
-
+            
+            p.append(pnfs.is_pnfs_path(fullname, check_name_only = 1))
+            
         #Initialize some important values.
 
         #The p# variables are used as holders for testing if all input files
