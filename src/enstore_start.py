@@ -17,10 +17,12 @@ import os
 import string
 import errno
 import socket
+import pwd
 
 # enstore imports
 import setpath
 import e_errors
+import enstore_functions
 import enstore_functions2
 import udp_client
 import generic_client
@@ -61,6 +63,38 @@ def is_on_host(host):
 
     return 0
 
+#Return true if the system is in one of the production systems.
+def is_in_cluster():
+
+    #If we are on the configuration server host, check the config file
+    # directly.
+    if os.environ['ENSTORE_CONFIG_HOST'] in this_host():
+        kcs = enstore_functions.get_config_dict().get('known_config_servers')
+    #Any other system we need to check with the configuration server.
+    else:    
+        csc = get_csc()
+        
+        kcs = csc.get('known_config_servers', 3, 3)
+
+    #Simple loop to determine if the system is a production system.
+    for cluster in kcs.keys():
+        if cluster == socket.gethostname()[:len(cluster)]:
+            return 1
+
+    return 0
+
+#If the system is in a production cluster make in run as user enstore
+# if possible.
+def check_user():
+
+    if is_in_cluster():
+        if os.getegid() == 0:
+            os.execvp("su",
+                  string.split("su enstore -c \"%s\"" % string.join(sys.argv)))
+        if pwd.getpwuid(os.getuid()) != "enstore":
+            print "You should run this as user enstore."
+            sys.exit(1)
+            
 def check_csc(csc):
 
     info = csc.get("configuration_server", 5, 3)
@@ -221,9 +255,11 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         }
 
 def do_work(intf):
-    
-    csc = get_csc()
 
+    check_user()
+
+    csc = get_csc()
+    
     if intf.should_start("configuration_server"):
         check_csc(csc)
 
