@@ -316,7 +316,7 @@ trace_init_trc( const char	*key_file_spec )
 	  create/modify */
     trc_sem_get_s.sem_num = 0;  trc_sem_put_s.sem_num = 0; /* 1st and only sem */
     trc_sem_get_s.sem_op  = -1; trc_sem_put_s.sem_op  = 1; /* get's dec, put's inc */
-    trc_sem_get_s.sem_flg = 0;  trc_sem_put_s.sem_flg = SEM_UNDO;/* try to be robust against kills */
+    trc_sem_get_s.sem_flg = 0;  trc_sem_put_s.sem_flg = 0; /*SEM_UNDO*/ /* try to be robust against kills */
     sem_chk_s = trc_sem_get_s;  sem_chk_s.sem_num = 1; /* too big, to causes EFBIG below */
     /* AFTER THIS FOR CODE BLOCK,
        trc_sem_id, trc_cntl_sp, and trc_ent_sp will be set correctly */
