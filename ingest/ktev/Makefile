@@ -13,15 +13,16 @@ MV    = mv
 
 CFLAGS = -g
 INC = -I$(DCAP_DIR)/include -I.
-LIBS = -L$(DCAP_DIR)/lib -L. -ldcap libktev.a
+#LIBS = -L$(DCAP_DIR)/lib -L. -ldcap libktev.a
+LIBS = libktev.a libdcap.a
 LIB_SRC = ktevapi.c
 LIB_OBJS = ${LIB_SRC:.c=.o}
 
 
-#ktev_main: libktev.a ktev_main.o
-#	$(CC) $(LIBS) -o $@ ktev_main.o libktev.a libdcap.a
-ktev_main: libktev.so ktev_main.o
-	cc -o $@ ktev_main.o $(LIBS) -lc 
+ktev_main: libktev.a ktev_main.o
+	$(CC) -o $@ ktev_main.o $(LIBS)
+#ktev_main: libktev.so ktev_main.o
+#	cc -o $@ ktev_main.o $(LIBS) -lc 
 
 ktev_main.o: ktev_main.c $(LIB_SRC)
 	 $(CC) $(CFLAGS) $(INC) -c ktev_main.c
