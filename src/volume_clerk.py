@@ -1083,6 +1083,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 							       vol_fam)
         ticket["status"] = (e_errors.NOVOLUME, msg)
         Trace.alarm(e_errors.ERROR,msg)
+        # this is important so turn the enstore ball red
+        if not library+'.'+sg in self.ignored_sg:
+            ic = inquisitor_client.Inquisitor(self.csc)
+            ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
+            # release ic
+            del ic
         self.reply_to_caller(ticket)
         return
 
