@@ -40,7 +40,10 @@ def format_time(theTime, sep=" "):
 def strip_file_dir(str):
     ind = string.rfind(str, "/")
     if not ind == -1:
-	str = str[(ind+1):]
+	str2 = str[(ind+1):]
+    else:
+	str2 = str
+    return str2
 
 # remove the string .fnal.gov if it is in the input string
 def strip_node(str):

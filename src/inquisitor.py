@@ -38,6 +38,7 @@ import e_errors
 import enstore_files
 import enstore_plots
 import enstore_functions
+import enstore_constants
 import www_server
 import udp_client
 import safe_dict
@@ -313,7 +314,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # first get a list of all of the log files and their sizes
         if self.logc.log_dir:
 	    # given a directory get a list of the files and their sizes
-	    logfiles = get_file_list(self.logc.log_dir, enstore_files.LOG_PREFIX)
+	    logfiles = get_file_list(self.logc.log_dir, enstore_constants.LOG_PREFIX)
             if logfiles:
                 # create the new log listing file.  create it with a different
                 # extension than the real one, we will mv the new one to the
@@ -607,6 +608,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # update any encp information from the log files
     def update_encp(self, key, time):
         encplines = []
+	encplines2 = []
+	date = ''
+	date2 = ''
 	parsed_file = "%s%s"%(enstore_files.default_dir, "parsed")
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
@@ -624,7 +628,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             encpfile = enstore_files.EnDataFile(logfile, parsed_file+".encp", search_text,
 						"", "|sort -r")
             encpfile.open('r')
-            encplines = encpfile.read(self.max_encp_lines)
+            date, encplines = encpfile.read(self.max_encp_lines)
             encpfile.close()
 	
 	i = len(encplines)
@@ -643,10 +647,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        encpfile2 = enstore_files.EnDataFile(logfile2, parsed_file+".encp2",
 						     search_text, "", "|sort -r")
 	        encpfile2.open('r')
-	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
+	        date2, encplines2 = encpfile2.read(self.max_encp_lines-i)
 	        encpfile2.close()
 	# now we have some info, output it
-	self.encpfile.write(encplines)
+	self.encpfile.write(date, encplines, date2, encplines2)
 
     # get the information about the blocksizes
     def update_blocksizes(self, key, time):
@@ -1031,7 +1035,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line.
-	mountfile = enstore_files.EnMountDataFile(enstore_files.LOG_PREFIX+\
+	mountfile = enstore_files.EnMountDataFile(enstore_constants.LOG_PREFIX+\
 						  "* /dev/null", ofn, 
 	                                "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
                                                        Trace.MSG_MC_LOAD_DONE),
@@ -1079,7 +1083,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line.
-	encpfile = enstore_files.EnEncpDataFile(enstore_files.LOG_PREFIX+\
+	encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
 						"* /dev/null",
 						ofn,
 						"-e %s"%(Trace.MSG_ENCP_XFER,),

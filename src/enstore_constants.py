@@ -9,6 +9,7 @@ MLAT = "mlat"
 MPH = "mph"
 MPD = "mpd_total"
 LOG = ".log"
+LOG_PREFIX = "LOG-"
 
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)

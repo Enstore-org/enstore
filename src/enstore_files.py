@@ -22,7 +22,6 @@ FALSE = 0
 TMP = ".tmp"
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
-LOG_PREFIX = "LOG-"
 
 # ENCP line pieces from log file
 ETIME = 0
@@ -181,25 +180,29 @@ class HTMLEncpStatusFile(EnStatusFile):
 	EnStatusFile.__init__(self, file, system_tag)
 	self.refresh = refresh
 
+    def get_lines(self, day, lines, formatted_lines):
+	for line in lines:
+	    einfo = enstore_status.parse_encp_line(line)
+	    if len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
+		formatted_lines.append(["%s %s"%(day, einfo[ETIME]), einfo[ENODE], 
+					einfo[EUSER], einfo[EBYTES], einfo[EDEV], 
+					einfo[EXRATE], einfo[EURATE]])
+	    elif len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.ERROR]:
+		# remove the MSG_TYPE=XXXXX from the output text
+		txt = string.split(einfo[ETEXT], Trace.MSG_TYPE)
+		formatted_lines.append(["%s %s"%(day, einfo[ETIME]), einfo[ENODE], 
+					einfo[EUSER], txt[0]])
+
     # output the encp info
-    def write(self, lines):
+    def write(self, day1, lines1, day2, lines2):
         if self.openfile:
 	    # break up each line into it's component parts and format it
 	    eline = []
-	    for line in lines:
-		einfo = enstore_status.parse_encp_line(line)
-		if len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
-		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], 
-				  einfo[EBYTES], einfo[EDEV], einfo[EXRATE], 
-				  einfo[EURATE]])
-		elif len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.ERROR]:
-		    # remove the MSG_TYPE=XXXXX from the output text
-		    txt = string.split(einfo[ETEXT], Trace.MSG_TYPE)
-		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], txt[0]])
-	    else:
-		doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
-						    system_tag=self.system_tag)
-		doc.body(eline)
+	    self.get_lines(day1, lines1, eline)
+	    self.get_lines(day2, lines2, eline)
+	    doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
+						system_tag=self.system_tag)
+	    doc.body(eline)
             self.openfile.write(str(doc))
 
 class HTMLLogFile(EnFile):
@@ -254,6 +257,8 @@ class EnDataFile(EnFile):
 	    cdcmd = "cd %s;"%(indir,)
 	try:
 	    os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
+	    tmp = enstore_functions.strip_file_dir(inFile)
+	    self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
 	except:
 	    self.file_name = ""
             exc, msg, tb=sys.exc_info()
@@ -266,18 +271,11 @@ class EnDataFile(EnFile):
             while i < max_lines:
                 l = self.openfile.readline()
                 if l:
-		    # THIS IS A KLUDGE - do not use any error lines which have a status=ok in 
-		    # them.  remove the following if block and this comment to get rid of the
-		    # kludge.
-		    if not string.find(l, " E ENCP ") == -1 and \
-		       not string.find(l, "STATUS=ok") == -1:
-			continue
-		    #
                     self.lines.append(l)
                     i = i + 1
                 else:
                     break
-	return self.lines
+	return self.date, self.lines
 
     # read in the given file and return a list of lines that are between a
     # given start and end time
@@ -308,7 +306,7 @@ class EnDataFile(EnFile):
 	# split the line into the date/time and all the rest
 	datetime, rest = string.split(line, None, 1)
 	# remove the beginning LOG_PREFIX
-	l = string.replace(datetime, LOG_PREFIX,"")
+	l = string.replace(datetime, enstore_constants.LOG_PREFIX,"")
 	# now see if the date/time is between the start time and the end time
 	time_ok = TRUE
 	if start_time:
@@ -333,7 +331,7 @@ class EnMountDataFile(EnDataFile):
 
 	# parse out the file directory , a remnant from the grep in the time 
 	# field
-	enstore_functions.strip_file_dir(etime)
+	etime = enstore_functions.strip_file_dir(etime)
 
         # pull out any dictionaries from the rest of the message
         msg_dicts = enstore_status.get_dict(erest)
@@ -347,8 +345,8 @@ class EnMountDataFile(EnDataFile):
 	    minfo = self.parse_line(line)
             if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
                 self.data.append([minfo[MDEV], string.replace(minfo[ETIME],
-                                                              LOG_PREFIX, ""),
-                                  minfo[MSTART]])
+                                                              enstore_constants.LOG_PREFIX,
+							      ""), minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 
@@ -360,7 +358,7 @@ class EnEncpDataFile(EnDataFile):
             return []
         # the time info may contain the file directory which we must
         # strip off
-        enstore_functions.strip_file_dir(einfo[ETIME])
+        einfo[ETIME] = enstore_functions.strip_file_dir(einfo[ETIME])
         return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS], einfo[ETYPE]]
 
     # pull out the plottable data from each line
@@ -368,8 +366,8 @@ class EnEncpDataFile(EnDataFile):
 	for line in self.lines:
 	    einfo = self.parse_line(line)
 	    if einfo and (not mcs or enstore_status.mc_in_list(einfo[2], mcs)):
-	        self.data.append([string.replace(einfo[0], LOG_PREFIX, ""), \
-	                         einfo[1], einfo[3]])
+	        self.data.append([string.replace(einfo[0], enstore_constants.LOG_PREFIX,
+						 ""), einfo[1], einfo[3]])
 
 class HtmlAlarmFile(EnFile):
 

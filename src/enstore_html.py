@@ -760,8 +760,6 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		    tr.append(HTMLgen.TD(item))
 	    else:
 		# this row is an error row
-
-                    
 		tr.append(HTMLgen.TD(row[1]))
 		tr.append(HTMLgen.TD(row[2]))
 		num_errors = num_errors + 1
