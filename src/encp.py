@@ -2121,6 +2121,11 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 ############################################################################
 
 def submit_one_request(ticket):
+
+    #These two lines of code are for get retries to work properly.
+    if ticket.get('method', None) != None:
+        ticket['method'] = "read_tape_start"
+    
     ##start of resubmit block
     Trace.trace(17,"submiting: %s"%(ticket,))
 
@@ -2148,7 +2153,7 @@ def submit_one_request(ticket):
         responce_ticket = lmc.write_to_hsm(ticket)
 
     if not e_errors.is_ok(responce_ticket['status']):
-        Trace.message(ERROR_LEVEL, "Submition to LM failed: " + \
+        Trace.message(ERROR_LEVEL, "Submission to LM failed: " + \
                       str(responce_ticket['status']))
         Trace.log(e_errors.ERROR,
                   "submit_one_request: Ticket submit failed for %s"
@@ -2663,7 +2668,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If the mover doesn't call back after max_submits number of times, give up.
     if max_submits != None and resubmits >= max_submits:
         Trace.message(ERROR_LEVEL,
-                      "To many resubmitions for %s -> %s."%(infile,outfile))
+                      "To many resubmissions for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RESUBMITS, status)
 
     #If the transfer has failed to many times, remove it from the queue.
@@ -4895,7 +4900,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
     requests_to_submit = requests[:] #Don't change the original copy.
 
     for req in requests_to_submit:
-        #Clear this flag such that resubmitions will enter the while loop.
+        #Clear this flag such that resubmissions will enter the while loop.
         req['submitted'] = None
         while req.get("submitted", None) == None:
             Trace.message(TRANSFER_LEVEL, 
@@ -5487,7 +5492,7 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.ADMIN,},
         option.MAX_RESUBMIT:{option.HELP_STRING:
-                             "Specifies number of resubmitions encp makes "
+                             "Specifies number of resubmissions encp makes "
                              "when mover does not callback. (default = never)",
                              option.VALUE_USAGE:option.REQUIRED,
                              option.VALUE_TYPE:option.INTEGER,
