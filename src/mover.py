@@ -1139,11 +1139,24 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
-                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING))):
+                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR))):
                 Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                             (state_name(self.state),self.current_volume))
+                if self.state == ERROR:
+                    ## restart the mover
+                    ## this will clean LM active mover list and let
+                    ## LM proceed
+                    ## potentially this may cause drawing tapes
+                    ## and setting them to NOACCESS
+                    ## but this is better than holding
+                    ## write requests from being executed
+                    Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
+                    time.sleep(5)
+                    self.restart()
+                    
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
+                    
                 if self.in_state_to_cnt >= self.max_in_state_cnt:
                     # mover is stuck. There is nothing to do as to
                     # offline it
