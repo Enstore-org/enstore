@@ -204,7 +204,7 @@ class CJFunc(Worker):
 		    if interval > allowed_freq:
 			checkprint("The cron job %s is running too long"%(self.fName))
 			stateFlag = -2
-		break
+                        break
 
         checkprint("cron jobs state is %s"%(stateFlag,))
         return stateFlag
