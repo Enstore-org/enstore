@@ -208,7 +208,10 @@ class AtMovers:
                 rc = 1
                 break
         return rc
-        
+
+    def mover_type(self, ticket):
+        return ticket.get("mover_type", "Mover")
+    
 ##############################################################
        
 class PostponedRequests:
@@ -663,7 +666,7 @@ class LibraryManagerMethods:
             w = rq.ticket
             Trace.trace(11,"check volume %s " % (w['fc']['external_label'],))
             if w["status"][0] == e_errors.OK:
-                if requestor['mover_type'] == 'DiskMover':
+                if self.mover_type(requestor) == 'DiskMover':
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
                 else:
                     ret = self.vcc.is_vol_available(rq.work,
@@ -737,7 +740,7 @@ class LibraryManagerMethods:
                     return rq, rq.ticket['status'] 
             
         
-        if requestor['mover_type'] == 'DiskMover':
+        if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work, external_label, requestor)
         else:
             ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -770,7 +773,7 @@ class LibraryManagerMethods:
             
     def check_read_request(self, external_label, rq, requestor):
         Trace.trace(11,"check_read_request %s %s %s"%(rq.work,external_label, requestor))
-        if requestor['mover_type'] == 'DiskMover':
+        if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work,external_label, requestor)
         else:
             ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -1441,7 +1444,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # update volume status
         # get it directly from volume clerk as mover
         # in the idle state does not have it
-        if mticket['mover_type'] is 'DiskMover':
+        if self.mover_type(mticket) is 'DiskMover':
             mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
         else:
             Trace.trace(29,"inquire_vol")
@@ -1481,7 +1484,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # mover restarted with bound volume and it has not
             # all the volume info
             # so go get it
-            if mticket['mover_type'] is 'DiskMover':
+            if self.mover_type(mticket) is 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
                 vol_info = self.vcc.inquire_vol(mticket['external_label'])
@@ -1571,7 +1574,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # update volume status
                 # get it directly from volume clerk as mover
                 # in the idle state does not have it
-                if mticket['mover_type'] is 'DiskMover':
+                if self.mover_type(mticket) is 'DiskMover':
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
                     vol_info = self.vcc.inquire_vol(mticket['external_label'])
