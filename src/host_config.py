@@ -96,6 +96,12 @@ def get_config():
         _cached_config = read_config_file(find_config_file())
     return _cached_config
 
+#Force an update of the cached version of the enstore.conf file.
+def update_cached_config():
+    global _cached_config
+    _cached_config = read_config_file(find_config_file())
+    return _cached_config
+
 ##############################################################################
 # The following function determines the default ip.
 ##############################################################################
