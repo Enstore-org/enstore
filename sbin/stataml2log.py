@@ -72,6 +72,8 @@ def newLog(inFile):
                     updList("MSG", "negative_stat", tmpLines[count])
                 elif string.find(lowLine, "keep request") >= 0 and string.find(lowLine, "with failure") >= 0:
                     updList("MSG", "keep_req_failure", tmpLines[count])
+                elif re.match("the . no longer", lowLine[38:]) >= 0 and len(string.rstrip(lowLine)) < 55:
+                    updList("MSG", lowLine[38:54], tmpLines[count])
                 else:
                     tempLine = lowLine[38:]
                     tempLine = string.lstrip(tempLine)
@@ -219,6 +221,10 @@ def newLog(inFile):
                     tstStr = a.group(0)
                     miscFlg = FALSE
                     updList("MSG", "rqm_qswit", tmpLines[count])
+                a = re.match("d...010101", lowLine[38:])
+                if type(a) != type(None) and len(string.rstrip(tmpLines[count])) < 49:
+                    miscFlg = FALSE
+                    updList("MSG", "dann010101", tmpLines[count])
                 if miscFlg == TRUE:
                     tempLine = lowLine[38:]
                     tempLine = string.lstrip(tempLine)
