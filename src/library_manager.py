@@ -190,17 +190,25 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 def busy_vols_in_family (self, vc, family_name):
     Trace.trace(11,"busy_vols_in_family VC:%s family: %s"%(repr(vc),family_name))
     vols = []
+    write_enabled = 0
     # look in the list of work_at_movers
     for w in self.work_at_movers.list:
-        fn = w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
+        #fn = w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
+        fn = w["vc"]["file_family"]
 	if fn == family_name:
 	    vols.append(w["fc"]["external_label"])
-
+            vol_info = vc.inquire_vol(w["fc"]["external_label"])
+            if vol_info['system_inhibit'][1] == 'none':
+                # if volume can be potentially written increase number
+                # of write enabled volumes that are currently at work
+                # further comparison of this number with file family width
+                # tells if write work can be given out
+                write_enabled = write_enabled + 1
     # now check if any volume in this family is still mounted
     work_movers = []
     for mv in movers:
         Trace.trace(11,"busy_vols_in_family. Mover file_family: %s"%(mv["file_family"],))
-	if mv["file_family"] == family_name:
+	if mv.has_key("file_family") and mv["file_family"] == family_name:
 	    vol_info = vc.inquire_vol(mv["external_label"])
             Trace.trace(11,"busy_vols_in_family vol %s"%(vol_info,))
 	    if vol_info["status"][0] != e_errors.OK: continue
@@ -225,7 +233,7 @@ def busy_vols_in_family (self, vc, family_name):
 		work_movers.append(mv)
     Trace.trace(11,"busy_vols_in_family. vols %s. movers %s"%\
                 (repr(vols), repr(work_movers)))
-    return vols, work_movers
+    return vols, work_movers, write_enabled
 
 # check if a particular volume with given label is busy
 # for read requests
@@ -323,8 +331,10 @@ def get_work_at_movers(self, external_label):
 def next_work_any_volume(self):
     Trace.trace(11, "next_work_any_volume")
     # look in pending work queue for reading or writing work
+    force_summon = 1   # enable force summon
     w=self.pending_work.get_init()
     while w:
+        force_summon = 1   # enable force summon
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm":
             if is_volume_busy(self, w["fc"]["external_label"]):
@@ -347,14 +357,15 @@ def next_work_any_volume(self):
         # find volumes we _dont_ want to hear about -- that is volumes in the
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
-            vol_veto_list, work_movers = busy_vols_in_family(self, self.vcc, 
+            vol_veto_list, work_movers, wr_en = busy_vols_in_family(self, self.vcc, 
 							    w["vc"]["file_family"]+\
                                                              "."+w["vc"]["wrapper"])
             Trace.trace(11,"next_work_any_volume vol veto list:%s, movers:%s"%\
                         (repr(vol_veto_list), repr(work_movers)))
             # only so many volumes can be written to at one time
-            if len(vol_veto_list) >= w["vc"]["file_family_width"]:
+            if wr_en >= w["vc"]["file_family_width"]:
                 w["reject_reason"] = ("VOLS_IN_WORK","")
+                force_summon = 0 # disable force summon
                 w=self.pending_work.get_next()
                 continue
 
@@ -375,7 +386,7 @@ def next_work_any_volume(self):
 		    # summon this mover
 		    summon_mover(self, mov, w)
 		    # and return no work to the idle requester mover
-		    return {"status" : (e_errors.NOWORK, None)}
+		    return {"status" : (e_errors.NOWORK, None)}, force_summon
 		else:
                     w["reject_reason"] = (v_info['status'][0],v_info['status'][1])
 		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" %
@@ -394,7 +405,7 @@ def next_work_any_volume(self):
 	    if v["status"][0] != e_errors.OK:
 		w["status"] = v["status"]
                 w["reject_reason"] = (v["status"][0],v["status"][1])
-		return w
+		return w, force_summon
 		
             # found a volume that has write work pending - return it
 	    w["fc"]["external_label"] = v["external_label"]
@@ -429,9 +440,10 @@ def next_work_any_volume(self):
 		Trace.log(e_errors.ERROR,
                           "next_work_any_volume: cannot do the work for %s status:%s" % 
 			  (w['fc']['external_label'], w['status'][0]))
-		return {"status" : (e_errors.NOWORK, None)}
-	return w
-    return {"status" : (e_errors.NOWORK, None)}
+		return {"status" : (e_errors.NOWORK, None)}, force_summon
+            w["vc"]["file_family"] = file_family
+	return w, force_summon
+    return {"status" : (e_errors.NOWORK, None)}, force_summon 
 
 
 # is there any work for this volume??  v is a work ticket with info
@@ -449,6 +461,7 @@ def next_work_this_volume(self, v):
 	    w['status'] = ret['status']
 	    # writing to this volume?
 	    if w["work"] == "write_to_hsm":
+                w["vc"]["file_family"] = file_family
 		w["fc"]["external_label"] = v["external_label"]
 		w["fc"]["size"] = w["wrapper"]["size_bytes"]
 		# ok passed criteria, return write work ticket
@@ -1360,7 +1373,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			label = None
 		    # see if summon for the volume has been already done
 		    if label:
-			if label in vols:
+			if (label in vols or
+                            get_work_at_movers(self, label)):
 			    work = self.pending_work.get_next()
 			    continue
 		    mv = idle_mover_next(self, label)
@@ -1376,10 +1390,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # what is next on our list of work?
     def schedule(self):
         while 1:
-            w = next_work_any_volume(self)
+            w, force = next_work_any_volume(self)
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
-                self.force_summon()
+                if force:
+                    self.force_summon()
                 return w
             # some sort of error, like write work and no volume available
             # so bounce. status is already bad...
