@@ -53,8 +53,7 @@ class GenericAlarm:
             host = string.split(self.host,".")
             # enstore's severities must be mapped to patrols'
             sev = PATROL_SEVERITY[self.severity]
-            return string.join((host[0], "Enstore" ,sev,
-                                "%s - %s"%(self.short_text(), self.severity),
+            return string.join((host[0], "Enstore" , sev, self.short_text(),
                                 "\n"))
         else:
             return repr([self.timedate, self.host, self.pid, self.uid,
@@ -71,7 +70,8 @@ class GenericAlarm:
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem
-        return str+self.alarm_info.get(SHORT_TEXT, self.root_error)
+        return str+self.alarm_info.get(SHORT_TEXT, "%s %s"%(self.root_error,
+                                                            self.alarm_info))
 
     # compare the passed in info to see if it the same as that of the alarm
     def compare(self, host, severity, root_error, source, alarm_info):

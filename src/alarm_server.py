@@ -150,27 +150,28 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             self.alarm_file.write(alarm)
         else:
             self.alarm_file.open('w')
-            self.write_file(self.alarm_file)
-            
+            if self.alarms:
+                keys = self.alarms.keys()
+                keys.sort()
+                for key in keys:
+                    self.alarm_file.write(self.alarms[key])
         self.alarm_file.close()
 
     def write_patrol_file(self):
         if not self.alarms == {}:
             self.patrol_file.open()
-            self.write_file(self.patrol_file)
+            if self.alarms:
+                keys = self.alarms.keys()
+                keys.sort()
+                for key in keys:
+                    if self.alarms[key].severity == \
+                       e_errors.sevdict[e_errors.ERROR]:
+                        self.patrol_file.write(self.alarms[key])
             self.patrol_file.close()
         else:
             # there are no alarms raised.  if the patrol file exists, we
             # need to delete it
             self.patrol_file.remove()
-
-    def write_file(self, file):
-        # write all of the alarms to the specified file
-        if self.alarms:
-            keys = self.alarms.keys()
-            keys.sort()
-            for key in keys:
-                file.write(self.alarms[key])
 
     def get_log_path(self):
         log = self.csc.get("log_server")
