@@ -31,6 +31,7 @@ while /bin/true; do
         if [ $? -eq 2 ] ; then
             exit 2
         fi
+        sleep 10
     done
     if [ $? -eq 2 ] ; then
        echo "FINISHED $base"

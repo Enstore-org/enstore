@@ -8,7 +8,7 @@ all:
 newdbs:
 	- killall -9 longtest
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
-	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+	- for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		pidkill $$d/loop_longtest.pids ;\
 	done
 
@@ -33,7 +33,7 @@ newdbs:
 		echo $$f2 >> $$ENSTORE_DIR/test/files.in ; \
 	done ; )
 
-	for d in 1 2 3 4 5 6 7 8 9 ; do \
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; rm -f *; \
 			cp $$ENSTORE_DIR/test/longtest . ; \
@@ -46,12 +46,12 @@ newdbs:
 olddbs:
 	- killall -9 longtest
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
-	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+	- for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		pidkill $$d/loop_longtest.pids ;\
 	done
 
 	rm -f $$ENSTORE_DIR/test/longtest_pids
-	for d in 1 2 3 4 5 6 7 8 9 ; do \
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		( cd $$d; $$ENSTORE_DIR/test/kickoff & ); \
 	done
 
@@ -71,7 +71,7 @@ datafiles:	jobs
 	-rm $$ENSTORE_DIR/test/data.in
 	find $$ENSTORE_DIR/test/data -type f -print > $$ENSTORE_DIR/test/data.in
 jobs:
-	for d in 1 2 3 4 5 6 7 8 9 ; do \
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; rm -f *; \
 			cp $$ENSTORE_DIR/test/longtest . ;\
@@ -88,6 +88,6 @@ stop:
 clean:
 	make stop
 	@ $$ENSTORE_DIR/bin/enstoreClean
-	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 data ; do rm -rf $$d ; done
 	rm -f files.in
 	rm -f readstop writestop longstop
