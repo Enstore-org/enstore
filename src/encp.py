@@ -3616,7 +3616,6 @@ def main():
              't0':int(encp_start_time)}
     
     Trace.init("ENCP")
-    Trace.trace( 16, 'encp called at %s: %s'%(encp_start_time, sys.argv) )
 
     for opt in encp.deprecated_options:
         if opt in sys.argv:
@@ -3633,18 +3632,22 @@ def main():
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
 
+    #Print this information to make debugging easier.
+    Trace.message(DONE_LEVEL, 'Start time: %s' % time.ctime(encp_start_time))
+    Trace.message(DONE_LEVEL, 'Command line: %s' % string.join(sys.argv))
+    Trace.message(DONE_LEVEL, 'Version: %s' % encp_client_version())
+
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
-    Trace.message(CONFIG_LEVEL, os.getuid())
-    Trace.message(CONFIG_LEVEL, os.getgid())
-    Trace.message(CONFIG_LEVEL, os.geteuid())
-    Trace.message(CONFIG_LEVEL, os.getegid())
+    id_line = "UID: %d  GID: %d EUID: %d EGID: %d" % \
+              (os.getuid(), os.getgid(), os.geteuid(), os.getegid())
+    Trace.message(CONFIG_LEVEL, id_line)
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
-    client_klsdhsklfh = clients(e.config_host, e.config_port)
-    #Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'], 'csc'))
-    #Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
+    client = clients(e.config_host, e.config_port)
+    Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'], 'csc'))
+    Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
 
     # convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called
@@ -3703,22 +3706,27 @@ def main():
         print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
         quit()
 
-    exit_status = done_ticket.get('exit_status', 1)    
+    exit_status = done_ticket.get('exit_status', 1)
     try:
+        #Log the message that tells us that we are done.
+        status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
+        Trace.log(e_errors.INFO, string.replace(status[1], "\n\t", "  "))
+
         if e.data_access_layer and not exit_status:
+            #If there was no error and they want the data access layer anyway,
+            # print it out.
             print_data_access_layer_format(e.input, e.output,
                                            done_ticket.get('file_size', 0),
                                            done_ticket)
         else:
-            status = done_ticket.get('status', (e_errors.UNKNOWN,
-                                                e_errors.UNKNOWN)[1])
-            Trace.log(e_errors.INFO, string.replace(status[1], "\n\t", "  "))
+            #If There was an error print the message.
             Trace.message(DONE_LEVEL, str(status[1]))
 
     except ValueError:
         exc, msg, tb = sys.exc_info()
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
+        quit(1)
 
     Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
     #Quit safely by Removing any zero length file for transfers that failed.
