@@ -145,6 +145,7 @@ class MoverClient:
 	self.print_id = "MOVER"
 	self.config = config
 	self.state = 'idle'
+	self.mode = ''			# will be either 'r' or 'w'
 	self.pid = 0
 	self.vol_info = {'external_label':''}
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
@@ -265,6 +266,7 @@ def forked_write_to_hsm( self, ticket ):
     if mvr_config['do_fork']:
 	self.pid = os.fork()
 	self.state = 'busy'
+	self.mode = 'w'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	pass
@@ -407,6 +409,7 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork']:
 	self.pid = os.fork()
 	self.state = 'busy'
+	self.mode = 'r'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	pass
@@ -673,6 +676,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def status( self, ticket ):
 	out_ticket = {'status':'ok'}
 	out_ticket['state']    = self.client_obj_inst.state
+	out_ticket['mode']     = self.client_obj_inst.mode
 	out_ticket['no_xfers'] = self.client_obj_inst.hsm_driver.no_xfers
 	out_ticket['rd_bytes'] = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	out_ticket['wr_bytes'] = self.client_obj_inst.hsm_driver.wr_bytes_get()
