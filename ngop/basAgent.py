@@ -133,7 +133,7 @@ node_d = node_init.node_d
 nodes = node_d.keys()      
 nodeValue = node_d.values()
 
-mibflow = {}   
+miblist = {}   
 
 system_d = {} 
 tcp_d = {}
@@ -504,7 +504,7 @@ def checkNode(elmName):
 ## node according to the statistics of the values and returns the       #
 ## corresponding state, value, description, event name and sever level. #
 #########################################################################
-def sumThem(r, o, y, u, val, obj, dscc):
+global def sumThem(r, o, y, u, val, obj, dscc):
         print "\nThere are totally %s values reaching red threshold"%(r,)
         print "There are total %s values reaching orange threshold"%(o,)
         print "There are total %s values reaching yellow threshold"%(y,)
@@ -536,7 +536,7 @@ def sumThem(r, o, y, u, val, obj, dscc):
 ## updated flag, descrition, state, value, event name, sever level and #
 ## the statistics of the monitored object state to the caller.         #
 ########################################################################
-def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
+global def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
     flag = 1
     dscc = "%s_%s_%s"%(dscc, name, dsc1)
     state, val, dsc, evt, sev = state1, val1, dsc1, evt1, sev1
@@ -558,7 +558,7 @@ def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
 ## returns the conrresponding state, value, event name to the calller.  #
 ## There is one level threshold to be compared.                         #
 #########################################################################
-def checkVal(d, str, targetVal, name, d0):
+global def checkVal(d, str, targetVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -579,7 +579,7 @@ def checkVal(d, str, targetVal, name, d0):
 ## returns the conrresponding state, value, event name to the calller.   #
 ## There are two levels threshold to be compared.                        #
 ##########################################################################
-def check2Val(d, str, redVal, orgVal, name, d0):
+global def check2Val(d, str, redVal, orgVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -601,7 +601,7 @@ def check2Val(d, str, redVal, orgVal, name, d0):
 ## returns the conrresponding state, value, event name to the calller.   #
 ## There are three levels threshold to be compared.                      #
 ##########################################################################
-def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
+global def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -626,7 +626,7 @@ def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
 ## event name to the calller.                                            #
 ## There are two levels threshold to be compared.                        #
 ##########################################################################
-def check2Stat(d, str, redVal, orgVal, name):
+global def check2Stat(d, str, redVal, orgVal, name):
     evt = "%s%s"%(name, str)
     if not len(d):
        	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -645,7 +645,7 @@ def check2Stat(d, str, redVal, orgVal, name):
 ## conrresponding state, value, event name to the calller.               #
 ## There are one level threshold to be compared.                         #
 ##########################################################################
-def checkStr(d, str, goodStr, name):
+global def checkStr(d, str, goodStr, name):
     evt = "%s%s"%(name, str)
     if not len(d):
        	return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -663,7 +663,7 @@ def checkStr(d, str, goodStr, name):
 ## conrresponding state, value, event name to the calller.               #
 ## There are two level threshold to be compared.                         #
 ##########################################################################     
-def check2Str(d, str, goodStr, warnStr, name):
+global def check2Str(d, str, goodStr, warnStr, name):
     evt = "%s%s"%(name, str)  
     if not len(d):
         return UNDEFINED, -1, "No_information_in_node", "Undefined event", 2
@@ -742,7 +742,6 @@ if __name__=="__main__":
     
     mibdir = "testfile/www"
            
-    miblist = {}
     for i in 1, 2, 3, 4, 5, 6, 7, 10, 11, 16, 17, 31, 47:
         miblist[i] = "%s/%d"%(mibdir, i)
                 
@@ -846,8 +845,6 @@ if __name__=="__main__":
 
 #### Update the group dictionaries
 
-    global system_d, tcp_d, udp_d, ip_d, icmp_d, snmp_d
- 
     system_d = get_mib_info(SYS_L, 'system.sys', 1)
     tcp_d = get_mib_info(TCP_L, 'tcp.tcp', 6)  
     udp_d = get_mib_info(UDP_L, 'udp.udp', 7)
