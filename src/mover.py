@@ -648,7 +648,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
-
+        self.lm_address = None # LM that called mover
         self.do_eject = 1
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
@@ -1532,6 +1532,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         save_state = self.state
 
         self.unique_id = ticket['unique_id']
+        try:
+            self.lm_address = ticket['lm']['address']
+        except KeyError:
+            self.lm_address = None
         Trace.trace(10, "setup transfer")
         self.tr_failed = 0
         ## pprint.pprint(ticket)
@@ -2433,19 +2437,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_function()
         else: #Mount failure, do not attempt to recover
             self.last_error = status
+            Trace.log(e_errors.ERROR, "mount %s: %s" % (volume_label, status))
 ##            "I know I'm swinging way to far to the right" - Jon
 ##            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
 ##            self.state = DISMOUNT_WAIT
 ##            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
 ##            self.dismount_volume(after_function=self.idle)
-            Trace.log(e_errors.ERROR, "mount %s: %s; broken" % (volume_label, status))
-            broken = "mount %s failed: %s" % (volume_label, status)
+            broken = None
+            if status[0] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
+                             e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND):
+                # mover is all right
+                # error is only tape or MC related
+                # send error to LM and go into the IDLE state
+                if status[0] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL):
+                    err_source = ROBOT
+                else:
+                    err_source = TAPE
+                if self.lm_address: # send error message only to LM that called us
+                    ticket = self.format_lm_ticket(state=ERROR,
+                                                   error_info = (status[0], status[2]),
+                                                   error_source=err_source,
+                                                   returned_work=self.current_work_ticket)
+                    self.udpc.send_no_wait(ticket, self.lm_address)
+                    self.net_driver.close()
+                self.state = IDLE
+                self.current_volume = None
+            else:    
+                broken = "mount %s failed: %s" % (volume_label, status)
             try:
                 self.vcc.set_system_noaccess(volume_label)
             except:
                 exc, msg, tb = sys.exc_info()
                 broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
-            self.broken(broken)
+            if broken: self.broken(broken)
             #self.current_volume = None
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
