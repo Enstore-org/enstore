@@ -225,23 +225,14 @@ def generate_unique_id():
     _counter = _counter + 1
     return ret
 
-def extract_brand(bfid):
+############################################################################
 
-    if type(bfid) != types.StringType:
-        return None
-        
-    #Newer files have brands.  See is_bfid() for comments.
-    if len(bfid) >= 18:
-        if bfid[:4].isalnum() and bfid[4:].isdigit():
-            return bfid[:4]
-        else:
-            return None
-    #Older files may not have a brand.
-    elif len(bfid) >= 14:
-        if bfid.isdigit():
-            return ""
+def is_brand(brand):
+    if type(brand) == types.StringType:
+        if len(brand) == 4 and brand.isalnum():
+            return 1
 
-    return None
+    return 0
 
 def is_bfid(bfid):
 
@@ -258,7 +249,7 @@ def is_bfid(bfid):
         #
         #Older files that do not have bfid brands should only be digits.
         
-        if len(bfid) >= 18 and bfid[:4].isalnum() and bfid[4:].isdigit():
+        if len(bfid) >= 18 and is_brand(bfid[:4]) and bfid[4:].isdigit():
             return 1
         elif len(bfid) >= 14 and bfid.isdigit():
             return 1
@@ -288,7 +279,27 @@ def is_location_cookie(lc):
         elif disk_regex.match(lc):
             return 1
     return 0
+
+############################################################################
+
+def extract_brand(bfid):
+
+    if type(bfid) != types.StringType:
+        return None
         
+    #Newer files have brands.  See is_bfid() for comments.
+    if len(bfid) >= 18:
+        if is_brand(bfid[:4]) and bfid[4:].isdigit():
+            return bfid[:4]
+        else:
+            return None
+    #Older files may not have a brand.
+    elif len(bfid) >= 14:
+        if bfid.isdigit():
+            return ""
+
+    return None
+
 def combine_dict(*dictionaries):
     new = {}
     for i in range(0, len(dictionaries)):
@@ -685,7 +696,11 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
 
     #Before checking other systems, check the current system.
     fcc_brand = fcc.get_brand()
-    if brand[:len(fcc_brand)] == fcc.get_brand():
+    if not is_brand(fcc_brand):
+        Trace.log(e_errors.WARNING,
+                  "File clerk (%s) returned invalid brand: %s\n"
+                  % (fcc.server_address, fcc_brand))
+    if brand[:len(fcc_brand)] == fcc_brand:
         return csc
 
     #Get the list of all config servers and remove the 'status' element.
@@ -698,7 +713,12 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     #Check the last used non-default brand for performance reasons.
     if __csc != None:
         test_fcc = file_clerk_client.FileClient(__csc)
-        if brand == test_fcc.get_brand():
+        test_brand = test_fcc.get_brand()
+        if not is_brand(test_brand):
+            Trace.log(e_errors.WARNING,
+                      "File clerk (%s) returned invalid brand: %s\n"
+                      % (test_fcc.server_address, test_brand))
+        if brand[:len(test_brand)] == test_brand:
             return __csc
     
     #Loop through systems for the brand that matches the one we're looking for.
@@ -711,17 +731,18 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
-                                                    #timeout=5, tries=2)
 
             system_brand = fcc_test.get_brand()
-
+            if not is_brand(system_brand):
+                Trace.log(e_errors.WARNING,
+                          "File clerk (%s) returned invalid brand: %s\n"
+                          % (fcc_test.server_address, system_brand))
             #If things match then use this system.
             if brand[:len(system_brand)] == system_brand:
                 if fcc.get_brand() != system_brand:
                     msg = "Using %s based on brand %s." % (system_brand, brand)
                     Trace.log(e_errors.INFO, msg)
-                #csc = csc_test
-                #break
+
                 __csc = csc_test  #Set global for performance reasons.
                 return __csc
         except KeyboardInterrupt:
