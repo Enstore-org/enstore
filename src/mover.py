@@ -1077,7 +1077,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		p_ww = self.client_obj_inst.prev_w_bytes
 		if rr == p_rr and ww == p_ww:
 		    if time.time()-self.client_obj_inst.stall_time > 60.0:# aritrary number
-			try:    os.system( '/usr/local/bin/traceMode 0' )
+			try:    os.system( 'traceMode 0' )
 			except: pass
 			if self.client_obj_inst.mode == 'w':
 			    msg = 'writing mover (rr=%d ww=%d) '%(rr,ww)
