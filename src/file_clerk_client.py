@@ -192,6 +192,7 @@ class FileClient(generic_client.GenericClient,
             bfid = self.bfid
         r = self.send({"work" : "bfid_info",
                        "bfid" : bfid } )
+        del r['work']
         return r
 
     def set_deleted(self, deleted, restore_dir="no"):
@@ -391,7 +392,6 @@ def do_work(intf):
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
-            del ticket['work']
             status = ticket['status']
             del ticket['status']
 	    pprint.pprint(ticket)
