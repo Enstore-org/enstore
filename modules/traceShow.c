@@ -31,7 +31,7 @@ traceShow*
 #include	"trace.h"		/* */
 
 
-int	traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int optRevr );
+int	traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int optRevr, int ct );
 int	traceInfo( int start, int num );
 int	traceReset( void );
 int	tracePMC( int cntr, int val );
@@ -53,12 +53,13 @@ main(  int	argc
     exit_sts = 0;
 
     if      (strcmp(trc_basename(argv[0],'/'),"traceShow") == 0)
-    {   int	arg, delta_t=0, lines=0, incHDR=1,incLVL=0,incINDT=1,optRevr=0;
+    {   int	arg, delta_t=0, lines=0, incHDR=1,incLVL=0,incINDT=1,optRevr=0, optCt=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{        if (strcmp(argv[arg],"-lvl") == 0)      incLVL=1;
 	    else if (strcmp(argv[arg],"-nohdr") == 0)    incHDR=0;
 	    else if (strcmp(argv[arg],"-r") == 0)        optRevr=1;
 	    else if (strcmp(argv[arg],"-nr") == 0)       optRevr=0;
+	    else if (strcmp(argv[arg],"-ct") == 0)       optCt=1;
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-noindent") == 0) incINDT=0;
@@ -71,7 +72,7 @@ main(  int	argc
 	}
 	if ((argc>arg) && (atoi(argv[arg])>=1)) delta_t=1;
 	if (argc >arg+1)  if ((lines=atoi(argv[arg+1])) < 0) lines=0;
-	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,optRevr );
+	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,optRevr, optCt );
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceInfo") == 0)
     {   int	arg, start=0, num=0;
@@ -162,7 +163,7 @@ void	strncatCheck( char *str_buf, const char *msg, int num );
 #define STD_OUT         1
 
 int
-traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRevr )
+traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRevr, int ct )
 {
 	int	head, tmp;
 	double  time, time_sav;
@@ -180,11 +181,13 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
 
     if (incHDR)
     {   /***/
+	if (ct) printf( "      " );
 	printf( "         timeStamp " );
 	printf( " PID     TIDorName " );
 	if (incLVL) printf( "lvl " );
 	printf( "                        message                 \n" );
 	/*-*/
+	if (ct) printf( "------" );
 	printf( "-------------------" );
 	printf( "-----------------" );
 	if (incLVL) printf( "----" );
@@ -232,7 +235,14 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
 	}
 
 	c_p = str_buf;
-	c_p += sprintf( c_p, "%18.6lf ", time );
+	if (ct)
+	{   c_p += sprintf( c_p, "%18s ", ctime(&(trc_ent_sp+head)->time.tv_sec) );
+	    c_p -=2; /* strip off '\n' */
+	    *c_p++ = ' ';
+	    *c_p = '\0';
+	}
+	else
+	    c_p += sprintf( c_p, "%18.6lf ", time );
 	c_p += sprintf( c_p, "%5d ", (trc_ent_sp+head)->pid );
 
 	if ((trc_ent_sp+head)->tid >= TRC_MAX_PIDS)
