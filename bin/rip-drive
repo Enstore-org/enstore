@@ -1,18 +1,22 @@
 #!/bin/sh
 
+# Script that 
+#    a. return mt command results of drives 
+#    b  eases mounting/dismounting of volumes in drives 
+# located in AML2 robot
+
+# This script is meant to be run outside of enstore, hence everything
+# is hard-coded and nothing is looked up from the configuration server
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 #set -u  # force better programming and ability to use check for not set
 
-# the user must specify a drive
+# the user must specify a drive or mount/dismount command
 if [ -z "${1-}" ] ; then
-  echo "Usage eject drive-to-eject mt-command"
-fi
-
-# the user can specify an mt command, or else we default to status
-if [ -n "${2-}" ] ; then
-  command=$2
-else
-  command=status
+  echo "Usage $0 <drive>   <mt-command>
+Usage $0 <mount>   <media_type> <label> <drive>
+Usage $0 <dismount <drive>"
+  exit 1
 fi
 
 # we have nameserver lookup troubles - skip this step and use the numeric ip's
@@ -29,11 +33,51 @@ d0enmvr1=131.225.164.24
 d0enmvr2=131.225.164.25
 d0enmvr3=131.225.164.26
 
+d0ensrv3=131.225.164.23
+rip8=131.225.164.8
+dasnode=$d0ensrv3
+
+drive=`echo $1 | tr '[A-Z]' '[a-z]'`
+
+if [ "$drive" = "mount" ]; then
+  if [ -z "${2-}" -o -z "${3-} -z "${4-} ] ; then
+    echo "$0 $1 <media_type> <label> <drive>"
+    exit 1
+  else
+    media_type=`echo $2 | tr '[a-z]' '[A-Z]'`
+    label=$3
+    drive=`echo $4 | tr  '[a-z]' '[A-Z]'`
+    cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
+    echo $cmd
+    mount_node=`eval $cmd`; echo $mount_node
+    cmd="rsh $mount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin mount -t $media_type $label $drive; echo \$?\""
+    echo $cmd
+    x=`eval $cmd`; echo $x
+    stat=`echo $x | awk '{print $NF}'`;
+    exit $stat
+  fi
+
+elif [ "$drive" = "dismount" ]; then
+  if [ -z "${2-}" ] ; then
+    echo "$0 $1 <drive>"
+    exit 1
+  else
+    drive=`echo $2 | tr  '[a-z]' '[A-Z]'`
+    cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
+    echo $cmd
+    dismount_node=`eval $cmd`; echo $mount_node
+    cmd="rsh $dismount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin dismount -d $drive; echo \$?\""
+    echo $cmd
+    x=`eval $cmd`; echo $x
+    stat=`echo $x | awk '{print $NF}'`;
+    exit $stat
+  fi
+fi
+ 
+
 aits="dm07 dm08 dm09 dm10 dm11 dm12 dm18 dm19"
 mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17"
 dlts="de01 de02 de13 de14"
-
-drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 
 multiple=0
 if [ $drive = "aits" ]; then
