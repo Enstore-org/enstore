@@ -72,6 +72,37 @@ def convert_status(int_status):
         return 'BAD', status, 'UNKNOWN CODE'
     return status_table[status][0], status, status_table[status][1]    
 
+def view(volume, media_type):
+    media_code = aci.__dict__.get("ACI_"+media_type)
+    if media_code is None:
+        Trace.log(e_errors.ERROR, 'Media code is None. media_type=%s'%(media_type,))
+        return (-1,None)
+    
+    stat,volstate = aci.aci_view(volume,media_code)
+    if stat!=0:
+        Trace.log(e_errors.ERROR, 'aci_view returned status=%d'%(stat,))
+        return stat,None
+
+    if volstate == None:
+        Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
+        return stat,None
+
+    return stat,volstate
+
+def drive_state(drive,client=""):
+    stat,drives = aci.aci_drivestatus2(client)
+    if stat!=0:
+        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
+        return stat,None
+    for d in range(0,len(drives)):
+        #print d,drives[d].drive_name, drive
+        if drives[d].drive_name == "":
+            break
+        if drives[d].drive_name == drive:
+            return stat,drives[d]
+    Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
+    return stat,None
+
 
 def mount(volume, drive, media_type,view_first=1):
     print 'mount called', volume, drive, media_type, view_first
@@ -138,37 +169,8 @@ def dismount(volume, drive, media_type,view_first=1):
         return 'BAD',stat,'FORCE DISMOUNT COMMAND FAILED'
 
 
-def view(volume, media_type):
-    media_code = aci.__dict__.get("ACI_"+media_type)
-    if media_code is None:
-        Trace.log(e_errors.ERROR, 'Media code is None. media_type=%s'%(media_type,))
-        return (-1,None)
-    
-    stat,volstate = aci.aci_view(volume,media_code)
-    if stat!=0:
-        Trace.log(e_errors.ERROR, 'aci_view returned status=%d'%(stat,))
-        return stat,None
-
-    if volstate == None:
-        Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
-        return stat,None
-
-    return stat,volstate
 
 
-def drive_state(drive,client=""):
-    stat,drives = aci.aci_drivestatus2(client)
-    if stat!=0:
-        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
-        return stat,None
-    for d in range(0,len(drives)):
-        #print d,drives[d].drive_name, drive
-        if drives[d].drive_name == "":
-            break
-        if drives[d].drive_name == drive:
-            return stat,drives[d]
-    Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
-    return stat,None
 
 
 # home robot arm
