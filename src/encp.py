@@ -1543,43 +1543,49 @@ def submit_one_request(ticket):
 
 #mode should only contain two values, "read", "write".
 def open_local_file(filename, mode):
-    #Determine the os.open() flags to use.
-    if mode == "write":
-            flags = os.O_RDONLY
-    elif mode == "read":
-        if filename == "/dev/null":
-            flags = os.O_WRONLY
-        else:
-            flags = os.O_WRONLY
-    else:
-        done_ticket = {'status':(e_errors.UNKNOWN,
-                                 "Unable to open local file.")}
-        return done_ticket
+    #If the file descriptor will be memory mapped, we need both read and
+    # write permissions on the descriptor.
+    flags = os.O_RDWR
 
+    #On systems where O_DIRECT does exist we must set the value directly.
+    # This must be done when the file is opened.  It doesn't work if it
+    # is set by fcntl() later on.
     sysname = os.uname()[0]
-    if sysname == "Linix":
+    if sysname == "Linux":
         #On linix this is generally ignored.  XFS on linux seems to use it,
         # since the rates on the terabyte filesystems are improved with its
         # use.
-        flags = flags | 16384     #O_DIRECT
+        O_DIRECT = 16384     #O_DIRECT
     #Setting this on IRIX using a filesystem that doesn't support O_DIRECT 
     # will result in EINVAL error.  (ie. XFS would work, but NFS would fail.)
-    #elif sysname == "IRIX64":
-    #	flags = flags | 32768     #O_DIRECT
-
+    elif sysname == "IRIX64":
+        O_DIRECT = 32768     #O_DIRECT
+    else:
+	O_DIRECT = 0
+    
     #Try to open the local file for read/write.
     try:
-        #if filename == "/dev/null":
-        #    local_fd = os.open("/dev/null", flags)
-        #else:
-        local_fd = os.open(filename, flags, 0666)
+        local_fd = os.open(filename, flags | O_DIRECT, 0666)
     except OSError, detail:
-        #USERERROR is on the list of non-retriable errors.  Because of
-        # this the return from handle_retries will remove this request
-        # from the list.  Thus avoiding issues with the continue and
-        # range(submitted).
-        done_ticket = {'status':(e_errors.USERERROR, detail)}
-        return done_ticket
+	if flags & O_DIRECT and detail.errno == errno.EINVAL:
+	    #If we get here then it is likely that the local filesystem
+	    # does not support direct i/o.  Try without it.
+	    try:
+		local_fd = os.open(filename, flags, 0666)
+	    except OSError, detail:
+		#USERERROR is on the list of non-retriable errors.  Because of
+		# this the return from handle_retries will remove this request
+		# from the list.  Thus avoiding issues with the continue and
+		# range(submitted).
+		done_ticket = {'status':(e_errors.USERERROR, str(detail))}
+		return done_ticket
+	else:
+            #USERERROR is on the list of non-retriable errors.  Because of
+	    # this the return from handle_retries will remove this request
+	    # from the list.  Thus avoiding issues with the continue and
+	    # range(submitted).
+	    done_ticket = {'status':(e_errors.USERERROR, str(detail))}
+	    return done_ticket
 
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
     return done_ticket
@@ -2161,6 +2167,16 @@ def calculate_rate(done_ticket, tinfo):
         else:
             disk_time = elapsed_time
 
+    """
+    #Note MWZ 9-19-2002: These lines are hacks.  They are evil.  Fix EXfer.c
+    # write time calculation bug.
+    if done_ticket['work'] == "read_from_hsm":
+        nsa = 0
+        dsa = 0 #intf_encp.bufsize
+    else:
+        nsa = 0 #intf_encp.bufsize
+        dsa = 0
+    """
     
     if e_errors.is_ok(done_ticket['status'][0]):
 
