@@ -441,7 +441,7 @@ def print_volume_quota_sums(volume_quotas, output_file):
         try:
             quota = int(quota) + int(library_dict.get(l, (0,) * 11)[2])
         except:
-            quota = int(library_dict.get(l, (0,) * 11)[2]
+            quota = int(library_dict.get(l, (0,) * 11)[2])
         allocated = allocated + library_dict.get(l, (0,) * 11)[3]
         blank_v = blank_v + library_dict.get(l, (0,) * 11)[4]
         written_v =  written_v + library_dict.get(l, (0,) * 11)[5]
