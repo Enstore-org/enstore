@@ -2163,10 +2163,10 @@ class File:
 		return
 
 	# update() -- write out to pnfs files
-	def update(self):
+	def update(self, forced=0):
 		if not self.bfid:
 			return
-		if not self.consistent():
+		if not forced and not self.consistent():
 			if self.path != self.p_path:
 				raise 'DIFFERENT_PATH'
 			else:
@@ -2182,7 +2182,7 @@ class File:
 			f.write(self.location_cookie+'\n')
 			f.write(str(self.size)+'\n')
 			f.write(self.file_family+'\n')
-			f.write(self.path+'\n')
+			f.write(self.p_path+'\n')
 			f.write(self.volmap+'\n')
 			# always use real pnfs id
 			f.write(self.get_pnfs_id()+'\n')
