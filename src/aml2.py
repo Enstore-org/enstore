@@ -97,7 +97,7 @@ def mount(volume, drive, media_type,view_first=1):
         if drvstate == None:
             return 'BAD', stat, 'drive %s not found'%(drive,)
         if drvstate.volser != "": # look for any tape mounted in this drive
-            return 'BAD',9998,'Drive %s is not empty. Found volume %s'%(drive,drvstat.volser)
+            return 'BAD',9998,'Drive %s is not empty. Found volume %s'%(drive,drvstate.volser)
 
     stat = aci.aci_mount(volume,media_code,drive)
     if stat==0:
