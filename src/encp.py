@@ -1315,6 +1315,7 @@ def open_data_socket(mover_addr, interface_ip):
 def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
     use_listen_socket = listen_socket
     ticket = {}
+    config = host_config.get_config()
     unique_id_list = []
     for work_ticket in work_tickets:
         unique_id_list.append(work_ticket['unique_id'])
@@ -1328,7 +1329,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         #Attempt to get the routing socket before opening the others
         try:
             #There is no need to do this on a non-multihomed machine.
-            if host_config.get_config():
+            if config and config.get('interfaces', None):
                 ticket, use_listen_socket = open_routing_socket(
 		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
@@ -1355,7 +1356,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    #If the routes were changed, then only wait 10 sec. before
 	    # initiating the retry.  If no routing was done, wait for the
 	    # mover to callback as originally done.
-	    if host_config.get_config():
+	    if config and config.get('interfaces', None):
 		for i in range(int(encp_intf.mover_timeout/10)):
 		    try:
 			control_socket, mover_address, ticket = \
@@ -2338,7 +2339,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                         "storage_group"      : storage_group,}
         file_clerk = {"address" : fcc.server_address}
 
-        if host_config.get_config():
+        if host_config.get_config().get('interfaces', None):
             route_selection = 1
         else:
             route_selection = 0
@@ -3079,7 +3080,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             quit()
 
         #There is no need to deal with routing on non-multihomed machines.
-        if host_config.get_config():
+        config = host_config.get_config()
+        if config and config.get('interfaces', None):
             route_selection = 1
         else:
             route_selection = 0

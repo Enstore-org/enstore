@@ -167,7 +167,6 @@ def get_interface_info_by_ip(interface_ip):
 # for each column in the routing table.  WARNING: The titles are very system
 # dependent.
 def get_netstat_r():
-
     #Obtain the netstat information needed (netstat -rn).  The option -r is
     # to specify displaying the routing table.  The option -n will display
     # the -r routing table output in FQDN form.  This is desirable, since
@@ -214,7 +213,7 @@ def get_netstat_r():
         if ( len(info) == columns or \
              dotted_decimal.match(info[0]) or \
              info[0] == "default" ) \
-             and info != titles:
+             and info != titles and info[0][:5] != "Route":
             #Pad the possiblity of empty columns before the "Flags" column.
             flags_index = titles.index("Flags")
             while not flags.match(info[flags_index]):
@@ -224,7 +223,6 @@ def get_netstat_r():
             for i in range(len(titles)):
                 tmp[titles[i]] = info[i]
             output.append(tmp)
-
     return output
 
 _cached_netstat = None
@@ -243,6 +241,11 @@ def update_cached_routes():
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
+    
+    #if no routing is required, return true.
+    if not get_config():
+	return 1
+
     ip = socket.gethostbyname(dest)
     route_table = get_routes()
     for route in route_table:
@@ -250,7 +253,9 @@ def is_route_in_table(dest):
         # necessary.
         if route['Destination'] == ip:
             return 1
-
+        #Test to see if the subnet route already exists.
+        if route['Destination'].split(".")[:-1] == ip.split(".")[:-1]:
+            return 1
     return 0
 
 ##############################################################################
@@ -278,7 +283,7 @@ def set_route(dest, interface_ip):
     config = get_config()
     if not config:
         return
-
+    
     for interface in get_interfaces():
 	if interface_ip == config['interface'][interface]['ip']:
 	    break
@@ -396,7 +401,7 @@ def setup_interface(dest, interface_ip):
     interface_dict = config.get('interface')
     if not interface_dict:
         return
-
+    
     #If we are already on the machine, we don't need to do set routes.
     if socket.gethostbyaddr(socket.gethostname())[0] == \
        socket.gethostbyaddr(dest)[0]:
