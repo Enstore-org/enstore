@@ -216,7 +216,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
-      do0la*)    INSTALLDIR=/home/bakken/enstore/$product #this stinks! but I don't know what else to do
+      d0ola*)    INSTALLDIR=/home/bakken/enstore/$product #this stinks! but I don't know what else to do
 	          puntUPS=1;;
       *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
    esac
