@@ -60,8 +60,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
                    fn = pw_list[i]["wrapper"]["fullname"]
                    at_top = pw_list[i]["at_the_top"]
+                   reject_reason = ""
+                   if pw_list[i].has_key('reject_reason'):
+                       reject_reason = repr(pw_list[i]['reject_reason'])
                    if (host == node) or (not node):
-                       print "%s %s %s %s %s P %d" % (host,self.name,user,pnfsfn,fn, at_top)
+                       print "%s %s %s %s %s P %d %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason)
                for i in range(0, len(at_list)):
                    host = at_list[i]["wrapper"]["machine"][1]
                    user = at_list[i]["wrapper"]["uname"]

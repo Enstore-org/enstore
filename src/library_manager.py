@@ -323,6 +323,7 @@ def next_work_any_volume(self):
         # if we need to read and volume is busy, check later
         if w["work"] == "read_from_hsm":
             if is_volume_busy(self, w["fc"]["external_label"]) :
+                w["reject_reason"] = ("VOL_BUSY",w["fc"]["external_label"])
                 w=self.pending_work.get_next()
                 continue
             # otherwise we have found a volume that has read work pending
@@ -346,6 +347,7 @@ def next_work_any_volume(self):
                                                              "."+w["vc"]["wrapper"])
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["vc"]["file_family_width"]:
+                w["reject_reason"] = ("VOLS_IN_WORK","")
                 w=self.pending_work.get_next()
                 continue
 
@@ -367,6 +369,7 @@ def next_work_any_volume(self):
 		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
+                    w["reject_reason"] = (v_info['status'],"")
 		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" %
                                 (v_info['status'],))
 
@@ -382,6 +385,7 @@ def next_work_any_volume(self):
             # If the volume clerk returned error - return
 	    if v["status"][0] != e_errors.OK:
 		w["status"] = v["status"]
+                w["reject_reason"] = (v["status"],"")
 		return w
 		
             # found a volume that has write work pending - return it
@@ -457,6 +461,8 @@ def next_work_this_volume(self, v):
 		if not w: return {"status" : (e_errors.NOWORK, None)}
 		# return read work ticket
 		return w
+        else:
+            w['reject_reason'] = (ret['status'], "")
 	w=self.pending_work.get_next()
     return {"status" : (e_errors.NOWORK, None)}
 
@@ -986,6 +992,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			   mticket["mover"],
 			   w["wrapper"]["uname"]))
 	    self.pending_work.delete_job(w)
+            if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
             self.reply_to_caller(w) # reply now to avoid deadlocks
             w['mover'] = mticket['mover']
@@ -1046,6 +1053,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     w["wrapper"]["uname"]))
 	    w['times']['lm_dequeued'] = time.time()
             self.pending_work.delete_job(w)
+            if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    delayed_dismount = w['encp']['delayed_dismount']

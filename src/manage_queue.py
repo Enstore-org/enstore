@@ -128,6 +128,7 @@ class LM_Queue:
 	# this is for test
 	#if self.queue[0]["fc"].has_key("location_cookie"):
 	#    print "LC0", self.queue[0]["fc"]["location_cookie"]
+        self.queue[0]['at_the_top'] = self.queue[0]['at_the_top'] + 1
 	return self.queue[0]				# Return the top one
 
     # Sort jobs by location for the given volume and return the top one
@@ -139,6 +140,7 @@ class LM_Queue:
 	# this is for test
 	#if self.queue[0]["fc"].has_key("location_cookie"):
 	#    print "LC0", self.queue[0]["fc"]["location_cookie"]
+        self.queue[0]['at_the_top'] = self.queue[0]['at_the_top'] + 1
 	return self.queue[0]			    # Return the top one
 
     # Return the next highest priority job.  get_init must be called first
