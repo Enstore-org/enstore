@@ -73,11 +73,12 @@ i=`get_i`
 count=0
 vols=""
 cat $flip_list | while read vol type rest; do
-    if [ `grep -c $vol $exclude_file` -ne 0 ]; then continue
+    if [ `grep -c $vol $exclude_file` -ne 0 ]; then echo excluding $vol ; continue; fi
     vols="$vols $vol"
     count=`expr $count + 1`
     if [ $count -eq 21 ]; then 
        echo "$cmd1 $vols $cmd2" >$work/$i
+       echo `date` Capful $i written
        i=`expr $i + 1`
        vols=""
        count=0
@@ -90,4 +91,5 @@ i=`get_i`
 vols=`cat $tmp_list`
 if [ -n "$vols" ]; then 
    echo "$cmd1 $vols $cmd2" >$work/$i
+   echo `date` Capful $i written
 fi
