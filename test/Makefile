@@ -83,14 +83,35 @@ stop:
 	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
 		( cd $$d; \
-			touch $$ENSTORE_DIR/test/readstop  ;\
-			touch $$ENSTORE_DIR/test/writestop ;\
-			touch $$ENSTORE_DIR/test/longstop  ; ); \
+			touch readstop  ;\
+			touch writestop ;\
+			touch longstop  ; ); \
 	done
+	touch $$ENSTORE_DIR/test/readstop
+	touch $$ENSTORE_DIR/test/writestop
+	touch $$ENSTORE_DIR/test/longstop
 	find . -name '*.pids' -exec $$ENSTORE_DIR/bin/pidkill {} \;
 
+rstop:
+readstop:
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
+		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
+		( cd $$d; \
+			touch readstop ; ); \
+	done
+	touch $$ENSTORE_DIR/test/readstop
+
+wstop:
+writestop:
+	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 ; do \
+		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
+		( cd $$d; \
+			touch writestop   ; ); \
+	done
+	touch $$ENSTORE_DIR/test/writestop
+
 clean:
-	make stop
+	make stop 
 	@ $$ENSTORE_DIR/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 data ; do rm -rf $$d ; done
 	rm -f files.in
