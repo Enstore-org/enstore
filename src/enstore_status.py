@@ -6,12 +6,11 @@ import regsub
 import string
 import os
 import stat
-import errno
 
 # enstore imports
 import Trace
 import generic_cs
-import log_client
+import alarm
 import e_errors
 
 # used to force timestamping
@@ -44,6 +43,8 @@ bg_color = "FFFFFF"
 tdata = "<TD NOSAVE>"
 trow = "<TR NOSAVE>\n"
 tdata_end = "</TD>\n"
+TMP = ".tmp"
+
 
 html_header1 = "<title>Enstore Status</title>\n"+\
                "<meta http-equiv=\"Refresh\" content=\""
@@ -795,5 +796,60 @@ class EnEncpDataFile(EnDataFile):
 	                         einfo[2]])
 	Trace.trace(10,"}parse_data ")
 
+class EnAlarmFile(EnFile):
 
+    # open the file, if no mode is passed in, try opening for append and
+    # then write
+    def open(self, mode=""):
+        if not mode == "":
+            EnFile.open(self, mode)
+        else:
+            EnFile.open(self, "a")
+            if self.filedes == 0:
+                # the open for append did not work, now try write
+                EnFile.open(self, "w")
 
+    # read lines from the file
+    def read(self):
+        enAlarms = {}
+        if not self.filedes == 0:
+            try:
+                while TRUE:
+                    line = self.filedes.readline()
+                    if not line:
+                        break
+                    else:
+                        theAlarm = alarm.AsciiAlarm(line)
+                        enAlarms[theAlarm.timedate] = theAlarm
+            except IOError:
+                pass
+        return enAlarms
+                
+    # write the alarm to the file
+    def write(self, alarm):
+        if not self.filedes == 0:
+            line = repr(alarm)
+            try:
+                self.filedes.write(line)
+            except IOError:
+                pass
+
+class EnPatrolFile(EnFile):
+
+    # we need to save both the file name passed to us and the one we will
+    # write to.  we will create the temp one and then move it to the real
+    # one.
+    def __init__(self, name):
+        EnFile.__init__(self, name+TMP)
+        self.real_file_name = name
+        self.lines = []
+
+    # we need to close the open file and move it to the real file name
+    def close(self):
+        EnFile.close(self)
+        os.system("mv "+self.file_name+" "+self.real_file_name)
+
+    # write out the alarm
+    def write(self, alarm):
+        if not self.filedes == 0:
+            self.filedes.write(repr(alarm))
