@@ -451,7 +451,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # there is vol, check if it has been written
             record = self.dict[vol]
             if record['sum_wr_access']:
-                error_msg = 'volume %s already exists, can not restore %.deleted'%(vol, vol)
+                error_msg = 'volume %s already exists, can not restore %s.deleted'%(vol, vol)
                 Trace.log(e_errors.ERROR, error_msg)
                 return e_errors.ERROR, error_msg
             else:    # never written, just erase it
