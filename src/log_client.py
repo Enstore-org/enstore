@@ -458,28 +458,6 @@ def parse(lineIn):
         lineDict['msg'] = msg
 
     return lineDict
-"""
-class LoggerClientInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.message = ""
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-	self.get_logfile_name = 0
-	self.get_logfiles = ""
-	self.get_last_logfile_name = 0
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "message=", "get-logfile-name", "get-last-logfile-name","get-logfiles="]
-"""
 
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
@@ -580,6 +558,6 @@ if __name__ == "__main__" :
     Trace.trace(6,"logc called with args "+repr(sys.argv))
 
     # fill in interface
-    intf = LoggerClientInterface()
+    intf = LoggerClientInterface(user_mode=0)
 
     do_work(intf)

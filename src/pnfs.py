@@ -2217,7 +2217,7 @@ def do_work(intf):
 ##############################################################################
 if __name__ == "__main__":
 
-    intf = PnfsInterface()
+    intf = PnfsInterface(user_mode=0)
 
     intf._mode = "admin"
 

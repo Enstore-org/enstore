@@ -256,5 +256,5 @@ if __name__ == "__main__" :
     Trace.trace(6,"mcc called with args "+repr(sys.argv))
 
     # fill in the interface
-    intf = MediaChangerClientInterface()
+    intf = MediaChangerClientInterface(user_mode=0)
     do_work(intf)

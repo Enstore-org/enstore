@@ -67,37 +67,6 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         # these are the files to which we will write, they are html files
         self.plotfile = enstore_files.HTMLPlotFile(plot_file, 
                                                    self.system_tag)
-"""
-class PlotterInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-        # fill in the defaults for the possible options
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.alive_rcv_timeout = 5
-        self.alive_retries = 1
-	self.logfile_dir = None
-	self.start_time = None
-	self.stop_time = None
-        self.media_changer = []
-        self.keep = 0
-        self.keep_dir = ""
-        self.output_dir = None
-	self.html_file = None
-	self.encp = None
-	self.mount = None
-	self.sg = None
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options() +[
-                "logfile-dir=", "start-time=", "stop-time=", "keep",
-                "keep-dir=", "output-dir=", "encp", "mount", "sg"]
-"""
 
 class PlotterInterface(generic_client.GenericClientInterface):
 
@@ -198,7 +167,7 @@ if __name__ == "__main__":
     Trace.trace(1, "plotter called with args %s"%(sys.argv,))
 
     # get interface
-    intf = PlotterInterface()
+    intf = PlotterInterface(user_mode=0)
 
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 

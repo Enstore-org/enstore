@@ -428,6 +428,6 @@ if __name__ == "__main__" :
     Trace.trace(6,"lmc called with args "+repr(sys.argv))
 
     # fill in the interface
-    intf = LibraryManagerClientInterface()
+    intf = LibraryManagerClientInterface(user_mode=0)
 
     do_work(intf)

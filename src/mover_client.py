@@ -203,6 +203,6 @@ if __name__ == "__main__" :
     Trace.trace(6,"movc called with args "+repr(sys.argv))
 
     # fill in the interface
-    intf = MoverClientInterface()
+    intf = MoverClientInterface(user_mode=0)
 
     do_work(intf)

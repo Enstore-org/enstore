@@ -427,6 +427,6 @@ if __name__ == "__main__" :
     Trace.trace(6,"iqc called with args "+repr(sys.argv))
 
     # fill in interface
-    intf = InquisitorClientInterface()
+    intf = InquisitorClientInterface(user_mode=0)
 
     do_work(intf)

@@ -74,7 +74,7 @@ def do_work(intf):
 
 if __name__ == "__main__":
 
-    intf = RatekeeperClientInterface()
+    intf = RatekeeperClientInterface(user_mode=0)
     
     Trace.init(MY_NAME)
     Trace.trace( 6, 'msc called with args: %s'%(sys.argv,) )

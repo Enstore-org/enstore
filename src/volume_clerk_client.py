@@ -1205,7 +1205,7 @@ if __name__ == "__main__":
     Trace.trace( 6, 'vcc called with args: %s'%(sys.argv,) )
 
     # fill in the interface
-    intf = VolumeClerkClientInterface()
+    intf = VolumeClerkClientInterface(user_mode=0)
 
     do_work(intf)
 
