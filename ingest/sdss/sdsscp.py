@@ -50,6 +50,8 @@ def main():
     #Copy the catalog metadata file to the /tmp directory.
     if getNames.getFile("sdssdp", metaFileName, mjd,
                         "sdssdp30", localMetaFilePath) < 0:
+        if os.path.exists(localMetaFilePath):
+            os.remove(localMetaFilePath)
         sys.exit(124)
 
     #Read in the metadata catalog file just copied over.
@@ -59,7 +61,7 @@ def main():
     exit_status = callGet.callGet(tapeLabel, files, pnfsDir, outputDir, verbose)
 
     #The copied catalog file is removed at this point.
-    #os.remove(localMetaFilePath)
+    os.remove(localMetaFilePath)
 
     print "Exit status = %s." % exit_status
     sys.exit(exit_status)

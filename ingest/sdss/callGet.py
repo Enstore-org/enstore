@@ -43,7 +43,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     except TypeError:
         sdsscp_path = None
 
-    #Detemine which path(s) exits.
+    #Detemine which path(s) exists.
     if enstore_path and os.path.exists(enstore_path):
         sys.stderr.write("Warning: Using enstore version of get.\n")
         path = enstore_path
@@ -51,6 +51,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         path = sdsscp_path
     else:
         sys.stderr.write("Unable to find get executable.\n")
+        os.remove(fname)
         sys.exit(70)
         
     if not out_is_null:
@@ -58,11 +59,12 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     os.system("mkdir -p %s"%(pnfsDir,))
     if (not os.path.exists(pnfsDir)):
         sys.stderr.write("%s does not exist\n"%(pnfsDir,))
+        os.remove(fname)
         sys.exit(70)
     if (not os.path.exists(outputDir)):
         sys.stderr.write("%s does not exist\n"%(outputDir,))
+        os.remove(fname)
         sys.exit(70)
-    
     
     while 1:
         if verbose:
@@ -82,6 +84,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         pipeObj = popen2.Popen4(string.join(args),  0)
         if pipeObj is None:
             print "could not fork off the process %s"%(args)
+            os.remove(fname)
             return 1
 
         rc = -1 #poll() returns -1 when the process is still alive.
