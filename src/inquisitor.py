@@ -111,8 +111,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
 	    self.last_alive[key] = time
 	except errno.errorcode[errno.ETIMEDOUT]:
-	    if self.last_alive.has_key(client):
-	        last_time = self.last_alive[client]
+	    if self.last_alive.has_key(key):
+	        last_time = self.last_alive[key]
 	    else:
 	        last_time = -1
 	    self.essfile.output_etimedout((host, port), prefix, time, key, \
