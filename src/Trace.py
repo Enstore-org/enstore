@@ -34,6 +34,7 @@ MSG_ALARM = "%sALARM "%(MSG_TYPE,)
 MSG_ENCP_XFER = "%sENCP_XFER "%(MSG_TYPE,)
 MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%(MSG_TYPE,)
 MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
+MSG_ADD_TO_LMQ = "%sADD_TO_LMQ "%(MSG_TYPE,)
 
 logname = ""
 alarm_func = None
