@@ -24,7 +24,6 @@ def get_user():
     username = pwd.getpwuid(uid)[0]
     eusername = pwd.getpwuid(euid)[0]
 
-
 # return a string version of a list
 def print_list(aList, sep=" "):
     str = ""
@@ -90,6 +89,10 @@ def get_media():
 # return the location of the html files from the config file
 def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
+
+def get_www_host():
+    default = get_config_server_info()['host']
+    return get_from_config_file("inquisitor", "www_host", default)
 
 def get_mover_status_filename():
     return "enstore_movers.html"

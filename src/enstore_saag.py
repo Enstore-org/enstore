@@ -135,6 +135,14 @@ def do_work(intf):
     saag_file.close()
     saag_file.install()
 
+    # create the file that records just the status of enstore 
+    filename = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
+    es_file = enstore_files.EnstoreStatusFile(filename)
+    es_file.open()
+    es_file.write(enstat, outage_d, offline_d)
+    es_file.close()
+    es_file.install()
+
 if __name__ == "__main__" :
 
     intf = SaagInterface(user_mode=0)

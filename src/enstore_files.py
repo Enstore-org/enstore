@@ -841,3 +841,17 @@ class SeenDownFile(EnFile):
             # could not open the file
             rtn = 0
         return rtn
+
+
+class EnstoreStatusFile(EnFile):
+
+    def __init__(self, file):
+	EnFile.__init__(self, file)
+        self.file_name = "%s.new"%(file,)
+
+    def write(self, enstat, outage_d, offline_d):
+	self.do_write("status=%s"%([enstat[enstore_constants.ENSTORE],
+				    enstat[enstore_constants.TIME],
+				    outage_d.get(enstore_constants.ENSTORE, -1),
+				    offline_d.get(enstore_constants.ENSTORE, -1),
+				    enstore_functions.get_www_host()],))

@@ -89,6 +89,7 @@ SEENDOWNFILE = "enstore_seen_down.py"
 SAAGHTMLFILE = "enstore_saag.html"
 REALSAAGHTMLFILE = "enstore_saag_real.html"
 REDSAAGHTMLFILE = "enstore_red.html"
+ENSTORESTATUSFILE = "enstore_status_only.py"
 BASENODE = "base_node"
 UP = 0
 WARNING = 2
