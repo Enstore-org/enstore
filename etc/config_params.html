@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Enstore Configuration Keys</title>
+  </head>
+
+  <body>
+    <body text="#000066" bgcolor="#FFFFFF" link="#0000EF" vlink="#55188A" aqlink="#FF0000" background="enstore.gif">
+    <h1>Enstore Configuration Keys</h1>
+
+
+
+    <hr>
+<p>
+&nbsp;
+<p>
+<h2>Common Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="host">host</a></td><td>server host name</td><tr>
+<tr><td><a NAME="hostip">hostip</a></td><td>server host IP address</td></tr>
+<tr><td><a NAME="port">port</a></td><td>server port number</td></tr>
+<tr><td><a NAME="logname">logname</a></td><td>server name in the log</td></tr>
+<tr><td><a NAME="inq_ignore">inq_ignore</a></td><td>if presents the inquisitor will not monitor corresponding server</td></tr>
+<tr><td><a NAME="norestart">norestart</a></td><td>if presents inq will not restart corresponding  server/mover</td></tr>
+<tr><td><a NAME="noupdown">noupdown</a></td><td>'enstore system' process will not to look at the
+corresponding server when generating the SAAG page, and possibly
+turning the ball red</td></tr>
+</table>
+
+<h2>Library Manager Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="max_encp_retries">max_encp_retries</a></td><td>maximal number of encp retries for a given LM</td></tr>
+<tr><td><a NAME="max_suspect_movers">max_suspect_movers</a></td><td>if number of suspect movers on which a given volume failed >= of max_suspect_movers, this volume will be set to NOACCESS state (default value - 3)</td></tr>
+<tr><td><a NAME="suspect_volume_expiration_time">suspect_volume_expiration_time</a></td><td>remove entry from suspect volume list after this period of time (default value - None)</td></tr>
+<tr><td><a NAME="min_file_size">min_file_size</a></td><td>when requesting a volume for write reserve not less than this amount of tape space (dafault value - 0)</td></tr>
+<tr><td><a NAME="max_file_size">max_file_size</a></td><td>maximal size of the file allowed by this laibrary (default value 2GB - 2kB)</td></tr>
+<tr><td><a NAME="blank_error_increment">blank_error_increment</a></td><td>do not set volume to NOACCESS in case of BLANK error until the number of erros exceeds max_suspect_movers+blank_error_increment (default value - 5)</td></tr>
+<tr><td><a NAME="legal_encp_version">legal_encp_version</a></td><td>minimal encp version number allowed to acess enstore</td></tr>
+<tr><td><a NAME="CleanTapeVolumeFamily">CleanTapeVolumeFamily</a></td><td>volume family for cleaning tapes</td></tr>
+</table>
+ 
+<h2>Mover Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+
+<tr><td><a NAME="do_eject">do_eject</a></td><td>eject tape on dismount (default value - 'yes')</td></tr>
+
+<tr><td><a NAME="do_cleaning">do_cleaning</a></td><td>clean tape drive by the mover request (defaults value - 'yes')</td></tr>
+
+<tr><td><a NAME="mc_device">mc_device</a></td><td>media changer device as declared in the robot</td></tr>
+
+<tr><td><a NAME="min_buffer">min_buffer</a></td><td> minimal amount of memory to allocate for buffering when transferring data (default value - 8MB)</td</tr>
+
+<tr><td><a NAME="max_buffer">max_buffer</a></td><td>maximal amount of memory to allocate for buffering (defaults value - 64MB)</td></tr>
+
+<tr><td><a NAME="max_rate">max_rate</a></td><td> - maximum sustained transfer rate for writes. This is used to calculate optimal buffer size</td></tr>
+
+<tr><td><a NAME="device">device</a></td><td>pathname to the UNIX tape device</td></tr>
+
+<tr><td><a NAME="dismount_delay">dismount_delay</a></td><td>delayed dismount value to use when none specified by the client (default value 60 seconds).Set to negative value to get "infinite" dismount delay</td></tr>
+
+<tr><td><a NAME="mount_delay">mount_delay</a></td><td>number of seconds to wait after media changer mount completes, before trying to open device. Default is 15 for FTT driver, 0 for NULL driver</td></tr>
+
+<tr><td><a NAME="max_dismount_delay">max_dismount_delay</a></td><td>maximal dismount delay that can be set for this mover (default value - 600 seconds)</td></tr>
+
+<tr><td><a NAME="library">library</a></td><td>library(ies) that this mover serve</td></tr>
+
+<tr><td><a NAME="driver">driver</a></td><td>low lewel media driver ('FTTDriver' for tape, 'NullDriver'
+for null mover)</td></tr>
+
+<tr><td><a NAME="max_consecutive_failures">max_consecutive_failures</a></td><td>number of any consecutive errors after which the mover becomes unavailable to accept data transfer requests</td></tr>
+
+<tr><td><a NAME="max_failures">max_failures</a></td><td>Mover will become unavailable if this many transfers fail within failure_interval (see below)</td></tr>
+
+<tr><td><a NAME="failure_interval">failure_interval</a></td><td>Interval for above (default value 3600 sec.)</td></tr>
+
+<tr><td><a NAME="send_stats">send_stats</a></td><td>send tape drive statistics to to the drivestat Data Base (defaul value - 1, which means "send")</td></tr>
+
+<tr><td><a NAME="type">type</a></td><td>specifies the type of mover ('','Mover','DiskMover')</td></tr>
+
+<tr><td><a NAME="media_type">media_type</a></td><td>media type used for the mover</td></tr>
+
+<tr><td><a NAME="log_state">log_state</a></td><td>if set log the state of the mover processes</td></tr>
+
+<tr><td><a NAME="syslog_entry">syslog_entry</a></td><td>expression to match in the syslog for the low level failure diagnostics</td></tr>
+
+<tr><td><a NAME="restart_on_error">restart_on_error</a></td><td>restart mover if it went to the ERROR
+state. Default - do not restart</td></tr>
+
+<tr><td><a NAME="connect_timeout">connect_timeout</a></td><td>TO for mover connection to encp (default value - 15 s)</td></tr>
+
+<tr><td><a NAME="connect_retries">connect_retries</a></td><td>number of connection retries to encp (default value - 4)</td></tr>
+
+<tr><td><a NAME="update_interval">update_interval</a></td><td>interval for the mover to ask LM for the work (default value - 15 s)</td></tr>
+
+<tr><td><a NAME="single_filemark">single_filemark</a></td><td>if not 0 write single file mark (Default value - 0 - write 2 filemarks)</td></tr>
+
+<tr><td><a NAME="check_written_file">check_written_file</a></td><td>if more than 0 randomly check written file using randomization of this number (default value:0 - no check)</td></tr>
+
+<tr><td><a NAME="max_time_in_state">max_time_in_state</a></td><td>if state of the mover (other tahn ACTIVE) does not change in a period of time less than max_time_in_state the alarm will be raised (default - 600 s)</td></tr>
+
+<tr><td><a NAME="max_in_state_cnt">max_in_state_cnt</a></td><td>if this counter expires Mover errors out with "Mover stuck..." message. (default - 3)</td></tr>
+
+<tr><td><a NAME="statistics_path">statistics_path</a></td><td>If specified write the last statistics to the file statistics_path (default - None)</td></tr>
+
+<tr><td><a NAME="compression">compression</a></td><td>0 means no compression. Everything else means use the drive compression (default: None - use the drive compression)</td></tr>
+
+<tr><td><a NAME="get_remaining_from_stats">get_remaining_from_stats</a></td><td>get remaining bytes info from drive</td></tr>
+</table>
+
+
+<h2>Media Changer Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="type">type</a></td><td>type of the media changer (name of the media changer class)</td></tr>
+<tr><td><a NAME="acls_host">acls_host</a></td><td>host name of STK robot control machine (specific for STK Library)</td></tr>
+<tr><td><a NAME="acls_uname">acls_uname</a></td><td>user name to access STK robot control program (specific for STK Library)</td></tr>
+<tr><td><a NAME="RobotArm">RobotArm</a></td><td> - robot arm in AML2 robot (specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="IdleTimeHome">IdleTimeHome</a></td><td>home robot arm if it is idle and not in a home position after this period of time has expired (default 5 min, specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="IOBoxMedia">IOBoxMedia</a></td><td>specifies types of media and addresses of IO box for importing/exporting tapes into the robot (specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if presents specifes the type of media, time until cleaning tape gets dismounted and number of cleaning cycles to clean a tape drive</td></tr>
+</table>
+
+
+
+<p>  
+<!-- Created: Thu May  6 09:12:39 CDT 2004 -->
+<!-- hhmts start -->
+Last modified: Fri May  7 09:59:29 CDT 2004
+<!-- hhmts end -->
+  </body>
+</html>
