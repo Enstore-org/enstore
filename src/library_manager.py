@@ -260,6 +260,9 @@ def next_work_this_volume(v):
 
 def summon_mover(self, mover):
     if not summon: return
+    if list:
+	print "SUMMON"
+	pprint.pprint(mover)
     Trace.trace(3,"{summon_mover " + repr(mover))
     mover['last_checked'] = time.time()
     mover['state'] = 'summoned'
@@ -331,7 +334,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def handle_timeout(self):
 	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
-	if list: 
+	if debug: 
 	    print "PROCESSING TO"
 	    print "summon queue"
 	    pprint.pprint(self.summon_queue)
@@ -361,7 +364,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			if mover_cnt > 0:
 			    mover_cnt = mover_cnt - 1
 
-	if list: 
+	if debug: 
 	    print "movers queue after processing TO"
 	    pprint.pprint(movers)
 	    print "summon queue after processing TO"
@@ -450,8 +453,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"{idle_mover " + repr(mticket))
 	if list: print "IDLE MOVER"
 	update_mover_list(mticket)
+	if list: print "update_mover_list done"
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
+	if list: print "find_mover done"
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
@@ -463,6 +468,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pprint.pprint(w)
 
         # no work means we're done
+	if list: print "status ", w['status']
+	if list: print "reply address ", self.reply_address
         if w["status"][0] == e_errors.NOWORK:
             self.reply_to_caller({"work" : "nowork"})
 
@@ -522,7 +529,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
 	    if list: 
-		print "Work awaiting bind"
+		print "Work at movers appended"
 		pprint.pprint(w)
 	    Trace.trace(3,"}idle_mover " + repr(w))
             return
@@ -550,15 +557,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if ((mv != None) and mv):
 	    mv['tr_error'] = 'ok'
 	    mv['summon_try_cnt'] = 0
+	    print "have bound vol mover ", mv
 	    self.summon_queue.remove(mv)
 
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket['vc']["external_label"])
         if w:
+	    if list: print "removing ", w, " from the queue"
             work_at_movers.remove(w)
 
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(mticket)
+	if list: print "next_work_this_volume ", w
         if w["status"][0] == e_errors.OK:
             format = "%s next work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
@@ -567,6 +577,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        mticket["mover"],
                                        w["wrapper"]["uname"])
 	    w['times']['lm_dequeued'] = time.time()
+	    if list: print "sending ", w, " to mover"
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.delete_job(w)
             w['mover'] = mticket['mover']
@@ -584,6 +595,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        mticket['vc']["external_label"],
                                        mticket["mover"])
+	    mv = find_mover(mticket, movers)
+	    #if list: print "unbind volume before ", mv
+	    mv['state'] = 'idle_mover'
+	    #if list: print "unbind volume for ", mv
             self.reply_to_caller({"work" : "unbind_volume"})
 	    Trace.trace(3,"}have_bound_volume: No work, sending unbind ")
 
@@ -737,6 +752,7 @@ if __name__ == "__main__":
     config_list = 0
     list = 0
     summon = 0
+    debug = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list","list","summon","help"]
@@ -749,11 +765,9 @@ if __name__ == "__main__":
         elif opt == "--config_list":
             config_list = 1
         elif opt == "--list":
-	    print "setting list"
             list = 1
         elif opt == "--summon":
-	    print "setting summon"
-            list = 1
+            summon = 1
         elif opt == "--help":
             print "python ",sys.argv[0], options, "library"
             print "   do not forget the '--' in front of each option"
