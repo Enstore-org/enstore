@@ -53,11 +53,17 @@ def check(f):
             if fr['status'][0] != e_errors.OK:
                 msg.append('not in db')
                 return msg
-            if pf.path != fr['pnfs_name0']:
-                msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+            if fr.has_key('pnfs_name0'):
+                if pf.path != fr['pnfs_name0']:
+                    msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+            else:
+                msg.append('unknown file')
             id = pf.get_pnfs_id()
-            if id != fr['pnfsid']:
-                msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
+            if fr.has_key('pnfsid'):
+                if id != fr['pnfsid']:
+                    msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
+            else:
+                msg.append('no pnfs id db')
             return msg
 
     fr = fcc.bfid_info(bfid)
