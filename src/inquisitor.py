@@ -662,7 +662,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	elif enstore_functions.is_library_manager(server.name):
 	    lm = server
 	    Trace.trace(enstore_constants.INQWORKDBG, 
-			"CBW: lm %s"%(server.name, lm.name))
+			"CBW: lm %s"%(lm.name))
 	# now check the library managers' queue to make sure that -
 	#
 	#      o the file family limit has not been reached for writes/reads
