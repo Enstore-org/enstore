@@ -26,14 +26,14 @@ to hold the actuall value (a filename for example): option.py --opt <filename>
     example_options = {
        'opt':{HELP_STRING:"some string text"}
               DEFAULT_NAME:'opt',
-              DEFAULT_VALUE:1,
+              DEFAULT_VALUE:option.DEFAULT,
               DEFAULT_TYPE:option.INTEGER,
               VALUE_NAME:'filename'
               VALUE_TYPE:option.STRING,
               VALUE_USAGE:option.REQUIRED,
               VALUE_LABEL:"filename",
               USER_LEVEL:option.USER,
-              FORCE_SET_DEFAULT:1, #This means force setting the default too.
+              FORCE_SET_DEFAULT:option.FORCE,
               EXTRA_VALUES:[],
         }
     }
@@ -72,17 +72,31 @@ import getopt
 import fcntl
 import TERMIOS
 
+#default value
+DEFAULT = 1
+
+#default help string
+BLANK = ""
+
+#existance of command value
 REQUIRED = "required"
 OPTIONAL = "optional"
 IGNORED  = "ignored"
 
+#command level
 USER = "user"
 ADMIN = "admin"
 
+#variable type
 INTEGER = "integer"
 STRING = "string"
 FLOAT = "float"
 
+#default action
+FORCE = 1
+NORMAL = 0
+
+#strings to use in the dictionaries.
 HELP_STRING = "help string"
 DEFAULT_NAME = "default name"
 DEFAULT_VALUE = "default value"
@@ -90,7 +104,7 @@ DEFAULT_TYPE = "default type"
 VALUE_NAME = "value name"
 VALUE_TYPE = "value type"
 VALUE_USAGE = "value usage"
-VALUE_LABEL = "value lable"
+VALUE_LABEL = "value label"
 USAGE_LEVEL = "user level"
 SHORT_OPTION = "short option"
 FORCE_SET_DEFAULT = "force set default"
@@ -143,7 +157,8 @@ UP = "up"
 USAGE = "usage"
 VOLUME = "volume"
 XREF = "xref"
-
+OPT = "opt"
+TEST = "test"
 #This list is the master list of options allowed.  This is in an attempt
 # to keep the different spellings of options (ie. --host vs. --hostip vs --ip)
 # in check.
@@ -156,7 +171,7 @@ valid_option_list = [ALIVE, BFID, CONST,
                      PNFS_STATE, POSITION, RETRIES, RM, SHOWID, SIZE,
                      STORAGE_GROUP, TAG, TAGECHO, TAGRM,
                      TAGS, TIMEOUT, UP, USAGE, VOLUME, XREF,
-                     ]
+                     OPT,TEST]
 
 ############################################################################
 
@@ -225,8 +240,28 @@ class Interface:
                 VALUE_USAGE:OPTIONAL,
                 SHORT_OPTION:"t",
                 USER_LEVEL:ADMIN
-                }
+                },
+        'opt':{HELP_STRING:"some string text",
+               USER_LEVEL:USER,
+               DEFAULT_NAME:'opt',
+               DEFAULT_VALUE:DEFAULT,
+               DEFAULT_TYPE:INTEGER,
+               EXTRA_VALUES:[{VALUE_NAME:'filename',
+                              VALUE_TYPE:STRING,
+                              VALUE_USAGE:REQUIRED,
+                              VALUE_LABEL:"filename",
+                              },
+                             {DEFAULT_NAME:"filename2",
+                              DEFAULT_VALUE:"",
+                              DEFAULT_TYPE:STRING,
+                              VALUE_NAME:"filename2",
+                              VALUE_TYPE:STRING,
+                              VALUE_USAGE:OPTIONAL,
+                              VALUE_LABEL:"filename2",
+                              }]
+               }
         }
+                                     
 
 ############################################################################
 
@@ -774,16 +809,28 @@ class Interface:
                 next = self.next_argument(opt)
 
             self.set_from_dictionary(extra_option, long_opt, next)
+            self.args.remove(next)
 
 ############################################################################
     
 if __name__ == '__main__':
     intf = Interface()
 
+    #print the options value
     for arg in dir(intf):
         if string.replace(arg, "_", "-") in intf.options.keys():
             print arg, type(getattr(intf, arg)), ": ",
             pprint.pprint(getattr(intf, arg))
+
+    print
+
+    #every other matched value
+    for arg in dir(intf):
+        if string.replace(arg, "_", "-") not in intf.options.keys():
+            print arg, type(getattr(intf, arg)), ": ",
+            pprint.pprint(getattr(intf, arg))
+
+    print
 
     if intf.args:
         print "unprocessed args:", intf.args
