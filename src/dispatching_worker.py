@@ -260,8 +260,7 @@ class DispatchingWorker:
 		    repr(client_address))
 	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
 	generic_cs.enprint('-'*40)
-	self.enprint('Exception happened during processing of request from '+\
-	             repr(client_address))
+	self.enprint('Exception during request from '+str(client_address)+' request:'+str(request))
 	import traceback
 	traceback.print_exception(exc, value, tb)
 	generic_cs.enprint('-'*40)
