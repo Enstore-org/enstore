@@ -434,7 +434,6 @@ static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
 #else
    arp_msg.arp_ha.sa_family = AF_UNSPEC;
 #endif
-   arp_msg.arp_flags = ATF_PUBL;
 
    errno = 0;
    if(ioctl(as, SIOCSARP, &arp_msg) < 0)
