@@ -139,8 +139,8 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	    request['status'] = (detail.type, str(detail))
 
 	#Log the error.
-	Trace.log(e_errors.ERROR, "Unable to connect udp socket: %s %s" %
-		  (str(request['status']), str(request['status'])))
+	Trace.log(e_errors.ERROR, "Unable to connect udp socket: %s" %
+		  (str(request['status']),))
 	return None, request
 
     #Print out the final ticket.
