@@ -49,8 +49,6 @@ def try_a_port(host, port) :
 # get an unused tcp port for communication
 def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
 
-    print "Get_callback_port: ",start, end, "use-multiple=",use_multiple,\
-          "fixed_ip=",fixed_ip, "verbose=",verbose #REMOVE
     if use_multiple and fixed_ip:
         raise "Error: get_callback_port: cannot set both use_multiple and fixed_ip"
 
@@ -62,8 +60,6 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
 	interface_tab = [(fixed_ip, 1)]
     else:
         interface_tab = [(ips[0], 1)]
-    print "Get_callback_port: interface_tab=", interface_tab #REMOVE
-    verbose=1 #REMOVE
     # First acquire the hunt lock.  Once we have it, we have the exclusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
     # waiters so that they will be services in the order of arrival.
@@ -131,7 +127,7 @@ def hex8(x):
     if type(x)==type(1L): s=s[:-1]  # kill the L
     l = len(s)
     if l>8:
-        raise "Overflow Error", x
+        raise OverflowError, x
     return '0'*(8-l)+s
     
 
