@@ -24,6 +24,7 @@ import callback
 import hostaddr
 import Trace
 import e_errors
+import pprint
 
 MY_NAME = "FILE_C_CLIENT"
 MY_SERVER = "file_clerk"
@@ -376,7 +377,11 @@ def do_work(intf):
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
-	    print ticket['fc']
+            del ticket['work']
+            status = ticket['status']
+            del ticket['status']
+	    pprint.pprint(ticket)
+            ticket['status'] = status
 	    # print ticket['vc']
     elif intf.restore:
 	try:

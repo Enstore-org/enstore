@@ -450,42 +450,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         for key in finfo.keys():
             ticket[key] = finfo[key]
 
-        #####################################################################
-        #The folllowing is included for backward compatiblity with old encps.
-        #####################################################################
-        ticket["fc"] = finfo
-
-        # become a client of the volume clerk to get library information
-        Trace.trace(11,"bfid_info getting volume clerk")
-        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-        Trace.trace(11,"bfid_info got volume clerk")
-
-        try:
-            external_label = finfo["external_label"]
-        except KeyError, detail:
-            msg =  "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # ask the volume clerk server which library has "external_label" in it
-        Trace.trace(11,"bfid_info inquiring about volume=%s"%(external_label,))
-        vticket = vcc.inquire_vol(external_label)
-        if vticket["status"][0] != e_errors.OK:
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(vticket)
-            return
-        library = vticket["library"]
-        Trace.trace(11,"bfid_info volume=%s in library %s"%
-                    (external_label,library))
-
-        # copy all volume information we have to user's ticket
-        ticket["vc"] = vticket
-        #####################################################################
-        #The previous is included for backward compatiblity with old encps.
-        #####################################################################
-
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
