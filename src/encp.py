@@ -1986,7 +1986,7 @@ class encp(interface.Interface):
         the_options = self.config_options()+[
                       "verbose=","crc","priority=","delpri=","age_time=",
                       "delayed_dismount=", "file_family=", "ephemeral",
-                      "data_access_layer", "d0sam", "queue"
+                      "data_access_layer", "d0sam", "queue","bytes=", "test_mode"
                       ] + self.help_options()
 
         return the_options
