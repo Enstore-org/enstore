@@ -1,33 +1,15 @@
 #########################################################################
-									#
+#									#
 # This configuration agent meets the requirements:			#
 # 1. updating MIB by snmpwalk(). 					#
-# 2. updating the node dictionaries by myself-define functions.		#
-# 3. updating the html files which can be posted on enstore web page.	#
-# 4. checking the MIB such as tcp, udp, ip, icmp, snmp and ifeXtension  #
-#    group objects, sending the events and corresponding statistics to 	#
+# 2. updating the node dictionaries.		                        #
+# 3. updating the html files which can be posted on the enstore web page#
+# 4. checking the MIB's tcp, udp, ip, icmp, snmp and ifeXtension group  #
+#    objects and sending the events and corresponding statistics to 	#
 #    NGOP Central Server if there is any object value reaches the	#
 #    corresponding threshold.						#
 #									#
-# PS: 1.If you want to add a node in ifeXtension group to monitor, go 	#
-#       to the separate file named node_init.py, add the node key, NAME,# 
-#       PRODucte state, CABLE number and ORDER number in node_d to	#
-#       initiate the node dictionary.					#
-#     2.If you want to add a group of the MIB variables to monitor,	#
-#       define a list that lists the variables, call the functions	#
-#       such as get_mib_info() and setTable(), save the initiation of	#
-#       the group dictionary as the offset, add the group name in the	#
-#       list named meNames and add the corresponding checking		#
-#       information in the checkNode() function. 			#
-#     3.To run this agent, put this file and init_d.py in a subdirectory#
-#       named config. Under this subdirectory, do the following steps:	#
-#       1. setup ngop							#
-#       2. setenv PYTHONPATH $PYTHONPATH":$NGOP_DIR/ma"			#
-#          or								#
-#          export PYTHONPATH=$PYTHONPATH":$NGOP_DIR/ma"			#
-#       3. python theAgent.py &						#
-#        								#
-#########################################################################        
+#########################################################################  
 #
 import MA_API
 import time
@@ -48,16 +30,13 @@ UNDEFINED = -1
 
 BLACK = '#000000'
 WHITE = '#FFFFFF'
-TEAL  = '#008080'
-RED   = '#FF0000'
+TEAL = '#008080'
 BLUE  = '#0000FF'
 GREEN = '#00FF00'
 MAGENTA = '#FF00FF'
 CYAN  = '#00FFFF'
 YELLOW = '#FFFF00'
 SILVER = '#C0C0C0'
-CORAL = '#FF7F50'
-TURQUOISE = '#40E0D0'
 NAVY = '#000080'
 BGCOLOR = "#DFFOFF"
 TEXTCOL = "#000066"
@@ -151,8 +130,10 @@ L = [20, 10, 20, 10, 10, 6, 10, 6, 1, 2, 1, 2]
 PATH = 'testfile/www'
 
 
-### Definitions of the modules
-
+#########################################################################
+## This function searches a string from the input file and returns an   #
+## abstract string to the caller                                        #
+#########################################################################
 def getit(searchStr, fileName):
     #check if input file exists
     if os.access(fileName, 0) == 0:
@@ -191,7 +172,11 @@ def getit(searchStr, fileName):
                 str = string.replace(str, pat2, "")  
                         
         return str
-                     
+  
+########################################################################
+## This function searches a pattern from the input file and returns a  #
+## string that indicates the duplex state of the node to the caller    #
+######################################################################## 
 def getdup(pathName, dupfile):
     card, port = string.split(pathName,'/')[0:2]
     pat = ".%s.%s ="% (card, port)
@@ -228,6 +213,10 @@ def getdup(pathName, dupfile):
                 return ""
 
 
+########################################################################
+## This function searches a pattern from the input files and returns   #
+## a string that indicates the states of rx flow and tx flow           #
+########################################################################
 def getflow(pathName, fileStr):  
     card, port = string.split(pathName, '/')[0:2]
     pat = ".%s.%s ="%(card, port) 
@@ -293,6 +282,11 @@ def getflow(pathName, fileStr):
     return "%s+%s"%(oo,aa)
   
   
+##########################################################################
+## This function calls a function getit() to get the abstract string from#
+## the input file, filles the dictionary with the string in a loop, and  #
+## finally, returns the dictionary to the caller.                        #
+##########################################################################
 def get_mib_info(list, path, filenum):
     dat_d = {}  
     for i in list:
@@ -301,10 +295,11 @@ def get_mib_info(list, path, filenum):
     return dat_d
 
 
-### This  function  checkes  the  monitored  object  variables.
-### If the value reaches the threshold, returns the description 
-### that  contains  statistics  of the  object  information 
-
+#####################################################################
+## This  function  checkes  the  monitored  object  variables.      #
+## If the value reaches the threshold, returns the description      #
+## that  contains  statistics  of the  object  information          #
+#####################################################################
 def checkNode(elmName):
     if elmName == "tcp":
    	d = tcp_d
@@ -482,8 +477,12 @@ def checkNode(elmName):
     else:
 	return UNDEFINED, -1, "Unable_to_execute", "Undefined event", 2
 
-##
-
+#########################################################################
+## This function prints the summarized information of the monitored MIB #
+## group or the monitored node, decises the state for the group or the  #
+## node according to the statistics of the values and returns the       #
+## corresponding state, value, description, event name and sever level. #
+#########################################################################
 def sumThem(r, o, y, u, val, obj, dscc):
         print "\nThere are totally %s values reaching red threshold"%(r,)
         print "There are total %s values reaching orange threshold"%(o,)
@@ -510,6 +509,12 @@ def sumThem(r, o, y, u, val, obj, dscc):
 	return  state, val, dsc, evt, sev
 
 
+########################################################################
+## This function sets the flag for the monitored object, formats the   #
+## description, counts the state for the monitored objects and returns #
+## updated flag, descrition, state, value, event name, sever level and #
+## the statistics of the monitored object state to the caller.         #
+########################################################################
 def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
     flag = 1
     dscc = "%s_%s_%s"%(dscc, name, dsc1)
@@ -526,6 +531,12 @@ def setThem(dscc, state1, val1, dsc1, evt1, sev1, r, o, y, u, name):
     return flag, dscc, state, val, dsc, evt, sev, r, o, y, u
 
 
+#########################################################################
+## This function subtracts the value from the dictionary, calculates the# 
+## dispression, compares the dispression with the given threshold and   #
+## returns the conrresponding state, value, event name to the calller.  #
+## There is one level threshold to be compared.                         #
+#########################################################################
 def checkVal(d, str, targetVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
@@ -541,6 +552,12 @@ def checkVal(d, str, targetVal, name, d0):
                 return UP, val, "OK", evt, 0
 
 
+##########################################################################
+## This function subtracts the value from a given dictionary, calculates #
+## the dispression, compares the dispression with the given threshold and#
+## returns the conrresponding state, value, event name to the calller.   #
+## There are two levels threshold to be compared.                        #
+##########################################################################
 def check2Val(d, str, redVal, orgVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
@@ -557,7 +574,12 @@ def check2Val(d, str, redVal, orgVal, name, d0):
         else:
                 return UP, val, "OK", evt, 0
 
-
+##########################################################################
+## This function subtracts the value from a given dictionary, calculates #
+## the dispression, compares the dispression with the given threshold and#
+## returns the conrresponding state, value, event name to the calller.   #
+## There are three levels threshold to be compared.                      #
+##########################################################################
 def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
     evt = "%s%s"%(name, str)
     if not len(d):
@@ -576,7 +598,13 @@ def check3Val(d, str, redVal, orgVal, ylwVal, name, d0):
         else:
                 return UP, val, "OK", evt, 0
     
-
+##########################################################################
+## This function subtracts a string that indicates the state of the      #
+## monitored object from a given dictionary, compares the string with the#
+## given threshold string and returns the conrresponding state, value,   # 
+## event name to the calller.                                            #
+## There are two levels threshold to be compared.                        #
+##########################################################################
 def check2Stat(d, str, redVal, orgVal, name):
     evt = "%s%s"%(name, str)
     if not len(d):
@@ -590,8 +618,12 @@ def check2Stat(d, str, redVal, orgVal, name):
     	else:
         	return UP, d[str], "OK", evt, 0
 
-##
-
+##########################################################################  
+## This function subtracts a string from a given dictionary, compares    #
+## the string with the given threshold string and returns the            #
+## conrresponding state, value, event name to the calller.               #
+## There are one level threshold to be compared.                         #
+##########################################################################
 def checkStr(d, str, goodStr, name):
     evt = "%s%s"%(name, str)
     if not len(d):
@@ -602,7 +634,14 @@ def checkStr(d, str, goodStr, name):
   		return DOWN, d[str], "%s_not_good"%(str,), evt, 0 
     	else:
 		return UP, d[str], "OK", evt, 0
-        
+   
+
+##########################################################################
+## This function subtracts a string from a given dictionary, compares    #
+## the string with the given threshold strings and returns the           #
+## conrresponding state, value, event name to the calller.               #
+## There are two level threshold to be compared.                         #
+##########################################################################     
 def check2Str(d, str, goodStr, warnStr, name):
     evt = "%s%s"%(name, str)  
     if not len(d):
@@ -617,12 +656,14 @@ def check2Str(d, str, goodStr, warnStr, name):
                 print "value is %s"%(val,)
                 return UNDEFINED, val, "Undefined_string", str, 2
 
-
-## This function set up html tables for the MIB groups by HTMLgen.
-
+##########################################################################
+## This function set up html tables for the MIB groups by HTMLgen.       #
+##########################################################################
 def setTable(node, list, tabName, htmName, headName):
     d = node 
-    doc = HTMLgen.SimpleDocument(title=tabName)
+    doc = HTMLgen.SimpleDocument(title=tabName,
+                                 background="enstore.gif",
+                                 textcolor="#000066")
     table = HTMLgen.Table(
         tabletitle = tabName, 
         cell_spacing = 5, cell_padding = 2,
@@ -635,11 +676,14 @@ def setTable(node, list, tabName, htmName, headName):
     doc.write("%s.html"%(htmName,))
 
 
-## This function set up html tables for the nodes of IfeXtension 
-## group by HTMLgen
-
+#########################################################################
+## This function set up html tables for the nodes of IfeXtension        #
+## group by HTMLgen                                                     #
+#########################################################################
 def setNodeTab(tabName, head, htmlName, list):
-    doc = HTMLgen.SimpleDocument(title=tabName)
+    doc = HTMLgen.SimpleDocument(title=tabName,
+                                 background="enstore.gif",
+                                 textcolor="#000066")
     table = HTMLgen.Table(
         tabletitle = tabName, 
         cell_spacing = 5, cell_padding = 2,
@@ -657,7 +701,9 @@ def setNodeTab(tabName, head, htmlName, list):
     doc.write("%s.html"%(htmlName,))
 
     
-##################
+#########################################################################
+# The following is the main routine.                                    #
+#########################################################################
 
 if __name__=="__main__":
 
@@ -680,7 +726,7 @@ if __name__=="__main__":
         mibflow[j] = ["%s/%s"%(mibdir,j), "%s%d"%(flownum, k)]
 
 
-#### Run snmpwalk to update MIB 
+#### Run snmpwalk to get MIB 
 
     for i in [1, 2, 4, 5, 6, 7, 11, 16, 31]:
       	id = "%s.%s"%(mib,i)
@@ -807,26 +853,16 @@ if __name__=="__main__":
                 node_d[j][i] = getit(str, miblist[16])
                 n = n + 1
 
-   # nodes = nodes.sort()
-#### Setup HTML files to send the updated information to the web page
-   
-    setTable(system_d, SYS_L, "Systemtable", "systemtable", "System")
-    setTable(tcp_d, TCP_L, "Tcptable", "tcptable", "Tcp") 
-    setTable(udp_d, UDP_L, "Udptable", "udptable", "Udp")
-    setTable(ip_d, IP_L, "Iptable", "iptable", "Ip")
-    setTable(icmp_d, ICMP_L, "Icmptable", "icmptable", "Icmp")
-    setTable(snmp_d, SNMP_L, "Snmptable", "snmptable", "Snmp")
-   
+#### Set up the list for the further to set up html tables   
+
     list = LIST1 + LIST2 + LIST3
     head = ['Node Name'] + LIST
-    setNodeTab('NodeTable', head, 'nodeTable', list)
 
     sublist =  LIST1[2:5] + [LIST1[6]] + LIST1[12:15] + LIST1[18:20] + \
               [LIST2[-1]] + [LIST3[0]] + LIST3[5:8] + [LIST3[10]]
     head2 = ['Node Name'] + SUBLIST
-    setNodeTab('SubNodeTable', head2, 'subnodeTable', sublist)
 
-#### save the initiation of nodes as the offset for monitoring MIB  
+#### Save the initiation of nodes as the offset for monitoring MIB  
 
     tcp0 = tcp_d
     udp0 = udp_d
@@ -1011,13 +1047,13 @@ if __name__=="__main__":
 
 ### Setup HTML files to send the updated information to the web page
 
-        setTable(system_d, SYS_L, "Systemtable", "systemtable", "System")
-        setTable(tcp_d, TCP_L, "Tcptable", "tcptable", "Tcp")
-    	setTable(udp_d, UDP_L, "Udptable", "udptable", "Ucp")
-    	setTable(ip_d, IP_L, "Iptable", "iptable", "Ip")
-    	setTable(icmp_d, ICMP_L, "Icmptable", "icmptable", "Icmp")
-    	setTable(snmp_d, SNMP_L, "Snmptable", "snmptable", "Snmp")
-        setNodeTab('NodeTable', head, 'nodeTable', list)
-        setNodeTab("SubNodeTable", head2, 'subnodeTable', sublist)
+        setTable(system_d, SYS_L, "System Table", "systemtable", "System")
+        setTable(tcp_d, TCP_L, "Tcp Table", "tcptable", "Tcp")
+    	setTable(udp_d, UDP_L, "Udp Table", "udptable", "Ucp")
+    	setTable(ip_d, IP_L, "Ip Table", "iptable", "Ip")
+    	setTable(icmp_d, ICMP_L, "Icmp Table", "icmptable", "Icmp")
+    	setTable(snmp_d, SNMP_L, "Snmp Table", "snmptable", "Snmp")
+        setNodeTab('Node Table', head, 'nodeTable', list)
+        setNodeTab("Sub Node Table", head2, 'subnodeTable', sublist)
 
 
