@@ -156,6 +156,7 @@ problem=$?
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
    echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail 
+   echo "  Uname      :" `uname -a`  >>$procMail
    echo "  Date       :" `date`      >>$procMail 
    echo "  Path       : $procName $* "  >>$procMail 
    echo "  ReturnCode : $problem "   >>$procMail 
