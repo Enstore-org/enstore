@@ -10,62 +10,62 @@ enstore pnfs is a tool to control, manipulate and query pnfs files.
 
 Commonly used commands are:
 
-   enstore pnfs info   file         lists \"important\" info about the file
-       note:  \"eval \`enstore pnfs info file\`\" will set shell variables for the user
+   enstore pnfs --info   file         lists \"important\" info about the file
+       note:  \"eval \`enstore pnfs --info file\`\" will set shell variables for the user
 
-   enstore pnfs tags   directory    lists the tags in the directory
+   enstore pnfs --tags   directory    lists the tags in the directory
 
-   enstore pnfs library [value]           sets library tag to value (must have correct cwd)
-   enstore pnfs file_family [value]       sets file family tag to value (must have correct cwd)
-   enstore pnfs file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
-   enstore pnfs file_family_width [value] sets library tag to value (must have correct cwd)
+   enstore pnfs --library [value]           sets library tag to value (must have correct cwd)
+   enstore pnfs --file_family [value]       sets file family tag to value (must have correct cwd)
+   enstore pnfs --file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
+   enstore pnfs --file_family_width [value] sets library tag to value (must have correct cwd)
 
-   enstore pnfs files volmap-tape   lists all the files on specified tape in volmap
-   enstore pnfs volume volumename   lists the volmap-tape for the specifed volumename
+   enstore pnfs --files volmap-tape   lists all the files on specified tape in volmap
+   enstore pnfs --volume volumename   lists the volmap-tape for the specifed volumename
 
-   enstore pnfs bfid   file         lists the bit file id of the file
-   enstore pnfs parked file         lists the last parked location of the file
-   enstore pnfs debug  file         lists the debug info about the file transfer
-   enstore pnfs xref   file         lists the cross-reference info about the file
+   enstore pnfs --bfid   file         lists the bit file id of the file
+   enstore pnfs --parked file         lists the last parked location of the file
+   enstore pnfs --debug  file         lists the debug info about the file transfer
+   enstore pnfs --xref   file         lists the cross-reference info about the file
 
-   enstore pnfs ls   file [layer]   does an ls on the named layer in the file
+   enstore pnfs --ls   file [layer]   does an ls on the named layer in the file
 
-   enstore pnfs {cat|more|less}          file layer     lists the layer of the file
-   enstore pnfs {tagcat|tagmore|tagless} tag  directory lists the tag in the directory
+   enstore pnfs {--cat|--more|--less}          file layer     lists the layer of the file
+   enstore pnfs {--tagcat|--tagmore|--tagless} tag  directory lists the tag in the directory
 
-   enstore pnfs enstore_state          lists whether enstore is still accepting transfers
-   enstore pnfs pnfs_state mount-point lists whether pnfs mountpoint is up
+   enstore pnfs --enstore_state          lists whether enstore is still accepting transfers
+   enstore pnfs --pnfs_state mount-point lists whether pnfs mountpoint is up
 
 Don't use these unless you know what you are doing:
 
-   enstore pnfs echo text file layer   echos text to named layer of the file
+   enstore pnfs --echo text file layer   echos text to named layer of the file
 
-   enstore pnfs rm file layer          deletes (clears) named layer of the file
+   enstore pnfs --rm file layer          deletes (clears) named layer of the file
 
-   enstore pnfs cp unixfile file layer copies unix file to named layer of file
+   enstore pnfs --cp unixfile file layer copies unix file to named layer of file
 
-   enstore pnfs size file size         sets the size of the file
+   enstore pnfs --size file size         sets the size of the file
 
-   enstore pnfs tagecho text tagname   echos text to the named tag
+   enstore pnfs --tagecho text tagname   echos text to the named tag
 
-   enstore pnfs tagrm tag              removes the tag (tricky, see DESY documents)
+   enstore pnfs --tagrm tag              removes the tag (tricky, see DESY documents)
 
-   enstore pnfs io file                sets io mode (can't clear it easily)
+   enstore pnfs --io file                sets io mode (can't clear it easily)
 
 Don't use these unless you can interpret the results:
 
-   enstore pnfs id        file
-   enstore pnfs showid    id
-   enstore pnfs const     file
-   enstore pnfs nameof    id
-   enstore pnfs path      id
-   enstore pnfs parent    id
-   enstore pnfs counters  file
-   enstore pnfs counterN  dbnum (must have cwd in pnfs)
-   enstore pnfs cursor    file
-   enstore pnfs position  file
-   enstore pnfs database  file
-   enstore pnfs databaseN dbnum (must have cwd in pnfs)
+   enstore pnfs --id        file
+   enstore pnfs --showid    id
+   enstore pnfs --const     file
+   enstore pnfs --nameof    id
+   enstore pnfs --path      id
+   enstore pnfs --parent    id
+   enstore pnfs --counters  file
+   enstore pnfs --counterN  dbnum (must have cwd in pnfs)
+   enstore pnfs --cursor    file
+   enstore pnfs --position  file
+   enstore pnfs --database  file
+   enstore pnfs --databaseN dbnum (must have cwd in pnfs)
 
 End of enstore pnfs help description
 
@@ -217,7 +217,9 @@ pdog()      { echo $#
 if [ -z "${1-}" ] ; then
   cmd="phelp"
 else
-  cmd=p$1
+  # remove the initial --
+  cmd1=`echo $1|sed s/--//1`
+  cmd=p${cmd1}
   shift
 fi
 

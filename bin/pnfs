@@ -10,18 +10,18 @@ enstore pnfs is a tool to control, manipulate and query pnfs files.
 
 Here are the user options:
 
-   enstore pnfs tags   directory    lists the tags in the directory
+   enstore pnfs --tags   directory    lists the tags in the directory
 
-   enstore pnfs library [value]           sets library tag to value (must have correct cwd)
-   enstore pnfs file_family [value]       sets file family tag to value (must have correct cwd)
-   enstore pnfs file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
-   enstore pnfs file_family_width [value] sets library tag to value (must have correct cwd)
+   enstore pnfs --library [value]           sets library tag to value (must have correct cwd)
+   enstore pnfs --file_family [value]       sets file family tag to value (must have correct cwd)
+   enstore pnfs --file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
+   enstore pnfs --file_family_width [value] sets library tag to value (must have correct cwd)
 
-   enstore pnfs files volmap-tape   lists all the files on specified tape in volmap
+   enstore pnfs --files volmap-tape   lists all the files on specified tape in volmap
 
-   enstore pnfs xref   file         lists the cross-reference info about the file
+   enstore pnfs --xref   file         lists the cross-reference info about the file
 
-   enstore pnfs enstore_state          lists whether enstore is still accepting transfers
+   enstore pnfs --enstore_state          lists whether enstore is still accepting transfers
 
 End of enstore pnfs help description
 
@@ -34,7 +34,9 @@ End of enstore pnfs help description
 if [ -z "${1-}" ] ; then
   cmd="phelp"
 else
-  cmd=p$1
+  # remove the initial --
+  cmd1=`echo $1|sed s/--//1`
+  cmd=p${cmd1}
   shift
 fi
 
