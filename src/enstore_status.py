@@ -160,19 +160,8 @@ class EnstoreStatus:
 	    try:
 	        string = string+spacing+"FILE MODIFIED: "+\
 	                 repr(wrapper['mtime'])
-	        # not found in writes
-	        try:
-	            string = string+",  REMAINING BYTES: "+\
-	                     repr(vc['remaining_bytes'])
-	        except:
-	            pass
 	    except:
-	        # not found in writes
-	        try:
-	            string = string+spacing+"REMAINING BYTES: "+\
-	                     repr(vc['remaining_bytes'])
-	        except:
-	            pass
+	        pass
 	string = string+"\n"
 	Trace.trace(13,"}parse_lm_queues")
 	return string
