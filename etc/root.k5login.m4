@@ -180,6 +180,7 @@ ron@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `tmesser@FNAL.GOV', `dnl')
 vsergeev@FNAL.GOV
 wellner@FNAL.GOV
 zalokar@FNAL.GOV
