@@ -23,6 +23,7 @@ import cleanUDP
 import udp_common
 import Trace
 import e_errors
+import host_config
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -61,6 +62,11 @@ class UDPServer:
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 socket.gethostbyname_ex(
                     socket.gethostbyaddr(self.server_address[0])[0])
+            cf = host_config.find_config_file()
+            if cf:
+                cc = host_config.read_config_file(cf)
+                for i in cc['interface'].keys():
+                    self.ipaddrlist.append(cc['interface'][i]['ip'])
         except socket.error:
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 self.server_address[0], [], [self.server_address[0]]
