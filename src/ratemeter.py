@@ -163,6 +163,14 @@ class Meter(Canvas):
                                            3*width/4 + size, height - bottom + size,
                                            start=start_angle, extent=self.angle_range, width=2, style='arc'))
 
+        self.labels.append(self.create_oval(width/4 - 3, height - bottom - 3,
+                                            width/4 + 3, height - bottom + 3,
+                                            fill='red'))
+
+        self.labels.append(self.create_oval(3*width/4 - 3, height - bottom - 3,
+                                            3*width/4 + 3, height - bottom + 3,
+                                            fill='red'))
+
         I = complex(0,1)
         start_angle = dtr(start_angle)
         angle_range = dtr(self.angle_range)
