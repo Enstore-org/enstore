@@ -664,34 +664,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             except OSError, msg2:
                 raise msg
 
-        self.major,self.minor = (0,0)
-
-    # update all the stat info on the file, or if non-existent, its directory
-    def pstatinfo(self,update=1):
-        if update:
-            self.get_stat()
-        self.pstat_decode()
-
-        try:
-            code_dict = Devcodes.MajMin(self.pnfsFilename)
-        except:
-            code_dict={"Major":0,"Minor":0}
-        self.major = code_dict["Major"]
-        self.minor = code_dict["Minor"]
-
-        #The following needs to go somewhere.  It was placed in the
-        # initialization code at one time, but got lost.  What they do,
-        # I do not know.
-        self.rmajor = 0
-        self.rminor = 0
-
-    def log_err(self,func_name):
-         exc,msg,tb=sys.exc_info()
-         Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
-                 func_name, self.filepath, exc,msg))
-         ##Note:  I had e_errors.ERROR, and lots of non-fatal errors
-         ##were showing up in the weblog
-
     # get the uid from the stat member
     def pstat_decode(self):
 	self.uid = ERROR
@@ -701,23 +673,47 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.mode = 0
         self.mode_octal = 0
         self.file_size = ERROR
+        #What these do, I do not know.  MWZ
+        self.rmajor, self.rminor = (0, 0)
+        self.major, self.minor = (0, 0)
 
+        #Get the user id of the file's owner.
         try:
             self.uid = self.pstat[stat.ST_UID]
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
-            self.log_err("pstat_decode uid")
+            pass
+
+        #Get the user name of the file's owner.
         try:
             self.uname = pwd.getpwuid(self.uid)[0]
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
-            self.log_err("pstat_decode uid")
+            pass
+
+        #Get the group id of the file's owner.
         try:
             self.gid = self.pstat[stat.ST_GID]
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
-            self.log_err("pstat_decode gid")
+            pass
+
+        #Get the group name of the file's owner.
         try:
             self.gname = grp.getgrgid(self.gid)[0]
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
-            self.log_err("pstat_decode gname")
+            pass
+
+        #Get the file mode.
         try:
             # always return mode as if it were a file, not directory, so
             #  it can use used in enstore cpio creation  (we will be
@@ -725,15 +721,43 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # real mode is available in self.stat for people who need it
             self.mode = (self.pstat[stat.ST_MODE] % 0777) | 0100000
             self.mode_octal = str(oct(self.mode))
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
-            self.log_err("pstat_decode mode")
             self.mode = 0
             self.mode_octal = 0
-        if os.access(self.filepath, os.F_OK): #self.exists == EXISTS:
-            try:
+
+        #Get the file size.
+        try:
+            if os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
-            except:
-                self.log_err("pstat_decode file_size")
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except:
+            pass
+
+        #Get the major and minor device codes for the device the file
+        # resides on.
+        try:
+            code_dict = Devcodes.MajMin(self.pnfsFilename)
+            self.major = code_dict["Major"]
+            self.minor = code_dict["Minor"]
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
+        except:
+            pass
+
+    # update all the stat info on the file, or if non-existent, its directory
+    def pstatinfo(self,update=1):
+        #Get new stat() information if requested.
+        if update:
+            self.get_stat()
+
+        #Set various class values.
+        self.pstat_decode()
 
 ##############################################################################
 
