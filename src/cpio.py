@@ -274,7 +274,7 @@ class cpio :
                     data_offset, data_size, data_name = self.decode(buffer)
                 except errno.errorcode[errno.EINVAL]:
                     # for now, just send the data back to the user, as read
-                    bad = sys.exc_info()[1]
+                    bad = str(sys.exc_info()[1])
                     print bad
                     while 1:
                         apply(self.write_driver.write_block,(buffer,))

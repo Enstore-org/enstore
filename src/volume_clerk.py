@@ -1,4 +1,4 @@
-import sys
+exc_import sys
 import os
 import time
 import timeofday
@@ -121,7 +121,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -154,7 +154,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -301,7 +301,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -362,7 +362,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -413,7 +413,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -447,7 +447,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -485,7 +485,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -523,7 +523,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -561,7 +561,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -575,7 +575,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -588,7 +588,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
         except:
-            ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+            ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
             self.reply_to_caller(ticket)
             return
 

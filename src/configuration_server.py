@@ -57,8 +57,8 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         print  sys.exc_info()[0]+sys.exc_info()[1]
-         return sys.exc_info()[0]+sys.exc_info()[1]
+         print  sys.exc_info()[0],sys.exc_info()[1]
+         return str(sys.exc_info()[0])+str(sys.exc_info()[1])
 
 
     # does the configuration dictionary exist?
@@ -79,7 +79,7 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         print sys.exc_info()[0]+sys.exc_info()[1]
+         print str(sys.exc_info()[0])+str(sys.exc_info()[1])
          return
 
 
@@ -109,7 +109,7 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -124,7 +124,7 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -144,7 +144,7 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
