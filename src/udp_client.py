@@ -313,8 +313,7 @@ class UDPClient:
 
 		# now (after receive), check...
 		if number != self.number :
-                    generic_cs.enprint(repr(type(number))+" "+\
-	                               repr(type(self.number)))
+                    #generic_cs.enprint(repr(type(number))+" "+repr(type(self.number)))
 		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+repr(self.number))
