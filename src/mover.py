@@ -1087,7 +1087,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'mc replies %s' % (status,))
         
         if status and status[0]==e_errors.OK:
-            self.state = ACTIVE
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
