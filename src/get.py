@@ -84,52 +84,31 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
     request['routing_callback_addr'] = udp_callback_addr
 
     #Open the routing socket.
-    #config = host_config.get_config()
-    #use_listen_socket = listen_socket.dup()
     try:
-	    #Keep the udp socket queues clear.
-	    start_time = time.time()
 
 	    Trace.message(4, "Opening udp socket.")
 	    Trace.log(e_errors.INFO, "Opening udp socket.")
 	    Trace.log(e_errors.INFO,
 		      "Listening for udp message at: %s." % \
 		      str(udp_socket.server_socket.getsockname()))
-	    while time.time() < start_time + encp_intf.mover_timeout:
 
-		#Keep looping until one of these two messages arives.
-		# Ignore any other that my be received.
-		rticket = encp.open_udp_socket(udp_socket,
-					       [request['unique_id']],
-					       encp_intf)
+            #Keep looping until one of these two messages arives.
+            # Ignore any other that my be received.
+            uticket = encp.open_udp_socket(udp_socket,
+                                           [request['unique_id']],
+                                           encp_intf)
 
-		#If requested output the raw message.
-		Trace.message(11, "RTICKET MESSAGE:")
-		Trace.message(11, pprint.pformat(rticket))
-
-		#Make sure the messages are what we expect.
-		if rticket == None: #Something happened, keep trying.
-		    continue
-		elif e_errors.is_non_retriable(rticket.get('status',
-							   None)):
-		    break #Process the error.
-		elif not e_errors.is_ok(rticket.get('status', None)):
-		    continue
-		#elif rticket['method'] != "mover_idle" or \
-		#     rticket['method'] != "mover_have_bound":
-		#    continue
-		#elif not use_listen_socket:
-		#    continue
-		else:
-		    break
-
-	    if not e_errors.is_ok(rticket):
+            #If requested output the raw message.
+            Trace.message(10, "RTICKET MESSAGE:")
+            Trace.message(10, pprint.pformat(uticket))
+		
+	    if not e_errors.is_ok(uticket):
 		#Log the error.
 		Trace.log(e_errors.ERROR,
 			  "Unable to connect udp socket: %s" %
-			  (str(rticket['status'])))
-		rticket = encp.combine_dict(rticket, request)
-		return None, rticket
+			  (str(uticket['status'])))
+		uticket = encp.combine_dict(uticket, request)
+		return None, uticket
 
 	    Trace.message(4, "Opened udp socket.")
 	    Trace.log(e_errors.INFO, "Opened udp socket.")
@@ -151,7 +130,7 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 
     #Print out the final ticket.
     Trace.message(10, "UDP TICKET:")
-    Trace.message(10, pprint.pformat(rticket))
+    Trace.message(10, pprint.pformat(uticket))
 
 
     Trace.message(1, "Listening for control socket at: %s"
@@ -178,12 +157,12 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 		if getattr(msg, "errno", None) == errno.EINTR:
 		    continue
 		#If the error was timeout, resend the reply
-		# Since, there was an exception, "rticket" is still
+		# Since, there was an exception, "uticket" is still
 		# the ticket returned from the routing call.
 		elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
 		    #udp_socket.reply_to_caller_using_interface_ip(
                     #rticket, listen_socket.getsockname()[0])
-                    udp_socket.reply_to_caller(rticket)
+                    udp_socket.reply_to_caller(uticket)
 		else:
 		    if isinstance(msg, (socket.error, select.error)):
 			ticket = {'status' : (e_errors.NET_ERROR,
@@ -1060,7 +1039,7 @@ def readtape_from_hsm(e, tinfo):
             # Close these descriptors before they are forgotten about.
 	    if control_socket != None:
 		encp.close_descriptors(control_socket)
-            #Don't loose the non-retirable error.
+            #Don't loose the non-retriable error.
             if e_errors.is_non_retriable(result_dict):
                 request = encp.combine_dict(result_dict, request)
                 return request

@@ -2474,7 +2474,7 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
     udp_ticket = None
 
     if not udp_server:
-        return None, None
+        return udp_ticket
 
     start_time = time.time()
 
@@ -2488,22 +2488,22 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
                             e_errors.NET_ERROR)
 
         #If route_server.process_request() fails it returns None.
-        if not udp_ticket:
+        if type(udp_ticket) != types.DictionaryType:
             continue
-        #If udp_server.process_request() returns incorrect value.
-        elif udp_ticket == types.DictionaryType and \
-             hasattr(udp_ticket, 'unique_id') and \
-             udp_ticket['unique_id'] not in unique_id_list:
-            continue
-        #It is what we were looking for.
+        #Something really bad happened.
+        elif e_errors.is_non_retriable(udp_ticket.get('status', None)):
+            break   #Process the error.
+        #If udp_server.process_request() returns correct value.
+        elif udp_ticket.has_key('unique_id') and \
+                 udp_ticket['unique_id'] in unique_id_list:
+            break   #Return the responce.
+        #It is not what we were looking for.
         else:
-            break
+            continue
     else:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call udp back.", e_errors.TIMEDOUT)
 
-    #udp_server.reply_to_caller_using_interface_ip(
-    #    udp_ticket, udp_ticket['callback_addr'][0])
     udp_server.reply_to_caller(udp_ticket)
 
     return udp_ticket
@@ -6916,7 +6916,7 @@ class EncpInterface(option.Interface):
         #options effecting encp retries and resubmits
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
-        self.mover_timeout = 15*60 # seconds to wait for mover to call back,
+        self.mover_timeout = 60 #15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
 
