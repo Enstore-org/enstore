@@ -489,9 +489,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	rt = self.retry_function(aml2.view,external_label, media_type)
         Trace.trace( 11, "getVolState returned %s"%(rt,))
         if rt[5] == '\000':
+            Trace.trace( 11, "RT5 is 0")
             state=''
         else :
-          state = rt[5]
+            Trace.trace( 11, "RT5 is %s"%(rt[5],))
+            state = rt[5]
         return (rt[0], rt[1], rt[2], state)
 	
     def cleanCycle(self, inTicket):
