@@ -29,37 +29,41 @@ PYMAKE=		make -f $(LIBPL)/Makefile
 # Leave this line as it is.
 LIBSO=		`$(PYMAKE) -s echodestshared`
 
-# Put your module name here:
-MODULE=ETape
-
 # Put the object files for your module here:
-OBS=ETape.o
 
 CFLAGS=-g  -I./ -I$(FTT_DIR)/include 
 
-# Change this to the location of your libraries....
-OLIB=$(FTT_DIR)/lib
+MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
+                ASHAREDMODULE=$$MODULE \
+                ASHAREDMODULESOBS=$$OBS \
+                ASHAREDMODULESEXTRA=$$YOURLIBS \
+                'OPT=$(CFLAGS)' \
+                'srcdir=$(SRCDIR)' \
+                asharedmodule 
+
+
 
 # The libraries to use
 #YOURLIBS=$(OLIB)/libftt.a /usr/lib/libds.a
 YOURLIBS=$(OLIB)/libftt.a 
 
-EXTRALD=$(YOURLIBS)
-
 # If you have any Python modules, include them here, so that they
 # can get installed.
 PYMODULES=
 
-build:
-	if [ "$(MODULE)" != your-module ]; then \
-	  $(PYMAKE) INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
-		ASHAREDMODULE=$(MODULE) \
-		'ASHAREDMODULESOBS=$(OBS)' \
-		'ASHAREDMODULESEXTRA=$(EXTRALD)' \
-		'OPT=$(CFLAGS)' \
-		'srcdir=$(SRCDIR)' \
-		asharedmodule; \
-	fi
+all:	ETape Devcodes
+
+ETape:
+	MODULE=ETape; \
+	YOURLIBS=$(FTT_DIR)/lib/libftt.a ; \
+	OBS=ETape.o ; \
+ 	$(MAKEIT)
+
+Devcodes:
+	MODULE=Devcodes; \
+	YOURLIBS=;\
+	OBS=Devcodes.o; \
+	$(MAKEIT)
 
 # Normally we don't install .py files:
 install: installso installpyc
