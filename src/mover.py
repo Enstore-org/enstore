@@ -644,16 +644,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.tape_driver
         count = 0
-
+        defer_write = 1
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
-                
-            if (self.buffer.empty() or
-                (self.bytes_read < self.bytes_to_read and self.buffer.low())):
-                Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
+            empty = self.buffer.empty()
+            if (empty or
+                (defer_write and (self.bytes_read < self.bytes_to_read and self.buffer.low()))):
+                if empty:
+                    defer_write = 1
+                Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s, defer=%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
-                             self.bytes_read, self.bytes_to_read))
+                             self.bytes_written, self.bytes_to_write,
+                             defer_write))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
+                if (defer_write and (self.bytes_read==self.bytes_to_read or not self.buffer.low())):
+                    defer_write = 0
                 continue
 
             count = (count + 1) % 20
