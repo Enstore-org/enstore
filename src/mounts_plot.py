@@ -29,6 +29,8 @@ jpeg_hist_out_stamp = os.path.join(install_dir, hist_out+'_stamp.jpg')
 low_water_mark = 1000
 high_water_mark = 5000
 step = 100
+yoffset = 200
+ystep = 500
 
 tol = 0
 toh = 0
@@ -133,12 +135,15 @@ if __name__ == '__main__':
 	set_label = ""
 	set_xtics = "set xtics rotate ("
 	outf = open(tmp_data, "w")
+	maxy = 0
 	for i in hist_keys:
 		count = count + 1
 		outf.write("%d %d\n"%(count, mtsh[i]))
+		if mtsh[i] > maxy:
+			maxy = mtsh[i]
 		set_xtics = set_xtics + '"%s" %d,'%(i, count)
-		set_label = set_label+'set label %d "%d" at %d,%d\n'%(
-			count, mtsh[i], count, mtsh[i])
+		set_label = set_label+'set label %d "%d" at %d,%d center\n'%(
+			count, mtsh[i], count, mtsh[i]+yoffset)
 	outf.close()
 	set_xtics = set_xtics[:-1]+')'
 	set_xtics = set_xtics+'\n'
@@ -148,6 +153,7 @@ if __name__ == '__main__':
 	outf.write("set ylabel 'Volumes'\n")
 	outf.write("set xlabel 'Mounts'\n")
 	outf.write("set xrange [0:%d]\n"%(count+1))
+	outf.write("set yrange [0:%d]\n"%(((maxy+yoffset*2)/ystep+1)*ystep))
 	outf.write(set_label)
 	outf.write(set_xtics)
 	outf.write("set terminal postscript color solid\n")
