@@ -221,11 +221,12 @@ class Ratemeter:
                 
             end_time = self.start_time + N * self.interval
             remaining = end_time - now
-            if remaining <= 0:
+            while remaining <= 0:
                 self.meter_panel.update_meters(bytes_read/MB, bytes_written/MB)
                 bytes_read = bytes_written = 0.0
                 N = N + 1
                 end_time = self.start_time + N * self.interval
+                now = time.time()
                 remaining = end_time - now
 
             r, w, x = select.select([self.sock], [], [], remaining)
