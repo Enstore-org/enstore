@@ -1219,12 +1219,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                             else: msg = key
                 else:
                     bytes_left = value['remaining_bytes']*1./1024./1024./1024.
-                    formatted_string="%-10s  %6.2gGB %-12s  %-12s %-12s"%\
+                    formatted_string="%-10s  %-6.2gGB %-12s  %-12s %-12s %-12s %-12s"%\
                                       (key,bytes_left,value['at_mover'][0],\
-                                      value['system_inhibit'],value['user_inhibit'])
+                                       value['system_inhibit'],\
+                                       value['user_inhibit'],value['library'],\
+                                       value['file_family'])
                     if msg: msg = msg+","+formatted_string
-                    else: msg = "%-10s  %-8s %-12s  %-12s %-12s"%\
-                                ("label","avail.","mount state","sys_inhibit","usr_inhibit")+\
+                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s"%\
+                                ("label","avail.","mount state",\
+                                 "sys_inhibit","usr_inhibit",\
+                                 "library","file_fam")+\
                                 ","+formatted_string
 
                 key,value=dict.cursor("next")
