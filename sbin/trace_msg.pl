@@ -16,8 +16,8 @@ if (/(.*[^ ]+) +message/)
     $_=<>;
     print;
     while (<>)
-    {   if (!/.{$len}( call | ret  | exc  )/)
-        {   $_ =~ /(.{$len})\s+(.*)/;
+    {   if (!/^.{$len} *(call |ret  |exc  )/)
+        {   $_ =~ /^(.{$len})\s+(.*)/;
 	    print "${1}msg: $2\n";
         }
         else
