@@ -191,16 +191,20 @@ class CJFunc(Worker):
                     now = time.time()
                     print time.ctime(now), line
                     continue
-                if string.find(fl, self.fName) >=0 :
-                    allowed_freq = self.get_frequency(line)
-                    file_mtime = os.stat(fl)[stat.ST_MTIME]
-                    now = time.time()
-                    interval = (now - file_mtime)/60   # in minutes
-                    checkprint("interval = %s"%(interval,))
-                    if interval > allowed_freq:
-                        checkprint("The cron job %s is running too long"%(self.fName))
-                        stateFlag = -2
-                    break
+		if string.find(fl, self.fName) >=0 :
+		    allowed_freq = self.get_frequency(line)
+		    try:
+			file_mtime = os.stat(fl)[stat.ST_MTIME]
+		    except OSError :
+			# file is no longer there, cron job is ok.
+			break
+		    now = time.time()
+		    interval = (now - file_mtime)/60   # in minutes
+		    checkprint("interval = %s"%(interval,))
+		    if interval > allowed_freq:
+			checkprint("The cron job %s is running too long"%(self.fName))
+			stateFlag = -2
+		break
 
         checkprint("cron jobs state is %s"%(stateFlag,))
         return stateFlag
