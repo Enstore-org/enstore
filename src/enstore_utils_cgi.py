@@ -52,8 +52,8 @@ def set_trace_key():
     os.environ["TRACE_KEY"] = "%s/%s"%(us_dir, "trace.cgi")
 
 def find_enstore():
-    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
-#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore efb;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore efb").readlines()
+#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
+    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore efb;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore efb").readlines()
     enstore_dir = string.strip(enstore_info[0])
     enstore_dir = string.replace(enstore_dir, "\"", "")
     enstore_src = "%s/src"%(enstore_dir,)
@@ -74,8 +74,7 @@ def find_enstore():
 
     return (config_host, config_port)
 
-
-def pgrep_html(pat, files, sensit):
+def set_pattern_search(pat, sensit):
     regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP)
     if sensit:
 	# case sensitive pattern matching.
@@ -83,13 +82,46 @@ def pgrep_html(pat, files, sensit):
     else:
 	# case insensitive pattern matching
 	patr = regex.compile(pat, regex.casefold)
+    return patr
+
+def pgrep_html(pat, files, sensit):
+    patr = set_pattern_search(pat, sensit)
     for file in files:
+	filename = string.split(file, "/")[-1]
 	print "<H3>%s</H3><BR>"%(file,)
 	lineno = 1
 	for line in open(file, 'r').readlines():
 	    if patr.search(line) >=0:
 		# only print out the name of the file and not the directory path
-		filename = string.split(file, "/")
-		print '[<B>%s</B>] %04d) %s<BR>' %(filename[len(filename)-1], lineno, line)
+		print '[<B>%s</B>] %04d) %s<BR>' %(filename, lineno, line)
 	    lineno = lineno + 1
 	print "<HR>"
+
+def agrep_html(pat1, pat2, files, sensit):
+    print pat1
+    print pat2
+    patr1 = set_pattern_search(pat1, sensit)
+    if pat2:
+	patr2 = set_pattern_search(pat2, sensit)
+    else:
+	patr2 = None
+    import enstore_html
+    import alarm
+    matched_alarms = {}
+    for file in files:
+	date = string.split(file, "/")[-1][4:]
+	for line in open(file, 'r').readlines():
+	    if patr1.search(line) >= 0:
+		if patr2:
+		    rtn = patr2.search(line)
+		else:
+		    rtn = 1
+		if rtn >= 0:
+		    # we have an alarm line that matches both search strings, turn it 
+		    # into an alarm
+		    alarm = alarm.LogFileAlarm(line, date)
+		    matched_alarms[alarm.id] = alarm
+
+    doc = enstore_html.EnAlarmSearchPage()
+    doc.body(matched_alarms)
+    print str(doc)

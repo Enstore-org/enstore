@@ -6,6 +6,7 @@ import string
 # enstore imports
 import enstore_status
 import e_errors
+import Trace
 
 # key to get at a server supplied short text string
 SHORT_TEXT = "short_text"
@@ -13,6 +14,9 @@ SHORT_TEXT = "short_text"
 DEFAULT_PID = -1
 DEFAULT_UID = ""
 DEFAULT_SOURCE = "None"
+
+ROOT_ERROR = "root_error"
+SEVERITY = "severity"
 
 MATCH = 1
 NO_MATCH = 0
@@ -131,3 +135,31 @@ class AsciiAlarm(GenericAlarm):
 
         [self.timedate, self.host, self.pid, self.uid, self.severity,
          self.source, self.root_error, self.alarm_info] = eval(text)
+
+class LogFileAlarm(GenericAlarm):
+
+    def __init__(self, text, date):
+	GenericAlarm.__init__(self)
+
+	# get rid of the MSG_TYPE part of the alarm
+	[text1, msg_type] = string.split(text, Trace.MSG_TYPE)
+	[t, self.host, self.pid, self.uid, dummy, self.source,
+	 text_dict] = string.split(text1, " ", 6)
+
+	# assemble the real timedate
+	self.timedate = time.strptime("%s %s"%(date, t), "%Y-%m-%d %H:%M:%S")
+	self.id = self.timedate
+
+	# split up the dictionary into components
+	dict = eval(string.strip(text_dict))
+	if dict.has_key(ROOT_ERROR):
+	    self.root_error = dict[ROOT_ERROR]
+	    del dict[ROOT_ERROR]
+	else:
+	    self.root_error = "UNKNOWN"
+	if dict.has_key(SEVERITY):
+	    self.severity = dict[SEVERITY]
+	    del dict[SEVERITY]
+	else:
+	    self.root_error = "UNK"
+	self.alarm_info = dict

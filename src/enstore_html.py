@@ -851,7 +851,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
     def __init__(self, refresh=600):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Alarms"
-	self.script_title_gif = "en_alarms.gif"
+	self.script_title_gif = "en_act_alarms.gif"
 	self.description = "List of the currently raised alarms.  This page is created by the Alarm Server."
 
     def alarm_table(self, alarms):
@@ -917,3 +917,35 @@ class EnPatrolPage(EnBaseHtmlDoc):
 	    # make the url
 	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(data[0], data[1]))))
 	self.append(table)
+
+class EnAlarmSearchPage(EnBaseHtmlDoc):
+
+    def __init__(self):
+	EnBaseHtmlDoc.__init__(self, refresh=600)
+	self.title = "ENSTORE Alarm Search"
+	self.script_title_gif = "en_alarm_hist.gif"
+	self.description = "Active and resolved alarms."
+
+    def alarm_table(self, alarms):
+	tr = HTMLgen.TR()
+	for hdr in ["Time", "Node", "PID", "User", "Severity", 
+		    "Process", "Error", "Additional Information"]:
+	    tr.append(self.make_th(hdr))
+	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
+				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
+	akeys = alarms.keys()
+	akeys.sort()
+	for akey in akeys:
+	    alarm = alarms[akey].list_alarm()
+	    print alarm
+	    tr = HTMLgen.TR((HTMLgen.TD(enstore_status.format_time(time.mktime(alarm[0])))))
+	    for item in alarm[1:]:
+		tr.append(HTMLgen.TD(item))
+	    table.append(tr)
+	return table
+
+    def body(self, alarms):
+	table = self.table_top()
+	table.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
+	self.append(table)
+	

@@ -29,8 +29,8 @@ DEFAULT_HTML_ALARM_FILE = "/enstore_alarms.html"
 
 ALARM = "alarm"
 
-SEVERITY = "severity"
-ROOT_ERROR = "root_error"
+SEVERITY = alarm.SEVERITY
+ROOT_ERROR = alarm.ROOT_ERROR
 PID = "pid"
 UID = "uid"
 SOURCE = "source"
