@@ -228,6 +228,8 @@ class Interface:
                 self.backup = 1
             elif opt == "--bfid":
                 self.bfid = value
+            elif opt == "--bfids":
+                self.bfids = value
             elif opt == "--bytes":
                 if not self.test_mode:
                     sys.stderr.write("bytecount may only be specified in test mode\n")
@@ -495,3 +497,5 @@ class Interface:
                 self.notify = string.split(value)
             elif opt == "--skip-pnfs": # for super_remove
                 self.skip_pnfs = 1
+            elif opt == "--dont-ask":  # for super_remove
+                self.dont_ask =1
