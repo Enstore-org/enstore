@@ -35,7 +35,7 @@ def purge_stale_entries(request_dict):
         if  list[2] < stale_time:
             del request_dict[entry[0]]
             count = count+1
-    Trace.trace(20,"purge_stale_entries count=%d",count)
+    Trace.trace(20,"purge_stale_entries count=%d"%(count,))
 
 import pdb
 def dodebug(a,b):
