@@ -298,6 +298,11 @@ class EnStatus:
 
     # output the mover status
     def output_moverstatus(self, ticket, key):
+	# we need to clear out the dict as keywords come and go depending on the
+	# state of the mover.  save the status which is in there first.
+	status = self.text[key][STATUS]
+	self.text[key] = {}
+	self.text[key][STATUS] = status
 	self.text[key][COMPLETED] = repr(ticket["no_xfers"])
        	if ticket["state"] == "busy":
 	    self.text[key][CUR_READ] = add_commas(str(ticket["rd_bytes"]))
