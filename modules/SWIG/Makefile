@@ -22,7 +22,7 @@ clean:
 
 
 ../derrno_wrap.c: derrno.i
-	swig -python derrno.i
+	swig -I$(ACI_DIR)/inc -python derrno.i
 	mv derrno_wrap.c ..
 
 
