@@ -412,10 +412,12 @@ def swap_metadata(bfid1, src, bfid2, dst):
 		return "metadata %s %s are %s"%(bfid2, src, res)
 
 	# cross check
-	if long(f1['size']) != long(f2['size']) or \
-		f1['complete_crc'] != f2['complete_crc']:
-		return "%s and %s have different size or crc"%(bfid1, bfid2)
-		
+	if f1['size'] != f2['size']:
+		return "%s and %s have different size"%(bfid1, bfid2)
+	if f1['complete_crc'] != f2['complete_crc']:
+		return "%s and %s have different crc"%(bfid1, bfid2)
+	if f1['sanity_cookie'] != f2['sanity_cookie']:
+		return "%s and %s have different sanity_cookie"%(bfid1, bfid2)
 
 	# swapping metadata
 	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
