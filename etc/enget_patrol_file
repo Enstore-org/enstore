@@ -11,6 +11,6 @@ export IFS
 setup myen
 
 # get the location of the enstore patrol file
-pafile="`ecmd ala --patrol_file`";
+pafile="`enstore alarm --patrol_file`";
 
 echo $pafile;
