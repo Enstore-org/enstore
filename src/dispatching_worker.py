@@ -134,11 +134,11 @@ class DispatchingWorker:
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
         try:
-            Trace.trace(16,"{done_cleanup id="+repr(self.current_id))
+            Trace.trace(20,"{done_cleanup id="+repr(self.current_id))
             del dict[self.current_id]
         except KeyError:
             pass
-        Trace.trace(16,"}done_cleanup")
+        Trace.trace(20,"}done_cleanup")
 
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
