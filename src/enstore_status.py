@@ -376,9 +376,31 @@ class EnStatus:
 
     mfile = ""
     
-    # format the mover status information
+    # get the eod_cookie from the ticket
+    def get_eod_cookie(self, ticket, spacing):
+        vi = ticket.get("vol_info", {})
+        if vi:
+            vol_info = "%sEod cookie : %s"%(spacing,
+                                            vi.get("eod_cookie", ""))
+        else:
+            vol_info = ""
+        return vol_info
+
+    # get the location cookie from the ticket
+    def get_location_cookie(self, ticket, spacing):
+        fc = ticket['work_ticket'].get('fc', {})
+        if fc:
+            vol_info = "%sLocation cookie : %s"%(spacing,
+                                        fc.get("location_cookie", ""))
+        else:
+            vol_info = ""
+        return vol_info
+    
+    # format the mover status information. this is one UGLY routine.  i wish i
+    # had the time to make it look better
     def format_moverstatus(self, ticket):
         if 0: print self     # lint fix
+        vol_info = ""
 	spacing = "\n    "
 	aString = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
@@ -386,12 +408,14 @@ class EnStatus:
 	    if ticket["mode"] == "r":
 	        m = " reading "+repr(ticket["bytes_to_xfer"])+\
                     " bytes from Enstore"
+                vol_info = self.get_location_cookie(ticket, spacing)
                 f_in = 1
                 f_out = 0
                 got_vol = 1
 	    elif ticket["mode"] == "w":
 	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
                     " bytes to Enstore"
+                vol_info = self.get_eod_cookie(ticket, spacing)
                 f_in = 0
                 f_out = 1
                 got_vol = 1
@@ -408,9 +432,11 @@ class EnStatus:
                 got_vol = 1
                 work = ticket['work_ticket'].get('work', "")
                 if string.find(work, "read") != -1:
+                    vol_info = self.get_location_cookie(ticket, spacing)
                     f_in = 1
                     f_out = 0
                 elif string.find(work, "write") != -1:
+                    vol_info = self.get_eod_cookie(ticket, spacing)
                     f_in = 0
                     f_out = 1
                 else:
@@ -436,7 +462,7 @@ class EnStatus:
             aString = aString+spacing+p+" Read "+\
                       repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
                       repr(ticket["wr_bytes"])+" bytes"+v
-        return aString+mfile+"\n\n"
+        return aString+mfile+vol_info+"\n\n"
 
 class EnFile:
 
