@@ -69,6 +69,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         # send the reply to the client
         ret_ticket = { 'status' : (e_errors.OK, None),
                        enstore_constants.ALARM    : repr(theAlarm.get_id()) }
+        Trace.log(e_errors.ALARM, " (%s) %s "%(theAlarm.timedate, theAlarm.short_text(),),
+                  Trace.MSG_ALARM)
         self.send_reply(ret_ticket)
 
     def default_action(self, theAlarm, isNew, params=[]):
