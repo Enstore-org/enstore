@@ -673,7 +673,7 @@ char **argv;
 				(dp->d_name[strlen(dp->d_name)-1] == 'n'))
 			{
 				sprintf(devpath, "/dev/rmt/%s", dp->d_name);
-				device = (char *)&devpath;
+				device = (char *) devpath;
 				break;
 			}
 		}
