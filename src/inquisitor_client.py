@@ -42,6 +42,11 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to set the interval between gathering stats
 	return self.send(t)
 
+    def update_and_exit (self):
+	t = {"work"     : "update_and_exit"}
+	# tell the inquisitor to get out of town
+	return self.send(t)
+
     def reset_interval (self, server):
 	t = {"work"     : "reset_interval",
              "server"   : server}
@@ -140,6 +145,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.inq_timeout = -1
         self.reset_inq_timeout = 0
         self.get_inq_timeout = 0
+	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
 
     #  define our specific help
@@ -166,7 +172,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
             return self.client_options() +\
                    ["interval=", "get_interval=", "reset_interval=",
                     "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
-                    "update=", "dump",
+                    "update=", "dump", "update_and_exit",
                     "refresh=", "get_refresh", "max_encp_lines=",
                     "get_max_encp_lines", "plot", "logfile_dir=",
                     "start_time=", "stop_time=", "media_changer=", "keep",
@@ -187,6 +193,9 @@ def do_work(intf):
 
     elif intf.update:
         ticket = iqc.update(intf.update)
+
+    elif intf.update_and_exit:
+        ticket = iqc.update_and_exit()
 
     elif intf.interval:
         ticket = iqc.set_interval(intf.interval, intf.server)
