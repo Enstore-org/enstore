@@ -2295,13 +2295,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
         broken = ""
+
+        Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
+            exc, msg, self.current_volume, self.current_location))
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
+        
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
             if msg.find("FTT_EIO") != -1:
                 # possibly a scsi error, log low level diagnostics
                 self.watch_syslog()
-        Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
-            exc, msg, self.current_volume, self.current_location))
-        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
