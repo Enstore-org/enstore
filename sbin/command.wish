@@ -80,7 +80,7 @@ proc CQRun_done { name element op } {
 }
 proc CSRun {} {
     global command butc done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just config"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just config"}
     set done ""
     catch {trace vdelete done w CSRun_done}
     trace variable done w CSRun_done
@@ -94,7 +94,7 @@ proc CSRun_done { name element op } {
 }
 proc CGRun {} {
     global command butc done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just config"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just config"}
     set done ""
     catch {trace vdelete done w CGRun_done}
     trace variable done w CGRun_done
@@ -139,7 +139,7 @@ proc LQRun_done { name element op } {
 }
 proc LSRun {} {
     global command butl done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just log"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just log"}
     set done ""
     catch {trace vdelete done w LSRun_done}
     trace variable done w LSRun_done
@@ -153,7 +153,7 @@ proc LSRun_done { name element op } {
 }
 proc LGRun {} {
     global command butl done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just log"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just log"}
     set done ""
     catch {trace vdelete done w LGRun_done}
     trace variable done w LGRun_done
@@ -201,7 +201,7 @@ proc FQRun_done { name element op } {
 }
 proc FSRun {} {
     global command butf done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just file"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just file"}
     set done ""
     catch {trace vdelete done w FSRun_done}
     trace variable done w FSRun_done
@@ -215,7 +215,7 @@ proc FSRun_done { name element op } {
 }
 proc FGRun {} {
     global command butf done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just file"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just file"}
     set done ""
     catch {trace vdelete done w FGRun_done}
     trace variable done w FGRun_done
@@ -260,7 +260,7 @@ proc VQRun_done { name element op } {
 }
 proc VSRun {} {
     global command butv done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just vol"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just vol"}
     set done ""
     catch {trace vdelete done w VSRun_done}
     trace variable done w VSRun_done
@@ -274,7 +274,7 @@ proc VSRun_done { name element op } {
 }
 proc VGRun {} {
     global command butv done
-    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just vol"}
+    set command {rsh rip6 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just vol"}
     set done ""
     catch {trace vdelete done w VGRun_done}
     trace variable done w VGRun_done
@@ -322,7 +322,7 @@ proc AQRun_done { name element op } {
 }
 proc ASRun {} {
     global command buta env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just ait.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just ait.library_manager"}
     set done ""
     catch {trace vdelete done w ASRun_done}
     trace variable done w ASRun_done
@@ -336,7 +336,7 @@ proc ASRun_done { name element op } {
 }
 proc AGRun {} {
     global command buta done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just ait.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just ait.library_manager"}
     set done ""
     catch {trace vdelete done w AGRun_done}
     trace variable done w AGRun_done
@@ -381,7 +381,7 @@ proc MQRun_done { name element op } {
 }
 proc MSRun {} {
     global command butm env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just mam.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just mam.library_manager"}
     set done ""
     catch {trace vdelete done w MSRun_done}
     trace variable done w MSRun_done
@@ -395,7 +395,7 @@ proc MSRun_done { name element op } {
 }
 proc MGRun {} {
     global command butm done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just mam.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just mam.library_manager"}
     set done ""
     catch {trace vdelete done w MGRun_done}
     trace variable done w MGRun_done
@@ -444,7 +444,7 @@ proc DQRun_done { name element op } {
 }
 proc DSRun {} {
     global command butd env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just dlt.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just dlt.library_manager"}
     set done ""
     catch {trace vdelete done w DSRun_done}
     trace variable done w DSRun_done
@@ -458,7 +458,7 @@ proc DSRun_done { name element op } {
 }
 proc DGRun {} {
     global command butd done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just dlt.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just dlt.library_manager"}
     set done ""
     catch {trace vdelete done w DGRun_done}
     trace variable done w DGRun_done
@@ -506,7 +506,7 @@ proc R2QRun_done { name element op } {
 }
 proc R2SRun {} {
     global command butr2 env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just red20.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just red20.library_manager"}
     set done ""
     catch {trace vdelete done w R2SRun_done}
     trace variable done w R2SRun_done
@@ -520,7 +520,7 @@ proc R2SRun_done { name element op } {
 }
 proc R2GRun {} {
     global command butr2 done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just red20.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just red20.library_manager"}
     set done ""
     catch {trace vdelete done w R2GRun_done}
     trace variable done w R2GRun_done
@@ -565,7 +565,7 @@ proc R5QRun_done { name element op } {
 }
 proc R5SRun {} {
     global command butr5 env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just red50.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just red50.library_manager"}
     set done ""
     catch {trace vdelete done w R5SRun_done}
     trace variable done w R5SRun_done
@@ -579,7 +579,7 @@ proc R5SRun_done { name element op } {
 }
 proc R5GRun {} {
     global command butr5 done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just red50.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just red50.library_manager"}
     set done ""
     catch {trace vdelete done w R5GRun_done}
     trace variable done w R5GRun_done
@@ -627,7 +627,7 @@ proc EQRun_done { name element op } {
 }
 proc ESRun {} {
     global command bute env done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just grau.media_changer"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just grau.media_changer"}
     set done ""
     catch {trace vdelete done w ESRun_done}
     trace variable done w ESRun_done
@@ -641,7 +641,7 @@ proc ESRun_done { name element op } {
 }
 proc EGRun {} {
     global command bute done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just grau.media_changer"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just grau.media_changer"}
     set done ""
     catch {trace vdelete done w EGRun_done}
     trace variable done w EGRun_done
@@ -687,7 +687,7 @@ proc STKQRun_done { name element op } {
 }
 proc STKSRun {} {
     global command butstk env done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK.media_changer"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just STK.media_changer"}
     set done ""
     catch {trace vdelete done w STKSRun_done}
     trace variable done w STKSRun_done
@@ -701,7 +701,7 @@ proc STKSRun_done { name element op } {
 }
 proc STKGRun {} {
     global command butstk done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK.media_changer"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just STK.media_changer"}
     set done ""
     catch {trace vdelete done w STKGRun_done}
     trace variable done w STKGRun_done
@@ -749,7 +749,7 @@ proc DM05QRun_done { name element op } {
 }
 proc DM05SRun {} {
     global command butdm05 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM05AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DM05AIT.mover"}
     set done ""
     catch {trace vdelete done w DM05SRun_done}
     trace variable done w DM05SRun_done
@@ -763,7 +763,7 @@ proc DM05SRun_done { name element op } {
 }
 proc DM05GRun {} {
     global command butdm05 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM05AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DM05AIT.mover"}
     set done ""
     catch {trace vdelete done w DM05GRun_done}
     trace variable done w DM05GRun_done
@@ -808,7 +808,7 @@ proc DM06QRun_done { name element op } {
 }
 proc DM06SRun {} {
     global command butdm06 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM06AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DM06AIT.mover"}
     set done ""
     catch {trace vdelete done w DM06SRun_done}
     trace variable done w DM06SRun_done
@@ -822,7 +822,7 @@ proc DM06SRun_done { name element op } {
 }
 proc DM06GRun {} {
     global command butdm06 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM06AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DM06AIT.mover"}
     set done ""
     catch {trace vdelete done w DM06GRun_done}
     trace variable done w DM06GRun_done
@@ -871,7 +871,7 @@ proc DM07QRun_done { name element op } {
 }
 proc DM07SRun {} {
     global command butdm07 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM07AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DM07AIT.mover"}
     set done ""
     catch {trace vdelete done w DM07SRun_done}
     trace variable done w DM07SRun_done
@@ -885,7 +885,7 @@ proc DM07SRun_done { name element op } {
 }
 proc DM07GRun {} {
     global command butdm07 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM07AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DM07AIT.mover"}
     set done ""
     catch {trace vdelete done w DM07GRun_done}
     trace variable done w DM07GRun_done
@@ -930,7 +930,7 @@ proc DM08QRun_done { name element op } {
 }
 proc DM08SRun {} {
     global command butdm08 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM08AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DM08AIT.mover"}
     set done ""
     catch {trace vdelete done w DM08SRun_done}
     trace variable done w DM08SRun_done
@@ -944,7 +944,7 @@ proc DM08SRun_done { name element op } {
 }
 proc DM08GRun {} {
     global command butdm08 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM08AIT.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DM08AIT.mover"}
     set done ""
     catch {trace vdelete done w DM08GRun_done}
     trace variable done w DM08GRun_done
@@ -992,7 +992,7 @@ proc DC11QRun_done { name element op } {
 }
 proc DC11SRun {} {
     global command butdc11 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DC11MAM.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DC11MAM.mover"}
     set done ""
     catch {trace vdelete done w DC11SRun_done}
     trace variable done w DC11SRun_done
@@ -1006,7 +1006,7 @@ proc DC11SRun_done { name element op } {
 }
 proc DC11GRun {} {
     global command butdc11 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DC11MAM.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DC11MAM.mover"}
     set done ""
     catch {trace vdelete done w DC11GRun_done}
     trace variable done w DC11GRun_done
@@ -1051,7 +1051,7 @@ proc DC12QRun_done { name element op } {
 }
 proc DC12SRun {} {
     global command butdc12 env done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DC12MAM.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DC12MAM.mover"}
     set done ""
     catch {trace vdelete done w DC12SRun_done}
     trace variable done w DC12SRun_done
@@ -1065,7 +1065,7 @@ proc DC12SRun_done { name element op } {
 }
 proc DC12GRun {} {
     global command butdc12 done
-    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DC12MAM.mover"}
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DC12MAM.mover"}
     set done ""
     catch {trace vdelete done w DC12GRun_done}
     trace variable done w DC12GRun_done
@@ -1113,7 +1113,7 @@ proc DE13QRun_done { name element op } {
 }
 proc DE13SRun {} {
     global command butde13 env done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE13DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DE13DLT.mover"}
     set done ""
     catch {trace vdelete done w DE13SRun_done}
     trace variable done w DE13SRun_done
@@ -1127,7 +1127,7 @@ proc DE13SRun_done { name element op } {
 }
 proc DE13GRun {} {
     global command butde13 done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE13DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DE13DLT.mover"}
     set done ""
     catch {trace vdelete done w DE13GRun_done}
     trace variable done w DE13GRun_done
@@ -1172,7 +1172,7 @@ proc DE14QRun_done { name element op } {
 }
 proc DE14SRun {} {
     global command butde14 env done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE14DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DE14DLT.mover"}
     set done ""
     catch {trace vdelete done w DE14SRun_done}
     trace variable done w DE14SRun_done
@@ -1186,7 +1186,7 @@ proc DE14SRun_done { name element op } {
 }
 proc DE14GRun {} {
     global command butde14 done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE14DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DE14DLT.mover"}
     set done ""
     catch {trace vdelete done w DE14GRun_done}
     trace variable done w DE14GRun_done
@@ -1234,7 +1234,7 @@ proc DE15QRun_done { name element op } {
 }
 proc DE15SRun {} {
     global command butde15 env done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE15DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DE15DLT.mover"}
     set done ""
     catch {trace vdelete done w DE15SRun_done}
     trace variable done w DE15SRun_done
@@ -1248,7 +1248,7 @@ proc DE15SRun_done { name element op } {
 }
 proc DE15GRun {} {
     global command butde15 done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE15DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DE15DLT.mover"}
     set done ""
     catch {trace vdelete done w DE15GRun_done}
     trace variable done w DE15GRun_done
@@ -1293,7 +1293,7 @@ proc DE16QRun_done { name element op } {
 }
 proc DE16SRun {} {
     global command butde16 env done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE16DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just DE16DLT.mover"}
     set done ""
     catch {trace vdelete done w DE16SRun_done}
     trace variable done w DE16SRun_done
@@ -1307,7 +1307,7 @@ proc DE16SRun_done { name element op } {
 }
 proc DE16GRun {} {
     global command butde16 done
-    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE16DLT.mover"}
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just DE16DLT.mover"}
     set done ""
     catch {trace vdelete done w DE16GRun_done}
     trace variable done w DE16GRun_done
@@ -1355,7 +1355,7 @@ proc STK1QRun_done { name element op } {
 }
 proc STK1SRun {} {
     global command butstk1 env done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK1.mover"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just STK1.mover"}
     set done ""
     catch {trace vdelete done w STK1SRun_done}
     trace variable done w STK1SRun_done
@@ -1369,7 +1369,7 @@ proc STK1SRun_done { name element op } {
 }
 proc STK1GRun {} {
     global command butstk1 done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK1.mover"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just STK1.mover"}
     set done ""
     catch {trace vdelete done w STK1GRun_done}
     trace variable done w STK1GRun_done
@@ -1414,7 +1414,7 @@ proc STK2QRun_done { name element op } {
 }
 proc STK2SRun {} {
     global command butstk2 env done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK2.mover"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore stop --just STK2.mover"}
     set done ""
     catch {trace vdelete done w STK2SRun_done}
     trace variable done w STK2SRun_done
@@ -1428,7 +1428,7 @@ proc STK2SRun_done { name element op } {
 }
 proc STK2GRun {} {
     global command butstk2 done
-    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK2.mover"}
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; enstore start --just STK2.mover"}
     set done ""
     catch {trace vdelete done w STK2GRun_done}
     trace variable done w STK2GRun_done

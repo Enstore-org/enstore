@@ -5,8 +5,8 @@ fi
 
 source /usr/local/etc/setups.sh
 setup enstore
-ecmd stop
+enstore stop
 /usr/local/bin/zapit mover
-if   [ `uname` = Linux ]; then ps auxww |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
-elif [ `uname` = SunOS ]; then ps -ef   |  egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_';
+if   [ `uname` = Linux ]; then ps auxww |  egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_';
+elif [ `uname` = SunOS ]; then ps -ef   |  egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_';
 fi

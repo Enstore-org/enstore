@@ -55,7 +55,7 @@ else
   fi
 
   # flag the file as deleted
-  cmd="ecmd fcc --bfid=$bfid --deleted=yes"
+  cmd="enstore file --bfid=$bfid --deleted=yes"
   #echo "$cmd"
   eval $cmd
 

@@ -5,4 +5,4 @@ fi
 
 source /usr/local/etc/setups.sh
 setup enstore
-ecmd start
+enstore start

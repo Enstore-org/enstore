@@ -1,1 +1,1 @@
-10 * * * * $ENSTORE_SBIN/ecron -p backup ecmd backup > /dev/null 2> /dev/null
+10 * * * * $ENSTORE_SBIN/ecron -p backup enstore backup > /dev/null 2> /dev/null

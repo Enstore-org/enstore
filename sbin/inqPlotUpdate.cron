@@ -1,2 +1,2 @@
-0 1 * * *  $ENSTORE_SBIN/ecron -p inqPlotUpdate -setup gnuplot -d /fnal/ups/prd/www_pages/enstore/grau ecmd ic --plot --media_changer=grau.media_changer > /dev/null 2> /dev/null
-30 1 * * * $ENSTORE_SBIN/ecron -p inqPlotUpdate -setup gnuplot -d /fnal/ups/prd/www_pages/enstore ecmd ic --plot > /dev/null 2> /dev/null
+0 1 * * *  $ENSTORE_SBIN/ecron -p inqPlotUpdate -setup gnuplot -d /fnal/ups/prd/www_pages/enstore/grau enstore inq --plot --media_changer=grau.media_changer > /dev/null 2> /dev/null
+30 1 * * * $ENSTORE_SBIN/ecron -p inqPlotUpdate -setup gnuplot -d /fnal/ups/prd/www_pages/enstore enstore inq --plot > /dev/null 2> /dev/null
