@@ -3,6 +3,7 @@
 # src/$RCSfile$   $Revision$
 #
 import time
+import os
 
 import enstore_html
 import enstore_files
@@ -24,8 +25,16 @@ class LogPage(enstore_html.EnLogPage):
 	enstore_html.EnLogPage.__init__(self, refresh)
 	self.title = title
 	self.prefix = prefix
-	self.script_title_gif = "log_page.gif"
+	self.script_title_gif = "en_olog.gif"
 	self.description = description
+
+    def body(self, logfile_dir, web_host, caption_title=CAPTION_DEFAULT):
+	table = self.table_top()
+	logs = inquisitor.get_file_list(logfile_dir, self.prefix)
+	self.generate_months(table, logs, web_host, caption_title)
+	self.append(table)
+
+class Aml2LogPage(LogPage):
 
     # get the date of the log file from the name of it
     def logfile_date(self, log):
@@ -54,12 +63,6 @@ class LogPage(enstore_html.EnLogPage):
 		year = tyear
 	return (self.prefix, year, month, day)
 
-    def body(self, logfile_dir, web_host, caption_title=CAPTION_DEFAULT):
-	table = self.table_top()
-	logs = inquisitor.get_file_list(logfile_dir, self.prefix)
-	self.generate_months(table, logs, web_host, caption_title)
-	self.append(table)
-
 class LogPageInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flags=1, opts=[]):
@@ -73,16 +76,21 @@ class LogPageInterface(generic_client.GenericClientInterface):
 	self.output = LPFILE
 	generic_client.GenericClientInterface.__init__(self)
 
-def do_work(intf):
+    def options(self):
+	return self.help_options() +\
+	       ["logfile_dir=", "prefix=", "web_host=", "caption_title=",
+		"description=", "title=", "output="]
+
+def aml2_do_work(intf):
     # this is where the work is really done
     # parse the data and create the html
-    lp = LogPage(intf.title, intf.description, intf.prefix)
+    lp = Aml2LogPage(intf.title, intf.description, intf.prefix)
     lp.body(intf.logfile_dir, intf.web_host, intf.caption_title)
     # open the temporary html file and output the html text to it
     tmp_lp_filename = "%s%s"%(intf.output, TMP)
     lp_file = enstore_files.EnFile(tmp_lp_filename)
     lp_file.open()
-    lp_file.write(str(lp))
+    lp_file.filedes.write(str(lp))
     lp_file.close()
     os.rename(tmp_lp_filename, intf.output)
 
@@ -90,4 +98,4 @@ if __name__ == "__main__" :
 
     intf = LogPageInterface()
 
-    do_work(intf)
+    aml2_do_work(intf)
