@@ -1,5 +1,5 @@
 #!/bin/sh
-# bin/$RCSfile template.sh $  $Revision$
+# bin/$RCSfile$  $Revision$
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 #set -u  # force better programming and ability to use check for not set
