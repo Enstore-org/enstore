@@ -74,6 +74,7 @@ FILESIZE=%s
 LABEL=%s
 LOCATION=%s
 DRIVE=%s
+DRIVE_SN=%s
 TRANSFER_TIME=%f
 SEEK_TIME=%f
 MOUNT_TIME=%f
@@ -97,6 +98,8 @@ data_access_layer_requested=Flag()
 
 def quit(exit_code=1):
     delete_at_exit.delete()
+    #sys.stderr.write("Encp exiting with rc=%d\n"%exit_code)
+    #sys.stderr.flush()
     os._exit(exit_code)
 
 def print_error(errcode,errmsg):
@@ -112,6 +115,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     location_cookie = fc_ticket.get('location_cookie','')
     mover_ticket = ticket.get('mover', {})
     device = mover_ticket.get('device', '')
+    device_sn = mover_ticket.get('serial_num','')
     time_ticket = ticket.get('times', {})
     transfer_time = time_ticket.get('transfer_time', 0)
     seek_time = time_ticket.get('seek_time', 0)
@@ -125,30 +129,33 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     msg = sts[1:]
     if len(msg)==1:
         msg=msg[0]
-    msg=str(msg)
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
     else:
         out=sys.stdout
         
-    out.write(data_access_layer_format % (inputfile, outputfile, filesize, external_label,location_cookie,
-                                      device, transfer_time, seek_time, mount_time, in_queue,
-                                      total, status))
+    out.write(data_access_layer_format % (inputfile, outputfile, filesize,
+                                          external_label,location_cookie,
+                                          device, device_sn,
+                                          transfer_time, seek_time, mount_time, in_queue,
+                                          total, status))
     out.write('\n')
     out.flush()
     if msg:
+        msg=str(msg)
         sys.stderr.write(msg+'\n')
         sys.stderr.flush()
     
     try:
-        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f "+\
+        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%f "+\
                  "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
         errmsg=format%(inputfile, outputfile, filesize, 
-                       external_label, device,
+                       external_label, location_cookie,
+                       device,device_sn,
                        transfer_time, seek_time, mount_time,
                        in_queue, total,
                        status)
