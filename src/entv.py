@@ -5,6 +5,7 @@
 import os
 import sys
 import socket
+import select
 import string
 import time
 
@@ -52,19 +53,18 @@ def main():
 
     if len(sys.argv) > 1:
         event_relay_host = sys.argv[1]
+    else:
+        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
+        system_name = event_relay_host
     if event_relay_host[:2]=='d0':
         event_relay_host = 'd0ensrv2.fnal.gov'
         system_name = 'd0en'
     elif event_relay_host[:3]=='stk':
         event_relay_host = 'stkensrv2.fnal.gov'
         system_name = 'stken'
-    else:
-        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
-        system_name = event_relay_host
         
     event_relay_port = 55510
     os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
-
 
     pipe = os.popen("python -u ./enstore_display.py %s"%(system_name,), 'r')
     msg = pipe.readline()
@@ -108,20 +108,29 @@ def main():
             if colon>=0:
                 client = client[:colon]
             send("connect %s %s" % (mover, client))
-        
+
+            
     #Tell the event_relay that we want to hear about Enstore
     #events.
     #This gets us 15 minutes worth of update messages, so re-subscribe
     # every 10 minutes
+    last_sub = 0
     while 1:
-        try:
-            s.sendto("notify %s %s" % (target_ip, target_port),
-                     (event_relay_host, event_relay_port))
-            time.sleep(600)
-        except:
-            time.sleep(5)
+        r, w, x = select.select([pipe], [], [], 600)
+        if r:
+            l = pipe.readline()
+            if not l:
+                break
+            print l,
+        now = time.time()
+        if now - last_sub >= 600:
+            try:
+                s.sendto("notify %s %s" % (target_ip, target_port),
+                         (event_relay_host, event_relay_port))
+                last_sub = now
+            except:
+                pass
         
 if __name__ == "__main__":
     main()
-    
     
