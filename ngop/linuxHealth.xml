@@ -1,5 +1,5 @@
 <MA-config Update="180" Name="LinuxHealthAgent">
-   <NCS Heartbeat="300" Port="19997" Host="ngop"/>
+   <NCS Heartbeat="300" Port="19997" Host="ngopsrv"/>
       <DaemonList Name="SystemDaemon">
         <Daemon Name="syslogd"/>
         <Daemon Name="inetd"/>
@@ -36,7 +36,7 @@
                   <cn>4.0</cn>
                 </apply>
 		</apply>
-               <Action ID="email" Host="ngop" Type="central">
+               <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
@@ -54,7 +54,7 @@
                   <cn>3.0</cn>
                 </apply>
 		</apply>
-              <Action ID="email" Host="ngop" Type="central">
+              <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
           </Condition>
@@ -79,7 +79,7 @@
                  </apply>
          	 <cn>0.99</cn>
     		</apply>
-              <Action ID="email" Host="ngop" Type="central">
+              <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
@@ -98,7 +98,7 @@
         	   </apply>
          	   <cn>0.30</cn>
     		</apply>
-              <Action ID="email" Host="ngop" Type="central">
+              <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
@@ -124,7 +124,7 @@
          	   <cn>0.30</cn>
     		 </apply>
 		</apply>
-              <Action ID="email" Host="ngop" Type="central">
+              <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
     		</Condition>
@@ -155,7 +155,7 @@
                       <cn>95</cn>
                      </apply>
 		    </apply>		
-                    <Action ID="email" Host="ngop" Type="central">
+                    <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                    </Action>
    		   </Condition>	
@@ -165,7 +165,7 @@
                       <ci>size</ci>
                       <cn>95</cn>
 		    </apply>
-                    <Action ID="email" Host="ngop" Type="central">
+                    <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                    </Action>
    		   </Condition>
@@ -182,7 +182,7 @@
          <ci>alive</ci>
          <cn>0</cn>
     	</apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
           <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
         </Action>
     	</Condition>
@@ -191,14 +191,14 @@
     </For>
     <MonitoredElement Name="timeSync" Host="localhost" Type="Daemon">
         <ConditionSet>
-        <fn Name="plug_ins" Arg="python /var/ngop/include/checkTime.py 4 3.0" RetVal="int:isSync"/>
+        <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkTime.py 4 3.0" RetVal="int:isSync"/>
     	<Condition State="1" SevLevel="6" Description="Time is not syncronized (> 3 seconds off) for more than 4 hours">
         <apply>
        	<eq/>
          <ci>isSync</ci>
          <cn>0</cn>
     	</apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
     	</Condition>       
@@ -208,7 +208,7 @@
          <ci>isSync</ci>
          <cn>-2</cn>
     	</apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
     	</Condition>       
@@ -233,7 +233,7 @@
                   <ci>numPr</ci>
                   <cn>1</cn>
             </apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
@@ -243,7 +243,7 @@
                   <ci>numPr</ci>
                   <cn>0</cn>
             </apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
          </Condition>
@@ -251,7 +251,7 @@
        </MonitoredElement>
        <MonitoredElement Name="baseTemp" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py temp" RetVal="int:mask1,int:mask2"/>
+         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py temp" RetVal="int:mask1,int:mask2"/>
          <Condition State="1" SevLevel="6" Description="Temperature is above non-critical threshold">
             <apply>
             <or/>
@@ -266,7 +266,7 @@
             <cn>4</cn>
             </apply>
             </apply>
-        <Action ID="email" Host="ngop" Type="central" >
+        <Action ID="email" Host="ngopsrv" Type="central" >
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
@@ -294,7 +294,7 @@
             <cn>5</cn>
             </apply>
             </apply>
-        <Action ID="email" Host="ngop" Type="central">
+        <Action ID="email" Host="ngopsrv" Type="central">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
@@ -318,7 +318,7 @@
        </MonitoredElement>
        <MonitoredElement Name="fanSpeed" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py fan" RetVal="float:speed1,float:speed2"/>
+         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py fan" RetVal="float:speed1,float:speed2"/>
          <Condition State="0" SevLevel="0" Description="Fan Speed is below 3000">
             <apply>
             <or/>
@@ -351,7 +351,7 @@
             </apply>
            </apply> 
   </apply> 
-   <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
+   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="5">
    		<Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
 	</Action>
 	</Condition>
@@ -374,15 +374,16 @@
        </MonitoredElement>
        <MonitoredElement Name="firmware" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py firmware" RetVal="int:isWorking"/>
+         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py firmware" RetVal="int:down,str:reason"/>
          <Condition State="0" SevLevel="0" Description="Firmware has to be reloaded">
             <apply>
                 <eq/>
                 <ci>down</ci>
                 <cn>2</cn>
            </apply>
-   <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
+   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="5">
                 <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   </Action>
         </Condition>
          <Condition State="0" SevLevel="0" Description="ipmisrv  has to be restarted">
             <apply>
@@ -390,8 +391,9 @@
                 <ci>down</ci>
                 <cn>1</cn>
            </apply>
-   <Action ID="email" Host="ngop" Type="central" Gap="18000" Counter="5">
+   <Action ID="email" Host="ngopsrv" Type="central" Gap="18000" Counter="5">
                 <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+   </Action>
         </Condition>
         </ConditionSet>
        </MonitoredElement>

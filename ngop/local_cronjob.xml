@@ -1,5 +1,5 @@
 <MA-config Update="180" Name="LocalCronEnstore" Type="Daemon">
-   <NCS Heartbeat="300" Port="19997" Host="ngop.fnal.gov"/>
+   <NCS Heartbeat="300" Port="19997" Host="ngopsrv.fnal.gov"/>
    <System Name="Cronjob" Cluster="localhost">
       <MonitoredElement Name="enstore" Host="localhost" Type="Daemon">
          <ConditionSet>
@@ -12,7 +12,7 @@
                   <cn>-2</cn>
                </apply>
             </apply>
-               <Action ID="email" Host="ngop" Type="central">
+               <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
@@ -39,7 +39,7 @@
                   <cn>-2</cn>
                </apply>
             </apply>
-               <Action ID="email" Host="ngop" Type="central">
+               <Action ID="email" Host="ngopsrv" Type="central">
                        <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
@@ -60,8 +60,8 @@
                   <cn>1</cn>
                </apply>
             </apply>
-               <Action ID="email" Host="ngop" Type="central">
-                       <Exec Name="email" Argument="Address:ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
+               <Action ID="email" Host="ngopsrv" Type="central">
+                       <Exec Name="email" Argument="Address:Ngop-admin@fnal.gov,enstore-auto@fnal.gov,Subject:Ngop_Report,Message:%Host:%ServiceType:%ID:%Description" />
                </Action>
          </Condition>
          </ConditionSet>
