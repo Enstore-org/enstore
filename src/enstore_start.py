@@ -92,7 +92,7 @@ def check_user():
         if os.getegid() == 0:
             os.execvp("su",
                   string.split("su enstore -c \"%s\"" % string.join(sys.argv)))
-        if pwd.getpwuid(os.getuid()) != "enstore":
+        if pwd.getpwuid(os.geteuid()) != "enstore":
             print "You should run this as user enstore."
             sys.exit(1)
             
