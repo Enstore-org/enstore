@@ -120,7 +120,9 @@ def check(f):
                 return msg, warn
             file_family = volume_family.extract_file_family(vol['volume_family'])
             ff[fr['external_label']] = file_family
-        if pf.file_family != file_family:
+        # take care of MIGRATION, too
+        if pf.file_family != file_family and \
+            pf.file_family+'-MIGRATION' != file_family:
             msg.append('file_family(%s, %s)'%(pf.file_family, file_family))
     except:
         msg.append('no or corrupted file_family')
