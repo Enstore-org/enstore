@@ -72,6 +72,9 @@ import getopt
 import fcntl
 import TERMIOS
 
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = '7500'
+
 #default value
 DEFAULT = 1
 
@@ -114,64 +117,173 @@ EXTRA_VALUES = "extra values"
 ############################################################################
 
 #Note: This list is in alphabetical order, please keep it that way.
+ADD = "add"                                  #volume
 ALIVE = "alive"
-BFID = "bfid"
-CONST = "const"
-COUNTERS = "counters"
-COUNTERSN = "countersN"
-CP = "cp"
-CURSOR = "cursor"
-DATABASE = "database"
-DATABASEN = "databaseN"
-DOWN = "down"
-DUMP = "dump"
-DUPLICATE = "duplicate"
-ECHO = "echo"
-ENSTORE_STATE = "enstore-state"
-FILE_FAMILY = "file-family"
-FILE_FAMILY_WIDTH = "file-family-width"
-FILE_FAMILY_WRAPPER = "file-family-wrapper"
-FILES = "files"
+ALL = "all"                                  #volume
+BACKUP = "backup"                            #volume, file
+BFID = "bfid"                                #pnfs, file
+BFIDS = "bfids"                              #file
+CHECK = "check"                              #volume
+CLEAN_DRIVE = "clean_drive"                  #mover
+CLEAR = "clear"                              #volume
+CONFIG_FILE = "config-file"                  #configuration(c&s)
+CONST = "const"                              #pnfs
+COUNTERS = "counters"                        #pnfs
+COUNTERSN = "countersN"                      #pnfs
+CP = "cp"                                    #pnfs
+CURSOR = "cursor"                            #pnfs
+DATABASE = "database"                        #pnfs
+DATABASEN = "databaseN"                      #pnfs
+DECR_FILE_COUNT = "decr-file-count"          #volume
+DELETE = "delete"                            #volume
+DELETED = "deleted"                          #file
+DELETE_WORK = "delete-work"                  #library
+DESTROY = "destroy"                          #volume
+DISMOUNT = "dismount"                        #media
+DO_ALARM = "do-alarm"
+DONT_ALARM = "dont-alarm"
+DO_LOG = "do-log"
+DONT_LOG = "dont-log"
+DO_PRINT = "do-print"
+DONT_PRINT = "dont-print"
+DOWN = "down"                                #pnfs, inqusitor, mover
+DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
+DUPLICATE = "duplicate"                      #pnfs
+ECHO = "echo"                                #pnfs
+ENSTORE_STATE = "enstore-state"              #pnfs
+FILE_FAMILY = "file-family"                  #pnfs
+FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
+FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
+FILES = "files"                              #pnfs
+FORCE = "force"                              #volume
+GET_CRCS = "get-crcs"                        #file
+GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
+GET_LOGFILE_NAME = "get-logfile-name"        #log
+GET_LOGFILES = "get-logfiles"                #log
+GET_MAX_ENCP_LINES = "get-max-encp-lines"    #inquisitor
+GET_QUEUE = "get-queue"                      #library
+GET_REFRESH = "get-refresh"                  #inquisitor
+GET_SUSPECT_VOLS = "get-suspect-vols"        #library
+GET_UPDATE_INTERVAL = "inquisitor"           #inquisitor
+GET_WORK = "get-work"                        #library, media
+GET_WORK_SORTED = "get-work-sorted"          #library
 HELP = "help"
-ID = "id"
-IO = "io"
-LAYER = "layer"
-LIBRARY = "library"
-LS = "ls"
-NAMEOF = "nameof"
-PARENT = "parent"
-PATH = "path"
-PNFS_STATE = "pnfs-state"
-POSITION = "position"
-RETRIES ="retires"
-RM = "rm"
-SHOWID = "showid"
-SIZE = "size"
-STORAGE_GROUP = "storage-group"
-TAG = "tag"
-TAGECHO = "tagecho"
-TAGRM = "tagrm"
-TAGS = "tags"
+HOST = "host"                                #monitor
+HTML = "html"                                #up_down
+HTML_DIR = "html-dir"                        #monitor(server)
+HTML_FILE = "html-file"                      #inquisitor(server)
+HTML_GEN_HOST = "html-gen-host"              #monitor, system
+ID = "id"                                    #pnfs
+IO = "io"                                    #pnfs
+LAYER = "layer"                              #pnfs
+LIBRARY = "library"                          #pnfs
+LIST = "list"                                #volume, file
+LOAD = "load"                                #configuration
+LS = "ls"                                    #pnfs
+LS_ACTIVE = "ls-active"                      #volume, file
+MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
+MAX_WORK = "max-work"                        #media
+MESSAGE = "message"                          #log
+MODIFY = "modify"                            #volume
+MOUNT = "mount"                              #media
+NAMEOF = "nameof"                            #pnfs
+NEW_LIBRARY = "new-library"                  #volume
+NO_ACCESS = "no-access"                      #volume
+NO_MAIL = "no-mail"                          #up_down
+NOTIFY = "notify"                            #notify
+NOOUTAGE = "nooutage"                        #inquisitor
+NOOVERRIDE = "nooverride"                    #inquisitor
+OFFLINE = "offline"                          #mover
+ONLINE = "online"                            #mover
+OUTAGE = "outage"                            #inquisitor
+OVERRIDE = "override"                        #inquisitor
+RECURSIVE = "recursive"                      #file
+REFRESH = "refresh"                          #inquisitor(c&s)
+PARENT = "parent"                            #pnfs
+PATH = "path"                                #pnfs
+PNFS_STATE = "pnfs-state"                    #pnfs
+POSITION = "position"                        #pnfs
+PRIORITY = "priority"                        #library
+RAISE = "raise"                              #alarm
+READ_ONLY = "read-only"                      #volume
+RESET_LIB = "reset-lib"                      #volume
+RESOLVE = "resolve"                          #alarm
+RESTORE = "restore"                          #volume, file
+RETRIES ="retries"
+RM = "rm"                                    #pnfs
+RM_ACTIVE_VOL = "rm-active-vol"              #library
+RM_SUSPECT_VOL = "rm-suspect-vol"            #library
+ROOT_ERROR = "root-error"                    #alarm
+SAAG_STATUS = "saagstatus"                   #inquisitor
+SENDTO = "sendto"                            #mover
+SET_CRCS = "set-crcs"                        #file
+SEVERITY = "severity"                        #alarm
+SHOW = "show"                                #configuration, inquisitor, media
+SHOWID = "showid"                            #pnfs
+SIZE = "size"                                #pnfs
+START_DRAINING = "start-draining"            #library
+STATUS = "status"                            #mover, library
+STOP_DRAINING = "stop-draining"              #library
+STORAGE_GROUP = "storage-group"              #pnfs
+SUBSCRIBE = "subscribe"                      #inquisitor
+SUMMARY = "summary"                          #monitor, configuration, up_down
+TAG = "tag"                                  #pnfs
+TAGECHO = "tagecho"                          #pnfs
+TAGRM = "tagrm"                              #pnfs
+TAGS = "tags"                                #pnfs
+TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
-UP = "up"
+UP = "up"                                    #pnfs, inquisitor, mover
+UPDATE = "update"                            #inquisitor
+UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
+UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 USAGE = "usage"
-VOLUME = "volume"
-XREF = "xref"
-OPT = "opt"
-TEST = "test"
+VOL = "vol"                                  #volume
+VOLS = "vols"                                #volume, library
+VOLUME = "volume"                            #pnfs
+VOL1OK = "VOL1OK"                            #volume
+WARM_RESTART = "warm-restart"                #mover
+XREF = "xref"                                #pnfs
+
+#these are this files test options
+OPT = "opt"                                  #option
+TEST = "test"                                #option
+
 #This list is the master list of options allowed.  This is in an attempt
 # to keep the different spellings of options (ie. --host vs. --hostip vs --ip)
 # in check.
-valid_option_list = [ALIVE, BFID, CONST,
-                     COUNTERS, COUNTERSN, CP, CURSOR,
-                     DATABASE, DATABASEN, DOWN, DUMP, DUPLICATE, ECHO,
-                     ENSTORE_STATE, FILE_FAMILY, FILE_FAMILY_WIDTH,
-                     FILE_FAMILY_WRAPPER, FILES, HELP, ID, IO,
-                     LAYER, LIBRARY, LS, NAMEOF, PARENT, PATH,
-                     PNFS_STATE, POSITION, RETRIES, RM, SHOWID, SIZE,
-                     STORAGE_GROUP, TAG, TAGECHO, TAGRM,
-                     TAGS, TIMEOUT, UP, USAGE, VOLUME, XREF,
-                     OPT,TEST]
+valid_option_list = [
+    ADD, ALIVE, ALL,
+    BACKUP, BFID, BFIDS,
+    CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
+    COUNTERS, COUNTERSN, CP, CURSOR,
+    DATABASE, DATABASEN,
+    DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESTROY,
+    DISMOUNT,
+    DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
+    DUMP, DUPLICATE,
+    ECHO, ENSTORE_STATE,
+    FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FORCE,
+    GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
+    GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
+    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
+    HELP, HOST, HTML, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
+    ID, IO,
+    LAYER, LIBRARY, LIST, LOAD, LS, LS_ACTIVE,
+    MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
+    NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
+    OFFLINE, ONLINE, OPT, OUTAGE, OVERRIDE,
+    PARENT, PATH, PNFS_STATE, POSITION, PRIORITY,
+    RAISE, READ_ONLY, RECURSIVE, REFRESH, RESET_LIB, RESOLVE, RESTORE, RETRIES,
+    RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
+    SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SHOW, SHOWID, SIZE,
+    START_DRAINING, STATUS, STOP_DRAINING, STORAGE_GROUP, SUBSCRIBE, SUMMARY,
+    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT,
+    UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
+    VOL, VOLS, VOLUME, VOL1OK,
+    WARM_RESTART,
+    XREF,
+    ]
 
 ############################################################################
 
@@ -184,52 +296,83 @@ class Interface:
             self.user_level = USER
 
         self.argv = args
+        self.options = {}
+        self.help = 0
+        self.usage = 0
         
         apply(self.compile_options_dict, self.valid_dictionaries())
         
         self.check_option_names()
         
         self.parse_options()
-      
+
+        self.config_host = self.default_host()
+        self.config_port = self.default_port()
+
+        if getattr(self, "help") and self.help:
+            ret = self.print_help()
+        if getattr(self, "usage") and self.usage:
+            ret = self.print_usage()
+        
+############################################################################
+
+    def default_host(self):
+        val = os.environ.get('ENSTORE_CONFIG_HOST', DEFAULT_HOST)
+        return val
+
+    def default_port(self):
+        val = os.environ.get('ENSTORE_CONFIG_PORT', DEFAULT_PORT)
+        val = int(val)
+        return val
+
 ############################################################################
 
     options = {}
     option_list = []
     args = []
-
-    alive_options = {
-        'alive':{DEFAULT_VALUE:1,
-                 HELP_STRING:"prints message if the server is up or down.",
-                 VALUE_NAME:"alive",
-                 VALUE_USAGE:IGNORED,
-                 SHORT_OPTION:"a"
-                 },
-        'timeout':{VALUE_USAGE:REQUIRED,
-                   VALUE_TYPE:INTEGER},
-        'retries':{VALUE_USAGE:REQUIRED,
-                   VALUE_TYPE:INTEGER},
+    parameters = []
+    
+    alive_rcv_options = {
+        TIMEOUT:{HELP_STRING:"number of seconds to wait for alive responce",
+                 VALUE_NAME:"alive_rcv_timeout",
+                 VALUE_USAGE:REQUIRED,
+                 VALUE_TYPE:INTEGER,
+                 VALUE_LABEL:"seconds"},
+        RETRIES:{HELP_STRING:"number of attempts to resend alive requests",
+                 VALUE_NAME:"alive_retries",
+                 VALUE_USAGE:REQUIRED,
+                 VALUE_TYPE:INTEGER},
         }
 
+    alive_options = alive_rcv_options.copy()
+    alive_options[ALIVE] = {DEFAULT_VALUE:1,
+                            HELP_STRING:
+                            "prints message if the server is up or down.",
+                            VALUE_TYPE:INTEGER,
+                            VALUE_NAME:"alive",
+                            VALUE_USAGE:IGNORED,
+                            SHORT_OPTION:"a"
+                            }
     help_options = {
-        'help':{DEFAULT_VALUE:1,
+        HELP:{DEFAULT_VALUE:1,
                 HELP_STRING:"prints this messge",
                 SHORT_OPTION:"h"},
-        'usage':{DEFAULT_VALUE:1,
+        USAGE:{DEFAULT_VALUE:1,
                  VALUE_USAGE:IGNORED}
         }
 
     trace_options = {
-        'do-print':{VALUE_USAGE:REQUIRED,
+        DO_PRINT:{VALUE_USAGE:REQUIRED,
                     HELP_STRING:"turns on more verbose output"},
-        'dont-print':{VALUE_USAGE:REQUIRED,
+        DONT_PRINT:{VALUE_USAGE:REQUIRED,
                       HELP_STRING:"turns off more verbose output"},
-        'do-log':{VALUE_USAGE:REQUIRED,
+        DO_LOG:{VALUE_USAGE:REQUIRED,
                   HELP_STRING:"turns on more verbose logging"},
-        'dont-log':{VALUE_USAGE:REQUIRED,
+        DONT_LOG:{VALUE_USAGE:REQUIRED,
                     HELP_STRING:"turns off more verbose logging"},
-        'do-alarm':{VALUE_USAGE:REQUIRED,
+        DO_ALARM:{VALUE_USAGE:REQUIRED,
                     HELP_STRING:"turns on more alarms"},
-        'dont-alarm':{VALUE_USAGE:REQUIRED,
+        DONT_ALARM:{VALUE_USAGE:REQUIRED,
                       HELP_STRING:"turns off more alarms"}
         }
 
@@ -265,7 +408,58 @@ class Interface:
 
 ############################################################################
 
+    #lines_of_text: list of strings where each item in the list is a line of
+    #               text that will be used to output the help string.
+    #text_string: the string that will be appended to the end of lines_of_text
+    #filler_length: 
+    def build_help_string(self, lines_of_text, text_string,
+                          filler_length, num_of_cols):
+        #Build the non-help string part of the command output. Assume
+        # that option_names is less than 80 characters.
+        #lines_of_text = []
+        try:
+            last_line = lines_of_text[-1]
+        except IndexError:
+            last_line = ""
+
+        if text_string:
+            value_line_length = num_of_cols - len(last_line)
+            index = 0
+            while index < len(text_string):
+                #calculate how much of the line can be used up without
+                # splitting words on different lines.
+                if (len(text_string) - index) < value_line_length:
+                    new_index = len(text_string)
+                else:
+                    new_index = string.rfind(text_string, " ", index,
+                                             index+value_line_length)
+                #build each line (so far).
+                if index == 0: #use existing line
+                    try:
+                        del lines_of_text[-1]
+                    except IndexError:
+                        pass
+
+                    temp_fill = filler_length - len(last_line)
+                    if temp_fill < 0:
+                        temp_fill = 0
+                    temp = ("%s" % (last_line,)) + " " * temp_fill + \
+                                         text_string[index:new_index]
+                    lines_of_text.append(temp)
+                else: #use_new_line
+                    lines_of_text.append(" " * filler_length +
+                                        text_string[index:new_index].strip())
+                index=new_index
+
+
     def print_help(self):
+        # num_of_cols - width of the terminal
+        # COMM_COLS - length of option_names (aka "       --%-20s")
+        num_of_cols = 80 #Assume this until python 2.1
+        COMM_COLS = 29
+
+        lines_of_text = [] #list of strings less than num_of_cols in length.
+        
         list = self.options.keys()
         list.sort()
         for opts in list:
@@ -279,8 +473,7 @@ class Interface:
             # Do this by getting the necessary fields from the dictionary.
             # (ie. "value_name"/"default_name" and "value_usage".)  Get the
             # list of extra options, if any.  Insert the values at the
-            # beginning of the extras_args list.  Loop through the list
-            # generating the has_value string.
+            # beginning of the extras_args list.
             opt_arg = self.options[opts].get(
                 VALUE_NAME,
                 self.options[opts].get(DEFAULT_NAME, opts))
@@ -290,76 +483,72 @@ class Interface:
             extra_args.insert(0, {VALUE_NAME:opt_arg,
                                   VALUE_USAGE:opt_value,
                                   VALUE_LABEL:opt_label})
+
+            #Put together the string that specifies what the spelling of the
+            # options are.  The two types are those with and without short
+            # option equivalents.
+            #ie: "   -a, --alive"
+            if self.options[opts].get(SHORT_OPTION, None):
+                #If option has a short argument equivalent.
+                option_names = "   -%s, --%s" % \
+                               (self.options[opts][SHORT_OPTION],
+                                opts)
+            else:
+                #If option does not have a short argument equivalent.
+                option_names = "       --%s" % (opts,)
+
+
+            #Loop through the list generating the has_value string.  This
+            # string is the list of values wrapped in [] or <> possible for
+            # the option.
+            #ie: "<VOLUME_NAME> <LIBRARY> <STORAGE_GROUP> <FILE_FAMILY>
+            #     <WRAPPER> <MEDIA_TYPE> <VOLUME_BYTE_CAPACITY>"
             has_value = ""
             for opt_arg in extra_args:
                 arg = string.upper(opt_arg.get(VALUE_LABEL,
-                                               opt_arg.get(VALUE_NAME, "")))
+                                               opt_arg.get(VALUE_NAME, BLANK)))
+                arg = arg.replace("-", "_")
                 value = opt_arg.get(VALUE_USAGE, IGNORED)
                                   
                 if value == REQUIRED:
-                    has_value = has_value + "=" + arg + " "
+                    has_value = has_value + "<" + arg + "> "
                 elif value == OPTIONAL:
-                    has_value = has_value + "[=" + arg + "] "
-
-            #If option has a short argument equivalent.
-            if self.options[opts].get(SHORT_OPTION, None):
-                option_names = "   -%s, --%-20s" % \
-                               (self.options[opts][SHORT_OPTION],
-                                opts + has_value)
-            #If option does not have a short argument equivalent.
-            else:
-                option_names = "       --%-20s" % (opts + has_value,)
+                    has_value = has_value + "[" + arg + "] "
 
             #Get and calculate various variables needed to format the output.
             # help_string - shorter than accessing the dictionary
-            # num_of_cols - width of the terminal
-            # COMM_COLS - length of option_names (aka "       --%-20s")
-            help_string = self.options[opts].get(HELP_STRING, "")
-            num_of_cols = 80 #Assume this until python 2.1
-            COMM_COLS = 29
+            help_string = self.options[opts].get(HELP_STRING, BLANK)
 
-            #If the command listing takes up over half of the width, just
-            # start with the description on the next line.  The lenght of
-            # option_names idealy will be less than 29 (9 + 20).  Notice
-            # that (80 - 50) is (29 + 1).
-            if len(option_names) < (num_of_cols / 2):
-                help_string_length = num_of_cols - len(option_names) - 1
-                filler_string_length = len(option_names)
-            else:
-                help_string_length = 50
-                filler_string_length = COMM_COLS
-
-            #Calculate the ending index for printing the help string.
-            if len(option_names) > (num_of_cols / 2): #Start on next line.
-                index = 0
-            elif len(help_string) <= help_string_length: #Entire string fits.
-                index = len(help_string)
-            else: #Start breaking up the string.
-                index = string.rfind(help_string, " ", 0, help_string_length)
-
-            #Print the first line of the help line for the command.
-            print "%s %s" % (option_names,
-                             help_string[0:index])
-
-            #If the help string is long, finish printing it.
-            while index < len(help_string) :
-                if len(help_string[index:]) < help_string_length:
-                    new_index = len(help_string)
-                else:
-                    new_index = string.rfind(help_string, " ", index,
-                                             index + help_string_length)
-                print " " * filler_string_length,
-                print string.strip(help_string[index:new_index])
-                index = new_index
-                
+            lines_of_text = []
+            #Build the OPTION part of the command output. Assume
+            # that option_names is less than 80 characters.
+            self.build_help_string(lines_of_text, option_names,
+                                   0, num_of_cols)
+            #For those options with values, insert the =.
+            if has_value:
+                self.build_help_string(lines_of_text, "=", 0, num_of_cols)
+            #Build the VALUES part of the command output. Assume
+            # that option_names is less than 80 characters.
+            self.build_help_string(lines_of_text, has_value,
+                                   0, num_of_cols)
+            #Build the HELP STRING part of the command output. Assume
+            # that option_names is less than 80 characters.
+            self.build_help_string(lines_of_text, help_string,
+                                   COMM_COLS, num_of_cols)
+            
+            for line in lines_of_text:
+                print line
         sys.exit(0)
 
-    def print_usage(self, message=None):
-        if message:
-            print message
-        
-        print "USAGE:", sys.argv[0], "[",
-        print "-" + self.getopt_short_options(),
+    def get_usage_line(self, opts=None): #The opts is legacy from interface.py.
+
+        short_opts = self.getopt_short_options()
+        if short_opts:
+            short_opts = "-" + short_opts
+        else:
+            short_opts = ""
+
+        usage_line = ""
 
         list = self.options.keys()
         list.sort()
@@ -374,9 +563,30 @@ class Interface:
             else:
                 has_value = ""
                 
-            print "--" + key + has_value,
-        print "]"
+            usage_line = usage_line + "--" + key + has_value + " "
+
+        usage_string = "USAGE: " + sys.argv[0]
+        if short_opts or usage_line:
+            usage_string = usage_string + " [ " + short_opts + " " + \
+                           usage_line + "] "
+        usage_string = usage_string + self.format_parameters()
+        return usage_string
+
+    def format_parameters(self):
+        param_string = ""
+        for parameter in self.parameters:
+            param_string = param_string + " " + parameter
+        return param_string
+
+    def print_usage(self, message=None):
+        if message:
+            print message
+
+        print self.get_usage_line()
         sys.exit(0)
+
+    def missing_parameter(self, param):
+        sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
 
 ############################################################################
 
@@ -413,7 +623,7 @@ class Interface:
         temp = ""
         for opt in self.options.keys():
             short_opt = self.options[opt].get(SHORT_OPTION, None)
-            if short_opt:
+            if short_opt and len(short_opt) == 1:
                 temp = temp + short_opt
                 
                 if self.options[opt].get(VALUE_USAGE, None) in [REQUIRED]:
@@ -445,6 +655,14 @@ class Interface:
         self.split_on_equals(self.argv)
         argv = self.argv[1:]
 
+        #If the first thing is not an option (switch) place it with the
+        # non-processeced arguments and remove it from the list of args.
+        # This is done, because getopt.getopt() breaks if the first thing
+        # it sees does not begin with a "-" or "--".
+        while len(argv) and not self.is_option(argv[0]):
+            self.args.append(argv[0])
+            del argv[0]
+
         #There is a major problem with this method. Multiple entries on the
         # command line of the same command are not parsed properly.
         try:
@@ -461,6 +679,7 @@ class Interface:
             value = arg[1]
 
             if self.is_admin_option(opt) and self.user_level == USER:
+                #Deni access to admin commands if regular user.
                 self.print_usage("option %s is an administrator option" %
                                  (opt,))
 
@@ -488,7 +707,7 @@ class Interface:
             #First, determine if the option, which has been determined to
             # require a sub option, is followed in the command line with
             # an option that does not begin with "-" or "--".
-            if value:
+            if value != None:
                 self.set_value(long_opt, value)
             else:
                 self.print_usage()
@@ -560,8 +779,9 @@ class Interface:
     # Parse the argv passed in and split the "=" values into spaced value.
     def split_on_equals(self, argv):
         for i in range(len(argv)):
-            list = string.split(argv[i], "=")
-            argv[i:i + 1] = list
+            if self.is_option(argv[i].split("=")[0]):#Make sure it is a switch.
+                list = string.split(argv[i], "=")
+                argv[i:i + 1] = list
 
     #Take the passed in short option and return its long option equivalent.
     def short_to_long(self, short_opt):
@@ -702,13 +922,13 @@ class Interface:
     def get_default_value(self, opt_dict, value):
         #Return the DEFAULT_VALUE for an option that takes no value.
         if opt_dict.get(VALUE_USAGE, IGNORED) == IGNORED:
-            return opt_dict.get(DEFAULT_VALUE, 1)
+            return opt_dict.get(DEFAULT_VALUE, DEFAULT)
         #Return the DEFAULT_VALUE for an option that takes an optional value.
         elif opt_dict.get(VALUE_USAGE, IGNORED) == OPTIONAL:
             if value == None and opt_dict.get(DEFAULT_VALUE, None):
                 return opt_dict[DEFAULT_VALUE]
             elif value == None and opt_dict.get(FORCE_SET_DEFAULT, None):
-                return opt_dict.get(DEFAULT_VALUE, 1)
+                return opt_dict.get(DEFAULT_VALUE, DEFAULT)
             else:
                 return value
         #Return the DEFAULT_VALUE for an option that must take a value.
@@ -716,7 +936,7 @@ class Interface:
         # FORCE_SET_DEFAULT forces the setting of both values.
         else: #REQUIRED
             if opt_dict.get(FORCE_SET_DEFAULT, None):
-                return opt_dict.get(DEFAULT_VALUE, 1)
+                return opt_dict.get(DEFAULT_VALUE, DEFAULT)
             else:
                 return value
     
@@ -809,7 +1029,11 @@ class Interface:
                 next = self.next_argument(opt)
 
             self.set_from_dictionary(extra_option, long_opt, next)
-            self.args.remove(next)
+            try:
+                if next:
+                    self.args.remove(next)
+            except ValueError:
+                sys.stderr.write("Problem processing argument %s." % (next,))
 
 ############################################################################
     
