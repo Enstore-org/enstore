@@ -82,11 +82,10 @@ def check_volume(vol):
 	if not bvol.has_key('comment'):
 		bvol['comment'] = ''
 	parts = string.split(bvol['volume_family'], '.')
-	if not bvol.has_key('wrapper'):
-		if len(parts) >= 3:
-			bvol['wrapper'] = parts[2]
-		else:
-			bvol['wrapper'] = 'none'
+	if len(parts) >=3:
+		bvol['wrapper'] = parts[2]
+	else:
+		bvol['wrapper'] = 'none'
 	if len(parts) < 3:
 		bvol['volume_family'] = bvol['volume_family']+'.none'
 	if len(parts) > 3:
@@ -99,6 +98,8 @@ def check_volume(vol):
 		del bvol['file_family']
 	if bvol.has_key('storage_group'):
 		del bvol['storage_group']
+	if bvol.has_key('mounts'):
+		del bvol['mounts']
 
 	bvol['eod_cookie'] = str(bvol['eod_cookie'])
 
