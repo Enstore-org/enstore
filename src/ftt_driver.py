@@ -49,6 +49,15 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
+        for retry in xrange(10):
+            if retry:
+                if self.verbose: print "retrying status"
+            status = self.ftt.status(10)
+            if status & ftt.ONLINE:
+                break
+        else:
+            ftt.raise_ftt()  #this is BADSWMOUNT
+            
         self._rate = self._last_rate = self._bytes_transferred = 0
         if self.verbose: print "ftt_open_dev returns", self.fd
         return self.fd
@@ -74,6 +83,12 @@ class FTTDriver(driver.Driver):
                         time.sleep(5)
                     else:
                         break
+        for retry in xrange(10):
+            status = self.ftt.status(10)
+            if status & ftt.ONLINE:
+                break
+        else:
+            ftt.raise_ftt() #BADSWMOUNT
 
         self._rate = self._last_rate = self._bytes_transferred = 0
         if self.verbose: print "reopen: ftt_open_dev returns", self.fd
@@ -96,18 +111,19 @@ class FTTDriver(driver.Driver):
         if type(target)==type(""):
             target = long(target)
         try:
-            current = self.tell()
+            file, block = self.ftt.get_position()
         except ftt.FTTError, detail: 
             if detail.errno == ftt.ELOST: 
                 self.rewind() #don't know tape position, must rewind
             else:
                 raise ftt.FTTError, detail #some other FTT error
 
-        current = self.tell()
-        if current == target:
+        file, block = self.ftt.get_position()
+        if block==0 and file == target:
             return 0
         else:
-            if self.verbose: print "seek: current = ", current, "target=",target
+            if self.verbose: print "seek: current = %s,%s target=%s" %(file, block, target)
+        current = file
         if target>current:
             self.ftt.skip_fm(target-current)
         else:
@@ -151,7 +167,10 @@ class FTTDriver(driver.Driver):
         if offset != 0:
             raise ValueError, "offset must be 0"
         t0 = time.time()
-        r = self.ftt.read(buf, nbytes)
+        try:
+            r = self.ftt.read(buf, nbytes)
+        except ftt.FTTError, detail:
+            raise e_errors.READ_ERROR, detail
         if r > 0:
             now = time.time()
             self._last_rate = r/(now-t0)
@@ -167,7 +186,10 @@ class FTTDriver(driver.Driver):
         if offset != 0:
             raise ValueError, "offset must be 0"
         t0 = time.time()
-        r = self.ftt.write(buf, nbytes)
+        try:
+            r = self.ftt.write(buf, nbytes)
+        except:
+            raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
             self._last_rate = r/(now - t0)
