@@ -300,6 +300,7 @@ class EnStatus:
 	                 format_time(wrapper['mtime'])
 	    except:
 	        pass
+            string = string+spacing+"ID: "+mover['unique_id']
 	    string = string+"\n"
 
 	    # reset this to prepare for another queued element
