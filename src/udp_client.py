@@ -41,52 +41,61 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout)
     if r:
-	reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
+        reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
     elif x or w :
         exc,msg,tb=sys.exc_info()
-	Trace.log(e_errors.INFO, "UDPClient.send: exception on select after send to %s %s: %s %s"%
+        Trace.log(e_errors.INFO, "UDPClient.send: exception on select after send to %s %s: %s %s"%
                   (address,x,exc,msg))
-	raise UDPError, "impossible to get these set w/out [r]"
+        raise UDPError, "impossible to get these set w/out [r]"
     return reply, server, rcv_timeout
 
+class Container:
+    pass
 
 class UDPClient:
 
     def __init__(self):
-        self.host, self.port, self.socket = get_client()
-        self.txn_counter = 0L
-        self.pid = os.getpid()
-        self._ident = self.mkident()
-        self.where_sent = {}
+        self.tsd = {} #Thread-specific data
+        self.reinit()
 
-    def ident(self):
-        pid=os.getpid()  
-        if pid != self.pid:  #recompute ident and get new sockets each time we fork
-            self.host, self.port, self.socket = get_client()
-            self.pid = pid
-            self._ident = self.mkident()
-        return self._ident 
+    def reinit(self):
+        pid = os.getpid()
+        tsd = Container()
+        self.tsd[pid] = tsd
+        tsd.host, tsd.port, tsd.socket = get_client()
+        tsd.txn_counter = 0L
+        tsd.ident = self._mkident(tsd.host, tsd.port, pid)
+        tsd.send_done = {}
+        return tsd
 
-    def mkident(self):
-        return "%s-%d-%f-%d" % (self.host, self.port, time.time(), self.pid )
+    def get_tsd(self):
+        pid = os.getpid()
+        tsd = self.tsd.get(pid)
+        if not tsd:
+            tsd = self.reinit()
+        return tsd
+    
+    def _mkident(self, host, port, pid):
+        return "%s-%d-%f-%d" % (host, port, time.time(), pid )
         
     def __del__(self):
-        # tell file clerk we're done - this allows it to delete our unique id in
+        # tell server we're done - this allows it to delete our unique id in
         # its dictionary - this keeps things cleaner & stops memory from growing
-        for server in self.where_sent.items() :
-            #Trace.log(e_errors.INFO, "clearing "+server[0]+" "+ server[1])
+        tsd = self.get_tsd()
+
+        for server in tsd.send_done.keys() :
             try:
-                self.send_no_wait({"work":"done_cleanup"}, server[0])
+                self.send_no_wait({"work":"done_cleanup"}, server)
             except:
                 pass
             try:
-                self.socket.close()
+                tsd.socket.close()
             except:
                 pass
 
     def _eval_reply(self, reply): #private to send
         try:
-            number,  out, t  = eval(reply)   ##XXX
+            number, out, t = eval(reply) #XXX
             # catch any error and keep going. server needs to be robust
         except:
             exc,msg,tb=sys.exc_info()
@@ -99,11 +108,12 @@ class UDPClient:
 
 
     def protocolize( self, text ):
+        tsd = self.get_tsd()
 
-        self.txn_counter = self.txn_counter + 1
+        tsd.txn_counter = tsd.txn_counter + 1
 
         # CRC text
-        body = `(self.ident(), self.txn_counter, text)`
+        body = `(tsd.ident, tsd.txn_counter, text)`
         crc = checksum.adler32(0L, body, len(body))
 
         # stringify message and check if it is too long
@@ -114,8 +124,7 @@ class UDPClient:
             Trace.log(e_errors.ERROR,errmsg)
             raise errno.errorcode[errno.EMSGSIZE],errmsg
 
-        return message, self.txn_counter
-
+        return message, tsd.txn_counter
 
         
     def send(self, data, dst, rcv_timeout=0, max_send=0):
@@ -123,25 +132,27 @@ class UDPClient:
         waiting `rcv_timeout' seconds for reply
         A value of 0 for max_send means retry forever"""
 
-	if rcv_timeout:
+        tsd = self.get_tsd()
+            
+        if rcv_timeout:
             if max_send==0:
                 max_send = 1 # protect from nonsense inputs XXX should we do this?
-	else:
-	    rcv_timeout = 10   
+        else:
+            rcv_timeout = 10   
 
         msg, txn_id = self.protocolize(data)
-        # keep track of where we are sending things so we can clean up later
-        self.where_sent[dst] = (self.ident(),msg)
+        # keep track of whom we need to send a "done_cleanup" to
+        tsd.send_done[dst] = 1
         
         n_sent = 0
         while max_send==0 or n_sent<max_send:
-            self.socket.sendto( msg, dst )
+            tsd.socket.sendto( msg, dst )
             n_sent=n_sent+1
             rcvd_txn_id=None
             timeout=rcv_timeout
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
-                reply, server, timeout = wait_rsp( self.socket, dst, timeout)
-                if not reply:  # receive timed out
+                reply, server, timeout = wait_rsp( tsd.socket, dst, timeout)
+                if not reply: # receive timed out
                     break #resend
                 rcvd_txn_id, out, t = self._eval_reply(reply)
             else: # we got a good reply
@@ -149,12 +160,12 @@ class UDPClient:
 
         ##if we got here, it's because we didn't receive a response to the message we sent.
         raise errno.errorcode[errno.ETIMEDOUT]
-
         
     # send message without waiting for reply and resend
     def send_no_wait(self, data, address) :
-	message, txn_id = self.protocolize( data )
-	return self.socket.sendto( message, address )
+        tsd = self.get_tsd()
+        message, txn_id = self.protocolize( data )
+        return tsd.socket.sendto( message, address )
 
         
 if __name__ == "__main__" :
