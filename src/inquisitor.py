@@ -535,7 +535,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         d = {}
         # get the config dictionary
         d = self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
-        if enstore_functions.is_timedout(d):
+        if e_errors.is_timedout(d):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 		"make_config_html_file - ERROR, getting config dict timed out")
             return
@@ -570,7 +570,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	lib_man.check_suspect_vols(state)
         self.serverfile.output_suspect_vols(state, lib_man.name)
-        if enstore_functions.is_timedout(state):
+        if e_errors.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
 					     enstore_constants.NO_SUSPECT_VOLS,
                                              time, lib_man.name,
@@ -722,7 +722,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.wam_queue = self.lm_queues[lib_man.name][enstore_constants.ATMOVERS]
 	lib_man.pend_queue = self.lm_queues[lib_man.name][enstore_constants.PENDING_WORKS]
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
-        if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
+        if e_errors.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
 					     enstore_constants.NO_WORK_QUEUE,
                                              time, lib_man.name,
@@ -766,7 +766,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.check_active_vols(ticket)
 	lib_man.active_volumes = ticket[enstore_constants.MOVERS]
         self.serverfile.output_lmactive_volumes(lib_man.active_volumes, lib_man.name)
-        if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
+        if e_errors.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
 					     enstore_constants.NO_ACTIVE_VOLS,
                                              time, lib_man.name,
@@ -803,7 +803,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.check_state(state)
 	lib_man.server_status = state[enstore_constants.STATE]
         self.serverfile.output_lmstate(state, lib_man.name)
-        if enstore_functions.is_timedout(state):
+        if e_errors.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
 					     enstore_constants.NO_STATE,
                                              time, lib_man.name,
@@ -861,7 +861,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mover.check_status_ticket(self.mover_state[mover.name])
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
-        if enstore_functions.is_timedout(self.mover_state[mover.name]):
+        if e_errors.is_timedout(self.mover_state[mover.name]):
             self.serverfile.output_etimedout(mover.host, enstore_constants.NO_STATE,
 					     time.time(), mover.name,
 					     mover.output_last_alive)
@@ -1508,7 +1508,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         use_once_timeout = 5
         use_once_retry = 1
         config_d = self.csc.dump(use_once_timeout, use_once_retry)
-        if enstore_functions.is_timedout(config_d):
+        if e_errors.is_timedout(config_d):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 		     "inquisitor init - ERROR, getting config dict timed out")
             self.startup_state = e_errors.TIMEDOUT

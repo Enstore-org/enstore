@@ -40,7 +40,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         self.acc_db = None
 
         config_d = self.csc.dump(rcv_timeout, rcv_retry)
-        if enstore_functions.is_timedout(config_d):
+        if e_errors.is_timedout(config_d):
             Trace.trace(enstore_constants.PLOTTING,
                         "plotter init - ERROR, getting config dict timed out")
             self.startup_state = e_errors.TIMEDOUT
