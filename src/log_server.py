@@ -31,6 +31,7 @@ import sys
 import os
 import time
 import string
+import glob
 
 #enstore imports
 import dispatching_worker
@@ -38,6 +39,7 @@ import generic_server
 import e_errors
 import hostaddr
 import Trace
+import log_client
 
 """Logger Class. Instance of this class is a log server. Multiple instances
    of this class can run using unique port numbers. But it actually is not
@@ -45,6 +47,7 @@ import Trace
    whole system.
 """
 MY_NAME = "log_server"
+FILE_PREFIX = "LOG-"
 
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
@@ -103,6 +106,33 @@ class Logger(  dispatching_worker.DispatchingWorker
         ticket["last_logfile_name"] = self.last_logfile_name
         self.send_reply(ticket)
 
+    # return the requested list of logfile names
+    def get_logfiles(self, ticket):
+	ticket["status"] = (e_errors.OK, None)
+	period = ticket.get("period", "today")
+	vperiod_keys = log_client.VALID_PERIODS.keys()
+	if period in vperiod_keys:
+	    num_files_to_get = log_client.VALID_PERIODS[period]
+	    files = os.listdir(self.logfile_dir_path)
+	    # we want to take the latest files so sort them in reverse order
+	    files.sort()
+	    files.reverse()
+	    num_files = 0
+	    lfiles = []
+	    for file in files:
+		if file[0:4] == FILE_PREFIX:
+		    lfiles.append("%s/%s"%(self.logfile_dir_path,file))
+		    num_files = num_files +1
+		    if num_files >= num_files_to_get and  not period == "all":
+			break
+	else:
+	    # it was not a shortcut keyword so we assume it is a string of the
+	    # form LOG*, use globbing to get the list
+	    files = "%s/%s"%(self.logfile_dir_path, period)
+	    lfiles = glob.glob(files)
+	ticket["logfiles"] = lfiles
+        self.send_reply(ticket)
+
     # log the message recieved from the log client
     def log_message(self, ticket) :
         if not ticket.has_key('message'):
@@ -140,7 +170,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         if self.test :
             min = current_min = tm[4]
         # form the log file name
-        fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+        fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], tm[2])
         if self.test:
             ft = '-%02d-%02d' % (tm[3], tm[4])
             fn = fn + ft
@@ -167,7 +197,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	            self.last_logfile_name = self.logfile_name
                     current_day = day;
                     # and open the new one
-                    fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
+					       tm[2])
                     self.logfile_name = self.logfile_dir_path + "/" + fn
                     self.open_logfile(self.logfile_name)
             else :
@@ -177,7 +208,8 @@ class Logger(  dispatching_worker.DispatchingWorker
                     self.logfile.close()
                     current_min = min;
                     # and open the new one
-                    fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
+					       tm[2])
                     ft = '-%02d-%02d' % (tm[3], tm[4])
                     fn = fn + ft
                     self.logfile_name = self.logfile_dir_path + "/" + fn

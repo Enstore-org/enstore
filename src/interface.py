@@ -337,6 +337,8 @@ class Interface:
                 self.get_refresh = 1
             elif opt == "--get_logfile_name":
                 self.get_logfile_name = 1
+            elif opt == "--get_logfiles":
+                self.get_logfiles = value
             elif opt == "--get_last_logfile_name":
                 self.get_last_logfile_name = 1
             elif opt == "--data_access_layer":

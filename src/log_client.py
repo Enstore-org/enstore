@@ -27,6 +27,7 @@ import e_errors
 
 MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
+VALID_PERIODS = {"today":1, "week":7, "month":30, "all":-1}
 
 # stand alone function to send a log message
 def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
@@ -464,6 +465,12 @@ class LoggerClient(generic_client.GenericClient):
 			 rcv_timeout, tries )
         return x
 
+    # get the last n log file names
+    def get_logfiles(self, period, rcv_timeout=0, tries=0):
+	x = self.u.send( {'work':'get_logfiles', 'period':period}, 
+			 self.logger_address, rcv_timeout, tries )
+        return x
+
     # get the last log file name
     def get_last_logfile_name(self, rcv_timeout=0, tries=0):
         x = self.u.send( {'work':'get_last_logfile_name'}, self.logger_address,
@@ -479,6 +486,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
+	self.get_logfiles = ""
 	self.get_last_logfile_name = 0
         generic_client.GenericClientInterface.__init__(self)
 
@@ -488,7 +496,8 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options()+\
-                   ["message=", "get_logfile_name", "get_last_logfile_name"]
+                   ["message=", "get_logfile_name", "get_last_logfile_name",
+		    "get_logfiles="]
 
 
     """ 
@@ -519,6 +528,11 @@ def do_work(intf):
         ticket = logc.get_logfile_name(intf.alive_rcv_timeout,\
 	                               intf.alive_retries)
 	print(ticket['logfile_name'])
+
+    elif intf.get_logfiles:
+        ticket = logc.get_logfiles(intf.get_logfiles, intf.alive_rcv_timeout,\
+				   intf.alive_retries)
+	print(ticket['logfiles'])
 
     elif intf.message:
         ticket = logit(logc, intf.message)
