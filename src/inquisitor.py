@@ -5,6 +5,7 @@ import time
 import pprint
 import copy
 import errno
+import regsub
 
 # enstore imports
 import timeofday
@@ -44,9 +45,17 @@ class EnstoreSystemStatusFile:
                 print "opened for write"
 
     # output the passed alive status
-    def output_alive(self, tag, status):
-	stat = tag + repr(status['work']) + ", at " + repr(status['address']) + ", is " + repr(status['status']) + "\n"
-	self.file.write(stat)
+    def output_alive(self, host, tag, status):
+	str = tag+self.unquote(status['work'])+" at "+self.format_ip_address(host, status['address'])+" is "+self.format_status(status['status'])+"\n"
+	self.file.write(str)
+
+    # format the status, just use the first element
+    def format_status(self, status):
+	return self.unquote(status[0])
+
+    # format the ip address - replace the ip address with the actual host name
+    def format_ip_address(self, host, address):
+	return "("+self.unquote(host)+", "+repr(address[1])+")"
 
     # output the timeout error
     def output_etimedout(self, tag):
@@ -64,6 +73,14 @@ class EnstoreSystemStatusFile:
     # output the library manager queues
     def output_lmqueues(self, ticket):
 	self.file.write(self.format_lmc_queues(ticket))
+
+    # output the name of the server
+    def output_name(self, name):
+	self.file.write(self.unquote(name)+" : \n")
+
+    # remove all single quotes
+    def unquote(self, string):
+	return regsub.gsub("\'", "", string)
 
     # format the library manager work queues for output
     def format_lmc_queues(self, ticket):
@@ -92,7 +109,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,"{update_config "+repr(self.essfile.file_name))
 	try:
 	    stat = self.csc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("config server   : ", stat)
+	    address = stat['address']
+	    self.essfile.output_alive(address[0], "config server   : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("config server   : ")
         Trace.trace(12,"}update_config ")
@@ -106,8 +124,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, t['host'], t['port'])
 	try:
 	    stat = lmc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("library manager : ", stat)
-	    #self.essfile.output_name("library manager : ")
+	    self.essfile.output_name(key)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "      ", stat)
 	    stat = lmc.getwork(list)
 	    self.essfile.output_lmqueues(stat)
 	except errno.errorcode[errno.ETIMEDOUT]:
@@ -116,34 +135,37 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the movers
     def update_mover(self, key):
-	pass
+	self.essfile.output_name(key)
 
     # get the information from the admin clerk
-    def update_admin_clerk(self):
+    def update_admin_clerk(self, key):
         Trace.trace(12,"{update_admin_clerk "+repr(self.essfile.file_name))
 	try:
 	    stat = self.acc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("admin clerk     : ", stat)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "admin clerk     : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("admin clerk     : ")
         Trace.trace(12,"}update_admin_clerk ")
 
     # get the information from the file clerk
-    def update_file_clerk(self):
+    def update_file_clerk(self, key):
         Trace.trace(12,"{update_file_clerk "+repr(self.essfile.file_name))
 	try:
 	    stat = self.fcc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("file clerk      : ", stat)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "file clerk      : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("file clerk      : ")
         Trace.trace(12,"}update_file_clerk ")
 
     # get the information from the log server
-    def update_log_server(self):
+    def update_log_server(self, key):
         Trace.trace(12,"{update_log_server "+repr(self.essfile.file_name))
 	try:
 	    stat = self.logc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("log server      : ", stat)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "log server      : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("log server      : ")
         Trace.trace(12,"}update_log_server ")
@@ -157,17 +179,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, t['host'], t['port'])
 	try:
 	    stat = mcc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("media changer   : ", stat)
+	    self.essfile.output_name(key)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "      ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("media changer   : ")
         Trace.trace(12,"}update_media_changer ")
 
     # get the information from the volume clerk server
-    def update_volume_clerk(self):
+    def update_volume_clerk(self, key):
         Trace.trace(12,"{update_volume_clerk "+repr(self.essfile.file_name))
 	try:
 	    stat = self.vcc.alive(self.alive_rcv_timeout, self.alive_retries)
-	    self.essfile.output_alive("volume clerk    : ", stat)
+	    ticket = self.csc.get(key)
+	    self.essfile.output_alive(ticket['host'], "volume clerk    : ", stat)
 	except errno.errorcode[errno.ETIMEDOUT]:	
 	    self.essfile.output_etimedout("volume clerk    : ")
         Trace.trace(12,"}update_volume_clerk ")
@@ -178,10 +203,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# get local time and output it to the file
 	self.essfile.output_time()
 	self.update_config()
-	self.update_admin_clerk()
-	self.update_file_clerk()
-	self.update_log_server()
-	self.update_volume_clerk()
+	self.update_admin_clerk("admin_clerk")
+	self.update_file_clerk("file_clerk")
+	self.update_log_server("logserver")
+	self.update_volume_clerk("volume_clerk")
 
 	# we want to get all the following information fresh, so only get the
 	# the information from the configuration server and not from the 
