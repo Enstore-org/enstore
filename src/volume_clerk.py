@@ -1008,7 +1008,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	record ["system_inhibit"] = flag
 	dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
-	Trace.trace(16,external_label+" system inhibit set to "+flag)
+	Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
 	self.reply_to_caller(record)
 	return
 
@@ -1022,6 +1022,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
+        Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
         return self.set_system_inhibit(ticket, e_errors.NOACCESS)
 
     # device is broken - what to do, what to do ===================================FIXME======================================
