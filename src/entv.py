@@ -62,15 +62,15 @@ def get_movers(config=None):
     return movers
 
 
-s = None
-dst = None
+s=None
+display_addr = None
 
 #This function sends a string to the enstore_display, as
 # well as printing it for debugging purposes
 def send(msg):
     if debug:
         print "sending",   msg
-    s.sendto(msg, dst)
+    s.sendto(msg, display_addr)
 
 def handle_status(mover, status):
     state = status.get('state','Unknown')
@@ -97,7 +97,7 @@ def handle_status(mover, status):
             send("connect %s %s" % (mover, client))
             
 def main():
-    global s, dst
+    global s, display_addr
 
     if len(sys.argv) > 1:
         event_relay_host = sys.argv[1]
@@ -123,7 +123,7 @@ def main():
     display_thread.start()
 
 
-    dst = display.addr
+    display_addr = display.addr
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     #Tell enstore_display what the movers are
@@ -146,12 +146,13 @@ def main():
         mover_addr = (mover_config['hostip'], mover_config['port'])
         u.send_no_wait(ticket, mover_addr)
         reqs[tsd.txn_counter] = mover
-        
+
+    event_relay_addr = (event_relay_host, event_relay_port)
+    
     # Subscribe to the event notifier
     if debug:
         print "subscribe"
-    s.sendto("notify %s %s" % (dst),
-             (event_relay_host, event_relay_port))
+    s.sendto("notify %s %s" % display_addr, event_relay_addr)
 
     #Tell the event_relay that we want to hear about Enstore
     #events.
@@ -159,7 +160,7 @@ def main():
     # every 10 minutes
     last_sub = 0
     while 1:
-        r, w, x = select.select([sock], [], [], 600)
+        r, w, x = select.select([sock], [], [], 15)
         
         if sock in r: #getting responses to our mover status queries
             try:
@@ -176,8 +177,7 @@ def main():
             
         now = time.time()
         if now - last_sub >= 600:
-            s.sendto("notify %s %s" % (dst,),
-                     (event_relay_host, event_relay_port))
+            s.sendto("notify %s %s" % (display_addr), event_relay_addr)
             last_sub = now
         
 if __name__ == "__main__":
