@@ -35,7 +35,7 @@ class EventRelayMsg:
 	self.extra_info = ""
 	self.host = host
 	if type(port) == types.StringType:
-	    self.port = string.atoi(port)
+	    self.port = int(port)
 	else:
 	    self.port = port
 
@@ -47,6 +47,9 @@ class EventRelayMsg:
 
     def encode_addr(self):
 	return "%s %s"%(self.host, self.port)
+
+    def encode(self):
+        pass
 
     def encode_self(self):
 	self.encode()
@@ -130,7 +133,7 @@ class EventRelayClientMsg(EventRelayMsg):
 
     def encode_self(self):
 	self.encode(self.work, self.file_family,
-		    self.more_info)
+		    self.extra_info)
 
 # Message format:  state short_name state_name
 class EventRelayStateMsg(EventRelayMsg):
