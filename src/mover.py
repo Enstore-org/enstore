@@ -494,7 +494,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
-            if self.buffer.nbytes() > self.buffer.min_bytes:
+            if self.buffer.nbytes() >= self.buffer.min_bytes:
                 self.buffer.write_ok.set()
                 
         if self.bytes_read == self.bytes_to_read:
@@ -553,7 +553,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bytes_written = self.bytes_written + bytes_written
 
             if not self.buffer.full():
-                self.buffer.read_ok.clear()
+                self.buffer.read_ok.set()
         
             
         Trace.trace(10, "write_tape, state = %s, wrote %s/%s bytes" %
@@ -1150,6 +1150,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 		 'last_volume' : self.last_volume,
 		 'last_location': self.last_location,
 		 'time_stamp'   : now,
+                 'buffer_min': self.buffer.min_bytes,
+                 'buffer_max': self.buffer.max_bytes,
+                 'rate of network': self.net_driver.rates()[0],
+                 'rate of tape': self.tape_driver.rates()[0],
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds'%(self.dismount_time - now)
