@@ -611,12 +611,7 @@ def forked_write_to_hsm( self, ticket ):
 	rd_err = stats['rd_err']
 	wr_access = 1
 	rd_access = 0
-	ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
-						     remaining_bytes,
-						     eod_cookie,
-						     wr_err,rd_err, # added to total
-						     wr_access,rd_access) )
-	self.vol_info.update( ticket['vc'] )
+
 	rsp = fcc.new_bit_file( {'work':"new_bit_file",
 				 'fc'  :{'location_cookie':location_cookie,
 					 'size':file_bytes,
@@ -628,7 +623,15 @@ def forked_write_to_hsm( self, ticket ):
 		       "XXXXXXXXXXXenstore software error" )
 	    pass
 	ticket['fc'] = rsp['fc']
+
+	ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
+						     remaining_bytes,
+						     eod_cookie,
+						     wr_err,rd_err, # added to total
+						     wr_access,rd_access) )
+	self.vol_info.update( ticket['vc'] )
 	
+
 	Trace.log(e_errors.INFO,"WRITE DONE"+str(ticket))
 	
 	Trace.trace( 11, 'b4 send_user_done' )
