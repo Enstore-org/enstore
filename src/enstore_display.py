@@ -956,17 +956,6 @@ class Display(Tkinter.Canvas):
         self.volumes          = {}
         self.title_animation  = None
 
-        #use IP addressing and UDP protocol
-        """
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        myaddr = (os.uname()[1], 0)
-        s.bind(myaddr)
-        self.inputs = [s]
-        host, port = s.getsockname()
-        self.addr =  host, port
-        print host, port
-        """
-            
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
         self.bind('<Configure>', self.resize)
@@ -1067,6 +1056,54 @@ class Display(Tkinter.Canvas):
         for client_name, client in self.clients.items():
             client.reposition()
 
+    #Called from entv.handle_periodic_actions().
+    def connection_animation(self):
+        
+        now = time.time()
+        #### Update all mover timers
+        #This checks to see if the timer has changed at all.  If it has,
+        # it resets the timer for new state.
+        for mover in self.movers.values():
+            seconds = int(now - mover.timer_started)
+            if seconds != mover.timer_seconds:
+                mover.update_timer(seconds)     #We must advance the timer
+            if mover.connection:
+                mover.connection.animate(now)
+
+        ####force the display to refresh
+        self.update()
+
+    #Called from entv.handle_periodic_actions().
+    def disconnect_clients(self):
+
+        now = time.time()
+        #### Check for unconnected clients
+        for client_name, client in self.clients.items():
+            if (client.n_connections > 0 or client.waiting == 1):
+                continue
+            if now - client.last_activity_time > 5: # grace period
+                print "It's been longer than 5 seconds, ",
+                print client_name," client must be deleted"
+                client.undraw()
+                del self.clients[client_name]
+
+        ####force the display to refresh
+        self.update()
+
+    #Called from entv.handle_periodic_actions().
+    def handle_titling(self):
+
+        now = time.time()
+        #### Handle titling
+        if display.title_animation:
+            if now > display.title_animation.stop_time:
+                display.title_animation = None
+            else:
+                display.title_animation.animate(now)
+
+        ####force the display to refresh
+        self.update()
+
     def handle_command(self, command):
         ## Accept commands of the form:
         # 1 word:
@@ -1083,7 +1120,7 @@ class Display(Tkinter.Canvas):
         #      loading MOVER_NAME VOLUME_NAME
         #      moveto MOVER_NAME VOLUME_NAME
         #      remove MOVER_NAME VOLUME_NAME
-        #      state MOVER_NAME STATE_NAME
+        #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
         #      unload MOVER_NAME VOLUME_NAME
         # 4 words:
         #      transfer MOVER_NAME nbytes total_bytes
@@ -1174,9 +1211,7 @@ class Display(Tkinter.Canvas):
                         time_in_state = int(float(words[3]))
                     except:
                         print "bad numeric value", words[3]
-                print "updating state"
                 mover.update_state(what_state, time_in_state)
-                print "state updated to", what_state
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
                     print "Need to disconnect because mover state ",
                     print "changed to : ", what_state

@@ -22,6 +22,7 @@ import setpath
 import rexec
 import signal
 import errno
+import Tkinter
 
 _rexec = rexec.RExec()
 def eval(stuff):
@@ -40,6 +41,9 @@ _config_cache = None
 
 #Should we need to stop (ie. cntl-C) this is the global flag.
 stop_now = 0
+
+#A lock to allow only one thread at a time access the display class instance.
+display_lock = threading.Lock()
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -169,27 +173,19 @@ def handle_status(mover, status):
     time_in_state = status.get('time_in_state', '0')
     mover_state = "state %s %s %s" % (mover, state, time_in_state)
     volume = status.get('current_volume', None)
+    client = status.get('client', "Unknown")
+    connect = "connect %s %s" % (mover, client)
     if not volume:
         return [mover_state]
-    if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
+    if state in ['ACTIVE', 'SEEK', 'SETUP']:
+        loaded = "loaded %s %s" % (mover, volume)
+        return [mover_state, loaded, connect]
+    if state in ['HAVE_BOUND']:
         loaded = "loaded %s %s" % (mover, volume)
         return [mover_state, loaded]
     if state in ['MOUNT_WAIT']:
         loading = "loading %s %s" %(mover, volume)
-        return [mover_state, loading]
-    if state in ['ACTIVE', 'SEEK']: #we are connected to a client
-        client = ''
-        files = status['files']
-        if files[0] and files[0][0]=='/':
-            client = files[1]
-        else:
-            client = files[0]
-        colon = string.find(client, ':')
-        if colon>=0:
-            client = client[:colon]
-        if client:
-            connect = "connect %s %s" % (mover, client)
-            return [mover_state, connect]
+        return [mover_state, loading, connect]
 
     return [mover_state]
 
@@ -205,55 +201,56 @@ def request_mover_status(display):
     movers = get_mover_list()
 
     for mover in movers:
-        if stop_now: #End imediatily.
-            return
+
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
         commands = handle_status(mover[:-6], status)
         if not commands:
             continue
-        print commands
         for command in commands:
-            display.handle_command(command)
+            display_lock.acquire()
+            if display.stopped or stop_now:
+                display_lock.release()
+                return
+            try:
+                display.handle_command(command)
+            except Tkinter.TclError:
+                pass
+            display_lock.release()
 
 def handle_periodic_actions(display):
     global stop_now
 
     while not display.stopped and not stop_now:
 
-        ## Here is where we handle periodic things
-        now = time.time()
-        #### Update all mover timers
-        #This checks to see if the timer has changed at all.  If it has,
-        # it resets the timer for new state.
-        for mover in display.movers.values():
-            seconds = int(now - mover.timer_started)
-            if seconds != mover.timer_seconds:
-                mover.update_timer(seconds)     #We must advance the timer
-            if mover.connection:
-                mover.connection.animate(now)
+        display_lock.acquire()
+        if display.stopped or stop_now:
+            display_lock.release()
+            return
+        #Animate the connection lines.
+        try:
+            display.connection_animation()
+        except Tkinter.TclError:
+                pass
+        display_lock.release()
 
-        #### Check for unconnected clients
-        for client_name, client in display.clients.items():
-            if (client.n_connections > 0 or client.waiting == 1):
-                continue
-            if now - client.last_activity_time > 5: # grace period
-                print "It's been longer than 5 seconds, ",
-                print client_name," client must be deleted"
-                client.undraw()
-                del display.clients[client_name]
-
-
-        #### Handle titling
-        if display.title_animation:
-            if now > display.title_animation.stop_time:
-                display.title_animation = None
-            else:
-                display.title_animation.animate(now)
-
-        ####force the display to refresh
-        display.update()
-
+        display_lock.acquire()
+        if display.stopped or stop_now:
+            display_lock.release()
+            return
+        #Remove unactive clients from the display.
+        try:
+            display.disconnect_clients()
+        except Tkinter.TclError:
+                pass
+        display_lock.release()
+        
+        #display_lock.acquire()
+        #What does this do???  For whatever reason, if it is commented in
+        # then the connection lines stop moving.
+        #display.handle_titling()
+        #display_lock.release()
+        
 
 def handle_messages(display):
     global stop_now
@@ -275,7 +272,10 @@ def handle_messages(display):
         except select.error:
             exc, msg, tb = sys.exc_info()
             if msg.args[0] == errno.EINTR:
-                sys.exit(0)
+                erc.unsubscribe()
+                erc.sock.close()
+                print "Exiting early"
+                return
 
         #If nothing received for 60 seconds, resubscribe.
         if count > 60:
@@ -292,13 +292,21 @@ def handle_messages(display):
                 erc.unsubscribe()
                 erc.sock.close()
                 print "Exiting early"
-                sys.exit(1)
+                return
             else:
                 msg = enstore_functions.read_erc(erc)
                 if msg:
                     print time.ctime(now), msg.type, msg.extra_info
                     command="%s %s" % (msg.type, msg.extra_info)
-                    display.handle_command(command)
+                    display_lock.acquire()
+                    if display.stopped or stop_now:
+                        display_lock.release()
+                        return
+                    try:
+                        display.handle_command(command)
+                    except Tkinter.TclError:
+                        pass
+                    display_lock.release()
         if now - start > TEN_MINUTES:
             # resubscribe
             erc.subscribe()
@@ -365,6 +373,7 @@ def main():
         #Loop until user says don't.
         display.mainloop()
 
+        print "waiting for threads to stop"
         status_thread.join()
         print "status thread finished"
         periodic_thread.join()
