@@ -86,7 +86,7 @@ def get_callback_port(start,end,use_multiple=0):
             count = count + 1
             if not host:
                 host, bw = interface_tab[which_interface]
-            if bw==0:
+            if bw<=0:
                 which_interface = (which_interface+1)%n_interfaces
                 host, bw = interface_tab[which_interface]
             bw = bw-1
@@ -190,6 +190,8 @@ def read_tcp_raw(sock):
 
 
 def read_tcp_obj(sock) :
+    s = read_tcp_raw(sock)
+    if not s: return None
     return eval(read_tcp_raw(sock))
 
     
