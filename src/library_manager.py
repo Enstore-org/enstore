@@ -1411,7 +1411,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 break
         else:
             ticket['status'] = (e_errors.NOVOLUME, "No such volume %s"%(ticket['volume']))
-        if found: self.suspect_volumes.remove(ticket['volume'])
+        if found: self.suspect_volumes.remove(vol)
         self.reply_to_caller(ticket)
             
         
