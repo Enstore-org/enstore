@@ -408,14 +408,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
             return
 
-        if self.mc_config.has_key('CleanTapeVolumeFamily'):   # error if DriveCleanTime assignments not in config
-            try:
-		    self.cleanTapeVolumeFamily = self.mc_config['CleanTapeVolumeFamily'] # expected format is "externalfamilyname.wrapper"
-		    fields = string.split(self.cleanTapeVolumeFamily, '.')
-		    self.cleanTapeWrapper = fields[-1]
-            except IndexError:
-                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeVolumeFamily in configuration file")
-
         if self.mc_config.has_key('IdleTimeHome'):
             if (type(self.mc_config['IdleTimeHome']) == types.IntType and
                 self.mc_config['IdleTimeHome'] > 20):
@@ -423,11 +415,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             else:
                 Trace.log(e_errors.INFO, "mc:aml2 IdleHomeTime is not defined or too small, default used")
 
-        
         self.prepare=self.unload
-
-        
-        
 
     # retry function call
     def retry_function(self,function,*args):
@@ -535,23 +523,37 @@ class AML2_MediaLoader(MediaLoaderMethods):
             return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
         
         driveType = drive[:2]  # ... need device type, not actual device
-        cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds  
-        driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+        try:
+            if self.driveCleanTime:
+                cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds  
+                driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+            else:
+                cleanTime = 60
+                driveCleanCycles = 1
+        except KeyError:
+            cleanTime = 60
+            driveCleanCycles = 1
+
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         min_remaining_bytes = 1
         vol_veto_list = []
         first_found = 0
         libraryManagers = inTicket['moverConfig']['library']
         if type(libraryManagers) == types.StringType:
-            library = string.split(libraryManagers,".")
+            library = string.split(libraryManagers,".")[0]
         elif type(libraryManagers) == types.ListType:
             library = string.split(libraryManagers[0],".")[0]
         else:
             Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field not found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        if not inTicket['moverConfig'].has_key('CleanTapeVolumeFamily'):
+            Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
+        cleanTapeVolumeFamily = inTicket['moverConfig']['CleanTapeVolumeFamily']
         v = vcc.next_write_volume(library,
-                                  min_remaining_bytes, self.cleanTapeVolumeFamily, 
+                                  min_remaining_bytes, cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
@@ -702,14 +704,98 @@ class STK_MediaLoader(MediaLoaderMethods):
 class Manual_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=10, csc=None):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
+        if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
+            self.driveCleanTime = self.mc_config['DriveCleanTime']
+        else:
+            self.driveCleanTime = None
+
     def loadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
             os.system("mc_popup 'Please load %s'"%(ticket['vol_ticket']['external_label'],))
         return MediaLoaderMethods.loadvol(self,ticket)
+
     def unloadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
             os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
         return MediaLoaderMethods.unloadvol(self,ticket)
+
+    # load volume into the drive;
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):       # media type
+        os.system("mc_popup 'Please load %s'"%(external_label,))
+        return (0, "ok","request successful")
+    
+    # unload volume from the drive
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+               media_type):     # media type
+        os.system("mc_popup 'Please unload %s'"%(external_label),)
+        return (0, "ok","request successful")
+    
+
+    def cleanCycle(self, inTicket):
+        #do drive cleaning cycle
+        Trace.log(e_errors.INFO, 'mc: ticket='+repr(inTicket))
+        classTicket = { 'mcSelf' : self }
+        try:
+            drive = inTicket['moverConfig']['mc_device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'mc: no device field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
+        
+        driveType = drive[:2]  # ... need device type, not actual device
+        try:
+            if self.driveCleanTime:
+                cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds  
+                driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+            else:
+                cleanTime = 60
+                driveCleanCycles = 1
+        except KeyError:
+            cleanTime = 60
+            driveCleanCycles = 1
+            
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        min_remaining_bytes = 1
+        vol_veto_list = []
+        first_found = 0
+        libraryManagers = inTicket['moverConfig']['library']
+        if type(libraryManagers) == types.StringType:
+            library = string.split(libraryManagers,".")[0]
+        elif type(libraryManagers) == types.ListType:
+            library = string.split(libraryManagers[0],".")[0]
+        else:
+            Trace.log(e_errors.ERROR, 'mc: library_manager field not found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        if not inTicket['moverConfig'].has_key('CleanTapeVolumeFamily'):
+            Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
+            
+        cleanTapeVolumeFamily = inTicket['moverConfig']['CleanTapeVolumeFamily']
+        v = vcc.next_write_volume(library,
+                                  min_remaining_bytes, cleanTapeVolumeFamily, 
+                                  vol_veto_list, first_found, exact_match=1)  # get which volume to use
+        if v["status"][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
+                      (v["status"][0],v["status"][1]))
+            status = 37
+            return v["status"][0], 0, v["status"][1]
+
+        for i in range(driveCleanCycles):
+            Trace.log(e_errors.INFO, "clean drive %s, vol. %s"%(drive,v['external_label']))
+            rt = self.load(v['external_label'], drive, v['media_type']) 
+            time.sleep(cleanTime)  # wait cleanTime seconds
+            rt = self.unload(v['external_label'], drive, v['media_type'])
+        retTicket = vcc.get_remaining_bytes(v['external_label'])
+        remaining_bytes = retTicket['remaining_bytes']-1
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
+        return (e_errors.OK, 0, None)
 
     
 # Raw Disk and stand alone tape media server
