@@ -1,5 +1,5 @@
 SHELL=/bin/sh
-OS="`funame -s`+`funame -r | cut -c1`"
+OS="`uname -s`+`uname -r | cut -c1`"
 
 LIBS=-L. -L../lib -lftt_test -lftt `cat libs.$$OS`
 

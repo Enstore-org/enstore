@@ -6,16 +6,23 @@
 
 char *
 ftt_get_os() {
-    static char sysname[512];
     struct utsname buf;
 
     uname(&buf);
-    sprintf(sysname,"%s+%s.%s", buf.sysname, buf.release, buf.version);
+    return ftt_make_os_name( buf.sysname, buf.release, buf.version);
+}
+
+char *
+ftt_make_os_name(char *sys, char *release , char *version) {
+    static char sysname[512];
+
+    sprintf(sysname,"%s+%s.%s", sys, release, version);
     return sysname;
 }
 
 int
-ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id) {
+ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id, char
+*string) {
     int i;
 
     DEBUG2(stderr,"Entering ftt_findslot %s %s %s\n", basename, os, drivid );
@@ -24,7 +31,7 @@ ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id) {
 		ftt_matches(drivid, devtable[i].drivid)) {
 	   DEBUG3(stderr,"trying format \"%s\"\n", devtable[i].baseconv);
 	   if (devtable[i].nconv == 
-		     sscanf(basename,devtable[i].baseconv,bus,id)) {
+		     sscanf(basename,devtable[i].baseconv,bus,id,string)) {
 		     DEBUG3(stderr, "format Matches!\n");
 		     return i;
 	   }
@@ -35,17 +42,18 @@ ftt_findslot (char *basename,char *os, char *drivid, int *bus, int *id) {
 }
 
 extern char *
-ftt_strip_to_basename(char *basename,char *os) {
-    char buf[512];
+ftt_strip_to_basename(const char *basename,char *os) {
+    static char buf[512];
+    static char string[512];
     int bus,id;
     int i;
 
     DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
-    i = ftt_findslot(basename, os, "", &bus, &id);
+    i = ftt_findslot((char *)basename, os, "", &bus, &id ,string);
     if (i < 0) {
 	return 0;
     }
-    sprintf(buf,devtable[i].baseconv, bus, id);
+    sprintf(buf,devtable[i].baseconv, bus, id,string);
     return strdup(buf);
 }
 
@@ -59,17 +67,18 @@ extern char *
 ftt_get_driveid(char *basename,char *os) {
     static char cmdbuf[255];
     static char output[255];
+    static char string[255];
     int bus, id;
     FILE *pf;
     char *res = 0;
     int i;
 
     DEBUG2(stderr, "Entering ftt_get_driveid\n");
-    i = ftt_findslot(basename, os, "",  &bus, &id);
+    i = ftt_findslot(basename, os, "",  &bus, &id, string);
     if (i < 0) {
 	return 0;
     }
-    sprintf(cmdbuf,devtable[i].drividcmd, bus, id);
+    sprintf(cmdbuf,devtable[i].drividcmd, bus, id, string);
     DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
     pf = popen(cmdbuf, "r");
     if (pf) {

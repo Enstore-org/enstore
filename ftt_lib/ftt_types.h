@@ -2,11 +2,13 @@
 ** Private data structurs for FTT internals
 */
 
-/* device information structure */
 
 #define FTT_EPRINT_BUF_SIZE 512
 extern char ftt_eprint_buf[];
 
+#define MAX_TRANS_ERRNO 32	/* maximum error number we translate */
+
+/* device information structure */
 #define MAXDEVSLOTS 64
 
 typedef struct {		
@@ -14,9 +16,9 @@ typedef struct {
 	char density;		/* density code  		*/
 	char mode;		/* compression, etc.		*/
 	char hwdens;		/* hardware density code for (density,mode) */
-	char rewind;		/* rewind on close, ret on open */
 	char passthru;		/* scsi passthru device	        */
 	char fixed;		/* fixed blocksize */
+	char rewind;		/* rewind on close, ret on open */
 	char first;		/* first time this name appears in table */
 } ftt_devinfo;
 
@@ -26,12 +28,11 @@ typedef struct {
 	char            *prod_id;		/* SCSI ID prefix */
 	int 		**errortrans;		/* errno translation table */
 	char 		readonly;		/* we were opened readonly */
-	char 		current_valid;		/* see below */
 	char 		unrecovered_error;	/* waiting for rewind... */
 	long 		file_descriptor;	/* fd or scsi handle */
+	char 		current_valid;		/* see below */
 	long 		current_block;		/* postion on tape */
 	long 		current_file;
-	int 		max_async;		/* async level */
 	FILE * 		async_pf;		/* pipe fd for async ops */
 	int 		async_pid;		/* proc id for async ops */
 	int 		last_operation;		/* operation num last done */
@@ -41,22 +42,17 @@ typedef struct {
 	long		writekb, writelo;	/* kb and remainder written */
 	char *		controller;		/* controller type */
 	int 		which_is_open;		/* devinfo index open now */
-	int		current_blocksize;	/* blocksize set now */
 	int 		which_is_default;	/* devinfo index for open_dev*/
 	int		default_blocksize;	/* blocksize for open_dev */
+	int		max_blocksize;		/* maximum allowable blocksize*/
 	int		data_direction;		/* are we reading/writing */
 	int		nreads, nwrites;	/* operation counts */
 } ftt_descriptor_buf, *ftt_descriptor;
-
-/* current values */
-#define FTT_CURRENT_BLOCK_VALID		0x01
-#define FTT_CURRENT_FILE_VALID		0x02
 
 /* data directions */
 #define FTT_DIR_READING 0
 #define FTT_DIR_WRITING 1
 
-extern char *ftt_label_type_names[];
 
 /* operation flags for last_operation, scsi_ops */
 #define FTT_OPN_READ		 1
@@ -98,14 +94,12 @@ extern char *ftt_label_type_names[];
 #define FTT_FLAG_FSF_AT_EOF	0x00000001	/* fsf to get past eof  */
 #define FTT_FLAG_REOPEN_AT_EOF	0x00000002	/* reopen    "          */
 #define FTT_FLAG_HOLD_SIGNALS	0x00000004	/* sighold reads/writes */
-#define FTT_FLAG_REWIND_WAIT	0x00000010	/* rewind returns immed.*/
-#define FTT_FLAG_REOPEN_R_W	0x00000020	/* reopen on r/w switch */
-#define FTT_FLAG_ASYNC_REWIND	0x00000040	/* Async. rewind call 	*/
-#define FTT_FLAG_SUID_SCSI	0x00000080	/* must be root to do scsi */
-#define FTT_FLAG_CHK_BOT_AT_FMK	0x00000100	/* check for reset/rewinds */
+#define FTT_FLAG_REOPEN_R_W	0x00000008	/* reopen on r/w switch */
+#define FTT_FLAG_SUID_SCSI	0x00000010	/* must be root to do scsi */
+#define FTT_FLAG_CHK_BOT_AT_FMK	0x00000020	/* check for reset/rewinds */
 
 typedef struct {
-	char *value[50];
+	char *value[FTT_MAX_STAT];
 } ftt_stat, *ftt_stat_buf;
 
 /* internally used routines */
@@ -113,29 +107,21 @@ extern char *ftt_get_os(void);			/* get os release */
 
 extern char *ftt_get_driveid(char *,char *);	/* find drive type given */
 						/* os release & basename */
-extern char *ftt_strip_to_basename(char *, char*);
+extern char *ftt_strip_to_basename(const char *, char*);
 extern int ftt_translate_error(ftt_descriptor , int, char *, int , char *, int); 
 
 typedef struct {
-    char *os;
-    char *drivid;
-    char *controller;
-    long flags;
-    long scsi_ops;
-    int **errortrans;
-    char *baseconv;
-    int nconv;
-    char *drividcmd;
-    struct {
-        char *string;
-        char density;
-        char mode;
-	char hwdens;
-        char passthru;
-	char fixed;
-        char rewind;
-	char first;
-    } devs[MAXDEVSLOTS];
+    char *os;			/* OS+Version (i.e. IRIX+5.3) string */
+    char *drivid;		/* SCSI Drive-id prefix */
+    char *controller;		/* controller name string */
+    long flags;			/* FTT_FLAG_XXX bits for behavior */
+    long scsi_ops;		/* FTT_OP_XXX bits for ops to use SCSI */
+    int **errortrans;		/* errortrans[FTT_OPN_XXX][errno]->ftt_errno */
+    char *baseconv;		/* basename parser scanf string */
+    int nconv;			/* number of items scanf should return */
+    char *drividcmd;		/* printf this to get shell command->driveid */
+    int	max_blocksize;		/* maximum allowable blocksize*/
+    ftt_devinfo devs[MAXDEVSLOTS]; /* drive specs with printf strings */
 } ftt_dev_entry;
 
 extern ftt_dev_entry devtable[];
@@ -148,7 +134,6 @@ typedef struct {
 extern ftt_stat_entry ftt_stat_op_tab[];
 
 /* stat_ops flags */
-
 #define FTT_DO_INQ    0x00000001   /* do basic scsi inquiry */
 #define FTT_DO_SN     0x00000002   /* do inquiry with serial number page */
 #define FTT_DO_MS     0x00000004   /* do basic modes sense */
@@ -160,13 +145,14 @@ extern ftt_stat_entry ftt_stat_op_tab[];
 #define FTT_DO_DLTRS  0x00000200   /* DLT Request sense added bytes */
 #define FTT_DO_TUR    0x00000400   /* do a test unit ready */
 #define FTT_DO_RP     0x00000800   /* do a read position */
+#define FTT_DO_RP_SOMETIMES 0x00001000   /* do a read position,okay if fails*/
 
 extern int ftt_write_fm_if_needed(ftt_descriptor);
 extern int ftt_matches(char*, char*);
 extern int ftt_do_scsi_command(ftt_descriptor, char *,unsigned char *, 
 				int, unsigned char *, int, int, int);
 extern int ftt_set_hwdens_blocksize(ftt_descriptor, int, int); 
-extern int ftt_findslot(char*, char*, char*, int*, int*);
+extern int ftt_findslot(char*, char*, char*, int*, int*, char *);
 extern void ftt_set_transfer_length(unsigned char *, int);
 extern int ftt_skip_fm_internal(ftt_descriptor, int);
 

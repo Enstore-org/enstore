@@ -141,10 +141,12 @@ ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
     for( i = 0; i < FTT_MAX_STAT; i++) {
         if( ftt_numeric_tab[i] && b1->value[i] && b2->value[i] ) {
  	    set_stat(res, i, itoa((long)atoi(b1->value[i]) - atoi(b2->value[i])),0);
+        } else if ( b1->value[i] ) {
+ 	    set_stat(res, i, b1->value[i],0);
+        } else if ( b2->value[i] && ftt_numeric_tab[i] ) {
+ 	    set_stat(res, i, itoa(-(long)atoi(b2->value[i])),0);
         } else if ( b2->value[i] ) {
  	    set_stat(res, i, b2->value[i],0);
-        } else if ( b1->value[i] ) {
- 	    set_stat(res, i, itoa(-(long)atoi(b2->value[i])),0);
 	}
     }
 }
@@ -484,16 +486,18 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
 	}
     }
-    if (stat_ops & FTT_DO_RP) {
+    if (stat_ops & FTT_DO_RP || stat_ops & FTT_DO_RP_SOMETIMES) {
 	static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
 						0x00, 0x00, 0x00, 0x00, 0x00};
 
 	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
 				  buf, 20, 10, 0);
 	
-	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	if (res < 0) {
+	    if (!(stat_ops & FTT_DO_RP_SOMETIMES)) {
+		ftt_errno = FTT_EPARTIALSTAT;
+		return res;
+	    }
 	} else {
 	    set_stat(b,FTT_BOT,     itoa(bit(7,buf[0])), 0);
 	    if( bit(7,buf[0]) ) {

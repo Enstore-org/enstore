@@ -1,7 +1,42 @@
 #include <stdio.h>
 #include <ftt_private.h>
 
-int ftt_trans_in[] = {
+int ftt_trans_open[MAX_TRANS_ERRNO] = {
+	/*    0 NOERROR	*/	FTT_SUCCESS,
+	/*    1	EPERM	*/	FTT_EPERM,
+	/*    2	ENOENT	*/	FTT_ENOENT,
+	/*    3	ESRCH	*/	FTT_ENOENT,
+	/*    4	EINTR	*/	FTT_ENOENT,
+	/*    5	EIO	*/	FTT_EIO,
+	/*    6	ENXIO	*/	FTT_EFAULT,
+	/*    7	E2BIG	*/	FTT_EFAULT,
+	/*    8	ENOEXEC	*/	FTT_EFAULT,
+	/*    9	EBADF	*/	FTT_ENOENT,
+	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
+	/*   11	EAGAIN	*/	FTT_ENOTAPE,
+	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   13	EACCES	*/	FTT_EPERM,
+	/*   14	EFAULT	*/	FTT_EFAULT,
+	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
+	/*   16	EBUSY	*/	FTT_EBUSY,
+	/*   17	EEXIST	*/	FTT_ENOTSUPPORTED,
+	/*   18	EXDEV	*/	FTT_ENOTSUPPORTED,
+	/*   19	ENODEV	*/	FTT_ENOENT,
+	/*   20	ENOTDIR	*/	FTT_ENOENT,
+	/*   21	EISDIR	*/	FTT_ENOENT,
+	/*   22	EINVAL	*/	FTT_EBLKSIZE,
+	/*   23	ENFILE	*/	FTT_ENFILE,
+	/*   24	EMFILE	*/	FTT_ENFILE,
+	/*   25	ENOTTY	*/	FTT_ENOTTAPE,
+	/*   26	ETXTBSY	*/	FTT_ENOENT,
+	/*   27	EFBIG	*/	FTT_EBLKSIZE,
+	/*   28	ENOSPC	*/	FTT_EBLANK,
+	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
+	/*   30	EROFS	*/	FTT_EROFS,
+	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+};
+
+int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EPERM,
 	/*    2	ENOENT	*/	FTT_ENOENT,
@@ -34,15 +69,9 @@ int ftt_trans_in[] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
-	/*   32	EPIPE	*/	FTT_ENOTSUPPORTED,
-	/*   33	EDOM	*/	FTT_ENOTSUPPORTED,
-	/*   34	ERANGE	*/	FTT_ENOTSUPPORTED,
-	/*   35	ENOMSG	*/	FTT_ENOTSUPPORTED,
-	/*   36	EIDRM	*/	FTT_ENOTSUPPORTED,
-	/*   37	ECHRNG	*/	FTT_ENOTSUPPORTED,
 };
 
-int ftt_trans_skiprec[] = {
+int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EPERM,
 	/*    2	ENOENT	*/	FTT_ENOENT,
@@ -75,14 +104,8 @@ int ftt_trans_skiprec[] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
-	/*   32	EPIPE	*/	FTT_ENOTSUPPORTED,
-	/*   33	EDOM	*/	FTT_ENOTSUPPORTED,
-	/*   34	ERANGE	*/	FTT_ENOTSUPPORTED,
-	/*   35	ENOMSG	*/	FTT_ENOTSUPPORTED,
-	/*   36	EIDRM	*/	FTT_ENOTSUPPORTED,
-	/*   37	ECHRNG	*/	FTT_ENOTSUPPORTED,
 };
-int ftt_trans_skipf[] = {
+int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EPERM,
 	/*    2	ENOENT	*/	FTT_ENOENT,
@@ -115,14 +138,8 @@ int ftt_trans_skipf[] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
-	/*   32	EPIPE	*/	FTT_ENOTSUPPORTED,
-	/*   33	EDOM	*/	FTT_ENOTSUPPORTED,
-	/*   34	ERANGE	*/	FTT_ENOTSUPPORTED,
-	/*   35	ENOMSG	*/	FTT_ENOTSUPPORTED,
-	/*   36	EIDRM	*/	FTT_ENOTSUPPORTED,
-	/*   37	ECHRNG	*/	FTT_ENOTSUPPORTED,
 };
-int ftt_trans_skipr[] = {
+int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EPERM,
 	/*    2	ENOENT	*/	FTT_ENOENT,
@@ -155,15 +172,9 @@ int ftt_trans_skipr[] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
-	/*   32	EPIPE	*/	FTT_ENOTSUPPORTED,
-	/*   33	EDOM	*/	FTT_ENOTSUPPORTED,
-	/*   34	ERANGE	*/	FTT_ENOTSUPPORTED,
-	/*   35	ENOMSG	*/	FTT_ENOTSUPPORTED,
-	/*   36	EIDRM	*/	FTT_ENOTSUPPORTED,
-	/*   37	ECHRNG	*/	FTT_ENOTSUPPORTED,
 };
 
-int ftt_trans_out[] = {
+int ftt_trans_out[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EROFS,
 	/*    2	ENOENT	*/	FTT_ENOENT,
@@ -196,12 +207,6 @@ int ftt_trans_out[] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
-	/*   32	EPIPE	*/	FTT_ENOTSUPPORTED,
-	/*   33	EDOM	*/	FTT_ENOTSUPPORTED,
-	/*   34	ERANGE	*/	FTT_ENOTSUPPORTED,
-	/*   35	ENOMSG	*/	FTT_ENOTSUPPORTED,
-	/*   36	EIDRM	*/	FTT_ENOTSUPPORTED,
-	/*   37	ECHRNG	*/	FTT_ENOTSUPPORTED,
 };
 
 int *ftt_trans_table[] = {
@@ -220,7 +225,7 @@ int *ftt_trans_table[] = {
     /* FTT_OPN_ASYNC 		12 */ ftt_trans_in,
     /* FTT_OPN_PASSTHRU         13 */ ftt_trans_out,
     /* FTT_OPN_CHALL            14 */ ftt_trans_out,
-    /* FTT_OPN_OPEN             15 */ ftt_trans_out,
+    /* FTT_OPN_OPEN             15 */ ftt_trans_open,
     /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
     /* FTT_OPN_RSKIPFM		16 */ ftt_trans_skipr,
 };
@@ -243,23 +248,70 @@ static char IRIXfindVME[] =
        grep 'Tape drive: unit %2$d on VME-SCSI controller %1$d:' | \
        sed -e 's/.*:  *//' -e 's/8mm(\\(.*\\).) cartridge */EXB-\\1/'";
 
+static char OSF1find[] = 
+    "echo EXB-8505";
+
+
 /*
 ** device id's
 */
 
+/* The following tables are based on:
+** 
+** typedef struct {
+**     char *os;		 OS+Version (i.e. IRIX+5.3) string 
+**     char *drivid;		 SCSI Drive-id prefix 
+**     char *controller;	 controller name string 
+**     long flags;		 FTT_FLAG_XXX bits for behavior 
+**     long scsi_ops;		 FTT_OP_XXX bits for ops to use SCSI 
+**     int **errortrans;	 errortrans[FTT_OPN_XXX][errno]->ftt_errno 
+**     char *baseconv;		 basename parser scanf string 
+**     int nconv;		 number of items scanf should return 
+**     char *drividcmd;		 printf this to get shell command->driveid 
+**    int	max_blocksize;	 maximum allowable blocksize
+**    ftt_devinfo devs[MAXDEVSLOTS];  drive specs with printf strings 
+**} ftt_dev_entry;
+**
+** Note -- ftt_findslot searches this table with a prefix string match,
+**         and takes the first match.  Therefore if you put a null string
+**         or one type that is a prefix of the other (for either OS name
+**         or drive-id) that will prevent longer strings from matching
+**	   further down the table, for example, if you have
+**         {"OSNAME", "", ...},
+**         {"OSNAME", "EXB-8200", ...},...
+**	   the first one will always match before the second one, and
+**         you might as well not have it.  So put your null-string
+**         default cases *last*.
+*/
 ftt_dev_entry devtable[] = {
+    {"OSF1", "", "SCSI", 0, FTT_OP_GET_STATUS, ftt_trans_table,
+	"/dev/%3$[n]rmt%d", 1, OSF1find, 240*1024, {
+    /*   string                  den mod hwd pas fxd rewind            1st */
+    /*   ======                  === === === === === ======            === */
+        { "/dev/rmt%da",          0,  0,0x15, 0,  0,          FTT_RWOC, 1},
+        { "/dev/rmt%da",          0,  0,0x15, 1,  0,                 0, 0},
+        { "/dev/rmt%dl",          0,  0,0x21, 0,  0,          FTT_RWOC, 1},
+        { "/dev/rmt%dh",          2,  0,0x15, 0,  0,          FTT_RWOC, 1},
+        { "/dev/rmt%dm",          1,  0,0x15, 0,  0,          FTT_RWOC, 1},
+        { "/dev/nrmt%da",         0,  0,0x15, 0,  0,                 0, 1},
+        { "/dev/nrmt%dl",         0,  0,0x15, 0,  0,                 0, 1},
+        { "/dev/nrmt%dh",         2,  0,0x15, 0,  0,                 0, 1},
+        { "/dev/nrmt%dm",         1,  0,0x21, 0,  0,                 0, 1},
+	{ 0 },
+     }},
+    
     {"AIX", "EXB-8505", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
 	FTT_OP_UNLOAD|FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table,
-	"/dev/rmt%d", 1, AIXfind, {
+	"/dev/rmt%d", 1, AIXfind, 240*1024, {
     /*   string                  den mod hwd pas fxd rewind            1st */
     /*   ======                  === === === === === ======            === */
         { "/dev/rmt%d.1",        0,  0,0x15, 0,  0,                 0, 1},
-        { "/dev/rmt%d.1",        0,  0,0x00, 0,  0,                 0, 1},
+        { "/dev/rmt%d.1",        0,  0,0x00, 0,  0,                 0, 0},
         { "/dev/rmt%d.1",       -2,  0,   0, 1,  0,                 0, 0},
         { "/dev/rmt%d"  ,        0,  0,0x15, 0,  0, FTT_RWOC|       0, 1},
         { "/dev/rmt%d.1",        0,  0,0x15, 0,  0,                 0, 0},
         { "/dev/rmt%d.2",        0,  0,0x15, 0,  0, FTT_RWOC|FTT_RTOO, 1},
-        { "/dev/rmt%d.3",        0,  0,0x15, 0,  0,        0|FTT_RTOO, 0},
+        { "/dev/rmt%d.3",        0,  0,0x15, 0,  0,        0|FTT_RTOO, 1},
         { "/dev/rmt%d"  ,        0,  1,0x8c, 0,  0, FTT_RWOC|       0, 0},
         { "/dev/rmt%d.1",        0,  1,0x8c, 0,  0,                 0, 0},
         { "/dev/rmt%d.2",        0,  1,0x8c, 0,  0, FTT_RWOC|FTT_RTOO, 0},
@@ -292,11 +344,11 @@ ftt_dev_entry devtable[] = {
     }},
     {"AIX", "EXB-8500", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
 	FTT_OP_UNLOAD|FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table,
-	"/dev/rmt%d", 1, AIXfind, {
+	"/dev/rmt%d", 1, AIXfind, 240*1024, {
     /*   string                  den mod hwd pas fxd rewind            1st */
     /*   ======                  === === === === === ======            === */
         { "/dev/rmt%d.1",        0,  0,0x15, 0,  0,                 0, 1},
-        { "/dev/rmt%d.1",        0,  0,0x00, 0,  0,                 0, 1},
+        { "/dev/rmt%d.1",        0,  0,0x00, 0,  0,                 0, 0},
         { "/dev/rmt%d.1",       -2,  0,   0, 1,  0, FTT_RWOC|       0, 0},
         { "/dev/rmt%d"  ,        0,  0,0x15, 0,  0, FTT_RWOC|       0, 1},
         { "/dev/rmt%d.1",        0,  0,0x15, 0,  0,                 0, 0},
@@ -318,7 +370,7 @@ ftt_dev_entry devtable[] = {
     }},
     {"AIX", "EXB-8200", "", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
 	FTT_OP_UNLOAD|FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table,
-	"/dev/rmt%d", 1, AIXfind, {
+	"/dev/rmt%d", 1, AIXfind, 240*1024, {
     /*   string                  den mod hwd pas fxd rewind            1st */
     /*   ======                  === === === === === ======            === */
         { "/dev/rmt%d.1",        0,  0,   0, 0,  0,                 0, 1},
@@ -333,35 +385,20 @@ ftt_dev_entry devtable[] = {
         { "/dev/rmt%d.3",        0,  0,   0, 0,  1,        0|FTT_RTOO, 0},
         { 0, },
     }},
-    {"IRIX+5", "DLT", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+5", "DLT", "SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
+	"/dev/rmt/tps%dd%d", 2, IRIXfind, 256*1024, {
     /*   string                    den mod hwd pas fxd rewind            ,1st*/
     /*   ======                    === === === === === ======            === */
 	{ "/dev/rmt/tps%dd%dnrv",   5,  0,0x1A, 0,  0,                 0, 1},
-	{ "/dev/rmt/tps%dd%dnrv",   5,  0,   0, 0,  0,                 0, 1},
-	{ "/dev/rmt/tps%dd%dstat",  5,  0,   0, 0,  0,                 0, 1},
+	{ "/dev/rmt/tps%dd%dnrv",   5,  0,   0, 0,  0,                 0, 0},
+	{ "/dev/rmt/tps%dd%dstat",  5,  0,   0, 0,  0,                 0, 0},
 	{ "/dev/scsi/sc%dd%dl0",   -2,  0,   0, 1,  0,                 0, 1},
 	{ "/dev/rmt/tps%dd%d",      1,  0,0x0A, 0,  1,          FTT_RWOC, 1},
-	{ "/dev/rmt/tps%dd%dnr",    1,  0,0x0A, 0,  1,                 0, 1},
-	{ "/dev/rmt/tps%dd%dv",     1,  0,0x0A, 0,  0,          FTT_RWOC, 1},
-	{ "/dev/rmt/tps%dd%dnrv",   1,  0,0x0A, 0,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%d",      2,  0,0x16, 0,  1,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnr",    2,  0,0x16, 0,  1,                 0, 0},
-	{ "/dev/rmt/tps%dd%dv",     2,  0,0x16, 0,  0,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnrv",   2,  0,0x16, 0,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%d",      3,  0,0x17, 0,  1,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnr",    3,  0,0x17, 0,  1,                 0, 0},
-	{ "/dev/rmt/tps%dd%dv",     3,  0,0x17, 0,  0,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnrv",   3,  0,0x17, 0,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%d",      4,  0,0x18, 0,  1,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnr",    4,  0,0x18, 0,  1,                 0, 0},
-	{ "/dev/rmt/tps%dd%dv",     4,  0,0x18, 0,  0,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnrv",   4,  0,0x18, 0,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%d",      5,  0,0x00, 0,  1,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnr",    5,  0,0x00, 0,  1,                 0, 0},
-	{ "/dev/rmt/tps%dd%dv",     5,  0,0x00, 0,  0,          FTT_RWOC, 0},
-	{ "/dev/rmt/tps%dd%dnrv",   5,  0,0x00, 0,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%d",      5,  0,0x1A, 0,  1,          FTT_RWOC, 0},
 	{ "/dev/rmt/tps%dd%dnr",    5,  0,0x1A, 0,  1,                 0, 0},
 	{ "/dev/rmt/tps%dd%dv",     5,  0,0x1A, 0,  0,          FTT_RWOC, 0},
@@ -388,13 +425,13 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dnrsvc", 5,  1,0x1A, 0,  0,          FTT_BTSW, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+5", "EXB-85", "SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/tps%dd%d",  2, IRIXfind, {
+	"/dev/rmt/tps%dd%d",  2, IRIXfind, 240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/tps%dd%dnrv.8500",    1,  0,0x15, 0,  0,                 0, 1},
-	{ "/dev/rmt/tps%dd%dnrv.8500",    1,  0,0x00, 0,  0,                 0, 1},
+	{ "/dev/rmt/tps%dd%dnrv.8500",    1,  0,0x00, 0,  0,                 0, 0},
 	{ "/dev/scsi/sc%dd%dl0",         -2,  0,   0, 1,  0,                 0, 0},
 	{ "/dev/rmt/tps%dd%dstat"        -2,  0,   0, 0,  0,                 0, 1},
 	{ "/dev/rmt/tps%dd%d",            1,  0,0x15, 0,  1,          FTT_RWOC, 1},
@@ -435,9 +472,9 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dsv.8500",     1,  0,0x15, 0,  0, FTT_BTSW|FTT_RWOC, 0},
         { 0,},
     }},
-    {"IRIX+5", "EXB-82","SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+5", "EXB-82","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
+	"/dev/rmt/tps%dd%d", 2, IRIXfind, 240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            sf,1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/tps%dd%dnrv",         0,  0,   0, 0,  0,                 0, 1},
@@ -458,9 +495,9 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dsv",          0,  0,   0, 0,  0, FTT_BTSW|FTT_RWOC, 1},
 	{ 0,},
     }},
-    {"IRIX+4", "EXB-85", "SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+4", "EXB-85", "SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
+	"/dev/rmt/tps%dd%d", 2, IRIXfind, 240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/tps%dd%dnrnsv.8500",  1,  0,   0, 0,  0,                 0, 1},
@@ -485,9 +522,9 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dnsv.8500",    1,  0,0x15, 0,  0,          FTT_RWOC, 1},
 	{ 0,},
     }},
-    {"IRIX+4", "EXB-82", "SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+4", "EXB-82", "SCSI",  FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/tps%dd%d", 2, IRIXfind, {
+	"/dev/rmt/tps%dd%d", 2, IRIXfind, 240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/tps%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 1},
@@ -500,13 +537,13 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/tps%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 0},
 		{ 0,},
     }},
-	    {"IRIX+5", "DLT", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+	    {"IRIX+5", "DLT", "VME-SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,{
+	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, 256*1024,{
     /*   string                    den mod hwd pas fxd rewind            ,1st*/
     /*   ======                    === === === === === ======            === */
 	{ "/dev/rmt/jag%dd%dnrv",   5,  0,0x1A, 0,  0,                 0, 1},
-	{ "/dev/rmt/jag%dd%dnrv",   5,  0,   0, 0,  0,                 0, 1},
+	{ "/dev/rmt/jag%dd%dnrv",   5,  0,   0, 0,  0,                 0, 0},
 	{ "/dev/rmt/jag%dd%dstat",  5,  0,   0, 0,  0,                 0, 1},
 	{ "/dev/scsi/jag%dd%dl0",  -2,  0,   0, 1,  0,                 0, 1},
 	{ "/dev/rmt/jag%dd%d",      1,  0,0x0A, 0,  1,          FTT_RWOC, 1},
@@ -555,13 +592,13 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dnrsvc", 5,  1,0x1A, 0,  0,          FTT_BTSW, 1},
         { 0,},
     }},
-    {"IRIX+5", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+5", "EXB-85", "VME-SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,{
+	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, 240*1024,{
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/jag%dd%dnrv.8500",    1,  0,0x15, 0,  0,                 0, 1},
-	{ "/dev/rmt/jag%dd%dnrv.8500",    1,  0,0x00, 0,  0,                 0, 1},
+	{ "/dev/rmt/jag%dd%dnrv.8500",    1,  0,0x00, 0,  0,                 0, 0},
 	{ "/dev/scsi/jag%dd%dl0",         -2,  0,   0, 1,  0,                 0, 0},
 	{ "/dev/rmt/jag%dd%dstat"        -2,  0,   0, 0,  0,                 0, 1},
 	{ "/dev/rmt/jag%dd%d",            1,  0,0x15, 0,  1,          FTT_RWOC, 1},
@@ -602,15 +639,14 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dsv.8500",     1,  0,0x15, 0,  0, FTT_BTSW|FTT_RWOC, 0},
         { 0,},
     }},
-    {"IRIX+5", "EXB-82","VME-SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+5", "EXB-82","VME-SCSI",  FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
+	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,240*1024, {
     /*   string                  den mod hwd pas fxd rewind            sf,1st */
     /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/jag%dd%dnrv",         0,  0,   0, 0,  0,                 0, 1},
 	{ "/dev/scsi/jag%dd%dl0",         -2,  0,   0, 1,  0,                 0, 1},
 	{ "/dev/rmt/jag%dd%dstat",       -1,  0,   0, 0,  0,                 0, 1},
-	{ "/dev/rmt/jag%dd%dnr",          0,  0,   0, 0,  1,                 0, 1},
 	{ "/dev/rmt/jag%dd%dnr",          0,  0,   0, 0,  1,                 0, 1},
 	{ "/dev/rmt/jag%dd%d",            0,  0,   0, 0,  1,          FTT_RWOC, 1},
 	{ "/dev/rmt/jag%dd%dnrv",         0,  0,   0, 0,  0,                 0, 0},
@@ -625,9 +661,9 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dsv",          0,  0,   0, 0,  0, FTT_BTSW|FTT_RWOC, 1},
 	{ 0,},
     }},
-    {"IRIX+4", "EXB-85", "VME-SCSI", FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+4", "EXB-85", "VME-SCSI", FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
+	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/jag%dd%dnrnsv.8500",  1,  0,0x15, 0,  0,                 0, 1},
@@ -651,9 +687,9 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dnsv.8500",    1,  0,0x15, 0,  0,          FTT_RWOC, 1},
 	{ 0,},
     }},
-    {"IRIX+4", "EXB-82", "VME-SCSI",  FTT_FLAG_ASYNC_REWIND|FTT_FLAG_CHK_BOT_AT_FMK, 
+    {"IRIX+4", "EXB-82", "VME-SCSI",  FTT_FLAG_CHK_BOT_AT_FMK, 
 	FTT_OP_GET_STATUS, ftt_trans_table,
-	"/dev/rmt/jag%dd%d", 2, IRIXfindVME, {
+	"/dev/rmt/jag%dd%d", 2, IRIXfindVME,240*1024, {
 	    /*   string                  den mod hwd pas fxd rewind            1st */
 	    /*   ======                  === === === === === ======            === */
 	{ "/dev/rmt/jag%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 1},
@@ -663,6 +699,13 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dv",           0,  0,   0, 0,  0, FTT_BTSW|FTT_RWOC, 1},
 	{ "/dev/rmt/jag%dd%dnsv",         0,  0,   0, 0,  0,          FTT_RWOC, 1},
 	{ "/dev/rmt/jag%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 0},
+	{ 0,},
+    }},
+    {"", "", "unknown", 0, 0, ftt_trans_table,
+	"/dev/%3$s", 1, "echo",240*1024, {
+	/*   string   den mod hwd pas fxd rewind 1st */
+	/*   ======   === === === === === ====== === */
+	{ "/dev/%3$s", 0,  0,  0,  0,  0,  0,     1},
 	{ 0,},
     }},
     {0, },
@@ -675,11 +718,11 @@ ftt_stat_entry ftt_stat_op_tab[] = {
 
     {"EXB-8500", 
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|FTT_DO_EXBRS|
-	FTT_DO_SN|FTT_DO_RP},
+	FTT_DO_SN|FTT_DO_RP_SOMETIMES},
 
     {"EXB-8505", 
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|FTT_DO_EXBRS|
-	FTT_DO_05RS|FTT_DO_SN|FTT_DO_LSRW|FTT_DO_RP},
+	FTT_DO_05RS|FTT_DO_SN|FTT_DO_LSRW|FTT_DO_RP_SOMETIMES},
 
     {"DLT",      
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|FTT_DO_DLTRS|

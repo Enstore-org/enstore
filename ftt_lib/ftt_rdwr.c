@@ -40,10 +40,10 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     if ( 0 != (d->scsi_ops & FTT_OP_READ)){
 	DEBUG2(stderr, "SCSI pass-thru\n");
 	d->last_operation = FTT_OP_READ;
-	if (d->current_blocksize == 0) {
+	if (d->default_blocksize == 0) {
 		ftt_set_transfer_length(ftt_cdb_read,length);
 	} else {
-		ftt_set_transfer_length(ftt_cdb_read,length/d->current_blocksize);
+		ftt_set_transfer_length(ftt_cdb_read,length/d->default_blocksize);
 	}
 	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
 				(unsigned char*)buf, length, 5, 0);
@@ -88,10 +88,10 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
     if ( 0 != (d->scsi_ops & FTT_OP_WRITE)) {
 	DEBUG2(stderr,"SCSI pass-thru\n");
 	d->last_operation = FTT_OP_WRITE;
-	if (d->current_blocksize == 0) {
+	if (d->default_blocksize == 0) {
 		ftt_set_transfer_length(ftt_cdb_write,length);
 	} else {
-		ftt_set_transfer_length(ftt_cdb_write,length/d->current_blocksize);
+		ftt_set_transfer_length(ftt_cdb_write,length/d->default_blocksize);
 	}
 	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
 				(unsigned char *)buf, length, 5,1);

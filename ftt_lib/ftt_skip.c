@@ -42,10 +42,12 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 
 	if ( 0 > ftt_open_dev(d)) {
 	    res=d->file_descriptor;
+	    DEBUG3(stderr,"open returned %d\n", res);
 	} else {
 	    ioctlbuf.tape_op = mtop;
 	    ioctlbuf.tape_count = n;
-	    res = ioctl(d->file_descriptor, TAPE_OP, &ioctlbuf);
+	    res = ioctl(d->file_descriptor, FTT_TAPE_OP, &ioctlbuf);
+	    DEBUG3(stderr,"ioctl returned %d\n", res);
 	    if ( res < 0 ) {
 		res = ftt_translate_error(d, opn, "an mtio ioctl() call", res, what,0);
 	    }
@@ -82,7 +84,7 @@ ftt_skip_fm_internal(ftt_descriptor d, int n) {
 
     d->current_file += n;
     d->current_block = 0;
-    return ftt_mtop(d, n,  TAPE_FSF, (n > 0 ? FTT_OPN_SKIPFM:FTT_OPN_RSKIPFM), 
+    return ftt_mtop(d, n,  FTT_TAPE_FSF, (n > 0 ? FTT_OPN_SKIPFM:FTT_OPN_RSKIPFM), 
 			"an ftt_skip_fm", ftt_cdb_skipfm);
 }
 
@@ -96,7 +98,7 @@ ftt_skip_rec(ftt_descriptor d, int n){
 	ftt_write_fm_if_needed(d);
     }
     d->current_block += n;
-    return ftt_mtop(d, n, TAPE_FSR, (n > 0 ? FTT_OPN_SKIPREC:FTT_OPN_RSKIPREC),
+    return ftt_mtop(d, n, FTT_TAPE_FSR, (n > 0 ? FTT_OPN_SKIPREC:FTT_OPN_RSKIPREC),
 			"an ftt_skip_rec", ftt_cdb_skipbl);
 }
 
@@ -112,12 +114,16 @@ ftt_rewind(ftt_descriptor d){
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    res = ftt_mtop(d, 0, TAPE_REW, FTT_OPN_REWIND,
+    /*
+    ** we rewind twice in case the silly OS has the 
+    ** asynchronous rewind bit turned on, in which case 
+    ** the second one waits for the first one to complete.
+    ** Also, rewinding twice doesn't hurt...
+    */
+    res = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
 		"an ftt_rewind", ftt_cdb_rewind);
-    if (0 != (d->flags & FTT_FLAG_ASYNC_REWIND)) {
-        res = ftt_mtop(d, 0, TAPE_REW, FTT_OPN_REWIND,
-		"an ftt_rewind", ftt_cdb_rewind);
-    }
+    res = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
+	"an ftt_rewind", ftt_cdb_rewind);
     return res;
 }
 
@@ -132,7 +138,7 @@ ftt_retension(ftt_descriptor d) {
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, TAPE_RETEN, FTT_OPN_RETENSION,
+    return ftt_mtop(d, 0, FTT_TAPE_RETEN, FTT_OPN_RETENSION,
 		"an ftt_retension", ftt_cdb_retension);
 }
 
@@ -147,7 +153,7 @@ ftt_unload(ftt_descriptor d){
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, TAPE_UNLOAD, FTT_OPN_UNLOAD,
+    return ftt_mtop(d, 0, FTT_TAPE_UNLOAD, FTT_OPN_UNLOAD,
 			"an ftt_unload", ftt_cdb_unload);
 }
 
@@ -160,7 +166,7 @@ ftt_erase(ftt_descriptor d) {
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, TAPE_ERASE, FTT_OPN_ERASE,
+    return ftt_mtop(d, 0, FTT_TAPE_ERASE, FTT_OPN_ERASE,
 		"an ftt_erase", ftt_cdb_erase);
 }
 
@@ -194,7 +200,7 @@ ftt_writefm(ftt_descriptor d) {
     d->data_direction = FTT_DIR_WRITING;
     d->current_block = 0;
     d->current_file++;
-    return ftt_mtop(d, 1, TAPE_WEOF, FTT_OPN_WRITEFM,
+    return ftt_mtop(d, 1, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
 		"an ftt_writefm", ftt_cdb_writefm);
 }
 
