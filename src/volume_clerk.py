@@ -3,6 +3,7 @@ import os
 import time
 import copy
 import callback
+import log_client
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
@@ -666,6 +667,10 @@ if __name__ == "__main__" :
     keys = csc.get("volume_clerk")
     vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
     vs.set_csc(csc)
+
+    # get a logger
+    logc = log_client.LoggerClient(csc, 'VOLC', 'logserver', 0)
+    vs.set_logc(logc)
 
     while 1:
         try:
