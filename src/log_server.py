@@ -152,8 +152,13 @@ if __name__ == "__main__" :
 
     while 1:
         try:
+	    logserver.log_message({"message": "log server (re)starting"})
             logserver.serve_forever(keys["log_file_path"])
         except:
             print time.strftime("%c",time.localtime(time.time())),\
                   sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+	    logserver.log_message({"message": "Fatal logserver error"+
+				   repr(sys.argv)+
+				   repr(sys.exc_info()[0])+
+				   repr(sys.exc_info()[1])})
             continue
