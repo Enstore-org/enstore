@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -21,6 +23,11 @@ import manage_queue
 import e_errors
 import lm_list
 import volume_family
+
+def p(*args):
+    print args
+
+Trace.trace = p
 
 ######################################################################
 # The following routines are for test only
@@ -460,6 +467,7 @@ class LibraryManagerMethods:
                                         vol_veto_list,
                                         first_found)
         # volume clerk returned error
+        Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
         if v["status"][0] != e_errors.OK:
             rq.ticket["status"] = v["status"]
             rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
@@ -834,18 +842,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # if directory does not exist, create it
         try:	
             if os.path.exists(self.db_dir) == 0:
-                dir = ""
-                dir_elements = string.split(self.db_dir,'/')
-                for element in dir_elements:
-                    dir=dir+'/'+element
-                    if os.path.exists(dir) == 0:
-                        # try to make the directory - just bomb out if we fail
-                        #   since we probably require user intervention to fix
-                        dir = string.replace(dir,"//","/")
-                        Trace.trace(11,'dir='+repr(dir)+" path="+repr(self.db_dir))
-                        os.mkdir(dir)
-                        os.chmod(dir,0777)
-                        break
+                os.makedirs(self.db_dir)
         except:
 	  exc, val, tb = e_errors.handle_error()
 	  sys.exit(1)
@@ -973,7 +970,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                              ticket["wrapper"]["uname"]))
 
     # mover is idle - see what we can do
-    def idle_mover(self, mticket):
+    def mover_idle(self, mticket):
         Trace.trace(11,"IDLE RQ %s"%(mticket,))
         ##############################################   remove between the lines
         mt = {'mover': mticket['mover'],
@@ -993,23 +990,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
             # its volumes at movers table
-            self.reply_to_caller({"work" : "nowork"})
             return
         
         if self.lm_lock == 'pause':
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
-            self.reply_to_caller({"work" : "nowork"})
             return
             
         self.requestor = mticket['mover']
-        # mover can be idle in the draining state
-        # if state of the mover sending idle RQ is not idle,
-        #do not process this request 
-	if mticket['state'] != 'idle':
-            Trace.trace(14,"idle_mover state:%s"%(mticket['state'],))
-            self.reply_to_caller({"work" : "nowork"})
-            return
-        
+
 	# check if there is a work for this mover in work_at_movers list
 	# it should not happen in a normal operations but it may when for 
 	# instance mover detects that encp is gone and returns idle or
@@ -1040,115 +1028,73 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
         # no work means we're done
         if status[0] == e_errors.NOWORK:
-            self.reply_to_caller({"work" : "nowork"})
+            return
 
-        # ok, we have some work - try to bind the volume
-	elif status[0] == e_errors.OK:
-            w = rq.ticket
-	    #self.reply_to_caller({"work" : "nowork"})
-	    #return
-            # reply now to avoid deadlocks
-            format = "%s work on vol=%s mover=%s requester:%s"
-            Trace.log(e_errors.INFO, format%\
-			   (w["work"],
-			   w["fc"]["external_label"],
-			   mticket["mover"],
-			   w["wrapper"]["uname"]))
-            if w.has_key('reject_reason'): del(w['reject_reason'])
-            self.pending_work.delete(rq)
-            w['times']['lm_dequeued'] = time.time()
-            # set the correct volume family for write request
-            if w['work'] == 'write_to_hsm' and w['vc']['file_family'] == 'ephemeral':
-                w['vc']['volume_family'] = string.join((w['vc']['storage_group'],
-                                                        w['fc']['external_label'],
-                                                        w['vc']['wrapper']), '.')
-            w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
-            Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
-            self.reply_to_caller(w) # reply now to avoid deadlocks
-            w['mover'] = mticket['mover']
-            Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
-            self.work_at_movers.append(w)
-            work = string.split(w['work'],'_')[0]
-            ##############################################   remove between the lines
-            mt = {'mover': mticket['mover'],
-                  'external_label' : w["fc"]["external_label"],
-                  'current_location' : None,
-                  'state' : work,
-                  'status' : (e_errors.OK, None),
-                  'volume_family': w['vc']['volume_family'],
-                  'volume_status':((None,None),(None,None))
-                  }
-            Trace.trace(11,"MT %s" % (mt,))
-        
-            ###############################################
-            self.volumes_at_movers.put(mt)
-            
-
-        # alas
-        else:
-	    Trace.log(1,"idle_mover: assertion error w=%s ticket=%"%
+        if status[0] != e_errors.OK:
+	    Trace.log(1,"mover_idle: assertion error w=%s ticket=%"%
                       (rq, mticket))
             raise AssertionError
+            
+        # ok, we have some work - try to bind the volume
+        w = rq.ticket
+        # reply now to avoid deadlocks
+        format = "%s work on vol=%s mover=%s requester:%s"
+        Trace.log(e_errors.INFO, format%\
+                       (w["work"],
+                       w["fc"]["external_label"],
+                       mticket["mover"],
+                       w["wrapper"]["uname"]))
+        if w.has_key('reject_reason'): del(w['reject_reason'])
+        self.pending_work.delete(rq)
+        w['times']['lm_dequeued'] = time.time()
+        # set the correct volume family for write request
+        if w['work'] == 'write_to_hsm' and w['vc']['file_family'] == 'ephemeral':
+            w['vc']['volume_family'] = string.join((w['vc']['storage_group'],
+                                                    w['fc']['external_label'],
+                                                    w['vc']['wrapper']), '.')
+        w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
+        Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
+        self.reply_to_caller(w) # reply now to avoid deadlocks
+        w['mover'] = mticket['mover']
+        Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
+        self.work_at_movers.append(w)
+        work = string.split(w['work'],'_')[0]
+        ##############################################   remove between the lines
+        mt = {'mover': mticket['mover'],
+              'external_label' : w["fc"]["external_label"],
+              'current_location' : None,
+              'state' : work,
+              'status' : (e_errors.OK, None),
+              'volume_family': w['vc']['volume_family'],
+              'volume_status':((None,None),(None,None))
+              }
+        Trace.trace(11,"MT %s" % (mt,))
+
+        ###############################################
+        self.volumes_at_movers.put(mt)
+            
         
 
     # mover is busy - update volumes_at_movers
-    def busy(self, mticket):
+    def mover_busy(self, mticket):
         Trace.trace(11,"BUSY RQ %s"%(mticket,))
-        ##############################################   remove between the lines
-        mt = {'mover': mticket['mover'],
-              'external_label' : None,
-              'current_location' : None,
-              'state' : None,
-              'status' : (e_errors.OK, None),
-              'volume_family': None,
-              'volume_status':((None,None),(None,None))
-              }
-        
-        ###############################################
-        
-        # mover is idle remove it from volumes_at_movers
-        self.volumes_at_movers.put(mt)
+        self.volumes_at_movers.put(mticket)
         
     # we have a volume already bound - any more work??
-    def have_bound_volume(self, mticket):
-	Trace.trace(11, "have_bound_volume: request: %s"%(mticket,))
+    def mover_bound_volume(self, mticket):
+	Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
         last_work = mticket['last_work']
-        ##############################################   remove between the lines
-        if not mticket["vc"].has_key("current_location"):
-           mticket["vc"]["current_location"] = mticket["current_location"] 
-        mt = {'mover': mticket['mover'],
-              'external_label' : mticket["vc"]["external_label"],
-              'current_location' : mticket["vc"]["current_location"],
-              'state' : string.split(last_work,'_')[0],
-              'status' : (e_errors.OK,None),
-              'volume_family': mticket['vc']['volume_family'],
-              'volume_status':(mticket['vc']['system_inhibit'],mticket['vc']['user_inhibit'])
-              }
-        
-        ###############################################
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
-        self.volumes_at_movers.put(mt)
+        self.volumes_at_movers.put(mticket)
         if self.is_starting():
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
             # its volumes at movers table
-            self.reply_to_caller({"work" : "nowork"})
             return
         if self.lm_lock == 'pause':
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
-            self.reply_to_caller({"work" : "nowork"})
-            return
-	# update mover list. If mover is in the list - update its state
-	if mticket['state'] == 'idle':
-	    state = 'idle_mover'  # to make names consistent
-	else:
-	    state = mticket['state']
-
-        # if mover is busy or offline do nothing
-        if state == 'busy' or state == 'offline':
-            self.reply_to_caller({'work': 'nowork'})
             return
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['vc']['external_label'])
@@ -1163,14 +1109,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['file_family'],))  # REMOVE
 	    self.work_at_movers.remove(w)
 
-	# check if mover can accept another request
-	if state != 'idle_mover':
-            Trace.trace(14,"have_bound_volume state:%s"%(state,))
-            self.reply_to_caller({'work': 'nowork'})
-            return
-        # otherwise, see if this volume will do for any other work pending
+        # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket["vc"], last_work, mticket['mover'], mticket['vc']['current_location'])
-        Trace.trace(11, "have_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
+        Trace.trace(11, "mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
         if status[0] == e_errors.OK:
             w = rq.ticket
             format = "%s next work on vol=%s mover=%s requester:%s"
@@ -1211,13 +1152,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         elif  (status[0] == e_errors.NOWORK or
                status[0] == e_errors.VOL_SET_TO_FULL):
 
-            # do not dismount, rather send no work
-            self.reply_to_caller({'work': 'nowork'})
+            # do not dismount
             return
 
         # alas
         else:
-	    Trace.log(1,"have_bound_volume: assertion error %s %s"%(w,mticket))
+	    Trace.log(1,"mover_bound_volume: assertion error %s %s"%(w,mticket))
             raise AssertionError
 
 
@@ -1226,14 +1166,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
-    def unilateral_unbind(self, ticket):
+    def mover_error(self, ticket):
         Trace.trace(11,"UNILATERAL UNBIND RQ %s"%(ticket,))
         # get the work ticket for the volume
         w = self.get_work_at_movers(ticket["external_label"])
         if w:
             Trace.trace(13,"unilateral_unbind: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
-        self.reply_to_caller({"work" : "nowork"})
 
     # what is going on
     def getwork(self,ticket):

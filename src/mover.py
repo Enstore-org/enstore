@@ -188,8 +188,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
         elif self.state is ERROR:
             work = "mover_error"
             status = self.last_error
-        else: #cleaning, draining or offline
+        else: #cleaning, draining or offline, no message sent
+            ### XXX when going offline, we need to send a message to LM
             return
+           
         
         ticket =  {
             "mover":  self.name,

@@ -514,6 +514,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # go through the volumes and find one we can use for this request
         vol = {}
+        print "vf %s pool %s wrapper %s veto %s" % (volume_family, pool,wrapper, vol_veto_list)
         lc = self.dict.inx['library'].cursor()		# read only
         vc = self.dict.inx['volume_family'].cursor()
         label, v = lc.set(library)
@@ -521,19 +522,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         c = db.join(self.dict, [lc, vc])
         while 1:
             label,v = c.next()
+            print "CGW2", label, v
             if not label:
                 break
-            if v["user_inhibit"] != ("none",  "none"):
+            if v["user_inhibit"] != ["none",  "none"]:
                 continue
-            if v["system_inhibit"] != ("none", "none"):
+            if v["system_inhibit"] != ["none", "none"]:
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
-            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
+            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None:
                 continue
 
             # equal treatment for blank volume
             if exact_match:
-                if self.is_volume_full(v,min_remaining_bytes): continue
+                if self.is_volume_full(v,min_remaining_bytes):
+                    continue
             else:
                 if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                     continue
@@ -588,7 +591,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         volume_family = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
-        ##print "CGW1: lib='%s' fam='%s' wrap='%s'"%(library,file_family,wrapper_type)
+        print "CGW1: lib='%s' fam='%s' wrap='%s'"%(library,volume_family,wrapper_type)
         # go through the volumes and find one we can use for this request
         # first use exact match
         vol = self.find_matching_volume(library, volume_family, volume_family,
@@ -616,7 +619,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if vf[1] == 'ephemeral':
                 volume_family = string.join((vf[0], label, wrapper_type), '.')
             vol['volume_family'] = volume_family
-            Trace.log(e_errors.INFO, "Assigning blank volume %s from storage group %s to libray %s, volume family %s"
+            Trace.log(e_errors.INFO, "Assigning blank volume %s from storage group %s to library %s, volume family %s"
                       % (label, pool, library, volume_family))
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
