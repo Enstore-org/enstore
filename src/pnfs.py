@@ -45,10 +45,12 @@ class pnfs :
             else :
                 print " ",k," = ",self.__dict__[k]
 
+    #################################################################################
+
     # simple test configuration
     def jon1(self) :
         if self.valid == valid :
-	    self.touch()
+            self.touch()
             self.statinfo()
             self.set_bit_file_id("1234567890987654321",123)
             self.statinfo()
@@ -79,7 +81,9 @@ class pnfs :
                     return enabled
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
-                why=open(self.dir+'/.(config)(flags)/disabled').readlines()
+                f = open(self.dir+'/.(config)(flags)/disabled')
+                why = f.readlines()
+                f.close()
                 return disabled+": "+why
         else :
             return invalid
@@ -87,7 +91,9 @@ class pnfs :
     # check if file is really part of pnfs file space
     def check_valid_pnfsFilename(self) :
         try :
-            open(self.dir+'/.(const)('+self.file+')','r').close()
+            f = open(self.dir+'/.(const)('+self.file+')','r')
+            self.const = f.readlines()
+            f.close()
             self.valid = valid
         except :
             self.valid = invalid
@@ -97,12 +103,13 @@ class pnfs :
     # create a new file or update its times
     def touch(self) :
         if self.valid == valid :
-            t=int(time.time())
+            t = int(time.time())
             try :
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
                 if sys.exc_info()[1][0] == errno.ENOENT :
-                    open(self.pnfsFilename,'w').close()
+                    f = open(self.pnfsFilename,'w')
+                    f.close()
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
 
@@ -113,7 +120,7 @@ class pnfs :
         if self.valid == valid :
             if 0 :
                 try :
-                    f=open(self.pnfsFilename,'r')
+                    f = open(self.pnfsFilename,'r')
                 except :
                     # if we can not open the file, we can't set the times either
                     return
@@ -128,7 +135,7 @@ class pnfs :
                 #except :
                     #print "Could not lock or unlock ",self.pnfsFilename,sys.exc_info()[1]
                 f.close()
-            t=int(time.time())
+            t = int(time.time())
             try :
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
@@ -149,13 +156,18 @@ class pnfs :
     # the file needs to exist before you call this
     def writelayer(self,layer,value) :
         if self.valid == valid and self.exists == exists :
-            open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','w').write(value)
+            f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','w')
+            f.write(value)
+            f.close()
 
     # read the value stored in the requested file layer
     def readlayer(self,layer) :
         if self.valid == valid and self.exists == exists :
             self.utime()
-            return open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r').readlines()[0]
+            f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r')
+            l = f.readlines()[0]
+            f.close()
+            return l
         else :
             return invalid
 
@@ -166,15 +178,101 @@ class pnfs :
     # remember, tags are a propery of the directory, not of a file
     def writetag(self,tag,value) :
         if self.valid == valid :
-            open(self.dir+'/.(tag)('+tag+')','w').write(value)
+            f = open(self.dir+'/.(tag)('+tag+')','w')
+            f.write(value)
+            f.close()
 
     # read the value stored in the requested tag
     def readtag(self,tag) :
         if self.valid == valid :
             self.utime()
-            return open(self.dir+'/.(tag)('+tag+')','r').readlines()[0]
+            f = open(self.dir+'/.(tag)('+tag+')','r')
+            t = f.readlines()[0]
+            f.close()
+            return t
         else :
             return invalid
+
+    #################################################################################
+
+    # get all the extra pnfs information
+    def get_pnfs_info(self) :
+        if self.valid == valid :
+            self.get_id()
+            self.get_showid()
+            self.get_nameof()
+            self.get_parent()
+            self.get_cursor()
+            self.get_counters()
+
+    # get the numeric pnfs id of the file
+    def get_id(self) :
+        if self.valid == valid and self.exists == exists :
+            f = open(self.dir+'/.(id)('+self.file+')','r')
+            i = f.readlines()
+            f.close()
+            self.id = regsub.sub("\012","",i[0])
+            return
+
+    # get the showid information
+    def get_showid(self) :
+        if self.valid == valid and self.exists == exists :
+            try:
+                id = self.id
+            except :
+                self.get_id()
+            f = open(self.dir+'/.(showid)('+self.id+')','r')
+            self.showid = f.readlines()
+            f.close()
+            return
+
+    # get the nameof information
+    def get_nameof(self) :
+        if self.valid == valid and self.exists == exists :
+            try:
+                id = self.id
+            except :
+                self.get_id()
+            f = open(self.dir+'/.(nameof)('+self.id+')','r')
+            self.nameof = f.readlines()
+            f.close()
+            return
+
+    # get the showid information
+    def get_parent(self) :
+        if self.valid == valid and self.exists == exists :
+            try:
+                id = self.id
+            except :
+                self.get_id()
+            f = open(self.dir+'/.(parent)('+self.id+')','r')
+            self.parent = f.readlines()
+            f.close()
+            return
+
+    # get the cursor information
+    def get_cursor(self) :
+        if self.valid == valid :
+            try:
+                id = self.id
+            except :
+                self.get_id()
+            f = open(self.dir+'/.(get)(cusor)','r')
+            self.cursor = f.readlines()
+            f.close()
+            return
+
+    # get the cursor information
+    def get_counters(self) :
+        if self.valid == valid :
+            try:
+                id = self.id
+            except :
+                self.get_id()
+            f = open(self.dir+'/.(get)(counters)','r')
+            self.counters = f.readlines()
+            f.close()
+            return
 
     #################################################################################
 
@@ -212,31 +310,32 @@ class pnfs :
     # you can't change the file size once you set it
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
-	    self.utime()
-	    idf=open(self.dir+'/.(id)('+self.file+')','r')
-	    i=idf.readlines()
-	    idf.close()
-	    id=regsub.sub("\012","",i[0])
-	    sidf=open(self.dir+'/.(showid)('+id+')','r')
-	    sid=sidf.readlines()
-	    sidf.close()
+            self.utime()
+            f = open(self.dir+'/.(id)('+self.file+')','r')
+            i = f.readlines()
+            f.close()
+            id = regsub.sub("\012","",i[0])
+            f = open(self.dir+'/.(showid)('+id+')','r')
+            sid = f.readlines()
+            f.close()
             if self.file_size != 0 :
                 try :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
                 except os.error :
                     if sys.exc_info()[1][0] == errno.ENOENT :
-			print "failed to remove size attribute"
+                        print "failed to remove size attribute"
                         pass
                     else :
                         raise sys.exc_info()[0],sys.exc_info()[1]
-	    sidf=open(self.dir+'/.(showid)('+id+')','r')
-	    sid=sidf.readlines()
-	    sidf.close()
-            open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w').close()
-	    sidf=open(self.dir+'/.(showid)('+id+')','r')
-	    sid=sidf.readlines()
-	    sidf.close()
-	    self.utime()
+            f = open(self.dir+'/.(showid)('+id+')','r')
+            sid = f.readlines()
+            f.close()
+            f = open(self.dir+'/.(fset)('+self.file+')(size)('+repr(size)+')','w')
+            f.close()
+            f = open(self.dir+'/.(showid)('+id+')','r')
+            sid = f.readlines()
+            f.close()
+            self.utime()
             self.statinfo()
 
     # get the size of the file from the stat member
@@ -438,6 +537,7 @@ if __name__ == "__main__" :
                 print "ERROR: File ",count," is invalid - but valid flag is set"
                 continue
             p.jon1()
+	    p.get_pnfs_info()
             if list : p.dump()
             l = p.library
             f = p.file_family
