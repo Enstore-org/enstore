@@ -160,6 +160,7 @@ def cleanADrive(ticket, classTicket):
 
     status = 0
     
+    Trace.log(e_errors.LOG, 'aml2: ticket='+repr(ticket))
     try:
         volume = ticket['volume']
     except KeyError:

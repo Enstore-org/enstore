@@ -476,6 +476,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	                      min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
 			      vol_veto_list, first_found)  # get which volume to use
 	ticket['volume'] = cleaningVolume
+	
+        Trace.log(e_errors.LOG, 'mc: ticket='+repr(ticket))
 	for i in range(driveCleanCycles):
 	    rt = aml2.cleanADrive(ticket, classTicket)
 	if type(vcc) != types.StringType:
