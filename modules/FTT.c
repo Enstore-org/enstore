@@ -517,13 +517,14 @@ static PyObject*
 FTT_fd_xfer(  PyObject *self
 	    , PyObject *args )
 {
-	int		fd;	 /* \   */
-	int		no_bytes;/*  \  */
-	PyObject	*crc_tp; /*   } no optional args (compare to EXfer) */
-	int		 crc_i;	 /*  /  */
-	PyObject	*shm_tp; /* /   */
+	int		fd;	    /* \   */
+	int		no_bytes;   /*  \  */
+	PyObject	*crc_fun_tp;/*   } no optional args (compare to EXfer) */
+	PyObject	*crc_tp;    /*  /  */
+	PyObject	*shm_tp;    /* /   */
 
-	int		sts;	/* general status */
+	int		 crc_i;
+	int		 sts;	/* general status */
 	int		 rd_ahead_i;
 	PyObject	*rr;
 	int		 pid;
@@ -532,15 +533,19 @@ FTT_fd_xfer(  PyObject *self
 	int		 dummy=0;
 	int		*read_bytes_ip=&dummy, *write_bytes_ip=&dummy;
 
-    sts = PyArg_ParseTuple(  args, "iiOiO", &fd, &no_bytes, &crc_tp, &crc_i
+    sts = PyArg_ParseTuple(  args, "iiOOO", &fd, &no_bytes, &crc_fun_tp, &crc_tp
 			   , &shm_tp );
     if (!sts) return (NULL);
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened"));
 
-    if ((crc_tp==Py_None) || PyInt_Check(crc_tp)) crc_tp = 0;
+    if      (crc_tp == Py_None)   crc_i = 0;
+    else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
+    else return(raise_exception("fd_xfer - invalid crc param"));
+
+    if ((crc_fun_tp==Py_None) || PyInt_Check(crc_fun_tp)) crc_fun_tp = 0;
 #   if 0
-    else if (PyFunction_Check(crc_tp) || PyCFunction_Check(crc_tp))
+    else if (PyFunction_Check(crc_fun_tp) || PyCFunction_Check(crc_fun_tp))
     {
     }
 #   endif
@@ -580,7 +585,7 @@ FTT_fd_xfer(  PyObject *self
 
     /* fork off read (from) */
     if ((pid=fork()) == 0)
-	do_read( (g_mode_c=='r')?0:fd, no_bytes, g_blocksize, crc_tp
+	do_read( (g_mode_c=='r')?0:fd, no_bytes, g_blocksize, crc_fun_tp
 		, crc_i, read_bytes_ip );
     else
     {   int		 writing_flg=1;
@@ -662,7 +667,7 @@ FTT_fd_xfer(  PyObject *self
     if (waitpid(pid,&sts,0) == -1)
 	return (raise_exception("fd_xfer - waitpid"));
 
-    if (crc_tp)
+    if (crc_fun_tp)
 	rr = Py_BuildValue( "i", crc_i );
     else
 	rr = Py_BuildValue( "" );

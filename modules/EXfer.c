@@ -783,9 +783,10 @@ EXfd_xfer(  PyObject	*self
 	int		 no_bytes;
 	int		 blk_size;
 	PyObject	*crc_obj_tp;
-	int		 crc_i=0;      /* optional, ref. FTT.fd_xfer */
-	PyObject	*shm_obj_tp=0; /* optional, ref. FTT.fd_xfer */
+	PyObject	*crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
+	PyObject	*shm_obj_tp=0;  /* optional, ref. FTT.fd_xfer */
 
+	int		 crc_i;
 	int		 sts;
 	struct sigaction newSigAct_s;
 	int		 rd_ahead_i;
@@ -796,9 +797,13 @@ EXfd_xfer(  PyObject	*self
 	int		 dummy=0;
 	int		*read_bytes_ip=&dummy, *write_bytes_ip=&dummy;
 
-    sts = PyArg_ParseTuple(  args, "iiiiO|iO", &fr_fd, &to_fd, &no_bytes
-			   , &blk_size, &crc_obj_tp, &crc_i, &shm_obj_tp );
+    sts = PyArg_ParseTuple(  args, "iiiiO|OO", &fr_fd, &to_fd, &no_bytes
+			   , &blk_size, &crc_obj_tp, &crc_tp, &shm_obj_tp );
     if (!sts) return (NULL);
+
+    if      (crc_tp == Py_None)   crc_i = 0;
+    else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
+    else return(raise_exception("fd_xfer - invalid crc param"));
 
     /* see if we are crc-ing */
     if ((crc_obj_tp==Py_None) || PyInt_Check(crc_obj_tp)) crc_obj_tp = 0;
