@@ -518,7 +518,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
 
             if self.buffer.full():
-                Trace.trace(15, "read_client: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
+                Trace.trace(9, "read_client: buffer full %s/%s, read %s/s" %
+                            (self.buffer.nbytes(), self.buffer.max_bytes,
+                             self.bytes_read, self.bytes_to_read))
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
                 continue
@@ -547,7 +549,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     bytes_to_read = self.buffer.trailer_size - trailer_bytes_read
                     bytes_read = self.buffer.stream_read(bytes_to_read, trailer_driver)
                     trailer_bytes_read = trailer_bytes_read + bytes_read
-                    Trace.trace(10, "read %s bytes of trailer" % (bytes_read,))
+                    Trace.trace(8, "read %s bytes of trailer" % (bytes_read,))
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
 
@@ -561,8 +563,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
 
             if self.buffer.empty() or self.bytes_read < self.bytes_to_read and self.buffer.low():
-                Trace.trace(15,"write_tape: buffer low %s/%s"%
-                            (self.buffer.nbytes(), self.buffer.min_bytes))
+                Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
+                            (self.buffer.nbytes(), self.buffer.min_bytes,
+                             self.bytes_read, self.bytes_to_read))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 continue
@@ -578,9 +581,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         optimal_buf = self.bytes_to_transfer * (1-ratio)
                         optimal_buf = min(optimal_buf, self.max_buffer)
                         optimal_buf = max(optimal_buf, self.min_buffer)
-                        Trace.trace(15,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
+                        Trace.trace(12,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
                         if self.buffer.min_bytes != optimal_buf:
-                            Trace.trace(15,"Changing buffer size from %s to %s"%
+                            Trace.trace(12,"Changing buffer size from %s to %s"%
                                         (self.buffer.min_bytes, optimal_buf))
                             self.buffer.set_min_bytes(optimal_buf)
 
@@ -626,7 +629,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             
             if self.buffer.full():
-                Trace.trace(15, "read_tape: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
+                Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
+                            (self.buffer.nbytes(), self.buffer.max_bytes,
+                             self.bytes_read, self.bytes_to_read))
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
                 continue
@@ -667,7 +672,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.net_driver
         if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
             while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
-                Trace.trace(15, "write_client: waiting for read_tape to set header info")
+                Trace.trace(8, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
             # writing to "None" will discard headers, leaving stream positioned at
@@ -676,8 +681,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if self.buffer.empty():
-                Trace.trace(15, "write_client: buffer empty %s/%s" %
-                            (self.buffer.nbytes(), self.buffer.min_bytes))
+                Trace.trace(9, "write_client: buffer empty %s/%s, wrote %s/%s" %
+                            (self.buffer.nbytes(), self.buffer.min_bytes,
+                             self.bytes_written, self.bytes_to_write))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 continue
