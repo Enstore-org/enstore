@@ -37,7 +37,7 @@ import library_manager_client
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but DO NOT CHANGE THE SYNTAX
-    version_string = "v1_8  CVS $Revision$ "
+    version_string = "v1_9  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
