@@ -72,14 +72,14 @@ rm -f $test_file
 cp /var/log/messages $test_file
 if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 2; fi
 
-output_dccp=/tmp/dcache_page_output_dccp_$$
-exit_code_dccp=/tmp/dcache_page_exit_code_dccp_$$
-output_kftp=/tmp/dcache_page_output_kftp_$$
-exit_code_kftp=/tmp/dcache_page_exit_code_kftp_$$
-output_ftp=/tmp/dcache_page_output_ftp_$$
-exit_code_ftp=/tmp/dcache_page_exit_code_ftp_$$
-output_gridftp=/tmp/dcache_page_output_gridftp_$$
-exit_code_gridftp=/tmp/dcache_page_exit_code_gridftp_$$
+output_dccp=/tmp/dcache_page_output_dccp${dcacheToTest}_$$
+exit_code_dccp=/tmp/dcache_page_exit_code_dccp${dcacheToTest}_$$
+output_kftp=/tmp/dcache_page_output_kftp${dcacheToTest}_$$
+exit_code_kftp=/tmp/dcache_page_exit_code_kftp${dcacheToTest}_$$
+output_ftp=/tmp/dcache_page_output_ftp${dcacheToTest}_$$
+exit_code_ftp=/tmp/dcache_page_exit_code_ftp${dcacheToTest}_$$
+output_gridftp=/tmp/dcache_page_output_gridftp${dcacheToTest}_$$
+exit_code_gridftp=/tmp/dcache_page_exit_code_gridftp${dcacheToTest}_$$
 rm_tmp_files
 
 # do the tests. spawn off the dccp test.  however the ftp test depends on the kftp
@@ -87,10 +87,10 @@ rm_tmp_files
 gang=`gang`
 case $gang in
   stken) case $dcacheToTest in
-	      cms) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
-		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
-		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
-		   strip_dir="/pnfs/eagle"
+	      cms) strip_dir="/pnfs/eagle"
+	           w=$strip_dir/dcache-tests/$N.dcache_page_cms_$$
+		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_cms_$$
+		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_cms_$$
 		   dcache=cmsdca
 		   dcache_saag="dcache_cms"
 		   get_ports
@@ -99,10 +99,23 @@ case $gang in
 		   pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
 		   pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
 		   ;;
-	     lqcd) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
-		   wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
-		   wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
-		   strip_dir="/pnfs/eagle"
+	      cmstest) strip_dir="/pnfs/eagle"
+	           w=$strip_dir/dcache-tests/$N.dcache_page_cmstest_$$
+		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_cmstest_$$
+		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_cmstest_$$
+		   dcache=cmsdcdr1
+		   dcache_saag="dcache_cmstest"
+		   get_ports
+		   get_ticket
+		   `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+		   # they do not have kerberized or weak ftp doors on this system
+		   #pageDcache_tests $- kftp $test_file $dcache $dcache_saag $strip_dir $strong_port $wp $wa > $output_kftp 2>&1; echo $? > $exit_code_kftp
+		   #pageDcache_tests $- ftp $test_file $dcache $dcache_saag $strip_dir $weak_port $wa > $output_ftp 2>&1; echo $? > $exit_code_ftp
+		   ;;
+	     lqcd) strip_dir="/pnfs/eagle"
+	           w=$strip_dir/dcache-tests/$N.dcache_page_lqcd_$$
+		   wp=$strip_dir/dcache-tests/$N.dcache_page_p_lqcd_$$
+		   wa=$strip_dir/dcache-tests/$N.dcache_page_a_lqcd_$$
 		   dcache=lqcd-cache
 		   dcache_saag="dcache_lqcd"
 		   get_ports
@@ -128,10 +141,10 @@ case $gang in
 	 esac
 	 ;;
   cdfen) case $dcacheToTest in
-	    cdfen|*) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
-		     wp=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_p_$$
-		     wa=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_a_$$
-		     strip_dir="/pnfs/cdfen"
+	    cdfen|*) strip_dir="/pnfs/cdfen"
+	             w=$strip_dir/jon/fcdfsgi2/$N.dcache_page_$$
+		     wp=$strip_dir/jon/fcdfsgi2/$N.dcache_page_p_$$
+		     wa=$strip_dir/jon/fcdfsgi2/$N.dcache_page_a_$$
 		     dcache=cdfdca
 		     dcache_saag="dcache_cdf"
 		     get_ports
@@ -143,10 +156,10 @@ case $gang in
 	 esac
 	 ;;
   d0en)  case $dcacheToTest in
-	    d0en|*) w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
-		    wp=/pnfs/archive/dcache-tests/$N.dcache_page_p_$$
-		    wa=/pnfs/archive/dcache-tests/$N.dcache_page_a_$$
-		    strip_dir="/pnfs"
+	    d0en|*) strip_dir="/pnfs"
+	            w=$strip_dir/archive/dcache-tests/$N.dcache_page_$$
+		    wp=$strip_dir/archive/dcache-tests/$N.dcache_page_p_$$
+		    wa=$strip_dir/archive/dcache-tests/$N.dcache_page_a_$$
 		    dcache=d0dca
 		    dcache_saag="dcache_d0"
 		    get_ports

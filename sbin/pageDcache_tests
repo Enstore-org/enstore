@@ -95,23 +95,16 @@ setup_products() {
     if [ -z "${DCAP_DIR:-}" ]; then
 	setup_product dcap
     fi
-    if [ -z "${KX509_DIR:-}" ]; then
-	setup_product kx509
-    fi
 
     # always setup python to make sure we get the correct version.
     setup_product python
 
     # setup for gridftp
-    export GLOBUS_LOCATION=/home/enstore/globus
-    set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
+    #export GLOBUS_LOCATION=/home/enstore/globus
+    #set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
 
     # reset so we can see output if turned on.
     reset_set_vars
-
-    export X509_USER_PROXY=$HOME/k5-ca-proxy.pem
-    kx509
-    kxlist -o $HOME/k5-ca-proxy.pem
 }
 
 not_enough_parameters() {
