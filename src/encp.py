@@ -1460,10 +1460,16 @@ def set_pnfs_settings(ticket, client, verbose):
     Trace.trace(10,"write_to_hsm adding to pnfs "+ ticket['outfile'])
     p=pnfs.Pnfs(ticket['outfile'])
 
-    # save the bfid and set the file size
-    p.set_bit_file_id(ticket["fc"]["bfid"])    #, ticket['file_size'])
-    p.set_file_size(ticket['file_size'])
-    
+    try:
+        # save the bfid and set the file size
+        p.set_bit_file_id(ticket["fc"]["bfid"])    #, ticket['file_size'])
+        p.set_file_size(ticket['file_size'])
+    except:
+        exc, msg, tb = sys.exc_info()
+        print exc, msg
+        print "DUMBING TICKET:"
+        pprint.pprint(ticket)
+        
     # create volume map and store cross reference data
     mover_ticket = ticket.get('mover', {})
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
