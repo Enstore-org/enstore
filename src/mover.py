@@ -1408,7 +1408,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		    # arbitrary time; to determine if a "stall" condition
 		    # exists, be it network or tape.
 		    if time.time()-self.client_obj_inst.stall_time > 60.0:# arbitrary number
-			try:    os.system( 'traceMode 0' )
+			try:
+                            print "mover: freezing trace buffer"
+                            os.system( 'traceMode 0>/dev/null' )
+                            Trace.log(e_errors.INFO,'mover: freezing trace buffer")
 			except: pass
 			if self.client_obj_inst.mode == 'w':
 			    msg = 'writing mover (rr=%d ww=%d) '%(rr,ww)
