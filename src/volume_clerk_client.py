@@ -603,6 +603,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.list = None
         self.list_active = None
         self.recycle = None
+        self.export = None
+        self._import = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -948,25 +950,25 @@ def do_work(intf):
                     remaining_bytes = volume['vol']['remaining_bytes'])
      
     elif intf.add:
-        print intf.add, repr(intf.args)
+        #print intf.add, repr(intf.args)
         cookie = 'none'
         if intf.vol1ok:
             cookie = '0000_000000000_0000001'
-        library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
-        capacity = my_atol(capacity)
+        #library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
+        capacity = my_atol(intf.volume_byte_capacity)
         # if wrapper is empty create a default one
-        if not wrapper:
+        if not intf.wrapper:
             if media_type == 'null': #media type
-                wrapper = "null"
+                intf.wrapper = "null"
             else:
-                wrapper = "cpio_odc"
-        ticket = vcc.add(library,
-                         file_family,
-                         storage_group,
-                         media_type,     
+                intf.wrapper = "cpio_odc"
+        ticket = vcc.add(intf.library,
+                         intf.file_family,
+                         intf.storage_group,
+                         intf.media_type,     
                          intf.add,                  # name of this volume
                          capacity,
-                         wrapper=wrapper,
+                         wrapper=intf.wrapper,
                          eod_cookie=cookie)           # rem cap'y of volume
     elif intf.modify:
         d={}
@@ -1058,4 +1060,5 @@ if __name__ == "__main__":
     intf = VolumeClerkClientInterface()
 
     do_work(intf)
+
 
