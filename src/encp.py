@@ -225,6 +225,9 @@ def generate_unique_id():
     _counter = _counter + 1
     return ret
 
+def generate_location_cookie(number):
+    return "0000_000000000_%07d" % int(number)
+
 ############################################################################
 
 def is_brand(brand):
@@ -4309,7 +4312,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             print_data_access_layer_format(
                 e.input, e.output, 0,
                 {'status':(msg.type, msg.strerror)})
-            quit()
+            quit(1)
         try:
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the volume.
@@ -4321,27 +4324,41 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             print_data_access_layer_format(
                 e.input, e.output, 0,
                 {'status':(msg.type, msg.strerror)})
-            quit()
+            quit(1)
 
         if not e_errors.is_ok(bfids_dict):
             print_data_access_layer_format(
                 e.input, e.output, 0, {'status':bfids_dict['status']})
-            quit()
+            quit(1)
 
         #Set these here.
-        bfids_list = bfids_dict['bfids']
-        number_of_files = len(bfids_dict['bfids'])
-        if number_of_files == 0:
-            number_of_files = 1
+        if e.list:
+            #If a list was supplied, determine how many files are in the list.
+            try:
+                f = open(e.list, "r")
+                list_of_files = f.readlines()
+                number_of_files = len(list_of_files)
+                f.close()
+            except (IOError, OSError), msg:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status' : ("Unable to read list file", str(msg))})
+                quit(1)
+        else:        
+            bfids_list = bfids_dict['bfids']
+            number_of_files = len(bfids_dict['bfids'])
+            #Always say one (for the ticket to send to the LM) when the
+            # number of files is unkown.
+            if number_of_files == 0:
+                number_of_files = 1
     else: # Normal read, --get-dcache, --put-cache, --get-bfid.
         number_of_files = len(e.input)
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(number_of_files):
 
-        #### VOLUME #######################################################
-        #If the user specified a volume to read.
-        if e.volume:
+        #### VOLUME from list #############################################
+        if e.volume and e.list:
 
             #Just be sure that the output target is a directory.
             if not os.path.exists(e.output[0]):
@@ -4350,7 +4367,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status':(e_errors.USERERROR,
                                "%s: %s" % (errno.errorcode[errno.ENOENT],
                                            e.output[0]))})
-                quit()
+                quit(1)
 
                 raise EncpError(errno.ENOENT,
                                 'e.output[0]',
@@ -4361,7 +4378,93 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status':(e_errors.USERERROR,
                                "%s: %s" % (errno.errorcode[errno.ENOTDIR],
                                            e.output[0]))})
-                quit()
+                quit(1)
+
+            number, ifilename = list_of_files[i].split()[:2]
+
+            imachine, ifullname, idir, ibasename = fullpath(ifilename)
+
+            file_size = None
+            read_work = 'read_from_hsm'
+
+            if e.output[0] == "/dev/null":
+                ofullname = e.output[0]
+            else:
+                ofilename = os.path.join(e.output[0],
+                                         os.path.basename(ifullname))
+                omachine, ofullname, odir, obasename = fullpath(ofilename)
+
+            try:
+                p = pnfs.Pnfs(ifullname)
+                bfid = p.get_bit_file_id()
+            except (OSError, IOError), msg:
+                p = pnfs.Pnfs()
+                bfid = None
+
+            # get_clerks() can determine which it is and return the
+            # volume_clerk and file clerk that it corresponds to.
+            try:
+                vcc, fcc = get_clerks(e.volume)
+            except EncpError:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit(1)
+
+            #Contact the file clerk and get current bfid that is on the list.
+            if bfid:
+                try:
+                    vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+                except EncpError, msg:
+                    if msg.type == e_errors.DELETED:
+                        continue
+                    else:
+                        print_data_access_layer_format(
+                            e.volume, e.output[0], 0,
+                            {'status':(msg.type, msg.strerror)})
+                        quit(1)
+            else:
+                vc_reply = vcc.inquire_vol(e.volume)
+                vc_reply['address'] = vcc.server_address
+                fc_reply = {'address' : fcc.server_address,
+                            #'bfid' : None,
+                            #'complete_crc' : None,
+                            #'deleted' : None,
+                            #'drive' : None,
+                            'external_label' : e.volume,
+                            'location_cookie':generate_location_cookie(number),
+                            #'pnfs_mapname': None,
+                            #'pnfs_name0': None,
+                            #'pnfsid': None,
+                            #'pnfsvid': None,
+                            #'sanity_cookie': None,
+                            #'size': None,
+                            'status' : (e_errors.OK, None)
+                            }
+            
+        #### VOLUME #######################################################
+        #If the user specified a volume to read.
+        elif e.volume:
+
+            #Just be sure that the output target is a directory.
+            if not os.path.exists(e.output[0]):
+                print_data_access_layer_format(
+                    e.volume, e.output[0], 0,
+                    {'status':(e_errors.USERERROR,
+                               "%s: %s" % (errno.errorcode[errno.ENOENT],
+                                           e.output[0]))})
+                quit(1)
+
+                raise EncpError(errno.ENOENT,
+                                'e.output[0]',
+                                e_errors.USERERROR)
+            elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
+                print_data_access_layer_format(
+                    e.volume, e.output[0], 0,
+                    {'status':(e_errors.USERERROR,
+                               "%s: %s" % (errno.errorcode[errno.ENOTDIR],
+                                           e.output[0]))})
+                quit(1)
 
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
@@ -4374,7 +4477,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 print_data_access_layer_format(
                     e.input, e.output, 0,
                     {'status':(msg.type, msg.strerror)})
-                quit()
+                quit(1)
             
             #Contact the file clerk and get current bfid that is on the list.
             try:
@@ -4387,7 +4490,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                         #e.input[i], e.output[i], 0,
                         e.volume, e.output[0], 0,
                         {'status':(msg.type, msg.strerror)})
-                    quit()
+                    quit(1)
             except IndexError:
                 #This exception is raised if the bfids_list[] is empty, but
                 # number_of_files was set to one anyway to force a tape
@@ -4414,7 +4517,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 print_data_access_layer_format(
                         e.volume, e.output[0], 0,
                         {'status':vc_reply['status']})
-                quit()
+                quit(1)
                             
             if e_errors.is_ok(fc_reply): # and fc_reply['deleted'] != "yes":
                 #Attempt to get the location cookie.  This should NEVER
@@ -4515,7 +4618,14 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                "Unable to obtain pnfsid from file clerk.")})
                 quit()
 
-            p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
+            try:
+                p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
+            except (OSError, IOError), msg:
+                print_data_access_layer_format(
+                    e.get_cache, e.output[0], 0,
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
+                quit()
 
             if e.shortcut:
                 ifullname = os.path.join(e.pnfs_mount_point,
@@ -5207,6 +5317,7 @@ class EncpInterface(option.Interface):
         self.shortcut = 0          # If true, don't extrapolate full file path.
         self.storage_info = None   # Not used yet.
         self.volume = None         # True if it is to read an entire volume.
+        self.list = None           # Used for "get" only.
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -5299,6 +5410,11 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN,},
+        option.LIST:{option.HELP_STRING:
+                     "Is a get option only.  Do not use otherwise.",
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_TYPE:option.STRING,
+                     option.USER_LEVEL:option.ADMIN,},
         option.MAX_RETRY:{option.HELP_STRING:
                           "Specifies number of non-fatal errors that can "
                           "occur before encp gives up. (default = 3)",
