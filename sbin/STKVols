@@ -94,8 +94,9 @@ else
     cat $i | while read x mon day time tz year silo n nleft; do
       nleft=${nleft:-0}
       tot=`expr $n + $nleft`
-      echo `date --date "$mon $day $time $tz $year" +"%Y-%m-%d:%H:%M:%S"` $n tot >> /tmp/used
+      echo `date --date "$mon $day $time $tz $year" +"%Y-%m-%d:%H:%M:%S"` $n $tot $nleft>> /tmp/used
     done
+    nleft=`tail -n1 /tmp/used | awk '{print $NF}'`
     #cat /tmp/used
     echo "set output \"/tmp/silo.$silo.ps\"
 set terminal postscript color solid
@@ -109,7 +110,9 @@ set grid
 set yrange [0: ]
 set format x \"%m-%d\"
 set nokey
-plot \"/tmp/used\" using 1:2 t \"Used Slots\" w impulses", using 1:3 w impulses > /tmp/stk.us.gnu 
+set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"
+set label \"$nleft Free\" at graph .2,.9 font \"Helvetica,80\"
+plot \"/tmp/used\" using 1:3 t \"Used Slots\" w impulses, \"/tmp/used\"  using 1:2 w impulses" > /tmp/stk.us.gnu 
      #cat /tmp/stk.us.gnu 
      gnuplot /tmp/stk.us.gnu 
      convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
