@@ -27,6 +27,10 @@ clean:
 	- rm -rf ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	- rm -rf ENSTORE_USER_BIN_TEMP
+	- rm -rf GET_BIN
+	- rm -rf GET_TEMP
+	- rm -rf ENTV_BIN
+	- rm -rf ENTV_TEMP
 
 check:
 	$(ENSTORE_DIR)/tools/mylint.py ./*.py
@@ -74,28 +78,31 @@ get:
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf GET_TEMP
 	mkdir GET_TEMP
-	- rm -rf GETBIN
-	mkdir GETBIN
+	- rm -rf GET_BIN
+	mkdir GET_BIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP get.py
 	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp GET_TEMP/get ../ups/chooseConfig GETBIN
-	sed -e 's/encp/get/g' $(ENSTORE_DIR)/ups/encp.table > GETBIN/get.table
+
+	cp GET_TEMP/get GET_BIN
+	cp ../ups/chooseConfig GET_BIN
+	cp ../modules/enroute2 GET_BIN
+	sed -e 's/encp/get/g' $(ENSTORE_DIR)/ups/encp.table > GET_BIN/get.table
 	- rm -rf GET_TEMP
 
 entv:
 	(cd $(ENSTORE_DIR)/modules; make all mouse_move autologinenstore)
 	- rm -rf ENTV_TEMP
 	mkdir ENTV_TEMP
-	- rm -rf ENTVBIN
-	mkdir ENTVBIN
+	- rm -rf ENTV_BIN
+	mkdir ENTV_BIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENTV_TEMP/entv ../ups/chooseConfig ENTVBIN
-	cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTVBIN
-	cp $(ENSTORE_DIR)/modules/autologinenstore ENTVBIN
-	cp $(ENSTORE_DIR)/modules/mouse_move ENTVBIN
-	cp $(ENSTORE_DIR)/etc/entvrc ENTVBIN
-	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTVBIN/entv.table
+	cp ENTV_TEMP/entv ../ups/chooseConfig ENTV_BIN
+	cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTV_BIN
+	cp $(ENSTORE_DIR)/modules/autologinenstore ENTV_BIN
+	cp $(ENSTORE_DIR)/modules/mouse_move ENTV_BIN
+	cp $(ENSTORE_DIR)/etc/entvrc ENTV_BIN
+	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTV_BIN/entv.table
 	- rm -rf ENTV_TEMP
 
 
