@@ -2,7 +2,7 @@
 #
 # There is nothing like running your own nameserver.  Unfortunately
 # this list of hosts and ips is necessary to prevent failures due to
-# known nameserver outages throughout the day.  Tests indicate that
+# known nameserver outages throughout the day.	Tests indicate that
 # the nameserver is unavailable for brief (~30 second) periods 2-3
 # times each day.  These failures cause enstore problems.  We decided
 # to provide the numeric ip in the host table and not look up any node
@@ -131,6 +131,8 @@
 131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 131.225.215.12		cdfenmvr9a.fnal.gov	cdfenmvr9a
 131.225.215.11		cdfenmvr10a.fnal.gov	cdfenmvr10a
+131.225.215.35		cdfenmvr11a.fnal.gov	cdfenmvr11a
+131.225.215.23		cdfenmvr12a.fnal.gov	cdfenmvr12a
 131.225.215.26		cdfenmvr13a.fnal.gov	cdfenmvr13a
 131.225.215.27		cdfenmvr14a.fnal.gov	cdfenmvr14a
 131.225.215.28		cdfenmvr15a.fnal.gov	cdfenmvr15a
@@ -141,14 +143,15 @@
 131.225.215.31		cdfenmvr20a.fnal.gov	cdfenmvr20a
 131.225.215.32		cdfenmvr21a.fnal.gov	cdfenmvr21a
 131.225.215.33		cdfenmvr22a.fnal.gov	cdfenmvr22a
+131.225.215.7		cdfenmvr23a.fnal.gov	cdfenmvr23a
 131.225.215.22		cdfenload.fnal.gov	cdfenload
 
 # Assigned addresses currently not in use
-#131.225.164.29 	d0enmvr4b.fnal.gov	d0enmvr4b
+#131.225.164.29		d0enmvr4b.fnal.gov	d0enmvr4b
 #131.225.164.205	d0enmvr5b.fnal.gov	d0enmvr5b
 #131.225.164.206	d0enmvr6b.fnal.gov	d0enmvr6b
-#131.225.164.58 	d0enmvr7b.fnal.gov	d0enmvr7b
-#131.225.164.51 	d0enmvr9b.fnal.gov	d0enmvr9b
+#131.225.164.58		d0enmvr7b.fnal.gov	d0enmvr7b
+#131.225.164.51		d0enmvr9b.fnal.gov	d0enmvr9b
 #131.225.164.210	d0enmvr10b.fnal.gov	d0enmvr10b
 #131.225.164.54		d0enmvr11b.fnal.gov	d0enmvr11b
 #131.225.164.56		d0enmvr12b.fnal.gov	d0enmvr12b
@@ -160,17 +163,15 @@
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
 #131.225.164.64		d0enmvr22b.fnal.gov	d0enmvr22b
-#131.225.13.77  	stkenmvr12b.fnal.gov	stkenmvr12b
-#131.225.13.79  	stkenmvr13b.fnal.gov	stkenmvr13b
-#131.225.13.78  	stkenmvr14b.fnal.gov	stkenmvr14b
+#131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
+#131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
+#131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
 #131.225.13.39		stkenout1.fnal.gov	stkenout1
 #131.225.13.40		stkenout2.fnal.gov	stkenout2
-#131.225.215.7		cdfenmvr11a.fnal.gov	cdfenmvr11a
-#131.225.215.23		cdfenmvr12a.fnal.gov	cdfenmvr12a
 #131.225.215.40		cdfenmvr26a.fnal.gov	cdfenmvr26a
 #131.225.215.44		cdfenmvr27a.fnal.gov	cdfenmvr27a
 
-# private subnet for d0/adic and stk
+# private subnet for d0/adic, d0/stk, and public/stk
 192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
 192.168.19.8		d0ensrv2p.fnal.gov	d0ensrv2p
 192.168.19.9		d0ensrv3p.fnal.gov	d0ensrv3p
@@ -186,9 +187,9 @@
 
 # private subnet for cdf/stk
 192.168.19.13		cdfensrv0p.fnal.gov	cdfensrv0p
-192.168.19.18		cdfensrv1p.fnal.gov	cdfensrv1p
-192.168.19.14		cdfensrv2p.fnal.gov	cdfensrv2p
-192.168.19.15		cdfensrv3p.fnal.gov	cdfensrv3p
+#192.168.19.18		cdfensrv1p.fnal.gov	cdfensrv1p
+#192.168.19.14		cdfensrv2p.fnal.gov	cdfensrv2p
+#192.168.19.15		cdfensrv3p.fnal.gov	cdfensrv3p
 192.168.19.16		cdfensrv4p.fnal.gov	cdfensrv4p
 192.168.19.17		fntt2.fnal.gov		fntt2
 #192.168.19.6		adic4.fnal.gov		adic4
