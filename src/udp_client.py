@@ -299,7 +299,7 @@ class UDPClient:
 	    if reply != "":
 		# OK, we have received something -- "try" it
 		try:
-		    exec ("number,  out, time  = "  + reply)
+		    number,  out, time  = eval(reply)
 		# did we read entire message (bigger than TRANSFER_MAX?)
 	        except exceptions.SyntaxError :
 		    Trace.trace(0,"send disaster: didn't read entire message"+\
@@ -312,7 +312,7 @@ class UDPClient:
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
 		    Trace.trace(0,'send GOOFY TEST FEATURE')
-		    exec ("ident, number,  out, time  = "  + reply)
+		    ident, number,  out, time  = eval(reply)
 
 		# now (after receive), check...
 		if number != self.number :

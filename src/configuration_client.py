@@ -2,7 +2,6 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
-import pdb
 import sys
 import time
 import errno
