@@ -184,6 +184,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     def update(self):
 
+        #debug-only code
+        if not hasattr(self,'_last_state'):
+            self._last_state = None
+
         if self.state in (CLEANING, DRAINING, OFFLINE):
             ### XXX when going offline, we still need to send a message to LM
             return
@@ -198,9 +202,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
         ticket = self.format_lm_ticket()
         
         for lib, addr in self.libraries:
-            print "Send", ticket, "to", addr
+            if self.state != self._last_state:
+                print "Send", ticket, "to", addr
             self.udpc.send_no_wait(ticket, addr)
-
+        self._last_state=self.state
+        
     def nowork( self, ticket ):
 	return {}
 
@@ -273,8 +279,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             print "nothing to do!"
             return 
         data = sock.recv(nbytes)
-        print "read", len(data), "bytes"
-        print data
+
         if not data:  #  The client went away!
             self.transfer_aborted(None)
             return
@@ -354,7 +359,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         delay = 0
         if ticket['encp'].has_key('delayed_dismount'):
             delay = int(ticket['encp']['delayed_dismount'])
-        self.delay = min(delay, self.default_dismount_delay)
+        self.delay = max(delay, self.default_dismount_delay)
 
         self.fcc = file_clerk_client.FileClient( self.csc, 0,
                                                  ticket['fc']['address'] )
@@ -377,9 +382,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.remove_select_fd(self.tape_fd)
         if msg:
             self.send_client_done(self.current_work_ticket, msg)
-        self.current_work_ticket = None ##XXX let's make a self.reset method
         self.reset()
-
+        self.update()
+        
     def transfer_complete(self):
         print "transfer complete"
         self.timer('transfer_time')
@@ -388,7 +393,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         self.remove_select_fd(self.client_socket)
         self.remove_select_fd(self.tape_fd)
-        
+
+        print "delay=", self.delay
         self.dismount_time = now + self.delay
         self.client_socket.close()
 
@@ -414,7 +420,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.send_client_done(self.current_work_ticket, e_errors.OK)
 
         self.reset()
-
+        self.update()
+        
     def reset(self):
         
         self.current_work_ticket = None
@@ -548,7 +555,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 		 'drive_sn'     : self.hsm_drive_sn,
 		 #
 		 'crc_flag'     : str(self.crc_flag),
-		 'state'        : state_names[self.state],
+		 'state'        : state_name(self.state),
 		 'no_transfers'     : self.no_transfers,
 		 'bytes_read'     : self.bytes_read,
 		 'bytes_written'     : self.bytes_written,
