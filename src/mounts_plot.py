@@ -4,13 +4,21 @@ import sys
 import os
 import string
 import time
+import sys
+
+library = None
+if len(sys.argv) > 1:
+	library = sys.argv[1]
 
 vf_file = '/diska/tape-inventory/VOLUMES_DEFINED'
 tmp_data = '/tmp/mounts'
 tmp_gnuplot_cmd = '/tmp/gnuplot.cmd'
 install_dir = '/fnal/ups/prd/www_pages/enstore'
 output_file = 'mounts'
-output_file_logy = 'mounts_logy'
+if library:
+	output_file = output_file + '-' +library
+output_file_logy = output_file+ '_logy'
+	
 # postscript_output = '/tmp/mounts.ps'
 postscript_output = os.path.join(install_dir, output_file+'.ps')
 # postscript_output_logy = '/tmp/mounts_logy.ps'
@@ -69,7 +77,7 @@ if __name__ == '__main__':
 		t = string.split(l)
 		if len(t) > 8 and t[0] != 'Date':
 			sg, ff, wp = string.split(t[-1], '.')
-			if wp != 'null':
+			if wp != 'null' and (not library or (t[-3] == library)):
 				m = int(string.split(t[-2], '<')[0])
 				if m == -1:
 					m = 0
@@ -102,7 +110,7 @@ if __name__ == '__main__':
 	outf.write("set ylabel 'Mounts'\n")
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_output+"'\n")
-	outf.write("set title 'Tape Mounts per Volume (plotted at %s)'\n"%(time.ctime(time.time())))
+	outf.write("set title '%s Tape Mounts per Volume (plotted at %s)'\n"%(library, time.ctime(time.time())))
 	if toh > 0:
 		outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-500, count-toh, high_water_mark))
 		outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-500))
@@ -162,7 +170,7 @@ if __name__ == '__main__':
 		outf.write("set label \"Bakken's Tape\" at 21,2250 center\n")
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
-	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
+	outf.write("set title '%s Tape Mounts (plotted at %s)'\n"%(library, time.ctime(time.time())))
 	outf.write("plot '%s' notitle with impulse lw 20\n"%(tmp_data))
 	outf.close()
 
