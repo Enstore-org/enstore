@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <libgen.h>
 
 #define BUF_SIZE 1048576L
 
@@ -27,11 +29,13 @@ int main(int argc, char **argv)
     struct stat sb;             /*used with fstat()*/
     int f;                      /*the file descriptor*/
     char buf[BUF_SIZE];         /*the data buffer*/
+    char abspath[PATH_MAX + 1]; /*used to hold program name*/
 
     /*Make sure the user entered a file to check.*/
     if( (argc < 1) || (!argv[1]) )
     {
-	printf("Usage %s <file_name>\n", argv[0]);
+        strncpy(abspath, argv[0], PATH_MAX);
+	printf("Usage %s <file_name>\n", basename(abspath));
 	exit(1);
     }
     
