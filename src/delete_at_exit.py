@@ -62,10 +62,15 @@ def signal_handler(sig, frame):
     try:
         if sig not in [signal.SIGTERM, signal.SIGINT, signal.SIGQUIT]:
             sys.stderr.write("Signal caught at: %s line %d\n" %
-                             (frame.f_code.co_filename, frame.f_lineno));
+                             (frame.f_code.co_filename, frame.f_lineno))
             sys.stderr.flush()
-    except (OSError, IOError, TypeError), msg:
-        print str(msg)
+    except (OSError, IOError, TypeError):
+        exc, msg = sys.exc_info()[:2]
+        try:
+            sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
     
     try:
         sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
