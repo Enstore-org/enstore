@@ -54,8 +54,11 @@ class Interface:
     def config_options(self):
 	return ["config_host=", "config_port="]
 
+    def alive_rcv_options(self):
+	return ["alive_rcv_timeout=","alive_retries="]
+
     def alive_options(self):
-	return ["alive","alive_rcv_timeout=","alive_retries="]
+	return ["alive"]+self.alive_rcv_options()
 
     def list_options(self):
         return ["list", "verbose="]
