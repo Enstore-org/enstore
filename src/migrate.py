@@ -66,7 +66,7 @@ import time
 import thread
 import Queue
 
-debug = None	# debugging mode
+debug = True	# debugging mode
 
 # This is the configuration part, which might come from configuration
 # server in the production version
@@ -254,7 +254,7 @@ def copy_files(files):
 	for bfid in files:
 		log(MY_TASK, "copying %s"%(bfid))
 		# get file info
-		q = "select bfid, location_cookie, pnfsid, \
+		q = "select bfid, label, location_cookie, pnfs_id, \
 			storage_group, file_family from file, volume \
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
@@ -268,8 +268,10 @@ def copy_files(files):
 			continue
 
 		f = res[0]
+		if debug:
+			print `f`
 		tmp = temp_file(f['label'], f['location_cookie'])
-		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
 		if debug:
 			print "src:", src
 			print "tmp:", tmp
@@ -305,7 +307,7 @@ def compare_metadata(p, f):
 		p.volume != f['external_label'] or \
 		p.location_cookie != f['location_cookie'] or \
 		long(p.size) != long(f['size']) or \
-		p.pnfsid != f['pnfsid'] or \
+		p.pnfs_id != f['pnfs_id'] or \
 		p.drive != f['drive'] or \
 		long(p.complete_crc) != f['complete_crc']:
 		return "inconsistent"
@@ -316,10 +318,10 @@ def compare_metadata(p, f):
 # This got to be very paranoid.
 #
 # [1] check the meta data consistency
-# [2] f[bfid2][pnfsid] = f[bfid1][pnfsid] # use old pnfsid
-# [3] pnfsid = f[bfid1][pnfsid]           # save it
+# [2] f[bfid2][pnfs_id] = f[bfid1][pnfs_id] # use old pnfs_id
+# [3] pnfs_id = f[bfid1][pnfs_id]           # save it
 # [4] p[src] = p[dst]                     # copy pnfs layer 4
-# [5] p[src][pnfsid] = pnfsid
+# [5] p[src][pnfs_id] = pnfs_id
 #
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
@@ -344,10 +346,10 @@ def swap_metadata(bfid1, src, bfid2, dst):
 		
 
 	# swapping metadata
-	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
+	m1 = {'bfid': bfid2, 'pnfs_id':f1['pnfs_id'], 'pnfs_name0':f1['pnfs_name0']}
 	res = fcc.modify(m1)
 	if not res['status'][0] == e_errors.OK:
-		return "failed to change pnfsid for %d"%(bfid2)
+		return "failed to change pnfs_id for %d"%(bfid2)
 	p1.volume = p2.volume
 	p1.location_cookie = p2.location_cookie
 	p1.bfid = p2.bfid
