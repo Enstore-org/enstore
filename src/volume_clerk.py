@@ -98,6 +98,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # detect a transition
                 ret = e_errors.VOL_SET_TO_FULL
                 v["system_inhibit"][1] = "full"
+                if not v.has_key('si_time'):
+                    v['si_time'] = [0, 0]
+                v['si_time'][1] = time.time()
                 left = v["remaining_bytes"]/1.
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
@@ -1249,6 +1252,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         if record["remaining_bytes"] == 0:
             record["system_inhibit"][1] = "full"
+            if not record.has_key('si_time'):
+                record['si_time'] = [0, 0]
+            record['si_time'][1] = time.time()
         else:
             record["system_inhibit"][0] = "none"
             
