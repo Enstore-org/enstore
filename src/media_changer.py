@@ -150,7 +150,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
                 Trace.trace(10, '>>> '+ticket['function'])
                 #self.enprint( "MOUNT"+repr(ticket))
-                sts = function(
+                count=2
+                sts=("",0)
+                while count > 0 and sts[0] != e_errors.OK:
+                    count = count - 1
+                    sts = function(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
