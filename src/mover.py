@@ -299,36 +299,31 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         if not self.setup_transfer(ticket):
             return
-        self.state = ACTIVE        
 
         self.tape_fd = os.open("/dev/null",1)
         print "client fd=", self.client_socket
         print "tape_fd=", self.tape_fd
         self.add_select_fd( self.client_socket, READ, self.read_client)
         self.add_select_fd( self.tape_fd, WRITE, self.write_tape)
-
+        self.state = ACTIVE        
+        self.mode = WRITE
         
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm( self, ticket ):
         print "READ FROM HSM"
         self.current_work_ticket = ticket
         
-        if not self.client_socket:
-            self.transfer_aborted(None)
-
         if not self.setup_transfer(ticket):
             return
-        
-        self.state = ACTIVE
-        
 
         self.tape_fd = os.open("/dev/zero",0)
         print "client fd=", self.client_socket
         print "tape_fd=", self.tape_fd
         self.add_select_fd( self.tape_fd, READ, self.read_tape)
         self.add_select_fd( self.client_socket, WRITE, self.write_client)
-
-
+        self.state = ACTVE
+        self.mode = WRITE
+        
     def setup_transfer(self, ticket):
         if self.state not in (IDLE, HAVE_BOUND):
             print "Not idle"
@@ -370,6 +365,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.control_socket, self.client_socket = self.connect_client()
         print "client connect", self.control_socket, self.client_socket
         if not self.client_socket:
+            ##XXX Log this
             return 0
 
         return 1
