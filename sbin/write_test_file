@@ -1,0 +1,19 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+if [ `uname -n | grep -c d0ensrv` -ne 0 ]; then
+  outdir=/pnfs/sam/mammoth/jon/cron_writer
+else
+  echo "Do not know about node `uname -n`... fix $0 script"
+  exit 1
+fi
+
+now=`date +"%Y-%m-%d.%H.%M.%S"`
+file=/tmp/now
+
+echo "$now" > $file
+
+echo encp --crc --verbose=1 --data_access_layer $file $outdir/$now
+     encp --crc --verbose=1 --data_access_layer $file $outdir/$now
+

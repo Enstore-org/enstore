@@ -1,0 +1,1 @@
+07 * * * * $ENSTORE_SBIN/ecron -p write_test_file /home/bakken/enstore/sbin/write_test_file  > /dev/null 2> /dev/null
