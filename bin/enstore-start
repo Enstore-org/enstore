@@ -15,9 +15,6 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/bin/defaults
 
-# ok, this is terrible - but let's start always start up in the etc area so files are created there
-place=`pwd`
-cd $ENSTORE_DIR/etc
 
 ################################################################################################################################################
 
@@ -26,7 +23,7 @@ echo "$What Configuration Server on $config_host, port $config_port, using file 
 
 if [ $ping_only -eq 0 ] ; then
   python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
-  echo $! >> `uname -n`-configuration_pids
+  echo $! >> $enstore_db/`uname -n`-configuration_pids
 
 else
 
@@ -43,8 +40,11 @@ fi
 echo "$What Volume Clerk"
 
 if [ $ping_only -eq 0 ] ; then
+  place=`pwd`
+  cd $enstore_db
   python $ENSTORE_DIR/src/volume_clerk.py --config_host=$config_host --config_port=$config_port &
-  echo $! >> `uname -n`-volume_clerk_pids
+  echo $! >> $enstore_db/`uname -n`-volume_clerk_pids
+  cd $place
 
 else
 
@@ -62,8 +62,11 @@ fi
 echo "$What File Clerk"
 
 if [ $ping_only -eq 0 ] ; then
+  place=`pwd`
+  cd $enstore_db
   python $ENSTORE_DIR/src/file_clerk.py --config_host=$config_host --config_port=$config_port &
-  echo $! >> `uname -n`-file_clerk_pids
+  echo $! >> $enstore_db/`uname -n`-file_clerk_pids
+  cd $place
 
 else
 
@@ -82,7 +85,7 @@ for i in $enstore_libraries; do
 
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/library_manager.py --config_host=$config_host --config_port=$config_port $i &
-    echo $! >> `uname -n`-library_manager_pids
+    echo $! >> $enstore_db/`uname -n`-library_manager_pids
 
   else
 
@@ -103,7 +106,7 @@ for i in $enstore_media_changers; do
 
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/media_changer.py --config_host=$config_host --config_port=$config_port $i &
-    echo $! >> `uname -n`-media_changer_pids
+    echo $! >> $enstore_db/`uname -n`-media_changer_pids
 
   else
 
@@ -125,7 +128,7 @@ for i in $enstore_movers; do
 
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/mover.py --config_host=$config_host --config_port=$config_port $i &
-    echo $! >> `uname -n`-mover_pids
+    echo $! >> $enstore_db/`uname -n`-mover_pids
 
   else
     echo "   ...No ping test for $i Mover...(yet)"
@@ -135,6 +138,4 @@ for i in $enstore_movers; do
 done
 
 ################################################################################################################################################
-
-cd $place
 

@@ -11,6 +11,15 @@ enstore_libraries="activelibrary.library_manager red50library.library_manager 85
 enstore_media_changers="STK.media_changer RDD.media_changer"
 enstore_movers="fd0.mover stk0.mover exa0.mover"
 
+enstore_db=$ENSTORE_DIR/etc
+
+if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then 
+  enstore_db=/bakken/bakken/enstore_db
+  enstore_libraries=""
+  enstore_media_changers=""
+  enstore_movers=""
+fi
+
 # if the user has environmental variable set, use them - or else use the defaults
 
 if [ -n "${ENSTORE_CONFIG_HOST-}" ] ; then config_host=$ENSTORE_CONFIG_HOST; fi
@@ -20,3 +29,5 @@ if [ -n "${ENSTORE_CONFIG_FILE-}" ] ; then config_file=$ENSTORE_CONFIG_FILE; fi
 if [ -n "${ENSTORE_LIBRARIES-}" ]      ; then enstore_libraries=$ENSTORE_LIBRARIES; fi
 if [ -n "${ENSTORE_MEDIA_CHANGERS-}" ] ; then enstore_media_changers=$ENSTORE_MEDIA_CHANGERS; fi
 if [ -n "${ENSTORE_MOVERS-}" ]         ; then enstore_movers=$ENSTORE_MOVERS; fi
+
+if [ -n "${ENSTORE_DB-}" ]             ; then enstore_db=$ENSTORE_DB; fi

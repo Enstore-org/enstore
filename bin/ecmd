@@ -154,7 +154,7 @@ case $cmd in
 
   zero)
     ecmd stop
-    (cd $ENSTORE_DIR/etc; rm *.fake *.jou)
+    (cd $enstore_db; rm *.fake *.jou)
     stat=$?
     ;;
 
