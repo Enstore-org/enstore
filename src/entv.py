@@ -98,10 +98,16 @@ def main():
         
     #Tell the event_relay that we want to hear about Enstore
     #events.
-    #This gets us 15 minutes worth of update messages
-    s.sendto("notify %s %s" % (target_ip, target_port),
-             (event_relay_host, event_relay_port))
-
+    #This gets us 15 minutes worth of update messages, so re-subscribe
+    # every 10 minutes
+    while 1:
+        try:
+            s.sendto("notify %s %s" % (target_ip, target_port),
+                     (event_relay_host, event_relay_port))
+            time.sleep(600)
+        except:
+            time.sleep(5)
+        
 if __name__ == "__main__":
     main()
     
