@@ -286,7 +286,6 @@ def forked_write_to_hsm( self, ticket ):
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
-	    Trace.trace( 17, 'bind problem in write' )
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -297,7 +296,6 @@ def forked_write_to_hsm( self, ticket ):
 	if sts['status'][0] != "ok":
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
-	    Trace.trace( 17, 'vcc.set_writing problem in write' )
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
@@ -354,7 +352,6 @@ def forked_write_to_hsm( self, ticket ):
 
         #except EWHATEVER_NET_ERROR:
         except:
-            logc.send( log_client.ERROR, 1, "Error writing "+str(ticket) )
 	    traceback.print_exc()
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
             vcc.update_counts( self.vol_info['external_label'],
@@ -429,7 +426,6 @@ def forked_read_from_hsm( self, ticket ):
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
-	    Trace.trace( 17, 'bind problem in read' )
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
 	    send_user_done( self, ticket, sts )
@@ -482,13 +478,11 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
         except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
-            logc.send( log_client.ERROR, 1, "Error writing to user"+str(ticket) )
 	    traceback.print_exc()
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, e_errors.READ_ERROR )
 	    return_or_update_and_exit( self, origin_addr, e_errors.OK )
         except:
-            logc.send( log_client.ERROR, 1, "Error reading "+str(ticket) )
 	    traceback.print_exc()
             media_error = 1 # I don't know what else to do right now
 	    # this is bogus right now
@@ -529,6 +523,7 @@ def forked_read_from_hsm( self, ticket ):
     return
 
 def return_or_update_and_exit( self, origin_addr, status ):
+    if status != e_errors.OK: logc.send( log_client.ERROR, 0, str(status) )
     if mvr_config['do_fork']:
 	# need to send info to update parent: vol_info and
 	# hsm_driver_info (read: hsm_driver.position
@@ -718,7 +713,8 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.ENCP_GONE:
-	next_req_to_lm = unilateral_unbind_next( client_obj_inst, m_err[exit_status] )
+	next_req_to_lm = have_bound_volume_next( client_obj_inst )
+	#next_req_to_lm = unilateral_unbind_next( client_obj_inst, m_err[exit_status] )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
