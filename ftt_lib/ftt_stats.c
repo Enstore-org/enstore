@@ -530,8 +530,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    failures++;
 	} else {
 
-	    hwdens = ftt_itoa((long)buf[4]);
-	    set_stat(b,FTT_DENSITY,  hwdens, 0);
+	    hwdens = buf[4];
+	    set_stat(b,FTT_DENSITY,  ftt_itoa((long)hwdens), 0);
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
 
@@ -590,7 +590,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
 	
     }
-    if (stat_ops & FTT_DO_MS_Px20_EXB &&  hwdens == 0) {
+    if (stat_ops & FTT_DO_MS_Px20_EXB && hwdens == 0) {
 	static unsigned char cdb_mode_sense_p20[]= 
 			{ 0x1a, 0x08, 0x20, 0x00, 0x0a, 0x00};
 
