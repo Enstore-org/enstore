@@ -443,7 +443,7 @@ class LibraryManagerMethods:
         while rq:
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
-                Trace.trace(11,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
+                Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
@@ -453,6 +453,7 @@ class LibraryManagerMethods:
                 break
             elif rq.work == "write_to_hsm":
                 rq, key = self.process_write_request(rq) 
+                Trace.trace(16,"process_write_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
@@ -474,6 +475,12 @@ class LibraryManagerMethods:
             rq = self.tmp_rq
         # check if this volume is ok to work with
         if rq:
+            if self.tmp_rq:
+                Trace.trace(16,"next_work_any_volume: rq.pri %s, tmp_rq.pri %s"%(rq.pri, self.tmp_rq.pri))
+                sg_limit = self.get_sg_limit(volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"]))
+                if sg_limit == 0:
+                    if rq.pri < self.tmp_rq.pri:
+                        rq = self.tmp_rq
             w = rq.ticket
             Trace.trace(11,"check volume %s " % (w['fc']['external_label'],))
             if w["status"][0] == e_errors.OK:
