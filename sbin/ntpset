@@ -70,6 +70,7 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
 
       if [ $RELAX -eq 0 ]; then
         $XNTP stop >>$LOG 2>&1
+	COUNT='0' # clear the counter
         # set the time, but use more than just fermilab to sync it
         $NTPDATE -b -p 8 -u -v `$CAT /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1
         # start up ntp again - this just syncs to fermilab, according to policy.
