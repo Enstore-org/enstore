@@ -1,4 +1,3 @@
-###############################################################################
 # src/$RCSfile$   $Revision$
 #
 #########################################################################
@@ -34,10 +33,13 @@ import e_errors
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	                 generic_server.GenericServer) :
 
-    def __init__(self, medch, csc=0, verbose=0,\
+    work_list = []
+
+    def __init__(self, medch, maxwork, csc=0, verbose=0,\
 	         host=interface.default_host(), \
 	         port=interface.default_port()):
         Trace.trace(10, '{__init__')
+        self.MaxWork = maxwork
 	self.verbose = verbose
 	self.print_id = medch
         # get the config server
@@ -47,6 +49,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
+
 	try:
 	    self.print_id = self.mc_config['logname']
 	except:
@@ -60,7 +63,20 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                             'logserver', 0)
         Trace.trace(10, '}__init__')
 
+    # wrapper method for client - server communication
+    def loadvol(self, ticket):        
+        ticket["function"] = "mount"
+        return self.DoWork( self.load, ticket)
 
+    # wrapper method for client - server communication
+    def unloadvol(self, ticket):
+        ticket["function"] = "dismount"
+        return self.DoWork( self.unload, ticket)
+
+    def maxwork(self,val=-1):
+        if val != -1:
+           self.MaxWork = val
+        return (self.MaxWork, self.work_list)        
 
     # load volume into the drive
     def load(self,
@@ -86,207 +102,87 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
-    # wrapper method for client - server communication
-    def loadvol(self,
-                ticket):        # associative array containing volume and\
-                                # drive id
-        import pprint
-        return self.load(ticket['vol_ticket']['external_label'], ticket['drive_id'],ticket['vol_ticket']['media_type'])
+    def DoWork(self, function, ticket):
+        self.logc.send(log_client.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
+                                          ticket['vol_ticket']['external_label']+" "  +\
+                                          ticket['drive_id']+" "  +\
+                                          ticket['vol_ticket']['media_type'] )
+        #if we have max number of working children, assume client will resend
+        if len(self.work_list) >= self.MaxWork :
+            self.logc.send(log_client.INFO, 2, "MC Overflow: "+ repr(self.MaxWork) + " " +\
+                      ticket['vol_ticket']['external_label'] + " " + ticket['drive_id'])
+        # otherwise, we can do this
+        else:
+            # if this a duplicate request, drop it
+            ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
+            for i in self.work_list:
+                if i["ra"] == ticket["ra"]:
+                    return
+            # if not duplicatei, fork the work
+            pipe = os.pipe()
+            # if in child process
+            if not os.fork() :
+                os.close(pipe[0])
+                # do the work
+                sts = function(
+                        ticket['vol_ticket']['external_label'],
+                        ticket['drive_id'],
+                        ticket['vol_ticket']['media_type'])
+                # send status back to MC parent via pipe to dispatching_worker
+                ticket["work"]="WorkDone"
+                ticket["status"]=sts
+                os.write(pipe[1], repr(('0','0',ticket) ))
+                os.close(pipe[1])
+                os._exit(0)
 
-    # wrapper method for client - server communication
-    def unloadvol(self, ticket):
-        return self.unload(ticket['vol_ticket']['external_label'], ticket['drive_id'],ticket['vol_ticket']['media_type'])
+            # else, this is the parent
+            else:
+                self.add_select_fd(pipe[0])
+                os.close(pipe[1])
+                # add entry to outstanding work 
+                self.work_list.append(ticket)
+    
 
-# IBM3494 robot class
-class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
-
-    # load volume into the drive
-    def load(self, drive, external_label, drive, media_type) :
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
-
-    # unload volume from the drive
-    def unload(self, drive, external_label, drive,media_type) :
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
-
-# FTT tape drives with no robot
-class FTT_MediaLoaderMethods(MediaLoaderMethods) :
-
-    # assumes volume is in drive
-    def load(self, external_label, drive, media_type) :
-	self.enprint("media changer rewind")
-        #os.system("mt -t " + drive + " rewind")
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
-
-    # assumes volume is in drive and leave it there for testing
-    def unload(self, external_label, drive,media_type,media_type) :
-        os.system("mt -t " + drive + " rewind")
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
-
-# EMASS tape robot
-class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
-
-    # load volume is in drive
-    def load(self, external_label, tape_drive, media_type) :
-      
-      command = "dasadmin dismount  -d " + tape_drive + " 2>&1"
-      result = os.popen(command, "r").readlines()
-
-      command = "dasadmin mount -t " + media_type + " " + external_label + " " + tape_drive \
-             + " 2>&1"
-      out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
-      count=2
-      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
-        count = count - 1
-        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+command)
-        #    try the mount
-        result = os.popen(command, "r").readlines()
-
-        #    analyze the results
-	for line in result:
-           if string.find(line, " successful") != -1 :
-                out_ticket = {"status" : (e_errors.OK, None)}
-                self.logc.send(log_client.INFO, 4, "Mnt returned ok")
-                for line in result:
-                    self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
-                self.reply_to_caller(out_ticket)
-                return
-        
-        # log the error
-        self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
-        for line in result:
-                self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
-      # send reply to caller
-      self.reply_to_caller(out_ticket)
-
-    # unload volume from the drive;   ron said the tape will be ejected.
-    def unload(self, external_label, tape_drive,media_type) :
-      # form dismount command to be executed
-      command = "dasadmin dismount -t " + media_type + " " + external_label + " 2>&1"
-
-      # retry dismount once if it fails
-      count=2
-      out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
-      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
-        count = count - 1
-        # call dismount command
-        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+command)
-        result = os.popen(command, "r").readlines()
-
-        # analyze the return message
-        for line in result:
-            if string.find(line, " successful") != -1 :
-                out_ticket = {"status" : (e_errors.OK, None)}
-                self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
-                for line in result:
-                    self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
-                self.reply_to_caller(out_ticket)
-                return
-        # log the error
-        self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
-        for line in result:
-            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
-
-      self.reply_to_caller(out_ticket)
-
-# STK robot class
-class STK_MediaLoaderMethods(MediaLoaderMethods) :
-
-    # load volume into the drive
-    def load(self, external_label, tape_drive, media_type) :
-      # form mount command to be executed
-      command = "rsh " + self.mc_config['acls_host'] + " -l " + \
-                            self.mc_config['acls_uname'] + " 'echo mount " + \
-                            external_label + " " + tape_drive + \
-                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-
-      stk_query_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
-                            self.mc_config['acls_uname'] + " 'echo query drive " + \
-                            tape_drive + \
-                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-      out_ticket = {"status" : (e_errors.MOUNTFAILED, "dismount_failed")}
-      count=2
-      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
-        count = count - 1
-        # call mount command
-        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+command)
-        result = os.popen(command, "r").readlines()
-
-        # analyze the return message
-        for line in result:
-            if string.find(line, "mounted") != -1 :
-                out_ticket = {"status" : (e_errors.OK, None)}
-                self.logc.send(log_client.INFO, 4, "Mnt returned ok")
-                for line in result:
-                    self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
-                self.reply_to_caller(out_ticket)
-                return
-
-        # log the error
-        self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
-        for line in result:
-            self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
-        result  = os.popen(stk_query_command, "r").readlines()
-        for line in result:
-            self.logc.send(log_client.INFO, 1, "Mnt qry:"+line)
-      # send reply to caller
-      self.reply_to_caller(out_ticket)
-
-    # unload volume from the drive - a force does an eject
-    def unload(self, external_label, tape_drive,media_type) :
-      # form dismount command to be executed
-      command = "rsh " + self.mc_config['acls_host'] + " -l " +\
-                            self.mc_config['acls_uname'] + " 'echo dismount " +\
-                            external_label + " " + tape_drive + " force" +\
-                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-
-      stk_query_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
-                            self.mc_config['acls_uname'] + " 'echo query drive " + \
-                            tape_drive + \
-                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-
-      # retry dismount once if it fails
-      count=2
-      out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
-      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
-        count = count - 1
-        # call dismount command
-        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+command)
-        result = os.popen(command, "r").readlines()
-
-        # analyze the return message
-        for line in result:
-            if string.find(line, "dismount") != -1 :
-                out_ticket = {"status" : (e_errors.OK, None)}
-                self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
-                for line in result:
-                    self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
-                self.reply_to_caller(out_ticket)
-                return
-        # log the error
-        self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
-        for line in result:
-            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
-        result  = os.popen(stk_query_command, "r").readlines()
-        for line in result:
-            self.logc.send(log_client.INFO, 1, "Umnt qry:"+line)
-        
-      self.reply_to_caller(out_ticket)
-
-# STK media loader server
-class STK_MediaLoader(STK_MediaLoaderMethods) :
-    pass
+    def WorkDone(self, ticket):
+        # dispatching_worker sends "WorkDone" ticket here
+        # remove work from outstanding work list
+        for i in self.work_list:
+           if i["ra"] == ticket["ra"]:
+              self.work_list.remove(i)
+              break
+        self.logc.send(log_client.INFO, 2,"FINISHED "+ticket['function']+" "  +\
+                                          ticket['vol_ticket']['external_label']+" "  +\
+                                          ticket['drive_id']+" "  +\
+                                          repr(ticket['status']) )
+        # report back ito original client - probably a mover
+        self.reply_with_address(ticket)
 
 # EMASS robot loader server
-class EMASS_MediaLoader(EMASS_MediaLoaderMethods) :
-    pass
+class EMASS_MediaLoader(MediaLoaderMethods) :
+    def __init__(self, medch, maxwork=5,csc=0, verbose=0,\
+                 host=interface.default_host(), \
+                 port=interface.default_port()):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+        import EMASS
+        self.load=EMASS.mount
+        self.unload=EMASS.dismount
 
-# Raw Disk media loaded server
+# STK robot loader server
+class STK_MediaLoader(MediaLoaderMethods) :
+    def __init__(self, medch, maxwork=5,csc=0, verbose=0,\
+                 host=interface.default_host(), \
+                 port=interface.default_port()):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+        import STK
+        self.load=STK.mount
+        self.unload=STK.dismount
+
+# Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods) :
-    pass
-
-# FTT tape drives with no robot loader server
-class FTT_MediaLoader(FTT_MediaLoaderMethods) :
-    pass
+    def __init__(self, medch, maxwork=1, csc=0, verbose=0,\
+                 host=interface.default_host(), \
+                 port=interface.default_port()):
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
 
 class MediaLoaderInterface(interface.Interface):
 
@@ -294,6 +190,7 @@ class MediaLoaderInterface(interface.Interface):
         Trace.trace(10,'{mlsi.__init__')
         # fill in the defaults for possible options
 	self.verbose = 0
+        self.maxwork=5
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -303,7 +200,7 @@ class MediaLoaderInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["verbose=","log="] +\
+        return self.config_options()+["verbose=","log=","maxwork="] +\
                self.help_options()
 
     #  define our specific help
@@ -324,15 +221,11 @@ class MediaLoaderInterface(interface.Interface):
 
 if __name__ == "__main__" :
     import sys
-    import socket
-    import time
-    import timeofday
     Trace.init("medchanger")
     Trace.trace(1,"media changer called with args "+repr(sys.argv))
 
     # get an interface
     intf = MediaLoaderInterface()
-
 
     csc  = configuration_client.ConfigurationClient( intf.config_host, 
                                                  intf.config_port, 0 )
@@ -349,7 +242,7 @@ if __name__ == "__main__" :
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
-    mc = eval(mc_type+"("+repr(intf.name)+","+repr(0)+","+\
+    mc = eval(mc_type+"("+repr(intf.name)+","+repr(intf.maxwork)+","+repr(0)+","+\
 	      repr(intf.verbose)+","+repr(intf.config_host)+","+\
 	      repr(intf.config_port)+")")
     while 1:
@@ -361,8 +254,3 @@ if __name__ == "__main__" :
 	    mc.serve_forever_error("media changer", mc.logc)
             continue
     Trace.trace(1,"Media Changer finished (impossible)")
-
-
-
-
-
