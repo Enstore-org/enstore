@@ -445,7 +445,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                 elif (sts[1] == 5 or         # requested drive in use
                       sts[1] == 8 or         # DAS was unable to communicate with AMU
                       sts[1] == 10 or        # AMU was unable to communicate with robot
-                      sts[1] == 34 or        # The aci request timed out
+                      #sts[1] == 34 or        # The aci request timed out
                       sts[1] == 24):         # requested volume in use
                     count = count - 1
                     time.sleep(20)
