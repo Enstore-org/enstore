@@ -79,8 +79,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.ignored_sg_file = None
         return
 
+    def custom_error_handler(self, exc, msg, tb):
+        if exc == edb.pg.error or msg == "no connection to the server":
+            self.reconnect(msg)
+
     # reconnect() -- re-establish connection to database
-    def reconnect(self):
+    def reconnect(self, msg="unknown reason"):
+        Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
         self.dict.reconnect()
 
     # change_state(type, value) -- change a state
@@ -2353,8 +2358,7 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
         except edb.pg.error, exp:
-            vc.reconnect()
-            Trace.alarm(e_errors.WARNING, "reconnect to database due to "+exp)
+            vc.reconnect(exp)
             continue
         except SystemExit, exit_code:
             vc.dict.close()
