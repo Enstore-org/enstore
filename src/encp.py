@@ -1348,7 +1348,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    mycrc = 0
 	    bufsize = 65536*4
 
-	    data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1, verbose=1)
+	    data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1,
+                                                              verbose=verbose)
 	    data_path_socket_closed = 0
             try:
                 _f_ = open(tempname,"w")
