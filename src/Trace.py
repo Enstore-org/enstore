@@ -28,6 +28,8 @@ init   = Ptrace.init
 on     = Ptrace.on
 mode   = Ptrace.mode
 
+
+
 # USER FUNCTIONS
 def log( severity, msg, msg_type=MSG_DEFAULT ):
     trace( severity, msg_type+msg )
@@ -70,4 +72,4 @@ def default_log_func( time, pid, name, args ):
 set_log_func( default_log_func )
 
 
-sys.setprofile(Ptrace.profile)
+#sys.setprofile(Ptrace.profile)
