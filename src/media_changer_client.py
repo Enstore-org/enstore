@@ -27,7 +27,9 @@ class MediaChangerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
 
     # send the request to the Media Changer server and then send answer to user
-    def send (self, ticket, rcv_timeout=0, tries=0) :
+    #      rcv_timeout is set to 60, the STK mnt/dismnt time is ~35 sec.   This
+    #      should really be a function of which media changer we are talking to.
+    def send (self, ticket, rcv_timeout=60, tries=0) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
