@@ -72,7 +72,7 @@ def convert_status(int_status):
     return status_table[status][0], status, status_table[status][1]    
 
 
-def mount(volume, drive, media_type,view_first=0):
+def mount(volume, drive, media_type,view_first=1):
     status = 0
     
     if view_first:
@@ -94,7 +94,7 @@ def mount(volume, drive, media_type,view_first=0):
     return status_table[status][0], status, status_table[status][1]    
     
 
-def dismount(volume, drive, media_type,view_first=0):
+def dismount(volume, drive, media_type,view_first=1):
     status = 0
 
     if view_first:
