@@ -35,6 +35,7 @@ class FTTDriver(driver.Driver):
         if mode is None:
             mode = 0
         if mode not in (0,1):
+            Trace.log(e_errors.ERROR,"ftt_driver:read: illegal mode %s"%(mode,))
             raise ValueError, ("illegal mode", mode)
 
         self.device = device
@@ -141,6 +142,7 @@ class FTTDriver(driver.Driver):
             if detail.errno == ftt.ELOST: 
                 self.rewind() #don't know tape position, must rewind
             else:
+                Trace.log(e_errors.ERROR,"ftt_driver:seek: ftt error %s"%(detail,detail.value))
                 raise ftt.FTTError, detail #some other FTT error
 
         file, block = self.ftt.get_position()
@@ -157,18 +159,19 @@ class FTTDriver(driver.Driver):
                     ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
                     pass
                 else:
-                    Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.value))
+                    Trace.log(e_errors.ERROR, "ftt_driver:seek: %s %s" % (detail, detail.value))
                     raise ftt.FTTError, detail
         else:
             try:
                 self.ftt.skip_fm(target-current-1)
                 self.ftt.skip_fm(1)
             except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.value))
+                Trace.log(e_errors.ERROR, "ftt_driver:skip_fm: %s %s" % (detail, detail.value))
                 raise ftt.FTTError, detail
         current = self.tell()
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
+            Trace.log(e_errors.ERROR, "ftt_driver:seek: Positioning error %s %s" % (current, target))
             raise "XXX Positioning error", (current, target)
 
     def skipfm(self, n):
@@ -200,7 +203,7 @@ class FTTDriver(driver.Driver):
                 r = self.ftt.close()
                 Trace.trace(25, "ftt_close returns %s" % (r,))
             except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "close %s %s" % (detail, detail.value))
+                Trace.log(e_errors.ERROR, "ftt_driver:close: %s %s" % (detail, detail.value))
                 r = -1
         self.ftt = None
         self.fd = -1
@@ -210,13 +213,14 @@ class FTTDriver(driver.Driver):
 ##        if self.mode != 0:
 ##            raise ValueError, "file not open for reading"
         if offset != 0:
+            Trace.log(e_errors.ERROR, "ftt_driver:read: offset must be 0")
             raise ValueError, "offset must be 0"
         t0 = time.time()
         try:
             r = self.ftt.read(buf, nbytes)
 ##            Trace.trace(100, "read(%s)-> %s" % (nbytes, r))
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "read %s %s" % (detail, detail.value))
+            Trace.log(e_errors.ERROR, "ftt_driver:read: %s %s" % (detail, detail.value))
             raise e_errors.READ_ERROR, detail
         if r > 0:
             now = time.time()
@@ -232,14 +236,16 @@ class FTTDriver(driver.Driver):
     
     def write(self, buf, offset, nbytes):
         if self.mode != 1:
+            Trace.log(e_errors.ERROR, "ftt_driver:write: file not open for writing")
             raise ValueError, "file not open for writing"
         if offset != 0:
+            Trace.log(e_errors.ERROR, "ftt_driver:write: offset must be 0")
             raise ValueError, "offset must be 0"
         t0 = time.time()
         try:
             r = self.ftt.write(buf, nbytes)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.value))
+            Trace.log(e_errors.ERROR, "ftt_driver:write: %s %s" % (detail, detail.value))
             raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
@@ -266,8 +272,9 @@ class FTTDriver(driver.Driver):
             ## was a writefm.  So we tell a lie to ftt...
             ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.value))
+            Trace.log(e_errors.ERROR, "ftt_driver:write_fm %s %s" % (detail, detail.value))
         if r==-1:
+            
             ftt.raise_ftt()
         return r
 
