@@ -5,6 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 
-rgang $gang "echo 'DATE \`date\`'>>/SEL; /home/enstore/ipmi/selread>>/SEL; /home/enstore/ipmi/selclear"
+
+rgang $gang "echo 'DATE \`date\`'>>/SEL; . /fnal/ups/etc/setups.sh;setup ipmi; \$IPMI_DIR/selread>>/SEL; \$IPMI_DIR/selclear"
 
 rgang $gang "echo 'DATE \`date\`'>>/BITERROR; /opt/biterror/biterror_reset>>/BITERROR"
