@@ -102,5 +102,16 @@ def setup_signal_handling():
                                  (sig, signal_handler))
 
 def quit(exit_code=1):
+    #Perform cleanup.
     delete()
+
+    #The os._exit() call below does not flush out the contents in file
+    # descriptor buffers.  To get stdout and stderr to do this, we must do so
+    # explicitly, before calling os._exit().
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    #Exit in a unclean way.
+    ### Note MWZ 2-26-2004: There is (likely) a reason why this has always
+    ### been done with os._exit(), but I don't know what it is...
     os._exit(exit_code)
