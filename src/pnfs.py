@@ -709,7 +709,6 @@ class Pnfs:
 
     # create a directory
     def make_dir(self, dir_path, mod):
-        print "MD",dir_path
         try:
             if not os.path.exists(dir_path):
                 os.makedirs(dir_path, mod)
