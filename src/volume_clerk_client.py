@@ -5,6 +5,7 @@ Trace.trace(1,"GO")
 # src/$RCSfile$   $Revision$
 #
 # system imports
+import sys
 import string
 import time
 import errno
@@ -453,7 +454,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
 
 if __name__ == "__main__":
-    import sys
     Trace.init("VC client")
     Trace.trace(1,"vcc called with args "+str(sys.argv))
 
