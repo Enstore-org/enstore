@@ -295,6 +295,11 @@ class FileClient(generic_client.GenericClient,
         ticket['work'] = 'add_file_record'
         return self.send(ticket)
 
+    # modify file record
+    def modify(self, ticket):
+        ticket['work'] = 'modify_file_record'
+        return self.send(ticket)
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -314,6 +319,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 	self.all = 0
         self.list_active = None
         self.add = None
+        self.modify = None
         self.dont_try_this_at_home_erase = None
         generic_client.GenericClientInterface.__init__(self)
 
@@ -411,6 +417,18 @@ def do_work(intf):
         if intf.add != "None":
             d['bfid']=intf.add # bfid
         ticket = fcc.add(d)
+        print "bfid =", ticket['bfid']
+    elif intf.modify:
+        d={}
+        for s in intf.args:
+            k,v=string.split(s,'=')
+            if k != 'bfid': # nice try, can not modify bfid
+                try:
+                    v=eval(v) #numeric args
+                except:
+                    pass #yuk...
+                d[k]=v
+        ticket = fcc.modify(d)
         print "bfid =", ticket['bfid']
     elif intf.dont_try_this_at_home_erase:
         ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
