@@ -488,7 +488,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
                                   vol_veto_list, first_found)  # get which volume to use
-        print "VVVVVVVV',v
+        print "VVVVVVVV",v
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
                       (v["status"][0],v["status"][1]))
