@@ -203,6 +203,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
             ftt_eprintf("Error: wrote fewer bytes than requested.");
         }
     } else if (res == 0)  {
+	ftt_eprintf("Notice: end of tape/partition encountered");
 	ftt_errno = FTT_ENOSPC;
     } else {
 	DEBUG0(stderr,"HARD error - writing record - error %d \n",res);
