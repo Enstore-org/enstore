@@ -1,0 +1,13 @@
+FILE = TABLE
+PRODUCT=enstore_variables
+
+#*************************************************
+#
+FLAVOR = ANY
+QUALIFIERS = ""
+    ACTION=SETUP
+        # "control" environmental variables
+        envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/rip.conf")
+        envSet(ENSTORE_CONFIG_PORT, 8500)
+        envSet(ENSTORE_CONFIG_HOST, ripN.fnal.gov)
+
