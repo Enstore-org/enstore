@@ -22,7 +22,7 @@ def verify_db(dbname):
                 if kl == k and vl == v:
                     k = None
                 else:
-                    raise
+                    raise EOFError
             if count % 1000 == 0:
                 print count
 
@@ -37,7 +37,7 @@ def verify_db(dbname):
             pass
 
         if notok:
-            raise
+            raise EOFError
 
         delta = time.time()-t0
 
