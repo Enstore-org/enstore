@@ -38,9 +38,13 @@ class DispatchingWorker:
         self.address_family = socket.AF_INET
         self.server_address = server_address
         try:
-            self.node_name = socket.gethostbyaddr(self.server_address[0])[0]
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                socket.gethostbyaddr(self.server_address[0])
         except socket.error:
-            self.node_name = self.server_address[0]
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                self.server_address[0], [], [self.server_address[0]]
+
+        # deal with multiple interfaces
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
         self.callback = {} #callback functions associated with above
@@ -476,7 +480,7 @@ class DispatchingWorker:
         self.reply_address. If they match, return None. If not, return a
         error status that can be used in reply_to_caller.
         '''
-        if self.server_address[0] == self.reply_address[0]:
+        if self.reply_address[0] in self.ipaddrlist:
              return None
 
         return (e_errors.ERROR, "This restricted service can only be requested from node %s"%(self.node_name))
