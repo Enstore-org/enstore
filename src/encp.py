@@ -1296,6 +1296,7 @@ def submit_read_requests(requests, client, tinfo, vols, verbose, retry_flag):
             requests[i]['wrapper']["sanity_size"] = 65536
             requests[i]['wrapper']["size_bytes"] = requests[i]['file_size']
 
+            ##XXX CGW: how does the uinfo value get into the dictionary here?  This looks like a bug.
             # store the pnfs information info into the wrapper
             for key in requests[i]['pinfo'].keys():
                 if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
