@@ -30,11 +30,13 @@ import Trace
 import e_errors
 
 list = 0
+mc_config = {}
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
 
     def __init__(self, medch, csc=0, list=0, host=interface.default_host(), \
 	         port=interface.default_port()):
+	global mc_config
         Trace.trace(10, '{__init__')
         # get the config server
         configuration_client.set_csc(self, csc, host, port, list)
