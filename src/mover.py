@@ -53,7 +53,7 @@ debug_paranoia=1
 if os.environ.get('DEBUG_PARANOIA'):
     debug_paranoia=1
 vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
-eov1_paranoia=1 #write and check EOV1 headers (spacing error)
+eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 #If you have any problems with the eov1 checking, just set the above variable to 0 to disable this feature.
 
 
