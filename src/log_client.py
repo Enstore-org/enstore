@@ -96,7 +96,10 @@ class LoggerClient(generic_client.GenericClient):
         if severity in range(ERROR, MISC) :
             msg = '%.6d %.8s' % (self.uid, self.uname)
             msg = msg + ' ' + sevdict[severity] + ' ' + self.i_am + ' '
-            str = format % args
+	    if args != ():
+                str = format % args
+	    else:
+	        str = format
 	    Trace.trace( severity, str )
             msg = msg + ' ' + str
 	    if self.verbose & generic_cs.DEBUG:
