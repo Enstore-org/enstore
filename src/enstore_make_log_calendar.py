@@ -4,15 +4,29 @@
 #
 import time
 import os
+import stat
 
 import enstore_html
 import enstore_files
-import inquisitor
 import generic_client
 
 CAPTION_DEFAULT = "Log Files"
 LPFILE = "./log_file.html"
 TMP = ".tmp"
+
+
+# given a directory get a list of the files and their sizes
+def get_file_list(dir, prefix):
+    logfiles = {}
+    files = os.listdir(dir)
+    # pull out the files and get their sizes
+    prefix_len = len(prefix)
+    for file in files:
+        if file[0:prefix_len] == prefix and not file[-3:] == ".gz":
+            logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
+    return logfiles
+
+
 
 # return a tuple containing todays year, month and date as integers)
 def get_today():
@@ -30,7 +44,7 @@ class LogPage(enstore_html.EnLogPage):
 
     def body(self, logfile_dir, web_host, caption_title=CAPTION_DEFAULT):
 	table = self.table_top()
-	logs = inquisitor.get_file_list(logfile_dir, self.prefix)
+	logs = get_file_list(logfile_dir, self.prefix)
 	self.generate_months(table, logs, web_host, caption_title)
 	self.append(table)
 
