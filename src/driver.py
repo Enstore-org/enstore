@@ -31,6 +31,7 @@ class GenericDriver:
 	self.eod = 0			# to be initialized later
 	self.ETdesc = 0			# will be pointer to ETape ETdesc
 	self.df = 0
+	self.vol_label = ''
 
 	# When a volume is ceated, the system sets EOD cookie to "none"
 	self.set_eod( eod_cookie )
