@@ -56,7 +56,7 @@ class DbTable:
 #junk     	self.inx[name]=MyIndex(self.dbindex,name)
 
     if self.auto_journal:
-        self.jou=journal.JournalDict({},self.jouHome+"/"+dbname+".jou")
+        self.jou=journal.JournalDict({},self.jouHome+"/"+dbname+".jou", 1)
         self.count=0
 
     self.name=dbname
@@ -244,7 +244,7 @@ class DbTable:
                         repr(time.time())
      os.system(cmd)
      if self.auto_journal:
-        self.jou = journal.JournalDict({},self.jouHome+"/"+self.name+".jou")
+        self.jou = journal.JournalDict({},self.jouHome+"/"+self.name+".jou", 1)
      self.count=0
      Trace.log(e_errors.INFO, "End checkpoint for "+self.name)
   def start_backup(self):

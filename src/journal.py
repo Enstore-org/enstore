@@ -35,19 +35,24 @@ import e_errors
 
 class JournalDict:
 
-	def __init__(self, dict, journalfile):
+	# mode = 0 : read old journal file
+	def __init__(self, dict, journalfile, mode=0):
 		self.dict = dict
-		have_old_file = 1
-		try:
-			f = open(journalfile,"r")
-		except IOError :
-			have_old_file = 0
-		if have_old_file :
-			while 1:
-				l = f.readline()
-				if len(l) == 0 : break
-				exec(l)
-			f.close()
+		if mode == 0:
+			have_old_file = 1
+			try:
+				f = open(journalfile,"r")
+			except IOError :
+				have_old_file = 0
+			if have_old_file :
+				while 1:
+					l = f.readline()
+					if len(l) == 0 : break
+					try:
+						exec(l)
+					except:
+						pass
+				f.close()
 		self.jfile = open(journalfile,"a")
 
 	def keys(self):
