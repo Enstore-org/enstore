@@ -5,12 +5,12 @@
 import sys
 import time
 import copy
-import os
-import regsub
-import stat
+#import os
+#import regsub
+#import stat
 
 # enstore imports
-import timeofday
+#import timeofday
 import traceback
 import callback
 import log_client
@@ -20,10 +20,12 @@ import dispatching_worker
 import generic_server
 import generic_cs
 import interface
-import udp_client
+#import udp_client
 import db
 import Trace
 import e_errors
+
+dict="" # quiet lint
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
@@ -82,7 +84,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # also need new pnfsid - make sure we have this
         try:
-            key2="pnfsid";       pnfsid       = ticket["fc"][key2]
+            key2="pnfsid";
+            pnfsid = ticket["fc"][key2]
             # temporary try block - sam doesn't want to update encp too often --> put back into main try in awhile
             try: 
                 key2="pnfsvid";      pnfsvid      = ticket["fc"][key2]
@@ -200,6 +203,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["file_clerk_callback_port"] = file_clerk_port
         self.control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
+        if 0: print address # quiet lint
         self.data_socket = data_socket
         listen_socket.close()
         Trace.trace(16,"}get_user_sockets host="+repr(file_clerk_host)+\
