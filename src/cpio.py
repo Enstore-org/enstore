@@ -207,7 +207,7 @@ class cpio :
                                                major, minor, rmajor, rminor,
                                                filename,0)
         size = len(header)
-        apply(self.write_driver.write_block,(header,))
+        self.write_driver.write_block(header,)
 
         # now read input and write it out
         sanity_crc = 0
@@ -215,14 +215,14 @@ class cpio :
         data_crc = 0
         data_size = 0
         while 1:
-            b = apply(self.read_driver.read_block,())
+            b = self.read_driver.read_block()
             length = len(b)
             if length == 0 :
                 break
             size = size + length
             data_size = data_size + length
             # we need a complete crc of the data in the file
-            data_crc = apply(self.crc_fun,(b,data_crc))
+            data_crc = self.crc_fun(b,data_crc)
 
             # we also need a "sanity" crc of 1st sanity_bytes of data in file
             # so, we crc the 1st portion of the data twice (should be ok)
@@ -233,13 +233,12 @@ class cpio :
                 else :
                     sanity_end = sanity_bytes - sanity_size
                     sanity_size = sanity_bytes
-                sanity_crc = apply(self.crc_fun,(b[0:sanity_end],sanity_crc))
+                sanity_crc = self.crc_fun(b[0:sanity_end],sanity_crc)
 
-            apply(self.write_driver.write_block,(b,))
+            self.write_driver.write_block(b,)
 
         # write out the trailers
-        apply(self.write_driver.write_block,
-              (self.trailers(size,head_crc,data_crc,trailer),))
+        self.write_driver.write_block(self.trailers(size,head_crc,data_crc,trailer),)
         sanity_cookie = (sanity_bytes,sanity_crc)
         return (data_size, data_crc, repr(sanity_cookie))
 
@@ -261,7 +260,7 @@ class cpio :
         while size < data_size or first:
             first = 0
             offset = 0
-            buffer = apply(self.read_driver.read_block,())
+            buffer = self.read_driver.read_block()
             length = len(buffer)
             if length == 0 :
                 raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
@@ -277,8 +276,8 @@ class cpio :
                     bad = str(sys.exc_info()[1])
                     print bad
                     while 1:
-                        apply(self.write_driver.write_block,(buffer,))
-                        buffer = apply(self.read_driver.read_block,())
+                        self.write_driver.write_block(buffer,)
+                        buffer = self.read_driver.read_block()
                         length = len(buffer)
                         if length == 0 :
                             return (-1,-1,-1,bad)
@@ -295,7 +294,7 @@ class cpio :
                 next = data_offset + size
                 padd =  (4-(next%4)) %4
                 trailer = buffer[data_end+padd:]
-            data_crc = apply(self.crc_fun,(buffer[offset:data_end],data_crc))
+            data_crc = self.crc_fun(buffer[offset:data_end],data_crc)
 
             # look at first part of file to make sure it is right file
             if sanity_size < sanity_bytes and size!=data_size:
@@ -305,8 +304,7 @@ class cpio :
                 else :
                     sanity_end = sanity_bytes - sanity_size + offset
                     sanity_size = sanity_bytes
-                    san_crc = apply(self.crc_fun,(buffer[offset:sanity_end]\
-                                                     ,san_crc))
+                    san_crc = self.crc_fun(buffer[offset:sanity_end],san_crc)
                 if sanity_size == sanity_bytes :
                     if sanity_crc != sanity_crc:
                         raise IOError, "Sanity Mismatch, read"+repr(san_crc)+\
@@ -319,11 +317,11 @@ class cpio :
                     raise "TILT - coding error!"
 
             # write the data
-            apply(self.write_driver.write_block,(buffer[offset:data_end],))
+            self.write_driver.write_block(buffer[offset:data_end],)
 
         # now read the crc file - just read to end of data and then decode
         while 1  :
-            buffer = apply(self.read_driver.read_block,())
+            buffer = self.read_driver.read_block()
             length = len(buffer)
             if length == 0 :
                 break
