@@ -107,6 +107,13 @@ class File(pnfs.File):
 			f.close()
 			self.update()
 
+
+def usage():
+	print "usage:"
+	print '\t'+sys.argv[0], "file [file [...]]    swap individual files"
+	print '\t'+sys.argv[0], "-f file [file [...]] swap files listed in the files"
+	print '\t'+sys.argv[0], "-v vol [vol [...]]   swap files on the volumes"
+
 # a_path(p):
 #    p = f_prefix/X/... --> f_prefix/_A_X/...
 #
@@ -284,13 +291,26 @@ def swap(f):
 	print 'OK'
 	return
 
+class Interface(option.Interface):
+	def __init__(self, args=sys.argv, user_mode=0):
+		option.Interface.__init__(self, args, user_mode)
+
+	def print_help(self):
+		usage()
+
+	def print_usage(self, message=None):
+		if message:
+			print message
+			print
+		usage()
+
 if __name__ == '__main__':
 
 	global e_count
 	global doit
 
 	# initialize file clerk client
-	intf = option.Interface()
+	intf = Interface()
 	fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
 
 	te_count = 0
