@@ -348,7 +348,7 @@ for try in list doit; do
 
         7) echo "Step $Step:   compileall python source   `starting`"
            if [ "$try" = "doit" ] ; then
-             find $ENSTORE_DIR -name "*\.pyc" | xargs -r rm
+             find $ENSTORE_DIR -name "*\.pyc" | xargs rm
              check_status $? "rm of old pyc files"
              compileall_output=/tmp/$productCut.compileall_output
              python -c '
