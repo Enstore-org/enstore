@@ -48,11 +48,12 @@ if [ -r $copy ]; then
    fi
 fi
 
+
 echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1"
              $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1
 rc=$?
 if [ $rc -eq 0 ]; then
-   echo `date` $tape already ready for migrating. dogin touch $copy
+   echo `date` $tape already ready for migrating. doing touch $copy
    touch $copy
    continue
 fi
@@ -65,6 +66,18 @@ max_try=10
 try=0
 while [ $try -le $max_try ]; do
   try=`expr $try + 1`
+
+  echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1"
+               $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1
+  rc=$?
+  if [ $rc -eq  0 ]; then
+     echo `date` $tape rechecked - ready for migrating
+     continue
+  else
+     echo `date` $tape NOT ready, but copy2b file found. doing rm $copy
+     rm $copy
+  fi
+
   if [ `enstore vol --vol $tape| grep -c NOACCESS` -ne 0 ]; then
       echo `date` Clearing NOACCESS from $tape assuming trouble reading
       enstore vol --clear $tape
@@ -76,15 +89,6 @@ while [ $try -le $max_try ]; do
   echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -0 -a -g -v $tape 2>&1"
                $ENSTORE_DIR/test/CDF_migration/migrate_tape -0 -a -g -v $tape 2>&1
 
-  echo `date` "$ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1"
-               $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape 2>&1
-  rc=$?
-  if [ $rc -eq 0 ]; then
-     echo `date` Got success on verify. touching $copy and $gotit
-     touch $copy
-     touch $gotit
-     continue
-  fi
 done
 
 if [ -r $gotit ]; then
