@@ -90,7 +90,7 @@ class LoggerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
 
     def send (self, severity, priority, format, *args) :
-        if  (priority & self.log_priority) == 0 :
+        if  ((1<<priority) & self.log_priority) == 0 :
            return
 
         if severity in range(ERROR, MISC) :
