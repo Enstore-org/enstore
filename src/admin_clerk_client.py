@@ -30,9 +30,8 @@ class AdminClerkClient(generic_client.GenericClient) :
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        uinfo = {"callback_addr" : (host, port)}
         ticket = {"work"               : "select",
-                  "uinfo"              : uinfo,
+                  "callback_addr" : (host, port),
                   "unique_id"          : time.time(),
 		  "dbname"	       : dbname, 
 		  "criteria"           : criteria}

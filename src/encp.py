@@ -153,7 +153,7 @@ def write_to_hsm(input, output,
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
-    encp["callback_addr"] = (host, port)
+    callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
@@ -218,7 +218,7 @@ def write_to_hsm(input, output,
                 file_clerk = {"library"            : library[i],\
                               "file_family"        : file_family[i],\
                               "file_family_width"  : width[i]}
-                uinfo["callback_addr"] = (host, port)        # this will be deleted shortly
+
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
                 uinfo["delayed_dismount"] = delayed_dismount  # this will be deleted shortly
@@ -226,6 +226,7 @@ def write_to_hsm(input, output,
                 uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",
                                "priority"           : 1,
+			       "callback_addr"      : callback_addr,
                                "fc"                 : file_clerk,
                                "pinfo"              : pinfo[i],
                                "uinfo"              : uinfo,
@@ -575,7 +576,7 @@ def read_from_hsm(input, output,
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
     host, port, listen_socket = callback.get_callback()
-    encp["callback_addr"] = (host, port)
+    callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
@@ -650,7 +651,7 @@ def read_from_hsm(input, output,
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
                 uinfo["fullname"] = outputlist[i]
-                uinfo["callback_addr"] = (host, port)        # this will be deleted shortly
+
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
                 uinfo["delayed_dismount"] = delayed_dismount # this will be deleted shortly
@@ -660,6 +661,7 @@ def read_from_hsm(input, output,
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"              : "read_from_hsm",
                                "uinfo"             : uinfo,
+			       "callback_addr"     : callback_addr,
                                "fc"                : file_clerk,
                                "pinfo"             : pinfo[i],
                                "encp"              : encp,
