@@ -47,11 +47,19 @@ def try_a_port(host, port) :
     return 1 , sock
 
 # get an unused tcp port for communication
-def get_callback_port(start,end,use_multiple=0):
+def get_callback_port(start,end,use_multiple=0,fixed_ip=None):
+    if use_multiple and fixed_ip:
+        raise "Error: get_callback_port: cannot set both use_multiple and fixed_ip"
+
     host_name,junk,ips = hostaddr.gethostinfo()
     ca = ips[0]
     if use_multiple:
         interface_tab = hostaddr.get_multiple_interfaces()
+    elif fixed_ip:
+        interface_tab = [(fixed_ip,500),(ips[0],1)] #the default ip should
+                                       ##only get used if the fixed_ip interface
+                                       ##is down completely. the 500 is kind of
+                                       ##ugly but it gets the job done.
     else:
         interface_tab = [(ips[0], 1)]
 
@@ -92,11 +100,8 @@ def get_callback_port(start,end,use_multiple=0):
                 host, bw = interface_tab[which_interface]
             bw = bw-1
             port = next_port_to_try[which_interface]
-            # XXX debugging stuff
-            print "trying", host, port
             if use_multiple:
-                # This was Trace.trace, make it a log msg for debugging
-                Trace.log(e_errors.INFO, "multiple interface: trying %s %s" % (host,port))
+                Trace.trace(10, "multiple interface: trying %s %s" % (host,port))
             success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
@@ -126,12 +131,12 @@ def hex8(x):
     
 
 # get an unused tcp port for control communication
-def get_callback(use_multiple=0):
-    return get_callback_port( 7600, 7640, use_multiple )
+def get_callback(use_multiple=0,fixed_ip=None):
+    return get_callback_port( 7600, 7640, use_multiple, fixed_ip )
 
 # get an unused tcp port for data communication - called by mover
-def get_data_callback(use_multiple=1):
-    return get_callback_port( 7640, 7650, use_multiple )
+def get_data_callback(use_multiple=0, fixed_ip=None):
+    return get_callback_port( 7640, 7650, use_multiple, fixed_ip )
 
 #send a message, with bytecount and rudimentary security
 def write_tcp_raw(sock,msg):
