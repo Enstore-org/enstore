@@ -8,7 +8,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ $# -ne 1 ]
 then
-	print "USAGE: prelude_in_c  \"command to execute\""
+	echo "USAGE: run_misc_command  \"command to execute\""
 	rtn=1
 else
 	command="${1}"
