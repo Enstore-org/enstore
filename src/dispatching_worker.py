@@ -234,7 +234,16 @@ class DispatchingWorker(udp_server.UDPServer):
             for fd in r:
                 if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
                                                         ##for old usage in media_changer
-                    msg = os.read(fd, 8)
+                    try:
+                        msg = os.read(fd, 8)
+                    except:
+                        print 'fd =', `fd`
+                        print ' r =', `r`
+                        print ' w =', `w`
+                        print 'self.read_fds =', `self.read_fds`
+                        print 'self.callback =', `self.callback`
+			raise
+
                     try:
                         bytecount = string.atoi(msg)
                     except:
