@@ -11,6 +11,7 @@ getnode=d0ensrv4
 plotnode=d0ensrv2
 
 now=`date +"%Y-%m-%d:%H:%M:%S"`
+Quarter_ago=`date --date "90 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
 case $command in
 
@@ -51,7 +52,7 @@ set title \"ADIC M1 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
@@ -69,7 +70,7 @@ set title \"ADIC M2 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
@@ -87,7 +88,7 @@ set title \"ADIC LTO Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
@@ -105,7 +106,7 @@ set title \"ADIC DLT Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
