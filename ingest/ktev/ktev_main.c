@@ -16,7 +16,7 @@ extern int optind;
 extern char *volumeName;
 extern errno;
 static
-void usage(name)
+void usage(char *name)
 {
   fprintf(stderr,"ktev test program\n");
   fprintf(stderr,"usage:%s [-d local_dir] [-w] <-v vol_name>\n",name);
@@ -30,7 +30,7 @@ main(int argc, char *argv[])
   int files_written, records_written;
   char fileName[FILENAME_LEN], odn[FILENAME_LEN], ofn[FILENAME_LEN];
   char buffer[75000];
-
+  printf("arg %s\n",argv[0]);
   if (argc < 2) {
     usage(argv[0]);
     return -1;
