@@ -5,12 +5,12 @@ import time
 import db
 
 def verify_db(dbname):
+    count=0
     try:
         d = db.DbTable(dbname,'.','.',[])
         d.cursor('open')
         t0 = time.time()
         k,v = d.cursor('first')
-        count=0
 
         while k:
             count=count+1
