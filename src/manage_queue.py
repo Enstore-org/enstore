@@ -58,15 +58,16 @@ class Queue:
    # Remove a ticket 
    def delete_job(self,ticket):
       for w in self.queue:
-         if w["unique_id"] == ticket["unique_id"]:
-            if ticket['times'].has_key('job_queued'):
-                ticket['times']['in_queue'] = time.time() - \
-                                              ticket['times']['job_queued']
-                del(ticket['times']['job_queued'])
-            else:
-                ticket['times']['in_queue'] = 0
-            self.queue.remove(w)
-            return
+         if w.has_key("unique_id") and ticket.has_key("unique_id"):
+	     if w["unique_id"] == ticket["unique_id"]:
+		 if ticket['times'].has_key('job_queued'):
+		     ticket['times']['in_queue'] = time.time() - \
+						   ticket['times']['job_queued']
+		     del(ticket['times']['job_queued'])
+		 else:
+		     ticket['times']['in_queue'] = 0
+		 self.queue.remove(w)
+		 return
 
    # Find a job 
    def find_job(self,id):
