@@ -980,8 +980,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if status == e_errors.OK:
             if not rq:
                 format = "read rq. is already in the queue %s -> %s : library=%s family=%s requester:%s"
+                file1 = ticket['wrapper']['fullname']
+                file2 = ticket['wrapper']['pnfsFilename']
             else:
                 format = "read Q'd %s -> %s : library=%s family=%s requester:%s"
+                file1 = ticket['wrapper']['pnfsFilename']
+                file2 = ticket['wrapper']['fullname']
 
             #############################################
             # REMOVE WHEN V1 IS GONE
@@ -990,8 +994,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 ticket['vc']['volume_family'] = ticket['vc']['file_family']
             ##############################################
                 
-            Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
-                                             ticket["wrapper"]["pnfsFilename"],
+            Trace.log(e_errors.INFO, format%(file1, file2,
                                              ticket["vc"]["library"],
                                              ticket["vc"]["volume_family"],
                                              ticket["wrapper"]["uname"]))
