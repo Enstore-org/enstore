@@ -1217,7 +1217,7 @@ class encp(interface.Interface):
 
         host = 'localhost'
         port = 0
-        interface.Interface.__init__(self, host, port)
+        interface.Interface.__init__(self)
 
         # parse the options
         self.parse_options()
@@ -1294,33 +1294,6 @@ class encp(interface.Interface):
             self.outtype="hsmfile"
         else:
             self.outtype="unixfile"
-
-
-        # we need to know config_host
-        try:
-            ch = self.config_host
-        except:
-            # not specified - try to get it from the environment
-            try:
-                self.config_host = os.environ['ENSTORE_CONFIG_HOST']
-            except:
-                print "ERROR: config_host not specified and ENSTORE_CONFIG_HOST",\
-                      " is not defined in the environment"
-                self.print_help()
-                sys.exit(1)
-
-        # we need to know config_port
-        try:
-            ch = self.config_port
-        except:
-            # not specified - try to get it from the environment
-            try:
-                self.config_port = os.environ['ENSTORE_CONFIG_PORT']
-            except:
-                print "ERROR: config_host not specified and ENSTORE_CONFIG_PORT",\
-                      " is not defined in the environment"
-                self.print_help()
-                sys.exit(1)
 
         # tracing info
         dictlist = ""
