@@ -775,6 +775,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.stats_on = 1
                     self.drive_stats = ds
 
+
+    def set_volume_noaccess(self, volume):
+        self.vcc.set_system_noaccess(volume)
+        self.vol_info.update(self.vcc.inquire_vol(volume))
+
     # update statistics
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
@@ -1227,7 +1232,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         msg = "mover is stuck in %s" % (self.return_state(),)
                         Trace.alarm(e_errors.ERROR, msg)
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
-                        self.vcc.set_system_noaccess(self.current_volume)
+                        #self.vcc.set_system_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume)
                         self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE)
                         return
                         
@@ -2355,7 +2361,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "verify label returns %s" % (status,))
                 if status[0] == e_errors.OK:  #There is a label present!
                         msg = "volume %s already labeled %s" % (volume_label,status[1])
-                        self.vcc.set_system_noaccess(volume_label)
+                        #self.vcc.set_system_noaccess(volume_label)
+                        self.set_volume_noaccess(volume_label)
                         Trace.alarm(e_errors.ERROR, msg)
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
@@ -2373,7 +2380,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         if type(write_prot) is type(''):
                             write_prot = string.atoi(write_prot)
                         if write_prot:
-                            self.vcc.set_system_noaccess(volume_label)
+                            #self.vcc.set_system_noaccess(volume_label)
+                            self.set_volume_noaccess(volume_label)
                             Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
                             self.transfer_failed(e_errors.WRITE_ERROR,
                                                  "attempt to label write protected tape",
@@ -2422,6 +2430,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(status[0], status[1], error_source=TAPE)
                 return 0
         location = cookie_to_long(self.target_location)
+        time.sleep(600)
         self.run_in_thread('seek_thread', self.seek_to_location,
                            args = (location, self.mode==WRITE),
                            after_function=self.start_transfer)
@@ -3144,7 +3153,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 if self.current_volume:
                     try:
-                        self.vcc.set_system_noaccess(self.current_volume)
+                        #self.vcc.set_system_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume)
                     except:
                         exc, msg, tb = sys.exc_info()
                         broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)                
@@ -3227,7 +3237,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             broken = "dismount failed: %s %s" %(status[-1], status[0])
             if self.current_volume:
                 try:
-                    self.vcc.set_system_noaccess(self.current_volume)
+                    #self.vcc.set_system_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume)
                 except:
                     exc, msg, tb = sys.exc_info()
                     broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
@@ -3381,7 +3392,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
-                self.vcc.set_system_noaccess(volume_label)
+                #self.vcc.set_system_noaccess(volume_label)
+                self.set_volume_noaccess(self.volume_label)
             except:
                 exc, msg, tb = sys.exc_info()
                 broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
