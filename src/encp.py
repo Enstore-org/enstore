@@ -1750,10 +1750,13 @@ def pnfs_information(filelist,nfiles):
 
         # get some debugging info for the ticket
         pinf = {}
-        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
-                   'major','minor','rmajor','rminor',\
+        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
+                   'major','minor','rmajor','rminor',
                    'mode','pstat' ] :
-            exec("pinf["+repr(k)+"] = p."+k)
+            try:
+                pinf[k]=getattr(p,k)
+            except AttributeError:
+                pinf[k]="None"
         pinf['inode'] = 0                  # cpio wrapper needs this also
         pinfo.append(pinf)
 
