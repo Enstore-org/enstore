@@ -80,11 +80,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                            v["remaining_bytes"],waste))
                 
                 if self.dict.cursor_open:
-                    t = self.dict.db.txn()
-                    self.dict.db[(label,t)] = v
-                    t.commit()
-                else:
-                    self.dict[external_label] = v  ## was deepcopy
+                    Trace.log(e_errors.INFO, "Old style cursor is opened...")
+
+                t = self.dict.db.txn()
+                self.dict.db[(label,t)] = v
+                t.commit()
             else: ret = e_errors.NOSPACE
         return ret
 
