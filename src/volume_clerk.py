@@ -461,8 +461,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if record.has_key(ek):
                     del record[ek]
             self.dict[vol] = record
-            self.change_state(vol, 'system_inhibit_0', "none");
-            self.change_state(vol, 'system_inhibit_1', "none");
+            self.change_state(vol, 'other', "RECYCLED");
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
         else:
 
@@ -854,10 +853,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         record = self.dict[external_label]
-        
+
+        mdr = {}
         for key in record.keys():
             if ticket.has_key(key):
                 record[key]=ticket[key]
+                mdr[key]=ticket[key] # keep a record
 
         sizes = self.csc.get("blocksizes")
         try:
@@ -869,11 +870,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
         record['blocksize'] = msize
+        mdr['blocksize'] = msize
         if record['media_type']=='null':
             record['wrapper']='null'
+            mdr['wrapper'] = 'null'
         # write the ticket out to the database
         self.dict[external_label] = record
         Trace.log(e_errors.INFO, "volume has been modifyed %s" % (record,))
+        # to make SQL happy
+        mdr2 = string.replace(`mdr`, "'", '"')
+        self.change_state(external_label, 'modified', mdr2)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
