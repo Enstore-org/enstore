@@ -131,7 +131,8 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    config_host = "localhost"
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_file = "/pnfs/enstore/.(config)(flags)/enstore.conf"
     list = 0

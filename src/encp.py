@@ -122,15 +122,16 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "Sending ticket to",p.library+".library_manager"
     tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
-    tinfo["send_ticket"] = time.time() - t1
     if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
               +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
+    tinfo["send_ticket"] = time.time() - t1
     if list:
-        print "  Q'd:",unixfile, ticket["library"], ticket["file_family"]\
-              ,ticket["file_family_width"],ticket["size_bytes"]
+        print "  Q'd:",unixfile, ticket["library"], ticket["file_family"],\
+              ticket["file_family_width"]," bytes:", ticket["size_bytes"],\
+              "dt:",tinfo["send_ticket"]
 
     # We have placed our work in the system and now we have to wait for
     # resources. All we  need to do is wait for the system to call us back,
@@ -332,9 +333,12 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
               +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
+    tinfo["send_ticket"] = time.time() - t1
     if list :
         print "  Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
-              ,ticket["external_label"],ticket["bof_space_cookie"]
+              ,ticket["external_label"],ticket["bof_space_cookie"],\
+              "dt:",tinfo["send_ticket"]
+
 
     # We have placed our work in the system and now we have to wait for
     # resources. All we  need to do is wait for the system to call us back,
@@ -424,8 +428,8 @@ if __name__  ==  "__main__" :
     import getopt
 
     # defaults
-    config_host = "localhost"
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
     list = 0

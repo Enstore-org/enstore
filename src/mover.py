@@ -198,7 +198,6 @@ class Mover :
         bof_space_cookie = 0
         sanity_crc = 0
         complete_crc = 0
-        self.driver.wr_mnt = self.driver.wr_mnt+1
         pnfs = ticket["pnfsfile_info"]
         inode = 0
 
@@ -233,7 +232,7 @@ class Mover :
         #  get file/eod cookies & remaining bytes & errs & mnts
         eod_cookie = self.driver.get_eod_cookie()
         remaining_bytes = self.driver.get_eod_remaining_bytes()
-        wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
+        wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
         vcc = VolumeClerkClient(self.csc)
 
@@ -246,7 +245,8 @@ class Mover :
             self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
                                                    remaining_bytes,
                                                    eod_cookie,wr_err,
-                                                   wr_err,rd_err,wr_mnt,rd_mnt)
+                                                   wr_err,rd_err,
+                                                   wr_access,rd_access)
             msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
                   " but only" +" stored"+repr(wr_size)
             # tell user we're done, but there has been an error
@@ -258,7 +258,7 @@ class Mover :
         # if media full, mark volume readonly, unbind it & tell user to retry
         elif media_full :
             vcc.update_counts(ticket["external_label"],
-                              wr_err,rd_err,wr_mnt,rd_mnt)
+                              wr_err,rd_err,wr_access,rd_access)
             vcc.set_system_readonly(ticket["external_label"])
             self.unilateral_unbind_next()
             msg = "Volume "+repr(ticket["external_label"])
@@ -268,7 +268,7 @@ class Mover :
         # if media error, mark volume readonly, unbind it & tell user to retry
         elif media_error :
             vcc.update_counts(ticket["external_label"],
-                              wr_err,rd_err,wr_mnt,rd_mnt)
+                              wr_err,rd_err,wr_access,rd_access)
             vcc.set_system_readonly(ticket["external_label"])
             self.unilateral_unbind_next()
             msg = "Volume "+repr(ticket["external_label"])
@@ -278,7 +278,7 @@ class Mover :
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_error :
             vcc.update_counts(ticket["external_label"],
-                              wr_err,rd_err,wr_mnt,rd_mnt)
+                              wr_err,rd_err,wr_access,rd_access)
             vcc.set_hung(ticket["external_label"])
             self.unilateral_unbind_next()
             msg = "Volume "+repr(ticket["external_label"])
@@ -293,7 +293,8 @@ class Mover :
         self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
                                                remaining_bytes,
                                                eod_cookie,
-                                               wr_err,rd_err,wr_mnt,rd_mnt)
+                                               wr_err,rd_err,\
+                                               wr_access,rd_access)
 
         # connect to file clerk and get new bit file id
         fc = FileClerkClient(self.csc)
@@ -313,8 +314,8 @@ class Mover :
         dinfo = {}
         if 0 :
             for k in ['blocksize', 'device', 'eod', 'first_write_block',
-                      'rd_err', 'rd_mnt', 'remaining_bytes',
-                      'wr_err', 'wr_mnt'] :
+                      'rd_err', 'rd_access', 'remaining_bytes',
+                      'wr_err', 'wr_access'] :
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
 
         ticket["driver"] = dinfo
@@ -348,7 +349,6 @@ class Mover :
         drive_error = 0
         user_recieve_error = 0
         bytes_sent = 0
-        self.driver.rd_mnt = self.driver.rd_mnt+1
         sanity_cookie = ticket["sanity_cookie"]
         complete_crc = 0
 
@@ -367,13 +367,16 @@ class Mover :
             print sys.exc_info()[0],sys.exc_info()[1]
             media_error = 1 # I don't know what else to do right now
 
+        # close hsm file
+        self.driver.close_file_read()
+
         # we've sent the hsm file to the user, shut down data transfer socket
         self.data_socket.close()
 
         # get the error/mount counts and update database
-        wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
+        wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
         vcc.update_counts(ticket["external_label"],
-                          wr_err,rd_err,wr_mnt,rd_mnt)
+                          wr_err,rd_err,wr_access,rd_access)
 
         # if media error, mark volume readonly, unbind it & tell user to retry
         if media_error :
@@ -407,8 +410,8 @@ class Mover :
         if 0:
             for k in ['blocksize', 'device', 'eod', 'firstbyte',
                       'left_to_read', 'pastbyte',
-                      'rd_err', 'rd_mnt', 'remaining_bytes',
-                      'wr_err', 'wr_mnt'] :
+                      'rd_err', 'rd_access', 'remaining_bytes',
+                      'wr_err', 'wr_access'] :
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
 
@@ -447,8 +450,8 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    config_host = "localhost"
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
 

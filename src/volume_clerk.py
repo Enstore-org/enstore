@@ -81,13 +81,13 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             record["sum_rd_err"] = 0
         try:
-            record['sum_wr_mnt'] = ticket['sum_wr_mnt']
+            record['sum_wr_access'] = ticket['sum_wr_access']
         except KeyError:
-            record["sum_wr_mnt"] = 0
+            record["sum_wr_access"] = 0
         try:
-            record['sum_rd_mnt'] = ticket['sum_rd_mnt']
+            record['sum_rd_access'] = ticket['sum_rd_access']
         except KeyError:
-            record["sum_rd_mnt"] = 0
+            record["sum_rd_access"] = 0
         try:
             record['wrapper'] = ticket['wrapper']
         except KeyError:
@@ -171,6 +171,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         # go through the volumes and find one we can use for this request
         vol = {}
         for k in dict.keys() :
+            print "k=",k
             v = dict[k]
             if v["library"] != library :
                 continue
@@ -190,7 +191,9 @@ class VolumeClerkMethods(DispatchingWorker) :
                 # administrator reset the system_inhibit back to none in these
                 # special, and hopefully rare cases.
                 v["system_inhibit"] = "full"
-                dict[v[k]] = v
+                print k
+                pprint.pprint(v)
+                dict[repr(k)] = v
                 continue
             vetoed = 0
             extl = v["external_label"]
@@ -263,7 +266,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         if record["first_access"] == -1 :
             record["first_access"] = record["last_access"]
 
-        for key in ['wr_err','rd_err','wr_mnt','rd_mnt'] :
+        for key in ['wr_err','rd_err','wr_access','rd_access'] :
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError:
@@ -273,7 +276,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                 return
 
         # record our changes
-        dict[key] = record
+        dict[external_label] = record
         record["status"] = "ok"
 
         self.reply_to_caller(record)
@@ -307,7 +310,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         if record["first_access"] == -1 :
             record["first_access"] = record["last_access"]
 
-        for key in ['wr_err','rd_err','wr_mnt','rd_mnt'] :
+        for key in ['wr_err','rd_err','wr_access','rd_access'] :
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError:
@@ -425,8 +428,8 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    config_host = "localhost"
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
 

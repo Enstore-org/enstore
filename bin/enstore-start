@@ -15,6 +15,8 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/bin/defaults
 
+place=`pwd`
+cd $enstore_db
 
 ################################################################################################################################################
 
@@ -45,11 +47,8 @@ fi
 if [ $ping_only -eq 0 ] ; then
   if [ $enstore_start_volumeclerk -eq 1 ] ; then
     echo "$What Volume Clerk"
-    place=`pwd`
-    cd $enstore_db
     python $ENSTORE_DIR/src/volume_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-volume_clerk_pids
-    cd $place
   fi
 
 else
@@ -70,11 +69,8 @@ fi
 if [ $ping_only -eq 0 ] ; then
   if [ $enstore_start_fileclerk -eq 1 ] ; then
     echo "$What File Clerk"
-    place=`pwd`
-    cd $enstore_db
     python $ENSTORE_DIR/src/file_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-file_clerk_pids
-    cd $place
   fi
 
 else
@@ -148,3 +144,5 @@ for i in $enstore_movers; do
 done
 
 ################################################################################################################################################
+
+cd $place

@@ -15,8 +15,8 @@ def try_a_port(host, port) :
 
 # get an unused port for communication
 def get_callback() :
-    host = 'localhost'
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #host = 'localhost'
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the

@@ -22,8 +22,8 @@ def try_a_port(host, port) :
 
 # try to get a port from a range of possibilities
 def get_client() :
-    host = 'localhost'
-    #(host,ha,hi) = socket.gethostbyaddr(socket.gethostname())
+    #host = 'localhost'
+    (host,ha,hi) = socket.gethostbyaddr(socket.gethostname())
     while  1:
         for port in range (7600, 7700) : # range (7600, 7600) has 0 members...
             success, sockt = try_a_port (host, port)
@@ -86,7 +86,7 @@ class UDPClient:
                           self.number,"resending to ", address, message
             else :
                 #print "UDPClient.send: resending to ", address, message
-		pass
+                pass
         return out
 
 
@@ -100,7 +100,8 @@ if __name__ == "__main__" :
 
     # defaults
     msg = "All dogs have fleas, but cats make you sick!"
-    host = "localhost"
+    #host = "localhost"
+    (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     port = 7
     list = 0
 

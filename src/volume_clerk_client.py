@@ -37,8 +37,8 @@ class VolumeClerkClient :
                declared = -1,         # time volume was declared to system
                sum_wr_err = 0,        # total number of write errors
                sum_rd_err = 0,        # total number of read errors
-               sum_wr_mnt = 0,        # total number of write mounts
-               sum_rd_mnt = 0,        # total number of read mounts
+               sum_wr_access = 0,     # total number of write mounts
+               sum_rd_access = 0,     # total number of read mounts
                wrapper = "cpio",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
                ) :
@@ -57,8 +57,8 @@ class VolumeClerkClient :
                    'declared'        : declared,
                    'sum_wr_err'      : sum_wr_err,
                    'sum_rd_err'      : sum_rd_err,
-                   'sum_wr_mnt'      : sum_wr_mnt,
-                   'sum_rd_mnt'      : sum_rd_mnt,
+                   'sum_wr_access'   : sum_wr_access,
+                   'sum_rd_access'   : sum_rd_access,
                    'wrapper'         : wrapper,
                    'blocksize'       : blocksize }
         return self.send(ticket)
@@ -101,25 +101,25 @@ class VolumeClerkClient :
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
-                            wr_err,rd_err,wr_mnt,rd_mnt) :
+                            wr_err,rd_err,wr_access,rd_access) :
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
-                  'wr_mnt'          : wr_mnt,
-                  'rd_mnt'          : rd_mnt }
+                  'wr_access'       : wr_access,
+                  'rd_access'       : rd_access }
         return self.send(ticket)
 
     # update the counts in the database
-    def update_counts(self, external_label, wr_err,rd_err,wr_mnt,rd_mnt) :
+    def update_counts(self, external_label, wr_err,rd_err,wr_access,rd_access):
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
-                  'wr_mnt'          : wr_mnt,
-                  'rd_mnt'          : rd_mnt }
+                  'wr_access'       : wr_access,
+                  'rd_access'       : rd_access }
         return self.send(ticket)
 
     # which volume can we use for this library, bytes and file family and ...
@@ -144,8 +144,8 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    config_host = "localhost"
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
     vol = ""

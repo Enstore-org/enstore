@@ -20,8 +20,8 @@ class GenericDriver:
             self.eod = eval(eod_cookie)
         self.wr_err = 0
         self.rd_err = 0
-        self.wr_mnt = 0
-        self.rd_mnt = 0
+        self.wr_access = 0
+        self.rd_access = 0
 
     def load(self):
         pass
@@ -43,8 +43,7 @@ class GenericDriver:
         return repr(self.eod)
 
     def get_errors(self) :
-        return (self.wr_err, self.rd_err,\
-                self.wr_mnt, self.rd_mnt)
+        return (self.wr_err, self.rd_err, self.wr_access, self.rd_access)
 
 
 class  FTTDriver(GenericDriver) :
@@ -112,6 +111,7 @@ class  RawDiskDriver(GenericDriver) :
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
+	self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
         self.left_to_read = self.pastbyte - self.firstbyte
@@ -132,6 +132,7 @@ class  RawDiskDriver(GenericDriver) :
 
     def open_file_write(self):
         # we cannot auto sense a floppy, so we must trust the user
+	self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
 

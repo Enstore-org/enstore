@@ -177,8 +177,8 @@ if __name__ == "__main__" :
     import socket
 
     # defaults
-    config_host = "localhost"
-    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    #config_host = "localhost"
+    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
 
