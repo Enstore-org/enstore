@@ -11,3 +11,4 @@ db_load
 db_recover
 db_printlog
 db_stat
+ecrc
