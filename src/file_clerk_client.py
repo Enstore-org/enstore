@@ -182,6 +182,19 @@ class FileClient(generic_client.GenericClient,
 		       "restore_dir" : restore_dir } )
         return r
 
+
+    def get_crcs(self, bfid):
+        r = self.send({"work"        : "get_crcs",
+                       "bfid"        : bfid})
+        return r
+
+    def set_crcs(self, bfid, sanity_cookie, complete_crc):
+        r = self.send({"work"        : "set_crcs",
+                       "bfid"        : bfid,
+                       "sanity_cookie": sanity_cookie,
+                       "complete_crc": complete_crc})
+        return r
+        
     # rename volume and volume map
     def rename_volume(self, bfid, external_label, 
 		      set_deleted, restore_vm, restore_dir):
@@ -226,8 +239,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 	self.restore = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
+        self.get_crcs=None
+        self.set_crcs=None
         generic_client.GenericClientInterface.__init__(self)
 
+        
     # define the command line options that are valid
     def options(self):
         if self.restricted_opts:
@@ -235,6 +251,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         else:
             return self.client_options()+\
                    ["bfids","bfid=","deleted=","list=","backup",
+                    "get_crcs=","set_crcs=",
                     "restore=", "recursive"]
 
 
@@ -272,8 +289,8 @@ def do_work(intf):
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
-	    print repr(ticket['fc'])
-	    print repr(ticket['vc'])
+	    print ticket['fc']
+	    print ticket['vc']
     elif intf.restore:
 	try:
 	    if intf.restore_dir: dir="yes"
@@ -281,6 +298,23 @@ def do_work(intf):
 	    dir = "no"
 	print "file",intf.restore
         ticket = fcc.restore(intf.restore, dir)
+    elif intf.get_crcs:
+        bfid=intf.get_crcs
+        ticket = fcc.get_crcs(bfid)
+        print "bfid %s: sanity_cookie %s, complete_crc %s"%(bfid,ticket["sanity_cookie"],
+                                                 `ticket["complete_crc"]`) #keep L suffix
+    elif intf.set_crcs:
+        bfid,sanity_size,sanity_crc,complete_crc=string.split(intf.set_crcs,',')
+        sanity_crc=eval(sanity_crc)
+        sanity_size=eval(sanity_size)
+        complete_crc=eval(complete_crc)
+        sanity_cookie=(sanity_size,sanity_crc)
+        ticket=fcc.set_crcs(bfid,sanity_cookie,complete_crc)
+        sanity_cookie = ticket['sanity_cookie']
+        complete_crc = ticket['complete_crc']
+        print "bfid %s: sanity_cookie %s, complete_crc %s"%(bfid,ticket["sanity_cookie"],
+                                                            `ticket["complete_crc"]`) #keep L suffix
+        
     else:
 	intf.print_help()
         sys.exit(0)
