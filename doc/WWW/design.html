@@ -18,7 +18,7 @@
 <li><a href="#scope">1.0.1 Scope and Overview</a>
 <li><a href="#assum">1.0.2 Assumptions and Constraints</a>
 <li><a href="#aintro">1.0.3 Components</a>
-<li><a href="#pnfs">1.1 The DESY <em>Pnfs</em> Namespace</a>
+<li><a href="#pnfs">1.1 The DESY <em>pnfs</em> Namespace</a>
 <li><a href="#ptests">1.1.1 <em>Pnfs</em> Tests</a>
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
@@ -28,9 +28,9 @@
 <li><a href="#encp_options">1.2.1 <i>Encp</i> command line options</a></li>
 <li><a href="#encp_throttle">1.2.2 Throttling in <i>encp</i></a></li>
 <li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
-<li><a href="#encp_queue">1.2.4 Encp Queues</a>
+<li><a href="#encp_queue">1.2.4 Encp Transfer Lists</a>
 <li><a href="#encp_client">1.2.5 Encp Client Installation</a>
-<li><a href="#servers">1.3 Enstore servers</a>
+<li><a href="#servers">1.3 Enstore Servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
 <li><a href="#library_manager">1.3.3 Library Manager</a>
@@ -80,13 +80,13 @@
 <h2><a name="overview">
 1 Enstore Architecture
 </h2>
-The Enstore system provides a generic interface for experimenters to
+Enstore provides a generic interface for experimenters to
 efficiently use mass storage systems as easily as if they were native file
 systems.
 <p>
-<img src="enstore_at_fnal2.gif">
+<center><img src="enstore_at_fnal2.gif"></center>
 <p>
-<a href="enstore_at_fnal2.ps">(also available in Postscript)</a>
+<div align=right><a href="enstore_at_fnal2.ps">(also available in Postscript)</a><div align=left>
 <p>
 
 <h3><a name="scope">
@@ -138,7 +138,7 @@ monitored and fine tunable.  A great deal of care has been taken to ensure
 that it is able to prevent or to recover from a worst case scenario.  The
 system has layers around it to customize and address problems as they
 occur.  When possible, these layers are expected to use already existing
-components (e.g. FTT, pnfs).
+components (e.g. FTT, <em>pnfs</em>).
 <p>
 
 The Enstore system is designed to provide for the needed Run II data access
@@ -311,9 +311,9 @@ The system is only limited by the availability of physical resources.
 We control all of the source code for the system except for that of
 <em>pnfs</em> (which is a well supported product from DESY).
 <p>
-<img src="enstoreSimple.gif">
+<center><img src="enstoreSimple.gif"></center>
 <p>
-<a href="enstoreSimple.ps">(also available in Postscript)</a>
+<div align=right><a href="enstoreSimple.ps">(also available in Postscript)</a><div align=left>
 <p>
 Like <em>tcp</em>, the system is architected with distributed and
 peer-to-peer reliability.
@@ -326,7 +326,7 @@ of an operation.
 
 <hr>
 <h2><a name="pnfs">
-1.1 The DESY <em>Pnfs</em> Namespace
+1.1 The DESY <em>pnfs</em> Namespace
 </h2>
 
 <em>Pnfs</em> is a DESY written and supported package.  Detailed
@@ -479,7 +479,7 @@ rip6:/rip6disk1         /pnfs/rip6              nfs     noauto,user,intr,bg,hard
 </pre>
 <p>
 As you can see, rip6 is nfs mounting 3 disks from rip8 and mounting the
-pnfs disks it is exporting as well as the local disks.
+<em>pnfs</em> disks it is exporting as well as the local disks.
 There are also numerous Enstore processes running on rip6, for example:
 <pre>
 USER       PID %CPU %MEM  SIZE   RSS TTY STAT START   TIME COMMAND
@@ -554,8 +554,8 @@ All non-I/O Unix commands that operate on normal file systems can also
 several examples on their web pages and tools in their <em>pnfs</em>
 package that allow users to view and control the special features of
 <em>pnfs</em>.  Enstore has tailored these tools into a single script,
-called pcmd, that allows users to control, manipulate and query pnfs files
-that Enstore creates. The pcmd tool is distributed along with the encp
+called pcmd, that allows users to control, manipulate and query <em>pnfs</em> files
+that Enstore creates. The pcmd tool is distributed along with the <em>encp</em>
 client. It is almost entirely written in shell, and therefore, it is
 stand alone and doesn't require any other products, including python.
 <p>
@@ -723,7 +723,7 @@ Enstore enabled
 </TR>
 
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>lists whether pnfs mount point is up <BR>*** Not fully functional yet ***</TD>
+<TD NOSAVE>lists whether <em>pnfs</em> mount point is up <BR>*** Not fully functional yet ***</TD>
 <TD NOSAVE>pcmd pnfs_state mount-point</TD>
 <TD NOSAVE><pre>
 $ pcmd pnfs_state /pnfs/grau/ait
@@ -863,7 +863,7 @@ Don't use these unless you can interpret the results:
 
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>shows of the counters</TD>
-<TD NOSAVE>pcmd counterN dbnum <br>(must have cwd in pnfs</TD>
+<TD NOSAVE>pcmd counterN dbnum <br>(must have cwd in <em>pnfs</em></TD>
 <TD NOSAVE><pre>
 </pre></TD>
 </TR>
@@ -891,7 +891,7 @@ Don't use these unless you can interpret the results:
 
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>shows the database information</TD>
-<TD NOSAVE>pcmd databaseN dbnum <br>(must have cwd in pnfs)</TD>
+<TD NOSAVE>pcmd databaseN dbnum <br>(must have cwd in <em>pnfs</em>)</TD>
 <TD NOSAVE><pre>
 </pre></TD>
 </TR>
@@ -990,7 +990,7 @@ extension to <em>encp</em>.
 </tr>
 
 <tr NOSAVE>
-<td NOSAVE>print short help message abouting using encp</td>
+<td NOSAVE>print short help message abouting using <em>encp</em></td>
 <td NOSAVE>--help</td>
 <td NOSAVE>continuous Ascii status file and html snapshot file</td>
 
@@ -1072,7 +1072,7 @@ since at most 15 will be active in the system at any time.
 </h3>
 
 <em>Encp</em> duplicates unix cp's behaviour when one tries to read or write
-multiple input files from the HSM: <br> ecmd encp [options]
+multiple input files from the HSM: <br> ecmd <em>encp</em> [options]
 source... directory<br> That is, the final item has to be a directory when
 specifying an input list.  There is 1 caveat when specifying multiple files
 using a single <em>encp</em> command: there is at most 1 mover processing your
@@ -1382,7 +1382,7 @@ Complete:  41943040  bytes in  4  files  in 34.7769209146 S.  Overall rate =  1.
 </pre>
 
 <h3><a name="encp_queue">
-1.2.4 <em>Encp</em> Queues
+1.2.4 <em>Encp</em> Transfer Lists
 </h3>
 
 One of the requests of the Fermilab Farms group was the ability to query
@@ -1397,7 +1397,7 @@ down and explain why their transfers failed.]
 This is straightforward and easy command, except for 2 complications:
 <ul>
   <li> Python is (currently) required to get the transfer queue
-  <li> The command must be available everywhere the encp clients run and
+  <li> The command must be available everywhere the <em>encp</em> clients run and
        python isn't typically available everywhere.
 </ul>
 
@@ -1465,7 +1465,7 @@ informational: ups declare succeeded
 informational: ups declare succeeded
 </pre>
 
-And the entire product basically consists of the encp binary, pcmd (a <em>pnfs</em> script
+And the entire product basically consists of the <em>encp</em> binary, pcmd (a <em>pnfs</em> script
 described in the <em>pnfs</em> section), and some UPS tables.  The <em>encp</em> binary is
 quite large since it is statically linked.
 <pre>
@@ -1500,11 +1500,10 @@ frozen, <it>i.e.</it>, they will need Python and the other dependent products.
 
 <hr>
 <h2><a name="servers">
-1.3 Enstore servers
+1.3 Enstore Servers
 </h2>
 
-Enstore servers are software entities which handle media, and in a
-future release, disk caches.
+Enstore servers are software entities which handle media.
 The high level  concepts are as follows:
 <dl>
 <dt><em>Physical library</em>
@@ -1515,7 +1514,7 @@ and organize them.
 A physical library can be thought of as consisting of
 <ul>
         <li>one or more virtual libraries
-        <li>a media changer
+        <li>a media changer (robot arm)
         <li>one of more media export/import slots
         <li>one of more drives (tape, cdrom, disk, etc.)
         <li>volumes (tape cartridges, cdroms, etc.)
@@ -1541,7 +1540,7 @@ which is known to the Media Changer.
 <dd>A quota family is a set of pairs of media names and maximum number of volumes.
 All files are created with respect to a quota family.
 Creation of a file is not allowed if the maximum number of volumes
-in that family would be exceeded.
+in that family would be exceeded.  *** Quotas are not implemented in Enstore yet ***
 <p>
 <dt><em>File family</em>:
 <dd>A file family is specified by a name and an integer "width".
@@ -1557,7 +1556,7 @@ family will be placed on the volume.
 By design, there is no pre-set limit on the number of file families.
 Clever use of file families will allow volumes to be faulted out to
 "shelf", and also to decrease access times for subsequent reads.  When a file
-family has filled all of its "width" media, new media, limited by a quota,
+family has filled all of its "width" media, new media
 are drawn out of a pool of blanks.
 </dl>
 Media ejected to shelf are put into a shelf virtual library and
@@ -1858,10 +1857,10 @@ defined protocol, as just described.
 <p>
 The Mover is responsible for efficient data movement and as such is an
 integral part of the system.  The architecture allows for performance critical
-code to be written in "C" thus allowing efficient access to fundamental OS
+code to be written in C thus allowing efficient access to fundamental OS
 features such as forking with minimal to no language overhead.
 <p>
-Although a Mover is bound to a drive, and a drive may serve more than one
+Although a Mover is bound to a drive, a drive may serve more than one
 virtual library, i.e., the Mover has a dynamic list of of Library Managers
 that it is supposed to service.  This has two benefits.
 First, since a Library Manager handles only one type of media, a drive which
@@ -1879,7 +1878,7 @@ changes, this is how we can guarantee resources to data acquisition.
 <!-- ----------------------------------------------------->
 When the Mover starts up, the 'idle_mover' request/command is sent to each
 Library Manager configured and the responses from the Library Managers are
-acted upon.  After the startup, the mover wait until it is 'summoned' by a
+acted upon.  After the startup, the mover waits until it is 'summoned' by a
 Library Manager.
 
 <p>
@@ -1891,8 +1890,8 @@ request/commands to the Library Manager that summoned the mover:
   <li> have_bound_volume, busy
 </ol>
 
-When the mover is busy, the Library Manager should responde with 'no_work.'
-Otherwise, the Library Manager can responde with 'no_work,'
+When the mover is busy, the Library Manager should respond with 'no_work.'
+Otherwise, the Library Manager can respond with 'no_work,'
 'read_from_hsm,' or 'write_to_hsm.'
 
 When the mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
@@ -1901,11 +1900,10 @@ main Mover process can read shared memory locations to get the status of
 the transfer.
 
 The first thing the transfer process does is check to see if the waiting
-encp is responsive. This involves contacting encp on the designated TCP
+<em>encp</em> is responsive. This involves contacting encp on the designated TCP
 control port and sending along the TCP port designation for the data transfer.
-If encp is responsive, the Mover proceeds with making
+If <em>encp</em> is responsive, the Mover proceeds with making
 sure the proper volume is loaded in it's tape drive.
-
 
 <p>
 Reads -- Once a volume is bound the Mover may read a volume and send data
@@ -1947,15 +1945,15 @@ the volume.
 </ol>
 
 If any errors occur while reading or writing a volume, an attempt is made
-to characterize them as either media or drive.Depending upon the error, the
+to characterize them as either media or drive.  Depending upon the error, the
 Mover will issue either have_bound_volume or unilateral_unbind to the
 Library Manager.
 This is discussed more completely in the section on Error control.
-If the user drops the control tcp channel unilaterally, assume he has
-aborted.
+If the user drops the control tcp channel unilaterally, the Mover assumes he has
+aborted the transfer.
 
 If all is well with the entire transfer, the Mover issues a
-have_bound_volume to the Library Manager.
+have_bound_volume to the Library Manager and wait for further instructions.
 
 
 <p>
@@ -1968,15 +1966,15 @@ The Mover is started and controlled through a command line interface using
 ecmd. Option commands for "ecmd mov [--option_command] <mover>" include the
 general option commands
 supported by all other servers:
-alive, alive_rcv_timeout=, alive_retries=, config_host=, config_port=
-, help, server_verbose, verbose. Additionally the "status" option commands
-is supported and produce the following:
+alive, alive_rcv_timeout=, alive_retries=, config_host=, config_port=,
+help, server_verbose, verbose. Additionally the "status" option commands
+is supported and produces the following:
 <br>
 $ ecmd mov --status fndaprdisk.mover<br>
 {'wr_bytes': 6398896, 'rd_bytes': 6398896, 'no_xfers': 11, 'mode': 'w',
 'bytes_to_xfer': 6398896, 'crc_func': '<built-in function ECRC>',
 'state': 'idle', 'status': ('ok', None)}
-
+<br>where
 <dl>
 <dt>wr_bytes
      <dd> the number of bytes written to the tape device when 'mode' is 'w'
@@ -2017,7 +2015,7 @@ $ ecmd mov --status fndaprdisk.mover<br>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>port</TD>
-<TD NOSAVE>udp port for mover communication</TD>
+<TD NOSAVE>UPDport for mover communication</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>7516</TD>
 </TR>
@@ -2063,7 +2061,7 @@ media changer.</TD>
 <TD NOSAVE>device</TD>
 <TD NOSAVE>device name used as parameter to certain driver function calls.</TD>
 <TD NOSAVE>&nbsp;</TD>
-<TD NOSAVE>'/dev/st0'</TD>
+<TD NOSAVE>'/dev/rmt/tps2d2n' (make sure this is a no-rewind device)</TD>
 </TR>
 </TABLE>
 
@@ -2233,7 +2231,7 @@ following reports using this information:<BR>
 <UL>
 <LI>an <a href="#inquisitor_ascii_status">ascii file</a> continuously recording the Enstore system status
 <LI>an <a href="#inquisitor_html_status">html file</a> recording the latest status snapshot of the Enstore system
-<LI>an <a href="#inquisitor_encp_status">html file</a> recording a snapshot of a history of encp commands 
+<LI>an <a href="#inquisitor_encp_status">html file</a> recording a snapshot of a history of <em>encp</em> commands 
 <LI>a <a href="#inquisitor_plot_ita">plot of individual transfer activity</a>
 <LI>a <a href="#inquisitor_plot_btd">plot of total bytes transferred/day</a>
 </UL>
@@ -2255,7 +2253,7 @@ server in question is contacted and the resulting information is formated for
 output to the various reports. The possible information gathered from each of the
 servers and which report it ends up in are listed below.  In addition to
 gathering information from each Enstore server, the Inquisitor will collect
-information from the log files on encp commands and report on the blocksizes
+information from the log files on <em>encp</em> commands and report on the blocksizes
 set in the Enstore config file.
 
 <P>
@@ -2272,8 +2270,8 @@ set in the Enstore config file.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>&nbsp;</TD>
-<TD NOSAVE>encp command history</TD>
-<TD NOSAVE>encp html snapshot file</TD>
+<TD NOSAVE><em>encp</em> command history</TD>
+<TD NOSAVE><em>encp</em> html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>admin_clerk</TD>
@@ -2350,9 +2348,9 @@ general commands supported by all other servers; <i>alive</i>,
 <TD NOSAVE>maximum ascii size</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>get the maximum number of encp status lines displayed</TD>
+<TD NOSAVE>get the maximum number of <em>encp</em> status lines displayed</TD>
 <TD NOSAVE>ecmd inq --get_max_encp_lines</TD>
-<TD NOSAVE>maximum number of encp lines</TD>
+<TD NOSAVE>maximum number of <em>encp</em> lines</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the html status file auto refresh rate</TD>
@@ -2375,7 +2373,7 @@ general commands supported by all other servers; <i>alive</i>,
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>reset the maximum number of encp status lines displayed</TD>
+<TD NOSAVE>reset the maximum number of <em>encp</em> status lines displayed</TD>
 <TD NOSAVE>ecmd inq --max_encp_lines=13</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
@@ -2502,7 +2500,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>max_encp_lines</TD>
-<TD NOSAVE>maximum number of encp lines to display</TD>
+<TD NOSAVE>maximum number of <em>encp</em> lines to display</TD>
 <TD NOSAVE>25</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -2570,10 +2568,10 @@ These examples reflect a running system on the <i>rip</i> cluster.
 <h4><a name="inquisitor_ascii_status">
 1.3.8.3.1 Example Ascii Status File
 </h4>
-This file records a continuous history of the status of the enstore system as
+This file records a continuous history of the status of the Enstore system as
 monitored by the Inquisitor.  It contains the following information:<br>
 <ul>
-<li>block size information as recorded in the enstore config file
+<li>block size information as recorded in the Enstore config file
 <li>alive status for each server including node, port, and time
 <li>library manager specific information
 <ul>
@@ -2615,13 +2613,13 @@ The html snapshot file contains the last know status of the Enstore system.
 As such it will be a repeat of the last set of information in the Ascii status
 file formatted for browsing.
 <h4><a name="inquisitor_encp_status">
-1.3.8.3.3 Example Encp History Snapshot File
+1.3.8.3.3 Example <em>encp</em> History Snapshot File
 </h4>
 Each <em>encp</em> history line contains the following information
 <ul>
 <li>end of transfer time
-<li>node of encp process
-<li>user tunning encp
+<li>node of <em>encp</em> process
+<li>user tunning <em>encp</em>
 <li>data transfer rate
 <li>number of bytes transferred
 <li>type of transfer (read or write)
@@ -2635,9 +2633,9 @@ Each <em>encp</em> history line contains the following information
 This plot shows the history of individual transfers (and their size) over a 
 specified time interval.  This includes both reads and writes.
 <p>
-<img src="bpt.pts.gif">
+<center><img src="bpt.pts.gif"></center>
 <p>
-<a href="bpt.pts.ps">(also available in Postscript)</a>
+<div align=right><a href="bpt.pts.ps">(also available in Postscript)</a><div align=left>
 <p>
 <h4><a name="inquisitor_plot_btd">
 1.3.8.3.5 Example Bytes Transferred/Day Plot
@@ -2645,9 +2643,9 @@ specified time interval.  This includes both reads and writes.
 This plot shows the number of bytes transferred per day over a specified time
 interval.  This includes both reads and writes.
 <p>
-<img src="bytes.pts.gif">
+<center><img src="bytes.pts.gif"></center>
 <p>
-<a href="bytes.pts.ps">(also available in Postscript)</a>
+<div align=right><a href="bytes.pts.ps">(also available in Postscript)</a><div align=left>
 <p>
 <h3><a name="alarm_server">
 1.3.9 Alarm Server
@@ -2660,16 +2658,16 @@ these institutions and at Fermilab.  We have begun investigating its use in
 association with the Enstore system. ***
 <p>
 <hr>
-<h3><a name="server_protocols">
-</h3>
+<h2><a name="server_protocols">
 1.4 Server Protocols
+</h2>
 <p>
 Communications between clients and servers is implemented in the python modules udp_client.py
 and dispatching_worker.py which contain the classes UDPclient and DispatchingWorker respectively.
 For example, a mover is a client of the media_changer; i.e., it sends mount and dismount requests
 to the media_changer and waits for replies.  The client and the server may run on the same or
 different machines and messages, that is requests and replies, are passed using the UDP network protocol.
-UDP is not a guaranteed reliable protocol but the enstore protocols, described later, implement reliability.
+UDP is not a guaranteed reliable protocol but the Enstore protocols, described later, implement reliability.
 
 <p>
 Generally, each server module has a corresponding client module that implements the client interface
@@ -2739,9 +2737,7 @@ same client id and request id and if it finds a match it resends the reply.
 <p>
 If the request dictionary grows beyond a certain size (currently 1000 entries) then entries older
 than 30 minutes are deleted.
-</h3>
 
-</h3>
 <hr>
 <h2><a name="db">
 2 Databases in Enstore
@@ -2983,16 +2979,16 @@ approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
 communications flow before the Mover contacts the Library Manager.
 <p>
-<img src=read.gif>
+<center><img src=read.gif></center>
 <p>
-<a href="read.ps">(also available in Postscript)</a>
+<div align=right><a href="read.ps">(also available in Postscript)</a><div align=left>
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts PNFS asking for a bit file ID (bfid)
+The user (through <em>encp</em>) contacts <em>pnfs</em> asking for a bit file ID (bfid)
 for the named file.
 <li>
-PNFS returns the bfid to <em>encp</em>.
+<em>pnfs</em> returns the bfid to <em>encp</em>.
 <li>
 <em>Encp</em> asks the Configuration Server with which File Clerk should it be
 communicating.
@@ -3021,7 +3017,7 @@ requested file has a read access.
 The Volume Clerk confirms access permission
 <li>
 The Library Manager puts read request into internal request queue and
-tells the encp that the request has been accepted
+tells the <em>encp</em> that the request has been accepted
 <li>
 The Library Manager finds next potentially available mover in its list
 of movers and sends summon message to it initiating mover dialog with
@@ -3044,7 +3040,7 @@ The Media Changer responds once the volume is mounted.
 <li>
 The Mover sends the data to <em>encp</em>.
 <li>
-The Mover tells encp when all the data has been transferred and sends the crc information.
+The Mover tells <em>encp</em> when all the data has been transferred and sends the crc information.
 <li>
 The read has completed.
 <li>
@@ -3062,15 +3058,15 @@ approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
 communications flow before the Mover contacts the Library Manager.
 <p>
-<img src=write.gif>
+<center><img src=write.gif></center>
 <p>
-<a href="write.ps">(also available in Postscript)</a>
+<div align=right><a href="write.ps">(also available in Postscript)</a><div align=left>
 <p>
 <ul>
 <li>
-The user (through <em>encp</em>) contacts PNFS with a request to create a file.
+The user (through <em>encp</em>) contacts <em>pnfs</em> with a request to create a file.
 <li>
-PNFS returns the file family and volume library information to <em>encp</em>.
+<em>pnfs</em> returns the file family and volume library information to <em>encp</em>.
 <li>
 <em>encp</em> asks the Configuration Server with which Library Manager should
 it be communicating.
@@ -3126,7 +3122,7 @@ The File Clerk responds with the bit file id.
 The Mover tells <em>encp</em> that the file has been written and sends the bit
 file ID and the crc.
 <li>
-<em>Encp</em> tells PNFS that the file has been created, and the bfid should
+<em>Encp</em> tells <em>pnfs</em> that the file has been created, and the bfid should
 be stored.
 <li>
 The write has completed.
@@ -4438,13 +4434,13 @@ The procedure for importing a volume is:
 6 Test System
 </h2>
 <p>
-<img src="test-network.gif">
+<center><img src="test-network.gif"></center>
 <p>
-<a href="test-network.ps">(also available in Postscript)</a>
+<div align=right><a href="test-network.ps">(also available in Postscript)</a><div align=left>
 <p>
-<img src="test-configuration.gif">
+<center><img src="test-configuration.gif"></center>
 <p>
-<a href="test-configuration.ps">(also available in Postscript)</a>
+<div align=right><a href="test-configuration.ps">(also available in Postscript)</a><div align=left>
 <p>
 
 <h2><a name="ts_results">
@@ -4458,13 +4454,13 @@ The procedure for importing a volume is:
      <table cols=2 width="50%">
      <tr>
      <td> 2 AITS
-     <td> (5 of 84 tapes allocated)
+     <td> (15 of 84 tapes allocated)
      <tr>
      <td> 1 Mammoth
-     <td> (5 of 42 tapes allocated)
+     <td> (15 of 42 tapes allocated)
      <tr>
      <td> 2 DLTS
-     <td> (5 of 84 tapes allocated)
+     <td> (15 of 84 tapes allocated)
      </table>
 <li> STK Robot:
      <table cols=2 width="50%">
@@ -4526,7 +4522,7 @@ The procedure for importing a volume is:
 	 <li> Transfer time ~ 116 seconds (8.8 MB/S)
 	 <li> EOF time ~ 0 seconds
 	 <li> Get stats time ~ 34 seconds
-	 <li> Effective User rate:5.7 MB/s (appending)
+	 <li> Effective User rate: 5.7 MB/s (appending)
        </ul
 	      </dd>
 </dl>
@@ -4540,11 +4536,11 @@ The procedure for importing a volume is:
 <tr>
 <td> no crc
 <td> 5-10%
-<td> 40-60% (bug)
+<td> 5-10%
 <tr>
 <td> crc
-<td> 20-25%
-<td> 50-60%
+<td> 10-20%
+<td> 10-20%
 </table>
 
 
