@@ -51,6 +51,20 @@ for log in $logfiles; do
   mv $log $HISTORY/$year/$month
 done
 
+# also get rid of the extra log files.  these are copies
+# of lines in the LOG files, so just delete them.
+for prefix in ALARM ENCPS EVRLY LMQADDS MOUNTS; do
+    files=`ls -1 $prefix-*`
+    for log in $files; do
+      year=` echo $log | cut -f2 -d-`
+      month=`echo $log | cut -f3 -d-`
+      smash=0
+      if [ $year  -lt $thisYear  ]; then smash=1;fi
+      if [ $month -lt $thisMonth ]; then smash=1;fi
+      if [ $smash -eq 1 ]; then rm $log; fi
+    done
+done
+
 cd $HISTORY
 find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
 
