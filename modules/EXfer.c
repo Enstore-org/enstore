@@ -152,12 +152,20 @@ EXto_HSM(  PyObject	*self
     for (idx=0; idx<2; idx++)
     {
 	attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "__class__" );
+	if (attrObj1_p == 0)
+	{   printf( "EXfer - invalid argument\n" );
+	    return (Py_BuildValue("(iii)",0,0,0));
+	}
 	attrObj2_p = PyObject_GetAttrString( attrObj1_p, "__name__" );
 	Py_DECREF( attrObj1_p );
 	str       = PyString_AsString( attrObj2_p );
 	Py_DECREF( attrObj2_p );
 	if      (strcmp(str,"Mover") == 0)
 	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "data_socket" );
+	    if (attrObj1_p == 0)
+	    {   printf( "EXfer - invalid argument\n" );
+		return (Py_BuildValue("(iii)",0,0,0));
+	    }
 	    attrObj2_p = PyObject_CallMethod( attrObj1_p, "fileno", "" );
 	    Py_DECREF( attrObj1_p );
 	    fd_a[idx] = PyInt_AsLong(attrObj2_p);
@@ -186,6 +194,10 @@ EXto_HSM(  PyObject	*self
 	}
 	else if (strcmp(str,"RawDiskDriver") == 0 ||  strcmp(str,"DelayDriver") == 0 )
 	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "df" );
+	    if (attrObj1_p == 0)
+	    {   printf( "EXfer - invalid argument\n" );
+		return (Py_BuildValue("(iii)",0,0,0));
+	    }
 	    fp_a[idx] = PyFile_AsFile( attrObj1_p );
 	    Py_DECREF( attrObj1_p );
 	    if (idx == Frm)
@@ -193,7 +205,7 @@ EXto_HSM(  PyObject	*self
 	    else
 		to_Func_p[idx] = (void(*))fwrite;
 	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
-	    /*printf( "EXfer p%d class is RawDiskDriver, fd=%d\n", idx+1, fd_a[idx] );*/
+	    /*printf( "EXfer p%d class is RawDiskDriver, fp=%p\n", idx+1, fp_a[idx] );*/
 	}
 	else
 	{
