@@ -10,11 +10,21 @@ import time
 import pprint
 
 mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
-
 config = eval(os.popen("enstore config --show",'r').read())
 
 prog = sys.argv[0]
 host = os.uname()[1]
+
+
+def sendmail(subject, reason):
+    mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
+    p=os.popen(mail_cmd, 'w')
+    p.write('reason: %s\n' % (reason,))
+    p.write('\n\n')
+    p.write("This message sent at %s by %s running on %s\n\n" %
+            (time.ctime(time.time()), prog, host))
+    p.close()
+
 
 def hms(s):
     s = int(s)
@@ -34,6 +44,14 @@ def endswith(a,b):
 
 def startswith(a,b):
     return a[:len(b)]==b
+
+def is_mover(s):
+    return endswith(s, '.mover')
+
+def get_movers():
+    movers = filter(is_mover, config.keys())
+    movers.sort()
+    return movers
 
 def ssh(host, cmd):
     ssh_cmd = "ssh -n %s '%s'" % (host, cmd)
@@ -75,21 +93,22 @@ def get_sched():
             if key:
                 sched_dict[key] = sched_dict.get(key,[]) + [words[0]]
     return sched_dict
-    
-def reset(mover, reason=None):
-    now = time.time()
-    last_reset = reset_times.get(mover,0)
-    if now-last_reset < 600:
-        print "Not resetting", mover, "more than once per 10 minutes"
-        return
-    if reason:
-        sendmail("resetting mover %s"%mover, reason=reason)
-    reset_times[mover]=now
-    err = stop(mover)
-    if err:
-        reboot(mover)
-    else:
-        start(mover)
+
+def get_status(mover):    
+    p = os.popen("enstore mov --status --retries=1 %s" % mover)
+    r = p.read()
+    s = p.close()
+    l = string.split(r,'\n')
+    e, l = l[0], l[1:]
+    while l and startswith(l[0],' '):
+        e=e+l[0]
+        l=l[1:]
+    d={}
+    try:
+        d=eval(e)
+    except:
+        pass
+    return d
 
 def reboot(mover):
     conf = config[mover]
@@ -134,14 +153,6 @@ def reboot(mover):
     print ssh(host, "/sbin/shutdown -r now")
     time.sleep(30)
 
-def sendmail(subject, reason):
-    mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
-    p=os.popen(mail_cmd, 'w')
-    p.write('reason: %s\n' % (reason,))
-    p.write('\n\n')
-    p.write("This message sent at %s by %s running on %s\n\n" %
-            (time.ctime(time.time()), prog, host))
-    p.close()
     
 def start(mover, reason=None):
     conf = config[mover]
@@ -188,6 +199,22 @@ def stop(mover):
             print pid, '\t', state
     return -1
 
+def reset(mover, reason=None):
+    now = time.time()
+    last_reset = reset_times.get(mover,0)
+    if now-last_reset < 600:
+        print "Not resetting", mover, "more than once per 10 minutes"
+        return
+    if reason:
+        sendmail("resetting mover %s"%mover, reason=reason)
+    reset_times[mover]=now
+    err = stop(mover)
+    if err:
+        reboot(mover)
+    else:
+        start(mover)
+
+
 def check(mover):
     print "%-30s"%(mover,),
     sys.stdout.flush()
@@ -216,27 +243,6 @@ def check(mover):
     else:
         return 0, None
     
-def get_status(mover):    
-    p = os.popen("enstore mov --status --retries=1 %s" % mover)
-    r = p.read()
-    s = p.close()
-    l = string.split(r,'\n')
-    e, l = l[0], l[1:]
-    while l and startswith(l[0],' '):
-        e=e+l[0]
-        l=l[1:]
-    d={}
-    try:
-        d=eval(e)
-    except:
-        pass
-    return d
-
-    
-def get_movers():
-    movers = filter(lambda s: endswith(s, '.mover'), config.keys())
-    movers.sort()
-    return movers
 
 def main(reset_on_error=0):
     movers = get_movers()

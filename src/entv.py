@@ -19,15 +19,6 @@ def endswith(s1,s2):
 
 _config_cache = None
 
-def get_config():
-    global _config_cache
-    if _config_cache:
-        return _config_cache
-    p=os.popen("enstore config --show", 'r')
-    _config_cache=dict_eval(p.read())
-    p.close()
-    return _config_cache
-
 def dict_eval(data):
     ##This is like "eval" but it assumes the input is a
     ## dictionary; any trailing junk will be ignored.
@@ -38,6 +29,16 @@ def dict_eval(data):
         print "Error", data,
         d = {}
     return d
+
+
+def get_config():
+    global _config_cache
+    if _config_cache:
+        return _config_cache
+    p=os.popen("enstore config --show", 'r')
+    _config_cache=dict_eval(p.read())
+    p.close()
+    return _config_cache
 
 def get_movers(config=None):
     movers = []
