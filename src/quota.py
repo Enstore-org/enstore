@@ -54,10 +54,10 @@ def show_query_result(res):
 		for i in range(w):
 			print format[i]%(r[i]),
 		# mark if the numbers are not quite right
-		if r[-1] >= r[-2] and r[-2] >= r[-1]:
-			print
-		else:
+		if r[-1] > r[-2] or r[-2] > r[-3]:
 			print "*"
+		else:
+			print
 
 # try to identify the user using LOGNAME and kerberos principal
 def whoami():
