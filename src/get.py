@@ -154,7 +154,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             if e_errors.is_non_retriable(result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
-            encp.close_descriptors(out_fd, data_path_socket)
+            encp.close_descriptors(out_fd)
 
             #Log the error and return.
             Trace.log(e_errors.ERROR, str(result_dict['status']))
