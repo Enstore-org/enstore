@@ -12,7 +12,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 stken=stkensrv2.fnal.gov
 d0en=d0ensrv2.fnal.gov
 cdfen=cdfensrv2.fnal.gov
-rip=rip6.fnal.gov
+rip=rip7.fnal.gov
 cachen=$stken
 rain=rain.fnal.gov
 happy=happy.fnal.gov
@@ -21,6 +21,7 @@ airedale=airedale.fnal.gov
 odyssey=odyssey,fnal,gov
 sirius=sirius
 lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
+woodlawn=woodlawn.fnal.gov
 
 complain=1
 
@@ -75,6 +76,11 @@ case $node in
             complain=0
             ;;
   odyssey)  complain=0
+            ;;
+  woodlawn)
+            ENSTORE_CONFIG_HOST=$woodlawn
+            ENSTORE_CONFIG_FILE=woodlawn.conf
+            complain=0
             ;;
   *sam*|*d0*)
             ENSTORE_CONFIG_HOST=$d0en
