@@ -162,7 +162,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.library_manager_callback_socket(ticket)
+        
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['library_manager_callback_addr'])
         worklist = callback.read_tcp_obj(data_path_socket)
         data_path_socket.close()
 
