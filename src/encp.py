@@ -309,7 +309,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
                +outfile+" already exists")
     dir,file = os.path.split(outfile)
     if dir == '' :
-        dir = '.'
+	dir = os.getcwd()
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
@@ -341,6 +341,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
     uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
     uinfo['machine'] = os.uname()
+    uinfo['fullname'] = (uinfo['machine'][1],dir+"/"+file)
     #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     tinfo["localinfo"] = time.time() - t1

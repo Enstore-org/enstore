@@ -44,6 +44,7 @@ class pnfs :
         self.get_library()
         self.get_file_family()
         self.get_file_family_width()
+        self.get_lastparked
         if all :
             self.get_pnfs_info()
         if timeit != 0:
@@ -142,7 +143,7 @@ class pnfs :
             # I don't know how right now.
             os.remove(self.pnfsFilename)
             self.exists = unknown
-            self.utime()
+            #self.utime()
             self.pstatinfo()
 
     ##########################################################################
@@ -191,7 +192,7 @@ class pnfs :
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','w')
             f.write(value)
             f.close()
-            self.utime()
+            #self.utime()
             self.pstatinfo()
 
     # read the value stored in the requested file layer
@@ -304,7 +305,7 @@ class pnfs :
             if self.file_size != 0 :
                 try :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
-                    self.utime()
+                    #self.utime()
                     self.pstatinfo()
                 except os.error :
                     print "enoent path taken again!"
@@ -353,6 +354,18 @@ class pnfs :
             if size != 0 :
                 self.set_file_size(size)
 
+    # store place where we last parked the file
+    def set_lastparked(self,value) :
+        if self.valid == valid and self.exists == exists :
+            self.writelayer(2,value)
+            self.get_lastparked()
+
+    # store new info and transaction log
+    def set_info(self,value) :
+        if self.valid == valid and self.exists == exists :
+            self.writelayer(2,value)
+            self.get_info()
+
     # get the bit file id
     def get_bit_file_id(self) :
         if self.valid == valid and self.exists == exists :
@@ -362,6 +375,16 @@ class pnfs :
                 self.bit_file_id = unknown
         else :
             self.bit_file_id = unknown
+
+    # get the last parked layer
+    def get_lastparked(self) :
+        if self.valid == valid and self.exists == exists :
+            try :
+                self.lastparked = self.readlayer(2)[0]
+            except :
+                self.lastparked = unknown
+        else :
+            self.lastparked = unknown
 
     # get the information layer
     def get_info(self) :
