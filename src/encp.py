@@ -1149,6 +1149,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                       "encp read_from_hsm, mover final dialog")
         control_socket.close()
 	control_socket_closed = 1
+	data_path_socket_closed = 1
+	data_path_socket.close()
         Trace.trace(8,"read_hsm_files final dialog recieved")
 
         # make sure the mover thinks the transfer went ok
@@ -1360,6 +1362,7 @@ def jraise(errcode,errmsg,exit_code=1) :
                 " errmsg="+repr(errmsg)+" exit_code="+repr(exit_code))
 
     format = "Fatal error:"+str(errcode)+str(errmsg)
+    x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
         global logc
@@ -1368,6 +1371,7 @@ def jraise(errcode,errmsg,exit_code=1) :
         pass
     Trace.trace(0,"}encp.jraise and exitting with code="+\
                 repr(exit_code))
+    sys.stdout=x
     sys.exit(exit_code)
 
 ##############################################################################
