@@ -803,7 +803,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# summon this mover
 		Trace.trace(14,"read_from_hsm will summon mover %s"% (mv,))
 		summon_mover(self, mv, ticket)
-
+        else:
+            ticket["reject_reason"] = ("VOL_BUSY",ticket["fc"]["external_label"])
 
     # determine if this volume had failed on the maximal
     # allowed number of movers and, if yes, set volume 
