@@ -1,5 +1,3 @@
-
-
 PATH="$PATH:${ENSTORE_DIR}/bin"; export PATH
 
 if [ "${PYTHONPATH:-1}" = "1" ]; then
@@ -9,5 +7,6 @@ else
 fi
 export PYTHONPATH
 
-encp() { $PYTHON_DIR/bin/python encp.py $@ ; }
-pnfs() { $PYTHON_DIR/bin/python pnfs.py $@ ; }
+encp()   { python $ENSTORE_DIR/src/encp.py $@ ; }
+pnfs()   { python $ENSTORE_DIR/src/pnfs.py $@ ; }
+econ()   { python $ENSTORE_DIR/src/configuration_client.py $@ ; }

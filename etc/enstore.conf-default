@@ -17,7 +17,7 @@ configdict['shelf.library_manager'] = { 'host'   : 'hppc.fnal.gov', \
                                         'status' : 'ok'}
 
 configdict['fd0.mover'] = { 'status'  : 'ok', \
-                            'device'  : './file.fake', \
+                            'device'  : '/usr/hppc_home/bakken/file.fake', \
                             'library' : 'activelibrary', \
                             'driver'  : 'RawDiskDriver', \
                             'library_device' : '1'}

@@ -42,9 +42,12 @@ class VolumeClerkMethods(DispatchingWorker) :
         exec ("vol_veto_list = " + ticket["vol_veto_list"])
         min_remaining_bytes = ticket["min_remaining_bytes"]
         library = ticket["library"]
+	file_family = ticket["file_family"]
         for k in dict.keys() :
             v = dict[k]
             if v["library"] != library :
+                continue
+            if v["file_family"] != file_family :
                 continue
             if v["user_inhibit"] != "none" :
                 continue

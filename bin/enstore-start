@@ -6,6 +6,10 @@ config_host=localhost
 config_port=7500
 config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
+# ok, this is terrible - but let's start always start up in the test area so files are created there
+place=`pwd`
+cd $ENSTORE_DIR/test
+
 # the configuration server needs to be the 1st thing started
 python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
 sleep 1
@@ -14,6 +18,7 @@ sleep 1
 python $ENSTORE_DIR/src/configuration_client.py --config_host $config_host --config_port $config_port
 if [ $? -ne 0 ] ; then
     echo "...configuration error. can not continue..."
+    cd $place
     exit 1
 fi
 
@@ -26,3 +31,4 @@ python $ENSTORE_DIR/src/mover.py fd0.mover --config_host $config_host --config_p
 # really need to add a check to make sure they are working
 sleep 1
 
+cd $place
