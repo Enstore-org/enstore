@@ -214,6 +214,8 @@ class EnstoreInterface(UserOptions):
                     append_string = ".library_manager"
                 elif self.matched_server == "media":
                     append_string = ".media_changer"
+                else:
+                    append_string = ""
                 
                 if sys.argv[-1][-len(append_string):] != append_string:
                     sys.argv[-1] = sys.argv[-1] + append_string
