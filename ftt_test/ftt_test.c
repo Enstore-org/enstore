@@ -53,7 +53,7 @@ int ftt_t_describe_dev(int, char **);  int ftt_t_verify_vol_label(int, char **);
 int ftt_t_write_vol_label(int, char **);int ftt_t_status(int, char **);
 int ftt_t_verify_position(int, char **);int ftt_t_max_errors(int, char **);
 int ftt_t_verify_modes(int, char **);	int ftt_t_verify_exist(int, char **);
-int ftt_t_test_status(int, char **);	
+int ftt_t_test_status(int, char **);	int ftt_t_list_supported(int, char**);
 
 /*=============================================================================
 Routine:
@@ -118,6 +118,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_verify_modes",	ftt_t_verify_modes,
 	"ftt_verify_exist",	ftt_t_verify_exist,
 	"ftt_test_status",	ftt_t_test_status,
+	"ftt_list_supported",	ftt_t_list_supported,
 	NULL,			0};
 
 /* Get command line arguments

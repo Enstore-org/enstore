@@ -402,8 +402,6 @@ if (status == -1)
 fprintf (stderr, 
    "At beginnining of tape:         %s\n",status & FTT_ABOT ? "true" : "false");
 fprintf (stderr, 
-   "Just after filemark:            %s\n",status & FTT_AFM ? "true" : "false");
-fprintf (stderr, 
    "At physical end of tape:        %s\n",status & FTT_AEOT ? "true" : "false");
 fprintf (stderr, 
    "At early warning mark near EOT: %s\n",status & FTT_AEW ? "true" : "false");
@@ -430,12 +428,11 @@ int 		status;				/* status */
 int 		estatus = 0;			/* expected status */
 static int	nsec;				/* timeout */
 static char	*estatus_str;			/* expected status string */
-static int	abot, afm, aeot, aew, prot, online, busy;
+static int	abot, aeot, aew, prot, online, busy;
 ftt_t_argt	argt[] = {
  	{"-timeout",	FTT_T_ARGV_INT,		NULL,		&nsec},
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
  	{"-FTT_ABOT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&abot},
- 	{"-FTT_AFM",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&afm},
  	{"-FTT_AEOT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&aeot},
  	{"-FTT_AEW",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&aew},
  	{"-FTT_PROT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&prot},
@@ -446,7 +443,7 @@ ftt_t_argt	argt[] = {
 /* parse command line
    ------------------ */
 
-abot = afm = aeot = aew = prot = online = busy = FALSE;
+abot = aeot = aew = prot = online = busy = FALSE;
 estatus_str = 0; nsec = 0;
 status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
@@ -464,9 +461,6 @@ if (status == -1)
 if (abot)
    if (!(status & FTT_ABOT)) 
       fprintf (stderr, "Expected to be at beginning of tape, but was not \n");
-if (afm)
-   if (!(status & FTT_AFM)) 
-      fprintf (stderr, "Expected to be just after filemark, but was not \n");
 if (aeot)
    if (!(status & FTT_AEOT)) 
       fprintf (stderr, "Expected to be at end of tape, but was not \n");

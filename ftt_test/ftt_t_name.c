@@ -513,3 +513,46 @@ for (density = 0; density < 10; density++)              /* all densities */
  
 return 0;
 }
+
+/* ============================================================================
+ 
+ROUTINE: ftt_t_list_supported
+ 
+        call ftt_list_supported
+==============================================================================*/
+int     ftt_t_list_supported (int argc, char **argv)
+{
+FILE            *outfile = stdout;	/* file to output to */
+static char     *out_filename;                  /* output file name */
+int		status;
+
+ftt_t_argt      argt[] = {
+        {"-filename",   FTT_T_ARGV_STRING,      NULL,           &out_filename},
+        {NULL,          FTT_T_ARGV_END,         NULL,           NULL}};
+ 
+/* parse command line
+   ------------------ */
+ 
+out_filename = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);      /* check parse status */
+
+/* open file
+   --------- */
+ 
+if (out_filename)
+   {
+   outfile = fopen(out_filename,"w");
+   if (outfile == 0)
+      {
+      perror("could not open file\n");
+      fprintf (stderr,"   filename = %s\n",out_filename);
+      return 1;
+      }
+   }
+ 
+ftt_list_supported (outfile);
+if (outfile != stdout) close(outfile);
+return 0;
+}
+
