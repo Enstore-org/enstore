@@ -13,9 +13,10 @@ import pwd				# required for default logging, ???
 import Ptrace				# basis for this work
 
 # message types.  a message type will be appended to every message so that
-# identifying which message is which will be easier
+# identifying which message is which will be easier.  messages logged without
+# a message type will have MSG_DEFAULT appended.
 MSG_TYPE = "MSG_TYPE="
-MSG_NONE = "%sNone "%MSG_TYPE
+MSG_DEFAULT = ""
 MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
 MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
 MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
