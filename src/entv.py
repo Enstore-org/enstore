@@ -27,6 +27,8 @@ import signal
 import errno
 import Tkinter
 import Trace
+import generic_client
+import option
 
 #########################################################################
 # Globals
@@ -42,9 +44,8 @@ DEFAULT_BG_COLOR = '#add8e6'   #light blue
 status_thread = None
 messages_thread = None
 
-#debug=1
-
 _csc = None
+_system_csc = None
 _config_cache = None
 
 #Should we need to stop (ie. cntl-C) this is the global flag.
@@ -88,6 +89,17 @@ def signal_handler(sig, frame):
         messages_thread.join()
     sys.exit(0)
 
+def setup_signal_handling():
+    
+    for sig in range(1, signal.NSIG):
+        if sig not in (signal.SIGTSTP, signal.SIGCONT,
+                       signal.SIGCHLD, signal.SIGWINCH):
+            try:
+                signal.signal(sig, signal_handler)
+            except:
+                sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                 (sig, signal_handler))
+
 def dict_eval(data):
     ##This is like "eval" but it assumes the input is a
     ## dictionary; any trailing junk will be ignored.
@@ -99,14 +111,20 @@ def dict_eval(data):
         d = {}
     return d
 
-def get_csc():
-    global _csc
-    if _csc:  #used cached version.
-        return _csc
+def get_system(intf=None):
+    global _system_csc
+    if _system_csc:  #used cached version.
+        return _system_csc
+
+    #If intf is not given and the cached version is already known not to
+    # exist throw an error an abort.
+    if not intf:
+        sys.stderr.write("Unknown error.  Aborting\n")
+        sys.exit(1)
 
     config_port = enstore_functions2.default_port()
-    if len(sys.argv) > 1:
-        config_host = sys.argv[1]
+    if len(intf.args) > 0:
+        config_host = intf.args[0]
     else:
         config_host = enstore_functions2.default_host()
         #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
@@ -127,21 +145,23 @@ def get_csc():
         if len(config_host) >= len(name) and \
            config_host[:len(name)] == name:
             config_host = config_servers[name][0]
+            break
 
-    _csc = configuration_client.ConfigurationClient((config_host, config_port))
+    _system_csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+    return _system_csc
 
-    return _csc
-
-def get_config():
+def get_config(intf):
     global _config_cache
     if _config_cache:
         return _config_cache
-    csc = get_csc()
+    csc = intf.csc
     _config_cache = csc.dump()
     return _config_cache
 
-def get_system_name():
-    csc = get_csc()
+def get_system_name(intf):
+    #csc = encp.get_csc()
+    csc = intf.csc
     try:
         hostinfo = socket.gethostbyaddr(csc.server_address[0])[0]
     except socket.error, msg:
@@ -186,9 +206,11 @@ def get_entvrc():
 
     return lines
 
-def get_geometry():
+def get_geometry(intf):
     try:
-        csc = get_csc()
+        #csc = get_csc()
+        csc = intf.csc
+        
         for line in get_entvrc():
             if line[0] == "#": #Skip comment lines.
                 continue
@@ -209,9 +231,10 @@ def get_geometry():
 
     return geometry, background
 
-def set_geometry(geometry):
+def set_geometry(geometry, intf):
     try:
-        csc = get_csc()
+        csc = intf.csc
+        
         #Do this now to save the time to do the conversion for every line.
         csc_server_name = socket.getfqdn(csc.server_address[0])
 
@@ -282,12 +305,18 @@ def set_geometry(geometry):
 # entv functions
 #########################################################################
 
-def get_mover_list(fullnames=None):
+def get_mover_list(intf, fullnames=None):
     movers = []
-    csc = get_csc()
+    #csc = get_csc()
+    csc = intf.csc
 
     lm_dict = csc.get_library_managers({})
-    for lm in lm_dict.keys():
+    #If the user selected to hide some movers, remove their LM from the list.
+    lm_list = lm_dict.keys()
+    for ds_lm_name in string.split(intf.dont_show, ","):
+        if ds_lm_name in lm_list:
+            del lm_list[lm_list.index(ds_lm_name)]
+    for lm in lm_list:
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
         except TypeError:
@@ -339,12 +368,13 @@ def handle_status(mover, status):
 # The following functions run in their own thread.
 #########################################################################
 
-def request_mover_status(display):
+def request_mover_status(display, intf):
     global stop_now
 
-    csc = get_csc()
-    config = get_config()
-    movers = get_mover_list(1)
+    #csc = get_csc()
+    csc = intf.csc
+    config = get_config(intf)
+    movers = get_mover_list(intf, 1)
 
     for mover in movers:
         #Get the mover client and the mover status.
@@ -421,25 +451,59 @@ def handle_messages(display):
     erc.sock.close()
 
 #########################################################################
+#  Interface class
+#########################################################################
+
+class EntvClientInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        self.verbose = 0
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.entv_options)
+    
+    # parse the options like normal but make sure we have other args
+    def parse_options(self):
+        self.dont_show = ""
+        self.verbose = 0
+        generic_client.GenericClientInterface.parse_options(self)
+        
+        #Setup the necessary cache global variables.
+        self.csc = get_system(self)
+
+        #Setup trace levels.
+        Trace.init("ENTV")
+        for x in xrange(0, self.verbose):
+            Trace.do_print(x)
+    
+    entv_options = {
+        option.DONT_SHOW:{option.HELP_STRING:"don't display the movers that"
+                          " belong to the specified library manager(s).",
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_LABEL:"LM short name,...",
+                          option.USER_LEVEL:option.USER,},
+        option.VERBOSE:{option.HELP_STRING:"print out information.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
+        }
+
+#########################################################################
 #  main
 #########################################################################
 
-def main():
+def main(intf):
+
     global status_thread, messages_thread
     global stop_now
 
-    for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
-            try:
-                signal.signal(sig, signal_handler)
-            except:
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
-    
-    system_name = get_system_name()
+    #Get the short name for the enstore system specified.
+    system_name = get_system_name(intf)
 
-    geometry, background = get_geometry()
+    geometry, background = get_geometry(intf)
 
     display = enstore_display.Display(title=system_name,
                                       geometry=geometry, background=background)
@@ -449,12 +513,12 @@ def main():
         display.reinit()
 
         #initalize the movers.
-        movers = get_mover_list(0)
-        #movers_command = "movers"
-        #for mover in movers:
-        #    movers_command = movers_command + " " + mover[:-6]
+        movers = get_mover_list(intf, 0)
         movers_command = "movers " + string.join(movers, " ")
-            
+
+        #Inform the display the config server to use.
+        display.handle_command("csc %s %s" % (intf.csc.server_address[0],
+                                              intf.csc.server_address[1]))
         #Inform the display the names of all the movers.
         display.handle_command(movers_command)
 
@@ -463,7 +527,8 @@ def main():
         # sychronously to displaying live data.
         status_thread = threading.Thread(group=None,
                                          target=request_mover_status,
-                                         name='', args=(display,), kwargs={})
+                                         name='', args=(display,intf),
+                                         kwargs={})
         status_thread.start() #wait for movers to sends status seperately.
 
         messages_thread=threading.Thread(group=None,
@@ -475,7 +540,7 @@ def main():
         display.mainloop()
 
         if hasattr(display, "geometry") and display.geometry != None:
-            set_geometry(display.geometry)
+            set_geometry(display.geometry, intf)
 
         Trace.trace(1, "waiting for threads to stop")
         status_thread.join()
@@ -485,18 +550,19 @@ def main():
 
 if __name__ == "__main__":
 
-    if "--debug" in sys.argv or "-d" in sys.argv:
-        Trace.init("ENTV")
-        for x in xrange(0, 10):
-            Trace.do_print(x)
-        main()
+    setup_signal_handling()
+
+    intf = EntvClientInterface(user_mode=0)
+
+    main(intf)
+
+
+#Remember this in case it is needed again...
+"""
     elif "--profile" in sys.argv or "-p" in sys.argv:
             import profile
             import pstats
             profile.run("main()", "/tmp/entv_profile")
             p=pstats.Stats("/tmp/entv_profile")
             p.sort_stats('cumulative').print_stats(100)
-            
-    else:
-        main()
-
+"""

@@ -43,6 +43,7 @@ import tkFont
 import entv
 import threading
 import re
+import configuration_client
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
@@ -277,7 +278,7 @@ class Mover:
         self.timer_string       = '00:00:00'
 
         #Find out information about the mover.
-        csc = entv.get_csc()
+        csc = self.display.csc
         minfo = csc.get(self.name+".mover")
         #64GB is the default listed in mover.py.
         self.max_buffer = long(minfo.get('max_buffer', 67108864))
@@ -1199,7 +1200,7 @@ class MoverDisplay(Tkinter.Toplevel):
         self.after(5000, self.update_status)
 
     def get_mover_status(self):
-        csc = entv.get_csc()
+        csc = self.mover.display.csc
         mov = mover_client.MoverClient(csc, self.mover.name+".mover")
         status = mov.status(rcv_timeout=5, tries=1)
         order = status.keys()
@@ -1600,6 +1601,10 @@ class Display(Tkinter.Canvas):
         title = string.join(command_list[1:])
         title=string.replace (title, '\\n', '\n')
         self.title_animation = Title(title, self)
+
+    def csc_command(self, command_list):
+        self.csc = configuration_client.ConfigurationClient((command_list[1],
+                                                         int(command_list[2])))
     
     def client_command(self, command_list):
         ## For now, don't draw waiting clients (there are just
@@ -1779,6 +1784,7 @@ class Display(Tkinter.Canvas):
         #      movers MOVER_NAME_1 MOVER_NAME_2 ...MOVER_NAME_N
     comm_dict = {'quit' : {'function':quit_command, 'length':1},
                  'title' : {'function':title_command, 'length':1},
+                 'csc' : {'function':csc_command, 'length':2},
                  'client' : {'function':client_command, 'length':2},
                  'connect' : {'function':connect_command, 'length':3,
                               'mover_check':1},
