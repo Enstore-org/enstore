@@ -14,7 +14,7 @@ import db
 import callback
 import interface
 import Trace
-import errors
+import e_errors
 
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
