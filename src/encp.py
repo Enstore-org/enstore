@@ -889,6 +889,11 @@ def read_from_hsm(input, output,
 	    binfo['status'] = (e_errors.NOACCESS, None)
 	    print_data_access_layer_format('', '', 0, binfo)
 	    continue
+	elif binfo["fc"]["deleted"] == "yes":
+	    binfo['status'] = (e_errors.DELETED, None)
+	    print_data_access_layer_format('', '', 0, binfo)
+	    continue
+
 
 	request = {}
 	binfo['vc']['address'] = volume_clerk_address
