@@ -567,6 +567,7 @@ def do_work(intf):
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
                                        intf.args[2], #file_family
+                                       intf.args[3], # wrapper
                                             [], #vol_veto_list
                                              1) #first_found
     elif intf.vol:
