@@ -29,7 +29,7 @@ lsKnownDown() { enstore sched --show |
 
 # function to select critical nodes (servers *srv[0-46], mainly)
 criticalNode() { echo "$1" |
-		 egrep '(d0|stk|cdf)ensrv[0-46]|cmspnfs1' > /dev/null
+		 egrep '(d0|stk|cdf)ensrv[0-46]|cmspnfs1|stkendca3a' > /dev/null
 	       }
 
 case $job in
@@ -46,10 +46,12 @@ quickcheck)
 	fi
     done
 
+    [ $gang = stken ] && extra=/usr/local/etc/farmlets/stkendca
+
     NODES=`awk -v omit="$omit" -v host="$host" -v peers="$peers" \
 	   'BEGIN {split(omit, x); for (i in x) v[x[i]]=i}
 	    $1 == host {printf "%s", peers}
-	    ! ($1 in v)' /usr/local/etc/farmlets/${gang}-all`
+	    ! ($1 in v)' /usr/local/etc/farmlets/${gang}-all ${extra:-} `
 
     black=#000000
     white=#FFFFFF
