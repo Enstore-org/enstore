@@ -36,6 +36,7 @@ GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
 		   "inquisitor", "log_server", "volume_clerk"]
 
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
+	     [enstore_constants.MPD_FILE, "Cumulative Mounts"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency"],
 	     [enstore_constants.BPD_FILE, "Bytes/Day"], 
 	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log)"],
