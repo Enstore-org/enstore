@@ -2042,6 +2042,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
+        if self.mode is WRITE:
+            previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
+            Trace.trace(10,"seek_to_location: current location %s, eod %s"%
+                        (self.current_location, previous_eod))
+            # compare location reported by driver with eod cookie
+            if self.current_location != previous_eod:
+                Trace.log(e_errors.ERROR, " current location %s != eod %s" %
+                          (self.current_location, previous_eod))
+                detail = "wrong location %s, eod %s"%(self.current_location, previous_eod)
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                failed = 1
         if after_function and not failed:
             Trace.trace(10, "seek calling after function %s" % (after_function,))
             after_function()
