@@ -384,7 +384,7 @@ class LibraryManagerMethods:
             # volume clerk returned error
             Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
             if v["status"][0] != e_errors.OK:
-                if v["status"][0] == e_errors.NOVOLUME:
+                if v["status"][0] == e_errors.NOVOLUME or v["status"][0] == e_errors.QUOTAEXCEEDED:
                     if not self.process_for_bound_vol:
                         #if wr_en > rq.ticket["vc"]["file_family_width"]:
                         # remove this request and send regret to the client
@@ -791,7 +791,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         enstore_dir = os.environ.get('ENSTORE_DIR','')
         priority_config_file = self.keys.get('pri_conf_file', os.path.join(enstore_dir, 'etc','pri_conf.py'))
-        self.pri_sel = priority_selector.PriSelector(priority_config_file)
+        self.pri_sel = priority_selector.PriSelector(self.csc)
 
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
