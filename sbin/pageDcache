@@ -1,0 +1,103 @@
+#!/bin/sh
+set -u  
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+N=`date +"%j"` #day of year
+N1=`expr $N - 1`
+case $gang in
+  stken) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+         l=/pnfs/eagle/dcache-tests/$N1
+         dcache=fndca
+          ;;
+  cdfen) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
+         l=/pnfs/cdfen/jon/fcdfsgi2/$N1
+         dcache=cdfendca3
+          ;;
+  d0en)  w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
+         l=/pnfs/archive/dcache-tests/$N1
+         dcache=d0endca3a
+          ;;
+       *) namespace="UNKNOWN"
+          ;;
+esac
+
+read_back=/tmp/dcache_page_read_back
+rm -f $read_back
+
+test_file=/tmp/dcache_page_file
+rm -f $test_file
+cp /var/log/messages $test_file
+if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 1; fi
+
+if [ -z "${DCAP_DIR:-}" ]; then
+  source /usr/local/etc/setups.sh
+  if [ $? -gt 0 ]; then
+      echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
+      exit 9
+  fi
+  setup dcap
+  if [ $? -gt 0 ]; then
+      echo `date` ERROR: unable to setup dcap.
+      exit 8
+  fi
+fi
+
+if /bin/false; then 
+# Use Eileen's enrsh method to get a ticket
+krbdir="/usr/krb5/bin"
+defaultDomain=".fnal.gov"
+host=`uname -n`
+if expr $host : '.*\.' >/dev/null;then
+   thisHost=$host;
+else
+   thisHost=${host}${defaultDomain};
+fi
+KRB5CCNAME=/tmp/krb5cc_enstore_$$
+export KRB5CCNAME
+${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+# ${krbdir}/klist -fea
+fi
+
+# dccp write
+echo `date` dccp write  dccp $test_file $w
+                        dccp $test_file $w
+stat6=$?
+
+if [ $stat6 -ne 0 ]; then
+   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed."
+   echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed." | Mail bakken@fnal.gov
+   exit $stat6
+fi
+
+
+# dccp readback
+echo `date` dccp readback dccp $w $read_back
+                          dccp $w $read_back
+stat7=$?
+
+if [ $stat7 -ne 0 ]; then
+   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed"
+   echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed" | Mail bakken@fnal.gov
+   exit $stat7
+else
+   cmp $test_file $read_back
+   stat7c=$?
+   if [ $stat7c -ne 0 ]; then
+      enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed"
+      echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed" | Mail bakken@fnal.gov
+      exit $stat7c
+   fi
+fi
+
+
+#clean up of old junk
+echo cleanup rm -f ${l}*
+             rm -f ${l}*
+
+
+echo `date` Finished.
+exit 0
