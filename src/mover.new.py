@@ -829,6 +829,10 @@ else:
 
 mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']) )
 mvr_srvr.rcv_timeout = 15
+try:
+    mvr_srvr.client_obj_inst.print_id = mvr_config['logname']
+except:
+    pass
 
 #Trace.init( "Mover" )
 Trace.on( "Mover", 0, 31 )
