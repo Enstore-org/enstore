@@ -396,7 +396,7 @@ Expected nominal rate for (idle) Fast Ethernet connections is ~94 x 10^6 bits/S
 Rate test between various nodes and `uname -n`
 <p>
 <hr>
-<center> <a href="http://heidrum.fnal.gov/MRTG/dzero/s-d0-fcc2w.html"> Today's MRTG Graphs</a></center>
+<center> <a href="http://fndcg0.fnal.gov/search.html"> Today's MRTG Graphs</a></center>
 <p>
 <hr>
 <center> <a href="http://www-dcg.fnal.gov/stats.html"> CD DCG Statisics </a></center>
