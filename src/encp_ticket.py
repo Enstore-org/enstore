@@ -6,7 +6,6 @@ def write_request_ok(ticket):
                    'fc':{},
                    'file_size':0L,
                    'infile':'',
-                   'lm':{},
                    'outfile':'',
                    'retry':0,
                    'times':{},
@@ -23,9 +22,7 @@ def write_request_ok(ticket):
                  'delpri': 0}
     
     fc_keys = {'address': ('', 0),
-               'size': 0L}
-
-    lm_keys = {'address': ('', 0)}
+              }
 
     vc_keys = {'address': ('', 0),
                'file_family': '',
@@ -60,9 +57,6 @@ def write_request_ok(ticket):
         if not ticket['fc'].has_key(key):
             return key
         
-    for key in lm_keys:
-        if not ticket['lm'].has_key(key):
-            return key
     for key in vc_keys:
         if not ticket['vc'].has_key(key):
             return key
