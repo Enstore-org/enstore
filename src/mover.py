@@ -478,6 +478,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
+            if self.buffer.full():
+                time.sleep(1) #ZZZ
+            
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
                 nbytes = self.buffer.trailer_size
@@ -514,7 +517,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 or  self.bytes_read < self.bytes_to_read and self.buffer.low()):
                 Trace.trace(10,"only have %s"%( self.buffer.nbytes(),))
                 #not enough data in buffer to keep tape streaming
-                time.sleep(1)
+                time.sleep(1) #ZZZ
                 continue
 
             bytes_written = 0
@@ -566,6 +569,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bytes_read = self.bytes_read + bytes_read
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
+
+            if self.buffer.full():
+                time.sleep(1) #ZZZ
+            
         Trace.trace(10, "read_tape: state=%s, read %s/%s bytes" %
                     (state_name(self.state), self.bytes_read, self.bytes_to_read))
                 
@@ -579,6 +586,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             ###keep pumping data out to the client
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
 
+            if self.bytes_read < self.bytes_to_read and self.buffer.low():
+                time.sleep(1) # ZZZ
+            
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
