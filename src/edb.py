@@ -335,14 +335,17 @@ class FileDB(DbTable):
 	def rename_volume(self, old, new):
 		if self.bdb:
 			if self.bdb.inx.has_key('external_label'):
+				bfids = []
 				c = self.bdb.inx['external_label'].cursor()
 				key, pkey = c.set(old)
 				while key:
-					record = self.bdb[pkey]
-					record['external_label'] = new
-					self.bdb[pkey] = record
+					bfids.append(pkey)
 					key, pkey = c.nextDup()
 				c.close()
+				for i in bfids:
+					record = self.bdb[i]
+					record['external_label'] = new
+					self.bdb[i] = record
 			else:
 				Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
