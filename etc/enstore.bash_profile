@@ -11,6 +11,6 @@ else
    fi
 fi
 
-PATH=/usr/krb5/bin:$PATH
+PATH=/usr/krb5/bin:/home/enstore/pgsql/bin:$PATH
 source /home/enstore/gettkt
 umask 002

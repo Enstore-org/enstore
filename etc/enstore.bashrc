@@ -139,6 +139,6 @@ esac
 
 bakken() { . /home/bakken/.bash_profile; }
 
-export PATH=/usr/krb5/bin:$PATH
-
+export PATH=/usr/krb5/bin:/home/enstore/pgsql/bin:$PATH
+ 
 umask 002
