@@ -111,12 +111,11 @@ def headers(ticket):
     # create the trailer as well
     trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
     # Trailers must be rounded to 512 byte blocks
-    pad = len(trailer)%512
+    pad = (len(header) + len(trailer) + filesize) % 512
     if pad:
         pad = 512 - pad
         trailer = trailer + '\0'*pad
     return header, trailer
-
 
 min_header_size = 76
 
