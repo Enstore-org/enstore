@@ -435,6 +435,11 @@ def parse_time(args):
 		return time.mktime((year, mon, day, hour, min, sec, wday, jday, dsave))
 	return -1
 
+# cctime() -- current time in character format
+
+def cctime():
+	return time.ctime(time.time())
+
 # main
 
 if __name__ == "__main__":		# main
@@ -461,6 +466,8 @@ if __name__ == "__main__":		# main
 	if ans[0] != 'y' and ans[0] != 'Y':
 		sys.exit(0)
 
+	print cctime()
+
 	# databases
 	dbs = ['file', 'volume']
 
@@ -470,17 +477,21 @@ if __name__ == "__main__":		# main
 	backupDB(dbHome, jouHome, dbs)
 	print "done"
 
+	print cctime()
+
 	# retriving the backup
 
-	print "Retriving database from backup ...",
+	print "Retriving database from backup ..."
 	retriveBackup(dbHome, jouHome, bckHost, bckHome, bckTime)
-	print "done"
+	print "done retriving database from backup ..."
 
+	print cctime()
+	
 	# run db_recover to put the databases in consistent state
 
-	print "Synchronize database using db_recover ...",
+	print "Synchronize database using db_recover ..."
 	os.system("db_recover -h "+dbHome)
-	print "done"
+	print "done synchronizing database using db_recover"
 
 	# got to find index files!
 
@@ -488,9 +499,8 @@ if __name__ == "__main__":		# main
 
 	print "Restoring databse ..."
 	for i in dbs:
-		print "dbHome", dbHome
-		print "jouHome", jouHome
 		d = DbTable(i, dbHome, jouHome, indexf[i]) 
+		print cctime()
 		print "Checking "+i+" ... "
 		err = d.cross_check()
 		if err:
@@ -498,3 +508,6 @@ if __name__ == "__main__":		# main
 			d.fix_db()
 		else:
 			print i+" is OK"
+		d.close()
+
+	print cctime()
