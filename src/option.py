@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# $Id: 
+# $Id$
 ############################################################################
 """
 Example option group dictionaries:
@@ -173,6 +173,7 @@ FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
+GET_ASSERTS = "get-asserts"                  #library
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
 GET_LOGFILE_NAME = "get-logfile-name"        #log
@@ -213,6 +214,7 @@ MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
+MOVER_TIMEOUT = "mover-timeout"              #assert
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
@@ -285,7 +287,7 @@ UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
 UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 USAGE = "usage"
-VERBOSE = "verbose"                          #monitor
+VERBOSE = "verbose"                          #monitor, ensync, assert
 VOL = "vol"                                  #volume
 VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs
@@ -315,15 +317,15 @@ valid_option_list = [
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FORCE,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
-    GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
-    GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
+    GET_ASSERTS, GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME,
+    GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, IO,
     JOUHOME,
     KEEP, KEEP_DIR,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
+    MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
