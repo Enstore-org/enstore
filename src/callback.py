@@ -88,21 +88,19 @@ def get_callback():
 def get_data_callback():
     return get_callback_port( 7640, 7650 )
 
-def write_tcp_buf(sock,buffer,errmsg=""):
+def write_tcp_buf(sock,buffer,errmsg=""): #can delete errmsg, given new trace mechanism
     del errmsg # quiet the linter
-    Trace.trace(16,"{write_tcp_buf")
+    r = None
     try:
-        sock.send(buffer)
+        r = sock.send(buffer)
     except socket.error, detail:
         Trace.trace(0,"write_tcp_buf: socket.error"+str(detail))
         ##XXX Further sends will fail, our peer will notice incomplete message
-    Trace.trace(16,"}write_tcp_buf")
+    return r
 
 # send a message on a tcp socket
 def write_tcp_socket(sock,buffer,errmsg=""):
-    Trace.trace(16,"{write_tcp_socket")
-    write_tcp_buf(sock,dict_to_a.dict_to_a(buffer),errmsg)
-    Trace.trace(16,"}write_tcp_socket")
+    return write_tcp_buf(sock,dict_to_a.dict_to_a(buffer),errmsg)
     
 # read a complete message in a  tcp socket
 def read_tcp_buf(sock,errmsg="") :
@@ -125,7 +123,7 @@ def read_tcp_socket(sock,errmsg="") :
         if not c:
             break
         
-        if c=='{':
+        if c=='{':  ### XXX Kludge in absence of a byte-count on message
             depth = depth+1
         elif c=='}':
             depth = depth-1
