@@ -78,7 +78,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # unload volume from the drive
     def unload(self,
                external_label,  # volume external label
-               drive) :         # drive id
+               drive,
+	       media_type) :         # drive id
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
@@ -94,17 +95,17 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # wrapper method for client - server communication
     def unloadvol(self, ticket):
-        return self.unload(ticket['vol_ticket']['external_label'], ticket['drive_id'])
+        return self.unload(ticket['vol_ticket']['external_label'], ticket['drive_id'],ticket['vol_ticket']['media_type'])
 
 # IBM3494 robot class
 class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
-    def load(self, external_label, drive) :
+    def load(self, drive, external_label, drive, media_type) :
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # unload volume from the drive
-    def unload(self, external_label, drive) :
+    def unload(self, drive, external_label, drive,media_type) :
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
 # FTT tape drives with no robot
@@ -117,7 +118,7 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # assumes volume is in drive and leave it there for testing
-    def unload(self, external_label, drive) :
+    def unload(self, external_label, drive,media_type,media_type) :
         os.system("mt -t " + drive + " rewind")
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
@@ -126,6 +127,10 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume is in drive
     def load(self, external_label, tape_drive, media_type) :
+      
+      command = "dasadmin dismount -t " + media_type + " -d " + tape_drive + " 2>&1"
+      result = os.popen(command, "r").readlines()
+
       command = "dasadmin mount -t " + media_type + " " + external_label + " " + tape_drive \
              + " 2>&1"
       out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
@@ -154,9 +159,9 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
       self.reply_to_caller(out_ticket)
 
     # unload volume from the drive;   ron said the tape will be ejected.
-    def unload(self, external_label, tape_drive) :
+    def unload(self, external_label, tape_drive,media_type) :
       # form dismount command to be executed
-      command = "dasadmin dismount -d " + tape_drive + " 2>&1"
+      command = "dasadmin dismount -t " + media_type + external_label + " 2>&1"
 
       # retry dismount once if it fails
       count=2
@@ -227,7 +232,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
       self.reply_to_caller(out_ticket)
 
     # unload volume from the drive - a force does an eject
-    def unload(self, external_label, tape_drive) :
+    def unload(self, external_label, tape_drive,media_type) :
       # form dismount command to be executed
       command = "rsh " + self.mc_config['acls_host'] + " -l " +\
                             self.mc_config['acls_uname'] + " 'echo dismount " +\
