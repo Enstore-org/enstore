@@ -808,7 +808,7 @@ def outputfile_check(inputlist, outputlist, dcache):
     for i in range(len(inputlist)):
 
         #If output location is /dev/null, skip the checks.
-        if outputlist[i] == '/dev/null':
+        if outputlist[i] == "/dev/null":
             continue
 
         try:
@@ -2764,7 +2764,9 @@ def create_read_requests(callback_addr, tinfo, e):
         imachine, ifullname, idir, ibasename = fullpath(e.input[i])
         omachine, ofullname, odir, obasename = fullpath(e.output[0])
         # Add the name if necessary.
-        if len(e.input) > 1:
+        if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
+            pass
+        elif len(e.input) > 1:
             ofullname = os.path.join(ofullname, ibasename)
             omachine, ofullname, odir, obasename = fullpath(ofullname)
         elif len(e.input) == 1 and os.path.isdir(ofullname):
