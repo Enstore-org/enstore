@@ -13,6 +13,9 @@ import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
 
+#Grab the start time.
+t0 = time.time()
+
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
 class match_list:
@@ -83,7 +86,7 @@ def read_db(dbname):
     try:
         d = db.DbTable(dbname[1], dbname[0], dbname[0], [])
         d.cursor('open')
-        t0 = time.time()
+        t1 = time.time()
         k,v = d.cursor('first')
 
         while k:
@@ -92,7 +95,7 @@ def read_db(dbname):
             list.append(v)
             k,v=d.cursor('next')
             if count % 1000 == 0:
-                delta = time.time()-t0
+                delta = time.time()-t1
                 print "%d lines read in at %.1f keys/S in %s." % \
                       (count, count/delta, delta)
         
@@ -530,9 +533,9 @@ def verify_volume_quotas(volume_data, volume, volume_quotas):
 ##############################################################################
 
 def sort_inventory(data_file, volume_list, tmp_dir):
-    t0 = time.time()
-    data_list = [1]
-    fd_tmp = {}
+    t1 = time.time()
+    STEP = 1000        #Number of records to read in at a time.
+    data_list = [1]    #List where STEP number of records is placed.
     db = None          #The database needed by read_long_db()
     count_metadata = 0 #keep track of the number of files processed.
     #A cool thing this class is.  It is a class, but it acts like a function
@@ -541,12 +544,12 @@ def sort_inventory(data_file, volume_list, tmp_dir):
     compare = match_list("")
 
     #While there is still data to process.
-    while len(data_list):
+    while count_metadata % STEP == 0 and len(data_list):
 
         #Get the data list in groups of 1000 records.  For the first call,
         # pass None into second parameter, this will tell the function to
         # create the database instance.
-        long_read_return = read_long_db(os.path.split(data_file), db, 1000)
+        long_read_return = read_long_db(os.path.split(data_file), db, STEP)
 
         #For readability rename the two parts of the return value.
         data_list = long_read_return[0]
@@ -582,9 +585,10 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         #Since, the while loop takes a while to process all of the data,
         # generate some running performace statistics.
         delta = time.time()-t0
+        omega = time.time()-t1
         count_metadata = count_metadata + len(data_list)
         print "%d lines read in at %.1f keys/S in %s." % \
-              (count_metadata, count_metadata/delta, parse_time(delta))
+              (count_metadata, count_metadata/omega, parse_time(delta))
 
 #        break #usefull for debugging
 
@@ -692,9 +696,6 @@ def inventory_dirs():
 
 
 if __name__ == "__main__":
-    #Grab the start time.
-    t0 = time.time()
-    
     #Don't bother with initialization if they only want help
     if "--help" in sys.argv:
         inventory_usage()
@@ -747,12 +748,6 @@ if __name__ == "__main__":
 
     #Remove the contents of existing direcories and create them if they do
     # not exist.
-    #Note: This function works by performing an "rm -rf" on each directory.
-    # This makes it important to cleanup the higher directory first as
-    # indicated by the needs of the system.  The probelm most likely will
-    # involve having the inventory_extract_dir and inventory_tmp_dir be
-    # subdirectories of output_dir (=inventory_dir).  So, cleanup this
-    # directory first.
     create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
 
     #If the backup needs to be extracted (the defualt) then do.
