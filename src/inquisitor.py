@@ -16,6 +16,7 @@ import threading
 import socket 
 import re
 import copy
+import select
 
 # enstore imports
 import setpath
@@ -34,6 +35,7 @@ import enstore_constants
 import www_server
 import volume_family
 import option
+import cleanUDP
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -64,12 +66,14 @@ DEFAULT_REFRESH = "60"
 ALIVE = "alive"
 NO_INFO_YET = "no info yet"
 SERVER_STATUS_THREAD_TO = 5.0
+SERVER_ER_READ_THREAD_TO = 1.0
 
 USER = 0
 TIMEOUT=1
 NOVALUE = -1
 QUESTION = "?"
 
+ER_UPDATE_INTERVAL = 15
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
 DEFAULT_OVERRIDE_INTERVAL = 86400   # (1 day) how long something needs to be
@@ -173,6 +177,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # real errors can perhaps be found.
     def __init__(self):
 	self.server_d = None
+        self.server_er_msg = {}
 	self.inquisitor = None
 	self.erc = None
 	self.event_relay = None
@@ -193,6 +198,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.lm_queues = {}
         self.name = MY_NAME
 	self.html_dir = None
+        self.er_lock = threading.Lock()
     
     def get_server(self, name):
 	if type(name) == types.ListType:
@@ -436,24 +442,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if enstore_functions2.is_mover(key):     
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
                 self.server_d[key] = monitored_server.MonitoredMover(cdict, key,
 								     self.csc)
+                self.er_lock.release()
         elif enstore_functions2.is_media_changer(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
                 self.server_d[key] = monitored_server.MonitoredMediaChanger(cdict,
                                                                             key)
+                self.er_lock.release()
         elif enstore_functions2.is_library_manager(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
 									      key, 
 									      self.csc)
+                self.er_lock.release()
         elif enstore_functions2.is_generic_server(key):
 	    # this is a generic server - make sure we are now monitoring this server
             cdict = config_d[key]
 	    if self.ok_to_monitor(cdict) and self.servers_by_name.has_key(key):
+                self.er_lock.acquire()
 		self.server_d[key] = self.servers_by_name[key]
+                self.er_lock.release()
 		# set the last alive time to now.
 		self.server_d[key].last_alive = time.time()
 	    else:
@@ -478,7 +492,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def stop_monitoring(self, server, skey):
         self.serverfile.dont_monitor(server.name, server.host)
+        self.er_lock.acquire()
         del self.server_d[skey]
+        self.er_lock.release()
 
     def get_value(self, aKey, aValue):
 	self.got_from_cmdline[aKey] = aValue
@@ -883,9 +899,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # Don't fear the reaper!!
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "exiting inquisitor due to request")
-        self.erc.unsubscribe()
 	if self.server_status_file_thread.isAlive():
 	    self.server_status_file_thread.join()
+	if self.er_thread.isAlive():
+	    self.er_thread.join()
         os._exit(exit_code)
 
     # update any encp information from the log files
@@ -1084,8 +1101,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 						       "servers":lm.name,
 						       "saagStatus":"red"}, OVERRIDE)
 
-    def server_is_alive(self, name):
-        now = time.time()
+    def server_is_alive(self, name, aTime=None):
+        if not aTime:
+            now = time.time()
+        else:
+            now = aTime
         server = self.server_d.get(name, None)
         if server:
             self.serverfile.output_alive(server.host, ALIVE, now, name)
@@ -1103,7 +1123,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     #     if this message is from a library_manager - send a message to the
     #                                       lib_man for it's state, suspect
     #                                       volume list and queue list.
-    def process_event_message(self, fd):
+    def process_event_message(self, reason_called=TIMEOUT):
         # the event relay is alive
         now = time.time()
         self.serverfile.output_alive(self.erc.event_relay_addr[0], 
@@ -1116,46 +1136,55 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             for server in self.server_d.keys():
                 self.server_d[server].last_alive = now
 
-        self.event_relay.alive(now)
         self.sent_event_relay_alarm = 0  
-	msg = enstore_erc_functions.read_erc(self.erc, fd)
-        if msg:
-            # ignore messages that originated with us
-            if msg.type == event_relay_messages.ALIVE and \
-	       not msg.server == self.inquisitor.name:
-                enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
-		      "received event relay message type %s (%s)"%(msg.type, 
-								   msg.server))
-                # check if this is one of the servers we are watching.
-                if self.server_d.has_key(msg.server):
-                    server = self.server_is_alive(msg.server)
+        # ignore messages that originated with us
+        if self.er_alive_event.isSet():
+            self.event_relay.alive(now)
+            self.er_alive_event.clear()
+            enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
+                  "processing event relay message type alive")
+            # check if this is one of the servers we are watching.
+            self.er_lock.acquire()
+            servers = self.server_er_msg.keys()
+            self.er_lock.release()
+            for aServer in servers:
+                if self.server_d.has_key(aServer):
+                    self.er_lock.acquire()
+                    server_time = self.server_er_msg[aServer]
+                    del self.server_er_msg[aServer]
+                    self.er_lock.release()
+                    server = self.server_is_alive(aServer, server_time)
                     # if server is a mover, we need to get some extra status
-                    if enstore_functions2.is_mover(msg.server):
+                    if enstore_functions2.is_mover(aServer):
                         self.update_mover(server)
-			self.check_for_bad_writes(server)
+                        self.check_for_bad_writes(server)
                     # if server is a library_manager, we need to get some extra status
-                    if enstore_functions2.is_library_manager(msg.server):
+                    if enstore_functions2.is_library_manager(aServer):
                         self.update_library_manager(server)
-			self.check_for_bad_writes(server)
-            elif msg.type == event_relay_messages.NEWCONFIGFILE:
-                enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
-			 "received event relay message type %s"%(msg.type,))
-                # a new config file was loaded into the config server, get it
-                self.make_config_html_file()
-            elif msg.type == event_relay_messages.ENCPXFER:
-                enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
-			 "received event relay message type %s"%(msg.type,))
-                # an encp xfer completed - update the encp history page, but only do
-                # this at most once per minute
-                if now - self.last_encp_update > 60:
-                    # it has been more than 1 minute since the last update, so do it.
-                    self.make_encp_html_file(now)
-                else:
-                    # record the fact that we got an encp transfer notice, but it was too
-                    # soon to do another update of the html file.  we will check this
-                    # later to do the update if no other encp xfer comes thru to trigger
-                    # an update.
-                    self.encp_xfer_but_no_update = now
+                        self.check_for_bad_writes(server)
+        if self.er_config_event.isSet():
+            self.event_relay.alive(now)
+            enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
+                                       "processing event relay message type NEW CONFIG")
+            # a new config file was loaded into the config server, get it
+            self.er_config_event.clear()
+            self.make_config_html_file()
+        if self.er_encp_event.isSet():
+            self.event_relay.alive(now)
+            enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
+                                       "processing event relay message type ENCP XFER")
+            self.er_encp_event.clear()
+            # an encp xfer completed - update the encp history page, but only do
+            # this at most once per minute
+            if now - self.last_encp_update > 60:
+                # it has been more than 1 minute since the last update, so do it.
+                self.make_encp_html_file(now)
+            else:
+                # record the fact that we got an encp transfer notice, but it was too
+                # soon to do another update of the html file.  we will check this
+                # later to do the update if no other encp xfer comes thru to trigger
+                # an update.
+                self.encp_xfer_but_no_update = now
         # we may be stuck getting lots of event relay messages if the rest of
         # the system is backed up.  so, check if it has been more than 5
         # minutes since we last wrote out the web pages
@@ -1332,10 +1361,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
 				   "get_max_encp_lines work from user")
 
+    # resubscribe to the event relay
+    def resubscribe(self, reason_called=TIMEOUT):
+        self.er_subscribe_event.set()
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
+				   "event relay resubscribe work")
+    
     # subscribe to the event relay
     def subscribe(self, ticket):
         ticket["status"] = (e_errors.OK, None)
-        self.erc.subscribe()
+        self.er_subscribe_event.set()
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "event relay subscribe work from user")
@@ -1488,6 +1523,83 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "show up/down status work from user")
 
+    # this is the thread that reads the messages sent from the event relay and adds
+    # them to the queue
+    def read_er_messages(self):
+        # setup the communications with the event relay task
+        self.erc.no_select_fd()
+        self.erc.no_interval()
+        self.erc.start([event_relay_messages.ALIVE,
+                        event_relay_messages.NEWCONFIGFILE,
+                        event_relay_messages.ENCPXFER], self.resubscribe_rate)
+
+        # start our heartbeat to the event relay process
+        self.erc.start_heartbeat(enstore_constants.INQUISITOR, 
+                                 self.inquisitor.alive_interval)
+        rcv_timeout = 5
+        self.our_heartbeat = time.time()
+        while 1:
+            try:
+                # read messages from the udp socket connected to the event_relay
+                #enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                #                           "thread calling select")
+                ##r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+                r, w, x = select.select([self.erc.sock,], [], [self.erc.sock,], rcv_timeout)
+                enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                           "thread  %s %s %s"%(r, w, x))
+                # check if we have been signalled to exit
+		if self.exit_now_event.isSet():
+                    self.erc.unsubscribe()
+		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD, 
+					       "Exiting er read thread")
+		    return
+                if self.er_subscribe_event.isSet():
+		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD, 
+					       "Resubscribing to event relay")
+                    self.erc.subscribe()
+                    self.er_subscribe_event.clear()
+                # see if we should send our heartbeat
+                now = time.time()
+                if now - self.our_heartbeat > self.erc.heartbeat_interval:
+                    self.erc.heartbeat()
+                    self.our_heartbeat = now
+                if not r + w:
+                    # timeout
+                    continue
+                # read and process the message
+                msg = enstore_erc_functions.read_erc(self.erc, self.erc.sock)
+                if msg:
+                    if msg.type == event_relay_messages.ALIVE and \
+                           not msg.server == self.inquisitor.name:
+                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                       "received event relay message type %s (%s)"%(msg.type, 
+                                                                                    msg.server))
+                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                                   "thread acquiring lock")
+                        self.er_lock.acquire()
+                        if self.server_d.has_key(msg.server):
+                            self.server_er_msg[msg.server] = time.time()
+                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                                   "thread releasing lock")
+                        self.er_lock.release()
+                        self.er_alive_event.set()
+                    elif msg.type == event_relay_messages.NEWCONFIGFILE:
+                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                             "received event relay message type %s"%(msg.type,))
+                        self.er_config_event.set()
+                    elif msg.type == event_relay_messages.ENCPXFER:
+                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                                             "received event relay message type %s"%(msg.type,))
+                        self.er_encp_event.set()
+            except:
+                # this is the event relay msg read thread.  catch anything, report it
+		# and carry on.
+		Trace.handle_error()
+                # we may be here because of an error while quitting, check again
+		if self.exit_now_event.isSet():
+                    return
+		self.serve_forever_error(self.log_name+"ERRT")
+        
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
@@ -1495,9 +1607,14 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
 	InquisitorMethods.__init__(self)
-        generic_server.GenericServer.__init__(self, csc, MY_NAME, 
-                                              self.process_event_message)
+        import pdb
+        pdb.set_trace()
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
+        self.alarmc.rcv_timeout = 15
+        self.alarmc.rcv_tries = 1
+        # we do not want the register event relay with dispatching worker
+        self.resubscribe_rate = 300
         self.startup_state = e_errors.OK
         self.last_time_for_periodic_tasks = time.time()
 
@@ -1639,22 +1756,13 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.add_interval_func(self.periodic_tasks, self.update_interval)
         self.add_interval_func(self.encp_periodic_tasks, ENCP_UPDATE_INTERVAL)
         self.add_interval_func(self.log_periodic_tasks, LOG_UPDATE_INTERVAL)
-
         self.add_interval_func(self.saag_periodic_tasks, OVERRIDE_UPDATE_INTERVAL)
+        self.add_interval_func(self.process_event_message, ER_UPDATE_INTERVAL)
+        self.add_interval_func(self.resubscribe, self.resubscribe_rate)
 
         self.event_relay_msg = event_relay_messages.EventRelayAliveMsg(self.inquisitor.host,
                                                                        self.inquisitor.port)
         self.event_relay_msg.encode(self.inquisitor.name)
-
-        # setup the communications with the event relay task
-        self.resubscribe_rate = 300
-        self.erc.start([event_relay_messages.ALIVE,
-                        event_relay_messages.NEWCONFIGFILE,
-                        event_relay_messages.ENCPXFER], self.resubscribe_rate)
-
-        # start our heartbeat to the event relay process
-        self.erc.start_heartbeat(enstore_constants.INQUISITOR, 
-                                 self.inquisitor.alive_interval)
 
         # keep track of when we receive event relay messages.  maybe we can tell if
         # the event relay process goes down.
@@ -1688,6 +1796,17 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 							  args=())
 	#self.server_status_file_thread.setDaemon(1)
 	self.server_status_file_thread.start()
+
+        # this is the thread that will read the event relay messages
+        self.er_encp_event = threading.Event()
+        self.er_config_event = threading.Event()
+        self.er_alive_event = threading.Event()
+        self.er_subscribe_event = threading.Event()
+        self.er_thread = threading.Thread(group=None,
+                                          target=self.read_er_messages,
+                                          name="READ_ER_MESSAGES",
+                                          args=())
+        self.er_thread.start()
 
 
 class InquisitorInterface(generic_server.GenericServerInterface):
