@@ -281,8 +281,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
 	if lm.has_key(enstore_constants.LMSTATE) and \
-	   not lm[enstore_constants.LMSTATE] == enstore_constants.UNKNOWN_S and \
-           lm.has_key(enstore_constants.ACTIVE_VOLUMES:
+	   not lm[enstore_constants.LMSTATE] == enstore_constants.UNKNOWN_S:
 	    wam_q = lm.get(enstore_constants.WORK, None)
 	    if wam_q and not wam_q is enstore_constants.NO_WORK:
 		for wam_elem in wam_q:

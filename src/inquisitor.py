@@ -66,6 +66,7 @@ SERVER_STATUS_THREAD_TO = 5.0
 USER = 0
 TIMEOUT=1
 NOVALUE = -1
+QUESTION = "?"
 
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
@@ -572,9 +573,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				       "suspect_vols - ERROR, timed out")
             return None
         elif not enstore_functions.is_ok(state):
-            self.handle_lmc_error(lib_man, time, state)
+            self.handle_lmc_error(lib_man, time, state) 
             return None
         return 1
+
+    def default_suspect_vols(self, lib_man):
+        if not self.serverfile.text[lib_man.name].has_key(enstore_constants.SUSPECT_VOLS):
+            self.serverfile.text[lib_man.name][enstore_constants.SUSPECT_VOLS] = ["None"]
 
     check_nodes = ["d0olc",]
 
@@ -721,6 +726,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             return None
         return 1
 
+    def default_work_queue(self, lib_man):
+        if not self.serverfile.text[lib_man.name].has_key(enstore_constants.WORK):
+            self.serverfile.text[lib_man.name][enstore_constants.WORK] = enstore_constants.NO_WORK
+        if not self.serverfile.text[lib_man.name].has_key(enstore_constants.PENDING):
+            self.serverfile.text[lib_man.name][enstore_constants.PENDING] = enstore_constants.NO_PENDING
+        self.serverfile.text[lib_man.name][enstore_constants.TOTALPXFERS] = QUESTION
+        self.serverfile.text[lib_man.name][enstore_constants.READPXFERS] = QUESTION
+        self.serverfile.text[lib_man.name][enstore_constants.WRITEPXFERS] = QUESTION
+        self.serverfile.text[lib_man.name][enstore_constants.TOTALONXFERS] = QUESTION
+        self.serverfile.text[lib_man.name][enstore_constants.READONXFERS] = QUESTION
+        self.serverfile.text[lib_man.name][enstore_constants.WRITEONXFERS] = QUESTION
+
     # get the library manager active_volumes and output it
     def active_volumes(self, lib_man, time):
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
@@ -751,6 +768,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
             return None
         return 1
+
+    # there was an error getting this information, default it
+    def default_active_volumes(self, lib_man):
+        if not self.serverfile.text[lib_man.name].has_key(enstore_constants.ACTIVE_VOLUMES):
+            self.serverfile.text[lib_man.name][enstore_constants.ACTIVE_VOLUMES] = []
 
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
@@ -793,6 +815,30 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     if self.active_volumes(lib_man, now):
                         self.check_for_stalled_queue(lib_man)
                         self.new_server_status = 1
+                    else:
+                        # there was an error, we do not have the active volumes  information,
+                        # if we never did default it
+                        self.default_active_volumes(lib_man)                        
+                else:
+                    # there was an error, we do not have the work queue information,
+                    # if we never did default it
+                    self.default_work_queue(lib_man)
+                    # also the active_vols
+                    self.default_active_volumes(lib_man)
+            else:
+                # there was an error, we do not have the suspect vols information,
+                # if we never did default it
+                self.default_suspect_vols(lib_man)
+                # also the work_queue and active_vols
+                self.default_work_queue(lib_man)
+                self.default_active_volumes(lib_man)
+        else:
+            # there was an error, we do not have the lm_state information
+            self.serverfile.text[lib_man.name][enstore_constants.LMSTATE] = "TIMED OUT"
+            # also the suspect vols, work_queue and active_vols
+            self.default_suspect_vols(lib_man)
+            self.default_work_queue(lib_man)
+            self.default_active_volumes(lib_man)
         return
 
     # get the information from the mover
