@@ -292,47 +292,14 @@ ftt_open_dev(ftt_descriptor d) {
 		return -1;
 	    }
 	}
-
 	/*
 	 * set density *regardless* of read/write, it may matter 
 	 * mainly for OCS, who may be doing ocs_setdev before doing
 	 * a mount -- the tape we have may be readonly, etc. but we
 	 * may be setting it for the *next* tape
 	 */
-	if (!d->density_is_set) {
-	    res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
-	    if (res < 0) {
-		return res;
-	    }
-	    if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
-		if ((status_res & FTT_ABOT)|| !(status_res & FTT_ONLINE)) {
-		    DEBUG3(stderr,"setting density...\n");
-		    res = ftt_set_hwdens(d, 
-			    d->devinfo[d->which_is_default].hwdens);
-		    if (res < 0) {
-			return res;
-		    }
-		    d->density_is_set = 1;
-		} else {
-		    ftt_errno = FTT_ENOTBOT;
-		    ftt_eprintf("ftt_open_dev: Need to change tape density for writing, but not at BOT");
-		    return -1;
-		}
-	    } else {
-		d->density_is_set = 1;
-	    }
-	}
+        res = ftt_setdev(d);			if (res < 0) return res;
 
-        if (-1 != d->default_blocksize &&
-		d->default_blocksize != d->current_blocksize && 
-		!(d->flags&FTT_FLAG_BSIZE_AFTER)) {
-	    res = ftt_set_blocksize(d, d->default_blocksize);
-	    if (res < 0) {
-	       return res;
-	    } else {
-	       d->current_blocksize = d->default_blocksize;
-	    }
-	}
 	/* 
 	** now we've checked for the ugly read-write with write protected
 	** tape error, and set density if needed, we can go on and open the 
@@ -364,6 +331,53 @@ ftt_open_dev(ftt_descriptor d) {
     }
     DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);
     return d->file_descriptor;
+}
+
+/*
+ * set compression, mode and  blocksize
+ */
+int
+ftt_setdev(ftt_descriptor d) {
+
+    int  res = 0;
+    ENTERING("ftt_setdev");
+    CKNULL("ftt_descriptor",d);
+
+
+    if (!d->density_is_set) {
+	res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+	if (res < 0) {
+	    return res;
+	}
+	if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
+	    if ((status_res & FTT_ABOT)|| !(status_res & FTT_ONLINE)) {
+		DEBUG3(stderr,"setting density...\n");
+		res = ftt_set_hwdens(d, 
+			d->devinfo[d->which_is_default].hwdens);
+		if (res < 0) {
+		    return res;
+		}
+		d->density_is_set = 1;
+	    } else {
+		ftt_errno = FTT_ENOTBOT;
+		ftt_eprintf("ftt_open_dev: Need to change tape density for writing, but not at BOT");
+		return -1;
+	    }
+	} else {
+	    d->density_is_set = 1;
+	}
+    }
+    if (-1 != d->default_blocksize &&
+	    d->default_blocksize != d->current_blocksize && 
+	    !(d->flags&FTT_FLAG_BSIZE_AFTER)) {
+	res = ftt_set_blocksize(d, d->default_blocksize);
+	if (res < 0) {
+	   return res;
+	} else {
+	   d->current_blocksize = d->default_blocksize;
+	}
+    }
+    return res;
 }
 
 int

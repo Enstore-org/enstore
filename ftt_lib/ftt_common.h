@@ -57,6 +57,7 @@ extern int		ftt_scsi_locate(ftt_descriptor, int);
 extern int		ftt_set_data_direction(ftt_descriptor, int);
 extern char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );
 extern int 		ftt_set_mode_dev(ftt_descriptor, char *, int );
+extern int		ftt_setdev(ftt_descriptor);
 extern int		ftt_skip_fm(ftt_descriptor, int);
 extern int		ftt_skip_rec(ftt_descriptor, int);
 extern int 		ftt_skip_to_double_fm(ftt_descriptor d);
