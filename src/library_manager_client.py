@@ -100,9 +100,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            
         return {"status" :(e_errors.OK, None)}
 
-    def getmoverlist(self):
-	return self.getlist("getmoverlist")
-
     def get_suspect_volumes(self):
 	return self.getlist("get_suspect_volumes")
 
@@ -211,7 +208,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.get_work = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-	self.get_mover_list = 0
 	self.get_susp_vols = 0
 	self.get_delayed_dismount = 0
 	self.get_susp_vols = 0
@@ -235,7 +231,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.restricted_opts
         else:
             return self.client_options()+\
-                   ["get_work", "get_mover_list", "get_suspect_vols",
+                   ["get_work", "get_suspect_vols",
                     "get_delayed_dismount","delete_work=","priority=",
                     "load_movers", "poll", "get_queue","host=",
                     "start_draining=", "stop_draining", "status", "active_volumes",
@@ -284,9 +280,6 @@ def do_work(intf):
         ticket = lmc.getwork()
 	print ticket['pending_work']
 	print ticket['at movers']
-    elif  intf.get_mover_list:
-	ticket = lmc.getmoverlist()
-	print ticket['moverlist']
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
 	print ticket['suspect_volumes']

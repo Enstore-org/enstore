@@ -221,8 +221,6 @@ class Interface:
                 self.summary = 1
             elif opt == "--get_work" :
                 self.get_work = 1
-            elif opt == "--get_mover_list" :
-                self.get_mover_list = 1
             elif opt == "--get_suspect_vols" :
                 self.get_susp_vols = 1
             elif opt == "--get_delayed_dismount" :
