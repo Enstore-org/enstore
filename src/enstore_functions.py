@@ -78,6 +78,19 @@ def is_generic_server(server):
 	return 1
     return 0
 
+# check if the status in the dictionary signals a time out
+def is_timedout(dict):
+    if dict['status'][0] == e_errors.TIMEDOUT:
+	return 1
+    else:
+	return None
+
+# check if the status in the dictionary signals everything is ok
+def is_ok(dict):
+    if dict['status'][0] == e_errors.OK:
+	return 1
+    else:
+	return None
 
 try:
     import threading
