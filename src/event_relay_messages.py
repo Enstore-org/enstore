@@ -16,6 +16,7 @@ CONNECT = "connect"
 UNLOAD = "unload"
 LOADED = "loaded"
 ENCPXFER = "encp_xfer"
+DUMP = "dump"
 
 MSG_FIELD_SEPARATOR = " "
 
@@ -255,6 +256,19 @@ class EventRelayEncpXferMsg(EventRelayMsg):
 	self.extra_info = ""
 
 
+# Message format:  dump
+class EventRelayDumpMsg(EventRelayMsg):
+
+    def decode(self, msg):
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
+
+    def encode(self):
+	self.type = DUMP
+	self.extra_info = ""
+
+
 # list of supported messages
 SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      UNSUBSCRIBE : EventRelayUnsubscribeMsg,
@@ -267,7 +281,8 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      CONNECT : EventRelayConnectMsg,
 		      UNLOAD : EventRelayUnloadMsg,
 		      LOADED : EventRelayLoadedMsg,
-		      ENCPXFER : EventRelayEncpXferMsg
+		      ENCPXFER : EventRelayEncpXferMsg,
+		      DUMP : EventRelayDumpMsg
 		      }
 
 

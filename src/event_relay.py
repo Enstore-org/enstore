@@ -24,6 +24,7 @@ my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
 ALL = "all"
 NOTIFY = "notify"
 UNSUBSCRIBE = "unsubscribe"
+DUMP = "dump"
 MAX_TIMEOUTS = 20
 LOG_NAME = "EVRLY"
 
@@ -63,6 +64,11 @@ class Relay:
 	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
 	Trace.init(LOG_NAME)
             
+    def dump(self):
+	# dump our brains
+	print "Subscribed clients : %s"%(self.clients,)
+	print "Timeouts : %s"%(self.timeouts,)
+
     def mainloop(self):
         last_heartbeat = 0
 	try:
@@ -90,34 +96,35 @@ class Relay:
 			# wants all message types
 			filter_d = get_message_filter_dict(tok)
 			self.clients[(ip, port)] = (now, filter_d)
-			### debugging log message
 			msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
 									      filter_d)
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 		    except:
+			self.dump()
+                        Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 			msg = "cannot handle request %s"%(msg,)
-			### debugging log message
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-			print msg
-			traceback.print_exc()
 
 		elif tok[0] == UNSUBSCRIBE:
 		    try:
 			ip = tok[1]
 			port = int(tok[2])
 			del self.clients[(ip, port)]
-			### debugging log message
 			msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 		    except:
+			self.dump()
+                        Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 			msg = "cannot handle request %s"%(msg,)
-			### debugging log message
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
-			print msg
+
+		elif tok[0] == DUMP:
+		    self.dump()
 		else:
 		    self.send_message(msg, tok[0], now)
 	except:
-	    Trace.handle_error()
+	    self.dump()
+	    Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
@@ -131,12 +138,10 @@ class Relay:
                     try:
                         self.send_socket.sendto(msg, addr)
                     except:
+			self.dump()
                         Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 			msg = "send failed %s"%(addr,)
-		        ### debugging log message
 			Trace.log(e_errors.ERROR, msg, Trace.MSG_EVENT_RELAY)
-                        print msg
-			### traceback.print_exc()
 
 			### figure out if we should stop sending to this client
 			self.timeouts[addr] = self.timeouts.get(addr, 0) + 1

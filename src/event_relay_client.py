@@ -116,4 +116,8 @@ class EventRelayClient:
                                                                     self.port)
 	self.heartbeat()
 
-
+    def dump(self):
+	# send the dump request to the event relay
+	self.dump_msg = event_relay_messages.EventRelayDumpMsg(self.host, self.port)
+	self.dump_msg.encode()
+	self.send(self.dump_msg)
