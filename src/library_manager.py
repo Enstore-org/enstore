@@ -1040,9 +1040,9 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                        rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                        rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
                         if not rq:
-                            rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                            rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
                         continue
                     else: break
                 else: break
