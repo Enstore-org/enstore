@@ -866,7 +866,8 @@ class Mover:
     def resize(self, N):
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 40 or more movers.
-        self.width = (self.display.width/4.0)
+        self.width = (self.display.number_of_movers / 20)
+        self.width = (self.display.width/(self.width + 3))
         #Size of the volume portion of mover display.
         self.vol_width = (self.width)/2.5
         self.vol_height = (self.height)/2.5
@@ -1769,6 +1770,7 @@ class Display(Tkinter.Canvas):
 
     def movers_command(self, command_list):
         self.mover_names = command_list[1:]
+        self.number_of_movers = len(command_list[1:])
         self.create_movers(self.mover_names)
 
     #########################################################################
