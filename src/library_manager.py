@@ -619,6 +619,7 @@ class LibraryManagerMethods:
         # before assigning volume check if it is bound for the current family
         if self.process_for_bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
+            Trace.trace(9,"process_write_request for %s" % (rq.ticket,))
             v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                            vol_family, 
@@ -626,7 +627,7 @@ class LibraryManagerMethods:
                                            first_found=0,
                                            mover=requestor)
             # volume clerk returned error
-            Trace.trace(12,"process_write_request: next write volume returned %s" % (v,))
+            Trace.trace(9,"process_write_request: next write volume returned %s" % (v,))
             if v["status"][0] != e_errors.OK:
                 rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
                 if v['status'][0] == e_errors.BROKEN:
