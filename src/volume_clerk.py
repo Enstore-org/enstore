@@ -1203,7 +1203,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # exceeds 95%
                 dq = quota - vol_count
                 if dq < 3 or dq < (quota * 0.05):
-                   msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count, qouta)
+                   msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count, quota)
                    Trace.alarm(e_errors.INFO, msg)
                 return 1
         else:
