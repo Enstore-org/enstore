@@ -8,12 +8,15 @@ CFLAGS = -g
 INC = -I$(DCAP_DIR)/include -I.
 #LIBS = -L$(DCAP_DIR)/lib -L. -ldcap libktev.a
 LIBS = libktev.a libdcap.a
+OS_DEP_LIB = `if [ $(MACH_OS) = "Linux" ]; then echo "-ldl -lpthread"; else echo ""; fi` 
 LIB_SRC = ktevapi.c
 LIB_OBJS = ${LIB_SRC:.c=.o}
 
 
 ktev_main: libktev.a ktev_main.o
-	$(CC) -static -o $@ ktev_main.o $(LIBS)
+	@echo "OS $(MACH_OS)"
+	@echo "OPT" 
+	$(CC) -static -o $@ ktev_main.o $(LIBS) $(OS_DEP_LIB)
 #ktev_main: libktev.so ktev_main.o
 #	cc -o $@ ktev_main.o $(LIBS) -lc 
 
