@@ -7,6 +7,14 @@
    <Host Name="fnpc11"/>
    <Host Name="fnpc35"/>
    <Host Name="fncdf123"/>
+   <OutOfServiceInterval StartDateTime="2002-03-01 13:50" >
+        <System Name="Hardware" Cluster="rip9">
+                <MonitoredElement Name="fanSpeed" Host="rip9"/>
+        </System>
+        <System Name="Hardware" Cluster="rip10">
+                <MonitoredElement Name="fanSpeed" Host="rip10"/>
+        </System>
+   </OutOfServiceInterval>
 
    <System Name="LSF" Cluster="fsgb02" />
    <OutOfServiceInterval StartDateTime="2001-05-01 12:30" EndDateTime="2001-06-25 1:16">
