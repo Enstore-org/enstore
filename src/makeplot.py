@@ -222,6 +222,11 @@ if __name__ == "__main__":
     if "--help" in sys.argv:
         print_usage()
         sys.exit(1)
+
+    #Make sure the gnuplot is available.
+    if os.system("echo exit | gnuplot > /dev/null 2>&1"):
+        sys.stderr.write("Unable to find gnuplot.  Aborting.\n")
+        sys.exit(1)
     
     log_dir, tmp_dir, sys_name, rate_nodes, ps_filename_template, \
           jpg_filename_template, jpg_stamp_filename_template = get_rate_info()
@@ -303,7 +308,7 @@ if __name__ == "__main__":
                              (str(exc), str(msg)))
             sys.exit()
             
-        os.system("gnuplot < %s >& /dev/null" % plot_filename[group])
+        os.system("gnuplot < %s" % plot_filename[group])
         
         os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
                                                    jpg_filename[group]))
