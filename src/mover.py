@@ -2,7 +2,8 @@ import sys
 import time
 import timeofday
 import traceback
-import binascii	# for crc
+import socket				# for init(config_host=="localhost"...)
+import binascii				# for crc
 
 #enstore modules
 import configuration_client
