@@ -11,7 +11,7 @@ enstore pnfs is a tool to control, manipulate and query pnfs files.
 Commonly used commands are:
 
    enstore pnfs info   file         lists \"important\" info about the file
-       note:  \"eval \`pnfs info file\`\" will set shell variables for the user
+       note:  \"eval \`enstore pnfs info file\`\" will set shell variables for the user
 
    enstore pnfs tags   directory    lists the tags in the directory
 
@@ -73,7 +73,7 @@ End of enstore pnfs help description
               echo "$usage"; }
 
 #internal routine only
-p_error()   { echo ERROR, Usage: pnfs $1; exit 1; }
+p_error()   { echo ERROR, Usage: enstore pnfs $1; exit 1; }
 
 #internal routine only
 p_cmd()     { echo "\"`dirname $1`/$2(`basename $1`)\"" ; }
@@ -224,7 +224,7 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
 
 #pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
 #              for i in $1/*; do
-#                eval `pnfs info $i`
+#                eval `pnfsa info $i`
 #                if [ $filename != "NO_SUCH_FILE" ]; then
 #                  ls -l $filename
 #                else
@@ -235,9 +235,9 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
 
 pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
               for i in $1/*; do
-	        a=`pnfs cat $i 4`
+	        a=`pnfsa cat $i 4`
 		pnfsid=`echo $a | awk '{print $7}'`
-		filename=`pnfs path $pnfsid`
+		filename=`pnfsa path $pnfsid`
                 if [ $filename != "NO_SUCH_FILE" ]; then
                   ls -l $filename
                 else
