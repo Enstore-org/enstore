@@ -339,6 +339,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                   "Applying GETs workaround for fc/mv "
                                   " communication error.")
                         
+                        #Store the correct items from the file clerk.
+                        work_ticket['fc']['bfid'] = item['bfid']
                         work_ticket['fc']['location_cookie'] = \
                                                     item['location_cookie']
                         work_ticket['fc']['complete_crc'] = \
