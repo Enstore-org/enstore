@@ -1081,9 +1081,15 @@ class Interface:
         self.set_extra_values(long_opt, value)
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
-        if value:
+        if value or opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED, OPTIONAL):
             #Get the name to set.
             opt_name = self.get_value_name(opt_dict, long_opt)
+
+            #If on an option where an option value is not present, do the
+            # best to get the default.
+            if value == None and \
+               opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
+                value = self.get_default_value(opt_dict, value)
 
             #Get the value in the correct type to set.
             try:
@@ -1096,16 +1102,7 @@ class Interface:
 
             setattr(self, opt_name, opt_typed_value)
 
-        if opt_dict.get("extra_option", None) and \
-           opt_dict.get(VALUE_USAGE, None) in (OPTIONAL,):
-            #If there is no value, the option value is optional AND the
-            # option value is an extra option nothing should be done.  There
-            # was a problem because the "not value" clause of the elif below
-            # would be true when the value was optional and not present.
-            # This if catches this type of case.
-            pass
-
-        elif not value or opt_dict.get(FORCE_SET_DEFAULT, None):
+        if not value or opt_dict.get(FORCE_SET_DEFAULT, None):
             #Get the name to set.
             opt_name = self.get_default_name(opt_dict, long_opt)
 
