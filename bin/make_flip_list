@@ -6,7 +6,7 @@ setup enstore
 sun=fntt
 
 cmd1="/usr/bin/rsh $sun -l acsss 'echo eject 0,0,0 "
-cmd2=" |/export/home/ACSSS/bin/cmd_proc'"
+cmd2=" |/export/home/ACSSS/bin/cmd_proc 2>/dev/null'"
 
 flip_list=/tmp/flip.list
 tmp_list=/tmp/vol.list
@@ -30,7 +30,14 @@ get_i() { i=`ls -1U $work | sort -n | tail -n1`
           echo $i
         }
 
-python $ENSTORE_DIR/src/readonly_volumes.py >$flip_list
+while /bin/true; do
+  /bin/echo -n "Enter starting date in format YYYY-MM-DD " 
+  read when
+  rm -f $flip_list
+  python $ENSTORE_DIR/src/readonly_volumes.py $when >$flip_list
+  if [ $? -eq 0 ]; then break; fi
+  echo ERROR. Again...
+done
 
 i=`get_i`
 count=0
