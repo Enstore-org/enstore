@@ -1185,16 +1185,16 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
     if self.client_obj_inst.pid:
 	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
 	except:
-	    traceback.print_exc()
-	    Trace.log( e_errors.ERROR,
-		       'waitpid-for pid:%s exit_status:%s exc_info:%s'%(self.client_obj_inst.pid,
-									exit_status,
-									sys.exc_info()[0:2]) )
-	    os.system( 'ps alxwww' )
-	    #raise sys.exc_info()[0], sys.exc_info()[1]
 	    if wait == 0: status = exit_status
 	    else:         status = m_err.index(e_errors.OK)<<8 # assume success???
 	    pid = self.client_obj_inst.pid
+	    m = 'waitpid-for pid:%s wait:%s exit_status:%s exc_info:%s%s'
+	    Trace.log( e_errors.WARNING,m%((self.client_obj_inst.pid,wait,
+					    exit_status)+sys.exc_info()[0:2]) )
+	    #traceback.print_exc()
+	    #os.system( 'ps alxwww' )
+	    #raise sys.exc_info()[0], sys.exc_info()[1]
+	    pass
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
 	    self.client_obj_inst.state = 'idle'
