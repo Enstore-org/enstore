@@ -44,35 +44,46 @@ def get_callback(verbose=0, ip=None):
     s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s
-                
+
+#recv with a timeout
+def timeout_send(sock,msg,timeout=15*60):
+    timeout = float(timeout)
+    junk,fds,junk = select.select([],[sock],[],timeout)
+    if sock not in fds:
+        return ""
+    return sock.send(msg)
 
 #send a message, with bytecount and rudimentary security
-def write_tcp_raw(sock,msg):
+def write_tcp_raw(sock,msg,timeout=15*60):
     max_pkt_size=16384
     try:
         l = len(msg)
         ptr=0
-        sock.send("%08d"%(len(msg),))
+        #sock.send("%08d"%(len(msg),))
+        timeout_send(sock, "%08d"%(len(msg),), timeout)
         salt=random.randint(11,99)
-        sock.send("ENSTOR%s"%(salt,))
+        #sock.send("ENSTOR%s"%(salt,))
+        timeout_send(sock, "ENSTOR%s"%(salt,), timeout)
         while ptr<l:
-            nwritten=sock.send(msg[ptr:ptr+max_pkt_size])
+            #nwritten=sock.send(msg[ptr:ptr+max_pkt_size])
+            nwritten=timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
             if nwritten<=0:
                 break
             ptr = ptr+nwritten
-        sock.send(hex8(checksum.adler32(salt,msg,l)))
+        #sock.send(hex8(checksum.adler32(salt,msg,l)))
+        timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
     except socket.error, detail:
         Trace.trace(6,"write_tcp_raw: socket.error %s"%(detail,))
         ##XXX Further sends will fail, our peer will notice incomplete message
 
 
 # send a message which is a Python object
-def write_tcp_obj(sock,obj):
-    return write_tcp_raw(sock,repr(obj))
+def write_tcp_obj(sock,obj,timeout=15*60):
+    return write_tcp_raw(sock,repr(obj),timeout)
 
 # send a message which is a Python object
-def write_tcp_obj_new(sock,obj):
-    return write_tcp_raw(sock,cPickle.dumps(obj))
+def write_tcp_obj_new(sock,obj,timeout=15*60):
+    return write_tcp_raw(sock,cPickle.dumps(obj),timeout)
 
 
 #recv with a timeout
@@ -85,8 +96,8 @@ def timeout_recv(sock,nbytes,timeout=15*60):
     
 
 # read a complete message
-def read_tcp_raw(sock):
-    tmp = timeout_recv(sock,8) 
+def read_tcp_raw(sock, timeout=15*60):
+    tmp = timeout_recv(sock,8, timeout) 
     try:
         bytecount = string.atoi(tmp)
     except:
@@ -94,21 +105,21 @@ def read_tcp_raw(sock):
     if len(tmp)!=8 or bytecount is None:
         Trace.trace(6,"read_tcp_raw: bad bytecount %s"%(tmp,))
         return ""
-    tmp = timeout_recv(sock,8) # the 'signature'
+    tmp = timeout_recv(sock,8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
         Trace.trace(6,"read_tcp_raw: invalid signature %s"%(tmp,))
         return ""
     salt=string.atoi(tmp[6:])
     msg = ""
     while len(msg) < bytecount:
-        tmp = timeout_recv(sock,bytecount - len(msg))
+        tmp = timeout_recv(sock,bytecount - len(msg), timeout)
         if not tmp:
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
         Trace.trace(6,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
         return ""
-    tmp = timeout_recv(sock,8)
+    tmp = timeout_recv(sock,8, timeout)
     crc = string.atol(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
@@ -117,14 +128,14 @@ def read_tcp_raw(sock):
     return msg
 
 
-def read_tcp_obj(sock) :
-    s=read_tcp_raw(sock)
+def read_tcp_obj(sock, timeout=15*60) :
+    s=read_tcp_raw(sock, timeout)
     if not s:
         raise e_errors.TCP_EXCEPTION
     return eval(s)
 
-def read_tcp_obj_new(sock) :
-    s=read_tcp_raw(sock)
+def read_tcp_obj_new(sock, timeout=15*60) :
+    s=read_tcp_raw(sock, timeout)
     if not s:
 	raise e_errors.TCP_EXCEPTION
     return cPickle.loads(s)
