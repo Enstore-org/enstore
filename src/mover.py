@@ -931,7 +931,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def send_client_done( self, ticket, status, error_info=None):
         ticket['status'] = (status, error_info)
-        callback.write_tcp_obj( self.control_socket, ticket)
+        try:
+            callback.write_tcp_obj( self.control_socket, ticket)
+        except Exceptions.exception, detail:
+            Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
         self.control_socket.close()
         self.control_socket = None
         return
@@ -944,12 +947,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             host, port, listen_socket = callback.get_callback(fixed_ip=data_ip)
             listen_socket.listen(4)
             ticket['mover']['callback_addr'] = (host,port) #client expects this
-            
-            
+
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             control_socket.connect(ticket['callback_addr'])
-            callback.write_tcp_obj(control_socket, ticket)
-
+            try:
+                callback.write_tcp_obj(control_socket, ticket)
+            except Exceptions.exception, detail:
+                Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
             # we expect a prompt call-back here
             
             read_fds,write_fds,exc_fds=select.select(
@@ -1007,9 +1011,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def run_in_thread(self, thread_name, function, args=(), after_function=None):
         thread = getattr(self, thread_name, None)
+        for wait in range(5):
+            if thread and thread.isAlive():
+                Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
+                time.sleep(1)
         if thread and thread.isAlive():
-            Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
-            return -1
+                Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
+                return -1
         if after_function:
             args = args + (after_function,)
         thread = threading.Thread(group=None, target=function,
