@@ -9,6 +9,7 @@ import signal
 import stat
 import re
 import errno
+import socket
 
 import enstore_constants
 
@@ -395,3 +396,29 @@ def default_port():
         return int(val)
     else:
         return DEFAULT_PORT
+
+
+# generate the full path name to the file
+def fullpath(filename):
+    if not filename:
+        return None, None, None, None
+    elif type(filename) != types.StringType:
+        return None, None, None, None
+
+    hostname=socket.gethostname()
+    hostinfo=socket.gethostbyaddr(hostname)
+    machine = hostinfo[0]  #hostaddr.gethostinfo()[0]
+
+    #Expand the path to the complete absolute path.
+    filepath = os.path.expandvars(filename)
+    filepath = os.path.expanduser(filepath)
+    filepath = os.path.abspath(filepath)
+    filepath = os.path.abspath(filepath)
+
+    #These functions will remove a tailing "/", put it back.
+    if filename[-1] == "/":
+        filepath = filepath + "/"
+        
+    dirname, basename = os.path.split(filename)
+
+    return machine, filename, dirname, basename
