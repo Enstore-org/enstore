@@ -627,7 +627,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.draining = 0
         self.log_mover_state = None
         self.override_ro_mount = None # if set override readonly mount MC option
-        
+        self.just_mounted = 0 # to indicate that the volume was just mounted
         # self.need_lm_update is used in threads to flag LM update in
         # the main thread. First element flags update if not 0,
         # second - state
@@ -881,8 +881,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.force_clean = 0
         # check if device exists
         if not os.path.exists(self.config['device']):
-            Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
-            self.state = OFFLINE
+            Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
+            sys.exit(-1)
             
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
@@ -916,6 +916,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.connect_to = self.config.get("connect_timeout", 15)
         self.connect_retry = self.config.get("connect_retries", 4)
         self.stop =  self.config.get('stop_mover',None)
+        self.check_first_written_enabled =self.config.get("check_first_written_file", 0) 
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -1044,7 +1045,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             have_tape = 0
             if self.state in (IDLE, OFFLINE):
                 good_label = 1
-                have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
+                try:
+                    have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
+                except  self.ftt.FTTError, detail:
+                    Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive: %s %s. Will terminate"%(self.ftt.FTTError, detail))
+                    time.sleep(5)
+                    sys.exit(-1)
 
                 stats = self.tape_driver.ftt.get_stats()
                 self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
@@ -1208,6 +1214,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 1
             else:
                 return 0
+        elif self.just_mounted and self.check_first_written_enabled:
+            self.just_mounted = 0
+            return 1
         else:
             return 0
         
@@ -1838,8 +1847,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
                 Trace.trace(22, "position media")
                 Trace.log(e_errors.INFO, "compression %s"%(self.compression,))
-                have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-                self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
+                try:
+                    have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+                    self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
+                
+                except  self.ftt.FTTError, detail:
+                    Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
+                    self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
+
+                    return
                 save_location = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
@@ -2657,7 +2673,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         err = None
         for retry_open in range(3):
             Trace.trace(10, "position media")
-            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+            try:
+                have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+            except  self.ftt.FTTError, detail:
+                Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive positioning the tape: %s %s."%(self.ftt.FTTError, detail))
+                self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
+                return
+                
             if have_tape == 1:
                 if self.mode == WRITE and self.tape_driver.mode == READ:
                     Trace.alarm(e_errors.ERROR, "tape %s is write protected, will be set read-only"%
@@ -3592,6 +3614,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def dismount_volume(self, after_function=None):
         Trace.trace(10, "state %s"%(state_name(self.state),))
+        self.just_mounted = 0
         if self.state == IDLE:
             Trace.log(e_errors.INFO, "Must be a mistake. No dismount in the state %s"%(state_name(self.state),))
             return
@@ -3747,6 +3770,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
+        self.just_mounted = 0
         if self.current_volume:
             old_volume = self.current_volume
             self.dismount_volume()
@@ -3844,6 +3868,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.mount_delay:
                 Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
                 time.sleep(self.mount_delay)
+            self.just_mounted = 1
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
