@@ -15,7 +15,7 @@ TMP = ".tmp"
 # the web page and create a ps file (if it does not exist) with the
 # name *.ps.
 def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
-    (tjpgs, tstamps, tpss) = enstore_plots.find_files(names)
+    (tjpgs, tstamps, tpss) = enstore_plots.find_files(names, dirname)
     dir = string.split(dirname, input_dir)[-1]
     # when we add the found file to the list of files, we need to add the
     # directory that it was found in to the name
