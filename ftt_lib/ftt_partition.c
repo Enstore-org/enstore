@@ -74,7 +74,7 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
     if (res < 0) return res;
     p->n_parts = buf[4+3];
     p->max_parts = buf[4+2];
-    for( i = 0 ; i < p->n_parts; i++ ) {
+    for( i = 0 ; i <= p->n_parts; i++ ) {
         p->partsizes[i] = pack(0,0,buf[4+8+2*i],buf[4+8+2*i+1]);
     }
     return 0;
@@ -89,12 +89,19 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 
     res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 136, 10, 0);
     if (res < 0) return res;
+
+    /* set number of partitions */
     buf[4+3] = p->n_parts;
-    for( i = 0 ; i < p->n_parts; i++ ) {
+
+    /* set to write initiator defined partitions, in MB */
+    buf[4+4] = 0x20 | 0x10;
+
+    /* fill in partition sizes... */
+    for( i = 0 ; i <= p->n_parts; i++ ) {
         buf[4+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
         buf[4+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
     }
-    res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsel, 6, buf, 136, 10, 1);
+    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, 136, 1000, 1);
     return res;
 }
 
