@@ -939,7 +939,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
             del(ticket['mover'])
         if ticket['vc'].has_key('external_label'):
-            del(ticket.vc['external_label'])
+            del(ticket['vc']['external_label'])
             
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
