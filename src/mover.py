@@ -106,7 +106,7 @@ class Buffer:
         if self._reading_block:
             n = n + self._read_ptr
         if self._writing_block:
-            n = n + len(self._writing_block) - self.write_ptr
+            n = n + len(self._writing_block) - self._write_ptr
         return n
         
     def full(self):
@@ -193,13 +193,20 @@ class Buffer:
                 self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._reading_block,
                                                      self._read_ptr, nbytes)
                 self.sanity_bytes = self.sanity_bytes + nbytes
-        self._readptr = self._readptr + bytes_read
-        if self._readptr == self.blocksize: #we filled up  a block
+        self._read_ptr = self._read_ptr + bytes_read
+        if self._read_ptr == self.blocksize: #we filled up  a block
             self.push(self._reading_block)
             self._reading_block = None
             self._read_ptr = 0
         return bytes_read
 
+    def read_eof(self):
+        if self._reading_block and self._read_ptr:
+            data = self._reading_block[:self._read_ptr]
+            self.push(data)
+            self._reading_block = None
+            self._read_ptr = None
+    
     def stream_write(self, nbytes, driver):
         if self.empty():
             Trace.trace(10, "stream_write: buffer empty")
@@ -219,7 +226,7 @@ class Buffer:
                 self.sanity_bytes = self.sanity_bytes + nbytes
         else:
             bytes_written = bytes_to_write #discarding header stuff
-        self._writeptr = self._writeptr + bytes_written
+        self._write_ptr = self._write_ptr + bytes_written
         if self._write_ptr == len(self._writing_block): #finished sending out this block
             self._freespace(self._writing_block)
             self._writing_block = None
@@ -516,11 +523,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
-        if self.bytes_read == self.bytes_to_read and self.trailer:
-            nbytes = self.buffer.trailer_size
-            bytes_read = self.buffer.stream_read(nbytes, self.trailer)
-            Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
-
+        if self.bytes_read == self.bytes_to_read:
+            if self.trailer:
+                nbytes = self.buffer.trailer_size
+                bytes_read = self.buffer.stream_read(nbytes, self.trailer)
+                Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
+            self.buffer.read_eof() #pushes last partial block onto the lifo
 
         if self.bytes_written != self.bytes_to_write and (
             not self.buffer.low() or self.bytes_read==self.bytes_to_transfer):
@@ -594,8 +602,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a CPIO trailer or something
                 self.bytes_read = self.bytes_to_read
             
-        if self.bytes_read == self.bytes_to_read or not self.buffer.low():
-            self.enable_write_client()
+            if self.bytes_read == self.bytes_to_read or not self.buffer.low():
+                self.enable_write_client()
 
     def write_client(self, driver):
         Trace.trace(15,"write client, buf=%s" % self.buffer.nbytes())
@@ -608,7 +616,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             ###keep pumping data out to the client
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
             bytes_written = self.buffer.stream_write(nbytes, driver)
-            Trace.trace(15, "wrote %s to client")
+            Trace.trace(15, "wrote %s to client"%(bytes_written,))
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
             if bytes_written == -1: #this on the other hand is an error
@@ -714,7 +722,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
         except ImportError, detail:
-            print detail
+            Trace.log(e_errors.ERROR, "%s"%(self.wrapper_type, detail))
             self.wrapper = None
             
         self.client_filename = ticket['wrapper'].get('fullname','?')
@@ -779,7 +787,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_location = self.tape_driver.tell()
 
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
-            current_volume, current_location))
+            self.current_volume, self.current_location))
 
         now = time.time()
 
@@ -1089,9 +1097,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             
         except:
             exc, msg, tb = sys.exc_info()
-            print exc, msg
-            traceback.print_tb(tb)
-            return None, None #XXX
+            Trace.log(e_errors.ERROR, "connect_client:  %s %s"%(exc, msg))
+            return None, None 
 
     
     def status( self, ticket ):
@@ -1223,7 +1230,7 @@ if __name__ == '__main__':
         except:
             try:
                 exc, msg, tb = sys.exc_info()
-                print exc, msg, "restarting"
+                Trace.log(e_errors.INFO, "%s %s restarting" % (exc, msg))
             except:
                 pass
             
