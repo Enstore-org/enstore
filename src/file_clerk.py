@@ -22,6 +22,7 @@ import event_relay_client
 import monitored_server
 import enstore_constants
 import db
+import bfid_db
 import Trace
 import e_errors
 import configuration_client
@@ -336,36 +337,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         listen_socket.close()
         return 1
 
-    # return all the bfids in our dictionary.  Not so useful!
-    def get_bfids(self,ticket):
-        ticket["status"] = (e_errors.OK, None)
-        try:
-            self.reply_to_caller(ticket)
-        # even if there is an error - respond to caller so he can process it
-        except:
-            exc,msg,tb=sys.exc_info()
-            ticket["status"] = str(exc),str(msg)
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"get_bfids %s"%(ticket["status"],))
-            return
-        if not self.get_user_sockets(ticket):
-            return
-        ticket["status"] = (e_errors.OK, None)
-        callback.write_tcp_obj(self.data_socket,ticket)
-        self.dict.cursor("open")
-        key,value=self.dict.cursor("first")
-        while key:
-            callback.write_tcp_raw(self.data_socket,repr(key))
-            key,value=self.dict.cursor("next")
-        callback.write_tcp_raw(self.data_socket,"")
-        self.dict.cursor("close")
-        callback.write_tcp_raw(self.data_socket,"")
-        self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
-        self.control_socket.close()
-        return
-
-
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket):
@@ -554,12 +525,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
      callback.write_tcp_raw(self.data_socket, msg)
-     # now get a cursor so we can loop on the database quickly:
-     c = self.dict.inx['external_label'].cursor()
-     key, pkey = c.set(external_label)
 
-     while key:
-         value = self.dict[pkey]
+     bfid_list = self.bfid_db.get_all_bfids(external_label)
+     for bfid in bfid_list:
+         value = self.dict[bfid]
          if value.has_key('deleted'):
              if value['deleted']=="yes":
                  deleted = "deleted"
@@ -573,8 +542,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
          callback.write_tcp_raw(self.data_socket, msg)
-         key,pkey = c.nextDup()
-     c.close()
+
      callback.write_tcp_raw(self.data_socket, "")
      self.data_socket.close()
      callback.write_tcp_obj(self.control_socket,ticket)
@@ -636,14 +604,14 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get(MY_NAME)
-	self.alive_interval = monitored_server.get_alive_interval(self.csc,
-								  MY_NAME,
-								  keys)
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  MY_NAME,
+                                                                  keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
                                                       keys['port']))
-	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
-				 self.alive_interval)
+        # start our heartbeat to the event relay process
+        self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
+                                 self.alive_interval)
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):
@@ -674,9 +642,10 @@ if __name__ == "__main__":
         jouHome = dbHome
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    fc.dict = db.DbTable("file", dbHome, jouHome, ['external_label'])
+    fc.dict = db.DbTable("file", dbHome, jouHome) 
+    fc.bfid_db = bfid_db.BfidDb(dbHome)
     Trace.log(e_errors.INFO,"hurrah, file database is open")
-
+    
     while 1:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
