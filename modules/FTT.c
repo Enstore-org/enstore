@@ -381,7 +381,11 @@ send_writer(  int	mtype
     msg_s.md.data = d1; /* may not be used */
     msg_s.md.c_p = c1; /* may not be used */
     sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
-    if (sts == -1) perror( "reader_error" ); /* can not do much more */
+    if (sts == -1)
+    {   perror( "fatal reader (send_writer) error" );
+	/* can not do much more, but lets try exitting */
+	exit( 1 );
+    }
     return;
 }
 
@@ -449,8 +453,6 @@ do_read(  int 		rd_fd
 	    /* do not crc g_buf_bytes */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
-		char	xxx[377];
-		strncpy( xxx, g_shmaddr_p+shm_off+g_buf_bytes, 377 ); xxx[376]='\0';
 		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
 					   , g_shmaddr_p+shm_off+g_buf_bytes
 					   , shm_bytes-g_buf_bytes
@@ -482,8 +484,6 @@ do_read(  int 		rd_fd
 	    /* some or all of g_buf_bytes are to be crc-ed */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
-		char	xxx[377];
-		strncpy( xxx, g_shmaddr_p+shm_off, 377 ); xxx[376]='\0';
 		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
 					   , g_shmaddr_p+shm_off
 					   , user_bytes
@@ -552,10 +552,10 @@ FTT_fd_xfer(  PyObject *self
 
     {   /* get IPC stuff from object */
 	struct s_IPCshmgetObject *s_p = (struct s_IPCshmgetObject *)shm_tp;
-	rd_ahead_i = (s_p->i_p[0]-(7*sizeof(int))) / g_blocksize; /* do integer arithmatic */
+	rd_ahead_i = (s_p->i_p[0]-(8*sizeof(int))) / g_blocksize; /* do integer arithmatic */
 	g_shmsize = g_blocksize * rd_ahead_i;
 	g_shmid = s_p->i_p[1];
-	g_shmaddr_p = (char *)&(s_p->i_p[7]);
+	g_shmaddr_p = (char *)&(s_p->i_p[8]);
 	g_msgqid = s_p->i_p[3];
 	g_semid  = s_p->i_p[2];
 	read_bytes_ip  = &(s_p->i_p[4]);
