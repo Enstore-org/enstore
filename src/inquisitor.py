@@ -38,6 +38,7 @@ import e_errors
 import enstore_files
 import enstore_plots
 import enstore_functions
+import www_server
 import udp_client
 import safe_dict
 
@@ -417,16 +418,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                            key)
 	    Trace.trace(13, "lm_state - ERROR, timed out")
 
-    # get the library manager mover list and output it
-    def mover_list(self, lm, (host, port), key, time):
-	try:
-	    stat = safe_dict.SafeDict(lm.getmoverlist())
-	    self.htmlfile.output_lmmoverlist(stat, key)
-	except errno.errorcode[errno.ETIMEDOUT]:	
-	    self.htmlfile.output_etimedout(host, port, TIMED_OUT_SP, time,
-                                           key)
-	    Trace.trace(13, "mover_list - ERROR, timed out")
-
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):
 	try:
@@ -459,7 +450,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    if ret == DID_IT:
                 self.lm_state(lmc, (t['host'], t['port']), key, time)
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
-	        self.mover_list(lmc, (t['host'], t['port']), key, time)
 	        self.work_queue(lmc, (t['host'], t['port']), key, time)
 	    # get rid of this in preparation for the next time through
 	    del lmc.u
@@ -540,6 +530,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
 	    return
+
+	# get the keys that are associated with the web information
+	self.system_tag = www_server.get_system_tag(self.csc, self.alive_rcv_timeout, 
+						    self.alive_retries)
 
         # this will be used when creating the log html file
         self.www_host = t.get('www_host', "file:")
@@ -1166,6 +1160,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	else:
 	    self.alive_retries = alive_retries
 
+	# get the keys that are associated with the web information
+	self.system_tag = www_server.get_system_tag(self.csc, self.alive_rcv_timeout, 
+						    self.alive_retries)
+
 	# if no max number of encp lines was entered on the command line, get 
 	# it from the configuration file.
 	if max_encp_lines == -1:
@@ -1205,17 +1203,21 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# add a suffix to the html file because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
 	# be displayed.
-	self.htmlfile = enstore_files.HTMLStatusFile(html_file+SUFFIX,refresh)
+	self.htmlfile = enstore_files.HTMLStatusFile(html_file+SUFFIX,refresh, 
+						     self.system_tag)
 	self.htmlfile_orig = html_file
-	self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file+SUFFIX,refresh)
+	self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file+SUFFIX, refresh,
+							 self.system_tag)
 	self.encpfile_orig = encp_file
         self.loghtmlfile = enstore_files.HTMLLogFile(self.logc.log_dir+"/"+\
-						     LOGHTMLFILE_NAME+SUFFIX)
-        self.confightmlfile = enstore_files.HTMLConfigFile(config_file+SUFFIX)
+						     LOGHTMLFILE_NAME+SUFFIX, 
+						     self.system_tag)
+        self.confightmlfile = enstore_files.HTMLConfigFile(config_file+SUFFIX, 
+							   self.system_tag)
         self.confightmlfile_orig = config_file
-        self.mischtmlfile = enstore_files.HTMLMiscFile(misc_file+SUFFIX)
+        self.mischtmlfile = enstore_files.HTMLMiscFile(misc_file+SUFFIX, self.system_tag)
         self.mischtmlfile_orig = misc_file
-	self.plothtmlfile = enstore_files.HTMLPlotFile(plot_file+SUFFIX)
+	self.plothtmlfile = enstore_files.HTMLPlotFile(plot_file+SUFFIX, self.system_tag)
         self.plothtmlfile_orig = plot_file
 	self.patrolhtmlfile = enstore_files.HTMLPatrolFile("%s/%s"%(self.html_dir, PATROL_FILE))
 

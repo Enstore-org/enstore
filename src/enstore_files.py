@@ -15,6 +15,7 @@ import enstore_functions
 import enstore_status
 import enstore_constants
 import e_errors
+import www_server
 
 TRUE = 1
 FALSE = 0
@@ -85,9 +86,11 @@ def default_status_html_file():
 
 class EnFile:
 
-    def __init__(self, file):
+    def __init__(self, file, system_tag=""):
         self.file_name = file 
+        self.real_file_name = file 
 	self.openfile = 0
+	self.system_tag = system_tag
 
     def open(self, mode='w'):
 	try:
@@ -109,6 +112,11 @@ class EnFile:
 	    self.openfile.close()
 	    self.openfile = 0
 
+    def install(self):
+	# copy the file we created to the real file name
+	if not self.real_file_name == self.file_name:
+	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
+
     # remove the file
     def cleanup(self, keep, pts_dir):
         if not keep:
@@ -123,8 +131,8 @@ class EnFile:
 
 class EnStatusFile(EnFile):
 
-    def __init__(self, file):
-     	EnFile.__init__(self, file)
+    def __init__(self, file, system_tag=""):
+     	EnFile.__init__(self, file, system_tag)
 	self.text = {}
 
     # open the file
@@ -149,8 +157,8 @@ class EnStatusFile(EnFile):
 
 class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 
-    def __init__(self, file, refresh):
-	EnStatusFile.__init__(self, file)
+    def __init__(self, file, refresh, system_tag=""):
+	EnStatusFile.__init__(self, file, system_tag)
 	self.refresh = refresh
 
     def set_alive_error_status(self, key):
@@ -159,14 +167,14 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
     # write the status info to the file
     def write(self):
         if self.openfile:
-	    doc = enstore_html.EnSysStatusPage(self.refresh)
+	    doc = enstore_html.EnSysStatusPage(self.refresh, self.system_tag)
 	    doc.body(self.text)
             self.openfile.write(str(doc))
 
 class HTMLEncpStatusFile(EnStatusFile):
 
-    def __init__(self, file, refresh):
-	EnStatusFile.__init__(self, file)
+    def __init__(self, file, refresh, system_tag=""):
+	EnStatusFile.__init__(self, file, system_tag)
 	self.refresh = refresh
 
     # output the encp info
@@ -185,7 +193,8 @@ class HTMLEncpStatusFile(EnStatusFile):
 		    txt = string.split(einfo[ETEXT], Trace.MSG_TYPE)
 		    eline.append([einfo[ETIME], einfo[ENODE], einfo[EUSER], txt[0]])
 	    else:
-		doc = enstore_html.EnEncpStatusPage(self.refresh)
+		doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
+						    system_tag=self.system_tag)
 		doc.body(eline)
             self.openfile.write(str(doc))
 
@@ -195,7 +204,7 @@ class HTMLLogFile(EnFile):
     # page to search the log files
     def write(self, http_path, logfiles, user_logs, host):
         if self.openfile:
-	    doc = enstore_html.EnLogPage()
+	    doc = enstore_html.EnLogPage(system_tag=self.system_tag)
 	    doc.body(http_path, logfiles, user_logs, host)
             self.openfile.write(str(doc))
 
@@ -204,7 +213,7 @@ class HTMLConfigFile(EnFile):
     # format the config entry and write it to the file
     def write(self, cdict):
         if self.openfile:
-	    doc = enstore_html.EnConfigurationPage()
+	    doc = enstore_html.EnConfigurationPage(system_tag=self.system_tag)
 	    doc.body(cdict)
             self.openfile.write(str(doc))
 
@@ -213,7 +222,7 @@ class HTMLPlotFile(EnFile):
     # format the config entry and write it to the file
     def write(self, jpgs, stamps, pss):
         if self.openfile:
-	    doc = enstore_html.EnPlotPage()
+	    doc = enstore_html.EnPlotPage(system_tag=self.system_tag)
 	    doc.body(jpgs, stamps, pss)
             self.openfile.write(str(doc))
 
@@ -222,7 +231,7 @@ class HTMLMiscFile(EnFile):
     # format the file name and write it to the file
     def write(self, data):
         if self.openfile:
-	    doc = enstore_html.EnMiscPage()
+	    doc = enstore_html.EnMiscPage(system_tag=self.system_tag)
 	    doc.body(data)
             self.openfile.write(str(doc))
 
@@ -363,8 +372,8 @@ class HtmlAlarmFile(EnFile):
     # we need to save both the file name passed to us and the one we will
     # write to.  we will create the temp one and then move it to the real
     # one.
-    def __init__(self, name):
-        EnFile.__init__(self, name+TMP)
+    def __init__(self, name, system_tag=""):
+        EnFile.__init__(self, name+TMP, system_tag)
         self.real_file_name = name
 
     # we need to close the open file and move it to the real file name
@@ -375,7 +384,7 @@ class HtmlAlarmFile(EnFile):
     # format the file name and write it to the file
     def write(self, data, www_host):
         if self.openfile:
-	    doc = enstore_html.EnAlarmPage()
+	    doc = enstore_html.EnAlarmPage(system_tag=self.system_tag)
 	    doc.body(data, www_host)
             self.openfile.write(str(doc))
 
@@ -384,8 +393,8 @@ class HTMLPatrolFile(EnFile):
     # we need to save both the file name passed to us and the one we will
     # write to.  we will create the temp one and then move it to the real
     # one.
-    def __init__(self, name):
-        EnFile.__init__(self, name+TMP)
+    def __init__(self, name, system_tag=""):
+        EnFile.__init__(self, name+TMP, system_tag)
         self.real_file_name = name
 
     # we need to close the open file and move it to the real file name
@@ -396,7 +405,7 @@ class HTMLPatrolFile(EnFile):
     # format the file name and write it to the file
     def write(self, data):
         if self.openfile:
-	    doc = enstore_html.EnPatrolPage()
+	    doc = enstore_html.EnPatrolPage(system_tag=self.system_tag)
 	    doc.body(data)
             self.openfile.write(str(doc))
 
@@ -468,3 +477,65 @@ class EnPatrolFile(EnFile):
         except IOError:
             # file does not exist
             pass
+
+class HtmlSaagFile(EnFile):
+
+    # we need to save both the file name passed to us and the one we will
+    # write to.  we will create the temp one and then move it to the real
+    # one.
+    def __init__(self, name, system_tag=""):
+        EnFile.__init__(self, name+TMP, system_tag)
+        self.real_file_name = name
+
+    def write(self, enstore_contents, network_contents, media_contents, 
+	      alarm_contents, node_contents, outage, offline):
+	if self.openfile:
+	    doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
+	    media = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
+							   www_server.MEDIA_TAG,
+							   www_server.MEDIA_TAG_DEFAULT)
+	    doc.body(enstore_contents, network_contents, media_contents, 
+		     alarm_contents, node_contents, outage, offline, media)
+	    self.openfile.write(str(doc))
+
+class ScheduleFile(EnFile):
+
+    def __init__(self, dir, name):
+	self.html_dir = dir
+        EnFile.__init__(self, "%s/%s"%(dir, name))
+
+    def read(self):
+	# get the contents of the file by just importing it
+	sys.path.append(self.html_dir)
+	try:
+	    import enstore_outage
+	    try:
+		outage_d = enstore_outage.outage
+	    except AttributeError:
+		outage_d = {}
+	    try:
+		offline_d = enstore_outage.offline
+	    except AttributeError:
+		offline_d = {}
+	except ImportError:
+	    # can't find the module
+	    outage_d = {}
+	    offline_d = {}
+	return outage_d, offline_d
+
+    # turn the dictionary into python code to be written out to the file
+    def write(self, dict1, dict2):
+	# open the file for writing
+	self.open()
+
+	# write out the dictionary
+	if self.openfile:
+	    self.openfile.write("outage = %s\n"%(dict1,))
+	    self.openfile.write("offline = %s\n"%(dict2,))
+	    rtn = 1
+	    # close the file
+	    self.close()
+	else:
+	    # could not open the file
+	    rtn = 0
+	return rtn

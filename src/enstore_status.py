@@ -12,6 +12,7 @@ import alarm
 import e_errors
 import enstore_constants
 import enstore_functions
+import mover_constants
 
 # locate and pull out the dictionaries in the text message. assume that if
 # there is more than one dict, they are of the form -
@@ -98,25 +99,9 @@ class EnStatus:
     def unquote(self, s):
 	return string.replace(s,"'","")
 
-    # get the eod_cookie from the ticket
-    def get_eod_cookie(self, ticket, key):
-        vi = ticket.get("vol_info", {})
-        if vi:
-	    if not self.text.has_key(key):
-		self.text[key] = {}
-	    self.text[key][enstore_constants.EOD_COOKIE] = vi.get("eod_cookie", "")
-
-    # get the location cookie from the ticket
-    def get_location_cookie(self, ticket, key):
-        fc = ticket['work_ticket'].get('fc', {})
-        if fc:
-	    if not self.text.has_key(key):
-		self.text[key] = {}
-	    self.text[key][enstore_constants.LOCATION_COOKIE] = fc.get("location_cookie", " ")
-    
     # parse the library manager queues returned from "getwork". pull out the
     # information we want and put it in a dictionary
-    def parse_lm_queues(self, work, key, worktype):
+    def parse_lm_queues(self, work, key, worktype, writekey, readkey):
 	self.text[key][worktype] = []
 	for mover in work:
 	    # 'mover' not found in pending work
@@ -126,8 +111,10 @@ class EnStatus:
 		dict[enstore_constants.REJECT_REASON] = mover[enstore_constants.REJECT_REASON][0]
 	    dict[enstore_constants.PORT] = mover['callback_addr'][1]
 	    if mover['work'] == 'write_to_hsm':
+		self.text[key][writekey] = self.text[key][writekey] + 1
 		dict[enstore_constants.WORK] = enstore_constants.WRITE
 	    else:
+		self.text[key][readkey] = self.text[key][readkey] + 1
 		dict[enstore_constants.WORK] = enstore_constants.READ
 
 	    encp = mover['encp']
@@ -154,10 +141,12 @@ class EnStatus:
 		dict[enstore_constants.DEQUEUED] = enstore_functions.format_time(times['lm_dequeued'])
 
 	    vc = mover['vc']
-	    dict[enstore_constants.FILE_FAMILY] = vc['file_family']
-	    # 'file_family_width not found in reads
-	    if vc.has_key('file_family_width'):
-		dict[enstore_constants.FILE_FAMILY_WIDTH] = repr(vc['file_family_width'])
+	    # 'file_family' is not present in a read, use volume family instead
+	    if vc.has_key('file_family'):
+		dict[enstore_constants.FILE_FAMILY] = vc['file_family']
+		dict[enstore_constants.FILE_FAMILY_WIDTH] = repr(vc.get('file_family_width', ""))
+	    elif vc.has_key('volume_family'):
+		dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
 
 	    # 'fc' not found in pending work
 	    fc = mover.get('fc', "")
@@ -246,89 +235,80 @@ class EnStatus:
 	work = ticket['at movers']
 	if not self.text.has_key(key):
 	    self.text[key] = {}
+	self.text[key][enstore_constants.TOTALPXFERS] = 0
+	self.text[key][enstore_constants.READPXFERS] = 0
+	self.text[key][enstore_constants.WRITEPXFERS] = 0
+	self.text[key][enstore_constants.TOTALONXFERS] = 0
+	self.text[key][enstore_constants.READONXFERS] = 0
+	self.text[key][enstore_constants.WRITEONXFERS] = 0
 	if work:
-	    self.parse_lm_queues(work, key, enstore_constants.WORK)
+	    self.parse_lm_queues(work, key, enstore_constants.WORK, 
+				 enstore_constants.WRITEONXFERS,
+				 enstore_constants.READONXFERS)
+	    self.text[key][enstore_constants.TOTALONXFERS] = self.text[key][enstore_constants.READONXFERS] + self.text[key][enstore_constants.WRITEONXFERS]
 	else:
 	    self.text[key][enstore_constants.WORK] = enstore_constants.NO_WORK
 	pending_work = ticket['pending_work']
 	if pending_work:
-	    self.parse_lm_queues(pending_work, key, enstore_constants.PENDING)
+	    self.parse_lm_queues(pending_work, key, enstore_constants.PENDING,
+				 enstore_constants.WRITEPXFERS,
+				 enstore_constants.READPXFERS)
+	    self.text[key][enstore_constants.TOTALPXFERS] = self.text[key][enstore_constants.READPXFERS] + self.text[key][enstore_constants.WRITEPXFERS]
 	else:
 	    self.text[key][enstore_constants.PENDING] = enstore_constants.NO_PENDING
 
     # output the mover status
     def output_moverstatus(self, ticket, key):
-	# we need to clear out the dict as keywords come and go depending on the
-	# state of the mover.  save the status which is in there first.
-	status = self.text[key][enstore_constants.STATUS]
-	self.text[key] = {}
-	self.text[key][enstore_constants.STATUS] = status
-	self.text[key][enstore_constants.COMPLETED] = repr(ticket["no_xfers"])
-       	if ticket["state"] == "busy":
-	    self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket["rd_bytes"]))
-	    self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket["wr_bytes"]))
-	    if ticket["mode"] == "r":
-	        self.text[key][enstore_constants.STATE] = "%s reading %s bytes from Enstore"%\
-					(ticket["state"], 
-				     add_commas(str(ticket["bytes_to_xfer"])))
-                self.get_location_cookie(ticket, key)
-		self.text[key][enstore_constants.FILES] = []
-		self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
-		self.text[key][enstore_constants.FILES].append(ticket['files'][0])
-		self.text[key][enstore_constants.VOLUME] = ticket['tape']
-	    elif ticket["mode"] == "w":
-	        self.text[key][enstore_constants.STATE] = "%s writing %s bytes to Enstore"%\
-					(ticket["state"], 
-				     add_commas(str(ticket["bytes_to_xfer"])))
-                self.get_eod_cookie(ticket, key)
-		self.text[key][enstore_constants.FILES] = []
-		self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][0],))
-		self.text[key][enstore_constants.FILES].append(ticket['files'][1])
-		self.text[key][enstore_constants.VOLUME] = ticket['tape']
-            elif ticket["mode"] == "u":
-                self.text[key][enstore_constants.STATE] = "%s dismounting volume %s"%\
-					(ticket["state"], ticket['tape'])
-            else:
-                self.text[key][enstore_constants.STATE] = "%s??"%(ticket["state"],)
-
-	elif ticket["state"] == "idle":
-	    self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["rd_bytes"]))
-	    self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["wr_bytes"]))
-	    if ticket['mode'] == 'w' or ticket['mode'] == 'r':
-		self.text[key][enstore_constants.STATE] = "idle - have bound volume"
+	# clean out all the old info but save the status
+	self.text[key] = {enstore_constants.STATUS : self.text[key][enstore_constants.STATUS]}
+	self.text[key][enstore_constants.COMPLETED] = repr(ticket["transfers_completed"])
+	self.text[key][enstore_constants.FAILED] = repr(ticket["transfers_failed"])
+	# these are the states where the information  in the ticket refers to a current transfer
+       	if ticket["state"] in (mover_constants.ACTIVE, mover_constants.MOUNT_WAIT,
+			       mover_constants.DISMOUNT_WAIT):
+	    self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket["bytes_read"]))
+	    self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket["bytes_written"]))
+	    self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
+	    self.text[key][enstore_constants.FILES].append(ticket['files'][1])
+	    self.text[key][enstore_constants.VOLUME] = ticket['current_volume']
+	    if ticket["state"] == mover_constants.MOUNT_WAIT:
+		self.text[key][enstore_constants.STATE] = "busy mounting volume %s"%\
+							  (ticket['current_volume'],)
+	    elif ticket["state"] == mover_constants.DISMOUNT_WAIT:
+		self.text[key][enstore_constants.STATE] = "busy dismounting volume %s"%\
+							  (ticket['current_volume'],)
+	    # in the following 2 tests the mover state must be 'ACTIVE'
+	    elif ticket["mode"] == mover_constants.WRITE:
+		self.text[key][enstore_constants.STATE] = "busy writing %s bytes to Enstore"%\
+							  (add_commas(str(ticket["bytes_to_transfer"])),)
 	    else:
-		self.text[key][enstore_constants.STATE] = "idle"
-            if ticket['no_xfers'] > 0:
-                work = ticket['work_ticket'].get('work', "")
-                if string.find(work, "read") != -1:
-                    self.get_location_cookie(ticket, key)
-		    self.text[key][enstore_constants.VOLUME] = ticket['tape']
-		    self.text[key][enstore_constants.FILES] = []
-		    self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
-		    self.text[key][enstore_constants.FILES].append(ticket['files'][0])
-                elif string.find(work, "write") != -1:
-                    self.get_eod_cookie(ticket, key)
-		    self.text[key][enstore_constants.VOLUME] = ticket['tape']
-		    self.text[key][enstore_constants.FILES] = []
-		    self.text[key][enstore_constants.FILES].append("%s -->"%(ticket['files'][1],))
-		    self.text[key][enstore_constants.FILES].append(ticket['files'][0])
-        else:
+		self.text[key][enstore_constants.STATE] = "busy reading %s bytes from Enstore"%\
+							  (add_commas(str(ticket["bytes_to_transfer"])),)
+	    if ticket["mode"] == mover_constants.WRITE:
+		self.text[key][enstore_constants.EOD_COOKIE] = ticket["current_location"]
+	    else:
+		self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["current_location"]
+	# these states imply the ticket information refers to the last transfer
+	elif ticket["state"] in (mover_constants.IDLE, mover_constants.HAVE_BOUND,
+				 mover_constants.DRAINING, mover_constants.OFFLINE,
+				 mover_constants.CLEANING):
+	    self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["bytes_read"]))
+	    self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["bytes_written"]))
+	    if ticket['state'] == mover_constants.HAVE_BOUND:
+		self.text[key][enstore_constants.STATE] = "IDLE - have bound volume"
+	    else:
+		self.text[key][enstore_constants.STATE] = ticket['state']
+	    if ticket['transfers_completed'] > 0:
+		self.text[key][enstore_constants.VOLUME] = ticket['last_volume']
+		self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
+		self.text[key][enstore_constants.FILES].append(ticket['files'][1])
+		if ticket['mode'] == mover_constants.WRITE:
+		    self.text[key][enstore_constants.EOD_COOKIE] = ticket["last_location"]
+		else:
+		    self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["last_location"]
+	# this state is an error state, we don't know if the information is valid, so do not output it
+        elif ticket["state"] in (mover_constants.ERROR,):
+	    self.text[key][enstore_constants.STATE] = "ERROR - %s"%(ticket["status"],)
+	# unknown state
+	else:
 	    self.text[key][enstore_constants.STATE] = ticket["state"]
-
-    # output the library manager mover list
-    def output_lmmoverlist(self, ticket, key):
-	work = ticket['moverlist']
-	if not self.text.has_key(key):
-	    self.text[key] = {}
-	self.text[key][enstore_constants.MOVERS] = []
-	self.text[key][enstore_constants.KNOWN_MOVERS] = []
-	if work:
-	    for mover in work:
-		self.text[key][enstore_constants.KNOWN_MOVERS].append([mover['mover'], 
-						     mover['address'][1],
-						     mover['state'], 
-					 enstore_functions.format_time(mover['last_checked']),
-						     mover['summon_try_cnt']])
-		# keep a  separate list of the mover names so can easily
-		# find if a mover belongs to this library_manager
-		self.text[key][enstore_constants.MOVERS].append(mover['mover'])
