@@ -4296,29 +4296,20 @@ N days ago (default is 10 days)</ul>
 <h3><a name="recovery">
 2.2.2 Recovery
 </h3>
-Recovery should be a job initiated manually in case of database corruption.
-There are two ways to recover from a crash:
+Recovery (restore.py) is a job initiated manually in case of database
+corruption.
 <p>
 <center><table>
 <tr>
-<td valign=top>libtp utility
+<td valign=top>restore.py
 <td valign=top><ul>
-<li>copy database tar file in designated directory, untar the file
-<li>copy the latest log file from database directory.
-<li>run db_recover utility
-<li>delete all related files in database directory.
-<li>move the resulting database files and the latest log file to
-database directory.
-</ul>
-<tr>
-<td valign=top>recovery from the journal files (not implemented yet)
-<td valign=top><ul>
-<li>copy database (database files and journal files) tar file
-<li>in designated directory, untar the file
-<li>copy the latest journal file,
-<li>run jou_recover utility
-<li>delete all related files from database directory.
-<li>move the resulting database files to database directory.
+<li>save current (corrupted?) database files
+<li>find the last backup
+<li>retrieve database files and log files from last backup
+<li>run db_recover to syncronize database files
+<li>retrieve journal files from last backup
+<li>check database files using journal files, make correction if it
+    is necessary
 </ul>
 </table></center>
 
