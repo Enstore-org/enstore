@@ -40,7 +40,7 @@ class MoverClient(generic_client.GenericClient):
         return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
     def device_dump(self, sendto=[], notify=[], rcv_timeout=0, tries=0):
-        print "device_dump(self, sendto="+`sendto`+', notify='+`notify`+', rcv_timeout='+`rcv_timeout`+', tries='+`tries`+')'
+        # print "device_dump(self, sendto="+`sendto`+', notify='+`notify`+', rcv_timeout='+`rcv_timeout`+', tries='+`tries`+')'
         return self.send({"work" : "device_dump_S",
                           "sendto" : sendto,
                           "notify" : notify}, rcv_timeout, tries)
