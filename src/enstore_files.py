@@ -5,6 +5,7 @@ import time
 import string
 import os
 import stat
+import types
 
 # enstore imports
 import Trace
