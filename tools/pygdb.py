@@ -26,6 +26,7 @@ class PyGdb(Gdb):
             #self.gdb_command("dir %s/Modules" % pd)
         self.gdb_command("b ceval.c:1539") #set_lineno
         self.breakpoints = {}
+        self.ignore=[]
         self.breakpoint_number = 0
         self.trace = 0
         self.interrupted = 0
@@ -47,6 +48,7 @@ class PyGdb(Gdb):
                      " q: quit",
                      " s: single-step",
                      " t: toggle tracing",
+                     " I: ignore files whilie tracing",
                      " w: where (print backtrace)",
                      " gdb <gdb-command>:  passes <command> to underlying gdb",
                      ]
@@ -63,6 +65,25 @@ class PyGdb(Gdb):
             return ['Already have a breakpoint at %s:%d' % (
                 file,line)]
         
+
+    def handle_ignore(self,expr):
+        usage = 'Usage: I file:func|file'
+        colon=string.find(expr,':')
+        func=None
+        file=expr
+        
+        if colon>0:
+            file=expr[:colon]
+            func = string.atoi(expr[colon+1:])
+
+        if (file,func) in self.ignore:
+            self.ignore.remove((file,func))
+            s="Not ignoring "
+        else:
+            self.ignore.append((file,func))
+            s="Ignoring "
+        return [s+expr]
+                    
     def set_breakpoint(self,expr):
         usage = 'Usage: b[reak] file:line|function'
         if len(string.split(expr))>1:
@@ -172,13 +193,21 @@ class PyGdb(Gdb):
         ntok = len(tok)
         cmd_chr = tok[0][0]
         if cmd_chr == 'b':
+            if ntok<2:
+                return ['b needs an argument']
             return self.set_breakpoint(tok[1])
         elif cmd_chr == 'w':
             return self.backtrace()
         elif cmd_chr == 't':
             self.trace = self.trace+1
             if self.trace>2: self.trace=0
-            return ['trace %s' % self.trace]
+            return ['trace %s' % ['off','functions','source'][self.trace]]
+        elif cmd_chr == 'I':
+            if ntok==1:
+                self.ignore=[]
+                return ['Cleared ignore list']
+            else:
+                return self.handle_ignore(tok[1])
         elif cmd_chr == 'd':
             if ntok==1:
                 self.delete_all_breakpoints()
@@ -284,14 +313,31 @@ if __name__ == "__main__":
                         print "%s at %s:%d" % (func,pygdb.filename,pygdb.line)
                         pygdb.break_next_line=0
                         pygdb.cont = 0
-                    elif pygdb.trace==1:
-                        print "%s at %s:%d" %(func,pygdb.filename,pygdb.line)
-                    elif pygdb.trace==2:
-                        f=string.split(pygdb.filename,'/')
+                    elif pygdb.trace:
+                        pygdb.cont = 1
+                        lineno=pygdb.line
+                        filename=pygdb.filename
+                        f=string.split(filename,'/')
                         if f: f=f[-1]
                         else: f="?"
-                        print "%s:%d  %s"%(f,pygdb.line,getline(pygdb.filename,pygdb.line))
-                        pygdb.cont = 1
+                        ff=string.split(f,'.')
+                        if len(ff)>1:
+                            f=ff[0]
+                        if (f,None) in pygdb.ignore or (f,func) in pygdb.ignore:
+                            continue
+                        if pygdb.trace==1:
+                            print "%s at %s:%d" %(func,filename,lineno)
+                        elif pygdb.trace==2:
+                            src=getline(filename,lineno)
+                            if src is None:
+                                src = "?"
+                            where="%s:%d"%(f,lineno)
+                            pad=132-(len(src)+len(where))
+                            if pad>0:
+                                src=src+' '*pad
+                            src=src+where
+                            print src
+                            
                     else: pygdb.cont = 1
         
                 else:
