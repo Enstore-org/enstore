@@ -18,6 +18,8 @@ class NullDriver(driver.Driver):
         self.loc = 0L
         self._rate = 0
         self._last_rate = 0
+        self_start_time = None
+        self._total_time = 0
         self._bytes_transferred = 0
         self.verbose = 0
         
@@ -47,7 +49,7 @@ class NullDriver(driver.Driver):
         Trace.trace(25, "tell %s" % (self.loc))
         return self.loc
     
-    def seek(self, loc, eot_ok=None):
+    def seek(self, loc, eot_ok=None): #XXX is eot_ok needed?
         if type(loc) is type(""):
             if loc[-1]=='L':
                 loc=loc[:-1] #py1.5.2 
