@@ -48,7 +48,7 @@
 #		UdpTimeout		- data transfer request timed out
 #
 
-from socket import *
+import socket
 import string
 import select
 import time
@@ -81,7 +81,7 @@ class	Link:
 		self.Connected = 0
 
 		if sock >= 0: 	self.Sock = sock
-		else: 		self.Sock = socket(AF_INET, SOCK_DGRAM)
+		else: 		self.Sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		if peer != (): 	self.sendNak(1)
 
 	def	_isRecvd(self, seq):
@@ -185,7 +185,7 @@ class	UdpPeer:
 		if sock != -1:
 			self.Sock = sock
 		else:
-			self.Sock = socket(AF_INET, SOCK_DGRAM)
+			self.Sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.Links = {}
 		self.RetryTimeout = 1 
 		self.FailTimeout = 10 
