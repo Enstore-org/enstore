@@ -17,11 +17,8 @@ def main(argv):
     d = db.DbTable("volume", dbHome, jouHome, ['library', 'file_family'])
     bdb=bfid_db.BfidDb(dbHome)
 
-    d.cursor('open')
-    print "open cursor"
-    vol,data = d.cursor('first')
-    print "cursor ok"
-    while vol:
+    for vol in d.keys():
+
         print "retrive key for",vol
         data=d[vol]
         if data.has_key('bfids'):
@@ -39,7 +36,6 @@ def main(argv):
             print "update database"
             d[vol]=data
 
-        vol,data=d.cursor('next')
 
 if __name__=='__main__':
     main(sys.argv)
