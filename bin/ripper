@@ -22,9 +22,9 @@ case `uname -n` in
 
    rip10*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/configuration_server.py --config_host=rip10.fnal.gov --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
-    cmd="python /home/bakken/enstore/src/log_server.py           --config_host=rip10.fnal.gov &"; doit
-    cmd="python /home/bakken/enstore/src/alarm_server.py         --config_host=rip10.fnal.gov &"; doit
+    cmd="python /home/bakken/enstore/src/configuration_server.py  --config_file=/home/bakken/enstore/etc/rip.conf &"; doit
+    cmd="python /home/bakken/enstore/src/log_server.py &"; doit
+    cmd="python /home/bakken/enstore/src/alarm_server.py &"; doit
     (sleep 2;ecmd cc --alive; if [ $? -ne 0 ]; then echo CONFIG DEAD; else echo config alive;fi) &
     (sleep 2;ecmd lc --alive; if [ $? -ne 0 ]; then echo LOG DEAD;    else echo log alive;   fi) &
     (sleep 2;ecmd ac --alive; if [ $? -ne 0 ]; then echo ALARM DEAD;  else echo alarm alive; fi) &
@@ -32,8 +32,8 @@ case `uname -n` in
 
    rip6*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=rip10.fnal.gov &"; doit
-    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=rip10.fnal.gov &"; doit
+    cmd="python /home/bakken/enstore/src/volume_clerk.py &"; doit
+    cmd="python /home/bakken/enstore/src/file_clerk.py &"; doit
     cmd="db_checkpoint -h /raid/enstore/db -p 5 &"; doit
     cmd="db_deadlock   -h /raid/enstore/db -t 1 &"; doit
     (sleep 2;ecmd vcc --alive; if [ $? -ne 0 ]; then echo VOLUME DEAD; else echo volume alive;fi) &
@@ -42,9 +42,9 @@ case `uname -n` in
 
    rip5*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov ait.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov mam.library_manager   &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov dlt.library_manager   &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py ait.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py mam.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py dlt.library_manager &"; doit
     (sleep 2;ecmd lmc --alive ait.library_manager; if [ $? -ne 0 ]; then echo AIT.LIBRARY_MANAGER DEAD; else echo ait.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive dlt.library_manager; if [ $? -ne 0 ]; then echo DLT.LIBRARY_MANAGER DEAD; else echo dlt.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive mam.library_manager; if [ $? -ne 0 ]; then echo MAM.LIBRARY_MANAGER DEAD; else echo mam.library_manager alive; fi) &
@@ -52,15 +52,15 @@ case `uname -n` in
 
    rip1*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov grau.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py grau.media_changer &"; doit
     (sleep 2;ecmd mcc --alive grau.media_changer; if [ $? -ne 0 ]; then echo GRAU.MEDIA_CHANGER DEAD; else echo grau.media_changer alive; fi) &
     ;;
 
    rip2*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov DE13DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov DE15DLT.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov DC11MAM.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DE13DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DE15DLT.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py DC11MAM.mover &"; doit
     (sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DE15DLT.mover; if [ $? -ne 0 ]; then echo DE15DLT.MOVER DEAD; else echo de15dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC11MAM.mover; if [ $? -ne 0 ]; then echo DC11MAM.MOVER DEAD; else echo dc11mam.mover alive; fi) &
@@ -68,12 +68,12 @@ case `uname -n` in
 
    rip7*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov disk.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov null.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov disk.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov disk.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov null.mover &"; doit
-    cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip10.fnal.gov &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py disk.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py null.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py disk.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py disk.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py null.mover &"; doit
+    cmd="python /home/bakken/enstore/src/inquisitor.py &"; doit
     (sleep 2;ecmd lmc --alive disk.library_manager; if [ $? -ne 0 ]; then echo DISK.LIBRARY_MANAGER DEAD; else echo disk.library_manager alive; fi) &
     (sleep 2;ecmd lmc --alive null.library_manager; if [ $? -ne 0 ]; then echo NULL.LIBRARY_MANAGER DEAD; else echo null.library_manager alive; fi) &
     (sleep 2;ecmd mcc --alive disk.media_changer;   if [ $? -ne 0 ]; then echo DISK.MEDIA_CHANGER DEAD;   else echo disk.media_changer alive;   fi) &
@@ -84,51 +84,68 @@ case `uname -n` in
 
    rip9*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip10.fnal.gov STK.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov red50.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip10.fnal.gov red20.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov stk1.mover &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip10.fnal.gov stk2.mover &"; doit
-    (sleep 2;ecmd mcc --alive STK.media_changer;     if [ $? -ne 0 ]; then echo STK.MEDIA_CHANGER DEAD;   else echo stk.media_changer alive;       fi) &
-    (sleep 2;ecmd lmc --alive red50.library_manager; if [ $? -ne 0 ]; then echo RED50.LIBRARY_MANAGER DEAD; else echo red50.library_manager alive; fi) &
-    (sleep 2;ecmd lmc --alive red20.library_manager; if [ $? -ne 0 ]; then echo RED20.LIBRARY_MANAGER DEAD; else echo red20.library_manager alive; fi) &
-    (sleep 2;ecmd mvc --alive stk1.mover;            if [ $? -ne 0 ]; then echo STK1.MOVER DEAD;           else echo stk1.mover alive;             fi) &
-    (sleep 2;ecmd mvc --alive stk2.mover;            if [ $? -ne 0 ]; then echo STK2.MOVER DEAD;           else echo stk2.mover alive;             fi) &
+    cmd="python /home/bakken/enstore/src/media_changer.py STK.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py red50.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py red20.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py stk1.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py stk2.mover &"; doit
+    (sleep 2;ecmd mcc --alive STK.media_changer;     if [ $? -ne 0 ]; then echo STK.MEDIA_CHANGER DEAD;     else echo stk.media_changer alive;      fi) &
+    (sleep 2;ecmd lmc --alive red50.library_manager; if [ $? -ne 0 ]; then echo RED50.LIBRARY_MANAGER DEAD; else echo red50.library_manager alive;  fi) &
+    (sleep 2;ecmd lmc --alive red20.library_manager; if [ $? -ne 0 ]; then echo RED20.LIBRARY_MANAGER DEAD; else echo red20.library_manager alive;  fi) &
+    (sleep 2;ecmd mvc --alive stk1.mover;            if [ $? -ne 0 ]; then echo STK1.MOVER DEAD;            else echo stk1.mover alive;             fi) &
+    (sleep 2;ecmd mvc --alive stk2.mover;            if [ $? -ne 0 ]; then echo STK2.MOVER DEAD;            else echo stk2.mover alive;             fi) &
     ;;
 
    fntt*)
     stopit; starttrc
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip10.fnal.gov DM05AIT.mover &"; doit
-    cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip10.fnal.gov DM07AIT.mover &"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py DM05AIT.mover &"; doit
+    cmd="python /export/home/bakken/enstore/src/mover.py DM07AIT.mover &"; doit
     (sleep 2;ecmd mvc --alive DM05AIT.mover; if [ $? -ne 0 ]; then echo DM05AIT.MOVER DEAD; else echo dm05ait.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM07AIT.mover; if [ $? -ne 0 ]; then echo DM07AIT.MOVER DEAD; else echo dm07ait.mover alive; fi) &
     ;;
 
    samson*)
     stopit; starttrc
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py     --config_host=samson.fnal.gov samdisk.library_manager &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py       --config_host=samson.fnal.gov samdisk.media_changer &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov samdisk2.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov samdisk1.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov samdisk3.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov samdisk4.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov samdisk5.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py          --config_host=samson.fnal.gov &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py  --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py samdisk.library_manager &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py samdisk.media_changer &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk2.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk1.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk3.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk4.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk5.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py &"; doit
+    (sleep 2;ecmd cc  --alive;                         if [ $? -ne 0 ]; then echo CONFIG DEAD;                  else echo config alive;                fi) &
+    (sleep 2;ecmd lc  --alive;                         if [ $? -ne 0 ]; then echo LOG DEAD;                     else echo log alive;                   fi) &
+    (sleep 2;ecmd ac  --alive;                         if [ $? -ne 0 ]; then echo ALARM DEAD;                   else echo alarm alive;                 fi) &
+    (sleep 2;ecmd lmc --alive samdisk.library_manager; if [ $? -ne 0 ]; then echo SAMDISK.LIBRARY_MANAGER DEAD; else echo disk.library_manager alive;  fi) &
+    (sleep 2;ecmd mcc --alive samdisk.media_changer;   if [ $? -ne 0 ]; then echo SAMDISK.MEDIA_CHANGER DEAD;   else echo samdisk.media_changer alive; fi) &
+    (sleep 2;ecmd mvc --alive samdisk1.mover;          if [ $? -ne 0 ]; then echo SAMDISK1.MOVER DEAD;          else echo samdisk1.mover alive;        fi) &
+    (sleep 2;ecmd mvc --alive samdisk2.mover;          if [ $? -ne 0 ]; then echo SAMDISK2.MOVER DEAD;          else echo samdisk2.mover alive;        fi) &
+    (sleep 2;ecmd mvc --alive samdisk3.mover;          if [ $? -ne 0 ]; then echo SAMDISK3.MOVER DEAD;          else echo samdisk3.mover alive;        fi) &
+    (sleep 2;ecmd mvc --alive samdisk4.mover;          if [ $? -ne 0 ]; then echo SAMDISK4.MOVER DEAD;          else echo samdisk4.mover alive;        fi) &
+    (sleep 2;ecmd mvc --alive samdisk5.mover;          if [ $? -ne 0 ]; then echo SAMDISK5.MOVER DEAD;          else echo samdisk5.mover alive;        fi) &
+    (sleep 2;ecmd ic  --alive;                         if [ $? -ne 0 ]; then echo INQUISITOR DEAD;              else echo inquisitor alive;            fi) &
     ;;
 
    rip3*)
     stopit; starttrc
-    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=samson.fnal.gov &"; doit
-    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=samson.fnal.gov &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov sammam.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov samait.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov samdlt.library_manager &"; doit
-    #cmd="python /home/bakken/enstore/src/media_changer.py       --config_host=samson.fnal.gov grau.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/volume_clerk.py &"; doit
+    cmd="python /home/bakken/enstore/src/file_clerk.py &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py sammam.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py samait.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py samdlt.library_manager &"; doit
+    #cmd="python /home/bakken/enstore/src/media_changer.py samgrau.media_changer &"; doit
     cmd="db_checkpoint -h /rip3a/enstore/db -p 5 &"; doit
     cmd="db_deadlock   -h /rip3a/enstore/db -t 1 &"; doit
+    (sleep 2;ecmd vcc --alive;                        if [ $? -ne 0 ]; then echo VOLUME DEAD;                 else echo volume alive;                 fi) &
+    (sleep 2;ecmd fcc --alive;                        if [ $? -ne 0 ]; then echo FILE DEAD;                   else echo file alive;                   fi) &
+    (sleep 2;ecmd lmc --alive samait.library_manager; if [ $? -ne 0 ]; then echo SAMAIT.LIBRARY_MANAGER DEAD; else echo samait.library_manager alive; fi) &
+    (sleep 2;ecmd lmc --alive samdlt.library_manager; if [ $? -ne 0 ]; then echo SAMDLT.LIBRARY_MANAGER DEAD; else echo samdlt.library_manager alive; fi) &
+    (sleep 2;ecmd lmc --alive sammam.library_manager; if [ $? -ne 0 ]; then echo SAMMAM.LIBRARY_MANAGER DEAD; else echo sammam.library_manager alive; fi) &
+   #(sleep 2;ecmd mcc --alive samgrau.media_changer;  if [ $? -ne 0 ]; then echo SAMGRAU.MEDIA_CHANGER DEAD;  else echo samgrau.media_changer alive;  fi) &
     ;;
 
    *)
