@@ -86,7 +86,7 @@ class EnFile:
         try:
             self.openfile = open(self.file_name, mode)
 	    self.opened = 1
-            Trace.trace(enstore_constants.INQFILEDBG,"%s open "%(self.file_name,))
+            enstore_functions.inqTrace(enstore_constants.INQFILEDBG,"%s open "%(self.file_name,))
         except IOError:
             self.openfile = 0
 	    self.opened = 0
@@ -109,14 +109,14 @@ class EnFile:
 	    self.do_write(str(data))
 
     def close(self):
-	Trace.trace(enstore_constants.INQFILEDBG,"enfile close %s"%(self.file_name,))
+	enstore_functions.inqTrace(enstore_constants.INQFILEDBG,"enfile close %s"%(self.file_name,))
 	if self.openfile:
 	    self.openfile.close()
 	    self.openfile = 0
 
     def install(self):
 	# move the file we created to the real file name
-        Trace.trace(enstore_constants.INQFILEDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
 		    "Tmp file: %s, real file: %s"%(self.file_name, self.real_file_name))
         if (not self.real_file_name == self.file_name) and os.path.exists(self.file_name):
 	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
@@ -147,7 +147,8 @@ class EnStatusFile(EnFile):
 
     # open the file
     def open(self):
-        Trace.trace(enstore_constants.INQFILEDBG,"open %s"%(self.file_name,))
+        enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
+				   "open %s"%(self.file_name,))
         # try to open status file for append
         EnFile.open(self, 'a')
         if not self.openfile:

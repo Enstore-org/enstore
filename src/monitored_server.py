@@ -102,7 +102,7 @@ class MonitoredServer:
 	    if past_interval > self.hung_interval:
 		# we can only determine REALLY if we are hung, if we know that the
 		# event relay is still alive.  determine that first
-		Trace.trace(enstore_constants.INQSERVERTIMESDBG,
+		enstore_functions.inqTrace(enstore_constants.INQSERVERTIMESDBG,
 		    "%s Past Interval: %s, Hung Interval: %s, ER Alive: %s"%(self.name, 
 									     past_interval,
 									     self.hung_interval,
