@@ -45,17 +45,10 @@ LOG_UPDATE_INTERVAL = 300
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
-def default_update_interval():
-    return 20
-
-def default_alive_rcv_timeout():
-    return 5
-
-def default_alive_retries():
-    return 2
-
-def default_max_encp_lines():
-    return 50
+defaults = {'update_interval': 20,
+            'alive_rcv_timeout': 5,
+            'alive_retries': 2,
+            'max_encp_lines': 50}
 
 # given a directory get a list of the files and their sizes
 def get_file_list(dir, prefix):
@@ -771,15 +764,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         ticket["max_encp_lines"] = self.max_encp_lines
         self.send_reply(ticket)
 
-    # call the default function defined at the top of the file
-    def default_value(self, aKey):
-        import __main__
-        default_func = getattr(__main__, aKey)
-        return default_func()
-
     def get_value(self, aKey, aValue):
         if aValue == -1:         # nothing was entered on the command line 
-            new_val = self.inquisitor.config.get(aKey, self.default_value(aKey))
+            new_val = self.inquisitor.config.get(aKey, defaults.get(aKey))
             self.got_from_cmdline[aKey] = aValue
         else:
             self.got_from_cmdline[aKey] = aValue
