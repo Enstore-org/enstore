@@ -90,6 +90,9 @@ def getinfo(v):
 		if fc[i] == "sS'pnfs_name0'":
 			i = i + 2
 			pnfs_name0 = fc[i]
+		if fc[i] == "sS'location_cookie'":
+			i = i + 2
+			location_cookie = fc[i][2:-1]
 	# fix for crc = None
 	if crc[0] == 's':
 		crc = "None"
@@ -98,7 +101,7 @@ def getinfo(v):
 			deleted = 'R'
 		elif deleted == 'A':
 			deleted = 'E'
-	return volume, size, deleted, crc, pnfs_name0
+	return volume, size, deleted, crc, pnfs_name0, location_cookie
 
 def cleanup():
 	cmd = '/bin/rm -rf file* volume* STORAGE_GROUPS log* __* dbase.tar.gz'
@@ -171,16 +174,16 @@ if __name__ == '__main__':
 	print 'scanning ...'
 	time0 = time.time()
 	out.write('Listed at %s\n\n'%(time.ctime(time.time())))
-	out.write('%-20s %-10s %-12s %14s %14s %s\n\n'%('BFID', 'VOLUME', 'FILE FAMILY', 'SIZE', 'CRC', 'PATH'))
+	out.write('%-20s %-10s %-12s %14s %14s %24s %s\n\n'%('BFID', 'VOLUME', 'FILE FAMILY', 'SIZE', 'CRC', 'LOCATION_COOKIE', 'PATH'))
 	while k:
 		count = count + 1
-		volume, size, deleted, crc, pnfs_path = getinfo(v)
+		volume, size, deleted, crc, pnfs_path, location_cookie = getinfo(v)
 		if deleted == 'A' and string.find(pnfs_path, '.B_') == -1 \
 			and string.find(pnfs_path, '.A_') == -1:
 			try:
 				ff = get_file_family(volume)
 				if ff:
-					out.write('%-20s %-10s %-12s %14s %14s %s\n'%(k, volume, ff, size, crc, pnfs_path))
+					out.write('%-20s %-10s %-12s %14s %14s %24s %s\n'%(k, volume, ff, size, crc, location_cookie, pnfs_path))
 			except:
 				print "None existing volume %s\n"%(volume)
 		try:
