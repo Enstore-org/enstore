@@ -87,7 +87,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         # try gzip first, if it does not exist, try compress
         # never mind if the compression programs are missing
 
-	if os.system("gzip *.tar"):	# failed?
+	if os.system("gzip -f *.tar"):	# failed?
             os.system("compress *.tar")
         tarfiles=glob.glob("*.tar*")
         for file in tarfiles:
@@ -109,7 +109,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         fjbk = 'file.tar.gz'
         vjbk = 'volume.tar.gz'
 
-	if os.system("gzip *.tar"):	# failed?
+	if os.system("gzip -f *.tar"):	# failed?
             os.system("compress *.tar")
             fjbk = 'file.tar.Z'
             vjbk = 'volume.tar.Z'
@@ -146,14 +146,14 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         if gang == 'd0e':
             gang = 'd0'
 
-        tarfiles=glob.glob("*.tar*")
-        for file in tarfiles:
-            # copy the files over to a "paranoid" backup copy. Continue if error
-            cmd = "enrcp %s cachen2a:/diska/enstore_backup/%sen/database/%s.%s.%s"%(file,gang,day,hour,file)
-            logthis(e_errors.INFO,cmd)
-            if os.system(cmd):
-                Trace.log(e_errors.ERROR, "Failed,ignored: "+cmd)
-            os.unlink(file)
+#        tarfiles=glob.glob("*.tar*")
+#        for file in tarfiles:
+#            # copy the files over to a "paranoid" backup copy. Continue if error
+#            cmd = "enrcp %s cachen2a:/diska/enstore_backup/%sen/database/%s.%s.%s"%(file,gang,day,hour,file)
+#            logthis(e_errors.INFO,cmd)
+#            if os.system(cmd):
+#                Trace.log(e_errors.ERROR, "Failed,ignored: "+cmd)
+#            os.unlink(file)
 
 def archive_clean(ago,hst_local,hst_bck,bckHome):
     today=time.time()
