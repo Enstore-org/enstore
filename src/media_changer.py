@@ -664,6 +664,9 @@ class STK_MediaLoader(MediaLoaderMethods):
                 if sts[1] != 0:
 		   if self.logdetail:
                       Trace.log(e_errors.ERROR, 'function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
+                if (sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
+                    fixsts=apply(STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
+                    Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  sts[1] %s  sts[2] %s'%(args,sts[1],sts[2]))
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
                     sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
