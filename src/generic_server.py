@@ -4,7 +4,6 @@
 # Generic server class for enstore
 
 #system imports
-import string
 import sys
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -13,7 +12,8 @@ import sys
 # See http://www.w3.org/People/Connolly/support/socksForPython.html or
 # goto www.python.org and search for "import SOCKS"
 try:
-    import SOCKS; socket = SOCKS
+    import SOCKS
+    socket = SOCKS
 except ImportError:
     import socket
 
