@@ -13,7 +13,7 @@ mail_victims = "enstore-admin@fnal.gov"
 
 config = eval(os.popen("enstore config --show",'r').read())
 
-prog = sys.argv[1]
+prog = sys.argv[0]
 host = os.uname()[1]
 
 def hms(s):
