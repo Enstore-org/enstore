@@ -1,14 +1,15 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # $Id$
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+node=`hostname -s`
 
 case $node in
 
-  stken*|rip9|rip10*)
+  stken*|cmspnfs1|rip9|rip10)
 	gang=stken
         ;;
   rip*|cachen*)
