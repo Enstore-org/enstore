@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # $Id$
 
 # python modules
@@ -42,7 +41,7 @@ import socket_ext
 import hostaddr
 import string_driver
 import socket_ext
-import m2		# for m2.dump_code()
+
 import Trace
 
 
@@ -371,31 +370,42 @@ class Buffer:
                     if len(data) <= self.header_size:
                         raise "WRAPPER_ERROR"
                     self.first_block = 0
-                if self.bytes_written == self.file_size:
-                    # last block
-                    bytes_for_cs = bytes_for_cs - self.trailer_size
+                #if self.bytes_written == self.file_size+self.header_size:
+                Trace.trace(22, "block_write: block size %s" % (self.blocksize,))
+                if self.trailer_size >= 512:
+                    # trailer size + padding is more 512 bytes
+                    if self.bytes_written == self.file_size:
+                        
+                        bytes_for_cs = 0
+                    elif self.bytes_written + self.blocksize >= self.file_size:
+                        bytes_for_cs = bytes_for_cs - (self.trailer_size - 512)
+                else:
+                    if self.bytes_written == self.file_size:
+                        bytes_for_cs = bytes_for_cs - self.trailer_size    
+                        
                 Trace.trace(22, "nbytes %s, bytes written %s, bytes for cs %s trailer size %s"%
                             (nbytes, bytes_written, bytes_for_cs,self.trailer_size))
-                try:
-                    Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
-                                (data_ptr, bytes_for_cs))
-                    self.complete_crc = checksum.adler32_o(self.complete_crc,
-                                                           data,
-                                                           data_ptr, bytes_for_cs)
-                    Trace.trace(22,"complete crc %s"%(self.complete_crc,))
-                    
-                    #if self.first_block and self.sanity_bytes < SANITY_SIZE:
-                    if self.sanity_bytes < SANITY_SIZE:
-                        nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
-                        self.sanity_crc = checksum.adler32_o(self.sanity_crc,
-                                                             data,
-                                                             data_ptr, nbytes)
-                        self.sanity_bytes = self.sanity_bytes + nbytes
-                        Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
-                                    (self.sanity_crc, self.sanity_bytes))
-                except:
-                    Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
-                    raise "CRC_ERROR"
+                if bytes_for_cs:
+                    try:
+                        Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
+                                    (data_ptr, bytes_for_cs))
+                        self.complete_crc = checksum.adler32_o(self.complete_crc,
+                                                               data,
+                                                               data_ptr, bytes_for_cs)
+                        Trace.trace(22,"complete crc %s"%(self.complete_crc,))
+
+                        #if self.first_block and self.sanity_bytes < SANITY_SIZE:
+                        if self.sanity_bytes < SANITY_SIZE:
+                            nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
+                            self.sanity_crc = checksum.adler32_o(self.sanity_crc,
+                                                                 data,
+                                                                 data_ptr, nbytes)
+                            self.sanity_bytes = self.sanity_bytes + nbytes
+                            Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
+                                        (self.sanity_crc, self.sanity_bytes))
+                    except:
+                        Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
+                        raise "CRC_ERROR"
             self._freespace(data)
             
         else: #XXX raise an exception?
