@@ -1257,10 +1257,15 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def clean_drive( self, ticket ):
-        rt =self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info)
+	if mvr_config['do_fork']:
+            do_fork( self, ticket, 'u' )
+            if self.pid != 0: return {} #parent
+            pass
 
+	# child or single process???
+	Trace.log(e_errors.INFO,'CLEAN start'+str(ticket))
+        rt =self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info)
 	out_ticket = {'status':(rt['status'][0],rt['status'][2])}
-        
 	self.reply_to_caller( out_ticket )
         return
     
