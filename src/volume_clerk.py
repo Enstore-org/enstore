@@ -1357,6 +1357,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 				repr(ticket['at_mover'][0]))
 	else:
 	    record ['at_mover'] = ticket['at_mover']
+
+            # Take care of the impossible "unmounted and writing" state
+            if (record['at_mover'][0] == "unmounted" and
+                record['system_inhibit'][0] == "writing"):
+                record['system_inhibit'][0] = "none"
+
 	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
 	self.reply_to_caller(record)
