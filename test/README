@@ -1,0 +1,36 @@
+This is a small, stand alone test of enstore. I imagine that
+it us useful for testing the servers in a stand-alone fashion.
+
+It works with the default data in the file 
+
+
+1) Starting from scratch: 
+
+setup -r <CHECKED_OUT_ENSTORE_DIR> enstore
+
+cd <CHECKED_OUT_ENSTORE_DIR/test>
+
+make clean all
+
+cd <MY_OWN_TEST_AREA>  - NOT YET, SOON
+
+newdbs
+beg_loadtest
+
+(let run for a while)
+(error  about long1.dat is acknowledged, and needs fixing...)
+
+stopall
+
+
+2) Re-use -- must have done 1) above and not done a make clean.
+
+cd <MY_OWN_TEST_AREA>
+olddbs
+beg_loadtest
+
+(let run for a while)
+(error  about long1.dat is acknowledged, and needs fixing...)
+
+stopall
+
