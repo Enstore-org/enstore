@@ -2,10 +2,11 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # this is cheap argument processing. Must be in this order when checking.
-mailto=$ENSTORE_MAIL
+#mailto=$ENSTORE_MAIL
+mailto="bakken@fnal.gov berman@fnal.gov huangch@fnal.gov moibenko@fnal.gov zalokar@fnal.gov"
 if [ "${1:-}" = "-M" ] ; then mailto=""; shift; fi
+if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-m" ] ; then mailto=${2:-$ENSTORE_MAIL}; shift; shift; fi
-if [ "${1:-}" = "-n" ] ; then ALARM=0; shift; else ALARM=1; fi
 
 #echo \"$mailto\"
 #echo $ALARM
