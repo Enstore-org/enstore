@@ -326,7 +326,7 @@ def write_to_hsm(input, output, output_file_family='',
 				"address"            : volume_clerk_address}
 		file_clerk = {"address": file_clerk_address}
 
-                wrapper["sanity_size"] = 65535
+                wrapper["sanity_size"] = 65536
                 wrapper["size_bytes"] = file_size[i]
                 wrapper["mtime"] = int(time.time())
                 encp["delayed_dismount"] = delayed_dismount
@@ -1078,7 +1078,7 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 		requests[i]['unique_id'] = id  # note that this is down to mS
 	    
             requests[i]['wrapper']['fullname'] = requests[i]['outfile']
-            requests[i]['wrapper']["sanity_size"] = 65535
+            requests[i]['wrapper']["sanity_size"] = 65536
             requests[i]['wrapper']["size_bytes"] = requests[i]['file_size']
 
             # store the pnfs information info into the wrapper
