@@ -466,8 +466,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def all_servers_timed_out(self):
 	rtn = 1
 	for server in self.server_d.keys():
-	    if self.server_d[server].check_recent_alive() == monitored_server.NO_TIMEOUT:
-		if not self.server_d[server].name == enstore_constants.INQUISITOR:
+	    if self.server_d[server].state == monitored_server.NO_TIMEOUT and \
+               not self.server_d[server].name == enstore_constants.INQUISITOR:
 		    rtn = 0
 		    break
 	return rtn

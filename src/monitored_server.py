@@ -75,6 +75,7 @@ class MonitoredServer:
 		rtn = TIMEDOUT
 	    else:
 		rtn = NO_TIMEOUT
+        self.state = rtn
 	return rtn
 
     def is_alive(self):
