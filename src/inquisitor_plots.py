@@ -13,6 +13,7 @@ import e_errors
 import enstore_files
 import enstore_plots
 import enstore_functions
+import enstore_functions2
 import enstore_constants
 
 LOGFILE_DIR = "logfile_dir"
