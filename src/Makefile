@@ -40,6 +40,7 @@ encp:
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
 	cp ../modules/enroute2	ENCPBIN
+	cp ../modules/ddencp	ENCPBIN
 	rm -rf ENCPBIN_TEMP
 
 	- rm -rf ENSTORE_USER_BIN_TEMP
