@@ -453,13 +453,6 @@ def get_mover_list(intf, fullnames=None):
 
     return movers
 
-def subscribe(event_relay_addr):
-    erc = event_relay_client.EventRelayClient(
-        event_relay_host=event_relay_addr[0],
-        event_relay_port=event_relay_addr[1])
-    erc.start([event_relay_messages.ALL,])
-    erc.subscribe()
-
 def handle_status(mover, status):
     state = status.get('state','Unknown')
     time_in_state = status.get('time_in_state', '0')
@@ -520,11 +513,15 @@ def handle_messages(display, intf):
 
     # we will get all of the info from the event relay.
     if intf.commands_file:
-        #erc = event_relay_client.EventRelayClient(event_relay_host="localhost")
         commands_file = open(intf.commands_file, "r")
     else:
         erc = event_relay_client.EventRelayClient()
-        erc.start([event_relay_messages.ALL,])
+        #If the client fails to initialize then wait a minute and start over.
+        # The largest known error to occur is that socket.socket() fails
+        # to return a file descriptor because to many files are open.
+        if(erc.start([event_relay_messages.ALL,]) == erc.ERROR):
+            time.sleep(60)
+            os.execvp(sys.argv[0], sys.argv)
         erc.subscribe()
 
     start = time.time()
