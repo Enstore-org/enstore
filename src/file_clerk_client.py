@@ -228,6 +228,140 @@ class FileClient(generic_client.GenericClient,
 
         return ticket
 
+    def mark_bad(self, path):
+        # get the full absolute path
+        a_path = os.path.abspath(path)
+        dir, file = os.path.split(a_path)
+
+	# does it exist?
+        if not os.access(path, os.F_OK):
+            msg = "%s does not exist!"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # check premission
+        if not os.access(dir, os.W_OK):
+            msg = "not enough privilege to rename %s"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # get bfid
+        bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
+        f = open(bfid_file)
+        bfid = string.strip(f.readline())
+        f.close()
+
+        if len(bfid) < 12:
+            msg = "can not find bfid for %s"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        record = self.bfid_info(bfid)
+        if record['status'][0] != e_errors.OK:
+            return record
+
+        bad_file = os.path.join(dir, ".bad."+file)
+	# rename it
+        try:
+            os.rename(a_path, bad_file)
+        except:
+            msg = "failed to rename %s to %s"%(a_aoth, bad_file)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # log it
+        ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
+        ticket = self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            print bfid, a_path, "->", bad_file
+        return ticket
+
+    def unmark_bad(self, path):
+        # get the full absolute path
+        a_path = os.path.abspath(path)
+        dir, file = os.path.split(a_path)
+
+        # is it a "bad" file?
+	if file[:5] != ".bad.":
+            msg = "%s is not officially a bad file"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+	# does it exist?
+        if not os.access(path, os.F_OK):
+            msg = "%s does not exist!"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # check premission
+        if not os.access(dir, os.W_OK):
+            msg = "not enough privilege to rename %s"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # get bfid
+        bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
+        f = open(bfid_file)
+        bfid = string.strip(f.readline())
+        f.close()
+        if len(bfid) < 12:
+            msg = "can not find bfid for %s"%(path)
+            return {'status': (e_errors.ERROR, msg)}
+
+        record = self.bfid_info(bfid)
+        if record['status'][0] != e_errors.OK:
+            return record
+
+        good_file = os.path.join(dir, file[5:])
+	# rename it
+        try:
+            os.rename(a_path, good_file)
+        except:
+            msg = "failed to rename %s to %s"%(a_aoth, good_file)
+            return {'status': (e_errors.ERROR, msg)}
+
+        # log it
+        ticket = {'work': 'unmark_bad', 'bfid': bfid}
+        ticket = self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            print bfid, a_path, "->", good_file
+        return ticket
+
+
+    def show_bad(self):
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"          : "show_bad",
+                  "callback_addr" : (host, port)}
+        # send the work ticket to the file clerk
+        ticket = self.send(ticket)
+        if ticket['status'][0] != e_errors.OK:
+            return ticket
+
+        r, w, x = select.select([listen_socket], [], [], 15)
+        if not r:
+            listen_socket.close()
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            listen_socket.close()
+            control_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+        ticket = callback.read_tcp_obj(control_socket)
+        listen_socket.close()
+        
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
+        
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['file_clerk_callback_addr'])
+  
+        ticket= callback.read_tcp_obj(data_path_socket)
+        bad_files = callback.read_tcp_obj_new(data_path_socket)
+        ticket['bad_files'] = bad_files
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with file clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            return done_ticket
+
+        return ticket
 
     def bfid_info(self, bfid = None):
         if not bfid:
@@ -411,6 +545,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.set_crcs=None
 	self.all = 0
         self.ls_active = None
+        self.mark_bad = None
+        self.unmark_bad = None
+        self.show_bad = 0
         self.add = None
         self.modify = None
         self.dont_try_this_at_home_erase = None
@@ -458,6 +595,21 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"volume_name",
+                     option.USER_LEVEL:option.USER},
+        option.MARK_BAD:{option.HELP_STRING:"mark the file bad",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"path",
+                     option.USER_LEVEL:option.ADMIN},
+        option.UNMARK_BAD:{option.HELP_STRING:"unmark a bad file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"path",
+                     option.USER_LEVEL:option.ADMIN},
+        option.SHOW_BAD:{option.HELP_STRING:"list all bad files",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.USER},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
@@ -536,6 +688,17 @@ def do_work(intf):
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])
+    elif intf.mark_bad:
+        ticket = fcc.mark_bad(intf.mark_bad)
+
+    elif intf.unmark_bad:
+        ticket = fcc.unmark_bad(intf.unmark_bad)
+
+    elif intf.show_bad:
+        ticket = fcc.show_bad()
+        if ticket['status'][0] == e_errors.OK:
+            for f in ticket['bad_files']:
+                print f['label'], f['bfid'], f['size'], f['path']
 
     elif intf.ls_active:
         ticket = fcc.list_active(intf.ls_active)

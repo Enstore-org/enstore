@@ -345,6 +345,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             msg = 'erase failed due to: '+ exc_type+' '+exc_value
+            Trace.log(e_errors.ERROR, msg)
             ticket["status"] = (e_errors.ERROR, msg)
         # and return to the caller
         self.reply_to_caller(ticket)
@@ -803,6 +804,96 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, 'modified to '+`record`)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
+        return
+
+    def mark_bad(self, ticket):
+        try:
+            bfid = ticket['bfid']
+            path = ticket['path']
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # does this file exist?
+        record = self.dict[bfid]
+        if not record:
+            msg = "file %s does not exist in DB"%(bfid)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # check if this file has already been marked bad
+        q = "select * from bad_file where bfid = '%s';"%(bfid)
+        res = self.dict.db.query(q).dictresult()
+        if res:
+            msg = "file %s has already been marked bad"%(bfid)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # insert into database
+        q = "insert into bad_file (bfid, path) values('%s', '%s');"%(
+            bfid, path)
+        try:
+            res = self.dict.db.query(q)
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = "failed to mark %s bad due to "%(bfid)+exc_type+' '+exc_value
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.KEYERROR, msg)
+
+        self.reply_to_caller(ticket)
+        return
+
+    def unmark_bad(self, ticket):
+        try:
+            bfid = ticket['bfid']
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        q = "delete from bad_file where bfid = '%s';" %(bfid)
+        try:
+            res = self.dict.db.query(q)
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            msg = "failed to mark %s bad due to "%(bfid)+exc_type+' '+exc_value
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.KEYERROR, msg)
+
+        self.reply_to_caller(ticket)
+        return
+
+    def show_bad(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+        # get a user callback
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket,ticket)
+
+        q = "select label, bad_file.bfid, size, path \
+             from bad_file, file, volume \
+             where \
+                 bad_file.bfid = file.bfid and \
+                 file.volume = volume.id;"
+        res = self.dict.db.query(q).dictresult()
+
+        # finishing up
+
+        callback.write_tcp_obj_new(self.data_socket, res)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close()
         return
 
     def quit(self, ticket):
