@@ -215,6 +215,7 @@ class DbTable:
 		return
 
 	def close(self):	# don't know what to do
+		self.db.close()
 		pass
 
 class FileDB(DbTable):
