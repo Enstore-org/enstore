@@ -560,9 +560,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.config['serial_num'] = stats[ftt.SERIAL_NUM]
                 self.config['vendor_id'] = stats[ftt.VENDOR_ID]
 
-                if self.maybe_clean():
-                    have_tape = 0
-
                 if have_tape == 1:
                     status = self.tape_driver.verify_label(None)
                     if status[0]==e_errors.OK:
@@ -579,6 +576,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    "media_type":self.media_type}
                     mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
 
+                if self.maybe_clean():
+                    have_tape = 0
+                    
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
@@ -1133,8 +1133,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     err = r
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
                     if s:
-                        # XXX we cannot dismount the tape. Charles, could you check if code is correct?
-                        self.error("cannot open tape device for positioning") # we do not need to notify LM
+                        self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+                        self.dismount_volume(after_function=self.idle)
                         return
 
                 except:
@@ -1144,7 +1144,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
             self.dismount_volume(after_function=self.idle)
-##            self.error("cannot open tape device for positioning")
             return
         self.state = SEEK ##XXX start a timer here?
         eod = self.vol_info['eod_cookie']
