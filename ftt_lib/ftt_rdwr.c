@@ -66,8 +66,8 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
 			ftt_close_dev(d);
 		}
-		if ( 0 > ftt_open_dev(d)) {
-	    return d->file_descriptor;
+		if ( 0 > (res = ftt_open_dev(d))) {
+	    		return res;
 		}
 		d->last_operation = FTT_OP_READ;
 
@@ -148,8 +148,8 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 			0 != (d->flags& FTT_FLAG_REOPEN_R_W)) {
 			ftt_close_dev(d);
 		}
-		if ( 0 > ftt_open_dev(d)) {
-			return d->file_descriptor;
+		if ( 0 > (res = ftt_open_dev(d))) {
+			return res;
 		}
 		d->last_operation = FTT_OP_WRITE;
 
