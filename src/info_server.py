@@ -8,7 +8,7 @@ Readonly access to file and volume database
 import os
 import sys
 import string
-import pprint
+# import pprint
 
 # enstore import
 import dispatching_worker
@@ -382,7 +382,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 		q = q + ' order by label;'
 
-		res = self.db.query(q).dictresult()
+		try:
+			res = self.db.query(q).dictresult()
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+			Trace.log(e_errors.ERROR, mesg)
+			res = []
 		msg['volumes'] = []
 		for v2 in res:
 			vol2 = {'volume': v2['label']}
