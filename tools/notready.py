@@ -16,15 +16,14 @@ for file in filelist[:]:
         filelist.remove(file)
         continue
     
-    print file
-    cvsinfo = os.popen('cvs status -v %s' % (file,)).readlines()
+    cvsinfo = os.popen('cvs status -v %s 2>/dev/null' % (file,)).readlines()
     L = len(cvsinfo)
     if not cvsinfo or L<6:
         print "A Cannot parse cvs output", cvsinfo, L
         sys.exit(1)
 
     if string.find(cvsinfo[4], "No revision control file\n") > 0:
-        print file, "not in CVS, skipping"
+        print file, "\t not in CVS, skipping"
         filelist.remove(file)
         continue
 
@@ -62,5 +61,7 @@ for file in filelist[:]:
             break
 
     if repository_revision != production_revision or working_revision != production_revision :
-        print '\t\t Working revision=%s  Repository revision=%s  Production revision=%s'%(working_revision, repository_revision, production_revision)
+        print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision)
+    else:
+        print '%s\t ok'%(file,)
         
