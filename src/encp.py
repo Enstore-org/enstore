@@ -1507,9 +1507,16 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             # handle_retries().
             ticket = work_ticket.copy()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket['status'] = (e_errors.TIMEDOUT, str(msg))
-                ###Why do this here???  This is a handle_retries thing...
-                #ticket['status'] = (e_errors.RESUBMITTING, None)
+                # Setting the error to RESUBMITTING is important.  If this is
+                # not done, then it would be returned as ETIMEDOUT.
+                # ETIMEDOUT is a retriable error; meaning it would retry
+                # the request to the LM, but it will fail since the ticket only
+                # contains the 'status' field (as set below).  When
+                # handle_retries() is called after mover_handshake() by
+                # having the error be RESUBMITTING, encp will resubmit all
+                # pending requests (instead of failing on retrying one
+                # request).
+                ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
                 ticket['status'] = (msg.type, str(msg))        
             else:
@@ -1561,9 +1568,16 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket['status'] = (e_errors.TIMEDOUT, str(msg))
-                ###Why do this here???  This is a handle_retries thing...
-                #ticket['status'] = (e_errors.RESUBMITTING, None)
+                # Setting the error to RESUBMITTING is important.  If this is
+                # not done, then it would be returned as ETIMEDOUT.
+                # ETIMEDOUT is a retriable error; meaning it would retry
+                # the request to the LM, but it will fail since the ticket only
+                # contains the 'status' field (as set below).  When
+                # handle_retries() is called after mover_handshake() by
+                # having the error be RESUBMITTING, encp will resubmit all
+                # pending requests (instead of failing on retrying one
+                # request).
+                ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
                 ticket['status'] = (msg.type, str(msg))
             else:
