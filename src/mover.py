@@ -111,8 +111,8 @@ class Mover:
 
     # the library manager has told us to bind a volume so we can do some work
     def bind_volume(self, ticket):
-	print "MV: bind_volume"
-	pprint.pprint(ticket)
+	if list: print "MV: bind_volume"
+	if list: pprint.pprint(ticket)
 
         # become a volume clerk client first
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
@@ -120,8 +120,8 @@ class Mover:
         # find out what volume clerk knows about this volume
         self.external_label = ticket["external_label"]
         vticket = vcc.inquire_vol(self.external_label)
-	print "MV:bind_volume inquire_vol"
-	pprint.pprint(vticket)
+	if list: print "MV:bind_volume inquire_vol"
+	if list: pprint.pprint(vticket)
         if vticket["status"] != "ok":
 	    self.unilateral_unbind_next(ticket)
 	    return
@@ -187,8 +187,8 @@ class Mover:
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
-        print "MV: write_to_hsm"
-        pprint.pprint(ticket)
+	if list: print "MV: write_to_hsm"
+	if list: pprint.pprint(ticket)
         self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
 
         # 1st call the user (to see if they are still there)
@@ -556,9 +556,10 @@ if __name__ == "__main__":
     (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
+    list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list","help"]
+    options = ["config_host=","config_port=","config_list","help","list"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--config_host":
@@ -567,6 +568,8 @@ if __name__ == "__main__":
             config_port = value
         elif opt == "--config_list":
             config_list = 1
+	elif opt == "--list":
+	    list = 1
         elif opt == "--help":
             print "python ",sys.argv[0], options,"mover_device"
             print "   do not forget the '--' in front of each option"
