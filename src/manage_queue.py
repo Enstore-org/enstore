@@ -26,11 +26,11 @@ class Request:
         #self.curpri = ticket.get(['encp']['curpri'], priority
         encp = ticket.get('encp','')
         if encp:
-            self.delpri = encp.get('delpri',0)
+            self.delpri = encp.get('delpri',1)
             self.agetime = encp.get('agetime',0)
             self.adminpri = encp.get('adminpri',-1)
         else:
-            self.delpri = 0
+            self.delpri = 1
             self.agetime = 0
             self.adminpri = -1
             
@@ -59,7 +59,7 @@ class Request:
 
     def __repr__(self):
         #return "<priority %s value %s ticket %s>" % (self.pri, self.value, self.ticket)
-        return "<priority %s value %s >" % (self.pri, self.value)
+        return "<priority %s value %s id %s>" % (self.pri, self.value, self.unique_id)
 
     # update request priority
     def update_pri(self):
@@ -256,6 +256,15 @@ class SortedList:
         if len(self.sorted_list):
             for rq in self.sorted_list:
                 print rq
+
+    def sprint(self):
+        m = ''
+        if len(self.sorted_list):
+            m = "LIST LENGTH %s\n"%(len(self.sorted_list),)
+            for rq in self.sorted_list:
+                m = '%s %s\n'%(m,rq)
+        return m
+    
     def get_tickets(self):
         tickets = []
         for rq in self.sorted_list:
@@ -396,6 +405,21 @@ class Queue:
             print "KEY",key
             self.queue[key]['by_priority'].wprint()
         print "********************"
+
+    def sprint(self):
+        m="********************\n"
+        if not self.queue_type:
+            m='%sUKNOWN QUEUE type\n'%(m,)
+            return m
+        print self.queue_type," Queue"
+        m='%s%s Queue\nby_val\n'%(m,self.queue_type)
+        for key in self.queue.keys():
+            m = '%s KEY %s\n%s'%(m, key, self.queue[key]['opt'].sprint())
+        m = '%s------------------------------\nby_priority\n'%(m,)
+        for key in self.queue.keys():
+            m='%s KEY %s\n%s'%(m,key,self.queue[key]['by_priority'].sprint()) 
+        m='%s********************\n'%(m,)
+        return m
 
     # get all entries from the queue
     def get_queue(self, queue_key='by_priority'):
@@ -619,6 +643,15 @@ class Atomic_Request_Queue:
         print "READ QUEUE"
         self.read_queue.wprint()
 
+    def sprint(self):
+        m= 'NAME %s\n TAGS\nkeys%s\n%s\n'%(self.queue_name, self.tags.keys,self.tags.sprint())
+        m='%s--------------------------------\nREFERENCES\n'%(m,)
+        for key in self.ref.keys():
+            m='%s KEY %s\n VALUE %s\n'%(m, key,self.ref[key]) 
+        m='%s--------------------------------\nWRITE QUEUE\n%s'%(m,self.write_queue.sprint()) 
+        m='%s+++++++++++++++++++++++++++++++\nREAD QUEUE\n%s'%(m,self.read_queue.sprint())
+        return m
+
 
 class Request_Queue:
     def __init__(self, aging_quantum=60, adm_pri_to=60):
@@ -749,6 +782,11 @@ class Request_Queue:
         print "REGULAR QUEUE"
         self.regular_queue.wprint()
         print "TAGS"
+
+    def sprint(self):
+        m='+++++++++++++++++++++++++++++++\nADMIN QUEUE\n%s'%(self.admin_queue.sprint())
+        m='%s===============================\nREGULAR QUEUE\n%s'%(m,self.regular_queue.sprint())
+        return m
          
 if __name__ == "__main__":
   import pprint
@@ -771,7 +809,8 @@ if __name__ == "__main__":
   res = pending_work.put(t1, t1["times"]["t0"])
   print "RESULT",res
   #pending_work.wprint()
-  
+  s=pending_work.sprint()
+  #print "RES!!!!!\n%s"%(s,)
   t2={}
   t2["encp"]={}
   t2['fc'] = {}
@@ -872,9 +911,9 @@ if __name__ == "__main__":
   t6['wrapper']['pnfsFilename']='file3'
   res = pending_work.put(t6, t6["times"]["t0"])
   print "RESULT",res
-  pending_work.wprint()
-
-
+  s=pending_work.sprint()
+  print s
+  #pending_work.wprint()
   #os._exit(0)
   print "GO SLEEP"
   #time.sleep(65)
@@ -896,7 +935,8 @@ if __name__ == "__main__":
   res = pending_work.put(t7, t7["times"]["t0"])
   print "RESULT",res
   #pending_work.wprint()
-  pending_work.wprint()
+  s=pending_work.sprint()
+  print s
 
   t8={}
   t8["encp"]={}
@@ -920,7 +960,9 @@ if __name__ == "__main__":
   res = pending_work.put(t8, t8["times"]["t0"])
   print "RESULT",res
 
-  pending_work.wprint()
+  s=pending_work.sprint()
+  print s
+  #pending_work.wprint()
   t9={}
   t9["encp"]={}
   t9['routing_callback_addr'] = ('131.225.215.253', 40000)
