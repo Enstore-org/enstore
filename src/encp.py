@@ -558,14 +558,18 @@ def write_to_hsm(input, output,
 		tinfo1['rate'+repr(i)] = 1.*fsize/1024./1024./(tnow-tMBstart)
 	    else:
 		tinfo1['rate'+repr(i)] = 0.0
-	    format = "  %s -> %s : %d bytes copied to %s at"+\
-		     " %s MB/S  requester:%s     cumt= %f"
+	    if done_ticket["times"]["transfer_time"]!=0:
+		tinfo1['transrate'+repr(i)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
+	    else:
+		tinfo1['rate'+repr(i)] = 0.0
+	    format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f"
 
 	    if verbose:
 		print format %\
 		      (inputlist[i], outputlist[i], fsize,
 		       done_ticket["fc"]["external_label"],
-		       tinfo1["rate"+repr(i)], wrapper["uname"],
+		       tinfo1["rate"+repr(i)],
+                       tinfo1["transrate"+repr(i)],
 		       time.time()-t0)
 	    if d0sam:
 		print d0sam_format % \
@@ -584,7 +588,8 @@ def write_to_hsm(input, output,
 	    logc.send(log_client.INFO, 2, format,
 		      inputlist[i], outputlist[i], fsize,
 		      done_ticket["fc"]["external_label"],
-		      tinfo1["rate"+repr(i)], wrapper["uname"],
+		      tinfo1["rate"+repr(i)], 
+                      tinfo1["transrate"+repr(i)],
 		      time.time()-t0)
 	    retry = 0
 
@@ -1253,14 +1258,18 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             tinfo['rate'+repr(j)] = 1.*fsize/1024./1024./(tnow-tMBstart)
         else:
             tinfo['rate'+repr(j)] = 0.0
-        format = "  %s -> %s : %d bytes copied from %s at"+\
-                 " %s MB/S  requester:%s     cumt= %f"
+        if done_ticket["times"]["transfer_time"]!=0:
+            tinfo1['transrate'+repr(i)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
+        else:
+            tinfo1['rate'+repr(i)] = 0.0
+        format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f"
 
         if verbose:
             print format %\
-                  (inputlist[j], outputlist[j], fsize,\
-                   done_ticket["fc"]["external_label"],\
-                   tinfo["rate"+repr(j)], wrapper["uname"],\
+                  (inputlist[j], outputlist[j], fsize,
+                   done_ticket["fc"]["external_label"],
+                   tinfo["rate"+repr(j)],
+                   tinfo["transrate"+repr(j)],
                    time.time()-t0)
         if d0sam:
 	    print_d0sam_format(inputlist[j], outputlist[j], fsize,
@@ -1269,7 +1278,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         logc.send(log_client.INFO, 2, format,
                   inputlist[j], outputlist[j], fsize,
                   done_ticket["fc"]["external_label"],
-                  tinfo["rate"+repr(j)], wrapper["uname"],
+                  tinfo["rate"+repr(j)], 
+                  tinfo["transrate"+repr(j)],
                   time.time()-t0)
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
