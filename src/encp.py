@@ -23,6 +23,7 @@ import fcntl, FCNTL
 import math
 import exceptions
 import re
+import statvfs
 
 # enstore modules
 import setpath 
@@ -714,9 +715,14 @@ def filesystem_check(target_filesystem, inputfile):
         return
     except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
-        msg2 = "System error getting filesystem file size limit"
+        msg2 = "System error obtaining maximum file size for " \
+               "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
-        raise EncpError(msg.errno, msg2, e_errors.OSERROR)
+        if hasattr(msg, "errno") and msg.errno == errno.EINVAL:
+            sys.stderr.write("WARNING: %s  Continuing." % (msg2,))
+            return  #Nothing to test, user needs to be carefull.
+        else:
+            raise EncpError(msg.errno, msg2, e_errors.OSERROR)
         
     filesystem_max = 2L**(bits - 1) - 1
     
@@ -1356,12 +1362,12 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    #If the routes were changed, then only wait 10 sec. before
 	    # initiating the retry.  If no routing was done, wait for the
 	    # mover to callback as originally done.
-	    if config and config.get('interfaces', None):
-		for i in range(int(encp_intf.mover_timeout/10)):
+	    if host_config.get_config():
+		for i in range(int(encp_intf.mover_timeout/15)):
 		    try:
 			control_socket, mover_address, ticket = \
 					open_control_socket(
-					    use_listen_socket, 10)
+					    use_listen_socket, 15)
 			break
 		    except (socket.error, EncpError), msg:
 			#If the error was timeout, resend the reply
@@ -1446,6 +1452,8 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             #Since an error occured, just return it.
             return None, None, ticket
 
+        #We need to specifiy which interface was used on the encp side.
+        ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
         #Include new info from mover.
@@ -1554,9 +1562,21 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         else:
             crc_flag = 0
 
-        encp_crc = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
-                                 e.bufsize, crc_flag, 0)
+        EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
+                                  e.bufsize, crc_flag, e.mover_timeout, 0)
+        #Exfer_rtn is a tuple.
+        # [0] exit_status (1 or 0)
+	# [1] crc
+        # The following should never be needed.
+	# [2] bytes_left_untransfered
+        # [3] errno
+        # [4] msg
+        # [5] filename,
+        # [6] line number
+        #encp_crc = EXfer_rtn[1]
         EXfer_ticket = {'status':(e_errors.OK, None)}
+        EXfer_ticket['encp_crc'] = EXfer_rtn[1]
+        EXfer_ticket['bytes_not_transfered'] = EXfer_rtn[2]
     except EXfer.error, msg:
         #The exception raised can have two forms.  Both share the same values
         # for the first four positions in the msg.args tuple.
@@ -1599,30 +1619,36 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         done_ticket = receive_final_dialog(control_socket)
 
     if not e_errors.is_retriable(done_ticket['status'][0]):
-        return done_ticket, 0
+        rtn_ticket = combine_dict(done_ticket, {'exfer':EXfer_ticket}, request)
     elif not e_errors.is_retriable(EXfer_ticket['status'][0]):
-        return EXfer_ticket, 0
+        rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
+        rtn_ticket['status'] = EXfer_ticket['status'] #Set this seperately
     elif done_ticket['status'][0] != (e_errors.OK):
-        return done_ticket, 0
+        rtn_ticket = combine_dict(done_ticket, {'exfer':EXfer_ticket}, request)
     elif EXfer_ticket['status'][0] != (e_errors.OK):
-        return EXfer_ticket, 0
+        rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
+        rtn_ticket['status'] = EXfer_ticket['status'] #Set this seperately
     else:
-        return done_ticket, encp_crc #Success.
+        #If we get here then the transfer was a success.
+        rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
+
+    return rtn_ticket
 
 ############################################################################
 
-def check_crc(done_ticket, chk_crc, my_crc):
-
+def check_crc(done_ticket, chk_crc):
     # Check the CRC
     if chk_crc:
         mover_crc = done_ticket['fc'].get('complete_crc', None)
+        encp_crc = done_ticket['exfer'].get('encp_crc', 0)
+        
         if mover_crc == None:
             msg =   "warning: mover did not return CRC; skipping CRC check\n"
             sys.stderr.write(msg)
             #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
 
-        elif mover_crc != my_crc :
-            msg = "CRC mismatch: %d != %d" % (mover_crc, my_crc)
+        elif mover_crc != encp_crc:
+            msg = "CRC mismatch: %d != %d" % (mover_crc, encp_crc)
             done_ticket['status'] = (e_errors.CRC_ERROR, msg)
 
 ############################################################################
@@ -1836,8 +1862,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             else:
                 status = (e_errors.RESUBMITTING, None)
                 
-            Trace.log(e_errors.WARNING, (e_errors.RETRY, req.get('unique_id',
-                                                                 None)))
+            Trace.log(e_errors.WARNING, (e_errors.RESUBMITTING,
+                                         req.get('unique_id', None)))
 
             result_dict = {'status':status,
                            'retry':request_dictionary.get('retry', 0),
@@ -1967,7 +1993,8 @@ def calculate_rate(done_ticket, tinfo):
                      "mover=%s " \
                      "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
-                     "'driver' : '%s', 'storage_group':'%s'}"
+                     "'driver' : '%s', 'storage_group':'%s', " \
+                     "'encp_ip': '%s'}"
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
@@ -2005,7 +2032,8 @@ def calculate_rate(done_ticket, tinfo):
 		      done_ticket["mover"].get('data_ip',
 					       done_ticket["mover"]['host']),
                       done_ticket["mover"]["driver"],
-                      sg)
+                      sg,
+                      done_ticket["encp_ip"])
         
         Trace.message(DONE_LEVEL, print_format % print_values)
 
@@ -2339,7 +2367,8 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                         "storage_group"      : storage_group,}
         file_clerk = {"address" : fcc.server_address}
 
-        if host_config.get_config().get('interfaces', None):
+        config = host_config.get_config()
+        if config and config.get('interfaces', None):
             route_selection = 1
         else:
             route_selection = 0
@@ -2486,9 +2515,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             
         lap_time = time.time() #------------------------------------------Start
 
-        done_ticket, encp_crc = transfer_file(in_fd, data_path_socket.fileno(),
-                                              control_socket, work_ticket,
-                                              tinfo, e)
+        done_ticket = transfer_file(in_fd, data_path_socket.fileno(),
+                                    control_socket, work_ticket,
+                                    tinfo, e)
 
         tstring = '%s_elapsed_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
@@ -2523,7 +2552,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
-        check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
+        check_crc(done_ticket, e.chk_crc) #Check the CRC.
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
@@ -2611,7 +2640,7 @@ def write_to_hsm(e, tinfo):
     callback_addr, listen_socket = get_callback_addr(e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
-
+    
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     request_list = create_write_requests(callback_addr, routing_addr, e, tinfo)
@@ -2763,6 +2792,7 @@ def sort_cookie(r1, r2):
 def verify_read_request_consistancy(requests_per_vol, e):
 
     bfid_brand = None
+    sum_size = 0L
     
     vols = requests_per_vol.keys()
     vols.sort()
@@ -2878,6 +2908,22 @@ def verify_read_request_consistancy(requests_per_vol, e):
             # then a lot of file clerk key errors could occur.
             if request['fc']['bfid'][:4] != bfid_brand[:4]:
                 msg = "All bfids must have the same brand."
+                request['status'] = (e_errors.USERERROR, msg)
+                print_data_access_layer_format(request['infile'],
+                                               request['outfile'],
+                                               request['file_size'], request)
+                quit() #Harsh, but necessary.
+
+            #sum up the size to verify there is sufficent disk space.
+            sum_size = sum_size + request['file_size']
+
+        if request['outfile'] != "/dev/null":
+            fs_stats = os.statvfs(os.path.dirname(request['outfile']))
+            bytes_free = long(fs_stats[statvfs.F_BAVAIL]) * \
+                         long(fs_stats[statvfs.F_FRSIZE])
+            if  bytes_free < sum_size:
+                msg = "Disk is full.  %d bytes available for %d requested." % \
+                      (bytes_free, sum_size)
                 request['status'] = (e_errors.USERERROR, msg)
                 print_data_access_layer_format(request['infile'],
                                                request['outfile'],
@@ -3174,7 +3220,6 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
     files_left = submitted
     bytes = 0L
-    encp_crc = 0
     failed_requests = []
     succeded_requests = []
 
@@ -3239,9 +3284,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
         
         lap_start = time.time() #----------------------------------------Start
 
-        done_ticket, encp_crc = transfer_file(data_path_socket.fileno(),out_fd,
-                                              control_socket, request_ticket,
-                                              tinfo, e)
+        done_ticket = transfer_file(data_path_socket.fileno(),out_fd,
+                                    control_socket, request_ticket,
+                                    tinfo, e)
 
         lap_end = time.time()  #-----------------------------------------End
         tstring = "%s_elapsed_time" % request_ticket['unique_id']
@@ -3277,7 +3322,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         # error status in the ticket.
         bytes = bytes + verify_file_size(done_ticket) #Verify size is the same.
         bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
-        check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
+        check_crc(done_ticket, e.chk_crc) #Check the CRC.
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(request_list, request_ticket,
@@ -3397,7 +3442,7 @@ def read_from_hsm(e, tinfo):
     callback_addr, listen_socket = get_callback_addr(e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
-
+    
     #Create all of the request dictionaries.
     requests_per_vol = create_read_requests(callback_addr, routing_addr,
                                             tinfo, e)
@@ -3501,7 +3546,7 @@ class encp(interface.Interface):
         self.delayed_dismount = None
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
-        self.mover_timeout = 15*60 # seconds to wait for mover to call back,
+        self.mover_timeout = 15 #*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
         self.output_file_family = '' # initial set for use with --ephemeral or
