@@ -62,12 +62,12 @@ hsm_driver = driver.FTTDriver()
 #hsm_driver = driver.NullDriver()
 
 
-# REMEMBER x=3 will only do 2 tries!
+# REMEMBER x=3 will only do x-1 tries!
 def rsh_das( node, das_cmd ):
-    cmd = "rsh %s '. /usr/local/etc/setups.sh;setup enstore;x=3;\
+    cmd = "rsh %s '. /usr/local/etc/setups.sh;setup enstore;x=4;\
 while x=`expr $x - 1`; do \
     if dasadmin %s;then break;\
-    else sleep 5;fi;\
+    else sleep 7;fi;\
 done'"%(node,das_cmd)
     os.system( cmd )
 
