@@ -322,11 +322,11 @@ if __name__ == "__main__" :
     optlist,args=getopt.getopt(sys.argv[1:], '', options)
     (opt,val) = optlist[0]
     if not optlist:
-	print "usage: cpio_eurostore" + " <"+repr(options)+"> infile outfile"
+	print "usage: cpio_custom" + " <"+repr(options)+"> infile outfile"
 	sys.exit(1)
 
     if not (opt == "--create" or opt == "--extract"):
-	print "usage: cpio_eurostore" + " <"+repr(options)+"> infile outfile"
+	print "usage: cpio_custom" + " <"+repr(options)+"> infile outfile"
 	sys.exit(1)
 
     fin = DiskDriver()
