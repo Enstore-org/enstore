@@ -57,6 +57,31 @@ MIN_LEFT=long(0) # for now, this is disabled.
 
 MY_NAME = "volume_clerk"
 
+# This is a bfid_db replacement. A prototype for now.
+
+class newBfidDB:
+	def __init__(self, dbHome):
+		self.db = db.Index(None, dbHome, 'file', 'external_label')
+
+	def get_all_bfids(self, external_label):
+		return self.db[external_label]
+
+	def rename_volume(self, old_label, new_label):
+		# do onthing
+		return
+
+	def delete_all_bfids(self, external_label):
+		# do nothing
+		return
+
+	def init_bfids(self, external_label):
+		# do nothing
+		return
+
+	def add_bfid(self, external_label, bfid):
+		# do nothing
+		return
+
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # check if volume is full
@@ -1547,7 +1572,8 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
-        self.bfid_db=bfid_db.BfidDb(dbHome)
+        # self.bfid_db=bfid_db.BfidDb(dbHome)
+        self.bfid_db=newBfidDB(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
 
         self.noaccess_cnt = 0
