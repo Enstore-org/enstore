@@ -300,6 +300,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # put together the rows for either lm queue
     def lm_queue_rows(self, lm, queue, intro):
+	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
+				  align="LEFT", bgcolor=YELLOW, width="100%")
 	for qelem in self.data_dict[lm][queue]:
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(intro, color=BRICKRED)))
 	    if qelem.has_key(enstore_status.MOVER):
@@ -310,8 +312,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(qelem[enstore_status.NODE]))
 	    tr.append(HTMLgen.TD(HTMLgen.Font("Port", color=BRICKRED)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.PORT]))
-	    table = HTMLgen.TableLite(tr, cellpadding=0, cellspacing=0, 
-				      align="LEFT", bgcolor=YELLOW, width="100%")
+	    table.append(tr)
 	    if qelem.has_key(enstore_status.DEVICE):
 		tr = HTMLgen.TR(self.spacer_data("Device Label"))
 		tr.append(HTMLgen.TD(qelem[enstore_status.DEVICE]))
