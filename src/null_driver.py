@@ -70,7 +70,8 @@ class NullDriver(driver.Driver):
         try:
             r = os.close(self.fd)
         except:
-            pass
+            r=-1
+            Trace.handle_error()
         self.fd = -1
         return r
 
