@@ -161,7 +161,8 @@ class GenericClient:
             sys.exit(0)
         else:
             print "BAD STATUS"
-            pprint.pprint(ticket)
+##
+            
             Trace.trace(14, " BAD STATUS - "+repr(ticket['status']))
             sys.exit(1)
 	return None
