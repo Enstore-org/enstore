@@ -1,6 +1,7 @@
 import sys
 import time
 import timeofday
+import traceback
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from file_clerk_client import FileClerkClient
@@ -518,9 +519,8 @@ if __name__ == "__main__" :
     while 1:
         try:
             mv = Mover(config_host,config_port)
-            mv.move_forever (args[0])
+            mv.move_forever(args[0])
         except:
-            import traceback
             traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
@@ -529,4 +529,3 @@ if __name__ == "__main__" :
                      "mover move_forever continuing"
             print format
             continue
-
