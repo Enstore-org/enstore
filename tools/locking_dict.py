@@ -36,6 +36,12 @@ class LockingDict:
 
         self.dict[key]=value
 
+    def __repr__(self):
+        return repr(self.dict)
+
+    def __str__(self):
+        return str(self.dict)
+    
     def __len__(self):
         return  len(self.dict)
     
