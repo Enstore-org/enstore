@@ -1272,9 +1272,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.description = ""
 	self.extra_queue_pages = {}
 	self.max_lm_rows = max_lm_rows
+	self.unmonitored_servers = []
 
     def not_being_monitored(self, server):
-	if self.data_dict[server][enstore_constants.STATUS] == \
+	if self.data_dict[server][enstore_constants.STATUS][0] == \
 	   enstore_constants.NOT_MONITORING:
 	    return 1
 	else:
@@ -1352,7 +1353,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	for server in skeys:
 	    if enstore_functions.is_media_changer(server):
 		if self.not_being_monitored(server):
-		    self.unmonitored_servers.append(self.server_row(server)))
+		    self.unmonitored_servers.append(self.server_row(server))
 		else:
 		    # this is a media changer. output its alive info
 		    table.append(self.server_row(server))
@@ -1549,7 +1550,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr = HTMLgen.TR(empty_data())
 	    tr.append(HTMLgen.TD(lm_table, colspan=cols))
 	    table_rows.append(tr)
-	return rows
+	return table_rows
 
     # output all of the library manager rows and their associated movers
     def library_manager_rows(self, table, skeys):
@@ -1618,6 +1619,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	table = HTMLgen.TableLite(tr, align="CENTER", cellpadding=0,
 				  cellspacing=0, bgcolor=AQUA, width="100%")
 	skeys = sort_keys(self.data_dict)
+	self.unmonitored_servers = []
 	self.generic_server_rows(table)
 	self.media_changer_rows(table, skeys)
 	self.library_manager_rows(table, skeys)
