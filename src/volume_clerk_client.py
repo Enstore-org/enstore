@@ -1215,24 +1215,17 @@ def do_work(intf):
         ticket = vcc.recycle_volume(intf.recycle)
     elif intf.clear:
         nargs = len(intf.args)
-        what = None
-        pos = 0
-        if nargs > 0:
-            if nargs != 2:
-                intf.print_clear_args()
-            else:
-                ipos = string.atoi(intf.args[1])-1
-                if not (intf.args[0] == "system_inhibit" or intf.args[0] == "user_inhibit"):
-                    intf.print_clear_args()
-                    return
-                elif not (ipos == 0 or ipos == 1):
-                    intf.print_clear_args()
-                    return
-                else:
-                    what = intf.args[0]
-                    pos = ipos
-                
-        ticket = vcc.clr_system_inhibit(intf.clear, what, pos)  # name of this volume
+        try:
+            ipos = string.atoi(intf.args[1])-1
+        except:
+            ipos = -1
+        if nargs == 2 and (intf.args[0] in ["system_inhibit",
+            "system-inhibit", "user_inhibit", "user-inhibit"]) and \
+            (ipos == 0 or ipos == 1):
+                ticket = vcc.clr_system_inhibit(intf.clear, intf.args[0], ipos)
+        else:
+            print "usage: enstore vol --clear <vol> system_inhibit|user_inhibit 1|2"
+            ticket = {'status':(e_errors.OK, None)}
     elif intf.decr_file_count:
         print `type(intf.decr_file_count)`
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
