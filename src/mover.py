@@ -3003,7 +3003,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def stop_draining(self, ticket):        # put itself into draining state
         if self.state != OFFLINE:
-            out_ticket = {'status':("EPROTO","Not in draining state")}
+            out_ticket = {'status':("EPROTO","Not OFFLINE")}
             self.reply_to_caller(out_ticket)
             return
         out_ticket = {'status':(e_errors.OK,None)}
