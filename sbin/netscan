@@ -359,7 +359,7 @@ elif [ $QUIET -ne 1 ]; then
 fi
 
 # check that ipmisrv is running without watchdog timer
-if [ `$PS -ef | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
+if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
    msg="ipmisrv NO_DOG not running or misconfigured"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
