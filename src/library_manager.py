@@ -750,7 +750,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
-	self.open_db()
+
+        self.lm_lock = self.get_lock()
+        if not self.lm_lock:
+            self.lm_lock = 'unlocked'
+            self.set_lock(self.lm_lock)
+        Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
+
 
         # setup a start up delay
         # this delay is needed to update state of the movers
@@ -775,7 +781,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if time.time() - self.time_started > self.startup_delay:
                self.startup_flag = 0
         return self.startup_flag
+
+
+    def lockfile_name(self):
+        d=os.environ.get("ENSTORE_TMP","/tmp")
+        return os.path.join(d, "%s_lock"%self.name)
     
+        
     # get lock from a lock file
     def get_lock(self):
         if self.keys.has_key('lock'):
@@ -791,7 +803,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if self.keys['lock'] in ('locked', 'unlocked', 'ignore', 'pause'): 
                 return self.keys['lock']
         try:
-            lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'r')
+            lock_file = open(self.lockfile_name(), 'r')
             lock_state = lock_file.read()
             lock_file.close()
         except IOError:
@@ -800,32 +812,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
     # set lock in a lock file
     def set_lock(self, lock):
-        lock_file = open(os.path.join(self.db_dir, 'lm_lock'), 'w')
+        lock_file = open(self.lockfile_name(), 'w')
         lock_file.write(lock)
         lock_file.close()
         
-    # open all dbs that keep LM data
-    def open_db(self):
-        import string
-	# if database directory is specified in configuration - get it
-	if self.keys.has_key('database'):
-	    self.db_dir = self.keys['database']
-	else:
-            Trace.log(e_errors.ERROR,"LM database is not defined in config file for %s"%(self.name,))
-            sys.exit(1)
-        # if directory does not exist, create it
-        try:	
-            if os.path.exists(self.db_dir) == 0:
-                os.makedirs(self.db_dir)
-        except:
-	  exc, val, tb = e_errors.handle_error()
-	  sys.exit(1)
-       
-        self.lm_lock = self.get_lock()
-        if not self.lm_lock:
-            self.lm_lock = 'unlocked'
-            self.set_lock(self.lm_lock)
-        Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
 	
     def set_udp_client(self):
 	self.udpc = udp_client.UDPClient()
