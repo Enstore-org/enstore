@@ -40,12 +40,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +unixfile+" is not a regular file"
     tinfo["filecheck"] = time.time() - t1
     if list:
-        print "  dt:",tinfo["filecheck"], "cum=",time.time()-t0
+        print "  dt:",tinfo["filecheck"], "   cum=",time.time()-t0
 
     # check the output pnfs file next
     t1 = time.time()
     if list:
-        print "Checking",pnfsfile, "cum=",time.time()-t0
+        print "Checking",pnfsfile, "   cum=",time.time()-t0
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
         raise errno.errorcode[errno.EINVAL],"encp.write_to_hsm: "\
@@ -59,7 +59,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +pnfsfile+", NO write access to directory"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
-        print "  dt:",tinfo["pnfscheck"], "cum=",time.time()-t0
+        print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -82,13 +82,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # get a port to talk on and listen for connections
     t1 = time.time()
     if list:
-        print "Requesting callback ports", "cum=",time.time()-t0
+        print "Requesting callback ports", "   cum=",time.time()-t0
     host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
         print "  ",host,port,"dt:",tinfo["get_callback"],\
-	       "cum=",time.time()-t0
+               "   cum=",time.time()-t0
 
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
@@ -110,18 +110,18 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     t1 = time.time()
     if list:
         print "Calling Config Server to find",p.library+".library_manager",\
-	       "cum=",time.time()-t0
+               "   cum=",time.time()-t0
     vticket = csc.get(p.library+".library_manager")
     tinfo["get_libman"] = time.time() - t1
     if list:
         print "  ",vticket["host"],vticket["port"],"dt:",tinfo["get_libman"],\
-	      "cum=",time.time()-t0
+              "   cum=",time.time()-t0
 
     # send the work ticket to the library manager
     t1 = time.time()
     if list:
         print "Sending ticket to",p.library+".library_manager", \
-	      "cum=",time.time()-t0
+              "   cum=",time.time()-t0
     tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if ticket['status'] != "ok" :
@@ -133,7 +133,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     if list:
         print "  Q'd:",unixfile, ticket["library"], ticket["file_family"],\
               ticket["file_family_width"]," bytes:", ticket["size_bytes"],\
-              "dt:",tinfo["send_ticket"], "cum=",time.time()-t0
+              "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
 
     # We have placed our work in the system and now we have to wait for
     # resources. All we  need to do is wait for the system to call us back,
@@ -141,7 +141,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # call-back to this very same port. It is dicey to time out, as it
     # is probably legitimate to wait for hours....
     if list:
-        print "Waiting for mover to call back", "cum=",time.time()-t0
+        print "Waiting for mover to call back", "   cum=",time.time()-t0
     while 1 :
         control_socket, address = listen_socket.accept()
         new_ticket = callback.read_tcp_socket(control_socket, "encp write_"+\
@@ -167,11 +167,12 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     if list:
         print "  ",ticket["mover_callback_host"],\
               ticket["mover_callback_port"], \
-              "cum_time:",tinfo["tot_to_mover_callback"], "cum=",time.time()-t0
+              "cum_time:",tinfo["tot_to_mover_callback"],\
+              "   cum=",time.time()-t0
 
     t1 = time.time()
     if list:
-        print "Sending data", "cum=",time.time()-t0
+        print "Sending data", "   cum=",time.time()-t0
     while 1:
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
@@ -198,29 +199,29 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         else:
             sent_rate = 0.0
         print "  bytes:",fsize,"dt:",tinfo["sent_bytes"],"=",sent_rate,"MB/S",\
-	      "cum=",time.time()-t0
+              "   cum=",time.time()-t0
 
     # File has been sent - wait for final dialog with mover. We know the file
     # has hit some sort of media.... when this occurs. Create a file in pnfs
     # namespace with information about transfer.
     t1 = time.time()
     if list:
-        print "Waiting for final mover dialog", "cum=",time.time()-t0
+        print "Waiting for final mover dialog", "   cum=",time.time()-t0
     done_ticket = callback.read_tcp_socket(control_socket, "encp write_"+\
                                            "to_hsm, mover final dialog")
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
     if list:
-        print "  dt:",tinfo["final_dialog"], "cum=",time.time()-t0
+        print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
 
     if done_ticket["status"] == "ok" :
         t1 = time.time()
         if list:
-            print "Adding file to pnfs", "cum=",time.time()-t0
+            print "Adding file to pnfs", "   cum=",time.time()-t0
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
         tinfo["pnfsupdate"] = time.time() - t1
         if list:
-            print "  dt:",tinfo["pnfsupdate"], "cum=",time.time()-t0
+            print "  dt:",tinfo["pnfsupdate"], "   cum=",time.time()-t0
 
         tinfo["total"] = time.time()-t0
         done_ticket["tinfo"] = tinfo
@@ -232,19 +233,19 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
         t1 = time.time()
         if list:
-            print "Adding transaction log to pnfs", "cum=",time.time()-t0
+            print "Adding transaction log to pnfs", "   cum=",time.time()-t0
         done_formatted  = pprint.pformat(done_ticket)
         p.writelayer(3,done_formatted)
         t2 = time.time() - t1
         if list:
-            print "  dt:",t2, "cum=",time.time()-t0
+            print "  dt:",t2, "   cum=",time.time()-t0
 
         if list:
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, ":",p.file_size,"bytes",\
                   "copied to", done_ticket["external_label"], \
                   "in ",tinfo["total"],"seconds",\
-                  "at",done_ticket["MB_per_S"],"MB/S", "cum=",time.time()-t0
+                  "at",done_ticket["MB_per_S"],"MB/S", "   cum=",time.time()-t0
             #print done_formatted
 
     else :
@@ -263,20 +264,20 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # first check the input pnfs file - this will also provide the bfid
     t1 =  time.time()
     if list:
-        print "Checking",pnfsfile
+        print "Checking",pnfsfile, "   cum=",time.time()-t0
     p = pnfs.pnfs(pnfsfile)
     if p.exists != pnfs.exists :
         raise errno.errorcode[errno.ENOENT],"encp.read_from_hsm: "\
               +pnfsfile+" does not exist"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
-        print "  dt:",tinfo["pnfscheck"]
+        print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 
     # Make sure we can open the unixfile. If we can't, we bomb out to user
     # Note that the unix file remains open
     t1 = time.time()
     if list:
-        print "Checking",outfile
+        print "Checking",outfile, "   cum=",time.time()-t0
     dir,file = os.path.split(outfile)
     if dir == '' :
         dir = '.'
@@ -288,7 +289,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     f = open(outfile,"w")
     tinfo["filecheck"] = time.time() - t1
     if list:
-        print "  dt:",tinfo["filecheck"]
+        print "  dt:",tinfo["filecheck"], "   cum=",time.time()-t0
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -311,12 +312,13 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # get a port to talk on and listen for connections
     t1 = time.time()
     if list:
-        print "Requesting callback ports"
+        print "Requesting callback ports", "   cum=",time.time()-t0
     host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
-        print "  ",host,port,"dt:",tinfo["get_callback"]
+        print "  ",host,port,"dt:",tinfo["get_callback"], \
+              "   cum=",time.time()-t0
 
     # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
@@ -332,16 +334,18 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # ask configuration server what port the file clerk is using
     t1 = time.time()
     if list:
-        print "Calling Config Server to find file clerk"
+        print "Calling Config Server to find file clerk", \
+              "   cum=",time.time()-t0
     fticket = csc.get("file_clerk")
     tinfo["get_fileclerk"] = time.time() - t1
     if list:
-        print "  ",fticket["host"],fticket["port"],"dt:",tinfo["get_fileclerk"]
+        print "  ",fticket["host"],fticket["port"],"dt:",\
+              tinfo["get_fileclerk"], "   cum=",time.time()-t0
 
     # send work ticket to file clerk who sends it to right library manger
     t1 = time.time()
     if list:
-        print "Sending ticket to file clerk"
+        print "Sending ticket to file clerk", "   cum=",time.time()-t0
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
         raise errno.errorcode[errno.EPROTO],"encp.read_from_hsm: from u.send"+\
@@ -351,7 +355,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     if list :
         print "  Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
               ,ticket["external_label"],ticket["bof_space_cookie"],\
-              "dt:",tinfo["send_ticket"]
+              "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
 
 
     # We have placed our work in the system and now we have to wait for
@@ -360,7 +364,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # call-back to this very same port. It is dicey to time out, as it
     # is probably legitimate to wait for hours....
     if list:
-        print "Waiting for mover to call back"
+        print "Waiting for mover to call back", "   cum=",time.time()-t0
     while 1 :
         control_socket, address = listen_socket.accept()
         new_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
@@ -386,11 +390,12 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     if list:
         print "  ",ticket["mover_callback_host"],\
               ticket["mover_callback_port"], \
-              "cum_time:",tinfo["tot_to_mover_callback"]
+              "cum_time:",tinfo["tot_to_mover_callback"], \
+              "   cum=",time.time()-t0
 
     t1 = time.time()
     if list:
-        print "Receiving data"
+        print "Receiving data", "   cum=",time.time()-t0
     l = 0
     while 1:
         buf = data_path_socket.recv(65536*4)
@@ -403,18 +408,19 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     t2 = time.time()
     tinfo["recvd_bytes"] = t2-t1
     if list:
-        print "  bytes:",l,"dt:",tinfo["recvd_bytes"]
+        print "  bytes:",l,"dt:",tinfo["recvd_bytes"], \
+              "   cum=",time.time()-t0
 
     # File has been read - wait for final dialog with mover.
     t1 = time.time()
     if list:
-        print "Waiting for final mover dialog"
+        print "Waiting for final mover dialog", "   cum=",time.time()-t0
     done_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
                                            "to_hsm, mover final dialog")
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
     if list:
-        print "  dt:",tinfo["final_dialog"]
+        print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
 
     tinfo["total"] = time.time()-t0
     done_ticket["tinfo"] = tinfo
@@ -434,7 +440,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print outfile, ":",fsize,"bytes",\
                   "copied from", done_ticket["external_label"], \
                   "in ",tinfo["total"],"seconds",\
-                  "at",done_ticket["MB_per_S"],"MB/S"
+                  "at",done_ticket["MB_per_S"],"MB/S", \
+                  "   cum=",time.time()-t0
         #print done_formatted
 
 
