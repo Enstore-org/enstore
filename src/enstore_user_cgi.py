@@ -9,7 +9,7 @@ import tempfile
 import re
 
 ENSTORE_USER_NODES = "enstore_user_nodes.txt"
-FERMI_DOMAIN = ".fnal.gov$"
+FERMI_DOMAIN = "^131.225."
 
 def append_from_key(argv, value_text_key, form, alt_name=""):
     if not alt_name:
@@ -62,7 +62,7 @@ def go():
         filedes = open(ENSTORE_USER_NODES)
         # for each line in the file, see if the remote node is in the line
         found_it = 0
-        host = os.environ["REMOTE_HOST"]
+        host = os.environ["REMOTE_ADDR"]
         while 1:
             line = filedes.readline()
             if not line:
@@ -77,8 +77,8 @@ def go():
             raise SystemExit
     except OSError:
         # the file did not exist, only allow addresses from *.fnal.gov
-        if not in_domain(os.environ["REMOTE_HOST"], FERMI_DOMAIN):
-            no_access(os.environ["REMOTE_HOST"])
+        if not in_domain(os.environ["REMOTE_ADDR"], FERMI_DOMAIN):
+            no_access(os.environ["REMOTE_ADDR"])
             raise SystemExit
     try:
         # get the data from the form
