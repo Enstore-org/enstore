@@ -1101,6 +1101,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                        'queue_size':queue_size} #one less than before
         return result_dict
 
+
     #Change the unique id so the library manager won't remove the retry
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by
@@ -1124,6 +1125,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, status)
+        Trace.log(e_errors.WARNING, (e_errors.RETRY,
+                                     request_dictionary['unique_id']))
         
     #When nothing was recieved from the mover and the 15min has passed,
     # resubmit all entries in the queue.  Leave the unique id the same.
@@ -1187,7 +1190,7 @@ def calculate_rate(done_ticket, tinfo, verbose):
         if drive_time != 0:
             tinfo['drive_rate_%s'%(id,)] = MB_transfered / drive_time
         else:
-            tinfo['drive_rate_%s'%(id,)] = -1.0
+            tinfo['drive_rate_%s'%(id,)] = 0.0
             
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
@@ -1574,7 +1577,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
                                      e.bufsize, crc_flag, 0)
             EXfer_ticket = {'status':(e_errors.OK, None)}
         except EXfer.error, msg:
-            Trace.log(e_errors.ERROR, "write_to_hsm EXfer error: %s" % (msg,))
+            Trace.log(e_errors.WARNING,"write_to_hsm EXfer error: %s" % (msg,))
 
             EXfer_ticket = {'status':(msg.args[1], msg.args[0])}
             
@@ -2257,8 +2260,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         except EXfer.error, msg:
             #Regardless of the type of error, make sure it gets logged.
-            Trace.log(e_errors.ERROR,"read_from_hsm EXfer error: %s" %
-                      (msg,))
+            Trace.log(e_errors.WARNING,"read_from_hsm EXfer error: %s"%(msg,))
 
             #Unlink the file since it didn't tranfer in tact.
             try:
