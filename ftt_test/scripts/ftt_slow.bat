@@ -43,7 +43,7 @@ if "%FTT_TAPE%" == "" goto usage
 rem ==============================================================================
 
 echo.===============================================================
-echo doing all of the fast ftt tests using $FTT_TAPE. This will be 
+echo doing all of the fast ftt tests using %FTT_TAPE%. This will be 
 echo VERY slow. It may take several hours
 echo.===============================================================
 
@@ -64,7 +64,7 @@ call ftt_run_test delay
 
 echo.===============================================================
 echo fast tests
-echo ===============================================================
+echo.===============================================================
 call ftt_fast %1 %2 %3
 
 goto end
