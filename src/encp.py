@@ -1627,6 +1627,17 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     print data_access_layer_format % (inputfile, outputfile, filesize, external_label,
                                       device, transfer_time, seek_time, mount_time, in_queue, total,
                                       status)
+    
+    try:
+        global logc
+	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
+		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
+
+        logc.send(log_client.ERROR, 1, format, inputfile, outputfile, filesize, 
+		  external_label, device, transfer_time, seek_time, mount_time, in_queue, total,
+		  status)
+    except:
+        pass
 
 
 ##############################################################################
