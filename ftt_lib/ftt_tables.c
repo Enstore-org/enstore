@@ -891,12 +891,16 @@ ftt_dev_entry devtable[] = {
     }},
     {"SunOS+5", "DLT", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
        "rmt/%d", "rmt/%d", 1, SunOSfind_dev, {
-    /*   string                  den mod hwd   pas fxd rewind            1st */
-    /*   ======                  === === ===   === === ======            === */
+    /*   string          den mod hwd   pas fxd rewind            1st */
+    /*   ======          === === ===   === === ======            === */
     /* Default, Passthru  */
        { "rmt/%dubn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "rmt/%dubn", 	  5,  1, 0x1A,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
        { "rmt/%dubn", 	  5,  0, 0x00,  1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  4,  0, 0x19,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  4,  1, 0x19,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+       { "rmt/%dmbn", 	  3,  0, 0x18,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+       { "rmt/%dlbn", 	  2,  0, 0x17,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
     /* Densitites */
        { "rmt/%d", 	  0,  0, 0x0A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "rmt/%d", 	  1,  0, 0x16,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
@@ -912,9 +916,6 @@ ftt_dev_entry devtable[] = {
        { "rmt/%d", 	  5,  1, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/%dcbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "rmt/%dhbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "rmt/%dmbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "rmt/%dlbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "rmt/%dbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "rmt/%dub", 	  5,  0, 0x1A,  0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
        { "rmt/%dcb", 	  5,  0, 0x1A,  0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
@@ -994,6 +995,10 @@ ftt_dev_entry devtable[] = {
        { "%s/st@%d,0:ubn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "%s/st@%d,0:ubn", 	  5,  1, 0x1A,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
        { "%s/st@%d,0:ubn", 	  5,  0, 0x00,  1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+       { "%s/st@%d,0:hbn", 	  4,  0, 0x19,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+       { "%s/st@%d,0:hbn", 	  4,  1, 0x19,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+       { "%s/st@%d,0:mbn", 	  3,  0, 0x18,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+       { "%s/st@%d,0:lbn", 	  2,  0, 0x17,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
     /* Densitites */
        { "%s/st@%d,0:", 	  0,  0, 0x0A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "%s/st@%d,0:", 	  1,  0, 0x16,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
@@ -1009,9 +1014,6 @@ ftt_dev_entry devtable[] = {
        { "%s/st@%d,0:", 	  5,  1, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
     /* Descriptive */
        { "%s/st@%d,0:cbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "%s/st@%d,0:hbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "%s/st@%d,0:mbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
-       { "%s/st@%d,0:lbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "%s/st@%d,0:bn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "%s/st@%d,0:ub", 	  5,  0, 0x1A,  0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
        { "%s/st@%d,0:cb", 	  5,  0, 0x1A,  0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
@@ -1164,7 +1166,9 @@ ftt_dev_entry devtable[] = {
         { "dev/nrmt%dh",         5,  0,0x1A, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%dh",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Usable */
-        { "dev/nrmt%dl",         4,  0,0x18, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         2,  0,0x17, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         3,  0,0x18, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dm",         4,  0,0x19, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%dm",         4,  1,0x19, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%da",         5,  1,0x1A, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
     /* Other Densities */
@@ -1449,15 +1453,17 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
     /* Usable Variable */
 	{ "rmt/tps%dd%dnrvc",  5,  1,0x1A, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/tps%dd%dnrnsvc",5,  1,0x1A, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrv",   4,  0,0x1A, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrnsvc",4,  1,0x1A, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrv",   3,  0,0x1A, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrv",   4,  0,0x19, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrnsvc",4,  1,0x19, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrv",   3,  0,0x18, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrv",   2,  0,0x17, 0,  0,                 0, 0, IRIX_MAX_BLKSIZE},
     /* Usable Fixed */
 	{ "rmt/tps%dd%dnr",    5,  0,0x1A, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/tps%dd%dnrc",   5,  1,0x1A, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnr",    4,  0,0x1A, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrc",   4,  1,0x1A, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnr",    3,  0,0x1A, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnr",    4,  0,0x19, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrc",   4,  1,0x19, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnr",    3,  0,0x18, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnr",    3,  0,0x17, 0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
     /* Other Densities */
 	{ "rmt/tps%dd%d",      4,  0,0x80, 0,  1,          FTT_RDNW, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/tps%dd%dc",     4,  1,0x81, 0,  1,          FTT_RDNW, 1, IRIX_MAX_BLKSIZE},
@@ -1668,13 +1674,16 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
     {"IRIX", "DLT","JAG",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
 	FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
 	"%*[rmt]/jag%dd%d","rmt/jag%dd%d", 2, IRIXfindVME, {
-    /*   string                          den mod hwd pas fxd rewind         sf,1st */
-    /*   ======                          === === === === === ======         === */
+    /*   string                     den mod hwd pas fxd rewind         sf,1st */
+    /*   ======                     === === === === === ======         === */
 	/* Default, passthru */
 	{ "rmt/jag%dd%dnrv",         5,  0, 0x1A,0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
 	{ "scsi/jag%dd%dl0",        -1,  0,  -1, 1,  0,                 0, 1, IRIX_MAX_BLKSIZE},
 	/* Usable Fixed */
 	{ "rmt/jag%dd%dnr",          5,  0, 0x1A,0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/jag%dd%dnr",          4,  0, 0x19,0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/jag%dd%dnr",          3,  0, 0x18,0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/jag%dd%dnr",          2,  0, 0x17,0,  1,                 0, 0, IRIX_MAX_BLKSIZE},
 	/* Descriptive */
 	{ "rmt/jag%dd%dstat",       -1,  0,  -1, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/jag%dd%d",            5,  0, 0x1A,0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
