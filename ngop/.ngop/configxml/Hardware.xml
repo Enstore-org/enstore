@@ -1,173 +1,19 @@
 <?xml version='1.0'?>
 <!DOCTYPE NGOPConfig SYSTEM "system.dtd">
 <NGOPConfig>
-  <System ID="Hardware" Cluster="d0ensrv1">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv1"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv1"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv1"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv1"/>
-  </System>
-  <System ID="Hardware" Cluster="d0ensrv2">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv2"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv2"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv2"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv2"/>
-  </System>
-  <System ID="Hardware" Cluster="d0ensrv3">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv3"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv3"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv3"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv3"/>
-  </System>
-  <System ID="Hardware" Cluster="d0ensrv4">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv4"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv4"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv4"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv4"/>
-  </System>
-  <System ID="Hardware" Cluster="d0ensrv5">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv5"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv5"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv5"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv5"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr1a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr1a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr1a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr1a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr1a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr2a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr2a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr2a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr2a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr2a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr3a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr3a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr3a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr3a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr3a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr4a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr4a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr4a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr4a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr4a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr5a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr5a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr5a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr5a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr5a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr6a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr6a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr6a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr6a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr6a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr7a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr7a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr7a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr7a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr7a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr8a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr8a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr8a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr8a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr8a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr9a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr9a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr9a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr9a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr9a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr10a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr10a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr10a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr10a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr10a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr11a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr11a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr11a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr11a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr11a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr12a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr12a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr12a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr12a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr12a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr13a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr13a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr13a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr13a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr13a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr14a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr14a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr14a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr14a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr14a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr15a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr15a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr15a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr15a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr15a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr16a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr16a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr16a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr16a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr16a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr17a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr17a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr17a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr17a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr17a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr18a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr18a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr18a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr18a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr18a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr19a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr19a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr19a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr19a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr19a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr20a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr20a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr20a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr20a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr20a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr21a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr21a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr21a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr21a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr21a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0enmvr22a">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0enmvr22a"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0enmvr22a"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0enmvr22a"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0enmvr22a"/>
-  </System>
-  <System ID="Hardware" Cluster="d0ensrv0">
-     <MonitoredElement ID="numProcessors" Type="Hardware" Host="d0ensrv0"/>
-     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="d0ensrv0"/>
-     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="d0ensrv0"/>
-     <MonitoredElement ID="timeSync"      Type="Hardware" Host="d0ensrv0"/>
-  </System>
+<ItemList Name="ENSTORE">
+  <Item Name="STK"/>
+  <Item Name="D0"/>
+</ItemList>
+<For Each="Item" In="ItemList" Name="ENSTORE" Var="{%S}">
+<For Each="Host" In="Cluster" Name="EN{%S}" Var="{%H}" Filename="fermi_hosts.xml">
+  <System Name="Hardware" Cluster="{%H}">
+     <MonitoredElement Name="numProcessors" Type="Hardware" Host="{%H}"/>
+     <MonitoredElement Name="baseTemp"      Type="Hardware" Host="{%H}"/>
+     <MonitoredElement Name="fanSpeed"      Type="Hardware" Host="{%H}"/>
+     <MonitoredElement Name="timeSync"      Type="Hardware" Host="{%H}"/>
+  </System> 
+</For>
+</For>
 </NGOPConfig>
 
