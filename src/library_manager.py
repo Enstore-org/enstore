@@ -234,6 +234,7 @@ def next_work_any_volume(csc, verbose):
             # found a volume that has write work pending - return it
             w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v["external_label"]
+            w["fc"]["size"] = w["wrapper"]["size_bytes"]
 	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
             return w
 
