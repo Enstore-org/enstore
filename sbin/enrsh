@@ -35,10 +35,7 @@ if [ -d $krbdir ]; then
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
-      ${krbdir}/rsh -f "$@"
-      # if got an error, maybe the remote node is not kerberized and does not
-      # accept the -f flag. try rsh without it.
-      if [ $? -eq 1 ]; then ${krbdir}/rsh "$@"; fi
+      ${krbdir}/rsh "$@"
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -63,10 +60,7 @@ if [ -d $krbdir ]; then
         KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
 	${krbdir}/kcron 2> /dev/null
       fi
-      ${krbdir}/rsh -f "$@"
-      # if got an error, maybe the remote node is not kerberized and does not
-      # accept the -f flag. try rsh without it.
-      if [ $? -eq 1 ]; then ${krbdir}/rsh "$@"; fi
+      ${krbdir}/rsh "$@"
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
