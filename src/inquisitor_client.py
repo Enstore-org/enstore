@@ -271,7 +271,6 @@ def do_work(intf):
 
     elif intf.show:
 	ticket = iqc.show()
-	print ticket
 	if enstore_functions.is_ok(ticket):
 	    iqc.print_show(ticket)
 
