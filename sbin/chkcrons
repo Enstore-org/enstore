@@ -62,8 +62,8 @@ for i in *; do
      file2=`mktemp /tmp/cronplot2.XXXXXXXX`
      title=$i/$f
      echo "
-set term pbm medium color
-set output '$f.pbm'
+set term postscript enhanced color solid 'Helvetica' 10
+set output '$f.ps'
 set xlabel 'Date'
 set timefmt '%Y-%m-%d:%H:%M:'
 set xdata time
@@ -72,7 +72,7 @@ set yrange [-5:15]
 set key box
 set grid
 #set format x '%m-%d'
-plot '$j' using 1:2 t '$title' with points, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines lt 3 lw 3
+plot '$j' using 1:2 t '$title' with points, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines lt 3 lw 4
 #plot '$j' using 1:2 t '$title' with points, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines 3
 " >> $file
      echo "
@@ -82,10 +82,8 @@ $lastmonday -5
      gnuplot $file
      rm $file
      rm $file2
-     $convert $f.pbm $f.jpg
-     $convert -geometry 120x120 -modulate -20 $f.pbm ${f}_stamp.jpg
-     $convert $f.pbm $f.ps
-     rm $f.pbm
+     $convert -rotate 90 $f.ps $f.jpg
+     $convert -rotate 90 -geometry 120x120 -modulate -20 $f.ps ${f}_stamp.jpg
   done
   rm -f *HISTOGRAM  >/dev/null 2>&1
 done
