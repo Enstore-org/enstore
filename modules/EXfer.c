@@ -5,6 +5,8 @@
 
 #ifndef STAND_ALONE
 #include <Python.h>
+#else
+#define _GNU_SOURCE
 #endif
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -2004,7 +2006,6 @@ int main(int argc, char **argv)
   struct stat file_info;
   long long size;
   struct timeval timeout = {60, 0};
-  /*struct return_values transfer_sts;*/
   unsigned int crc_ui;
   int flags = 0;
   int opt;
@@ -2101,31 +2102,33 @@ int main(int argc, char **argv)
   /*Place the values into the struct.  Some compilers complained when this
     information was placed into the struct inline at initalization.  So it
     was moved here.*/
-  reads.fd = rd_fd;
+  reads.fd = fd_in;
   reads.mmap_ptr = MAP_FAILED;
   reads.mmap_len = 0;
-  reads.size = bytes;
-  reads.block_size = align_to_page(blk_size);
+  reads.size = size;
+  reads.bytes = size;
+  reads.block_size = align_to_page(block_size);
   reads.array_size = array_size;
   reads.mmap_size = mmap_size;
   reads.timeout = timeout;
 #ifdef DEBUG
-  reads.crc_flag = crc_flag;
+  reads.crc_flag = 1;
 #else
   reads.crc_flag = 0;
 #endif
   reads.transfer_direction = -1;
   reads.direct_io = direct_io;
   reads.mmap_io = mmap_io;
-  writes.fd = wr_fd;
+  writes.fd = fd_out;
   writes.mmap_ptr = MAP_FAILED;
   writes.mmap_len = 0;
-  writes.size = bytes;
-  writes.block_size = align_to_page(blk_size);
+  writes.size = size;
+  writes.bytes = size;
+  writes.block_size = align_to_page(block_size);
   writes.array_size = array_size;
   writes.mmap_size = mmap_size;
   writes.timeout = timeout;
-  writes.crc_flag = crc_flag;
+  writes.crc_flag = 1;
   writes.transfer_direction = 1;
   writes.direct_io = direct_io;
   writes.mmap_io = mmap_io;
@@ -2138,8 +2141,8 @@ int main(int argc, char **argv)
     do_read_write(&reads, &writes);
 
   printf("Read rate: %f  Write rate: %f\n",
-	 size/(1024*1024)/transfer_sts.read_time,
-	 size/(1024*1024)/transfer_sts.write_time);
+	 size/(1024*1024)/reads.transfer_time,
+	 size/(1024*1024)/writes.transfer_time);
 }
 
 #endif
