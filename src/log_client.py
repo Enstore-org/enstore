@@ -247,6 +247,10 @@ if __name__ == "__main__" :
         ticket = logit(intf.logmsg)
 	msg_id = generic_cs.CLIENT
 
+    else:
+	intf.print_help()
+        sys.exit(0)
+
     del logc.csc.u
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
 

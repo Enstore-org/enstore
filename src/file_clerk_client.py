@@ -199,4 +199,8 @@ if __name__ == "__main__" :
 	    generic_cs.enprint(ticket['vc'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
+    else:
+	intf.print_help()
+        sys.exit(0)
+
     fcc.check_ticket(ticket, msg_id)

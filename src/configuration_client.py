@@ -233,7 +233,11 @@ if __name__ == "__main__":
 	generic_cs.enprint(stati['get_keys'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
+    else:
+	intf.print_help()
+        sys.exit(0)
+
+
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     csc.check_ticket(stati, msg_id)
-

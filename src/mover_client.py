@@ -109,6 +109,9 @@ if __name__ == "__main__" :
         ticket = movc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
 	                          intf.alive_retries)
 	msg_id = generic_cs.CLIENT
+    else:
+	intf.print_help()
+        sys.exit(0)
 
     del movc.csc.u
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)

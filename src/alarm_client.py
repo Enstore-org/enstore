@@ -124,6 +124,10 @@ if __name__ == "__main__" :
         ticket = alc.status(intf.status, intf.server, intf.verbose)
 	msg_id = generic_cs.CLIENT
 
+    else:
+	intf.print_help()
+        sys.exit(0)
+
     del alc.csc.u
     del alc.u           # del now, otherwise get name exception (just for python v1.5???)
 

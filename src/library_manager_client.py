@@ -117,6 +117,7 @@ class LibraryManagerClientInterface(interface.Interface) :
         self.alive_retries = 0
 	self.getmoverlist = 0
 	self.got_server_verbose = 0
+	self.get_susp_vols = 0
         interface.Interface.__init__(self)
 
 	# parse the options
@@ -175,6 +176,9 @@ if __name__ == "__main__" :
 	ticket = lmc.get_suspect_volumes()
 	generic_cs.enprint(ticket['suspect_volumes'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
+    else:
+	intf.print_help()
+        sys.exit(0)
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)

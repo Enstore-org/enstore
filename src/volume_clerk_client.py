@@ -476,5 +476,8 @@ if __name__ == "__main__":
     elif intf.noavol:
         ticket = vcc.set_system_noaccess(intf.args[0])  # name of this volume
 	msg_id = generic_cs.CLIENT
+    else:
+	intf.print_help()
+        sys.exit(0)
 
     vcc.check_ticket(ticket, msg_id)

@@ -290,6 +290,10 @@ if __name__ == "__main__" :
 	ticket = iqc.plot_bpt(intf.logfile_dir, intf.start_time, intf.stop_time)
 	msg_id = generic_cs.CLIENT
 
+    else:
+	intf.print_help()
+        sys.exit(0)
+
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 

@@ -197,10 +197,10 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
     else :
 	if intf.dbname=="file" and len(acc.criteria)>0:
-	   for key in acc.criteria.keys():
+	   for key in intf.criteria.keys():
 		if key != 'external_label':
 		   intf.set_dbname("volume,file")
-    	ticket=acc.select(acc.criteria,intf.dbname) 
+    	ticket=acc.select(intf.criteria,intf.dbname) 
 	msg_id = generic_cs.CLIENT
 
     del acc.csc.u
