@@ -14,6 +14,7 @@ import socket
 import pprint
 import re
 import errno
+import time
 
 import Trace
 import e_errors
@@ -102,14 +103,33 @@ def get_config():
 #Return the hostip, as a string, that appears on the 'hostip=' line in
 # the enstore.conf file.
 def get_default_interface_ip():
+    hostip = ""
+    msg = None
+
+    #Try to determine the detfault ip to use for the local connection.
+    # The minute loop is necessary when the DNS server is rebooted.
+    for i in range(0, 60):
+        try:
+            default=socket.gethostbyname(socket.getfqdn(socket.gethostname()))
+            break
+        except socket.error, msg:
+            time.sleep(1)
+            continue
+
+    #If an error occured for the entire minute print to screen if specified.
+    if msg and not hostip:    
+        Trace.trace(10, str(msg))
+
+    #Determine if the user specified the default in the /etc/enstore.conf file
+    # or just use the system default.
     config = get_config()
     if not config:
-        return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
+        return default
     hostip = config.get('hostip', None)
     if hostip:
         return hostip
     else:
-        return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
+        return default
 
 ##############################################################################
 # The following two functions parse the config dictionary.
