@@ -375,8 +375,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                     self.dismount_time = time.time() + self.default_dismount_delay
-            ##XXX do a dismount here - cgw
             self.tape_driver.close()
+            if not have_tape:
+                Trace.log(e_errrors.INFO, "performing precautionary dismount at startup")
+                self.dismount_volume()
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
@@ -1158,11 +1160,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "dismount %s: failure %s" % (volume_label, status))
                 self.state = ERROR
     
-    def seek_to_location(self, location, eot_ok=0, after_function=None):
+    def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
         failed=0
         try:
-            self.tape_driver.seek(location, eot_ok)
+            self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
         except exceptions.Exception, detail:
             self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,))
             failed=1
