@@ -34,7 +34,8 @@ focus .top.cmd
 ############################################################################################################################################
 proc QRun {node port button done_proc} {
     global command butc env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh $node $port 10"
+    set udp_timeout 4
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh $node $port $udp_timeout"
     set alive "dead"
     set done ""
     catch {trace vdelete done w $done_proc}
@@ -57,16 +58,16 @@ set butc [button .a.config.s -text "????" -command CSRun -bg midnightblue -fg gr
 button .a.config.q -text "Query" -command "QRun rip6 7500 $butc CQRun_done" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
 pack .a.config.q -side left
 pack .a.config.s -side left
-proc CQRun {} {
-    global command butc env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7500 10"
-    set alive "dead"
-    set done ""
-    catch {trace vdelete done w CQRun_done}
-    trace variable done w CQRun_done
-    $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-    Run
-}
+#proc CQRun {} {
+#    global command butc env alive done
+#    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7500 4"
+#    set alive "dead"
+#    set done ""
+#    catch {trace vdelete done w CQRun_done}
+#    trace variable done w CQRun_done
+#    $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+#    Run
+#}
 proc CQRun_done { name element op } {
     global alive butc done more
     trace vdelete done w CQRun_done
@@ -87,9 +88,9 @@ proc CSRun {} {
     Run
 }
 proc CSRun_done { name element op } {
-    global done
+    global done butc
     trace vdelete done w CSRun_done
-    CQRun
+    QRun rip6 7500 $butc CQRun_done; #CQRun
 }
 proc CGRun {} {
     global command butc done
@@ -101,9 +102,9 @@ proc CGRun {} {
     Run
 }
 proc CGRun_done { name element op } {
-    global done
+    global done butc
     trace vdelete done w CGRun_done
-    CQRun
+    QRun rip6 7500 $butc CQRun_done; #CQRun
 }
 
 ############################################################################################################################################
@@ -118,7 +119,7 @@ set butl [button .a.log.s -text "????" -command LSRun -bg midnightblue -fg green
 pack .a.log.s -side left
 proc LQRun {} {
     global command butl env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7504 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7504 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w LQRun_done}
@@ -180,7 +181,7 @@ set butf [button .b.file.s -text "????" -command FSRun -bg midnightblue -fg gree
 pack .b.file.s -side left
 proc FQRun {} {
     global command butf env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7501 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7501 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w FQRun_done}
@@ -239,7 +240,7 @@ set butv [button .b.vol.s -text "????" -command VSRun -bg midnightblue -fg green
 pack .b.vol.s -side left
 proc VQRun {} {
     global command butv env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7502 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7502 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w VQRun_done}
@@ -301,7 +302,7 @@ set buta [button .c.ait.s -text "????" -command ASRun -bg midnightblue -fg green
 pack .c.ait.s -side left
 proc AQRun {} {
     global command buta env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7507 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7507 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w AQRun_done}
@@ -360,7 +361,7 @@ set butm [button .c.mam.s -text "????" -command MSRun -bg midnightblue -fg green
 pack .c.mam.s -side left
 proc MQRun {} {
     global command butm env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7508 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7508 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w MQRun_done}
@@ -380,7 +381,7 @@ proc MQRun_done { name element op } {
 }
 proc MSRun {} {
     global command butm env done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just mammoth.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just mam.library_manager"}
     set done ""
     catch {trace vdelete done w MSRun_done}
     trace variable done w MSRun_done
@@ -394,7 +395,7 @@ proc MSRun_done { name element op } {
 }
 proc MGRun {} {
     global command butm done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just mammoth.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just mam.library_manager"}
     set done ""
     catch {trace vdelete done w MGRun_done}
     trace variable done w MGRun_done
@@ -423,7 +424,7 @@ set butd [button .d.dlt.s -text "????" -command DSRun -bg midnightblue -fg green
 pack .d.dlt.s -side left
 proc DQRun {} {
     global command butd env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7509 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7509 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DQRun_done}
@@ -485,7 +486,7 @@ set butr2 [button .e.red20.s -text "????" -command R2SRun -bg midnightblue -fg g
 pack .e.red20.s -side left
 proc R2QRun {} {
     global command butr2 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w R2QRun_done}
@@ -544,7 +545,7 @@ set butr5 [button .e.red50.s -text "????" -command R5SRun -bg midnightblue -fg g
 pack .e.red50.s -side left
 proc R5QRun {} {
     global command butr5 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7510 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7510 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w R5QRun_done}
@@ -606,7 +607,7 @@ set bute [button .f.emass.s -text "????" -command ESRun -bg midnightblue -fg gre
 pack .f.emass.s -side left
 proc EQRun {} {
     global command bute env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7523 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7523 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w EQRun_done}
@@ -666,7 +667,7 @@ set butstk [button .f.stk.s -text "????" -command STKSRun -bg midnightblue -fg g
 pack .f.stk.s -side left
 proc STKQRun {} {
     global command butstk env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7524 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7524 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w STKQRun_done}
@@ -728,7 +729,7 @@ set butdm05 [button .g.dm05.s -text "????" -command DM05SRun -bg midnightblue -f
 pack .g.dm05.s -side left
 proc DM05QRun {} {
     global command butdm05 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7530 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7530 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DM05QRun_done}
@@ -787,7 +788,7 @@ set butdm06 [button .g.dm06.s -text "????" -command DM06SRun -bg midnightblue -f
 pack .g.dm06.s -side left
 proc DM06QRun {} {
     global command butdm06 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7531 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7531 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DM06QRun_done}
@@ -850,7 +851,7 @@ set butdm07 [button .h.dm07.s -text "????" -command DM07SRun -bg midnightblue -f
 pack .h.dm07.s -side left
 proc DM07QRun {} {
     global command butdm07 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7532 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7532 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DM07QRun_done}
@@ -909,7 +910,7 @@ set butdm08 [button .h.dm08.s -text "????" -command DM08SRun -bg midnightblue -f
 pack .h.dm08.s -side left
 proc DM08QRun {} {
     global command butdm08 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7533 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7533 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DM08QRun_done}
@@ -971,7 +972,7 @@ set butdc11 [button .i.dc11.s -text "????" -command DC11SRun -bg midnightblue -f
 pack .i.dc11.s -side left
 proc DC11QRun {} {
     global command butdc11 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7534 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7534 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DC11QRun_done}
@@ -1030,7 +1031,7 @@ set butdc12 [button .i.dc12.s -text "????" -command DC12SRun -bg midnightblue -f
 pack .i.dc12.s -side left
 proc DC12QRun {} {
     global command butdc12 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7535 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip2 7535 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DC12QRun_done}
@@ -1092,7 +1093,7 @@ set butde13 [button .j.de13.s -text "????" -command DE13SRun -bg midnightblue -f
 pack .j.de13.s -side left
 proc DE13QRun {} {
     global command butde13 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7526 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7526 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DE13QRun_done}
@@ -1151,7 +1152,7 @@ set butde14 [button .j.de14.s -text "????" -command DE14SRun -bg midnightblue -f
 pack .j.de14.s -side left
 proc DE14QRun {} {
     global command butde14 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7527 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7527 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DE14QRun_done}
@@ -1213,7 +1214,7 @@ set butde15 [button .k.de15.s -text "????" -command DE15SRun -bg midnightblue -f
 pack .k.de15.s -side left
 proc DE15QRun {} {
     global command butde15 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7528 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7528 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DE15QRun_done}
@@ -1272,7 +1273,7 @@ set butde16 [button .k.de16.s -text "????" -command DE16SRun -bg midnightblue -f
 pack .k.de16.s -side left
 proc DE16QRun {} {
     global command butde16 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7529 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7529 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DE16QRun_done}
@@ -1334,7 +1335,7 @@ set butstk1 [button .l.stk1.s -text "????" -command STK1SRun -bg midnightblue -f
 pack .l.stk1.s -side left
 proc STK1QRun {} {
     global command butstk1 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7536 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7536 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w STK1QRun_done}
@@ -1393,7 +1394,7 @@ set butstk2 [button .l.stk2.s -text "????" -command STK2SRun -bg midnightblue -f
 pack .l.stk2.s -side left
 proc STK2QRun {} {
     global command butstk2 env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7537 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7537 4"
     set alive "dead"
     set done ""
     catch {trace vdelete done w STK2QRun_done}
@@ -1486,9 +1487,9 @@ proc Stop {} {
 
 set more 0
 proc query {} {
-    global more
+    global more butc
     set more 1
-    CQRun
+    QRun rip6 7500 $butc CQRun_done; #CQRun
 }
 
 query
