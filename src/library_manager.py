@@ -292,7 +292,7 @@ class LibraryManagerMethods:
         ########################################################
         ### from old idle_mover
         # check if the volume for this work had failed on this mover
-        Trace.trace(13,"SUSPECT_VOLS %s"%(self.suspect_volumes,))
+        Trace.trace(13,"SUSPECT_VOLS %s"%(self.suspect_volumes.list,))
         suspect_v,suspect_mv = self.is_mover_suspect(requestor, rq.ticket['fc']['external_label'])
         if suspect_mv:
             Trace.trace(11,"suspect mv %s %s" % (suspect_v,suspect_mv)) ## REMOVE!!
@@ -710,9 +710,9 @@ class LibraryManagerMethods:
     # update suspect volumer list
     def update_suspect_vol_list(self, external_label, mover):
 	# update list of suspected volumes
-	Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes,))
+	Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
 	vol_found = 0
-	for vol in self.suspect_volumes:
+	for vol in self.suspect_volumes.list:
 	    if external_label == vol['external_label']:
 		vol_found = 1
 		break
