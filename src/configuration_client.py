@@ -69,8 +69,8 @@ class ConfigurationClient(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
             raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
-        control_socket, addr = listen_socket.accept()
-        if not hostaddr.allow(addr):
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
