@@ -3,7 +3,11 @@ SHELL=/bin/sh
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
+#############################################################
+
+ALL_TARGETS=tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
+
+all: adler32.a Makefile.modules Modules $(ALL_TARGETS)
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -14,19 +18,31 @@ all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t
 # The ACI/EMASS products are only made if they are setup
 
 POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
-
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
 LIBSOCKETNSL=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lsocket -lnsl"; else echo ""; fi`
 XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
 XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm -ldl
+FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
+FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
+FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
 	if [ ! -d mksetup ] ; then  mkdir mksetup; fi
 	cd mksetup/   ; \
 	cp ../Setup . ; \
-	if  [ "$(ACI_DIR)"x = x ];  then grep -v ACI Setup > x; mv x Setup; fi ;\
-	if  [ "$(DRIVESTAT_CLIENT_DIR)"x = x ];  then grep -v DRIVESTAT_CLIENT Setup > x; mv x Setup; fi ;\
+	if [ "$(ACI_DIR)"x = x ]; then \
+		grep -v ACI Setup > x; \
+		mv x Setup; \
+	fi ; \
+	if [ "$(DRIVESTAT_CLIENT_DIR)"x = x ]; then \
+		grep -v DRIVESTAT_CLIENT Setup > x; \
+		mv x Setup; \
+	fi ; \
+	if [ "$(FTT_DIR)"x = x ]; then \
+		grep -v FTT_DIR Setup > x; \
+		mv x Setup; \
+	fi ; \
 	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
 		cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
 		make -f Makefile.pre.in boot                    ; \
@@ -49,31 +65,42 @@ Modules:
 
 adler32.a: adler32.c
 	$(CC) -c adler32.c
-	ar cr adler32.a adler32.o
+	ar cr $@ adler32.o
 
 tape_copy: tape_copy.c
-	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
-	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
+	if [ "$(FTT_DIR)"x != x ]; then \
+		$(CC) $(FTT_INCLUDES) -o $@ tape_copy.c $(FTTTEST_LIBS); \
+	else \
+		echo "Skipping $@.  FTT_DIR not found."; \
+	fi;
 
 tape_write: tape_write.c
-	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_write tape_write.c \
-	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
+	if [ "$(FTT_DIR)"x != x ]; then \
+		$(CC) $(FTT_INCLUDES) -o $@ tape_write.c $(FTTTEST_LIBS); \
+	else \
+		echo "Skipping $@.  FTT_DIR not found."; \
+	fi;
 
 m2probe: m2probe.c
-	$(CC) -I. -I$(FTT_DIR)/include -o m2probe m2probe.c -L$(FTT_DIR)/lib -lftt $(LIBDS)
-	cp m2probe ../sbin
+	if [ "$(FTT_DIR)"x != x ]; then \
+		$(CC) $(FTT_INCLUDES) -o $@ m2probe.c $(FTT_LIBS); \
+		cp m2probe ../sbin; \
+	else \
+		echo "Skipping $@.  FTT_DIR not found."; \
+	fi;
 
 enroute2: enroute2.c
-	$(CC) enroute2.c -o enroute2 $(LIBSOCKETNSL)
+	$(CC) enroute2.c -o $@ $(LIBSOCKETNSL)
 
 t_rand: t_rand.c
-	$(CC) t_rand.c -o t_rand
+	$(CC) t_rand.c -o $@
 
 t_read: t_read.c
-	$(CC) t_read.c -o t_read
+	$(CC) t_read.c -o $@
+
 ecrc: ecrc.c
-	$(CC) -I. -o ecrc ecrc.c adler32.a
-	cp ecrc ../sbin
+	$(CC) -I. -o $@ ecrc.c adler32.a
+	cp $@ ../sbin
 
 ddencp: EXfer.c
 	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT)
@@ -95,8 +122,8 @@ installpyc:
 
 clean:
 	-rm -rf Makefile.modules
-	-rm -rf *.o *.so *.a *~ *# so_locations sedscript enroute2 m2probe t_rand t_read
-	-rm -rf mksetup
-	-rm -rf tape_copy tape_write ddencp t_rand t_read ecrc
+	-rm -rf *.o *.so *.a *~ 
+	-rm -rf mksetup makesetup
+	-rm -rf $(ALL_TARGETS) autologinenstore mouse_move
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	cd SWIG && make clean
