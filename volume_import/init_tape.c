@@ -48,6 +48,8 @@ main(int argc, char **argv)
     int erase=0;
     char *cp;
     char label[80];
+    char dbpath[MAX_PATH_LEN];
+    char dbvalue[256];
     int label_type;
     int fno;
 
@@ -93,6 +95,7 @@ main(int argc, char **argv)
 	fprintf(stderr, "%s: no volume label given\n", progname);
 	Usage();
     }
+    
 
     if (erase)
 	clear_db_volume();
@@ -106,6 +109,24 @@ main(int argc, char **argv)
 			  may be that db volume already exists*/
 	}
     
+    /* Record the hostname and starting time */
+    sprintf(dbpath,"%s/volumes/%s", tape_db, volume_label);
+    if (gethostname(dbvalue,256)){
+	fprintf(stderr,"%s: can't get hostname\n", progname);
+	goto cleanup;
+    }
+    if (write_db_s(dbpath,"hostname",dbvalue))
+	goto cleanup;
+    if (timestamp(dbvalue)){
+	fprintf(stderr,"%s: can't get current time\n", progname);
+	goto cleanup;
+    }
+    if (write_db_s(dbpath,"first_access",dbvalue))
+	goto cleanup;
+    if (write_db_s(dbpath,"last_access",dbvalue))
+	goto cleanup;
+
+
     if (open_tape() 
 	||rewind_tape())
 	goto cleanup;
@@ -131,7 +152,7 @@ main(int argc, char **argv)
     }
     
     if (write_vol1_header()
-	||write_eof_marks(/*2*/1)
+	||write_eof_marks(1)
 	||write_eot1_header(0)
 	||close_tape())
 	goto cleanup;
