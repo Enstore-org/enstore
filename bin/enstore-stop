@@ -5,42 +5,46 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/etc/defaults
 
-cat $enstore_db/`uname -n`-db_*_pids|while read pid;do
-	kill $pid
+# first shut down the databases
+for pid in $enstore_db/`uname -n`-db_*_pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-db_*_pids" ] ; then echo "No databases running"; break; fi
+    pidkill $pid
 done
-rm $enstore_db/`uname -n`-db_*_pids
+
+# next shut down the movers
+for pid in $enstore_db/`uname -n`-mover*pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-mover*pids" ] ; then echo "No movers running"; break; fi
+    pidkill $pid
+done
+
+# next shut down the media changers
+for pid in $enstore_db/`uname -n`-media_changer*pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-media_changer*pids" ] ; then echo "No media changers running"; break; fi
+    pidkill $pid
+done
+
+# next shut down the library manager
+for pid in $enstore_db/`uname -n`-library_manager*pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-library_manager*pids" ] ; then echo "No library managers running"; break; fi
+    pidkill $pid
+done
+
+# next shut down the file clerk
+for pid in $enstore_db/`uname -n`-file_clerk*pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-file_clerk*pids" ] ; then echo "No file clerks running"; break; fi
+    pidkill $pid
+done
+
+# next shut down the volume clerk
+for pid in $enstore_db/`uname -n`-volume_clerk*pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-volume_clerk*pids" ] ; then echo "No volume clerks running"; break; fi
+    pidkill $pid
+done
+
+
+echo "what else"
 for pid in $enstore_db/`uname -n`-*_pids; do
     if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
     pidkill $pid
 done
 exit
-
-# The rest is trash!
-
-
-
-
-
-#
-# TOO MANY TASSK TRY TO KILL THEM ALL.
-
-# THIS IS NO GOOD AND NEEDS TO BE CHANGED!
-
-# THIS DOESN'T WORK ALL THE TIME
-
-if [ `uname` = Linux ] ; then
-   ps | while read pid tty stat time command rest ; do \
-        if [ "$rest" = longtest ]  ; then kill $pid ; fi ; done
-
-   ps | while read pid tty stat time command rest ; do \
-        if [ $command = python ]  ; then kill $pid ; fi ; done
-fi
-
-if [ `uname` = IRIX ] ; then
-
-   ps | while read pid tty time command rest ; do \
-        if [ $command = python ]  ; then kill $pid ; fi ; done
-
-   ps | while read pid tty time command rest ; do \
-        if [ $command = longtest ]  ; then kill $pid ; fi ; done
-fi
