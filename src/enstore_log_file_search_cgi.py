@@ -49,9 +49,9 @@ def go():
 	# get a list of the log files we need
 	import log_client
 	logc = log_client.LoggerClient((config_host, config_port))
-	logfile_names = logc.get_logfiles(logfile,
-					  enstore_utils_cgi.TIMEOUT,
-					  enstore_utils_cgi.RETRIES)
+	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
+				   enstore_utils_cgi.RETRIES)
+	logfile_names = ticket['logfiles']
 	if logfile_names == []:
 	    # there were no matches
 	    print cmd
