@@ -652,7 +652,7 @@ class LibraryManagerMethods:
                 if fun == 'restrict_host_access':
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
-                        if not (rej_reason = "RESTRICTED_ACCESS"):
+                        if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
                                                              rq.ticket["vc"]["library"],
