@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 VOLUME_QUOTAS=${1:-/diska/tape-inventory/VOLUME_QUOTAS}
 QUOTA_DIR=`dirname $VOLUME_QUOTAS`/quotas
-if [ ! -d $QUOTA_DIR ]; then mkdir -9 $QUOTA_DIR;fi
+if [ ! -d $QUOTA_DIR ]; then mkdir -p $QUOTA_DIR;fi
 
 if [ ! -r $VOLUME_QUOTAS ];then
    echo `date` ERROR can not read \"$VOLUME_QUOTAS\"
