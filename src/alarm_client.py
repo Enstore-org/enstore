@@ -129,9 +129,9 @@ def do_work(intf):
                       intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(alc.get_name(MY_NAME))
 
-    if intf.alive:
-        ticket = alc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+    ticket = alc.handle_generic_commands(MY_SERVER, intf)
+    if ticket:
+        pass
 
     elif intf.resolve:
         ticket = alc.resolve(intf.resolve)
