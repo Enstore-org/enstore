@@ -168,6 +168,29 @@ class accClient(generic_client.GenericClient):
 			'encp_version'	: encp_version}
 		self.send2(ticket)
 
+	def log_encp_error(self, date, src, dst, size, encp_id, version,
+		type, error):
+
+		if not self.server_address: return
+
+		if not date:
+			date = time.time()
+
+		ticket = {
+			'work'		: 'log_encp_error',
+			'date'		: date,
+			'node'		: self.node,
+			'pid'		: self.pid,
+			'username'	: self.uid,
+			'src'		: src,
+			'dst'		: dst,
+			'size'		: size,
+			'encp_id'	: encp_id,
+			'version'	: version,
+			'type'		: type,
+			'error'		: error}
+		self.send2(ticket)
+
 	def log_start_event(self, name):
 		tag = unique_tag()
 		ticket = {
