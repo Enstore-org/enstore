@@ -91,10 +91,13 @@ def main():
                 uncopied_files.append(item)
             else:
                 print "File", item, "already copied.  Skipping."
-    
-    #Fork off "get" process to retrieve the data.
-    exit_status = callGet.callGet(tapeLabel, uncopied_files, pnfsDir,
-                                  outputDir, verbose)
+
+    if uncopied_files:
+        #Fork off "get" process to retrieve the data.
+        exit_status = callGet.callGet(tapeLabel, uncopied_files, pnfsDir,
+                                      outputDir, verbose)
+    else:
+        exit_status = 0
 
     #The copied catalog file is removed at this point.
     try:
