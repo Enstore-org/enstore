@@ -31,6 +31,8 @@ clean:
 	- rm -rf GET_TEMP
 	- rm -rf ENTV_BIN
 	- rm -rf ENTV_TEMP
+	- rm -rf ENMV_BIN_TEMP
+	- rm -rf ENSYNC_BIN_TEMP
 
 check:
 	$(ENSTORE_DIR)/tools/mylint.py ./*.py
@@ -62,6 +64,13 @@ encp:
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENSYNC_BIN_TEMP/ensync      ENCPBIN
 	rm -rf ENSYNC_BIN_TEMP
+
+#- rm -rf ENMV_BIN_TEMP
+#mkdir ENMV_BIN_TEMP
+#python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv.py
+#(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+#cp ENMV_BIN_TEMP/enmv      ENCPBIN
+#rm -rf ENMV_BIN_TEMP
 
 fileinfo:
 	- rm -rf FILEINFO_TEMP
