@@ -13,6 +13,7 @@ import types
 import os
 import traceback
 import socket
+import time
 
 # enstore imports
 #import setpath
@@ -34,6 +35,8 @@ class ConfigurationDict:
     def __init__(self):
         self.print_id="CONFIG_DICT"
         self.serverlist = {}
+        self.config_load_timestamp = None
+        
     def read_config(self, configfile):
         self.configdict={}
         try:
@@ -104,6 +107,9 @@ class ConfigurationDict:
             if conflict:
                 return(e_errors.CONFLICT, "Configuration conflict detected. "
                        "Check configuration file")
+
+            #We have successfully loaded the config file.
+            self.config_load_timestamp = time.time()
             return (e_errors.OK, None)
 
         # even if there is an error - respond to caller so he can process it
@@ -148,6 +154,7 @@ class ConfigurationDict:
         ticket['status']=(e_errors.OK, None)
         reply=ticket.copy()
         reply["dump"] = self.configdict
+        reply["config_load_timestamp"] = self.config_load_timestamp
         self.reply_to_caller(ticket)
         addr = ticket['callback_addr']
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -180,6 +187,11 @@ class ConfigurationDict:
         else:
             Trace.log(e_errors.ERROR, "Configuration reload failed: %s" %
                       (out_ticket['status'],))
+
+    def config_timestamp(self, ticket):
+        ticket['config_load_timestamp'] = self.config_load_timestamp
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
 
     # get list of the Library manager movers
     ## XXX this function is misleadingly named - it gives movers for a particular library
