@@ -157,10 +157,7 @@ class Interface:
             elif opt == "--tape_list" :
                 self.tape_list = value
             elif opt == "--deleted" :
-                if string.find(string.lower(value),'y') !=-1:
-                    self.deleted = "yes"
-                else:
-                    self.deleted = "no"
+                self.deleted = value
 	    elif opt == "--backup":
 	        self.backup = 1
             elif opt == "--config_file" :
