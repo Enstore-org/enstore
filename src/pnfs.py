@@ -15,7 +15,7 @@ import pwd
 import grp
 import string
 import time
-#import re
+import re
 import types
 
 # enstore imports
@@ -968,6 +968,50 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print self.file_size
             return 0
         except (OSError, IOError), detail:
+            """
+            try:
+                # Get layer 2 when layer 4 is not available.
+                data = self.readlayer(2)
+                # Define the match/search once before the loop.
+                size_match = re.compile("l=[0-9]+")
+                #Loop over the data in layer 2 looking for the length value.
+                for line in data:
+                    result = size_match.search(line)
+                    if result != None:
+                        
+                        #Found the length value.
+                        result = result.group()[2:] #Remove the "l=".
+                        pnfs_filesize = long(result)
+
+                        #Get the os size.  os.stat() should have been called
+                        # in get_file_size().
+                        try:
+                            os_filesize = long(self.pstat[stat.ST_SIZE])
+                        except (TypeError, AttributeError):
+                            raise detail
+
+                        #Handle the case where the sizes match or the file
+                        # is a large file.
+                        if pnfs_filesize == os_filesize or \
+                               (os_filesize == 1L and
+                                pnfs_filesize > long(2L**31L) - 1):
+                            print pnfs_filesize
+                            return 0
+                        #Handle the case where the sizes do not match.
+                        else:
+                            print "%s: filesize corruption: " \
+                                      "OS size %s != PNFS L2 size %s" % \
+                                      (os.strerror(errno.EBADFD),
+                                       os_filesize, pnfs_filesize)
+                            return 1
+
+                        #Should never get here.
+                        break
+            except (IOError, OSError, TypeError, AttributeError):
+                #There is no layer 2 to check.
+                pass
+            """
+            
             print str(detail)
             return 1
 
@@ -2467,6 +2511,30 @@ class File:
 				self.drive = ""
 				self.complete_crc = ''
 				self.p_path = self.path
+
+                        #file id
+                        id_name = os.path.join(os.path.dirname(self.path),
+                                     ".(id)(%s)" % os.path.basename(self.path))
+                        try:
+                            id_file = open(id_name)
+                            self.r_pnfs_id = id_file.readline()[:-1]
+                            id_file.close()
+                        except (OSError, IOError):
+                            self.r_pnfs_id = ""
+                        #parent id
+                        if self.r_pnfs_id:
+                            parent_name = os.path.join(
+                                os.path.dirname(self.path),
+                                ".(parent)(%s)" % self.r_pnfs_id)
+                            try:
+                                paren = open(parent_name)
+                                self.parent_id = paren.readline()[:-1]
+                                paren.close()
+                            except (OSError, IOError):
+                                self.parent_id = ""
+                        else:
+                            self.parent_id = ""
+                        
 		return
 
 	# layer_file(i) -- compose the layer file name
