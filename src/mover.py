@@ -1052,7 +1052,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                         if san_crc != sanity_cookie[1]:
                             Trace.log(e_errors.ERROR,
                                       'Mover CRC mismatch: (sanity CRC): file clerk has %s, we have %s'%(
-                                user_file_crc,complete_crc))
+                                sanity_cookie[1],san_crc))
 
                     
                 if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
