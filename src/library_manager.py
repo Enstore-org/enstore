@@ -1314,6 +1314,63 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     
     #pass
 
+    # remove work from list of pending works
+    def remove_work(self, ticket):
+	try:
+	    id = ticket["unique_id"]
+	    Trace.trace(3,"{remove_work "+repr(id))
+	except:
+	    return {"status" : (e_errors.KEYERROR, "Key 'unique_id' does not exist")}
+	try:
+	    w = pending_work.find_job(id)
+	    if w == None:
+		self.reply_to_caller({"status" : (e_errors.NOWORK, "No such work")})
+
+		return
+	    else:
+		pending_work.delete_job(w)
+		format = "Request:%s deleted. Complete request:%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   repr(w["unique_id"]), repr(w))
+		Trace.trace(3,"{remove_work ")
+		self.reply_to_caller({"status" : (e_errors.OK, "Work deleted")})
+		return
+	except:
+	    traceback.print_exc()
+
+	    Trace.trace(0,"}remove_work "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
+	    self.reply_to_caller({"status" : (e_errors.WRONGPARAMETER, "Request failed"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))})
+	    return
+					 
+    # change priority
+    def change_priority(self, ticket):
+	try:
+	    id = ticket["unique_id"]
+	    pri = ticket["priority"]
+	    Trace.trace(3,"{change_priority "+repr(id)+repr(pri))
+	except:
+	    return {"status" : (e_errors.KEYERROR, "Key 'unique_id' does not exist")}
+	try:
+	    w = pending_work.change_pri(id, pri)
+	    print "W",
+	    if w == None:
+		self.reply_to_caller({"status" : (e_errors.NOWORK, "No such work or attempt to set wrong priority")})
+		return
+	    else:
+		format = "Changed priority to:%s Complete request:%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   repr(w["encp"]["curpri"]), repr(w))
+		Trace.trace(3,"}change_priority ")
+		self.reply_to_caller({"status" : (e_errors.OK, "Priority changed")})
+		return
+	except:
+	    
+	    Trace.trace(0,"}change_priority "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
+	    self.reply_to_caller({"status" : (e_errors.WRONGPARAMETER, "Request failed"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))})
+	    return
+
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):

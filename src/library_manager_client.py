@@ -5,6 +5,7 @@
 import time
 import errno
 import sys
+import string
 
 #enstore imports
 import configuration_client
@@ -112,6 +113,13 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_delayed_dismounts(self):
 	return getlist(self,"get_delayed_dismounts")
 
+    def remove_work(self, id):
+	print "ID", id
+	return self.send({"work":"remove_work", "unique_id": id})
+
+    def change_priority(self, id, pri):
+	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
+
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :
         self.name = ""
@@ -122,13 +130,15 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.get_susp_vols = 0
 	self.get_del_dismounts = 0
 	self.get_susp_vols = 0
+	self.remove_work = 0
+	self.change_priority = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
 	       ["getwork", "getmoverlist", "get_suspect_vols",
-	       "get_del_dismount"]
+	       "get_del_dismount","del_work","change_priority"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -143,7 +153,25 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             self.print_help(),
             sys.exit(1)
         else:
+	    if self.remove_work:
+		if len(self.args) != 2:
+		    self.print_remove_work_args()
+		    sys.exit(1)
+	    elif self.change_priority:
+		if len(self.args) != 3:
+		    self.print_change_priority_args()
+		    sys.exit(1)
             self.name = self.args[0]
+
+    # print remove_work arguments
+    def print_remove_work_args(self):
+        Trace.trace(20,'{}print_remove_work_args')
+        generic_cs.enprint("   remove_work arguments: library work_id")
+
+    # print change_priority arguments
+    def print_change_priority_args(self):
+        Trace.trace(20,'{}print_change_priority_args')
+        generic_cs.enprint("   change_priority arguments: library work_id priority")
 
 if __name__ == "__main__" :
     Trace.init("libm cli")
@@ -180,6 +208,15 @@ if __name__ == "__main__" :
 	ticket = lmc.get_delayed_dismounts()
 	generic_cs.enprint(ticket['delayed_dismounts'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
+    elif intf.remove_work:
+	ticket = lmc.remove_work(intf.args[1])
+	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+    elif intf.change_priority:
+	ticket = lmc.change_priority(intf.args[1], string.atoi(intf.args[2]))
+	generic_cs.enprint(ticket, generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+	
     else:
 	intf.print_help()
         sys.exit(0)

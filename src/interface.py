@@ -167,6 +167,10 @@ class Interface:
                 self.get_susp_vols = 1
             elif opt == "--get_del_dismount" :
                 self.get_del_dismounts = 1
+            elif opt == "--del_work" :
+                self.remove_work = 1
+            elif opt == "--change_priority" :
+                self.change_priority = 1
             elif opt == "--load" :
                 self.load = 1
             elif opt == "--vols" :

@@ -68,6 +68,25 @@ class Queue:
             self.queue.remove(w)
             return
 
+   # Find a job 
+   def find_job(self,id):
+       for w in self.queue:
+	   if w["unique_id"] == id:
+	       return w
+       return None
+
+   # change a job priority
+   def change_pri(self,id, pri):
+       # priority cannot be less than 0
+       if pri < 0:
+	   return None
+       for w in self.queue:
+	   if w["unique_id"] == id:
+	       w["encp"]["curpri"] = pri
+	       w["encp"]["basepri"] = pri
+	       return w
+       return None
+
    # Make a prioritized list of the jobs, and return the top one
    # This is done by calculating current priority of each job and sorting
    def get_init(self):
