@@ -533,6 +533,7 @@ class Request_Queue:
             else: record = None
             #return record
         else:
+            record = None
             if use_admin_queue:
                 # check admin request queu first
                 if next: rq = self.adm_queue.get_next()
