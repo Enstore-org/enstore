@@ -29,7 +29,7 @@ def get_bfid(mf):
     if len(r) > 8:
         return string.strip(r[0]), string.strip(r[8])
     else:
-        return None
+        return None, None
 
 if __name__ == '__main__':
     intf = option.Interface()
