@@ -6,21 +6,21 @@ set -u  # force better programming and ability to use check for not set
 . $ENSTORE_DIR/bin/defaults
 
 usage="
-start   (no options/arguments)
-stop    (no options/arguments)
+ecmd start   (no options/arguments)
+ecmd stop    (no options/arguments)
 
-encp    [--config_list --list --help ] inputfilename outputfilename
-config  [--config_list --config_file=  --dict --load --list --help]
-fcc     [--config_list --bfids --bfid= --list --help]
-vcc     [--config_list --vols  --vol=  --list --help']
+ecmd encp    [--config_list --list --help ] inputfilename outputfilename
+ecmd config  [--config_list --config_file=  --dict --load --list --help]
+ecmd fcc     [--config_list --bfids --bfid= --list --help]
+ecmd vcc     [--config_list --vols  --vol=  --list --help']
 
-pnfs    [--test --status --file= --list --help]
+ecmd pnfs    [--test --status --file= --list --help]
 
-rddt    [--size= --device= --eod_cookie= --list --help]
+ecmd rddt    [--size= --device= --eod_cookie= --list --help]
 
-clbk    (no options/arguments)
-udpc    [--msg= --host= --port= --list --help]
-ranf    [--size= --file= --list= --help']
+ecmd clbk    (no options/arguments)
+ecmd udpc    [--msg= --host= --port= --list --help]
+ecmd ranf    [--size= --file= --list= --help']
 "
 
 if [ -z "${1-}" ] ; then
@@ -33,11 +33,11 @@ fi
 stat=0
 
 case $cmd in
-  start)
+  start|enstore-start)
     $ENSTORE_DIR/bin/enstore-start
     stat=$?
     ;;
-  stop)
+  stop|enstore-stop)
     $ENSTORE_DIR/bin/enstore-stop
     stat=$?
     ;;
@@ -46,11 +46,11 @@ case $cmd in
     python $ENSTORE_DIR/src/encp.py                  --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
-  config)
+  config|econ)
     python $ENSTORE_DIR/src/configuration_client.py  --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
-  fcc)
+  fcc|bfid)
     python $ENSTORE_DIR/src/file_clerk_client.py     --config_host $config_host --config_port=$config_port $@
     stat=$?
     ;;
