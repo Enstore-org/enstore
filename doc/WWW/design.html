@@ -1914,15 +1914,30 @@ more than one Library Managers associated with it.
 Information about Library Managers is contained in the enstore configuration
 dictionary and is available to client via requests to the Configuration Server.
 Each Library Manager is presented in the configuration dictionary as follows:
-configdict['sphinxdisk.library_manager'] = { 'host'    : 'sphinx', \
-                                           'port'    : 7503, \
-                                           'logname' : 'HLIBM'}
-
-where 'sphinxdisk.library_manager' is a name of the Library Manager
-'host' is a host name where the Library Manager runs
-'port' is the Library Manager's command communication port
-'logname' is a name identifying the Library Manger in the log file.
-
+<pre>
+configdict['rip6.library_manager']   = { 'host':'rip5',
+                                         'port':7506,
+                                          'logname':'RP6LBM' }
+configdict['ait.library_manager']    = { 'host':'rip5',
+                                         'port':7507,
+                                          'logname':'AITLBM' }
+configdict['mam.library_manager']    = { 'host':'rip5',
+                                         'port':7508,
+                                         'logname':'MAMLBM' }
+configdict['dlt.library_manager']    = { 'host':'rip5',
+                                         'port':7509,
+                                         'logname':'DLTLBM' }
+configdict['red50.library_manager'] = { 'host':'rip5',
+                                         'port':7510,
+                                         'logname':'RD5LBM' }
+configdict['red20.library_manager'] = { 'host':'rip5',
+                                         'port':7511,
+                                         'logname':'RD2LBM' }
+</pre>
+where <b>*.library_manager</b> is a name of the Library Manager<br>
+<b>host</b is a host name where the Library Manager runs<br>
+<b>port</b is the Library Manager's command communication port<br>
+<b>logname</b is a name identifying the Library Manger in the log file.<br>
 
 When the Library Manager starts it requests from Configuration Server a list
 of Movers associated with it and stores them into internal Mover List. Each
@@ -1930,23 +1945,14 @@ Mover has an entry in the configuration dictionary describing the Library
 Manager(s) associated with it. This entry can be a single name or a list of
 names:
 <pre>
-configdict['sphinxdisk.mover'] = { 'device'         : './sphinxdisk.fake', \
-				 'host'	: 'sphinx', \
-				 'port'		: 7508, \
-                                 'library'    : 'sphinxdisk.library_manager', \
-                                 'driver'         : 'RawDiskDriver', \
-                                 'mc_device' : '1', \
-                                 'media_changer': 'sphinxdisk.media_changer', \
-                                 'logname'        : 'HMOV'}
-
-configdict['sphinxdisk1.mover'] = { 'device'         : './sphinxdisk.fake', \
-				 'host'	: 'sphinx', \
-				 'port'		: 7508, \
-                                 'library'    : ['sphinxdisk.library_manager', 'sphinxdisk1.library_manager']\
-                                 'driver'         : 'RawDiskDriver', \
-                                 'mc_device' : '1', \
-                                 'media_changer': 'sphinxdisk.media_changer', \
-                                 'logname'        : 'HMOV'}
+configdict['DE14DLT.mover'] = { 'host':'rip1',
+                                'port':7527,
+                                'logname':'DE14MV',
+                                'library':'dlt.library_manager',
+                                'device':'/dev/rmt/tps2d2n',
+                                'driver':'FTTDriver', 
+                                'mc_device':'DE14',
+                                'media_changer':'de14.media_changer' }
 </pre>
 
 <p>
