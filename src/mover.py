@@ -1385,8 +1385,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         self.dismount_time = None
         save_state = self.state
-        self.state = DISMOUNT_WAIT
         if self.do_eject:
+            self.state = DISMOUNT_WAIT
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
             if have_tape == 1:
                 ejected = self.tape_driver.eject()
