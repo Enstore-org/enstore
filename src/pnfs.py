@@ -2035,8 +2035,8 @@ class File:
 					self.bfid = finfo
 					self.drive = "missing"
 					
-				if self.p_path != self.path:
-					raise 'DIFFERENT_PATH'
+				# if self.p_path != self.path:
+				#	raise 'DIFFERENT_PATH'
 				#	print 'different paths'
 				#	print '\t f>', self.path
 				#	print '\t 4>', p_path
@@ -2119,6 +2119,11 @@ class File:
 	def update(self):
 		if not self.bfid:
 			return
+		if not self.consistent():
+			if self.path != self.p_path:
+				raise 'DIFFERENT_PATH'
+			else:
+				raise 'INCONSISTENT'
 		if self.exists():
 			# writing layer 1
 			f = open(self.layer_file(1), 'w')
@@ -2142,6 +2147,19 @@ class File:
 			self.set_size()
 		return
 
+	# consistent() -- to see if data is consistent
+	def consistent(self):
+		# required field
+		if not self.bfid or not self.volume or not self.size \
+			or not self.location_cookie \
+			or not self.file_family or not self.path \
+			or not self.pnfsid or not self.bfid \
+			or not self.p_path or self.p_path != self.path:
+			return 0
+		return 1
+
+
+
 	# exists() -- to see if the file exists in /pnfs area
 	def exists(self):
 		return os.access(self.path, os.F_OK)
@@ -2151,7 +2169,7 @@ class File:
 		# do not create if there is no BFID
 		if not self.bfid:
 			return
-		if not self.exists():
+		if not self.exists() and self.consistent():
 			f = open(self.path, 'w')
 			f.close()
 			self.update()
