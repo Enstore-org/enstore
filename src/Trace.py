@@ -145,7 +145,8 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except:
             exc, detail = sys.exc_info()[:2]
-            print "Failure writing message to log", msg, detail
+            sys.stderr.write("Failure writing message to log %s %s\n" %
+                             (msg, detail))
         
     if doprint and print_levels.has_key(severity):
         try:
