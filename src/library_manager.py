@@ -1118,6 +1118,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if mvr_found:
 		# unbind volume
 		try:
+		    timer_task.msg_cancel_tr(summon_mover, 
+						 self, mv['mover'])
 		    self.del_dismount_list.remove(mv)
 		except:
 		    pass
@@ -1231,6 +1233,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				   v['at_mover'][1], 
 				   v['at_mover'][0])
 		else:
+		    timer_task.msg_cancel_tr(summon_mover, 
+					     self, mv['mover'])
 		    self.enprint("unilateral_unbind: sending unbind", 
 				 generic_cs.DEBUG,
 				 self.verbose)
