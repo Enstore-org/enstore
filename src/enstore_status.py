@@ -407,7 +407,7 @@ class EnStatus:
             self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["bytes_read"]))
             self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["bytes_written"]))
             if ticket['state'] == mover_constants.HAVE_BOUND:
-                self.text[key][enstore_constants.STATE] = "IDLE - have bound volume"
+                self.text[key][enstore_constants.STATE] = "HAVE BOUND volume - IDLE"
             else:
                 self.text[key][enstore_constants.STATE] = "%s"%(ticket['state'],)
             if ticket['transfers_completed'] > 0:
