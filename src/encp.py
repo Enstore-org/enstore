@@ -918,6 +918,7 @@ def pnfs_information(filelist,nfiles):
                    'major','minor','rmajor','rminor',\
                    'mode','pstat' ] :
             exec("pinf["+repr(k)+"] = p."+k)
+	pinf['inode'] = 0		# cpio wrapper needs this also
         pinfo.append(pinf)
 
     Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\
