@@ -1132,10 +1132,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # update the fields that have changed
         ll = list(record['at_mover'])
-        ll[0]= self.get_media_changer_state(record["library"],
+        ret = self.get_media_changer_state(record["library"],
 					    record["external_label"],
                                             record["media_type"])
-
+        # when AML call fails return value will be ''
+        if not ret:
+            Trace.log(e_errors.ERROR, "call to AML failed")
+        else:
+            ll[0] = ret
         record['at_mover']=tuple(ll)
         # if volume is unmounted system_inhibit cannot be writing
         if (record['at_mover'][0] == 'unmounted' and
@@ -1187,9 +1191,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 # update the fields that have changed
                 record[inhibit][position] = "none"
                 ll = list(record['at_mover'])
-                ll[0]= self.get_media_changer_state(record["library"],
+                ret = self.get_media_changer_state(record["library"],
                                                     record["external_label"], 
                                                     record["media_type"])
+
+                # when AML call fails return value will be ''
+                if not ret:
+                    Trace.log(e_errors.ERROR, "call to AML failed")
+                else:
+                    ll[0] = ret
+                
                 record['at_mover']=tuple(ll)
                 self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
