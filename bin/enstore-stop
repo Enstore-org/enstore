@@ -5,46 +5,28 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/etc/defaults
 
-# first shut down the databases
-for pid in $enstore_db/`uname -n`-db_*_pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-db_*_pids" ] ; then echo "No databases running"; break; fi
-    pidkill $pid
-done
+turnoff() { for pid in $1; do
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
+                pidkill $pid
+            done; }
 
-# next shut down the movers
-for pid in $enstore_db/`uname -n`-mover*pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-mover*pids" ] ; then echo "No movers running"; break; fi
-    pidkill $pid
-done
-
-# next shut down the media changers
-for pid in $enstore_db/`uname -n`-media_changer*pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-media_changer*pids" ] ; then echo "No media changers running"; break; fi
-    pidkill $pid
-done
-
-# next shut down the library manager
-for pid in $enstore_db/`uname -n`-library_manager*pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-library_manager*pids" ] ; then echo "No library managers running"; break; fi
-    pidkill $pid
-done
-
-# next shut down the file clerk
-for pid in $enstore_db/`uname -n`-file_clerk*pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-file_clerk*pids" ] ; then echo "No file clerks running"; break; fi
-    pidkill $pid
-done
-
-# next shut down the volume clerk
-for pid in $enstore_db/`uname -n`-volume_clerk*pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-volume_clerk*pids" ] ; then echo "No volume clerks running"; break; fi
-    pidkill $pid
-done
+turnoff "$enstore_db/`uname -n`-db_*_pids"            "databases"
+turnoff "$enstore_db/`uname -n`-admin*pids"           "admin"
+turnoff "$enstore_db/`uname -n`-file_clerk*pids"      "file_clerk"
+turnoff "$enstore_db/`uname -n`-volume_clerk*pids"    "volume_clerk"
+turnoff "$enstore_db/`uname -n`-mover*pids"           "movers"
+turnoff "$enstore_db/`uname -n`-media_changer*pids"   "media_changers"
+turnoff "$enstore_db/`uname -n`-library_manager*pids" "library manager"
+turnoff "$enstore_db/`uname -n`-configuration*pids"   "configuration server"
+turnoff "$enstore_db/`uname -n`-log_server*pids"      "library manager"
+turnoff "$enstore_db/`uname -n`-log_server*pids"      "log server"
+turnoff "$enstore_db/`uname -n`-*pids"                "what else"
 
 
-echo "what else"
-for pid in $enstore_db/`uname -n`-*_pids; do
-    if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
-    pidkill $pid
-done
+
+
+#for pid in $enstore_db/`uname -n`-*_pids; do
+#    if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
+#    pidkill $pid
+#done
 exit
