@@ -9,7 +9,6 @@ import posixpath
 import regex_syntax
 import regex
 import glob
-import gzip
 
 TMP_DIR = "/tmp/enstore"
 TIMEOUT = 3
@@ -29,6 +28,12 @@ def set_trace_key():
 	    os.mkdir(us_dir)
     # set an environment variable that will tell trace where to put the key
     os.environ["TRACE_KEY"] = "%s/%s"%(us_dir, "trace.cgi")
+
+def find_gnuplot():
+    gnuplot_info = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR gnuplot").readlines()
+    gnuplot_dir = string.strip(gnuplot_info[0])
+    gnuplot_dir = string.replace(gnuplot_dir, "\"", "")
+    return gnuplot_dir
 
 def find_enstore():
     enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo $SETUP_LIBTPPY").readlines()
@@ -70,12 +75,16 @@ def pgrep_html(pat, files, sensit):
 	filename = string.split(file, "/")[-1]
 	print "<H3>%s</H3><BR>"%(file,)
 	lineno = 1
+	# until the situation with zlib and python are resolved we must only
+	# support flat files
+	fd = open(file, 'r')
 	# support both log files that are flat and those that are gzipped
-	if string.find(filename, ".gz") == -1:
+	#import gzip
+	#if string.find(filename, ".gz") == -1:
 	    # not a gzipped file
-	    fd = open(file, 'r')
-	else:
-	    fd = gzip.open(file, 'r')
+	    #fd = open(file, 'r')
+	#else:
+	    #fd = gzip.open(file, 'r')
 	line = fd.readline()
 	while line:
 	    if patr.search(line) >=0:
