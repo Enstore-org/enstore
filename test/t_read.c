@@ -23,7 +23,7 @@ examples:\n\
    xxxx test_file 102\n\
 ";
 
-void
+int
 main(  int	argc
      , char	*argv[] )
 {
@@ -86,4 +86,5 @@ main(  int	argc
     {   printf( "NumberOfReads=%d\n", NumberOfReads );
 	close( ofile );
     }
+    return (0);
 }
