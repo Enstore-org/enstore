@@ -8,8 +8,8 @@ QUALIFIERS = ""
     ACTION=SETUP
         setupEnv()
         proddir()
-        pathPrepend( PATH, ${UPS_PROD_DIR}/sbin )
-        pathPrepend( PATH, ${UPS_PROD_DIR}/bin )
+        pathPrepend( PATH, "${UPS_PROD_DIR}/sbin" )
+        pathPrepend( PATH, "${UPS_PROD_DIR}/bin" )
 
         # dot, tgif and htmldoc are for generating documenation only
         # dot and graphviz are the same product with different names!
