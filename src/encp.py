@@ -565,7 +565,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    else:
 		        #some other error that needs coding
 			traceback.print_exc()
-			raise 
+			raise sys.exc_info()[0], sys.exc_info()[1]
 		    pass
 
 		# close the data socket and the file, we've sent it 
