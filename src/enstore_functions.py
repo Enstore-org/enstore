@@ -139,8 +139,14 @@ def override_to_status(override):
 
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
+YEARFMT = "%Y-%b-%d"
+TIMEFMT = "%H:%M:%S"
 def format_time(theTime, sep=" "):
-    return time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
+    return time.strftime("%s%s%s"%(YEARFMT, sep, TIMEFMT), time.localtime(theTime))
+
+def unformat_time(strTime, sep=" "):
+    time_t = time.strptime(strTime,"%s%s%s"%(YEARFMT, sep, TIMEFMT))
+    return time.mktime(time_t)
 
 # return the directory
 def get_dir(str):
