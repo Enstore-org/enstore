@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# $Id$
+
+if [ _$TAPE_DB = _ ] ; then
+    TAPE_DB=$1
+fi
+
+cd $TAPE_DB
+
+
+
+for vol in volumes/*; do
+  for sub in $vol/*; do 
+    if [ $sub = $vol/files ] ; then
+      for item in $sub/*/* ; do
+	echo -n $item " "
+	cat $item
+      done
+    else
+      echo -n $sub " "
+      cat $sub
+    fi
+  done
+done
+  
+      
