@@ -6,21 +6,5 @@ runs the web server -
 	o Find the supported directory for cgi scripts.  Ususally called
 		cgi-bin.
 
-	o Create the directory cgi-bin/enstore
+	o run the command 'install-web-files'
 
-	o Copy $ENSTORE_DIR/src/enstore_*_cgi.py to cgi-bin/enstore
-
-	o you may have to add a link in /usr/local/bin to your python
-
-	o Copy $ENSTORE_DIR/etc/enstore.htaccess to cgi-bin/enstore/.htaccess
-
-	o edit $ENSTORE_DIR/etc/enstore_user.html to change the node for the
-		cgi script to the correct one.
-
-	o edit $ENSTORE_DIR/etc/enstore_log_file_search.html to change the node
-		for the cgi script to the correct one.
-
-	o edit $ENSTORE_DIR/etc/enstore_alarm_search.html to change the node
-		for the cgi script to the correct one.
-
-The permissions on the cgi scripts must have execute turned on.
