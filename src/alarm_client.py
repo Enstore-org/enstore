@@ -65,11 +65,15 @@ class AlarmClient(generic_client.GenericClient):
         if args[0] == e_errors.ALARM:
             # we were called from Trace.alarm and args will be a dict
             ticket.update(args[2])
+	    log_msg = args[2]
         else:
             # we were called from someplace like Trace.trace and we only
             # have a text string for an argument
             ticket['text'] = args[1]
+	    log_msg = args[1]
         self.send(ticket, self.rcv_timeout, self.rcv_tries )
+	# log it for posterity
+	Trace.log(e_errors.ALARM, repr(log_msg), Trace.MSG_ALARM)
 	return self.alarm_func_lock.unlock()
 
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
