@@ -1,3 +1,11 @@
 *.dtim
 obj.dot
 *.pyc
+write_tapebusy.ps
+any_unmount.ps
+write.ps
+write_error.ps
+write_badmount.ps
+read_error.ps
+write_drivebusy.ps
+write_notape.ps
