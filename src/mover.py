@@ -2144,12 +2144,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
                         self.file_info['pnfsid'] = None
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
-                        if self.gid: self.file_info['gid'] = self.gid
-                        else:
-                            self.file_info['gid'] = None
-                        if self.uid: self.file_info['uid'] = self.uid
-                        else:
-                            self.file_info['uid'] = None
+                        self.file_info['gid'] = self.gid
+                        self.file_info['uid'] = self.uid
                         
                         
                         ret = self.fcc.create_bit_file(self.file_info)
@@ -3092,8 +3088,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
-        if self.gid: fc_ticket['gid'] = self.gid
-        if self.uid: fc_ticket['uid'] = self.uid
+        fc_ticket['gid'] = self.gid
+        fc_ticket['uid'] = self.uid
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
