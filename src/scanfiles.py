@@ -12,6 +12,10 @@ import volume_family
 import e_errors
 import string
 
+fcc = None
+vcc = None
+ff = {}
+
 def usage():
     print "usage: %s path [path2 [path3 [ ... ]]]"%(sys.argv[0])
 
