@@ -14,7 +14,6 @@ Include files:-
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <bstring.h>
 #include <grp.h>
 #include <pwd.h>
 #include "ftt.h"
@@ -500,7 +499,7 @@ for (density = 0; density < 10; density++)              /* all densities */
             {
             status = ftt_get_position(ftt_t_fd, &fileno, &blockno);
             FTT_T_CHECK_CALL (status,0);
-            blkclr(dataptr,bsize);
+            memset(dataptr,0,bsize);
             status = ftt_read (ftt_t_fd, dataptr, bsize);
             FTT_T_CHECK_CALL (status,0);
             status = ftt_t_block_verify (dataptr, bsize, fileno, blockno);

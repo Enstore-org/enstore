@@ -21,7 +21,6 @@ Include files:-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <wctype.h>
 #include "ftt_t_parse.h"
 
 /* Global variables:-
@@ -699,10 +698,10 @@ while( *input )
 	 return -1;				/* no match to " */
       
       }
-   else if (!(iswspace(*input)))		/* start of word */
+   else if (!(isspace(*input)))		/* start of word */
       {
       tmp_argv[(*argc)++] = input;		/* take full arg as is */
-      while (*input && !(iswspace(*input))) 
+      while (*input && !(isspace(*input))) 
          *input++;				/* copy full word */
       if (*input == 0) goto split_end;		/* all done */
       *input = 0;				/* null terminate */

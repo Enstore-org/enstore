@@ -47,7 +47,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <bstring.h>
 
 #include "ftt_t_cmdline.h"
 
@@ -883,7 +882,7 @@ struct sigaction act, curHndlr;
 
 /* Initialize global variables just in case a CTRL C is hit before any of the
    ftclCmd_ routines are called */
-bzero(&g_ed_savearg, sizeof(g_ed_savearg));
+memset(&g_ed_savearg,0, sizeof(g_ed_savearg));
 g_sigint_flag = 0;
 
 if (a_cnt <= 0) {a_cnt = 1;}

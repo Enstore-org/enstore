@@ -15,7 +15,6 @@ Include files:-
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
-#include <bstring.h>
 #include "ftt.h"
 #include "ftt_t_parse.h"
 #include "ftt_t_macros.h"
@@ -229,7 +228,7 @@ for (i = 0; i < nblock; i++)
 /* clear the data 
    -------------- */
 
-   blkclr (rdata,bsize);
+   memset(rdata,0,bsize);
 
 /* read out block
    -------------- */
@@ -336,7 +335,7 @@ while (nblock)
 /* clear the data 
    -------------- */
 
-   blkclr (rdata,bsize);
+   memset (rdata,0,bsize);
 
 /* read out block
    -------------- */
@@ -415,7 +414,7 @@ if (in_filename)
 /* do the writes
    --------------- */
 
-blkclr (wdata,FTT_T_MAXDSIZE);
+memset (wdata,0,FTT_T_MAXDSIZE);
 while ((length = ftt_t_block_undump(infile,wdata)) >= 0)
    {
    if (length == 0) 
@@ -432,7 +431,7 @@ while ((length = ftt_t_block_undump(infile,wdata)) >= 0)
       }
    else
       break;						/* all done */
-   blkclr (wdata,FTT_T_MAXDSIZE);
+   memset (wdata,0,FTT_T_MAXDSIZE);
    }
 
 if (infile != stdin) fclose(infile);
