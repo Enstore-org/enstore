@@ -201,6 +201,23 @@ do_read(  int 		rd_fd
 	    PRINTF("DEBUG: asked for %d, got %d\n",bytes_to_read, sts);
 	    PRINTF("errno=%d\n",errno);
 	}
+
+#ifdef ENABLE_TEST_MODE
+	/* keep looping over input file, to allow for high-rate testing.  A
+	 * smallish input file should just stay in the fs cache, so we're really
+	 * just reading from memory here */
+	while (sts < bytes_to_read){
+	    int n=0;
+	    n=lseek(rd_fd, (off_t)0, 0);
+	    n=read( rd_fd, g_shmaddr_p+shm_off+sts, bytes_to_read-sts);
+	    if (n==-1){
+		sts = -1;
+		break;
+	    }
+	    sts+=n;
+	}
+#endif
+
 	if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
 	if (sts == 0) { send_writer( Eof, errno, 0 ); return (1); }
 
