@@ -1,0 +1,13 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+# Description...
+
+if [ -z "${1:-}" ] ; then echo `basename $0` backup_directory_path; exit 1; fi
+
+if ! hash gzip 2>/dev/null; then echo "gzip not found...exitting"; exit 2; fi
+
+find $1 -name "*.tar" -ctime +1 -ls -exec gzip {} \;
+
