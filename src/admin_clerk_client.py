@@ -186,6 +186,8 @@ if __name__ == "__main__" :
 		   intf.set_dbname("volume,file")
     	ticket=acc.select(acc.criteria,intf.dbname) 
 
+    del acc.csc.u
+    del acc.u		# del now, otherwise get name exception (just for python v1.5???)
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
        	pprint.pprint(ticket)

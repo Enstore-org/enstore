@@ -190,6 +190,8 @@ if __name__ == "__main__" :
     elif intf.logit:
         ticket = logit(intf.logmsg)
 
+    del logc.csc.u
+    del logc.u		# del now, otherwise get name exception (just for python v1.5???)
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
@@ -197,5 +199,5 @@ if __name__ == "__main__" :
         sys.exit(1)
     elif list:
         pprint.pprint(ticket)
-        Trace.trace(1,"logc exit ok")
-        sys.exit(0)
+	Trace.trace(1,"logc exit ok")
+	sys.exit(0)

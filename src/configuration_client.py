@@ -8,8 +8,8 @@ import time
 import errno
 
 # enstore imports
-import interface
 import generic_client
+import interface
 import udp_client
 import Trace
 
@@ -191,6 +191,7 @@ if __name__ == "__main__":
             pprint.pprint(stati)
         stat=stati['status']
 
+    del csc.u		# del now, otherwise get name exception (just for python v1.5???)
     if stat == 'ok':
         Trace.trace(1,"config client exit ok")
         sys.exit(0)
