@@ -34,3 +34,4 @@ encp:
 install: encp enstore_user
 	cp encp $ENSTORE_DIR/bin
 	cp enstore_user $ENSTORE_DIR/bin
+
