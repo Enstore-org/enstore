@@ -51,7 +51,7 @@ def get_client() :
 
 def check_len( message ):
     #print message
-    if len(message) > TRANSFER_MAX :
+    if len(message) > TRANSFER_MAX:
 	Trace.trace(0,"send:message "+\
 		    "too big. Size = "+repr(len(message))+" Max = "+\
 		    repr(TRANSFER_MAX)+" "+repr(message))
@@ -67,7 +67,7 @@ def empty_socket( sock ):
 	if r:
 	    badsock = sock.getsockopt(socket.SOL_SOCKET,
 					     socket.SO_ERROR)
-	    if badsock != 0 :
+	    if badsock != 0:
 		Trace.trace(0,"send pre recv, clearout error "+\
 			    repr(errno.errorcode[badsock]))
 		print "udp_client pre recv, clearout error:",\
@@ -75,7 +75,7 @@ def empty_socket( sock ):
 	    reply , server = sock.recvfrom(TRANSFER_MAX)
 	    badsock = sock.getsockopt(socket.SOL_SOCKET,
 					     socket.SO_ERROR)
-	    if badsock != 0 :
+	    if badsock != 0:
 		Trace.trace(0,"send post recv, clearout error"+\
 			    repr(errno.errorcode[badsock]))
 		print "udp_client post recv, clearout error:",\
@@ -88,7 +88,7 @@ def empty_socket( sock ):
 
 def send_socket( sock, message, address ):
     badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-    if badsock != 0 :
+    if badsock != 0:
 	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
 	print "udp_client send_socket, pre-sendto error:",\
 	      errno.errorcode[badsock]
@@ -108,11 +108,44 @@ def send_socket( sock, message, address ):
 		  sys.exc_info()[0],"\n",sys.exc_info()[1]
 	    time.sleep(3)		# arbitrary time - don't beat on NS
     badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-    if badsock != 0 :
+    if badsock != 0:
 	Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
 	print "udp_client send_socket, post-sendto ",address," error:",\
 	      errno.errorcode[badsock]
     return
+
+def wait_rsp( sock, address, rcv_timeout ):
+    # init return vals
+    reply=''
+    server=''
+
+    f = sock.fileno()
+    r, w, x = select.select( [f], [], [f], rcv_timeout )
+
+    # exception mean trouble
+    if x:
+	Trace.trace( 0, "send: exception on select after send to "
+		        +repr(address)+" "+repr(x) )
+	Trace.trace(0,"send"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+	print "UDPClient.send: exception on select after send to "+\
+	      repr(address)+" "+repr(x)
+	print sys.exc_info()[0],sys.exc_info()[1]
+
+    # something there - read it and see if we have response that
+    # matches the number we sent out
+    if r:
+	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+	if badsock != 0:
+	    Trace.trace( 0,"send pre recv"+repr(errno.errorcode[badsock]) )
+	    print "udp_client send, pre-recv error:",errno.errorcode[badsock]
+	reply , server = sock.recvfrom( TRANSFER_MAX )
+	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
+	if badsock != 0:
+	    Trace.trace( 0,"send post recv"+repr(errno.errorcode[badsock]))
+	    print "udp_client send, post-recv error:",errno.errorcode[badsock]
+
+    return reply, server
+
 
 class UDPClient:
 
@@ -142,8 +175,8 @@ class UDPClient:
         Trace.trace(10,'__del__ udpclient')
 
     # this (generally) is received/processed by dispatching worker
-    def send(self, text, address, rcv_timeout=0):
-        Trace.trace(20,'send add='+repr(address)+' text='+repr(text))
+    def send( self, text, address, rcv_timeout=0 ):
+        Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text) )
 
 	if rcv_timeout:
 	    once=1
@@ -171,63 +204,38 @@ class UDPClient:
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
         while number != self.number:
-
 	    send_socket( self.socket, message, address )
 
             # check for a response
-            f = self.socket.fileno()
-            r, w, x = select.select( [f], [], [f], rcv_timeout )
+	    reply , server = wait_rsp( self.socket, address, rcv_timeout )
 
-            # exception mean trouble
-            if x :
-                Trace.trace(0,"send: exception on select after send to "+\
-                      repr(address)+" "+repr(x))
-                Trace.trace(0,"send"+str(sys.exc_info()[0])+\
-                            str(sys.exc_info()[1]))
-                print "UDPClient.send: exception on select after send to "+\
-                      repr(address)+" "+repr(x)
-                print sys.exc_info()[0],sys.exc_info()[1]
-
-            # something there - read it and see if we have response that
-            # matches the number we sent out
-            if r :
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_ERROR)
-                if badsock != 0 :
-                    Trace.trace(0,"send pre recv"+ \
-                                repr(errno.errorcode[badsock]))
-                    print "udp_client send, pre-recv error:",\
-                          errno.errorcode[badsock]
-                reply , server = self.socket.recvfrom(TRANSFER_MAX)
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_ERROR)
-                if badsock != 0 :
-                    Trace.trace(0,"send post recv"+ \
-                                repr(errno.errorcode[badsock]))
-                    print "udp_client send, post-recv error:",\
-                          errno.errorcode[badsock]
-                try:
-                    exec ("number,  out, time  = "  + reply)
-                # did we read entire message (bigger than TRANSFER_MAX?)
-                except exceptions.SyntaxError :
-                    Trace.trace(0,"send disaster: didn't read entire message"+\
-                                "server="+repr(server)+" "+\
-                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                    print "disaster: didn't read entire message"
-                    print "reply:",reply
-                    print "server:",server
-                    raise sys.exc_info()[0],sys.exc_info()[1]
-                # goofy test feature - need for client being echo service only
-                except exceptions.ValueError :
-                    Trace.trace(0,'send GOOFY TEST FEATURE')
-                    exec ("ident, number,  out, time  = "  + reply)
-                if number != self.number :
-                    Trace.trace(21,'send stale='+repr(number)+' want='+\
-                                repr(self.number))
-                    print "UDPClient.send: stale_number=",number, "number=", \
-                          self.number,"resending to ", address, message
-            elif once:
+	    if reply == "" and once:
 		raise errno.errorcode[errno.ETIMEDOUT]
+
+	    # OK, we have received something -- "try" it
+	    try:
+		exec ("number,  out, time  = "  + reply)
+	    # did we read entire message (bigger than TRANSFER_MAX?)
+	    except exceptions.SyntaxError :
+		Trace.trace(0,"send disaster: didn't read entire message"+\
+			    "server="+repr(server)+" "+\
+			    str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+		print "disaster: didn't read entire message"
+		print "reply:",reply
+		print "server:",server
+		raise sys.exc_info()[0],sys.exc_info()[1]
+	    # goofy test feature - need for client being echo service only
+	    except exceptions.ValueError :
+		Trace.trace(0,'send GOOFY TEST FEATURE')
+		exec ("ident, number,  out, time  = "  + reply)
+
+	    # now (after receive), check...
+	    if number != self.number :
+		Trace.trace(21,'send stale='+repr(number)+' want='+\
+			    repr(self.number))
+		print "UDPClient.send: stale_number=",number, "number=", \
+		      self.number,"resending to ", address, message
+
 	Trace.trace(20,"}send "+repr(out))
         return out
 
