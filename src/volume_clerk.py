@@ -415,6 +415,40 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # delete a volume entry from the database
+    # This is meant to be used only by trained professional ...
+    # It removes the volume entry in the database ...
+    # However, it does NOT coordinate with file_clerk nor pnfs ...
+    # Its purpose is simply to clean up some portion of the database ...
+    # Once an entry is removed, it is gone forever!
+
+    def rmvolent(self, ticket):
+        try:
+            external_label = ticket["external_label"]
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]
+        except KeyError, detail:
+            msg="Volume Clerk: no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        del self.dict[external_label]
+        #clear the bfid database file too
+        self.bfid_db.delete_all_bfids(external_label)
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     # delete a volume from the database
     def delvol(self, ticket):
         try:
