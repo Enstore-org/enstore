@@ -27,7 +27,7 @@ import udp_server
 import hostaddr
 import encp
 import generic_client
-import enstore_functions
+#import enstore_functions
 
 MY_NAME = "ASSERT"
 
@@ -40,7 +40,16 @@ MY_NAME = "ASSERT"
 # need to be pased down to the volume names.  Also, any line beginning with
 # a "#" is a comment and ignored.
 def parse_file(filename):
-    file=open(filename, "r")
+    #paranoid check
+    if type(filename) != type(""):
+        return []
+    #Handle file access problems gracefully.
+    try:
+        file=open(filename, "r")
+    except OSError, msg:
+        sys.stderr.write(msg + "\n")
+        sys.exit(1)
+        
     data=map(string.strip, file.readlines())
     tmp = []
     for item in data:
@@ -55,11 +64,26 @@ def parse_file(filename):
     file.close()
     return tmp
 
+def parse_vol_list(comma_seperated_string):
+    #paranoid check
+    if type(comma_seperated_string) != type(""):
+        return []
+
+    split_on_commas = comma_seperated_string.split(",")
+
+    #If the string began or ended with a comma remove the blank label name.
+    if split_on_commas[0] == "":
+        del split_on_commas[0]
+    if split_on_commas[-1] == "":
+        del split_on_commas[-1]
+
+    return split_on_commas
+
 def get_vcc_list():
     #Determine the entire valid list of configuration servers.
     csc = configuration_client.ConfigurationClient()
     config_server_addr_list = csc.get('known_config_servers')
-    if not enstore_functions.is_ok(config_server_addr_list['status']):
+    if not e_errors.is_ok(config_server_addr_list['status']):
         sys.stderr.write(str(config_server_addr_list['status']) + "\n")
         sys.exit(1)
         
@@ -106,7 +130,7 @@ def create_assert_list(vol_list, intf):
             vc = vcc_list[i].inquire_vol(vol)
 
 	    #If the volume has a bad state, skip it.
-            if vc['status'] != (e_errors.OK, None):
+            if not e_errors.is_ok(vc['status']):
 		if e_msg: #If error is already set, skip it.
 		    continue
 		e_msg = "Volume %s has state %s and unassertable.\n" % \
@@ -177,7 +201,7 @@ def submit_assert_requests(assert_list):
             ticket['_csc'], ticket['vc']['library'] + ".library_manager")
         responce_ticket = lmc.volume_assert(ticket, 10, 1)
 
-        if responce_ticket['status'] != (e_errors.OK, None):
+        if not e_errors.is_ok(responce_ticket['status']):
             sys.stderr.write("Submittion for %s failed: %s\n" % \
                              (ticket['vc']['external_label'],
                               responce_ticket['status']))
@@ -231,7 +255,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
         Trace.trace(1, "Asserting volume %s." % \
                     callback_ticket['vc']['external_label'])
 
-        if not enstore_functions.is_ok(callback_ticket['status']):
+        if not e_errors.is_ok(callback_ticket['status']):
             #Output a message.
             sys.stderr.write(str(callback_ticket['status']) + "\n")
             #Do not retry from error.
@@ -255,7 +279,11 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
         Trace.trace(5, "DONE TICKET")
         Trace.trace(5, pprint.pformat(done_ticket))
 
-        Trace.trace(1, "Volume status is %s" % (done_ticket['status'],))
+        message = "Volume status is %s" % (done_ticket['status'],)
+        if e_errors.is_ok(done_ticket['status']):
+            Trace.trace(1, message)
+        else:
+            sys.stderr.write(message + "\n")
 
         completed_id_list.append(done_ticket['unique_id'])
 
@@ -280,6 +308,7 @@ class VolumeAssertInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
         self.verbose = 0
+        self.volume = ""
         self.mover_timeout = 60*60
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -303,6 +332,11 @@ class VolumeAssertInterface(option.Interface):
                               option.VALUE_USAGE:option.REQUIRED,
                               option.VALUE_TYPE:option.INTEGER,
                               option.USER_LEVEL:option.USER,},
+        option.VOLUME:{option.HELP_STRING:"assert specific volume(s), " \
+                       "seperate multiple volumes with commas",
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_TYPE:option.STRING,
+                       option.USER_LEVEL:option.USER,},
         }
 
 ############################################################################
@@ -316,7 +350,13 @@ def main(intf):
     Trace.trace(3, 'Volume assert called with args: %s'%(sys.argv,))
     
     #Read in the list of vols.
-    vol_list = parse_file(intf.args[0])
+    if intf.args:  #read from file.
+        vol_list = parse_file(intf.args[0])
+    elif intf.volume: #read from command line argument.
+        vol_list = parse_vol_list(intf.volume)
+    else:
+        sys.stderr.write("No volume labels given.\n")
+        sys.exit(1)
 
     #Create the list of assert work requests.
     assert_list, listen_socket, udp_server = create_assert_list(vol_list, intf)
