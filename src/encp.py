@@ -31,7 +31,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     t1 = time.time()
     if list:
         print "Checking",unixfile
-    (machine, fullname, dir) = fullpath(unixfile)
+    (machine, fullname, dir, basename) = fullpath(unixfile)
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
     fsize = statinfo[stat.ST_SIZE]
@@ -192,11 +192,11 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
             print "Sending data", "   cum=",time.time()-t0
 
         try:
-    	    mycrc = EXfer.usrTo_( in_file, data_path_socket, binascii.crc_hqx,
-    				  65536/2, chk_crc )
+            mycrc = EXfer.usrTo_( in_file, data_path_socket, binascii.crc_hqx,
+                                  65536/2, chk_crc )
             retry = 0
         except:
-    	    print "Error with encp EXfer - continuing";traceback.print_exc()
+            print "Error with encp EXfer - continuing";traceback.print_exc()
             ticket = {
               "work"               : "write_to_hsm",
               "priority"           : 5,
@@ -255,6 +255,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
         if list:
             print "Adding file to pnfs", "   cum=",time.time()-t0
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
+        p.set_xreference(done_ticket["file_clerk"]["external_label"],
+                         done_ticket["file_clerk"]["bof_space_cookie"])
         tinfo["pnfsupdate"] = time.time() - t1
         if list:
             print "  dt:",tinfo["pnfsupdate"], "   cum=",time.time()-t0
@@ -343,7 +345,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         itsthere = 1
     except:
         itsthere = 0
-    (machine, fullname, dir) = fullpath(outfile)
+    (machine, fullname, dir, basename) = fullpath(outfile)
     if itsthere:
         jraise(errno.errorcode[errno.EEXIST],"encp.read_to_hsm: "\
                +fullname+" already exists")
@@ -573,9 +575,9 @@ def fullpath(filename):
     command="cd "+dir+";pwd"
     try:
         dir = regsub.sub("\012","",os.popen(command,'r').readlines()[0])
-        return (machine, dir+"/"+file, dir)
+        return (machine, dir+"/"+file, dir, file)
     except:
-        return (machine, filename, dir)
+        return (machine, filename, dir, file)
 
 ##############################################################################
 

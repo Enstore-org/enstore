@@ -44,6 +44,7 @@ class pnfs :
         self.get_library()
         self.get_file_family()
         self.get_file_family_width()
+        self.get_xreference()
         self.get_lastparked()
         if all :
             self.get_pnfs_info()
@@ -366,6 +367,15 @@ class pnfs :
             self.writelayer(3,value)
             self.get_info()
 
+    # store the cross-referencing data
+    def set_xreference(self,volume,cookie) :
+        #value=repr(volume)+':'+repr(cookie)+':'+ \
+        #     repr(self.file_family)+':'+repr(self.pnfsFilename)
+        value=volume+':'+cookie+':'+ \
+             self.file_family+':'+self.pnfsFilename
+        self.writelayer(4,value)
+        self.get_xreference()
+
     # get the bit file id
     def get_bit_file_id(self) :
         if self.valid == valid and self.exists == exists :
@@ -396,6 +406,27 @@ class pnfs :
         else :
             self.info = unknown
 
+    # get the cross reference layer
+    def get_xreference(self) :
+        if self.valid == valid and self.exists == exists :
+            try :
+                xinfo = self.readlayer(4)
+                self.volume,\
+                self.cookie,\
+                self.origff,\
+                self.origname = string.split(xinfo[0],':')
+
+
+            except :
+                self.volume = unknown
+                self.cookie = unknown
+                self.origff = unknown
+                self.origname = unknown
+        else :
+            self.volume = unknown
+            self.cookie = unknown
+            self.origff = unknown
+            self.origname = unknown
 
     ##########################################################################
 
