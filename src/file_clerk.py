@@ -499,7 +499,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.get_user_sockets(ticket)
      callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
-     callback.write_tcp_raw(self.data_socket,ticket)
+     callback.write_tcp_raw(self.data_socket, msg)
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
      key,value=dict.cursor("first")
