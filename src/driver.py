@@ -7,6 +7,7 @@ import errno
 import posix
 import string
 import time
+import os				# temporary - .system to execute mt commands
 
 # enstore imports
 try:
@@ -20,18 +21,25 @@ class GenericDriver:
     def __init__(self, device, eod_cookie,remaining_bytes):
         self.device = device
         self.remaining_bytes = remaining_bytes
-	# When a volume is ceated, the system sets EOD cookie to "none"
-	self.set_eod( eod_cookie )
         self.wr_err = 0			# counts
         self.rd_err = 0			# counts
         self.wr_access = 0		# counts
         self.rd_access = 0		# counts
+	self.blocksize = 0		# to be initialized later
+	self.position = 0		# to be initialized later
+	self.bod = 0			# to be initialized later
+	self.eod = 0			# to be initialized later
+	self.ETdesc = 0			# will be pointer to ETape ETdesc
+	self.df = 0
+
+	# When a volume is ceated, the system sets EOD cookie to "none"
+	self.set_eod( eod_cookie )
+	pass
 
     def load( self, eod_cookie ):
-        pass
-
-    def unload(self):
-        pass
+	# this
+	return
+    def unload(self): return
 
     # blocksize is volume dependent
     def set_blocksize(self,blocksize):
@@ -72,6 +80,14 @@ class  FTTDriver(GenericDriver) :
         self.blocksize = 65536
         #ETape.ET_Rewind("", self.device)
         self.set_position()
+
+    def load( self, eod_cookie ):
+	os.system("mt -t " + self.device + " rewind")
+	return
+
+    def unload(self):
+	os.system("mt -t " + self.device + " offline")
+	return
 
     # This may be a mixin where the position is determined from the drive
     def set_position(self):
@@ -129,29 +145,29 @@ class  FTTDriver(GenericDriver) :
 class  RawDiskDriver(GenericDriver) :
     """
     A driver for testing with disk files
-    """
-
+    """	
+	
     firstbyte = 0 
-
+	
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.blocksize = 4096
         #self.df = open(self.device, "a+")	# need to open so we can "tell"
         #self.set_eod( repr(self.df.tell()) )
-
+	
     def __del__( self ):
 	#self.df.close()
 	pass
-
+	
     def load( self, eod_cookie ):
 	#self.df = open(self.device, "a+")
 	self.set_eod( eod_cookie )
-        pass
-
+        return
+	
     def unload( self ):
 	#self.df.close()
-	pass
-
+	return
+	
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
