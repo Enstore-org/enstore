@@ -40,7 +40,8 @@ static char *getexecpath(path)
 char *path;
 {
 	char *p;
-
+#if 0
+	/* modified to have enrout2 at /usr/local/bin/enroute2 */
 	if ((p = getenv("ENCP_DIR")) != NULL)
 	{
 		strcpy(path, p);
@@ -55,6 +56,9 @@ char *path;
 	{
 		strcpy(path, "enroute2");
 	}
+#endif
+
+	strcpy(path, "/usr/local/bin/enroute2");
 
 	if (access(path, X_OK))
 	{
