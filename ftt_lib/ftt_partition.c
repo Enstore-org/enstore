@@ -280,7 +280,7 @@ int
 ftt_load_partition(ftt_descriptor d, int partno) {
     int res = 0;
     ftt_partbuf p;
-    static unsigned char buf[10];
+    static unsigned char buf[BD_SIZE+6];
     static unsigned char cdb_modsense[6] = {0x1a, DBD, 0x21, 0x00, 10, 0x00};
     static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00, 10, 0x00};
     int len;
