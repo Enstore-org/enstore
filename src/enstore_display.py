@@ -136,7 +136,7 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
             return f
 
     size = height_wanted
-    while size > 0:
+    while size >= 0:
         f = tkFont.Font(size=size, family=family)
         metrics = f.metrics()  #f.metrics returns something like:
         # {'ascent': 11, 'linespace': 15, 'descent': 4, 'fixed': 1}
@@ -391,7 +391,7 @@ class Mover:
             self.library = "Unknown"
             
         self.update_state("Unknown")
-        
+    
         self.draw()
 
     def __del__(self):
@@ -1202,23 +1202,27 @@ class Client:
         self.font = get_font(self.height/2.5, 'arial')
 
     def position(self):
-        i = 0
+	
+	#If we do not currently have a position, get one.
+	if not hasattr(self, "index"):
+	    i = 0
 
-        ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
-        while self.display.client_positions.has_key(i):
-            if i == 0:
-                i = 1
-            elif i > 0:
-                i = -i
-            else:
-                i = 1 - i
-        self.index = i
-        self.display.client_positions[i] = self.name
+	    ## Step through possible positions in order 0, 1, -1, 2, -2, 3, ...
+	    while self.display.client_positions.has_key(i):
+		if i == 0:
+		    i = 1
+		elif i > 0:
+		    i = -i
+		else:
+		    i = 1 - i
+	    self.index = i
+	    self.display.client_positions[i] = self.name
         
+	#Determine the x & y coordinates of the position index.
         self.x, self.y = scale_to_display(-0.95, self.index/10.,
                                           self.display.width,
-                                          self.display.height)        
-        
+                                          self.display.height)
+
     def reposition(self):
         self.undraw()
         self.resize()
@@ -1248,6 +1252,7 @@ class Connection:
         self.position()
 
     def __del__(self):
+	self.client.n_connections = self.client.n_connections - 1
         self.undraw()
         
     #########################################################################
@@ -1267,7 +1272,6 @@ class Connection:
                                                  fill=self.color)
 
     def undraw(self):
-        self.client.n_connections = self.client.n_connections - 1
         try:
             self.display.delete(self.line)
             self.line = None
@@ -1541,6 +1545,14 @@ class Display(Tkinter.Canvas):
         #Clear the window for drawing to the screen.
         master.deiconify()
         self.update()
+	
+	#Now that the window geometry is finalized we can get the size
+	# difference and determine the size of the window frames.
+	frame_width = int(self.winfo_toplevel().geometry().split("+")[1]) \
+		      - int(self.unframed_geometry.split("+")[1])
+	frame_height = int(self.winfo_toplevel().geometry().split("+")[2]) \
+		       - int(self.unframed_geometry.split("+")[2])
+	(self.frame_width, self.frame_height) = (frame_width, frame_height)
 
     def toggle_animation(self):
         #Toggle the animation flag variable.  (on or off)
@@ -1685,27 +1697,37 @@ class Display(Tkinter.Canvas):
         geometry = self.winfo_toplevel().geometry()
 
         #Split the original geometry (unframed) and the current geometry.
-        orig_x, orig_y = split_geometry(self.unframed_geometry)[2:]
-        window_width, window_height, x_position, y_position = \
-                      split_geometry(geometry)
+        #orig_x, orig_y = split_geometry(self.unframed_geometry)[2:]
+        #window_width, window_height, x_position, y_position = \
+        #              split_geometry(geometry)
 
         #Calculate the difference in upper left location.
-        x_diff = x_position - orig_x
-        y_diff = y_position - orig_y
+        #x_diff = x_position - orig_x
+        #y_diff = y_position - orig_y
+
+	#print self.frame_width, self.frame_height
+	#if hasattr(self, "frame_width"):
+	#    x_diff = self.frame_width
+	#    y_diff = self.frame_height
+	#else:
+	#    x_diff = 0
+	#    y_diff = 0
 
         #If the size is greater than the screen, shink the size by the
         # two boarders' width.
-        if orig_x + x_diff * 2 + window_width > self.winfo_screenwidth():
-            window_width = self.winfo_screenwidth() - x_diff * 2
-        if orig_y + y_diff * 2 + x_diff * 2 + window_height > \
-           self.winfo_screenheight():
-            window_height = self.winfo_screenheight() - y_diff * 2 - x_diff * 2
+	#if x_diff * 2 + window_width > self.winfo_screenwidth():
+	#    print "1111111111"
+        #    window_width = self.winfo_screenwidth() - x_diff * 2
+        #if y_diff * 2 + x_diff * 2 + window_height > self.winfo_screenheight():
+	#    print "22222222222"
+        #    window_height = self.winfo_screenheight() - y_diff * 2 - x_diff * 2
 
         #Reformulate the size and location of the window.
-        geometry = "%sx%s+%s+%s" % (window_width, window_height,
-                                    x_position, y_position)
+        #geometry = "%sx%s+%s+%s" % (window_width, window_height,
+        #                            x_position, y_position)
+
         #Set the new geometry.
-        self.winfo_toplevel().geometry(geometry)
+        #self.winfo_toplevel().geometry(geometry)
 
         ###The following records the initial framed geometry of the window.
         if not hasattr(self, "framed_geometry"):
@@ -1719,7 +1741,6 @@ class Display(Tkinter.Canvas):
         except Tkinter.TclError:
             self.stopped = 1
             return
-
         if size != (self.width, self.height):
             # size has changed
             self.width, self.height = size
@@ -1743,8 +1764,8 @@ class Display(Tkinter.Canvas):
             mover.reposition(N)            
          
     def reposition_clients(self):
-        del self.client_positions
-        self.client_positions = {}
+        #del self.client_positions
+        #self.client_positions = {}
         for client in self.clients.values():
             client.reposition()
 
@@ -1792,7 +1813,7 @@ class Display(Tkinter.Canvas):
                 #client.undraw()
                 del self.clients[client_name]
 
-        self.after_clients_id = self.after(30, self.disconnect_clients)
+        self.after_clients_id = self.after(500, self.disconnect_clients)
 
     #Called from entv.handle_periodic_actions().
     def handle_titling(self):
@@ -2211,7 +2232,7 @@ class Display(Tkinter.Canvas):
     def mainloop(self):
         self.after_timer_id = self.after(30, self.update_timers)
         self.after_animation_id = self.after(30, self.connection_animation)
-        self.after_clients_id = self.after(30, self.disconnect_clients)
+        self.after_clients_id = self.after(500, self.disconnect_clients)
         self.after_idle_id = self.after(30, self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
