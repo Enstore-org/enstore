@@ -118,6 +118,9 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
                 new_msg = "%s %s" % (msg_type, msg)
             else:
                 new_msg = msg
+	    # check for no logname
+	    if logname == "":
+		logname = "UNKNOWN"
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except:
             exc, detail, tb = sys.exc_info()
