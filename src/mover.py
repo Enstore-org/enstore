@@ -314,9 +314,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def __setattr__(self, attr, val):
         #catch state changes
-        if attr == 'state':
-            if val != getattr(self, 'state', None):
-                Trace.notify("state %s %s" % (self.shortname, val))
+        try:
+            if attr == 'state':
+                if val != getattr(self, 'state', None):
+                    Trace.notify("state %s %s" % (self.shortname, state_name(val)))
+        except:
+            pass #don't want any errors here to stop us
         self.__dict__[attr] = val
 
     def start(self):
