@@ -53,7 +53,7 @@ cat $VOLUME_QUOTAS | sed -e 's/none: emergency/emergency/' | \
     echo \#set key left >>$plt
     echo set nokey >>$plt
     echo set label \"Plotted $now\" at graph 1.01,0 rotate font \"Helvetica,10\" >>$plt
-    echo set label \"$blank blanks left\" at graph .1,.85 rotate font  \"Helvetica,20\" >>$plt
+    echo set label \"$blank blanks left\" at graph .1,.85 font  \"Helvetica,20\" >>$plt
     if [ -n "${alarm:-}" ]; then 
        echo set label \"$alarm\" at graph .2,.5 font \"Helvetica,50\" >>$plt
     fi
