@@ -196,7 +196,7 @@ class DispatchingWorker:
 
             if self.interval_funcs:
                 now = time.time()
-                for func, time_data in self.interval_funcs:
+                for func, time_data in self.interval_funcs.items():
                     interval, last_called = time_data
                     rcv_timeout = min(rcv_timeout, interval - (now - last_called))
 
