@@ -1,12 +1,21 @@
-export PYTHON_DIR=/bakken/bakken/python
-export PATH=$PATH:/$PYTHON_DIR/bin
+PYTHON_DIR=/bakken/bakken/python
+export PYTHON_DIR
 
-export ENSTORE_DIR=/bakken/bakken/enstoreLinux
+PATH=$PATH:/$PYTHON_DIR/bin
+export PATH
+
+ENSTORE_DIR=/bakken/bakken/enstoreLinux
+export ENSTORE_DIR
 
 . $ENSTORE_DIR/ups/setup.sh
 
-export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
-export ENSTORE_CONFIG_PORT=7510
-export ENSTORE_CONFIG_HOST=pcfarm4.fnal.gov
+ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
+export ENSTORE_CONFIG_FILE
+
+ENSTORE_CONFIG_PORT=7510
+export ENSTORE_CONFIG_PORT
+
+ENSTORE_CONFIG_HOST=pcfarm4.fnal.gov
+export ENSTORE_CONFIG_HOST
 
 . $ENSTORE_DIR/etc/defaults

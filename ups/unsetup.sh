@@ -1,4 +1,5 @@
-PATH=`dropit /enstore/`; export PATH;
+PATH=`dropit /enstore/`
+export PATH;
 
 PYTHONPATH=`dropit -p"$PYTHONPATH" /enstore/`;
 export PYTHONPATH

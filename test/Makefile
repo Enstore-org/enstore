@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-dpnfs = `echo "/pnfs/enstore/fndapr/test1-\`uname -n\`-\`whoami\`"`
+dpnfs = `echo "/pnfs/enstore/hppc/test1-\`uname -n\`-\`whoami\`"`
 
 newdbs:
 	- killall -9 longtest

@@ -64,4 +64,5 @@ if [ -n "${ENSTORE_START_FILECLERK-}" ]    ; then enstore_start_fileclerk=$ENSTO
 if [ -n "${ENSTORE_START_VOLUMECLERK-}" ]  ; then enstore_start_volumeclerk=$ENSTORE_START_CONFIG; fi
 if [ -n "${ENSTORE_START_LOG-}" ]          ; then enstore_start_log=$ENSTORE_START_LOG; fi
 
-export ENSTORE_DB=$enstore_db
+ENSTORE_DB=$enstore_db
+export ENSTORE_DB
