@@ -76,8 +76,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
         at_list = lst["at movers"]
         active_assert_cnt = 0
         #If at_list has items, print heading
-        if at_list:
-            print "Active assert requests"
+        for work in at_list:
+            if work['work'] == "volume_assert":
+                print "Active assert requests"
+                break
         for work in at_list:
             if work['work'] != "volume_assert":
                 continue
