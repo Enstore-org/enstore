@@ -1538,7 +1538,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record ["library"] = new_library
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
-        Trace.log(e_errors.INFO, 'volume %s is assigned from library %s to library %s'%(old_library, new_library))
+        Trace.log(e_errors.INFO, 'volume %s is assigned from library %s to library %s'%(external_label, old_library, new_library))
         self.reply_to_caller(record)
         return
 
