@@ -334,7 +334,7 @@ chmod 755 /etc/rc.d/init.d/enstore-boot # just force this
 # there needs to be more login for xinetd or inetd files
 if [ -r "/etc/inetd.conf" ]; then
     right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
-elif [ ! -r "/etc/xinetd" ]; then
+elif [ ! -r "/etc/xinetd.conf" ]; then
     # neither file existed, this is a problem
     enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
 fi
