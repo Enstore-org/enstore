@@ -13,6 +13,7 @@ import Trace
 import alarm
 import e_errors
 import hostaddr
+import enstore_constants
 
 def default_alive_rcv_timeout():
     return 5
@@ -27,13 +28,9 @@ DEFAULT_PATROL_FILE_NAME = "/enstore_patrol.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
 DEFAULT_HTML_ALARM_FILE = "/enstore_alarms.html"
 
-ALARM = "alarm"
 
 SEVERITY = alarm.SEVERITY
 ROOT_ERROR = alarm.ROOT_ERROR
-PID = "pid"
-UID = "uid"
-SOURCE = "source"
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
@@ -53,22 +50,22 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             del ticket[ROOT_ERROR]
         else:
             root_error = e_errors.DEFAULT_ROOT_ERROR
-        if ticket.has_key(PID):
-            pid = ticket[PID]
+        if ticket.has_key(enstore_constants.PID):
+            pid = ticket[enstore_constants.PID]
             # remove this entry from the dictionary
-            del ticket[PID]
+            del ticket[enstore_constants.PID]
         else:
             pid = alarm.DEFAULT_PID
-        if ticket.has_key(UID):
-            uid = ticket[UID]
+        if ticket.has_key(enstore_constants.UID):
+            uid = ticket[enstore_constants.UID]
             # remove this entry from the dictionary
-            del ticket[UID]
+            del ticket[enstore_constants.UID]
         else:
             uid = alarm.DEFAULT_UID
-        if ticket.has_key(SOURCE):
-            source = ticket[SOURCE]
+        if ticket.has_key(enstore_constants.SOURCE):
+            source = ticket[enstore_constants.SOURCE]
             # remove this entry from the dictionary
-            del ticket[SOURCE]
+            del ticket[enstore_constants.SOURCE]
         else:
             source = alarm.DEFAULT_SOURCE
         # remove this entry from the dictionary, so it won't be included
@@ -80,7 +77,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply to the client
         ret_ticket = { 'status' : (e_errors.OK, None),
-                       ALARM    : repr(theAlarm.get_id()) }
+                       enstore_constants.ALARM    : repr(theAlarm.get_id()) }
         self.send_reply(ret_ticket)
 
     # raise the alarm
@@ -146,7 +143,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     def resolve_alarm(self, ticket):
         # get the unique identifier for this alarm
-        id = ticket.get(ALARM, 0)
+        id = ticket.get(enstore_constants.ALARM, 0)
         status = self.resolve(id)
 
         # send the reply to the client

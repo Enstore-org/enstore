@@ -6,10 +6,10 @@ import pwd
 import errno
 
 # enstore imports
-import alarm_server
 import generic_client
 import udp_client
 import interface
+import enstore_constants
 import Trace
 import e_errors
 
@@ -57,9 +57,9 @@ class AlarmClient(generic_client.GenericClient):
 	if self.alarm_func_lock.test_and_set(): return None
         ticket = {}
         ticket['work'] = "post_alarm"
-        ticket[alarm_server.UID] = self.uid
-        ticket[alarm_server.PID] = pid
-        ticket[alarm_server.SOURCE] = name
+        ticket[enstore_constants.UID] = self.uid
+        ticket[enstore_constants.PID] = pid
+        ticket[enstore_constants.SOURCE] = name
         if args[0] == e_errors.ALARM:
             # we were called from Trace.alarm and args will be a dict
             ticket.update(args[2])
@@ -87,7 +87,7 @@ class AlarmClient(generic_client.GenericClient):
     def resolve(self, id):
         # this alarm has been resolved.  we need to tell the alarm server
         ticket = {'work' : "resolve_alarm",
-                  alarm_server.ALARM   : id}
+                  enstore_constants.ALARM   : id}
         return self.send(ticket, self.rcv_timeout, self.rcv_tries)
 
     def get_patrol_file(self):

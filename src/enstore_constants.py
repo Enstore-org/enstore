@@ -19,3 +19,8 @@ STAMP = "_stamp"
 
 READ = 1
 WRITE = READ + 1
+
+PID = "pid"
+UID = "uid"
+SOURCE = "source"
+ALARM = "alarm"
