@@ -64,13 +64,27 @@ output() { tty -s
            fi
          }
 
-# function to check if server is up
+# function to check if server is up, exits if it is not
 check_server()
 {
-    # check volume clerk file clerk depends on
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $1 | cut -d: -f2` \
-    `echo "$nodeplus_servers" | grep $1 | cut -d: -f3` $timeout --tries $tries >/dev/null
-    return $?
+    if [ `echo $1 | grep -c config` -eq 0 ]; then
+      xnode=`echo "$nodeplus_servers" | grep $1 | cut -d: -f2`
+      xport=`echo "$nodeplus_servers" | grep $1 | cut -d: -f3`
+    else
+      xnode=$ENSTORE_CONFIG_HOST
+      xport=$ENSTORE_CONFIG_PORT
+    fi
+    if [ -n "${2-}" ] ; then
+       echo Checking $1 on $xnode $xport
+    fi  
+    alv=`udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries`
+    if [ $? -ne 0 ] ; then
+        echo "   ...$1 not reachable..."
+        exit 1
+    elif [ -n "${2-}" -a `echo $local_host | grep -ic $xport` -ne 0 ]; then 
+       # put the pid (maybe more than once, doesn't matter) into pid file
+       echo $alv | sed -e 's/.*pid.: //' -e 's/,.*//'  >> $2
+    fi
 }
 
 ###################################################################################################################################
@@ -98,14 +112,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
       fi
     fi
 
-    echo "Checking Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT"
-    # check if config server is up
-    #udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
-    udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout --tries $tries >/dev/null
-    if [ $? -ne 0 ] ; then
-        echo "   ...Configuration Server not reachable..."
-        exit 1
-    fi
+    check_server configuration $PID_DIR/`uname -n`-configuration_pids
+
 fi
 
 ###################################################################################################################################
@@ -199,13 +207,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
       fi
     fi
 
-    echo "Checking Log Server"
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep logserver | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep logserver | cut -d: -f3` $timeout --tries $tries
-    if [ $? -ne 0 ] ; then
-        echo "   ...Log Server not reachable..."
-        exit 1
-    fi
+    check_server logserver $PID_DIR/`uname -n`-log_server_pids
+
 fi
 
 ###################################################################################################################################
@@ -232,13 +235,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
       fi
     fi
 
-    echo "Checking Volume Clerk"
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep volume_clerk | cut -d: -f3` $timeout --tries $tries >/dev/null
-    if [ $? -ne 0 ] ; then
-        echo "   ...Volume Clerk not reachable..."
-        exit 1
-    fi
+    check_server volume_clerk $PID_DIR/`uname -n`-volume_clerk_pids 
+
 fi
 
 ###################################################################################################################################
@@ -246,7 +244,7 @@ fi
 # file clerk
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
     # check volume clerk file clerk depends on
-    check_server volume_clerk
+    check_server volume_clerk ""
     if [ $? -ne 0 ] ; then
 	echo "   ...Volume Clerk not reachable..."
 	exit 1
@@ -272,12 +270,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
       fi
     fi
 
-    echo "Checking  File Clerk"
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep file_clerk | cut -d: -f3` $timeout --tries $tries
-    if [ $? -ne 0 ] ; then
-        echo "   ...File Clerk not reachable..."
-    fi
+    check_server file_clerk $PID_DIR/`uname -n`-file_clerk_pids
+
 fi
 
 ###################################################################################################################################
@@ -286,7 +280,7 @@ fi
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
     # check volume clerk library manager depends on
-    check_server volume_clerk
+    check_server volume_clerk ""
     if [ $? -ne 0 ] ; then
 	echo "   ...Volume Clerk not reachable..."
 	exit 1
@@ -315,13 +309,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 echo $! > $PID_DIR/`uname -n`-$i-library_manager_pid
             fi
         fi
-        echo "Checking $i Library Manager"
-        udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
-                                         `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
-        if [ $? -ne 0 ]; then
-            echo "   ...$i Library Manager not reachable..."
-            exit 1
-        fi
+	
+	check_server $i $PID_DIR/`uname -n`-$i-library_manager_pid
+
     done
 fi
 
@@ -353,14 +343,11 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 echo $! >> $PID_DIR/`uname -n`-$i-media_changer_pid
             fi
         fi
-        echo "Checking $i Media Changer"
-        udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
-                                         `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
-        if [ $? -ne 0 ]; then
-            echo "   ...$i Media Changer not reachable..."
-            exit 1
-        fi
+
+	check_server $i $PID_DIR/`uname -n`-$i-media_changer_pid
+
     done
+
 fi
 
 ###################################################################################################################################
@@ -368,13 +355,13 @@ fi
 # mover
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
     # check volume clerk mover depends on
-    check_server volume_clerk
+    check_server volume_clerk ""
     if [ $? -ne 0 ] ; then
 	echo "   ...Volume Clerk not reachable..."
 	exit 1
     fi
     # check file clerk mover depends on
-    check_server file_clerk
+    check_server file_clerk ""
     if [ $? -ne 0 ] ; then
 	echo "   ...File Clerk not reachable..."
 	exit 1
@@ -402,14 +389,11 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 echo $! >> $PID_DIR/`uname -n`-$i-mover_pid
             fi
         fi
-        echo "Checking $i Mover"
-        udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep $i | cut -d: -f2` \
-                                         `echo "$nodeplus_servers" | grep $i | cut -d: -f3` $timeout --tries $tries
-        if [ $? -ne 0 ]; then
-            echo "   ...$i Mover not reachable..."
-            exit 1
-        fi
+
+	check_server $i $PID_DIR/`uname -n`-$i-mover_pid
+
     done
+
 fi
 
 ###################################################################################################################################
@@ -436,12 +420,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
       fi
     fi
 
-    echo "Checking Inquisitor"
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep inquisitor | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep inquisitor | cut -d: -f3` $timeout --tries $tries
-    if [ $? -ne 0 ] ; then
-        echo "   ...Inquisitor not reachable..."
-    fi
+    check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids
+
 fi
 
 ###################################################################################################################################
@@ -484,13 +464,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
             exit 1
         fi
     fi
-    echo "Checking DB Admin Server"
-    udp_sendWaitReply-withTimeout.sh `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f2` \
-                                     `echo "$nodeplus_servers" | grep admin_clerk | cut -d: -f3` $timeout --tries $tries
-    if [ $? -ne 0 ] ; then
-        echo "   ...DB Admin  Server not reachable..."
-        exit 1
-    fi
+
+    check_server admin_clerk $PID_DIR/`uname -n`-admin_pids
+
 fi
 
 ###################################################################################################################################
