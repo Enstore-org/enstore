@@ -57,6 +57,9 @@ class  FTTDriver(GenericDriver) :
         self.blocksize = 65536
         self.set_position()
 
+    def load(self):
+        ETape.ET_Rewind("", self.device)
+
     # This may be a mixin where the position is determined from the drive
     def set_position(self):
         self.position = 0;
