@@ -187,10 +187,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # is the same either way.  This is in responce to "stale NFS
             # handle" errors that occording to Patrick were caused by the
             # string in self.file being to long.
-            fname = self.dir+'/.(const)('+self.file[0]+')'
-            f = open(fname,'r')
-            f.close()
-
+            try:
+                fname = self.dir + '/.(const)(' + self.file + ')'
+                f = open(fname,'r')
+                f.close()
+            except OSError:
+                exc, msg, tb = sys.exc_info()
+                sys.stderr.write("Possible unrecoverable error detected.")
+                sys.stderr.write("%s %s" % (exc, msg))
+                sys.stderr.write("Continuing.")
+                
             #If we set this then the path is valid.
             self.valid = VALID
 
@@ -209,7 +215,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.rminor = 0
         except:
             exc, msg, tb = sys.exc_info()
-            #sys.stderr.write("%s %s" % (exc, msg))
+            sys.stderr.write("%s %s" % (exc, msg))
             #traceback.print_tb(tb)
             self.valid = INVALID
 
