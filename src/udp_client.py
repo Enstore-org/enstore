@@ -52,40 +52,44 @@ def get_client() :
         time.sleep(10) # tried all ports, try later.
 
 def empty_socket( sock ):
-    try:
-	f = sock.fileno()
-	while 1:
-	    r, w, x = select.select([f],[],[f],0)
-	    if r:
-		badsock = sock.getsockopt(socket.SOL_SOCKET,
-					  socket.SO_ERROR)
-		if badsock != 0:
-		    Trace.trace(0,"send pre recv, clearout error "+\
-				repr(errno.errorcode[badsock]))
-		    print "udp_client pre recv, clearout error:",\
-			  errno.errorcode[badsock]
-		    pass
-		reply , server = sock.recvfrom(TRANSFER_MAX)
-		badsock = sock.getsockopt(socket.SOL_SOCKET,
-					  socket.SO_ERROR)
-		if badsock != 0:
-		    Trace.trace(0,"send post recv, clearout error"+\
-				repr(errno.errorcode[badsock]))
-		    print "udp_client post recv, clearout error:",\
-			  errno.errorcode[badsock]
-		    pass
-		pass
-	    else:
-		break
-	    pass
-	pass
-    except:
-	Trace.trace(0,'send clearout err'+str(sys.exc_info()[0])+\
-		    str(sys.exc_info()[1]))
-	print "clearout",sys.exc_info()[0],sys.exc_info()[1]
-	pass
-    return
+    xcount = 0         # number of exceptions on select
+    rcount = 0         # number of reads
+    xcountmax = 2      # retry count if select exception
+    rcountalert = 10   # complain if we read too much
+    while xcount < xcountmax:
+        try:
+            f = sock.fileno()
+            r, w, x = select.select([f],[],[f],0)
+            #print "empty socket",repr(sock),pprint.pprint(sock.__dict__),f,xcount,r,w,x
 
+            # exception mean trouble
+            if x:
+                xcount = xcount+1
+                Trace.trace(0, "empty_socket: exception on select to " +repr(f))
+                Trace.trace(0,"empty_socket"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+                #print "empty socket exception",xcount,pprint.pprint(sock.__dict__),r,w,x,str(sys.exc_info()[0]),str(sys.exc_info()[1])
+
+            elif r:
+                rcount = rcount+1
+                if rcount%rcountalert == 0:
+                    Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
+                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock != 0:
+                    Trace.trace(0,"empty pre recv, clearout error "+\
+                                repr(errno.errorcode[badsock]))
+                reply , server = sock.recvfrom(TRANSFER_MAX)
+                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+                if badsock != 0:
+                    Trace.trace(0,"empty post recv, clearout error"+\
+                                repr(errno.errorcode[badsock]))
+            else:
+                xcount = xcountmax # nothing to read - no more retries
+
+        except:
+            Trace.trace(0,'empty_socket clearout err'+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+            xcount = xcountmax # no more retries on unhandled exception
+
+    return
 def send_socket( sock, message, address ):
     badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
     if badsock != 0:
