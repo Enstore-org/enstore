@@ -389,9 +389,12 @@ class FileClient(generic_client.GenericClient,
                        "bfids": bfids} )
         return r['result']
 
-    def set_deleted(self, deleted, restore_dir="no"):
+    # This is a retrofit for bfid
+    def set_deleted(self, deleted, restore_dir="no", bfid = None):
+        if bfid == None:
+            bfid = self.bfid
         r = self.send({"work"        : "set_deleted",
-                       "bfid"        : self.bfid,
+                       "bfid"        : bfid,
                        "deleted"     : deleted,
 		       "restore_dir" : restore_dir } )
         return r
