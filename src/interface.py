@@ -227,6 +227,8 @@ class Interface:
                 self.alive = 1
             elif opt == "--all":
                 self.all = 1
+            elif opt == "--array-size":
+                self.array_size = int(value);
             elif opt == "--backup":
                 self.backup = 1
             elif opt == "--bfid":
@@ -244,6 +246,8 @@ class Interface:
                 if value[-1]=='L':
                     value=value[:-1]
                 self.bytes = long(value)
+            elif opt == "--buffer-size":
+                self.buffer_size = int(value);
             elif opt == "--caption-title":
                 self.caption_title = value
             elif opt == "--change-priority":
@@ -283,6 +287,8 @@ class Interface:
                 self.description = value
             elif opt == "--destroy":
                 self.rmvol = value
+            elif opt == "--direct-io":
+                self.direct_io = 1
             elif opt == "--dismount":
                 self.dismount = 1
             elif opt == "--do-alarm":
@@ -388,6 +394,10 @@ class Interface:
                 self.mcs = string.split(value, ",")
             elif opt == "--message":
                 self.message = value
+            elif opt == "--mmap-io":
+                self.mmap_io = 1
+            elif opt == "--mmap-size":
+                self.mmap_size = long(value)
             elif opt == "--modify":
                 self.modify = value
             elif opt == "--mount":
@@ -482,6 +492,8 @@ class Interface:
                 self.storage_groups = 1
             elif opt == "--summary":
                 self.summary = 1
+            elif opt == "--threaded":
+                self.threaded_exfer = 1
             elif opt == "--time":
                 self.time = value
             elif opt == "--timeout":

@@ -68,7 +68,8 @@
 #define MADV_WILLNEED -1
 #endif
 /*Note: This needs to be a multiple of buffer_size. */
-#define MMAPPED_IO_SIZE 100663296
+/*#define MMAPPED_IO_SIZE 100663296*/
+/*#define MMAPPED_IO_SIZE 134217728*/
 
 /***************************************************************************
  definitions
@@ -80,10 +81,10 @@ struct transfer
   int fd;                 /*file descriptor*/
   void *mmap_ptr;         /*memory mapped i/o pointer*/
   off_t mmap_len;         /*length of memory mapped file offset*/
-  int other_thread_mmapped; /*true if other thread mmapped*/
   long long size;         /*size in bytes*/
   int block_size;         /*size of block*/
   int array_size;         /*number of buffers to use*/
+  long mmap_size;         /*mmap address space segment lengths*/
   struct timeval timeout; /*time to wait for data to be ready*/
   int crc_flag;           /*crc flag - 0 or 1*/
   int transfer_direction; /*positive means write, negative means read*/
@@ -132,12 +133,14 @@ static struct return_values do_read_write(int rd_fd, int wr_fd,
 					  long long bytes,
 					  struct timeval timeout, int crc_flag,
 					  int blk_size, int array_size,
+					  long mmap_size,
 					  int direct_io, int mmap_io,
 					  unsigned int *crc_p);
 static struct return_values do_read_write(int rd_fd, int wr_fd,
 					  long long bytes,
 					  struct timeval timeout, int crc_flag,
 					  int blk_size, int array_size,
+					  long mmap_size,
 					  int direct_io, int mmap_io,
 					  unsigned int *crc_p);
 static struct return_values* pack_return_values(unsigned int crc_ui,
@@ -150,6 +153,7 @@ static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
 static long long get_fsync_threshold(long long bytes, int blk_size);
 static long align_to_page(long value);
+static long align_to_size(long value, long align);
 struct return_values setup_mmap(int fd, struct transfer *info);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
@@ -267,14 +271,21 @@ static long long get_fsync_threshold(long long bytes, int blk_size)
   return (temp_value > blk_size) ? temp_value : blk_size;
 }
 
-/* A usefull macro to round a value to the next full page. */
+/* A usefull function to round a value to the next full page. */
 static long align_to_page(long value)
 {
+   return align_to_size(value, sysconf(_SC_PAGESIZE));
+/*
    return ((value % sysconf(_SC_PAGESIZE)) ?
 	   value + sysconf(_SC_PAGESIZE) - (value % sysconf(_SC_PAGESIZE)) :
 	   value);
+*/
 }
 
+static long align_to_size(long value, long align)
+{
+   return (value % align) ? (value + align - (value % align)) : value;
+}
 
 
 void set_done_flag(int* done)
@@ -317,8 +328,8 @@ struct return_values setup_mmap(int fd, struct transfer *info)
 {
   struct stat file_info;        /* Information about the file to write to. */
   long long bytes = info->size; /* Number of bytes to transfer. */
-  off_t mmap_len =              /* Offset needs to be mulitple of pagesize. */
-    align_to_page(MMAPPED_IO_SIZE);
+  off_t mmap_len =              /* Offset needs to be mulitple of pagesize */
+    align_to_size(info->mmap_size, info->block_size); /* and blocksize. */
   int advise_holder;
 
   /* Determine the length of the memory mapped segment. */
@@ -400,8 +411,8 @@ struct return_values setup_mmap(int fd, struct transfer *info)
 static struct return_values
 do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
 		       struct timeval timeout, int crc_flag,
-		       int blk_size, int array_size, int direct_io,
-		       int mmap_io, unsigned int *crc_p)
+		       int blk_size, int array_size, long mmap_size,
+		       int direct_io, int mmap_io, unsigned int *crc_p)
 {
   /*setup local variables*/
   struct transfer reads;   /* Information passed into read thread. */
@@ -425,6 +436,7 @@ do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
   reads.size = bytes;
   reads.block_size = align_to_page(blk_size);
   reads.array_size = array_size;
+  reads.mmap_size = mmap_size;
   reads.timeout = timeout;
 #ifdef DEBUG
   reads.crc_flag = crc_flag;
@@ -440,6 +452,7 @@ do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
   writes.size = bytes;
   writes.block_size = align_to_page(blk_size);
   writes.array_size = array_size;
+  writes.mmap_size = mmap_size;
   writes.timeout = timeout;
   writes.crc_flag = crc_flag;
   writes.transfer_direction = 1;
@@ -453,11 +466,6 @@ do_read_write_threaded(int rd_fd, int wr_fd, long long bytes,
   /* Detect (and setup if necessary) the use of memory mapped io. */
   rtn_status = setup_mmap(rd_fd, &reads);
   rtn_status = setup_mmap(wr_fd, &writes);
-
-  if(reads.mmap_ptr != MAP_FAILED)
-    writes.other_thread_mmapped = 1;
-  if(writes.mmap_ptr != MAP_FAILED)
-    reads.other_thread_mmapped = 1;
 
   /* Allocate and initialize the arrays */
   errno = 0;
@@ -988,7 +996,7 @@ static void* thread_write(void *info)
   struct timeval end_total;     /* Hold overall time measurment value. */
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
-  
+
   /* Initialize the running time incase of early failure. */
   memset(&start_time, 0, sizeof(struct timeval));
   memset(&end_time, 0, sizeof(struct timeval));
@@ -1360,7 +1368,7 @@ static void print_status(FILE* fp, char name, long long bytes,
 
 static struct return_values
 do_read_write(int rd_fd, int wr_fd, long long size, struct timeval timeout,
-	      int crc_flag, int blk_size, int array_size,
+	      int crc_flag, int blk_size, int array_size, long mmap_size,
 	      int direct_io, int mmap_io, unsigned int *crc_p)
 {
   void *buffer;                 /* Location to read/write from/to. */
@@ -1592,7 +1600,7 @@ do_read_write(int rd_fd, int wr_fd, long long size, struct timeval timeout,
 		       sts); 
 	break;
       default:  
-	printf("fd_xfer: invalid crc flag"); 
+	fprintf(stderr, "fd_xfer: invalid crc flag"); 
 	*crc_p=0; 
 	break;
       }
@@ -1731,12 +1739,14 @@ EXfd_xfer(PyObject *self, PyObject *args)
     long long    no_bytes;
     int		 block_size;
     int          array_size;
+    long         mmap_size;
     int          direct_io;
     int          mmap_io;
     int          threaded_transfer;
     PyObject     *no_bytes_obj;
     PyObject	 *crc_obj_tp;
     PyObject	 *crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
+    PyObject     *mmap_size_obj;
     int          crc_flag=0; /*0: no CRC 1: Adler32 CRC >1: RFU */
     unsigned int crc_ui;
     struct timeval timeout = {0, 0};
@@ -1744,10 +1754,10 @@ EXfd_xfer(PyObject *self, PyObject *args)
     PyObject	*rr;
     struct return_values transfer_sts;
     
-    sts = PyArg_ParseTuple(args, "iiOOiiiiii|O", &fr_fd, &to_fd, &no_bytes_obj,
-			   &crc_obj_tp, &timeout.tv_sec, &block_size,
-			   &array_size, &direct_io, &mmap_io,
-			   &threaded_transfer, &crc_tp);
+    sts = PyArg_ParseTuple(args, "iiOOiiiOiii|O", &fr_fd, &to_fd,
+			   &no_bytes_obj, &crc_obj_tp, &timeout.tv_sec,
+			   &block_size, &array_size, &mmap_size_obj,
+			   &direct_io, &mmap_io, &threaded_transfer, &crc_tp);
     if (!sts) return (NULL);
     if (crc_tp == Py_None)
 	crc_ui = 0;
@@ -1773,18 +1783,28 @@ EXfd_xfer(PyObject *self, PyObject *args)
     else 
 	return(raise_exception("fd_xfer - invalid crc param"));
     if (crc_flag>1 || crc_flag<0)
-	printf("fd_xfer - invalid crc param");
+	fprintf(stderr, "fd_xfer - invalid crc param");
+
+    /* determine mmap array size */
+    if (PyLong_Check(mmap_size_obj))
+	mmap_size = PyLong_AsLong(mmap_size_obj);
+    else if (PyInt_Check(mmap_size_obj))
+	mmap_size = (long long)PyInt_AsLong(mmap_size_obj);
+    else
+	return(raise_exception("fd_xfer - invalid mmap_size param"));
 
     errno = 0;
     if(threaded_transfer)
       transfer_sts = do_read_write_threaded(fr_fd, to_fd, no_bytes, timeout,
 					    crc_flag, block_size, array_size,
+					    mmap_size,
 					    direct_io, mmap_io,  &crc_ui);
     else
       transfer_sts = do_read_write(fr_fd, to_fd, no_bytes, timeout,
 				   crc_flag, block_size, array_size,
+				   mmap_size,
 				   direct_io, mmap_io,  &crc_ui);
-    printf("%d  %s  %d\n", transfer_sts.errno_val, transfer_sts.filename, transfer_sts.line);    
+
     if (transfer_sts.exit_status != 0)
         return (raise_exception2(&transfer_sts));
 
@@ -1845,11 +1865,12 @@ int main(int argc, char **argv)
   int opt;
   int          block_size = 256*1024;
   int          array_size = 3;
+  long         mmap_size = 96*1024*1024;
   int          direct_io = 0;
   int          mmap_io= 0;
   int          threaded_transfer = 0;
   
-  while((opt = getopt(argc, argv, "tmda:b:")) != -1)
+  while((opt = getopt(argc, argv, "tmda:b:l:")) != -1)
   {
     switch(opt)
     {
@@ -1872,10 +1893,18 @@ int main(int argc, char **argv)
       }
       break;
     case 'b':  /* block size */
-            errno = 0;
+      errno = 0;
       if((block_size = (int)strtol(optarg, NULL, 0)) == 0)
       {
 	printf("invalid array size(%s): %s\n", optarg, strerror(errno));
+	return 1;
+      }
+      break;
+    case 'l':  /*mmap length */
+      errno = 0;
+      if((mmap_size = strtol(optarg, NULL, 0)) == 0)
+      {
+	printf("invalid mmap size(%s): %s\n", optarg, strerror(errno));
 	return 1;
       }
       break;
@@ -1928,7 +1957,7 @@ int main(int argc, char **argv)
 					  size,
 					  timeout,
 					  1, /*crc flag*/
-					  block_size, array_size,
+					  block_size, array_size, mmap_size,
 					  direct_io, mmap_io, 
 					  &crc_ui);
   else
@@ -1936,7 +1965,7 @@ int main(int argc, char **argv)
 				 size,
 				 timeout,
 				 1, /*crc flag*/
-				 block_size, array_size,
+				 block_size, array_size, mmap_size,
 				 direct_io, mmap_io, 
 				 &crc_ui);
   

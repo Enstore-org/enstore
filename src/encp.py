@@ -1636,7 +1636,7 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
 	EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
                                   crc_flag, e.mover_timeout,
-				  e.buffer_size, e.array_size,
+				  e.buffer_size, e.array_size, e.mmap_size,
 				  e.direct_io, e.mmap_io, e.threaded_exfer, 0)
 
         #Exfer_rtn is a tuple.
@@ -3787,11 +3787,12 @@ class encp(interface.Interface):
         self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
         self.verbose = 0
-        self.buffer_size = 65500*4 #XXX CGW Investigate this
-	self.array_size = 1
-	self.direct_io = 1
+        self.buffer_size = 262144  # 256K
+	self.array_size = 3
+        self.mmap_size = 96*1024*1024  # 96M
+	self.direct_io = 0
 	self.mmap_io = 0
-	self.threaded_exfer = 1
+	self.threaded_exfer = 0
         self.delayed_dismount = None
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
@@ -3825,7 +3826,8 @@ class encp(interface.Interface):
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
             "data-access-layer", "max-retry=", "max-resubmit=",
-            "pnfs-is-automounted"] + \
+            "pnfs-is-automounted", "threaded", "direct-io", "mmap-io",
+            "buffer-size=", "array-size=", "mmap-size="] + \
             self.help_options()
 
     
