@@ -2493,18 +2493,18 @@ class Mover(dispatching_worker.DispatchingWorker,
 ##            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
 ##            self.dismount_volume(after_function=self.idle)
             broken = None
-            if status[0] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
+            if status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
                              e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND):
                 # mover is all right
                 # error is only tape or MC related
                 # send error to LM and go into the IDLE state
-                if status[0] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL):
+                if status[1] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL):
                     err_source = ROBOT
                 else:
                     err_source = TAPE
                 if self.lm_address: # send error message only to LM that called us
                     ticket = self.format_lm_ticket(state=ERROR,
-                                                   error_info = (status[0], status[2]),
+                                                   error_info = (status[1], status[2]),
                                                    error_source=err_source,
                                                    returned_work=self.current_work_ticket)
                     self.udpc.send_no_wait(ticket, self.lm_address)
