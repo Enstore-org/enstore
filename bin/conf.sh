@@ -53,14 +53,18 @@ if "'$lookup'" != "0":
 else:  
  t=csc.u.send({"work":"reply_serverlist"},csc.config_address'${2:+,$2}${3:+,$3}')
  servers = t["server_list"]
+ import string
  for key in servers.keys():
      try:
          ahost,ip,port = servers[key]
-	 #print key,ahost,ip,port
-	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="log_server" or key=="inquisitor" or key=="alarm_server" :
+	 #print key,ahost,ip,port,string.find(key,"noauto")
+	 if  ( ("'$host'" == "" or ahost == "'$host'" or 
+	     key=="file_clerk" or key=="volume_clerk" or key=="log_server" or key=="inquisitor" or key=="alarm_server") and 
+	     string.find(key,"noauto")==-1 ) :
              print "%s:%s:%s" % (key,ahost,port)
      except:
-         pass
+         import traceback
+	 traceback.print_tb()
 del csc.u
 '
 exit 0
