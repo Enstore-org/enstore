@@ -86,16 +86,10 @@ setup_products() {
     if [ -z "${KFTP_DIR:-}" ]; then
 	setup_product kftp
     fi
-    if [ -z "${GSSPY_GSI_DIR:-}" ]; then
-	setup_product gsspy_gsi
-    fi
-    if [ -z "${GSSPY_KRB_DIR:-}" ]; then
-	setup_product gsspy_krb
-    fi
     if [ -z "${DCAP_DIR:-}" ]; then
 	setup_product dcap
     fi
-    if [ -z "${srmcp_DIR:-}" ]; then
+    if [ -z "${SRMCP_DIR:-}" ]; then
 	export PATH=/usr/java/j2sdk1.4.1/bin/:$PATH
 	setup_product srmcp
     fi
@@ -112,6 +106,24 @@ setup_products() {
 
     # reset so we can see output if turned on.
     reset_set_vars
+}
+
+kerb_test() {
+    if [ -n "${GSSPY_GSI_DIR:-}" ]; then
+	unsetup gsspy_gsi
+    fi
+    if [ -z "${GSSPY_KRB_DIR:-}" ]; then
+	setup_product gsspy_krb
+    fi
+}
+
+cert_test() {
+    if [ -n "${GSSPY_KRB_DIR:-}" ]; then
+	unsetup gsspy_krb
+    fi
+    if [ -z "${GSSPY_GSI_DIR:-}" ]; then
+	setup_product gsspy_gsi
+    fi
 }
 
 not_enough_parameters() {
@@ -155,6 +167,9 @@ dccp_test() {
 #######################################################################
 
 kftp_test() {
+# do transfers in stream mode
+    wp="${wp}_s"
+    wa="${wa}_s"
     read_back=/tmp/dcache_page_read_back_kftp_$$
     rm -f $read_back
 
@@ -165,7 +180,7 @@ kftp_test() {
     transfer_setup $write_in_progress 7
     # we need to strip off the pnfs dir from $wp
     wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
+    do_transfer "kftpcp -x s -p $strong_port -m p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
 
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache passive kftp write failed." $dcache_saag 6
@@ -175,7 +190,7 @@ kftp_test() {
     transfer_setup $read_in_progress 5
     # we need to strip off the pnfs dir from $wp
     wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
+    do_transfer "kftpcp -x s -p $strong_port -m p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache passive kftp read failed" $dcache_saag 4
@@ -191,7 +206,7 @@ kftp_test() {
     transfer_setup $write_in_progress 7
     # we need to strip off the pnfs dir from $wa
     wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -v $test_file enstore@$dcache:$wa1" $wa $write_in_progress
+    do_transfer "kftpcp -x s -p $strong_port -v $test_file enstore@$dcache:$wa1" $wa $write_in_progress
  
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache write failed." $dcache_saag 6
@@ -201,7 +216,7 @@ kftp_test() {
     transfer_setup $read_in_progress 5
     # we need to strip off the pnfs dir from $wa
     wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
+    do_transfer "kftpcp -x s -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache read failed" $dcache_saag 4
@@ -212,10 +227,47 @@ kftp_test() {
     if [ $? -ne 0 ]; then
 	raise_alarm "$dcache dcache kftp active cmp failed" $dcache_saag 3
     fi
+
+### now do transfers in extended block mode
+    wp="${wp}_e"
+    read_back=/tmp/dcache_page_read_back_kftp_$$
+    rm -f $read_back
+
+    write_in_progress=/tmp/dcache_page_write_in_progress_kftp_$$
+    read_in_progress=/tmp/dcache_page_read_in_progress_kftp_$$
+
+# kftp extended mode write
+    transfer_setup $write_in_progress 7
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -x e -p $strong_port -m p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
+
+    if [ -r $write_in_progress ]; then
+	raise_alarm "$dcache dcache extended mode kftp write failed." $dcache_saag 6
+    fi
+
+# kftp extended mode readback
+    transfer_setup $read_in_progress 5
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -x e -p $strong_port -m a -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "$dcache dcache extended mode kftp read failed" $dcache_saag 4
+    fi
+
+# kftp extended mode readback file comparison
+    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "$dcache dcache extended mode kftp cmp failed" $dcache_saag 3
+    fi
+
 }
 #######################################################################
 
 ftp_test() {
+    # kftp writes this file and we read it.  we need to add the extension that it adds.
+    wa="${wa}_s"
     read_back=/tmp/dcache_page_read_back_ftp_$$
     rm -f $read_back
 
@@ -326,11 +378,6 @@ srmcp_test() {
 }
 
 #######################################################################
-
-#kftp_cert_test() {
-#}
-
-#######################################################################
 #######################################################################
 
 # set up any necessary products
@@ -359,7 +406,7 @@ case $test_to_do in
 	  dccp_test
 	  ;;
     kftp) # get the specific parameters first
-	  if [ $# -ne 4 ];
+	  if [ $# -ne 5 ];
 	  then
 	      not_enough_parameters kftp
 	  fi
@@ -367,6 +414,8 @@ case $test_to_do in
 	  strong_port=$2
 	  wp=$3
 	  wa=$4
+	  if [ "$5" = "kerb" ]; then kerb_test;fi
+	  if [ "$5" = "cert" ]; then cert_test;fi
 	  kftp_test
 	  ;;
      ftp) # get the specific parameters first
