@@ -249,6 +249,9 @@ class Logger(  dispatching_worker.DispatchingWorker
         else:
             if matching_l:
                 matching_l.sort()
+                # set next file to be 1 greater than latest one
+                # (size+1 so can skip ".")
+                self.index = int(matching_l[-1][size+1:]) +1
                 return matching_l[-1]
         return filename
 
@@ -271,6 +274,11 @@ class Logger(  dispatching_worker.DispatchingWorker
         self.logfile_name = self.logfile_dir_path + "/" + fn2
         self.logfile_name_orig = self.logfile_dir_path + "/" + fn
 	self.last_logfile_name = ""
+        # make sure file is not greater than max
+        size = os.stat(self.logfile_name)[6]
+        if size >= self.max_log_file_size:
+            self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
+            self.index = self.index + 1
         # open log file
         self.open_logfile(self.logfile_name)
         while 1:
