@@ -1439,8 +1439,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if now - self.force_summon_last_called < self.force_summon_to:
             # return: it is not time to
             # force summon yet
-            self.force_summon_last_called = now
             return
+        self.force_summon_last_called = now
 
         # save mover_index
         mv_index = self.mover_index
