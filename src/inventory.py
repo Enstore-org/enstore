@@ -16,6 +16,7 @@ import configuration_client
 import enstore_constants
 import alarm_client
 import e_errors
+import quota as equota
 
 mount_limit = {}
 acc = None
@@ -118,7 +119,7 @@ def create_clean_dirs(*dirs):
             remove_files(os.listdir(dir),dir)
 
 #Read in the information from the authorized tapes file.
-def get_authorized_tapes():
+def get_authorized_tapes2():
     #Determine if the file is really there.
     csc = configuration_client.ConfigurationClient()
     inven = csc.get('inventory',timeout=15,retry=3)
@@ -323,10 +324,7 @@ def print_volumes_defind_status(volume_list, output_file):
                          volume['volume_family']))
     vd_file.close()
     
-def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
-    csc = configuration_client.ConfigurationClient()
-    quotas = csc.get('quotas',timeout=15,retry=3)
-    order = quotas.get('order', {})
+def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, order):
 
     vq_file = open(output_file, "w")
 
@@ -690,7 +688,8 @@ def inventory(output_dir, cache_dir):
     dbinfo = csc.get('database')
 
     vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
-    file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp')
+    file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vols.db)
+    eq = equota.Quota(vols.db)
 
     n_vols = 0L
     n_files = 0L
@@ -734,12 +733,13 @@ def inventory(output_dir, cache_dir):
     de_count = 0
 
     #Process the tapes authorized file for the VOLUME_QUATAS page.
-    authorized_tapes = get_authorized_tapes()
+    authorized_tapes = eq.get_authorized_tapes()
 
     # get quotas
 
-    csc = configuration_client.ConfigurationClient()
-    quotas = csc.get('quotas',timeout=15,retry=3)
+    # csc = configuration_client.ConfigurationClient()
+    # quotas = csc.get('quotas',timeout=15,retry=3)
+    quotas = eq.quota_enabled()
 
     unchanged = []
 
@@ -1015,9 +1015,10 @@ def inventory(output_dir, cache_dir):
     vols.close()
     file.close()
 
+    order = quotas.get('order', {})
     #Create files that hold statistical data.
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
-                               volume_quotas_file)
+                               volume_quotas_file, order)
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
                             volume_quotas_file, volume_quotas_format_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
