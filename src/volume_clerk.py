@@ -513,7 +513,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             if self.check_quota(q_dict, library, storage_group):
                 self.sgdb.inc_sg_counter(library, storage_group)
             else:
-                msg="%s Quota exceeded, contact enstore admin."%(storage_group)
+                msg="%s Quota exceeded when reassiging blank volume to it. Contact enstore admin."%(storage_group)
                 Trace.log(e_errors.ERROR,msg)
                 ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                 self.reply_to_caller(ticket)
@@ -596,7 +596,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     if self.check_quota(q_dict, library, sg):
                         inc_counter = 1
                     else:
-                        msg="Volume Clerk: Quota exceeded, contact enstore admin."
+                        msg="Volume Clerk: %s quota exceeded while adding %s. Contact enstore admin."%(sg, external_label)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
@@ -1052,7 +1052,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                             del ic
 
                     else:
-                        msg="Volume Clerk: Quota exceeded, contact enstore admin."
+                        msg="Volume Clerk: %s quota exceeded while drawing from common pool. Contact enstore admin."%(sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.alarm(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
