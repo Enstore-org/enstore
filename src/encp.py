@@ -461,11 +461,13 @@ def get_queue_size(request_list):
 def update_times(input_path, output_path):
     time_now = time.time()
     try:
+        #Update the last access time; set last modified time to existing value.
         os.utime(input_path, (time_now, os.stat(input_path)[stat.ST_MTIME]))
     except OSError:
         pass
 
     try:
+        #Update the last modified time; set last access time to existing value.
         os.utime(output_path, (os.stat(input_path)[stat.ST_ATIME], time_now))
     except OSError:
         pass #This one will fail if the output file is /dev/null.
@@ -1181,8 +1183,8 @@ def max_attempts(library, encp_intf):
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     fc_ticket = ticket.get('fc', {})
-    external_label = fc_ticket.get('external_label', '')
-    location_cookie = fc_ticket.get('location_cookie', ticket.get('volume',''))
+    external_label = fc_ticket.get('external_label', ticket.get('volume',''))
+    location_cookie = fc_ticket.get('location_cookie', "")
     mover_ticket = ticket.get('mover', {})
     device = mover_ticket.get('device', '')
     device_sn = mover_ticket.get('serial_num','')
@@ -1837,6 +1839,81 @@ def outputfile_check(inputlist, outputlist, e):
 
 #######################################################################
 
+def create_zero_length_pnfs_files(filenames, raise_error = None):
+    if type(filenames) != types.ListType:
+        filenames = [filenames]
+
+    #now try to atomically create each file
+    for f in filenames:
+        if type(f) == types.DictType:
+            fname = f['outfile']
+        else:
+            fname = f
+            
+        try:
+            fd = atomic.open(fname, mode=0666) #raises OSError on error.
+
+            if type(f) == types.DictType:
+                f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
+
+            os.close(fd)
+            
+        except OSError:
+            if raise_error:
+                #Originally needed for "Get", don't abort.
+                exc, msg = sys.exc_info()[:2]
+                raise exc, msg
+            else:
+                #Keep the default action the same.
+                exc, msg = sys.exc_info()[:2]
+                error = errno.errorcode.get(getattr(msg, "errno", None),
+                                            errno.errorcode[errno.ENODATA])
+                print_data_access_layer_format('', fname, 0,
+                                               {'status': (error, str(msg))})
+                
+                quit()
+
+def create_zero_length_local_files(filenames, raise_error = None):
+    if type(filenames) != types.ListType:
+        filenames = [filenames]
+
+    #now try to atomically create each file
+    for f in filenames:
+        if type(f) == types.DictType:
+            if f['outfile'] == "/dev/null":
+                f['local_inode'] = os.stat("/dev/null")[stat.ST_INO]
+                return
+            else:
+                fname = f['outfile']
+        else:
+            if f == "/dev/null":
+                return
+            else:
+                fname = f
+            
+        try:
+            fd = atomic.open(fname, mode=0666) #raises OSError on error.
+
+            if type(f) == types.DictType:
+                f['local_inode'] = os.fstat(fd)[stat.ST_INO]
+
+            os.close(fd)
+
+        except OSError:
+            if raise_error:
+                #Originally needed for "Get", don't abort.
+                exc, msg = sys.exc_info()[:2]
+                raise exc, msg
+            else:
+                #Keep the default action the same.
+                exc, msg = sys.exc_info()[:2]
+                error = errno.errorcode.get(getattr(msg, "errno", None),
+                                            errno.errorcode[errno.ENODATA])
+                print_data_access_layer_format('', fname, 0,
+                                               {'status': (error, str(msg))})
+                
+                quit()
+
 def create_zero_length_files(filenames, raise_error = None):
     if type(filenames) != types.ListType:
         filenames = [filenames]
@@ -1845,9 +1922,13 @@ def create_zero_length_files(filenames, raise_error = None):
     for f in filenames:
         if f == "/dev/null":
             return
+            
         try:
             fd = atomic.open(f, mode=0666) #raises OSError on error.
 
+            if type(f) == types.DictType:
+                f['output_inode'] = os.fstat(fd)[stat.ST_INO]
+            
             os.close(fd)
 
         except OSError:
@@ -2550,7 +2631,6 @@ def submit_one_request(ticket):
     #On a retry or resubmit, print the number of the retry.
     if ticket.get('retry', None):
         Trace.message(TO_GO_LEVEL, "RETRY COUNT:" + str(ticket['retry']))
-        time.sleep(10) #On error, wait for a few seconds.
     if ticket.get('resubmits', None):
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(ticket['resubmits']))
 
@@ -2586,92 +2666,40 @@ def submit_one_request(ticket):
 ############################################################################
 
 #mode should only contain two values, "read", "write".
-def open_local_file(filename, e):
-    if e.mmap_io:
-        #If the file descriptor will be memory mapped, we need both read and
-        # write permissions on the descriptor.
-        #If (for reads only) the file is to have the crc rechecked, we
-        # need both read and write permissions.
+#def open_local_file(filename, e):
+def open_local_file(work_ticket, e):
+    if e.outtype == "hsmfile": #writes
+        flags = os.O_RDONLY
+    else: #reads
+        #Setting the local fd to read/write access on reads from enstore
+        # (writes to local file) should be okay.  The file is initially
+        # created with 0644 permissions and is not set to original file
+        # permissions until after everything else is set.  The read
+        # permissions might be needed later (i.e. --ecrc).
         flags = os.O_RDWR
-    else:
-        if e.outtype == "hsmfile": #writes
-            flags = os.O_RDONLY
-        else: #reads
-            #Setting the local fd to read/write access on reads from enstore
-            # (writes to local file) should be okay.  The file is initially
-            # created with 0644 permissions and is not set to original file
-            # permissions until after everything else is set.  The read
-            # permissions might be needed later (i.e. --ecrc).
-            flags = os.O_RDWR
-    """
-    #On systems where O_DIRECT does exist we must set the value directly.
-    # This must be done when the file is opened.  It doesn't work if it
-    # is set by fcntl() later on.
-    sysname = os.uname()[0]
-    if sysname == "Linux" and e.direct_io:
-        #On linix this is generally ignored.  XFS on linux seems to use it,
-        # since the rates on the terabyte filesystems are improved with its
-        # use.  Ext2 on linux uses it.
-        O_DIRECT = 16384     #O_DIRECT
-    #Setting this on IRIX using a filesystem that doesn't support O_DIRECT 
-    # will result in EINVAL error.  (ie. XFS would work, but NFS would fail.)
-    elif sysname == "IRIX64" and e.direct_io:
-        O_DIRECT = 32768     #O_DIRECT
-    else:
-	O_DIRECT = 0
-    """
-    O_DIRECT = 0
+
+    filename = work_ticket['wrapper']['fullname']
+
     #Try to open the local file for read/write.
     try:
-        local_fd = os.open(filename, flags | O_DIRECT, 0666)
+        local_fd = os.open(filename, flags)  #, 0666)
     except OSError, detail:
-	if flags & O_DIRECT and detail.errno == errno.EINVAL:
-	    #If we get here then it is likely that the local filesystem
-	    # does not support direct i/o.  Try without it.
-	    try:
-		local_fd = os.open(filename, flags, 0666)
-		e.direct_io = 0  #Direct io failed, using posix io.
-		sys.stderr.write(
-                    "Direct io failed (%s), using posix io.\n",
-                    os.strerror(detail.errno))
-	    except OSError, detail:
-		#USERERROR is on the list of non-retriable errors.  Because of
-		# this the return from handle_retries will remove this request
-		# from the list.  Thus avoiding issues with the continue and
-		# range(submitted).
-		done_ticket = {'status':(e_errors.USERERROR, str(detail))}
-		return done_ticket
-        if e.mmap_io and detail.errno == errno.EACCES:
-            #If we get here then check if we can open the file with only
-            # specified file permission.
+        done_ticket = {'status':(e_errors.OSERROR, str(detail))}
+        return done_ticket
 
-            #Determine the minimum permissions needed for posix I/O.
-            if e.outtype == "hsmfile": #writes
-                flags = os.O_WRONLY
-            else: #reads
-                flags = os.O_RDONLY
+    #Attempt to catch changes to the local file made externally to the
+    # current encp process.
+    if work_ticket.get("local_inode", 0) != 0:
+        try:
+            stats = os.fstat(local_fd)
+        except OSError, detail:
+            done_ticket = {'status':(e_errors.OSERROR, str(detail))}
+            return done_ticket
 
-            #Try again with posix I/O.
-            try:
-                local_fd = os.open(filename, flags, 0666)
-		e.mmap_io = 0  #Direct io failed, using posix io.
-		sys.stderr.write(
-                    "Memory mapped io failed (%s), using posix io.\n",
-                    os.strerror(detail.errno))
-            except OSError, detail:
-                #USERERROR is on the list of non-retriable errors.  Because of
-		# this the return from handle_retries will remove this request
-		# from the list.  Thus avoiding issues with the continue and
-		# range(submitted).
-		done_ticket = {'status':(e_errors.USERERROR, str(detail))}
-		return done_ticket
-	else:
-            #USERERROR is on the list of non-retriable errors.  Because of
-	    # this the return from handle_retries will remove this request
-	    # from the list.  Thus avoiding issues with the continue and
-	    # range(submitted).
-	    done_ticket = {'status':(e_errors.USERERROR, str(detail))}
-	    return done_ticket
+        if stats[stat.ST_INO] != work_ticket['local_inode']:
+            done_ticket = {'status':(e_errors.USERERROR,
+                                     "Local file inode has changed.")}
+            return done_ticket
 
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
     return done_ticket
@@ -2911,6 +2939,7 @@ def verify_file_size(ticket):
     try:
         full_stat = os.stat(ticket['wrapper'].get('fullname', None))
         full_filesize = full_stat[stat.ST_SIZE]
+        full_inode = full_stat[stat.ST_INO]
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
@@ -2918,6 +2947,7 @@ def verify_file_size(ticket):
     try:
         pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+        pnfs_inode = pnfs_stat[stat.ST_INO]
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
@@ -2948,6 +2978,22 @@ def verify_file_size(ticket):
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
+
+    #Handle making sure the local inode did not change during the transfer.
+    local_inode = ticket.get("local_inode", None)
+    if local_inode:
+        if local_inode != full_inode:
+            ticket['status'] = (e_errors.USERERROR,
+                                "Local inode changed during transfer.")
+            return
+
+    #Handle making sure the pnfs file inode not change during the transfer.
+    remote_inode = ticket['wrapper'].get("inode", None)
+    if remote_inode and remote_inode != 0:
+        if remote_inode != pnfs_inode:
+            ticket['status'] = (e_errors.USERERROR,
+                                "Pnfs inode changed during transfer.")
+            return
 
     #Handle large files.
     if pnfs_filesize == 1:
@@ -3984,8 +4030,19 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #elif len(e.input) == 1 and os.path.isdir(ofullname):
         #    ofullname = os.path.join(ofullname, ibasename)
         #    omachine, ofullname, odir, obasename = fullpath(ofullname)
+        #
+        #file_size = get_file_size(ifullname)
 
-        file_size = get_file_size(ifullname)
+        #Get these two pieces of information about the local input file.
+        try:
+            stats = os.stat(ifullname)
+            file_size = stats[stat.ST_SIZE]
+            file_inode = stats[stat.ST_INO]
+        except OSError, detail:
+            print_data_access_layer_format(
+                ifullname, ofullname, 0,
+                {'status':(e_errors.OSERROR, str(detail))})
+            quit()
 
         #Obtain the pnfs tag information.
         try:
@@ -4081,6 +4138,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         work_ticket['fc'] = file_clerk
         work_ticket['file_size'] = file_size
         work_ticket['infile'] = ifullname
+        work_ticket['local_inode'] = file_inode
         work_ticket['outfile'] = ofullname
         work_ticket['override_ro_mount'] = e.override_ro_mount
         work_ticket['retry'] = 0 #retry,
@@ -4184,7 +4242,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         #maybe this isn't a good idea...
         work_ticket = combine_dict(ticket, work_ticket)
 
-        done_ticket = open_local_file(work_ticket['infile'], e)
+        #done_ticket = open_local_file(work_ticket['infile'], e)
+        done_ticket = open_local_file(work_ticket, e)
 
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, listen_socket, route_server,
@@ -4417,7 +4476,8 @@ def write_to_hsm(e, tinfo):
     #Where does this really belong???
     if not e.put_cache: #Skip this for dcache transfers.
         for request in request_list:
-            create_zero_length_files(request['outfile'])
+            #create_zero_length_files(request['outfile'])
+            create_zero_length_pnfs_files(request)
 
     #Set the max attempts that can be made on a transfer.
     max_attempts(request_list[0]['vc']['library'], e)
@@ -5246,13 +5306,34 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status':(msg.type, msg.strerror), 'volume':e.volume})
                 quit(1)
 
-            fc_reply = tape_ticket.get("tape_list", {}).get(bfids_list[i])
-            #Include the server address in the returned info.
-            # Normally, get_file_clerk_info() would do this for us,
-            # but since we are using tape_ticket instead (for
-            # performance reasons) we need to set the address
-            # explicitly.
-            fc_reply['address'] = fcc.server_address
+            try:
+                fc_reply = tape_ticket.get("tape_list", {}).get(bfids_list[i])
+                #Include the server address in the returned info.
+                # Normally, get_file_clerk_info() would do this for us,
+                # but since we are using tape_ticket instead (for
+                # performance reasons) we need to set the address
+                # explicitly.
+                fc_reply['address'] = fcc.server_address
+            except IndexError:
+                #We get here if bfids_list[] is empty.  It is empty when
+                # trying to read a volume with no known metadata (thus the
+                # IndexError when reading the zeroth element).
+                fc_reply = {'address' : fcc.server_address,
+                            'bfid' : None,
+                            'complete_crc' : None,
+                            'deleted' : None,
+                            'drive' : None,
+                            'external_label' : e.volume,
+                            'location_cookie':generate_location_cookie(1),
+                            'pnfs_mapname': None,
+                            'pnfs_name0': None,
+                            'pnfsid': None,
+                            'pnfsvid': None,
+                            'sanity_cookie': None,
+                            'size': None,
+                            'status' : (e_errors.OK, None)
+                            }
+            
 
             try:
                 lc = fc_reply['location_cookie']
@@ -5693,7 +5774,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
         Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
 
         #Open the output file.
-        done_ticket = open_local_file(request_ticket['outfile'], e)
+        #done_ticket = open_local_file(request_ticket['outfile'], e)
+        done_ticket = open_local_file(request_ticket, e)
 
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
@@ -5937,7 +6019,8 @@ def read_from_hsm(e, tinfo):
     for vol in requests_per_vol.keys():
         #Where does this really belong???
         for request in requests_per_vol[vol]:
-            create_zero_length_files(request['outfile'])
+            #create_zero_length_files(request['outfile'])
+            create_zero_length_local_files(request)
     
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()    
