@@ -883,7 +883,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	# now the data
 	exe = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Execute", type="submit")))
 	rst = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
-	form = HTMLgen.Form(onSubmit="%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
+	form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
 	# get rid of the default submit button, we will add our own below
 	form.submit = ''
 	form.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
