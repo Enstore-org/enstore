@@ -1,6 +1,12 @@
 %module strbuffer
 %{
+
 #include <sys/socket.h>
+#ifdef linux  /*kludge*/
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0x40
+#endif
+#endif
     int buf_read(int fd, char *buf, int offset, int nbytes){
 	return read(fd, buf+offset, nbytes);
     }
