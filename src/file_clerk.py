@@ -485,7 +485,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
-    ## XXX except this recipe gets us a number longer than 64 bits.  Does anybody care?  - cgw
     def unique_bit_file_id(self):
         bfid = time.time()
         bfid = long(bfid)*100000
