@@ -241,12 +241,10 @@ write_in_progress=/tmp/dcache_page_write_in_progress_$$
 read_in_progress=/tmp/dcache_page_read_in_progress_$$
 
 # set up any necessary products
-if [ -z "${UPS_DIR:-}" ]; then
-  source /usr/local/etc/setups.sh
-  if [ $? -gt 0 ]; then
-      echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
-      exit 9
-  fi
+source /usr/local/etc/setups.sh
+if [ $? -gt 0 ]; then
+    echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
+    exit 9
 fi
 if [ $gang = "stken" ]; then
     if [ -z "${KFTP_DIR:-}" ]; then
