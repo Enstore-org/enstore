@@ -2,27 +2,28 @@
 
 # $Id$
 
-
-#This file needs a lot of work!!
-
 import os
 import sys
 import socket
 import string
 import time
 
-event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
-event_relay_port = 55510
+debug=0
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
-configdict = eval (os.popen("enstore config --show", 'r').read())
+def get_config():
+    p=os.popen("enstore config --show", 'r')
+    dict=eval(p.read())
+    p.close()
+    return dict
 
-
-def get_movers():
+def get_movers(config=None):
     movers = []
-    for item, value in configdict.items():
+    if not config:
+        config = get_config()
+    for item, value in config.items():
         if endswith(item, '.mover') and string.find(item, 'null')<0:
             mover = item[:-6]
             movers.append(mover)
@@ -32,15 +33,12 @@ def get_movers():
 s = None
 dst = None
 
-
 #This function sends a string to the enstore_display, as
 # well as printing it for debugging purposes
 def send(msg):
-    print "sending",   msg
+    if debug:
+        print "sending",   msg
     s.sendto(msg, dst)
-
-DEFAULTPORT = 60126 #same as enstore_display.py
-
 
 def get_mover_status(mover):
     file="enstore mover --status %s.mover" % mover
@@ -51,27 +49,42 @@ def get_mover_status(mover):
             
 def main():
     global s, dst
-    if len(sys.argv) == 1:
-        target_ip = os.uname()[1]
-        target_port = DEFAULTPORT
-    elif len(sys.argv) != 3:
-        print "Usage: %s host port" % (sys.argv[0],)
-        print "  host and port refer to the host and port enstore_display is running on"
-        sys.exit(1)
+
+    if len(sys.argv) > 1:
+        event_relay_host = sys.argv[1]
+    if event_relay_host[:2]=='d0':
+        event_relay_host = 'd0ensrv2.fnal.gov'
+        system_name = 'd0en'
+    elif event_relay_host[:3]=='stk':
+        event_relay_host = 'stkensrv2.fnal.gov'
+        system_name = 'stken'
     else:
-        target_ip, target_port = sys.argv[1:]
-    target_port = int(target_port)
+        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
+        system_name = event_relay_host
+        
+    event_relay_port = 55510
+    os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
+
+
+    pipe = os.popen("python -u ./enstore_display.py %s"%(system_name,), 'r')
+    msg = pipe.readline()
+    words = string.split(msg)
+    if words[0]!='addr=':
+        print "Error", msg
+        sys.exit(-1)
+
+    target_ip = words[1]
+    target_port = int(words[2])
+
     dst = (target_ip, target_port)
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     #Tell enstore_display what the movers are
     movers = get_movers()
     send("movers "+string.join(movers))
-
     
     #give it a little time to draw the movers
     time.sleep(3)
-
 
     #Get the state of each mover before continuing
     for mover in movers:
