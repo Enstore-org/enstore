@@ -14,6 +14,7 @@ import traceback
 import Trace
 import e_errors
 import generic_cs
+import log_client
 
 # define file types
 ascii_file = 0
@@ -291,6 +292,44 @@ class EnstoreStatus:
 	             repr(ticket["wr_bytes"])+" bytes\n\n" 
         Trace.trace(12,"}format_moverstatus ")
 	return string
+
+    # format the encp info taken from the log file
+    def format_encp(self, lines, key):
+	Trace.trace(13,"{format_encp ")
+	prefix = "\n          "
+	str = key+" : "
+	spacing = ""
+	# break up each line into it's component parts, format it and save it
+	for line in lines:
+	    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
+	                          string.split(line, None, 6)
+	    str = str+spacing+etime+" on "+enode+" by "+euser
+	    spacing = "       "
+	    if estatus == log_client.sevdict[log_client.INFO]:
+	        [etmp3, ctime]=string.splitfields(line,"cumt=")
+	        # remove final cr from ctime
+	        otime = string.splitfields(ctime)
+	        str = str+" (total time : "+otime[0]+" secs)"
+	        [str1, str2, erest2] = string.splitfields(erest,":", 2)
+	        str = str+prefix+string.replace(str2, "requester","")+"\n"
+	    else:
+	        # there was an error or warning
+	        [str1, str2, erest2] = string.splitfields(erest, ":", 2)
+	        str = str+prefix+str1+" : "+str2+prefix+erest2
+	Trace.trace(13,"}format_encp ")
+	return str
+
+    # output the encp info
+    def output_encp(self, lines, key, verbose):
+	Trace.trace(12,"{output_encp ")
+	if lines != []:
+	    str = self.format_encp(lines, key)
+	else:
+	    str = "encp : NONE"
+	generic_cs.enprint(str, generic_cs.SERVER|generic_cs.PRETTY_PRINT,\
+	                   verbose)
+	self.text[key] = str+"\n"
+	Trace.trace(12,"}output_encp ")
 
     # output the blocksize info
     def output_blocksizes(self, info, prefix, key):

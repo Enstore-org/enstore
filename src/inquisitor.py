@@ -54,6 +54,10 @@ def default_ascii_file():
 def default_html_file():
     return "./inquisitor.html"
 
+TRUE = 1
+FALSE = 0
+MAX_ENCP_LINES = 25
+
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     trailer = " : "
@@ -293,6 +297,58 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.set_default_server_timeout(t)
         Trace.trace(12,"}update_inquisitor ")
 
+    # update any encp information from the log files
+    def update_encp(self, key, time):
+	# look to see if the log server LOGs are accessible to us.  if so we
+	# will need to parse them to get encp information.
+	lkeys = self.csc.get('logserver')
+	t = self.logc.get_logfile_name()
+	logfile = t['logfile_name']
+	encplines = self.read_encp_file(logfile, lkeys['hostip'], ".encp", \
+	                                self.max_encp_lines, [])
+	i = len(encplines)
+	if i < self.max_encp_lines:
+	    # we read in all the encps from the most recent log file. we
+	    # did not read in self.max_encp_lines, so get the 2nd most recent
+	    # log file and do the same.
+	    t = self.logc.get_last_logfile_name()
+	    logfile2 = t['last_logfile_name']
+	    if (logfile2 != logfile) and (logfile2 != ""):
+	        encplines = self.read_encp_file(logfile2, lkeys['hostip'], \
+	                                        ".encp2", \
+	                                        (self.max_encp_lines - i), \
+	                                        encplines)
+	# now we have some info, output it
+	self.essfile.output_encp(encplines, key, self.verbose)
+	self.htmlfile.output_encp(encplines, key, self.verbose)
+
+    # generate the file with the encp info in it and read it in
+    def read_encp_file(self, fname, logip, suffix, numitems, encplist=[]):
+	encp_access = TRUE
+	# see if the inq has access to the log dir (perhaps via nfs)
+	try:
+	    os.stat(fname)
+	except:
+	    encp_access = FALSE
+	if encp_access == TRUE:
+	    # first pull out all of the encp info and store it in another file
+	    try:
+	        os.system("grep ENCP "+fname+"|sort -r> "+self.parsed_file+\
+	                  suffix)
+	        # Now open this file and read in at most numitems lines
+	        encpfile = open(self.parsed_file+suffix, 'r')
+	        i = 0
+	        while i < numitems:
+	            l = encpfile.readline()
+	            if l:
+	                encplist.append(l)
+	                i = i + 1
+	            else:
+	                break
+	    except:
+	        pass
+	return encplist
+
     # get the default server timeout, either from the inquisitor config dict
     # or from the routine
     def set_default_server_timeout(self, inq_dict={}):
@@ -379,13 +435,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        if not self.last_update.has_key(a_key):
 	            self.last_update[a_key] = ctime
 	# now get rid of any keys that are in timeouts and not in csc_keys
-	# make an exception for config_server
+	# make an exception for config_server and encp
 	for a_key in self.timeouts.keys():
 	    if a_key not in csc_keys['get_keys']:
-	        if a_key != "config_server":
+	        if a_key != "config_server" and a_key != "encp":
 	            del self.timeouts[a_key]
 	            self.essfile.remove_key(a_key)
 	            self.htmlfile.remove_key(a_key)
+	# if there was no encp or config_server timeouts specified in the 
+	# inquisitor section of the config file then we will use the default
+	if not self.timeouts.has_key("config_server"):
+	    self.timeouts["config_server"] = self.default_server_timeout
+	if not self.timeouts.has_key("encp"):
+	    self.timeouts["encp"] = self.default_server_timeout
+
         Trace.trace(12,"}fill_in_default_timeouts")
 
     # flush the files we have been writing to
@@ -436,27 +499,27 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # this server.  do it if either we were asked to get info on all 
 	    # the servers or it has been longer than timeout since we last
 	    # gathered info on this server.
-	    if do_all or (delta >= self.timeouts[key] and \
-	                  self.timeouts[key] != -1):
-	        # time to ping this server. some keys are of the form
-	        # name.real_key, so we have to get the real key to find the
-	        # function to call
-	        rkeyl = string.split(key, '.')
-	        inq_func = "update_"+rkeyl[len(rkeyl)-1]
+	    if self.timeouts[key] != -1:
+	        if do_all or delta >= self.timeouts[key]:
+	            # time to ping this server. some keys are of the form
+	            # name.real_key, so we have to get the real key to find the
+	            # function to call
+	            rkeyl = string.split(key, '.')
+	            inq_func = "update_"+rkeyl[len(rkeyl)-1]
 
-	        # make sure we support this type of server first
-	        if InquisitorMethods.__dict__.has_key(inq_func):
-	            if type(InquisitorMethods.__dict__[inq_func]) == \
-	               types.FunctionType:
-	                exec("self."+inq_func+"(key, ctime)")
-	                self.last_update[key] = ctime
-	                did_some_work = 1
+	            # make sure we support this type of server first
+	            if InquisitorMethods.__dict__.has_key(inq_func):
+	                if type(InquisitorMethods.__dict__[inq_func]) == \
+	                   types.FunctionType:
+	                    exec("self."+inq_func+"(key, ctime)")
+	                    self.last_update[key] = ctime
+	                    did_some_work = 1
+	                else:
+	                    # it was not a function
+	                    self.update_nofunc(key)
 	            else:
-	                # it was not a function
+	                # apparently we do not.
 	                self.update_nofunc(key)
-	        else:
-	            # apparently we do not.
-	            self.update_nofunc(key)
 
 	# now that we are out of the above loop we can update the server dict
 	# if we were asked to. we did not want to do it while doing the update
@@ -545,7 +608,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def dump(self, ticket):
 	Trace.trace(10,"{dump "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	self.enprint("last_update - "+repr(self.last_update.sort()))
+	self.enprint("last_update - "+repr(self.last_update))
 	self.enprint("timeouts    - "+repr(self.timeouts))
 	self.enprint("server_keys - "+repr(self.server_keys))
 	self.enprint("reset       - "+repr(self.reset))
@@ -607,6 +670,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
         Trace.trace(10,"}get_refresh")
 
+    # set a new max encp lines displayed value
+    def set_max_encp_lines(self, ticket):
+        Trace.trace(10,"{set_max_encp_lines "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+        self.max_encp_lines = ticket['max_encp_lines']
+	self.send_reply(ticket)
+        Trace.trace(10,"}set_max_encp_lines")
+
+    # return the current number of displayed encp lines
+    def get_max_encp_lines(self, ticket):
+        Trace.trace(10,"{get_max_encp_lines "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+        ticket["max_encp_lines"] = self.max_encp_lines
+	self.send_reply(ticket)
+        Trace.trace(10,"}get_max_encp_lines")
+
     # timestamp the current ascii file, and open a new one
     def do_timestamp(self, ticket):
         Trace.trace(10,"{do_timestamp "+repr(ticket))
@@ -648,7 +727,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port(), timeout=-1, ascii_file="", \
                  html_file="", alive_rcv_to=-1, alive_retries=-1, \
-	         max_ascii_size=-1):
+	         max_ascii_size=-1, max_encp_lines=-1):
 	Trace.trace(10, '{__init__')
 	self.print_id = "INQS"
 	self.verbose = verbose
@@ -666,6 +745,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
 	keys = self.csc.get("inquisitor", use_once_timeout, use_once_retry)
+	self.hostip = keys['hostip']
         Trace.init(keys["logname"])
 	try:
 	    self.print_id = keys['logname']
@@ -718,6 +798,16 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	else:
 	    max_ascii_size = max_ascii_size
 
+	# if no max number of encp lines was entered on the command line, get 
+	# it from the configuration file.
+	if max_encp_lines == -1:
+	    try:
+	        self.max_encp_lines = keys['max_encp_lines']
+	    except:
+	        self.max_encp_lines = MAX_ENCP_LINES
+	else:
+	    self.max_encp_lines = max_encp_lines
+
 	# get the ascii output file.  this should be in the configuration file.
 	if ascii_file == "":
 	    try:
@@ -739,10 +829,15 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# get an ascii system status file, and open it
 	if ascii_file != "":
+	    self.parsed_file = ascii_file
 	    self.essfile = enstore_status.EnstoreStatus(ascii_file, \
 	                                           enstore_status.ascii_file,\
 	                                           "", max_ascii_size, verbose)
 	    self.essfile.open(verbose)
+	else:
+	    # this will be the place that we will put the temporary files used
+	    # to parse out the encp information
+	    self.parsed_file = "$ENSTORE_DB/inq.txt"
 
 	# get an html system status file
 	if html_file != "":
@@ -772,7 +867,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# 'timeouts' dict element
 	self.set_default_server_timeout(keys)
 	self.fill_in_default_timeouts(0)
-
 	Trace.trace(10, '}__init__')
 
 class InquisitorInterface(interface.Interface):
@@ -787,6 +881,7 @@ class InquisitorInterface(interface.Interface):
 	self.timeout = -1
 	self.verbose = 0
 	self.max_ascii_size = -1
+	self.max_encp_lines = -1
 	interface.Interface.__init__(self)
 
 	# now parse the options
@@ -798,7 +893,7 @@ class InquisitorInterface(interface.Interface):
 	Trace.trace(16, "{}options")
 	return self.config_options()+\
 	       ["verbose=", "ascii_file=","html_file=","timeout="] +\
-	       ["max_ascii_size="] +\
+	       ["max_ascii_size=", "max_encp_lines="] +\
 	       self.alive_rcv_options()+self.help_options()
 
 if __name__ == "__main__":
@@ -812,7 +907,7 @@ if __name__ == "__main__":
     inq = Inquisitor(0, intf.verbose, intf.config_host, intf.config_port, \
                      intf.timeout, intf.ascii_file, intf.html_file,\
                      intf.alive_rcv_timeout, intf.alive_retries,\
-	             intf.max_ascii_size)
+	             intf.max_ascii_size, intf.max_encp_lines)
 
     while 1:
         try:
