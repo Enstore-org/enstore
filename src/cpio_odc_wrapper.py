@@ -113,7 +113,7 @@ def headers(ticket):
     # Trailers must be rounded to 512 byte blocks
     pad = (len(header) + len(trailer) + filesize) % 512
     if pad:
-        pad = 512 - pad
+        pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
         trailer = trailer + '\0'*pad
     return header, trailer
 
