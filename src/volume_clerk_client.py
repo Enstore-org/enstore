@@ -260,6 +260,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(3,'}clr_system_inhibit '+str(x))
         return x
 
+    # decrement the file count on a tape
+    def decr_file_count(self,external_label, count=1):
+        Trace.trace(3,'decr_file_count label='+str(external_label)+"count="+str(count))
+        ticket= { 'work'           : 'decr_file_count',
+                  'external_label' : external_label,
+                  'count'          : count }
+        x = self.send(ticket)
+        Trace.trace(3,'}decr_file_count '+str(x))
+        return x
+
     # we are using the volume
     def set_hung(self, external_label):
         Trace.trace(3,'set_hung label='+str(external_label))
@@ -367,6 +377,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.newlib = 0
         self.rdovol = 0
         self.noavol = 0
+        self.decr_file_count = 0
 	self.atmover = 0 # for the backward compatibility D0_TEMP
         generic_client.GenericClientInterface.__init__(self)
         Trace.trace(10,'}__init__ vcci')
@@ -376,7 +387,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         Trace.trace(20,'{}options')
         return self.client_options()+\
                ["clrvol", "backup", "vols","nextvol","vol=","addvol"] + \
-	       ["delvol","newlib","rdovol","noavol","atmover"]
+	       ["delvol","newlib","rdovol","noavol","atmover","decr_file_count="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -510,6 +521,9 @@ if __name__ == "__main__":
 	msg_id = generic_cs.CLIENT
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
+	msg_id = generic_cs.CLIENT
+    elif intf.decr_file_count:
+        ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
 	msg_id = generic_cs.CLIENT
     elif intf.rdovol:
         ticket = vcc.set_system_readonly(intf.args[0])  # name of this volume

@@ -211,6 +211,8 @@ class Interface:
                 self.delvol = 1
             elif opt == "--clrvol" :
                 self.clrvol = 1
+            elif opt == "--decr_file_count" :
+                self.decr_file_count = value
             elif opt == "--eod_cookie" :
                 self.eod_cookie = value
             elif opt == "--size" :

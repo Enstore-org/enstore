@@ -536,6 +536,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
                 return
 
+        #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
+	try:
+	    non_del_files = record['non_del_files']
+	except KeyError:
+	    record['non_del_files'] = record['sum_wr_access']
+
+        # update the non-deleted file count if we wrote to the tape
+        # this key gets decremented when we delete files
+        record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
+        
         # record our changes
         dict[external_label] = copy.deepcopy(record)
         record["status"] = (e_errors.OK, None)
@@ -552,6 +562,58 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          return
 
 
+    # decrement the file count on the volume 
+    def decr_file_count(self, ticket):
+     Trace.trace(10,'{decr_file_count '+repr(ticket))
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}decr_file_count "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}decr_file_count "+repr(ticket["status"]))
+            return
+
+        # assume the count is 1 unless specified
+        try:
+            count = ticket["count"]
+        except KeyError:
+            count = 1
+        
+        # decrement the number of non-deleted files on the tape
+        record ["non_del_files"] = record["non_del_files"] - count
+
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+        record["status"] = (e_errors.OK, None)
+        self.reply_to_caller(record)
+        Trace.trace(10,'}decr_file_count '+repr(record))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}decr_file_count "+repr(ticket["status"]))
+         return
+
+	 
     # update the database entry for this volume
     def update_counts(self, ticket):
      Trace.trace(12,'{update_counts '+repr(ticket))
@@ -821,6 +883,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    at_mover = record['at_mover']
 	except KeyError:
 	    record['at_mover'] = ('unmounted', 'none')
+	try:
+	    non_del_files = record['non_del_files']
+	except KeyError:
+	    record['non_del_files'] = record['sum_wr_access']
+
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
