@@ -169,7 +169,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                           "Attempting restart of %s"%key)
                                 while i < 3:
                                     Trace.trace(7, "Server restart: try %s"%i)
-                                    os.system('ecmd restart --just %s'%key)
+                                    os.system('enstore restart --just %s'%key)
                                     # check if alive
                                     ret = self.alive_status(client,
                                                             (host, port),
