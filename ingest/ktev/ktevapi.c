@@ -167,12 +167,15 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
     /* check if dir exists */
     if (i=stat(path, &stat_buf)!=0) {
 	perror(path);
+	free(path);
 	return -1;
     }
     n_ent = scandir(path, &namelist, 0, verscmp);
     if (n_ent < 0) 
     {
+      perror("scandir");
       n_ent = -1;
+      free(path);
       return -1;
     }
     else {
@@ -193,10 +196,12 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
     free(namelist[n_ent]);
     n_ent--;
     if (n_ent == -1) n_ent--;
+    free(path);
     return 1;
   }
   else {
     free(namelist);
+    free(path);
     return 0;
   }
 
@@ -217,6 +222,7 @@ int PutFile(char *volumeName, char fileName[FILENAME_LEN])
   strncat(path, firstTwo, 2);
   if( !opendir(path) ) {
     if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      free(path);
       return -1;
     }
   }
@@ -224,6 +230,7 @@ int PutFile(char *volumeName, char fileName[FILENAME_LEN])
   strncat(path, firstFour, 4);
   if( !opendir(path) ) {
     if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      free(path);
       return -1;
     }
   }
@@ -231,6 +238,7 @@ int PutFile(char *volumeName, char fileName[FILENAME_LEN])
   strcat(path, volumeName);
   if( !opendir(path) ) {
     if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      free(path);
       return -1;
     }
   }
@@ -239,5 +247,6 @@ int PutFile(char *volumeName, char fileName[FILENAME_LEN])
   strcat(path, firstFour);
   strncpy(fileName, path, FILENAME_LEN);
   fileNum ++;
+  free(path);
   return 0;
 }

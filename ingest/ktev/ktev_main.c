@@ -79,6 +79,10 @@ main(int argc, char *argv[])
     while(record_size >= 0 && (fileError = GetFile(volumeName, fileName)) > 0) {
 	printf("filename %s\n", fileName);
 	src = dc_open(fileName,O_RDONLY | O_BINARY );
+	if (src < 0) {
+	    perror("scandir");
+	    return -1;
+	}
 	
 	if (loc_copy) {
 	    strcat(ofn, "/");
