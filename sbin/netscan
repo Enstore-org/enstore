@@ -12,6 +12,7 @@ setup enstore
 # . Check for open LISTEN sockets
 # . Check that two processors are active
 # . Check that less than 90% full on mounted disks.
+# . Check that eth1 is working (if present)
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -31,6 +32,8 @@ setup enstore
 set -u  # force better programming and ability to use check for not set
 
 
+# List of binaries/scripts used in checking.
+# In principle, these should be loaded onto the machine each time to prevent hacker tampering
 UNAME="/bin/uname"
 PS="/bin/ps"
 CMP="/usr/bin/cmp"
@@ -47,6 +50,9 @@ UNIQ="/usr/bin/uniq"
 DF="/bin/df"
 SED="/bin/sed"
 RPM="/bin/rpm"
+IFDOWN="/etc/sysconfig/network-scripts/ifdown"
+IFUP="/etc/sysconfig/network-scripts/ifup"
+XNTP="/etc/rc.d/init.d/xntpd restart"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
@@ -54,6 +60,7 @@ gang=`/home/enstore/enstore/sbin/gang`
 LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
 
+# function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
              $ECHO "${PSfirst:-}"  >>$LOG 2>&1
@@ -61,21 +68,7 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           $ECHO "$1"
         }
 
-
-mkdir -p $ACTIVE 1>/dev/null 2>/dev/null
-if [ $? -ne 0 ] ; then
-   msg="netscan on $node already ACTIVE... exiting"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "$msg"
-   fi
-   exit 1
-else
-   logit "netscan starting"
-fi
-
-
-
+# function to compare files and complain if they are not the same
 right_file() { if ! $CMP $1 $2 2>/dev/null; then
                   msg1="BAD CONFIGURATION: $1 $2  do not match"
                   logit "$msg1"
@@ -89,65 +82,47 @@ right_file() { if ! $CMP $1 $2 2>/dev/null; then
                fi
              }
 
-right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
-right_file /home/enstore/enstore/sbin/routes /root/routes
-right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
-right_file /home/enstore/enstore/etc/$gang.hosts.allow /etc/hosts.allow
-right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
-right_file /home/enstore/enstore/etc/hosts /etc/hosts
-right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
-if [ $node = "cdfenmvr1a" -o $node = "cdfenmvr2a" ]; then
-  right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
-else
-  right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
-fi
+# function to check for allowed services and complain if not allowed
+allow() { tt=$1
+          for i in $ALLOW; do
+            t=`$ECHO $i | cut -f1 -d,`
+            if [ $t != $tt ]; then continue; fi
+            a=`$ECHO $i | cut -f2 -d,`
+            b=`$ECHO $i | cut -f3 -d,`
+            c=`$ECHO $i | cut -f4 -d,`
+            p=`$ECHO $i | cut -f5 -d,`
+            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
+              if [ $p != "x" ]; then
+                 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+                 if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
+                    msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
+                    logit "$msg1"
+                    logit "$psline" "ps"
+                    if [ $ALARM -eq 1 ]; then
+                      enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
+                    fi
+                    return 2
+                 fi
+              else
+                p=""
+              fi
+              if [ $QUIET -ne 1 ]; then
+                logit "Allowing $node $c $tt $a $b $p,  ok"
+              fi
+              return 0
+            fi
+          done
+          msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
+          psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+          logit "$msg1"
+          logit "$psline" "ps"
+          if [ $ALARM -eq 1 ]; then
+            enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
+         fi
+          return 1
+         }
 
-#rpm -Va | $EGREP bin | | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
-
-if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
-    x=`$XNTPDC -p`
-    logit "NO TIME SYNC"
-    logit "$x"
-    if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
-    fi
-else
-  if [ $QUIET -ne 1 ]; then
-    logit  "TIME SYNCD, ok"
-  fi
-
-fi
-
-if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
-   logit "ONLY 1 PROCESSOR RUNNING"
-    if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
-    fi
-else
-  if [ $QUIET -ne 1 ]; then
-    logit  "TWO PROCESSORS FOUND, ok"
-  fi
-fi
-
-dflines=`$DF -P`
-$ECHO "$dflines" | while read a b c d e rest; do
-  if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
-    cap=`$ECHO $e | $SED -e 's/%//'`
-    mess="$a $b $c $d $e $rest"
-    if [ $cap -ge 90 ]; then
-      msg="DISK FULL: $mess"
-      logit "$msg"
-      if [ $ALARM -eq 1 ]; then
-        enstore alarm --raise --severity "A" --root-error "$msg"
-      fi
-    else
-      if [ $QUIET -ne 1 ]; then
-        logit  "DISK $a at $cap%, ok"
-      fi
-    fi
-  fi
-done
-
+# We allow these everywhere
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
        LISTEN,inetd,:telnet,TCP,x
@@ -174,6 +149,7 @@ ALLOW_BASE="
 #       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
 
+# Extra for srv5
 ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
        LISTEN,conserver,:console,TCP,x
@@ -188,6 +164,7 @@ ALLOW_SRV5="$ALLOW_BASE
        TCP,console,nterm,TCP,x
 "
 
+# Extra for srv3
 ALLOW_SRV3="$ALLOW_SRV5
        LISTEN,rpc.mount,:635,TCP,x
        LISTEN,rpc.nfsd,:2049,TCP,x
@@ -195,14 +172,17 @@ ALLOW_SRV3="$ALLOW_SRV5
        UDP,rpc.nfsd,:nfs,UDP,x
 "
 
+# Extra for srv2
 ALLOW_SRV2="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
 "
 
+# Extra for d0ensrv4 - portmapper is needed for adic calls
 ALLOW_DSRV4="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
 "
 
+# Extra for srv1
 # I doubt that these java ports are static across restarts, try for now.
 ALLOW_SRV1="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
@@ -210,68 +190,139 @@ ALLOW_SRV1="$ALLOW_BASE
        LISTEN,java,:24124,TCP,x
        LISTEN,java,:1039,TCP,x
 "
+
+# Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
        LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain
 "
 
+# Extra for movers
 ALLOW_MVR="$ALLOW_BASE
 "
 
-
+# make the choice
 case $node in
-       *srv1) ALLOW=$ALLOW_SRV1;  logit "comparing to srv1";;
-       *srv2) ALLOW=$ALLOW_SRV2;  logit "comparing to srv2";;
-       *srv3) ALLOW=$ALLOW_SRV3;  logit "comparing to srv3";;
-    d0ensrv4) ALLOW=$ALLOW_DSRV4; logit "comparing to d0ensrv4";;
- *srv5|*srv7) ALLOW=$ALLOW_SRV5;  logit "comparing to srv5";;
-       *mvr*) ALLOW=$ALLOW_MVR;   logit "comparing to mvr";;
-       *dca*) ALLOW=$ALLOW_DCA;   logit "comparing to dca";;
-           *) ALLOW=$ALLOW_BASE;  logit "comparing to base";;
+       *srv1) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
+       *srv2) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
+       *srv3) ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
+    d0ensrv4) ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
+ *srv5|*srv7) ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
+       *mvr*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
+       *dca*) ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
+           *) ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
 esac
 
 
-allow() { tt=$1
-          for i in $ALLOW; do
-            t=`$ECHO $i | cut -f1 -d,`
-            if [ $t != $tt ]; then continue; fi
-            a=`$ECHO $i | cut -f2 -d,`
-            b=`$ECHO $i | cut -f3 -d,`
-            c=`$ECHO $i | cut -f4 -d,`
-            p=`$ECHO $i | cut -f5 -d,`
-            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
-              if [ $p != "x" ]; then
-                 psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-                 if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
-                    msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
-                    logit "$msg1"
-                    logit "$psline" "ps"
-                    if [ $ALARM -eq 1 ]; then
-                      enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
-                    fi
-                    return 2
-                 fi
-              else
-                p=""
-              fi
-              if [ $QUIET -ne 1 ]; then
-                logit "Allowing $node $c $tt $a $b $p"
-              fi
-              return 0
-            fi
-          done
-          msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
-          psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-          logit "$msg1"
-          logit "$psline" "ps"
-          if [ $ALARM -eq 1 ]; then
-            enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
-         fi
-          return 1
-         }
 
-# get open files twice - get ps in between - only take connections that survive past this
+# try to start - but if one netscan already running, then exit
+mkdir -p $ACTIVE 1>/dev/null 2>/dev/null
+if [ $? -ne 0 ] ; then
+   msg="ERROR: netscan on $node already ACTIVE... exiting"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+   exit 1
+else
+   logit "netscan starting"
+fi
+
+
+
+# check these files
+right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
+right_file /home/enstore/enstore/sbin/routes /root/routes
+right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
+right_file /home/enstore/enstore/etc/$gang.hosts.allow /etc/hosts.allow
+right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
+right_file /home/enstore/enstore/etc/hosts /etc/hosts
+right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
+if [ $node = "cdfenmvr1a" -o $node = "cdfenmvr2a" ]; then
+  right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
+else
+  right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
+fi
+
+
+
+# check that no rpm binaries have been tampered with
+# disabled... we made changes, check is not robust.
+#rpm -Va | $EGREP bin | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
+
+
+
+# check that eth1 is working, fix if not
+eth1_err="eth1: card reports no RX buffers"
+if [ `tail -n 10 /var/log/messages | grep -c "$eth1_err"` -gt 0 ]; then
+    logit "ERROR: $eth1_err"
+    if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "$eth1_err"
+    fi
+    $IFDOWN eth1  >>$LOG 2>&1
+    $IFUP   eth1  >>$LOG 2>&1
+else
+  if [ $QUIET -ne 1 ]; then
+    logit  "No eth1 errors found in messages, ok"
+  fi
+fi
+
+
+
+# check that ntp is working, fix if not
+if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
+    x=`$XNTPDC -p`
+    logit "NO TIME SYNC"
+    logit "$x"
+    if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+    fi
+    $XNTP restart >>$LOG 2>&1
+else
+  if [ $QUIET -ne 1 ]; then
+    logit  "TIME SYNCD, ok"
+  fi
+fi
+
+
+
+# check that we have two processors running
+if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
+   logit "ONLY 1 PROCESSOR RUNNING"
+    if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
+    fi
+else
+  if [ $QUIET -ne 1 ]; then
+    logit  "Two processors found, ok"
+  fi
+fi
+\
+
+# check that we have sufficient disk space available.
+dflines=`$DF -P`
+$ECHO "$dflines" | while read a b c d e rest; do
+  if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
+    cap=`$ECHO $e | $SED -e 's/%//'`
+    mess="$a $b $c $d $e $rest"
+    if [ $cap -ge 90 ]; then
+      msg="DISK FULL: $mess"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+        enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+    else
+      if [ $QUIET -ne 1 ]; then
+        logit  "DISK $a at $cap%, ok"
+      fi
+    fi
+  fi
+done
+
+
+
+# get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
 # this is a small hole
 N1=`$LSOF -i TCP -i UDP`
@@ -279,6 +330,7 @@ PSfirst=`$PS -wwwwfaxu`
 N2=`$LSOF -i TCP -i UDP`
 N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
 
+# scan open files and check if allowed
 $ECHO "$N" | while read command pid rest; do
     if [ $pid = "PID" ] ; then continue; fi
     if [ `$ECHO $rest | $EGREP -c "LISTEN"` -ne 0 ]; then
@@ -293,6 +345,8 @@ $ECHO "$N" | while read command pid rest; do
       fi
     fi
 done
+
+
 
 logit "netscan finished"
 rm -fr $ACTIVE
