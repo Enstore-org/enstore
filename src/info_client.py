@@ -24,13 +24,22 @@ import callback
 import hostaddr
 import e_errors
 import enstore_constants
-import edb
 
 MY_NAME = enstore_constants.INFO_CLIENT     #"info_client"
 MY_SERVER = enstore_constants.INFO_SERVER   #"info_server"
 RCV_TIMEOUT = 10
 RCV_TRIES = 1
 
+
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
+def timestamp2time(s):
+	if s == '1969-12-31 17:59:59':
+		return -1
+	else:
+		# take care of daylight saving time
+		tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
+		tt[-1] = -1
+		return time.mktime(tuple(tt))
 
 #turn byte count into a nicely formatted string
 def capacity_str(x,mode="GB"):
@@ -58,7 +67,7 @@ def show_volume(v):
 	# pprint.pprint(v)
 	si0t = ''
 	si1t = ''
-	si_time = (edb.timestamp2time(v['si_time_0']), edb.timestamp2time(v['si_time_1']))
+	si_time = (timestamp2time(v['si_time_0']), timestamp2time(v['si_time_1']))
 	if si_time[0] > 0:
 		si0t = time.strftime("%m%d-%H%M",
 			time.localtime(si_time[0]))
