@@ -28,8 +28,9 @@ class NetDriver(driver.Driver):
         for opt in (socket.SO_RCVBUF, socket.SO_SNDBUF):
             try:
                 sock.setsockopt(socket.SOL_SOCKET, opt, size)
-                Trace.log(e_errors.INFO, "tcp buffer size %s %s" % (
-                    opt, sock.getsockopt(socket.SOL_SOCKET, opt)))
+                Trace.trace(10, "tcp buffer size %s %s" % (
+                    {socket.SO_RCVBUF:"SO_RCVBUF", socket.SO_SNDBUF:"SO_SNDBUF"}[opt],
+                    sock.getsockopt(socket.SOL_SOCKET, opt)))
             except socket.error, msg:
                 Trace.log(e_errors.ERROR, "setting tcp buffer size:  %s %s %s" % (
                     opt, size, msg))
