@@ -36,8 +36,8 @@ class ConfigurationClient(generic_client.GenericClient):
                 try:
                     ret = self.u.send(request, self.config_address, timeout, retry)
                     break
-            except socket.error:
-                self.output_socket_error("get")
+                except socket.error:
+                    self.output_socket_error("get")
         return ret
 
     # dump the configuration dictionary
