@@ -54,9 +54,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
         then
         echo "Configuration Server on $ENSTORE_CONFIG_HOST already started"
       else
-        echo "Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $enstore_config_file"
+        echo "Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $ENSTORE_CONFIG_FILE"
         cmd="python $ENSTORE_DIR/src/configuration_server.py \
-            --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --config_file=$enstore_config_file"
+            --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --config_file=$ENSTORE_CONFIG_FILE"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|conf' >/dev/null; then
             title="Enstore Config Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
