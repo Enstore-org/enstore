@@ -4,6 +4,7 @@ import time
 import stat
 from Worker import Worker
 import MA_API   
+import xparser 
 import ngop_global
 
 flag = 0
@@ -267,7 +268,9 @@ if __name__ == '__main__':
 	   sys.exit(1)
 
        try:
-	   cl=MA_API.MAClient(cfg,CJFunc())
+           xmlH=xparser.MACfg()
+           MA = xmlH.parseFile(cfg)
+	   cl=MA_API.MAClient(MA,CJFunc())
        except ngop_global.MAError,reason:
 	   print reason
 	   sys.exit(1)
