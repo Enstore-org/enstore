@@ -1025,7 +1025,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
-                Trace.trace(8,"write_tape: tr_failed %s"%(self.tr_failed,))
+                Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
             empty = self.buffer.empty()
             if (empty or
@@ -1081,7 +1081,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.full():
                 self.buffer.read_ok.set()
         if self.tr_failed:
-            Trace.trace(8,"write_tape: tr_failed %s"%(self.tr_failed,))
+            Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
             return
 
         Trace.notify("transfer %s %s %s media" % (self.shortname, self.bytes_written, self.bytes_to_write))
@@ -1212,7 +1212,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-            Trace.trace(8,"read_tape: tr_failed %s"%(self.tr_failed,))
+            Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
             if self.buffer.full():
@@ -1270,8 +1270,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
-        Trace.trace(8,"read_tape: tr_failed %s"%(self.tr_failed,))
         if self.tr_failed:
+            Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
         if failed: return
         if do_crc:
@@ -1771,18 +1771,18 @@ class Mover(dispatching_worker.DispatchingWorker,
             cur_thread_name = None
 
         dismount_allowed = 0
-        Trace.trace(8,"current thread %s"%(cur_thread_name,))
+        Trace.trace(26,"current thread %s"%(cur_thread_name,))
         if cur_thread_name:
-            if cur_thread_name is 'tape_thread':
+            if cur_thread_name == 'tape_thread':
                 dismount_allowed = 1
 
-            elif cur_thread_name is 'net_thread':
+            elif cur_thread_name == 'net_thread':
                 # check if tape_thread is active before allowing dismount
-                Trace.trace(8,"checking thread %s"%('tape_thread',))
+                Trace.trace(26,"checking thread %s"%('tape_thread',))
                 thread = getattr(self, 'tape_thread', None)
                 for wait in range(60):
                     if thread and thread.isAlive():
-                        Trace.trace(8, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                        Trace.trace(27, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
                     else:
                         dismount_allowed = 1
@@ -2152,6 +2152,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 
                 broken = "Cannot eject tape"
+                # see what threads are running
+                threads = threading.enumerate()
+                for thread in threads:
+                    if thread.isAlive():
+                        thread_name = thread.getName()
+                        Trace.log(e_errors.INFO,"Thread %s is running" % (thread_name,))
+                    else:
+                        Trace.log(e_errors.INFO,"Thread is dead")
 
                 if self.current_volume:
                     try:
