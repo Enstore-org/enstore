@@ -323,7 +323,8 @@ class Buffer:
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
                                   (self.sanity_cookie[1],self.sanity_crc)) 
-                        crc_error = 1
+                        if not self.sanity_cookie == (None, None): # special case to fix bfid db
+                            crc_error = 1   
                 data_ptr = data_ptr + bytes_for_cs
             except:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
@@ -1432,6 +1433,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
                 Trace.alarm(e_errors.ERROR, "read_tape CRC error")
+                Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
+                          (self.buffer.complete_crc, self.file_info['complete_crc']))
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
