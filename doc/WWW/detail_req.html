@@ -55,7 +55,9 @@ probably exist as well:
 <p>
 <p>
 This section attempts to address these same requirements from Enstore's
-perspective.
+perspective. In the difficulty column, "None" means that the requirement is
+inherent to enstore's design or else it is already implemented in the
+prototype.
 <p>
 <p>
 
@@ -116,7 +118,7 @@ The MSS shall ensure that tape media is efficiently utilized. Files
      should be appended to tapes in such a way that all the media is used and
      tape is written to physical end of media.
 </td><td align=left valign=top>
-Enstore expect ftt to provide correct information from the media devices and
+Enstore expects ftt to provide correct information from the media devices and
 will use this information to fill tapes. It will not attempt to span files
 across tapes and as such will never completely fill tapes - there will always
 be less space left on the tape than the nominal filesize.
@@ -129,7 +131,7 @@ Files shall span tapes (if necessary) in order to fill an allocated
      tape(physical volume) in a storage class before starting a new tape.
 </td><td align=left valign=top>
 Enstore does not plan to span files across tapes.
-</td><td align=left valign=top>Very difficult</td></tr>
+</td><td align=left valign=top>Not planned</td></tr>
 
 <tr><td align=left valign=top>
 (16)
@@ -145,7 +147,8 @@ File families provide this feature.
 <td align=left valign=top>
 There shall be up to 1000 (TBD) different file families.
 </td><td align=left valign=top>
-There are no limits, within reason (memory...)
+There are no limits, within reason - one can make more file families than
+there will be tapes in Run II.
 </td><td align=left valign=top> None <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -183,7 +186,7 @@ The width of a file family shall not exceed the number of physical + tape
      drives in the storage system.
 </td><td align=left valign=top>
 There is no current automatic tool that guarantees this in Enstore, but it is
-straightforward to develop.
+straightforward to develop. Enstore will use the drives allocated to a family.
 </td><td align=left valign=top> Easy <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -310,7 +313,8 @@ The utilities for ejecting and returning tapes from/to the MSS tape
      background to the core MSS servers as a batch job, and shall not
      interfere with the normal operation of the MSS and tape robotic arm.
 </td><td align=left valign=top>
-Development of tools is new straightforward work.
+Development of tools is new straightforward work. Modifications to the media
+changes will have to be made.
 </td><td align=left valign=top>  Medium <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -345,7 +349,8 @@ When selecting a tape to be ejected, a user shall be able to specify the
      error message is returned to the user indicating that the file is not
      currently available
 </td><td align=left valign=top>
-Straightforward development
+Straightforward development. This is a simple change in the volume clerk
+tables to switch library manager for ejected volumes.
 </td><td align=left valign=top>  Easy <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -357,7 +362,7 @@ If a file spans tape volumes and at least one of the volumes has been
      on which the file resides were ejected from the library.
 </td><td align=left valign=top>
 Files do not span tapes.
-</td><td align=left valign=top>Very difficult<td align=left valign=top></tr>
+</td><td align=left valign=top>Not planned<td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
 (37)
@@ -455,7 +460,8 @@ There shall be two scenarios whereby volumes are re-inserted into the
      robot I/O tray
 </td><td align=left valign=top>
 Enstore could be used  to run operator driven tape drives. Operator
-interaction would have to be developed.
+interaction would have to be developed. Library manager could interact with
+OCS, for example.
 </td><td align=left valign=top>  Easy <td align=left valign=top></tr>
 
 <tr><tr><tr>
@@ -474,7 +480,8 @@ interaction would have to be developed.
 It shall be possible to optionally mark a tape volume as "Read Only". The
      Read Only status of a tape shall be maintained in the MSS metadata.
 </td><td align=left valign=top>
-Volume clerk provides this capability
+Volume clerk provides this capability. Moreover, enstore has a system and a
+user read-only flag that can be controlled independently.
 </td><td align=left valign=top>  None <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -675,7 +682,7 @@ Library manager provides this.
 Robotic tape libraries (especially the robot arm and storage slots) will
     be in short supply, and their use shall be optimized.
 </td><td align=left valign=top>
-Not clear to me how Enstore can optimize this.
+Not clear to me how Enstore can optimize this. Dropped from HPSS requirements?
 </td><td align=left valign=top>  ??? <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
@@ -785,7 +792,7 @@ When a request is made to read or write a file to the MSS, the system
 </td><td align=left valign=top>
 I think this is very hard to do for all but the simplest cases. Tape and drive
 optimization affect this dramatically.
-</td><td align=left valign=top>  Hard <td align=left valign=top></tr>
+</td><td align=left valign=top> Very Hard <td align=left valign=top></tr>
 
 <tr><td align=left valign=top>
 (68)
@@ -935,7 +942,7 @@ Fault Tolerance
 The failure of a single component shall not cause the system to become
      unavailable for the high priority data movement tasks.
 </td><td align=left valign=top>
-Single points of failure (file clerk, library manager...) need to be made more
+Single points of failure (file clerk, library manager...) need to be
 robust. Multiple movers need failure/restart procedures.
 </td><td align=left valign=top>  Hard <td align=left valign=top></tr>
 
@@ -1053,7 +1060,7 @@ development needs to be done for GUI work.
 <td align=left valign=top>
 Trash Basket - When files are deleted, they shall go into a trash basket.  New work
 </td><td align=left valign=top>
-Straightforward implementation for DESY protocol. Metadata lost only when
+Straightforward implementation for DESY protocol. Metadata purged only when
 tapes squeezed.  Some work to restore files from trashbin.
 </td><td align=left valign=top>  Medium <td align=left valign=top></tr>
 
@@ -1092,7 +1099,8 @@ OK, unless otherwise noted.
 The MSS system monitor shall provide GUI displays of health and status of
      all components in the system.
 </td><td align=left valign=top>
-CLI Health monitor needs further development. Gui means lengthy development time.
+CLI Health monitor needs further development. Gui means lengthy development
+time. We have a rudimentary WEB display now.
 </td><td align=left valign=top>  Medium <td align=left valign=top></tr>
 
 
@@ -1176,7 +1184,9 @@ The MSS shall provide the capability to build storage hierarchies
 </td><td align=left valign=top>
 Enstore does not attempt to manage all levels of the storage
 hierarchies. Enstore can be used as a front end to products that do attempt to
-manage disks. A disk caching/buffer extension to Enstore is planned.
+manage disks. A disk caching/buffer extension to Enstore is planned.  Enstore
+imagines 4 levels of hierarchy: user disk, buffer/cache disk, library tape and
+shelf tape. Enstore only seeks to manage the last two.
 </td><td align=left valign=top>Very difficult</td></tr>
 
 <tr><tr><tr>
