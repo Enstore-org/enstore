@@ -124,6 +124,7 @@ ALL = "all"                                  #volume
 BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
+CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
 CHECK = "check"                              #volume
 CLEAN_DRIVE = "clean_drive"                  #mover
 CLEAR = "clear"                              #volume
@@ -139,6 +140,7 @@ DECR_FILE_COUNT = "decr-file-count"          #volume
 DELETE = "delete"                            #volume
 DELETED = "deleted"                          #file
 DELETE_WORK = "delete-work"                  #library
+DESCRIPTION = "description"                  #enstore_make_log_plot
 DESTROY = "destroy"                          #volume
 DISMOUNT = "dismount"                        #media
 DO_ALARM = "do-alarm"
@@ -217,6 +219,7 @@ PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
 PNFS_STATE = "pnfs-state"                    #pnfs
 POSITION = "position"                        #pnfs
+PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
@@ -252,6 +255,7 @@ TAGRM = "tagrm"                              #pnfs
 TAGS = "tags"                                #pnfs
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
+TITLE = "title"                              #enstore_make_log_plot
 UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
@@ -262,6 +266,7 @@ VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs
 VOL1OK = "VOL1OK"                            #volume
 WARM_RESTART = "warm-restart"                #mover
+WEB_HOST = "web-host"                        #enstore_make_log_plot
 XREF = "xref"                                #pnfs
 
 #these are this files test options
@@ -274,10 +279,10 @@ TEST = "test"                                #option
 valid_option_list = [
     ADD, ALIVE, ALL,
     BACKUP, BFID, BFIDS,
-    CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
+    CAPTION_TITLE, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN,
-    DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESTROY,
+    DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
     DISMOUNT,
     DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
@@ -295,17 +300,17 @@ valid_option_list = [
     MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
-    PARENT, PATH, PNFS_STATE, POSITION, PRIORITY,
+    PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
     SHOW_IGNORED_STORAGE_GROUPS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
-    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT,
+    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VOL, VOLS, VOLUME, VOL1OK,
-    WARM_RESTART,
+    WARM_RESTART, WEB_HOST,
     XREF,
     ]
 

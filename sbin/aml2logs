@@ -43,8 +43,8 @@ if [ -z "${1-}" ]; then
              --title="$robot Log Files" \
              --web_host="http://${gang}srv2.fnal.gov/enstore/aml2log" \
              --logfile_dir="$DECODED" \
-             --output="$DECODED/aml2_log_file.html" \
-             --caption="$robot Log Files"
+             --html_file="$DECODED/aml2_log_file.html" \
+             --caption_title="$robot Log Files"
 
       #python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
       #       --title="$robot Report Files" \

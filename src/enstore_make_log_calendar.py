@@ -5,10 +5,12 @@
 import time
 import os
 import stat
+import sys
 
 import enstore_html
 import enstore_files
 import generic_client
+import option
 
 CAPTION_DEFAULT = "Log Files"
 LPFILE = "./log_file.html"
@@ -83,7 +85,7 @@ class Aml2LogPage(LogPage):
 
 class LogPageInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flags=1, opts=[]):
+    def __init__(self, args=sys.argv, user_mode=1):
 	# fill in the defaults for the possible options
 	self.logfile_dir = "./"
 	self.prefix = "log"
@@ -91,13 +93,57 @@ class LogPageInterface(generic_client.GenericClientInterface):
 	self.caption_title = CAPTION_DEFAULT
 	self.description = "List of existing Log files"
 	self.title = "Enstore User Logs"
-	self.output = LPFILE
+	self.html_file = LPFILE
 	generic_client.GenericClientInterface.__init__(self)
 
-    def options(self):
-	return self.help_options() +[
-            "logfile-dir=", "prefix=", "web-host=", "caption-title=",
-            "description=", "title=", "output="]
+    plot_options = {
+        option.CAPTION_TITLE:{option.HELP_STRING:"title for page",
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_LABEL:"title",
+                              option.USER_LEVEL:option.ADMIN,
+                              },
+        option.DESCRIPTION:{option.HELP_STRING:"Upper left corner description text",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"description",
+                            option.USER_LEVEL:option.ADMIN,
+                            },
+        option.LOGFILE_DIR:{option.HELP_STRING:"location of robot log files",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"directory",
+                            option.USER_LEVEL:option.ADMIN,
+                            },
+        option.HTML_FILE:{option.HELP_STRING:"html file to create",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"dir/filename",
+                            option.USER_LEVEL:option.ADMIN,
+                            },
+        option.PREFIX:{option.HELP_STRING:"text prefix for each log file (D:log)",
+                       option.VALUE_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_LABEL:"prefix",
+                       option.USER_LEVEL:option.ADMIN,
+                       },
+        option.TITLE:{option.HELP_STRING:"HTML title to use for page",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"HTML title",
+                      option.USER_LEVEL:option.ADMIN,
+                      },
+        option.WEB_HOST:{option.HELP_STRING:"http location of html_file",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"http_location",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+        }
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.trace_options,
+                self.plot_options)
 
 def aml2_do_work(intf):
     # this is where the work is really done
@@ -105,12 +151,12 @@ def aml2_do_work(intf):
     lp = Aml2LogPage(intf.title, intf.description, intf.prefix)
     lp.body(intf.logfile_dir, intf.web_host, intf.caption_title)
     # open the temporary html file and output the html text to it
-    tmp_lp_filename = "%s%s"%(intf.output, TMP)
+    tmp_lp_filename = "%s%s"%(intf.html_file, TMP)
     lp_file = enstore_files.EnFile(tmp_lp_filename)
     lp_file.open()
     lp_file.write(str(lp))
     lp_file.close()
-    os.rename(tmp_lp_filename, intf.output)
+    os.rename(tmp_lp_filename, intf.html_file)
 
 if __name__ == "__main__" :
 
