@@ -433,7 +433,6 @@ class Enstore(EnstoreInterface):
         elif not self.user_mode and arg1 == "backup":
             rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            print sys.argv
             argv3 = get_argv3("enstore")
             farmlet = get_farmlet("")
             if self.verify_node(farmlet):
