@@ -9,8 +9,8 @@ SHELL = /bin/sh
 .IGNORE:
 .SUFFIXES: .ps .html
 
-WWW  = ./www/
-WWW_NEW = ./www_new/
+WWW  = ./www
+WWW_NEW = ./www_new
 BIN  = ../bin/
 SRC  = ../src/
 SRCWWW = $(WWW)
@@ -27,9 +27,10 @@ HOME_FILE = $(WWW)/index.html
 PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
 	$(WWW)/write.ps
 
-GIF_FILES = $(WWW)/bookshelf.gif
+GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
+	$(WWW)/enstore.gif
 
-WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(HOME_FILE)
+WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(HOME_FILE)
 
 #
 # TARGETS
