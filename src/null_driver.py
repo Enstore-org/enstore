@@ -20,7 +20,7 @@ class NullDriver(driver.Driver):
         self._last_rate = 0
         self_start_time = None
         self._total_time = 0
-        self._bytes_transferred = 0
+        self._bytes_transferred = 0L
         self.verbose = 0
         
     def open(self, device=None, mode=None, retry_count=10):
@@ -38,7 +38,7 @@ class NullDriver(driver.Driver):
         self.mode = mode
         if self.fd < 0:
             self.fd = os.open(device, mode)
-        self._rate = self._last_rate = self._bytes_transferred = 0
+        self._rate = self._last_rate = self._bytes_transferred = 0L
         return 1
 
     def rewind(self):
