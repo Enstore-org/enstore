@@ -29,8 +29,6 @@
 #include "derrno.h"     /* das errnos   */
 #include <netinet/in.h>
 
-%include "derrno.h"
-
 %include "aci_typedefs.h"
 %include "aci_typemaps.i"
 
