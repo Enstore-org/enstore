@@ -221,7 +221,9 @@ class DbTable:
      c=self.db.cursor(t)
      Trace.log(e_errors.INFO,repr(c.first()))
      while c:
-	 Trace.log(e_errors.INFO,c.next())
+#	No! You don't want to dump the whole database into Trace.log ...
+#	 Trace.log(e_errors.INFO,c.next())
+         print c.next()
      c.close()
      t.commit()
 
