@@ -32,6 +32,7 @@ main(  int	argc
 	char	*buf_p;
 	char	*file;
 	int	nMB=102;
+	int	sts;
 
     if (argc <= 1)
     {   printf( USAGE, argv[0] );
@@ -57,7 +58,11 @@ main(  int	argc
     printf( "1024*1024*%d=%d   1024*%d=%d\n", nMB, 1024*1024*nMB, nKB, 1024*nKB );
     for (idx=0; idx<((1024*nMB)/nKB); idx++)
     {
-	 read( fd, buf_p, 1024*nKB );
+	 sts = read( fd, buf_p, 1024*nKB );
+	 if (sts == -1)
+	 {   perror( "read error" );
+	     break;
+	 }
     }
 
     close( fd );
