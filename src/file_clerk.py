@@ -58,6 +58,64 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          return
 
+    # update the database entry for this file - add the pnfs file id
+    def set_pnfsid(self, ticket):
+     Trace.trace(12,'{set_pnfsid '+repr(ticket))
+     try:
+
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket["fc"][key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key+" key is missing")
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            return
+
+        # also need new pnfsid - make sure we have this
+        try:
+            key2="pnfsid"
+            pnfsid = ticket["fc"][key2]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key2+" key is missing")
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            return
+
+        # look up in our dictionary the request bit field id
+        try:
+            record = copy.deepcopy(dict[bfid])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: bfid "+repr(bfid)+" not found")
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"bfid_info "+repr(ticket["status"]))
+            return
+
+        # add the pnfsid
+        record["pnfsid"] = pnfsid
+
+        # record our changes
+        dict[bfid] = copy.deepcopy(record)
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'}set_pnfsid '+repr(ticket))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}set_pnfsid "+repr(ticket["status"]))
+         return
+
     def get_user_sockets(self, ticket):
         Trace.trace(16,"{get_user_sockets "+repr(ticket))
         file_clerk_host, file_clerk_port, listen_socket =\
@@ -120,7 +178,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             bfid = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
-				"File Clerk: "+key+" key is missing")
+                                "File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -131,7 +189,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             finfo = copy.deepcopy(dict[bfid])
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
-				"File Clerk: bfid "+repr(bfid)+" not found")
+                                "File Clerk: bfid "+repr(bfid)+" not found")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -151,7 +209,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             external_label = finfo[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
-				"File Clerk: "+key+" key is missing")
+                                "File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))

@@ -43,6 +43,12 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(12,"}new_bit_file"+repr(r))
         return r
 
+    def set_pnfsid(self, ticket):
+        Trace.trace(12,"{set_pnfsid")
+        r = self.send(ticket)
+        Trace.trace(12,"}set_pnfsid"+repr(r))
+        return r
+
     def get_bfids(self):
         Trace.trace(16,"{get_bfids")
         host, port, listen_socket = callback.get_callback()
