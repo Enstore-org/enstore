@@ -9,7 +9,9 @@ import socket
 import string
 import sys
 import time
+import stat
 
+#Set up paths to find our private copy of tcl/tk 8.3
 ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
 if ENSTORE_DIR:
     TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
@@ -19,6 +21,11 @@ os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
 os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
 sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
 
+if ENSTORE_DIR:
+    IMAGE_DIR=os.path.join(ENSTORE_DIR, 'etc', 'Images')
+else:
+    IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
+    
 from Tkinter import *
 from tkFont import Font
 
@@ -62,8 +69,37 @@ def strip_domain(hostname):
         parts = parts[:-2]
     return string.join(parts,'.')
 
-#######################################################################################
-# ost of the functions will be handled by the mover.
+_image_cache = {} #key is filename, value is (modtime, img)
+
+def find_image(name):
+    """Look in IMAGE_DIR for a file of the given name.  Cache already loaded image,
+    but check modification time for file changes"""
+    img_mtime, img = _image_cache.get(name, (0, None))
+    filename = os.path.join(IMAGE_DIR, name)
+    if img: #already cached, is it still valid?
+        try:
+            statinfo = os.stat(filename)
+        except:
+            del _image_cache[name]
+            img = None
+        file_mtime = statinfo[stat.ST_MTIME]
+        if file_mtime > img_mtime: #need to reload
+            del _image_cache[name]
+            img = None
+    if not img: # Need to load it
+        try:
+            statinfo = os.stat(filename)
+            file_mtime = statinfo[stat.ST_MTIME]
+            img = PhotoImage(file=filename)
+            _image_cache[name] = file_mtime, img #keep track of image and modification time
+        except:
+            img = None
+    return img
+    
+    
+    
+#########################################################################
+# Most of the functions will be handled by the mover.
 # its  functions include:
 #     draw() - draws most features on the movers
 #     update_state() - as the state of the movers change, display for state will be updated
@@ -115,7 +151,11 @@ class Mover:
         x, y = self.x, self.y
         self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
         self.label = self.display.create_text(x+60, y+40, text=self.name)
-        self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
+        img = find_image(self.state+'.gif')
+        if img:
+            self.state_display = self.display.create_image(x+90, y+8, anchor=NW, image=img)
+        else:
+            self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         self.timer_display = self.display.create_text(x+100, y+22, text='00:00:00',fill='white')
         if self.percent_done != None:
             bar_width = 38
@@ -134,7 +174,11 @@ class Mover:
         self.state = state
         x, y = self.x, self.y
         self.display.delete(self.state_display) # "undraw" the prev. state message
-        self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
+        img = find_image(state+'.gif')
+        if img:
+            self.state_display = self.display.create_image(x+90, y+8, anchor=NW, image=img)
+        else:
+            self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         now = time.time()
         self.timer_started = now
         if state != 'ACTIVE':
@@ -311,7 +355,6 @@ class Volume:
         x, y = self.x, self.y
         if x is None or y is None:
             return
-        print "drawing", self.name, 'loaded=', self.loaded, 'ejected=', self.ejected
         if self.loaded:
             tape_color, label_color = 'orange', 'white'
         else:
