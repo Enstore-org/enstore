@@ -776,9 +776,11 @@ class stk_MediaLoader(MediaLoaderMethods):
         except:
             exc, msg, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "timed_command wait for child failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+	    os.close(c2pread)
             return -1,[], self.delta_t(mark)[0]
 
         if p==0:
+	    os.close(c2pread)
             return -2,[], self.delta_t(mark)[0]
 
         # now read response from the pipe
@@ -792,6 +794,7 @@ class stk_MediaLoader(MediaLoaderMethods):
             if msg == '':
                 blanks = blanks+1
         response = string.split(message,'\012')
+	os.close(c2pread)
         size = len(response)
         if size <= 19:
             return -3,[], self.delta_t(mark)[0]
