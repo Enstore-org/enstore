@@ -81,7 +81,7 @@ def is_media_changer(server):
 
 # return true if the passed server name is one of the following -
 #   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
-#   server
+#   server, event_relay
 def is_generic_server(server):
     if server in enstore_constants.GENERIC_SERVERS:
 	return 1
