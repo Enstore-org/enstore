@@ -812,9 +812,10 @@ class stk_MediaLoader(MediaLoaderMethods):
 #		for l in ml:
 #                   nl=nl+1
 #		   print "nread=",nread, "line=",nl, l
-          response = string.split(message,'\012')
+          response = []
+          resp = string.split(message,'\012')
 	  nl=0
-	  for l in response:
+	  for l in resp:
 	    if string.find(l,'Place cartridges in CAP') != -1 or \
 	       string.find(l,'Remove cartridges from CAP') != -1 or \
 	       string.find(l,'Library error, LSM offline') != -1 or \
@@ -826,18 +827,18 @@ class stk_MediaLoader(MediaLoaderMethods):
 	       string.find(l,'Cleaned') != -1:
 	       if self.DEBUG:
 	          print "DELETED:", l
-	       del response[nl]
 	       jonflag=1
 	    else:
 	       if self.DEBUG:
 	          print    "response line =",nl, l
+               response.append(l)
 	       nl=nl+1
           nlines=len(response)
 
 	  nl=0
 	  if jonflag and self.DEBUG:
 	       for l in response:
-		  print    "response line =",nl, l
+		  print    "parsed lines =",nl, l
 		  nl=nl+1
 
 	os.close(c2pread)
