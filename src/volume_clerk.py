@@ -5,6 +5,7 @@ import timeofday
 import copy
 import callback
 import log_client
+import traceback
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
@@ -685,6 +686,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
+            traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\

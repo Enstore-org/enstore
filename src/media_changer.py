@@ -18,6 +18,7 @@ import configuration_client
 import dispatching_worker
 import generic_server
 import log_client
+import traceback
 import string
 
 list = 0
@@ -217,6 +218,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
             mc.serve_forever()
         except:
+            traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\

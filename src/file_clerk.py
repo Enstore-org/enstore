@@ -70,7 +70,17 @@ class FileClerkMethods(DispatchingWorker) :
         except KeyError :
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
+            # unusual error - no id, but it is there
+            # what to do - let's try again and see what happens
+            try :
+                time.sleep(5)
+                finfo = copy.deepcopy(dict[bfid])
+                print "found on retry!!!!"
+                pprint.pprint(finfo)
+            except KeyError :
+                print "not found on retry either!"
             self.reply_to_caller(ticket)
+
             return
 
         # copy all file information we have to user's ticket

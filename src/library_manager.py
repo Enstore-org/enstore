@@ -2,6 +2,7 @@ import os
 import time
 import timeofday
 import log_client
+import traceback
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
@@ -408,6 +409,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO,"Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
+            traceback.print_exc()
             format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
