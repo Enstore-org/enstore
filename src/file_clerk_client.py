@@ -86,10 +86,12 @@ class FileClient(generic_client.GenericClient, \
         data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
                   +"client get_bfids, fc final dialog")
+        workmsg = ""
         while 1: ##XXX warning read_tcp_buf can over-read
-          msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
+          msg=callback.read_tcp_buf(data_path_socket,"fcc get_bfids, reading worklist")
           if len(msg)==0:
                 break
+          workmsg = workmsg+msg
 	  Trace.log(e_errors.INFO, msg)
         worklist = ticket
         worklist['bfids'] = workmsg
@@ -234,7 +236,7 @@ if __name__ == "__main__" :
 
     elif intf.bfids:
         ticket = fcc.get_bfids()
-        print repr(ticket['bfids'])
+        print ticket['bfids']
 
     elif intf.tape_list:
         ticket = fcc.tape_list(intf.tape_list)
