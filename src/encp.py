@@ -2080,24 +2080,26 @@ def get_dinfo():
     return encp_daq
 
 def get_pinfo(p):
+
+    default_pinf = {"inode" : 0,
+                    #"gid" : None,
+                    #"gname" : None,
+                    #"uid" : None,
+                    #"uname" : None,
+                    "major" : None,
+                    "minor" : None,
+                    "rmajor" : None,
+                    "rminor" : None,
+                    "mode" : None,
+                    "pnfsFilename" : None,
+                    }
+    
     try:
         p.pstatinfo()
     except AttributeError:
         #This error can occur for volume reads with incomplete
         # metadata available.
-        pinf = {"inode" : 0,
-                 #"gid" : None,
-                 #"gname" : None,
-                 #"uid" : None,
-                 #"uname" : None,
-                 "major" : None,
-                 "minor" : None,
-                 "rmajor" : None,
-                 "rminor" : None,
-                 "mode" : None,
-                 "pnfsFilename" : None,
-                 }
-        return pinf
+        return default_pinf
     
     try:
         # get some debugging info for the ticket
@@ -2106,9 +2108,10 @@ def get_pinfo(p):
                    'major','minor','rmajor','rminor',
                    'mode','pstat', 'inode' ] :
             try:
-                pinf[k]=getattr(p,k)
+                pinf[k] = getattr(p, k)
             except AttributeError:
-                pinf[k]="None"
+                if default_pinf.has_key(k):
+                    pinf[k] = default_pinf[k]
         return pinf
 
     except (OSError, IOError), msg:
