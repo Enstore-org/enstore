@@ -46,6 +46,10 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(11,'}connect add='+repr(self.config_address)+\
                     ' udp='+repr(self.u))
 
+    # return the address of the configuration server
+    def get_address(self):
+	return self.config_address
+
     # get rid of all cached values - go back to server for information
     def clear(self):
         Trace.trace(16,'{clear')
