@@ -4,6 +4,7 @@ import os
 import getopt
 import restore
 import interface
+import configuration_client
 
 class Interface(interface.Interface):
 
