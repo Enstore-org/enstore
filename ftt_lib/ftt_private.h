@@ -1,4 +1,4 @@
-#include <sys/errno.h>
+#include <errno.h>
 #include <ftt_defines.h>
 #include <ftt_macros.h>
 #include <ftt_scsi.h>
