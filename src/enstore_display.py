@@ -143,18 +143,18 @@ class Mover:
         self.volume.draw(load_state)
 
     def unload_tape(self, volume):
-       if self.volume and volume != self.volume.name: 
-             print "Mover does not have this tape : ", volume
+        if self.volume and volume != self.volume.name: 
+            print "Mover does not have this tape : ", volume
         else:
-           k=self.index
-           N=self.N
-           angle=math.pi/(N-1)
-           i=(0+1J)
-           coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
-           x,y=coord.real,coord.imag
-           self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
-           self.volume.moveto(self.volume.x, self.volume.y)
-           self.volume.draw(load_state='loaded')
+            k=self.index
+            N=self.N
+            angle=math.pi/(N-1)
+            i=(0+1J)
+            coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
+            x,y=coord.real,coord.imag
+            self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
+            self.volume.moveto(self.volume.x, self.volume.y)
+            self.volume.draw(load_state='loaded')
 
     def robot_move(self, volume_name, robot_command):
         robot=self.display.robot
