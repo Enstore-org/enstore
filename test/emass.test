@@ -4,47 +4,93 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # test/$RCSfile$  $Revision$
 
-idm05=0
-idm06=0
-idm07=0
-idm08=0
+aits="DM05-CA2901-8MM DM06-CA2902-8MM DM07-CA2903-8MM DM08-CA2904-8MM"
+mammoths="DC12-CA2251-8MM"
+dlts="DE13-CA2501-DECDLT DE14-CA2502-DECDLT DE15-CA2503-DECDLT DE16-CA2504-DECDLT"
 
-idc12=0
+if [ -n "${1-}" ] ; then
+  sets="$1";
+  shift
+else
+  sets="$aits $mammoths $dlts"
+fi
 
-ide13=0
-ide14=0
-ide15=0
-ide16=0
+edismount() { if [ $1 -lt 0 ] ; then
+                echo -1
+              else
+                wait $1 2>/dev/null
+                drv=`echo $2 | tr '[a-z]' '[A-Z]'`
+                rip-drive $drv offline 1>/dev/null 2>&1
+                dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
+                echo $!
+              fi
+            }
+
+emount()    { if [ $1 -lt 0 ] ; then
+                echo -1
+              else
+                wait $1 2>/dev/null
+                typ=`echo $2 | tr '[a-z]' '[A-Z]'`
+                tap=`echo $3 | tr '[a-z]' '[A-Z]'`
+                drv=`echo $4 | tr '[a-z]' '[A-Z]'`
+                if [ `rip-drive $drv status | grep -c "DR_OPEN"` -eq 1 ] ; then
+                  dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
+                  echo $!
+                else
+                  echo -1
+                fi
+              fi
+            }
+
+eonline()   { if [ $1 -lt 0 ] ; then
+                echo -1
+              else
+                wait $1 2>/dev/null
+                drv=`echo $2 | tr '[a-z]' '[A-Z]'`
+                tries=$3
+                status=-1
+                count=0
+                while [ $count -le $tries -a $status -eq -1 ]; do
+                  if [ `rip-drive $drv status | grep -c "ONLINE"` -eq 1 ] ; then
+                    status=0
+                  fi
+                  sleep 1
+                  count=`expr $count + 1`
+                done
+                echo $status
+              fi
+            }
 
 while true; do
-  #eject and dismount the aits
-  wait $idm05 2>/dev/null; rip-drive dm05 offline; dasadmin dismount -d DM05 & idm05=$$
-  wait $idm06 2>/dev/null; rip-drive dm06 offline; dasadmin dismount -d DM06 & idm06=$$
-  wait $idm07 2>/dev/null; rip-drive dm07 offline; dasadmin dismount -d DM07 & idm07=$$
-  wait $idm08 2>/dev/null; rip-drive dm08 offline; dasadmin dismount -d DM08 & idm08=$$
 
-  #eject and dismount the mammoths
-  wait $idc12 2>/dev/null; rip-drive dc12 offline; dasadmin dismount -d DC12 & idc12=$$
+  for aset in $sets; do
+    drive=`echo $aset | cut -f1 -d-`
+    eval waitfor=\${I$drive:-0}
+    /bin/echo -n dismount $waitfor $drive
+    lastpid=`edismount $waitfor $drive`
+    eval I$drive=\$lastpid
+    echo " " $lastpid
+  done
 
-  #eject and dismount the dlts
-  wait $ide13 2>/dev/null; rip-drive de13 offline; dasadmin dismount -d DE13 & ide13=$$
-  wait $ide14 2>/dev/null; rip-drive de14 offline; dasadmin dismount -d DE14 & ide14=$$
-  wait $ide15 2>/dev/null; rip-drive de15 offline; dasadmin dismount -d DE15 & ide15=$$
-  wait $ide16 2>/dev/null; rip-drive de16 offline; dasadmin dismount -d DE16 & ide16=$$
+  for aset in $sets; do
+    drive=`echo $aset | cut -f1 -d-`
+    tape=`echo  $aset | cut -f2 -d-`
+    mtype=`echo $aset | cut -f3 -d-`
+    eval waitfor=\${I$drive:-0}
+    /bin/echo -n mount $waitfor $mtype $tape $drive
+    lastpid=`emount $waitfor $mtype $tape $drive`
+    eval I$drive=\$lastpid
+    echo " " $lastpid
+  done
 
-  #mount the aits
-  wait $idm05 2>/dev/null; dasadmin mount -t 8MM CA2901 DM05 & idm05=$$
-  wait $idm06 2>/dev/null; dasadmin mount -t 8MM CA2902 DM06 & idm06=$$
-  wait $idm07 2>/dev/null; dasadmin mount -t 8MM CA2903 DM07 & idm07=$$
-  wait $idm08 2>/dev/null; dasadmin mount -t 8MM CA2904 DM08 & idm08=$$
-
-  #mount the mammoths
-  wait $idc12 2>/dev/null; dasadmin mount -t 8MM CA2251 DC12 & idc12=$$
-
-  #mount the dlts
-  wait $ide13 2>/dev/null; dasadmin mount -t DECDLT CA2501 DE13 & ide13=$$
-  wait $ide14 2>/dev/null; dasadmin mount -t DECDLT CA2502 DE14 & ide14=$$
-  wait $ide15 2>/dev/null; dasadmin mount -t DECDLT CA2503 DE15 & ide15=$$
-  wait $ide16 2>/dev/null; dasadmin mount -t DECDLT CA2504 DE16 & ide16=$$
+  for aset in $sets; do
+    drive=`echo $aset | cut -f1 -d-`
+    eval waitfor=\${I$drive:-0}
+    tries=300
+    /bin/echo -n online $waitfor $drive $tries
+    lastpid=`eonline $waitfor $drive $tries`
+    eval I$drive=\$lastpid
+    echo " " $lastpid
+  done
 
 done
