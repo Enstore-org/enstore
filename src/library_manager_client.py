@@ -2,7 +2,7 @@ import sys
 import pprint
 import time
 from configuration_client import *
-from udp_client import UDPClient
+from udp_client import UDPClient, TRANSFER_MAX
 from dict_to_a import *
 from callback import *
 from errno import *
@@ -48,17 +48,17 @@ class LibraryManagerClient :
         if ticket['status'] != "ok" :
             raise errorcode[EPROTO],"lmc.getwork: sending ticket"+repr(ticket)
         if list :
-            print "Q'd: getwork"
+            print "Q'd: getwork from",self.name+".library_manager"
 
-        # We have placed our work in the system and now we have to wait for
-        # resources. All we  need to do is wait for the system to call us back,
+        # We have placed our request in the system and now we have to wait.
+        # All we  need to do is wait for the system to call us back,
         # and make sure that is it calling _us_ back, and not some sort of old
         # call-back to this very same port. It is dicey to time out, as it
         # is probably legitimate to wait for hours....
 
         while 1 :
             control_socket, address = listen_socket.accept()
-            new_ticket = a_to_dict(control_socket.recv(10000))
+            new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
@@ -68,7 +68,7 @@ class LibraryManagerClient :
         ticket = new_ticket
         if ticket["status"] != "ok" :
             raise errorcode[EPROTO],"lmc.getwork: "\
-                  +"1st (pre-work-read) library manager callback on socket at "\
+                  +"1st (pre-work-read) library manager callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
 
@@ -85,17 +85,17 @@ class LibraryManagerClient :
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with library manager.
-        done_ticket = a_to_dict(control_socket.recv(10000))
+        done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
         control_socket.close()
         if done_ticket["status"] != "ok" :
             raise errorcode[EPROTO],"lmc.getwork: "\
-                  +"2nd (post-work-read) library manger callback on socket at "\
+                  +"2nd (post-work-read) library manger callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
         if list :
             print "done"
 
-	return done_ticket
+        return done_ticket
 
 
 if __name__ == "__main__" :
@@ -155,7 +155,7 @@ if __name__ == "__main__" :
         ticket = lmc.getwork(list)
 
     elif printwork:
-	ticket = lmc.printwork()
+        ticket = lmc.printwork()
 
     if ticket["status"] != "ok"  :
         print "BAD status returned"

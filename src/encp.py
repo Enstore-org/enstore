@@ -3,7 +3,7 @@ import string
 from callback import *
 from configuration_client import configuration_client
 from dict_to_a import *
-from udp_client import UDPClient
+from udp_client import UDPClient, TRANSFER_MAX
 import pnfs
 import stat
 import time
@@ -80,7 +80,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # is probably legitimate to wait for hours....
     while 1 :
         control_socket, address = listen_socket.accept()
-        new_ticket = a_to_dict(control_socket.recv(10000))
+        new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
             break
@@ -90,7 +90,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     ticket = new_ticket
     if ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
-              +"1st (pre-file-send) mover callback on socket at "\
+              +"1st (pre-file-send) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
 
@@ -108,7 +108,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # File has been sent - wait for final dialog with mover. We know the file
     # has hit some sort of media.... when this occurs. Create a file in pnfs
     # namespace with information about transfer.
-    done_ticket = a_to_dict(control_socket.recv(10000))
+    done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
     if done_ticket["status"] == "ok" :
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
@@ -118,7 +118,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
                   ,done_ticket["external_label"],done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
-              +"2nd (post-file-send) mover callback on socket at "\
+              +"2nd (post-file-send) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
 
@@ -168,7 +168,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # is probably legitimate to wait for hours....
     while 1 :
         control_socket, address = listen_socket.accept()
-        new_ticket = a_to_dict(control_socket.recv(10000))
+        new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
         if ticket["unique_id"] == new_ticket["unique_id"] :
             listen_socket.close()
             break
@@ -178,7 +178,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     ticket = new_ticket
     if ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
-              +"1st (pre-file-read) mover callback on socket at "\
+              +"1st (pre-file-read) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
 
@@ -195,11 +195,11 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     f.close()
 
     # File has been read - wait for final dialog with mover.
-    done_ticket = a_to_dict(control_socket.recv(10000))
+    done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
     if done_ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
-              +"2nd (post-file-read) mover callback on socket at "\
+              +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
     if list :

@@ -34,8 +34,12 @@ python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_p
 echo $! >> `uname -n`-file_clerk_pids
 
 # library manager
-echo "Starting library manager"
+echo "Starting library manager: activelibrary"
 python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
+echo $! >> `uname -n`-library_manager_pids
+
+echo "Starting library manager: red50library"
+python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port red50library &
 echo $! >> `uname -n`-library_manager_pids
 
 # stk media changer
