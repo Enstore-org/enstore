@@ -1,0 +1,15 @@
+Do the following to install the Enstore cgi scripts on the node which
+runs the web server -
+
+	o set up enstore
+
+	o Find the supported directory for cgi scripts.  Ususally called
+		cgi-bin.
+
+	o Create the directory cgi-bin/enstore
+
+	o Copy $ENSTORE_DIR/src/enstore_*_cgi.py to cgi-bin/enstore
+
+	o Copy $ENSTORE_DIR/etc/enstore.htaccess to cgi-bin/enstore/.htaccess
+
+The permissions on the cgi scripts must have execute turned on.
