@@ -14,7 +14,8 @@ pending_work = []       # list of read or write work tickets
 # here is where we setup priority for work that needs to get done
 def priority(ticket) :
     if ticket["work"] == "write_to_hsm" :
-        return 10
+        #return 10
+        return 1
     return 1
 
 
