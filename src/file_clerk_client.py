@@ -370,7 +370,9 @@ def do_work(intf):
     elif intf.bfids:
         ticket  = fcc.get_bfids(intf.bfids)
         if ticket['status'][0] == e_errors.OK:
-            print `ticket['bfids']`
+            for i in ticket['bfids']:
+                print i
+            # print `ticket['bfids']`
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
