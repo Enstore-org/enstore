@@ -34,7 +34,6 @@ DEFAULT_HTML_ALARM_FILE = "enstore_alarms.html"
 
 
 SEVERITY = alarm.SEVERITY
-ROOT_ERROR = alarm.ROOT_ERROR
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
@@ -47,11 +46,11 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             del ticket[SEVERITY]
         else:
             severity = e_errors.DEFAULT_SEVERITY
-        if ticket.has_key(ROOT_ERROR):
-            root_error = ticket[ROOT_ERROR]
+        if ticket.has_key(enstore_constants.ROOT_ERROR):
+            root_error = ticket[enstore_constants.ROOT_ERROR]
             # remove this entry from the dictionary, so if won't be included
             # as part of alarm_info
-            del ticket[ROOT_ERROR]
+            del ticket[enstore_constants.ROOT_ERROR]
         else:
             root_error = e_errors.DEFAULT_ROOT_ERROR
         if ticket.has_key(enstore_constants.PID):

@@ -21,7 +21,6 @@ DEFAULT_PID = -1
 DEFAULT_UID = ""
 DEFAULT_SOURCE = "None"
 
-ROOT_ERROR = "root_error"
 SEVERITY = "severity"
 
 MATCH = 1
@@ -161,9 +160,9 @@ class LogFileAlarm(GenericAlarm):
 
 	# split up the dictionary into components
 	dict = eval(string.strip(text))
-	if dict.has_key(ROOT_ERROR):
-	    self.root_error = dict[ROOT_ERROR]
-	    del dict[ROOT_ERROR]
+	if dict.has_key(enstore_constants.ROOT_ERROR):
+	    self.root_error = dict[enstore_constants.ROOT_ERROR]
+	    del dict[enstore_constants.ROOT_ERROR]
 	else:
 	    self.root_error = "UNKNOWN"
 	if dict.has_key(SEVERITY):
