@@ -128,7 +128,7 @@ done
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in NO_ACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v 'mgrated'
+egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v 'migrated'
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
