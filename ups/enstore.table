@@ -6,30 +6,55 @@ PRODUCT=enstore
 FLAVOR = ANY
 QUALIFIERS = ""
     ACTION=SETUP
-	setupEnv()
-	proddir()
-	pathAppend(PATH, ${UPS_PROD_DIR}/bin)
-	setupOptional("dot")
-	setupOptional("tgif")
-	setupOptional("htmldoc")
-	setupRequired("ftt")
+        setupEnv()
+        proddir()
+        pathPrepend( PATH, ${UPS_PROD_DIR}/sbin )
+        pathPrepend( PATH, ${UPS_PROD_DIR}/bin )
+
+        # dot, tgif and htmldoc are for generating documenation only
+        setupOptional("dot")
+        setupOptional("tgif")
+        setupOptional("htmldoc")
+
+        setupRequired("ftt")
+
+        # the setup of python is tricky
+        # if user has python declared, set that up and use it
 	setupOptional("python")
-	envSetIfNotSet(PYTHON_DIR, /usr/local)
-	exeAccess("python")
-	execute("/bin/ls -d $PYTHON_DIR/lib/python*", NO_UPS_ENV, ver)
-	execute("basename $ver", NO_UPS_ENV, PVER)
-	envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
-	envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
-	setupRequired("libtppy")
-	setupRequired("libtp")
-	envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src:${UPS_PROD_DIR}/modules:$LIBTPPY_DIR/lib")
-	envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/willow.conf)
-	envSet(ENSTORE_CONFIG_PORT, 7510)
-	envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
-	envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
-	sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
-	envUnset(ver)
-	envUnset(PVER)
-	pathPrepend( PATH, ${UPS_PROD_DIR}/sbin )
+        # if no python from ups available, we need it from the user's path
+        exeAccess("python")
+        # now we need to set a ups-like PYTHON_DIR to point to python
+        execute("which python | sed -e 's@/bin/python@@'", NO_UPS_ENV, pypath)
+        #envSetIfNotSet(PYTHON_DIR, /usr)
+        envSetIfNotSet(PYTHON_DIR, $pypath)
+        # envUnset(pypath) - this can't be unset, needed for unsetup of enstore (bug in ups!)
+
+        # now we need to determine where the python include and library paths are
+        # note in the following line, the sort allows multiple python versions,
+        #      the highest is used because of the reverse sort
+        execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
+        execute("basename $ver", NO_UPS_ENV, PVER)
+        envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
+        envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
+        envUnset(ver)
+        envUnset(PVER)
+
+        # set the libtp and libtppy products up after python
+        setupRequired("libtppy")
+        setupRequired("libtp")
+
+        # now set the python module search path
+        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src:${UPS_PROD_DIR}/modules:$LIBTPPY_DIR/lib")
+
+        # "control" environmental variables
+        envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/willow.conf)
+        envSet(ENSTORE_CONFIG_PORT, 7510)
+        envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
+
+        # the next one controls where the trace file goes
+        envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
+
+        # I don't think this is needed anymore ??
+        sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
 
 
