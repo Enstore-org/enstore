@@ -744,11 +744,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         ticket["status"] = (e_errors.OK, None)
         # catch any failure
-        try:
-            ticket['status'] = self.__erase_volume(vol)
-        except:
-            ticket["status"] = (e_errors.ERROR, "erase failed")
+        # try:
+        #     ticket['status'] = self.__erase_volume(vol)
+        # except:
+        #     ticket["status"] = (e_errors.ERROR, "erase failed")
         # and return to the caller
+        ticket['status'] = self.__erase_volume(vol)
         self.reply_to_caller(ticket)
         return
 
