@@ -89,7 +89,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.TCP_HUNG,
 	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
 	   
-
+
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_readonly( self.vol_info['external_label'] )
 
@@ -259,7 +259,6 @@ def forked_write_to_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
-	return {}			# forked with send 
     else:
 	logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
 
@@ -268,7 +267,7 @@ def forked_write_to_hsm( self, ticket ):
 	# First, call the user (to see if they are still there)
 	sts = get_user_sockets( self, ticket )
 	if sts == "error":
-	    return_or_exit( self, origin_addr, e_errors.ENCP_GONE )
+	    return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
 	    pass
 
 	t0 = time.time()
@@ -278,13 +277,13 @@ def forked_write_to_hsm( self, ticket ):
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
 	    send_user_done( self, ticket, sts )
-	    return_or_exit( self, origin_addr, sts )
+	    return_or_update_and_exit( self, origin_addr, sts )
 	    pass
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
+	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
         # setup values before transfer - incase of exception
@@ -332,14 +331,14 @@ def forked_write_to_hsm( self, ticket ):
             vcc.update_counts( self.vol_info['external_label'],
                                wr_err, rd_err, wr_access, rd_access )
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_ERROR )
+	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
 
         if wr_size != ticket['wrapper']['size_bytes']:
             msg = "Expected "+str(ticket['wrapper']['size_bytes'])+\
 		  " bytes  but only" +" stored"+str(wr_size)
             logc.send( log_client.ERROR, 1, msg )
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
-	    return_or_exit( self, origin_addr, e_errors.WRITE_ERROR )
+	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
 
         # All is well - write has finished successfully.
         #  get file/eod cookies & remaining bytes & errs & mnts
@@ -368,9 +367,9 @@ def forked_write_to_hsm( self, ticket ):
         logc.send(log_client.INFO,2,"WRITE"+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
-	return_or_exit( self, origin_addr, e_errors.OK )
+	return_or_update_and_exit( self, origin_addr, e_errors.OK )
 	pass
-    pass
+    return {}
 
 def forked_read_from_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
@@ -381,7 +380,6 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
-	return {}			# forked with send 
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
 
@@ -390,7 +388,7 @@ def forked_read_from_hsm( self, ticket ):
 	# First, call the user (to see if they are still there)
 	sts = get_user_sockets( self, ticket )
 	if sts == "error":
-	    return_or_exit( self, origin_addr, e_errors.ENCP_GONE )
+	    return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
 	    pass
 
 	t0 = time.time()
@@ -400,7 +398,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
 	    send_user_done( self, ticket, sts )
-	    return_or_exit( self, origin_addr, sts )
+	    return_or_update_and_exit( self, origin_addr, sts )
 	    pass
 
         # space to where the file will begin and save location
@@ -447,13 +445,13 @@ def forked_read_from_hsm( self, ticket ):
         if media_error :
             vcc.set_system_readonly( self.vol_info['external_label'] )
             send_user_done( self, ticket, e_errors.READ_ERROR )
-	    return_or_exit( self, origin_addr, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, origin_addr, e_errors.READ_ERROR )
 
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_errors :
             vcc.set_hung( self.vol_info['external_label'] )
             send_user_done( self, {"status" : "Mover: Retry: drive_errors "+msg}, e_errors.READ_ERROR )
-	    return_or_exit( self, origin_addr, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, origin_addr, e_errors.READ_ERROR )
 
         # All is well - read has finished correctly
 
@@ -465,17 +463,24 @@ def forked_read_from_hsm( self, ticket ):
         logc.send(log_client.INFO,2,"READ"+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
-	return_or_exit( self, origin_addr, e_errors.OK )
+	return_or_update_and_exit( self, origin_addr, e_errors.OK )
 	pass
-    pass
+    return
 
-def return_or_exit( self, origin_addr, status ):
+def return_or_update_and_exit( self, origin_addr, status ):
     if mvr_config['do_fork']:
-	summon_self( self, origin_addr )
+	# need to send info to update parent: vol_info and
+	# hsm_driver_info (read: hsm_driver.position
+	#                  write: position, eod, remaining_bytes)
+	# recent (read) errors (part of vol_info???)
+	udpc.send_no_wait( {'work':"update_client_info",
+			    'address':origin_addr,
+			    'pid':os.getpid(),
+			    'vol_info':self.vol_info},
+			   (self.config['hostip'],self.config['port']) )
 	sys.exit( m_err.index(status) )
     else:
 	return status_to_request( self, status )
-
 
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
@@ -530,13 +535,6 @@ def unilateral_unbind_next( self, error_info ):
 		      'external_label' : self.vol_info['external_label'],
 		      'status'         : (error_info,None)}
     return next_req_to_lm
-
-def summon_self( self, origin_addr ):
-    udpc.send_no_wait( {'work':"summon",
-			'address':origin_addr,
-			'pid':os.getpid()},
-		       (self.config['hostip'],self.config['port']) )
-    return
 
 
 class Mover:
@@ -593,10 +591,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	SocketServer.UDPServer.__init__( self, server_address, RequestHandlerClass )
 	return
 
-    def hello( self, ticket ):
-	self.reply_to_caller( {'status':"ok",'extra status':"hi"} )
-	return
-
     def set_timeout( self, ticket ):
 	out_ticket = {'status':"ok",'old timeout':self.rcv_timeout}
 	out_ticket['extra status'] = "changed"
@@ -606,23 +600,17 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.reply_to_caller( out_ticket )
 	return
 
-    def respond_with_error( self, ticket ):
-	self.reply_to_caller( {'status':"error"} )
+    def update_client_info( self, ticket ):
+	self.client_obj_inst.vol_info = ticket['vol_info']
+	wait = 0
+	next_req_to_lm = get_state_build_next_lm_req( self, wait )
+	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
 	return
-
-    def after_checked_user( self, ticket ):
-	return
-
 
     def summon( self, ticket ):
-	# CHECK IF SUMMON CAME FROM ME
-	if 'pid' in ticket.keys(): wait=0
-	else:                      wait=posix.WNOHANG
-
+	wait=posix.WNOHANG
 	next_req_to_lm = get_state_build_next_lm_req( self, wait )
-
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
-	    
 	return
 
     def handle_timeout( self ):
