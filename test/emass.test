@@ -10,12 +10,30 @@ else
   opt=""
 fi
 
-emass $opt DM05-CA2901 < /dev/null > dm05.mount 2>&1 &
-emass $opt DM06-CA2902 < /dev/null > dm06.mount 2>&1 &
-emass $opt DM07-CA2903 < /dev/null > dm07.mount 2>&1 &
-emass $opt DM08-CA2904 < /dev/null > dm08.mount 2>&1 &
-emass $opt DC12-CA2251 < /dev/null > dc12.mount 2>&1 &
-emass $opt DE13-CA2501 < /dev/null > de13.mount 2>&1 &
-emass $opt DE14-CA2502 < /dev/null > de14.mount 2>&1 &
-emass $opt DE15-CA2503 < /dev/null > de15.mount 2>&1 &
-emass $opt DE16-CA2504 < /dev/null > de16.mount 2>&1 &
+
+emass $opt DE01-CA2501 < /dev/null > de01.mount 2>&1 &
+emass $opt DE02-CA2502 < /dev/null > de02.mount 2>&1 &
+
+emass $opt DC03-CA2251 < /dev/null > dc03.mount 2>&1 &
+emass $opt DC04-CA2252 < /dev/null > dc04.mount 2>&1 &
+emass $opt DC05-CA2253 < /dev/null > dc05.mount 2>&1 &
+emass $opt DC06-CA2254 < /dev/null > dc06.mount 2>&1 &
+
+emass $opt DM07-CA2901 < /dev/null > dm07.mount 2>&1 &
+emass $opt DM08-CA2902 < /dev/null > dm08.mount 2>&1 &
+emass $opt DM09-CA2903 < /dev/null > dm09.mount 2>&1 &
+emass $opt DM10-CA2904 < /dev/null > dm10.mount 2>&1 &
+emass $opt DM11-CA2905 < /dev/null > dm11.mount 2>&1 &
+emass $opt DM12-CA2906 < /dev/null > dm12.mount 2>&1 &
+
+
+emass $opt DE13-CA2503 < /dev/null > de13.mount 2>&1 &
+emass $opt DE14-CA2504 < /dev/null > de14.mount 2>&1 &
+
+emass $opt DC15-CA2254 < /dev/null > dc15.mount 2>&1 &
+emass $opt DC16-CA2255 < /dev/null > dc16.mount 2>&1 &
+emass $opt DC17-CA2256 < /dev/null > dc17.mount 2>&1 &
+
+emass $opt DM18-CA2907 < /dev/null > dm18.mount 2>&1 &
+emass $opt DM19-CA2908 < /dev/null > dm19.mount 2>&1 &
+

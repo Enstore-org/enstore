@@ -18,28 +18,39 @@ fi
 # we have nameserver lookup troubles - skip this step and use the numeric ip's
 rip1=131.225.164.1
 rip2=131.225.164.2
-fntt=131.225.164.13
 rip9=131.225.164.15
+rip11=131.225.164.17
+rip12=131.225.164.18
+fntt=131.225.164.13
+ripsgi=131.225.164.16
 
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 case $drive in
-# dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-  dm05) cmd="rsh $fntt 'mt -f /dev/rmt/1cn     $command 2>&1; echo \$?'" ;;
-# dm06) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
-# dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  dm07) cmd="rsh $fntt 'mt -f /dev/rmt/0cn     $command 2>&1; echo \$?'" ;;
-# dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
-  dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5n $command 2>&1; echo \$?'" ;;
-# dc11) cmd="rsh $fntt 'mt -f /dev/rmt/4cn     $command 2>&1; echo \$?'" ;;
-# dc12) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d6n $command 2>&1; echo \$?'" ;;
-  de13) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
-# de13) cmd="rsh $fntt 'mt -f /dev/rmt/3cn     $command 2>&1; echo \$?'" ;;
-# de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d2n $command 2>&1; echo \$?'" ;;
-  de15) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
-# de15) cmd="rsh $fntt 'mt -f /dev/rmt/2cn     $command 2>&1; echo \$?'" ;;
-# de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d4n $command 2>&1; echo \$?'" ;;
-  stk1) cmd="rsh $rip9 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  stk2) cmd="rsh $rip9 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+
+  de01) cmd="rsh $fntt   'mt -f /dev/rmt/1cn     $command 2>&1; echo \$?'" ;;
+  de02) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  dc03) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  dc04) cmd="rsh $fntt   'mt -f /dev/rmt/0cn     $command 2>&1; echo \$?'" ;;
+  dc05) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+  dc06) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d5n $command 2>&1; echo \$?'" ;;
+  dm07) cmd="rsh $fntt   'mt -f /dev/rmt/4cn     $command 2>&1; echo \$?'" ;;
+  dm08) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d6n $command 2>&1; echo \$?'" ;;
+  dm09) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  dm10) cmd="rsh $fntt   'mt -f /dev/rmt/3cn     $command 2>&1; echo \$?'" ;;
+  dm11) cmd="rsh $rip1   'mt -f /dev/rmt/tps0d2n $command 2>&1; echo \$?'" ;;
+  dm12) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+
+  de13) cmd="rsh $rip11  'mt -f /dev/rmt/1cn     $command 2>&1; echo \$?'" ;;
+  de14) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  dc15) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  dc16) cmd="rsh $rip12  'mt -f /dev/rmt/0cn     $command 2>&1; echo \$?'" ;;
+  dc17) cmd="rsh $rip12  'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
+  dm18) cmd="rsh $rip11  'mt -f /dev/rmt/4cn     $command 2>&1; echo \$?'" ;;
+  dm19) cmd="rsh $rip11  'mt -f /dev/rmt/tps2d6n $command 2>&1; echo \$?'" ;;
+
+  stk1) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
+  stk2) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+
 esac
 cmd2="x=\"\`$cmd\`\""
 echo $cmd
@@ -64,4 +75,3 @@ done
 stat=`echo $x | awk '{print $NF}'`;
 echo $x
 exit $stat
-/dev/rmt/tps2d1n
