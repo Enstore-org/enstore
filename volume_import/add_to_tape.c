@@ -81,11 +81,12 @@ int
 write_tape_main(int argc, char **argv)
 {
     int i;
-    char *pnfs_dir = NULL;
+    char pnfs_dir[MAX_PATH_LEN];
     char destination[MAX_PATH_LEN];
     char path[MAX_PATH_LEN];
-    char *strip = NULL;
-    char *source, *cp;
+    char source[MAX_PATH_LEN];
+    char strip[MAX_PATH_LEN];
+    char *cp;
     list_node *node;
     int nfiles;
     int err_occurred = 0;
@@ -106,9 +107,9 @@ write_tape_main(int argc, char **argv)
 	    } else if ((cp=match_opt("--tape-db=",argv[i]))) {
 		tape_db = cp;
             } else if ((cp=match_opt("--pnfs-dir=",argv[i]))){
-		pnfs_dir = cp;
+		join_path(pnfs_dir,"",cp);
 	    } else if ((cp=match_opt("--strip-path=", argv[i]))){
-		strip = cp;
+		join_path(strip,"",cp);
 	    } else if ((cp=match_opt("--volume-label=", argv[i]))){
 		if (volume_label){
 		    fprintf(stderr,"%s: volume-label may be set only once\n",progname);
@@ -121,7 +122,7 @@ write_tape_main(int argc, char **argv)
 	    }
 	} else {
 	    /* it's a filename */
-	    source = argv[i];
+	    join_path(source,"",argv[i]); /*normalizes path*/
 	    if (verify_file(pnfs_dir, strip, source))
 		exit(-1);
 	    if (strip){
@@ -153,6 +154,11 @@ write_tape_main(int argc, char **argv)
 	WriteUsage();
     }
     
+    if (!file_list) {
+	fprintf(stderr, "%s: no files specified\n", progname);
+	WriteUsage();
+    }
+    
     if (verify_tape_device()
 	||verify_tape_db(0)
 	||open_tape()
@@ -161,7 +167,7 @@ write_tape_main(int argc, char **argv)
 	    fprintf(stderr,"%s: failed\n",progname);
 	    exit(-1);
 	}
-
+    
     fprintf(stderr,"Writing files\n");
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
 	fprintf(stderr,"Writing %s ...",node->source);
