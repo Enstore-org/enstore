@@ -96,7 +96,11 @@ def check(f):
         msg.append('no or corrupted external_label')
     # location cookie
     try:
-        if pf.location_cookie != fr['location_cookie']:
+        # if pf.location_cookie != fr['location_cookie']:
+        #    msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
+        p_lc = string.split(pf.location_cookie, '_')[2]
+        f_lc = string.split(fr['location_cookie'], '_')[2]
+        if p_lc != f_lc:
             msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
     except:
         msg.append('no or corrupted location_cookie')
