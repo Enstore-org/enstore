@@ -521,7 +521,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
 
             if self.buffer.full():
-                Trace.trace(9, "read_client: buffer full %s/%s, read %s/s" %
+                Trace.trace(9, "read_client: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
                              self.bytes_read, self.bytes_to_read))
                 self.buffer.read_ok.clear()
