@@ -1303,6 +1303,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         self.perf_table.append(head_row)
         for h in headings:
             head_row.append(self.make_th(h))
+	self.trailer(table_top)
 
     def add_measurement(self, measurement):
         """
