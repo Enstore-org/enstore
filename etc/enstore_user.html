@@ -6,22 +6,22 @@
 <TR><TD><TABLE BORDER CELLSPACING=5 CELLPADDING=2 ALIGN=LEFT>
   <TR>
   <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="enstore_system.html">Home</A></FONT></B></TD>
+  <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="enstore_saag.html">System</A></FONT></B></TD>
   <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="status_enstore_system.html">Servers</A></FONT></B></TD>
   <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="encp_enstore_system.html">Encp</A></FONT></B></TD>
+  <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="userCommandHelp.html">Help</A></FONT></B></TD>
   </TR>
   </TABLE>
 <TD align="RIGHT"><IMG SRC="en_us_com.gif" ALIGN=center></TD></TR></TABLE>
 <BR><BR><BR><BR>
-<HR size=2 noshade=1><FONT SIZE=+2>Execute Enstore user commands by selecting the desired type of command and 
-apropriate options. Help (<IMG ALIGN="bottom" SRC="question.gif">) is available for each type 
-of command.</FONT><HR size=2 noshade=1>
+<HR size=2 noshade=1>
 <BR>
 <FORM METHOD="POST" ACTION="http://www-d0en.fnal.gov:/cgi-bin/enstore/enstore_user_cgi.py">
 <TABLE ALIGN=LEFT NOBORDER NOSAVE>
 <TR><TD COLSPAN=7>&nbsp;</TD></TR>
 <TR>
-<TD COLSPAN=3><FONT SIZE=+7><B>File Commands </B><A HREF="#file_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
-<TD COLSPAN=2><FONT SIZE=+7><B>Library Commands </B><A HREF="#library_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD COLSPAN=3><FONT SIZE=+7><B>File Commands </B><A HREF="userCommandHelp.html#file_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD COLSPAN=2><FONT SIZE=+7><B>Library Commands </B><A HREF="userCommandHelp.html#library_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
 <TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
 <TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
 </TR>
@@ -90,7 +90,7 @@ of command.</FONT><HR size=2 noshade=1>
 </TR>
 <TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
 <TR>
-<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>Volume Commands </B><A HREF="#volume_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>Volume Commands </B><A HREF="userCommandHelp.html#volume_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
 <TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
 <TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
 </TR>
@@ -192,7 +192,7 @@ of command.</FONT><HR size=2 noshade=1>
 </TR>
 <TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
 <TR>
-<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>PNFS Commands </B><A HREF="#pnfs_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>PNFS Commands </B><A HREF="userCommandHelp.html#pnfs_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
 <TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
 <TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
 </TR>
@@ -276,212 +276,6 @@ of command.</FONT><HR size=2 noshade=1>
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
-</TR>
-<TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
-<TR><TD COLSPAN=7>&nbsp;</TD></TR>
-<TH COLSPAN=7><CENTER><IMG SRC="help.gif" ALIGN=center></TH>
-<TR>
-<TD COLSPAN=7><TABLE BORDER WIDTH="100%" BGCOLOR="#DFF0FF" NOSAVE>
-	<TR>
-	<TH ALIGN=CENTER NOSAVE><FONT SIZE=+2 COLOR="#770000"><B>Command</FONT></TD>
-	<TH ALIGN=CENTER NOSAVE><FONT SIZE=+2 COLOR="#770000"><B>Options</FONT></TD>
-	<TH ALIGN=CENTER NOSAVE><FONT SIZE=+2 COLOR="#770000"><B>Required Parameters</B></FONT></TD>
-	<TH ALIGN=CENTER NOSAVE><FONT SIZE=+2 COLOR="#770000"><B>Definition</B></FONT></TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE ><A NAME="file_help">file</A></TD>
-	<TD ALIGN=LEFT NOSAVE>bfid=bit_file_id</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get information on the specified bit file id</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>help</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get help information</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>list=volume</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get a file list of the specified volume</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>recursive</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>recursively restore all files</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>restore=file_name</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>restore the specified file</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>retries=number</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>timeout=seconds</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE><A NAME="library_help">library</A></TD>
-	<TD ALIGN=LEFT NOSAVE>delete_work=work_id</TD>
-	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
-	<TD ALIGN=LEFT NOSAVE>remove the specified work from the queue of work to do</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get_queue</TD>
-	<TD ALIGN=LEFT NOSAVE>node library_manager_name</TD>
-	<TD ALIGN=LEFT NOSAVE>return the list of encp requests by node and library manager</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>help</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get help information</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>priority=number</TD>
-	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
-	<TD ALIGN=LEFT NOSAVE>set the priority for the specifed work in the queue of work to do</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>retries=number</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>timeout=seconds</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE><A NAME="volume_help">volume</A></TD>
-	<TD ALIGN=LEFT NOSAVE>add=volume_name</TD>
-	<TD ALIGN=LEFT NOSAVE>library file_family media_type volume_byte_capacity remaining_capacity</TD>
-	<TD ALIGN=LEFT NOSAVE>add the specified volume to Enstore</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>delete=volume_name</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>delete the specified volume from Enstore</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>help</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get help information</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>new_library=library_name</TD>
-	<TD ALIGN=LEFT NOSAVE>volume_name</TD>
-	<TD ALIGN=LEFT NOSAVE>associate the specified volume with the specified library manager</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>no_access=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>do not allow access to the specified volume</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>read_only=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>do not allow writes to the specified volume</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>restore=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>restore the specified volume within Enstore</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>retries=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of retries for udp communication</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>timeout=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>update=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>update the status of the volume</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>vol=</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>get information on the specified volume</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE><A NAME="pnfs_help">pnfs</A></TD>
-	<TD ALIGN=LEFT NOSAVE>enstore_state</TD>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>list whether Enstore is still accepting transfers</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>files</TD>
-	<TD ALIGN=LEFT NOSAVE>volmap-tape</TD>
-	<TD ALIGN=LEFT NOSAVE>list all files on the specified tape in volmap</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>file family</TD>
-	<TD ALIGN=LEFT NOSAVE>[value]</TD>
-	<TD ALIGN=LEFT NOSAVE>set file family tag to value</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>file family width</TD>
-	<TD ALIGN=LEFT NOSAVE>[value]</TD>
-	<TD ALIGN=LEFT NOSAVE>set library tag to value</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>file family wrapper</TD>
-	<TD ALIGN=LEFT NOSAVE>[value]</TD>
-	<TD ALIGN=LEFT NOSAVE>set file family wrapper tag to value</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>library</TD>
-	<TD ALIGN=LEFT NOSAVE>[value]</TD>
-	<TD ALIGN=LEFT NOSAVE>set library tag to value</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>tags</TD>
-	<TD ALIGN=LEFT NOSAVE>directory</TD>
-	<TD ALIGN=LEFT NOSAVE>list the tags in the directory</TD>
-	</TR>
-	<TR>
-	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
-	<TD ALIGN=LEFT NOSAVE>xref</TD>
-	<TD ALIGN=LEFT NOSAVE>file</TD>
-	<TD ALIGN=LEFT NOSAVE>list the cross-reference info about the file</TD>
-	</TR>
-	</TABLE>
-</TD>
 </TR>
 </TABLE>
 </FORM>

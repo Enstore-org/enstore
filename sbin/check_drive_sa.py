@@ -10,10 +10,10 @@ import e_errors
 import log_client
 
 def usage():
-    print "Usage:",sys.argv[0], "mover tape media [file_size in MB]"
+    print "Usage:",sys.argv[0], "drive tape [file_size in MB]"
     
 
-def check_mover(drive, test_tape, media, f_size=250):
+def check_mover(drive, test_tape, f_size=250):
     import time
     import whrandom
     import array
@@ -94,10 +94,10 @@ def check_mover(drive, test_tape, media, f_size=250):
             FTT.rewind()
 
             # unload tape
-            #FTT.unload()
+            FTT.unload()
             #ticket['work'] = 'unloadvol'
             #rt = u.send(ticket,(mcticket['hostip'], mcticket['port']),300,10)
-            #sys.exit(0)
+            return
                 
     except:
         traceback.print_exc()
@@ -172,15 +172,15 @@ if __name__ == "__main__":
 
     optlist,args=getopt.getopt(sys.argv[1:],'','')
     
-    if len(args) < 3:
+    if len(args) < 2:
         usage()
         sys.exit(-1)
-    mover,tape,media=args[0],args[1],args[2]
-    if len(args) == 4:
-        f_size = string.atoi(args[3])
+    drive,tape=args[0],args[1]
+    if len(args) == 3:
+        f_size = string.atoi(args[2])
     else:
         f_size = 250 # default 250 MB
     print "FSIZE WILL BE ",f_size,"MB"
     
-    check_mover(mover, tape, media, f_size)
+    check_mover(drive, tape, f_size)
     sys.exit(0)

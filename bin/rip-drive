@@ -1,32 +1,31 @@
 #!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# Script that
-#    a. return mt command results of drives
-#    b  eases mounting/dismounting of volumes in drives located in AML2 robot
+# Script that returns mt command results of drives enstore knows about
 
 # This script is meant to be run outside of enstore, hence everything
 # is hard-coded and nothing is looked up from the configuration server
 
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-#set -u  # force better programming and ability to use check for not set
-
 # the user must specify a drive or mount/dismount command
 if [ -z "${1-}" ] ; then
-  echo "Usage $0 <drive>   <mt-command>
-Usage $0 <mount>   <media_type> <label> <drive>
-Usage $0 <dismount <drive>"
+  echo "Usage $0 <drive>   <mt-command|uname>"
   exit 1
 fi
+
+drive=`echo $1 | tr '[A-Z]' '[a-z]'`
+command="${2:-status}"
+
 
 # we have nameserver lookup troubles - skip this step and use the numeric ip's
 
 adic2=131.225.164.19
+adic4=131.225.13.19
 
 rip1=131.225.164.1
 rip2=131.225.164.2
 rip5=131.225.164.5
-rip9=131.225.164.15
-rip10=131.225.16.14
+rip9=131.225.13.20
+rip10=131.225.13.22
 rip11=131.225.164.17
 rip12=131.225.164.18
 
@@ -84,43 +83,82 @@ acsssnode=$fntt
 
 # these drive nodes should be looked up in the config file!
 
+de01node=$rip2
+de02node=$rip2
+
+dc03node=$rip1
+dc04node=$rip1
+dc05node=$rip1
+dc06node=$rip1
+
+dm07node=$ripsgi
+dm08node=$ripsgi
+dm09node=$ripsgi
+dm10node=$ripsgi
+dm11node=$ripsgi
+dm12node=$ripsgi
+
 de13node=$d0enmvr4a
 de14node=$d0enmvr4a
 
+dc15node=$d0enmvr6a
+dc16node=$d0enmvr6a
+
+dc17node=$d0enmvr5a
 dm18node=$d0enmvr5a
 dm19node=$d0enmvr5a
 
-dc15node=$d0enmvr6a
-dc16node=$d0enmvr6a
-dc17node=$d0enmvr5a
 dc20node=$d0enmvr11a
 dc21node=$d0enmvr11a
+
 dc22node=$d0enmvr10a
 dc23node=$d0enmvr10a
+
 dc24node=$d0enmvr9a
 dc25node=$d0enmvr9a
+
 dc26node=$d0enmvr8a
 dc27node=$d0enmvr8a
+
 dc28node=$d0enmvr7a
 dc29node=$d0enmvr7a
 
 ea11node=$stkenmvr1a
 ea12node=$stkenmvr1a
+
 ea21node=$stkenmvr2a
 ea22node=$stkenmvr2a
+
 ea31node=$stkenmvr3a
-ea0node=$ea11node
-ea1node=$ea12node
-ea2node=$ea21node
-ea3node=$ea22node
-ea4node=$ea31node
+
+jde01node=$rip9
+jde02node=$rip9
+jde03node=$rip9
+jde04node=$rip9
 
 
-# these devives should be looked up in the config file!
+# these devices should be looked up in the config file!
 
+de01device=/dev/rmt/tps2d1n
+de02device=/dev/rmt/tps2d2n
+dc03device=/dev/rmt/tps2d1n
+dc04device=/dev/rmt/tps2d2n
+dc05device=/dev/rmt/tps3d3n
+dc06device=/dev/rmt/tps3d4n
+dm07device=/dev/rmt/tps2d1nrvc
+dm08device=/dev/rmt/tps2d2nrvc
+dm09device=/dev/rmt/tps2d5nrvc
+dm10device=/dev/rmt/tps2d6nrvc
+dm11device=/dev/rmt/tps2d3nrvc
+dm12device=/dev/rmt/tps2d4nrvc
+
+de13device=/dev/rmt/tps2d4n
+de14device=/dev/rmt/tps3d3n
 dc15device=/dev/rmt/tps2d4n
 dc16device=/dev/rmt/tps3d6n
 dc17device=/dev/rmt/tps2d5n
+dm18device=/dev/rmt/tps3d1n
+dm19device=/dev/rmt/tps3d2n
 dc20device=/dev/rmt/tps0d1n
 dc21device=/dev/rmt/tps3d1n
 dc22device=/dev/rmt/tps0d1n
@@ -132,165 +170,60 @@ dc27device=/dev/rmt/tps3d1n
 dc28device=/dev/rmt/tps0d1n
 dc29device=/dev/rmt/tps3d1n
 
-de13device=/dev/rmt/tps2d4n
-de14device=/dev/rmt/tps3d3n
-
-dm18device=/dev/rmt/tps3d1n
-dm19device=/dev/rmt/tps3d2n
-
 ea11device=/dev/rmt/tps0d1n
 ea12device=/dev/rmt/tps3d1n
 ea21device=/dev/rmt/tps0d1n
 ea22device=/dev/rmt/tps3d1n
 ea31device=/dev/rmt/tps0d1n
-ea0device=$ea11device
-ea1device=$ea12device
-ea2device=$ea21device
-ea3device=$ea22device
-ea4device=$ea31device
 
 EA11="0,0,10,0"
 EA12="0,0,10,1"
 EA21="0,0,10,2"
 EA22="0,0,10,3"
 EA31="0,0,10,4"
-EA0="$EA11"
-EA1="$EA12"
-EA2="$EA21"
-EA3="$EA22"
-EA4="$EA31"
+
+jde01device=/dev/rmt/tps2d5n
+jde02device=/dev/rmt/tps2d4n
+jde03device=/dev/rmt/tps2d1n
+jde04device=/dev/rmt/tps2d0n
 
 
 #===================================================
 
-drive=`echo $1 | tr '[A-Z]' '[a-z]'`
-command="${2:-status}"
 
-if [ "$drive" = "mount" ]; then
-  if [ -z "${2-}" -o -z "${3-} -z "${4-} ] ; then
-    echo "$0 $1 <media_type> <label> <drive>"
-    exit 1
-  else
-    media_type=`echo $2 | tr '[a-z]' '[A-Z]'`
-    label=$3
-    drive=`echo $4 | tr  '[a-z]' '[A-Z]'`
-    if [ "$media_type" = "STK" -o "$media_type" = "EAGLE" ]; then
-      drv=`eval echo \\$$drive`
-      rsh $acsssnode -l acsss "echo mount $label $drv | /export/home/ACSSS/bin/cmd_proc" < /dev/null
-      exit $?
-    else
-      cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
-      echo $cmd
-      mount_node=`eval $cmd`; echo $mount_node
-      cmd="rsh $mount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin mount -t $media_type $label $drive; echo \$?\""
-      echo $cmd
-      x=`eval $cmd`; echo $x
-      stat=`echo $x | awk '{print $NF}'`;
-      exit $stat
-    fi
-  fi
-
-elif [ "$drive" = "dismount" ]; then
-  if [ -z "${2-}" ] ; then
-    echo "$0 $1 <drive>"
-    exit 1
-  else
-    drive=`echo $2 | tr  '[a-z]' '[A-Z]'`
-    # this is terrible - need better way to specify stk or aml/2
-    if [ "$drive" = "STK" -o "$drive" = "EAGLE" ]; then
-      drive=`echo $3 | tr  '[a-z]' '[A-Z]'`
-      drv=`eval echo \\$$drive`
-      rsh $acsssnode -l acsss "echo dismount 0 $drv force | /export/home/ACSSS/bin/cmd_proc" < /dev/null
-      exit $?
-    else
-      cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
-      echo $cmd
-      dismount_node=`eval $cmd`; echo $mount_node
-      cmd="rsh $dismount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin dismount -d $drive; echo \$?\""
-      echo $cmd
-      x=`eval $cmd`; echo $x
-      stat=`echo $x | awk '{print $NF}'`;
-      exit $stat
-    fi
-  fi
-
-elif [ "$drive" = "query" ]; then
-  rsh $acsssnode -l acsss "echo query drive all | /export/home/ACSSS/bin/cmd_proc" < /dev/null
-
-elif [ "$drive" = "listd2" ]; then
-  rsh $dasnode ". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2"
-fi
+# change to "canonical" name
+drive2=$drive
+case $drive in
+  ea0) drive2=ea11 ;;
+  ea1) drive2=ea12 ;;
+  ea2) drive2=ea21 ;;
+  ea3) drive2=ea22 ;;
+  ea4) drive2=ea31 ;;
+esac
+drive=$drive2
 
 
-aits="dm07 dm08 dm09 dm10 dm11 dm12 dm18 dm19"
-mams="dc03 dc04 dc05 dc06 dc15 dc16 dc17 dc20 dc21 dc22 dc23 dc24 dc25 dc26 dc27 dc28 dc29"
-dlts="de01 de02 de13 de14"
-
-multiple=0
-if [ $drive = "aits" ]; then
-   drive="$aits"
-   multiple=1
-elif [ $drive = "mams" ]; then
-   drive="$mams"
-   multiple=1
-elif [ $drive = "dlts" ]; then
-   drive="$dlts"
-   multiple=1
-elif [ $drive = "all" ]; then
-   drive="$aits $mams $dlts"
-   multiple=1
-fi
-if [ $multiple -eq 1 ]; then
-   for d in $drive; do
-       cmd="$0 $d $command"
-       echo $cmd
-       eval $cmd
-   done
-   exit 0
-fi
-
+#make sure we know about the drive
 case $drive in
 
-  de01) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  de02) cmd="rsh $rip2   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  de01|de02|\
+  dc03|dc04|dc05|dc06|\
+  dm07|dm08|dm09|dm10|dm11|dm12|\
+  de13|de14|\
+  dc15|dc16|dc17|\
+  dm18|dm19|\
+  dc20|dc21|dc22|dc23|dc24|dc25|dc26|dc27|dc28|dc29|\
+  ea11|ea12|ea21|ea22|ea31|\
+  jde01|jde02|jde03|jde04)
 
-  dc03) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  dc04) cmd="rsh $rip1   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-  dc05) cmd="rsh $rip1   'mt -f /dev/rmt/tps3d3n $command 2>&1; echo \$?'" ;;
-  dc06) cmd="rsh $rip1   'mt -f /dev/rmt/tps3d4n $command 2>&1; echo \$?'" ;;
-
-  dm07) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d1nrvc $command 2>&1; echo \$?'" ;;
-  dm08) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d2nrvc $command 2>&1; echo \$?'" ;;
-  dm09) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d5nrvc $command 2>&1; echo \$?'" ;;
-  dm10) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d6nrvc $command 2>&1; echo \$?'" ;;
-  dm11) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d3nrvc $command 2>&1; echo \$?'" ;;
-  dm12) cmd="rsh $ripsgi 'mt -f /dev/rmt/tps2d4nrvc $command 2>&1; echo \$?'" ;;
-
-  de13) cmd="rsh $de13node 'mt -f $de13device $command 2>&1; echo \$?'" ;;
-  de14) cmd="rsh $de14node 'mt -f $de14device $command 2>&1; echo \$?'" ;;
-
-  dc15) cmd="rsh $dc15node 'mt -f $dc15device $command 2>&1; echo \$?'" ;;
-  dc16) cmd="rsh $dc16node 'mt -f $dc16device $command 2>&1; echo \$?'" ;;
-  dc17) cmd="rsh $dc17node 'mt -f $dc17device $command 2>&1; echo \$?'" ;;
-  dc20) cmd="rsh $dc20node 'mt -f $dc20device $command 2>&1; echo \$?'" ;;
-  dc21) cmd="rsh $dc21node 'mt -f $dc21device $command 2>&1; echo \$?'" ;;
-  dc22) cmd="rsh $dc22node 'mt -f $dc22device $command 2>&1; echo \$?'" ;;
-  dc23) cmd="rsh $dc23node 'mt -f $dc23device $command 2>&1; echo \$?'" ;;
-  dc24) cmd="rsh $dc24node 'mt -f $dc24device $command 2>&1; echo \$?'" ;;
-  dc25) cmd="rsh $dc25node 'mt -f $dc26device $command 2>&1; echo \$?'" ;;
-  dc26) cmd="rsh $dc26node 'mt -f $dc26device $command 2>&1; echo \$?'" ;;
-  dc27) cmd="rsh $dc27node 'mt -f $dc27device $command 2>&1; echo \$?'" ;;
-  dc28) cmd="rsh $dc28node 'mt -f $dc28device $command 2>&1; echo \$?'" ;;
-  dc29) cmd="rsh $dc29node 'mt -f $dc29device $command 2>&1; echo \$?'" ;;
-
-  dm18) cmd="rsh $dm18node 'mt -f $dm18device $command 2>&1; echo \$?'" ;;
-  dm19) cmd="rsh $dm19node 'mt -f $dm19device $command 2>&1; echo \$?'" ;;
-
-  ea11|ea0) cmd="rsh $ea11node   'mt -f $ea11device $command 2>&1; echo \$?'" ;;
-  ea12|ea1) cmd="rsh $ea12node   'mt -f $ea12device $command 2>&1; echo \$?'" ;;
-  ea21|ea2) cmd="rsh $ea21node   'mt -f $ea21device $command 2>&1; echo \$?'" ;;
-  ea22|ea3) cmd="rsh $ea22node   'mt -f $ea22device $command 2>&1; echo \$?'" ;;
-  ea31|ea4) cmd="rsh $ea31node   'mt -f $ea31device $command 2>&1; echo \$?'" ;;
+       eval node=\$${drive}node
+       eval device=\$${drive}device
+       if [ "$command" = "uname" ]; then
+         cmd="rsh $node 'uname -a 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
+       else
+         cmd="rsh $node 'mt -f $device $command 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
+       fi
+       ;;
 
     *)  cmd="echo $drive does not exists in `basename $0`; echo 1"
 
@@ -303,6 +236,8 @@ echo $cmd
 count=0
 tries=60
 
+
+# process the command
 while [ $count -le $tries ]; do
   eval $cmd2
   #echo $x

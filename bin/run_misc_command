@@ -17,6 +17,11 @@ else
 	cmtext=`echo $command|sed -e 's/[^A-Za-z0-9]//g'`
 	# setup some variables
 	theDirectory=$HOME/MISC
+	# make this directory if it does not exist
+	if [ ! -d "$theDirectory" ]
+	then
+	    mkdir $theDirectory
+	fi
 	activeFlag=$theDirectory/$cmtext
 	# make sure we are not already running
 	mkdir $activeFlag 1>/dev/null 2>/dev/null
