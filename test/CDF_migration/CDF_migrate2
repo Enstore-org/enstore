@@ -28,12 +28,12 @@ done
 if [ -r $done ]; then echo `date` $tape already finished; exit 0; fi
 
 echo `date` Starting copy to B tape for $tape
-/data1/migrate_tape -b $tape >> $log 2>&1
-/data1/migrate_tape -V $tape >> $log 2>&1
-/data1/migrate_tape -m $tape >> $log 2>&1
+$ENSTORE_DIR/test/CDF_migration/migrate_tape -b $tape >> $log 2>&1
+$ENSTORE_DIR/test/CDF_migration/migrate_tape -V $tape >> $log 2>&1
+$ENSTORE_DIR/test/CDF_migration/migrate_tape -m $tape >> $log 2>&1
 rc=$?
 if [ $rc -eq 0 ]; then
-   /data1/migrate_tape -d $tape >> $log 2>&1
+   $ENSTORE_DIR/test/CDF_migration/migrate_tape -d $tape >> $log 2>&1
    touch $done
 else
     touch $stop

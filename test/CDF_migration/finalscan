@@ -1,5 +1,5 @@
 #!/bin/sh
-. /data1/setup-enstore
+. /home/enstore/enstore/test/CDF_migration/migration-setup-enstore
 set -u
 tape=$1
 files=/tmp/scan.$tape

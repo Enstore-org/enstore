@@ -1,6 +1,6 @@
 #!/bin/sh
 set -u
-. /data1/setup-enstore
+. /home/enstore/enstore/test/CDF_migration/migration-setup-enstore
 files=/tmp/scan.$1
 pids=/tmp/pids.$1
 rm -f $files $pids

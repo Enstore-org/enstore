@@ -24,6 +24,8 @@ delay=5
 partition=/data1
 local=$partition/bja
 
+options="--array-size=3 --buffer-size=67108864 --threaded "
+
 files=/tmp/$tape.files.$$
 rm -f $files 2>/dev/null
 
@@ -48,12 +50,7 @@ echo 0 >| $rc
 
 clean() { rm -f $files $dirs $volume $pids $pidsw $copy2b $rc 2>/dev/null; }
 
-set +u
-. /usr/local/etc/setups.sh
-setup enstore
-ENSTORE_CONFIG_HOST=cdfensrv2.fnal.gov
-if [ -z "${ENSTORE_DIR:-}" ]; then echo `date` ERROR: can not setup enstore; exit 1; fi
-set -u
+. /home/enstore/enstore/test/CDF_migration/migration-setup-enstore
 
 enstore file --ls-active $tape >$files
 #cat $files
@@ -117,7 +114,7 @@ cat $dirs | while read dir; do
     sl=0
     if [ $IGNORE_DISK_QUOTA -eq 0 ]; then 
       while /bin/true; do
-         space=`df $partition|grep $partition |awk '{print $5}'|cut -f1 -d%`
+         space=`df $partition|grep /dev |awk '{print $5}'|cut -f1 -d%`
          if [ $space -lt 85 ]; then break; fi
          if [ $sl -eq 0 ]; then echo `date` LOW SPACE on $partition $space percent left... waiting; sl=1;fi
          sleep 300
@@ -137,8 +134,8 @@ cat $dirs | while read dir; do
   else
      unset ENSTORE_SPECIAL_LIB
   fi
-  echo `date` encp --delayed-dismount=$delay $file_list $disk_copy
-              encp --delayed-dismount=$delay $file_list $disk_copy &pid=$!
+  echo `date` encp --delayed-dismount=$delay $options $file_list $disk_copy
+              encp --delayed-dismount=$delay $options $file_list $disk_copy &pid=$!
   echo $pid >> $pids
   echo
 done
@@ -207,8 +204,8 @@ cat $files | while read file; do
      else
          unset ENSTORE_SPECIAL_LIB
      fi
-     echo `date` encp --delayed-dismount=$delay $file $lfile
-                 encp --delayed-dismount=$delay $file $lfile
+     echo `date` encp --delayed-dismount=$delay $options $file $lfile
+                 encp --delayed-dismount=$delay $options $file $lfile
   fi
 done
 
@@ -256,8 +253,8 @@ cat $files | while read file; do
             mkdir -p $bdir
     fi
     (cd $bdir; enstore pnfs --file-family $family )
-    echo `date` $n encp --delayed-dismount=$delay $lfile $bfile
-                   encp --delayed-dismount=$delay $lfile $bfile &pid=$!
+    echo `date` $n encp --delayed-dismount=$delay $options $lfile $bfile
+                   encp --delayed-dismount=$delay $options $lfile $bfile &pid=$!
     echo $pid >> $pidsw
     sleep 5 # clearly delineate encps for time ordering
   fi

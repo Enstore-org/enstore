@@ -19,7 +19,7 @@ if [ -r $halt ]; then echo `date` ERROR: $halt exists ... trouble; exit 0; fi
 if [ -r $done ]; then echo `date` $tape already migrated; exit 0; fi
 
 if [ -r $copy ]; then
-   /data1/migrate_tape -v $tape >> $log 2>&1
+   $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape >> $log 2>&1
    rc=$?
    if [ $rc -eq  0 ]; then
       echo `date` $tape already ready for migrating
@@ -30,7 +30,7 @@ if [ -r $copy ]; then
    fi
 fi
 
-/data1/migrate_tape -v $tape >> $log 2>&1
+$ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape >> $log 2>&1
 rc=$?
 if [ $rc -eq 0 ]; then
    echo `date` $tape already ready for migrating
@@ -40,7 +40,7 @@ fi
 
 echo `date` Starting to get files from $tape
 
-/data1/migrate_tape -l $tape >> $log 2>&1
+$ENSTORE_DIR/test/CDF_migration/migrate_tape -l $tape >> $log 2>&1
 
 rm -f $gotit
 max_try=10
@@ -55,8 +55,8 @@ while [ $try -le $max_try ]; do
       sleep $sleeptime
   fi
 
-  /data1/migrate_tape -0 -a -g -v $tape >> $log 2>&1
-  /data1/migrate_tape -v $tape >> $log 2>&1
+  $ENSTORE_DIR/test/CDF_migration/migrate_tape -0 -a -g -v $tape >> $log 2>&1
+  $ENSTORE_DIR/test/CDF_migration/migrate_tape -v $tape >> $log 2>&1
   rc=$?
   if [ $rc -eq 0 ]; then
      touch $copy

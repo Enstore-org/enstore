@@ -9,9 +9,9 @@ else
 fi
 
 cat $f| while read tape; do 
-	echo $tape
-	 /data1/CDF_migrate1 $tape
-	 /data1/CDF_migrate2 $tape
-	done
+	 echo $tape
+	 $ENSTORE_DIR/test/CDF_migration/CDF_migrate1 $tape
+	 $ENSTORE_DIR/test/CDF_migration/CDF_migrate2 $tape
+	 done
 
 rm -f $f
