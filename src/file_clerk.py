@@ -123,6 +123,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # start (10/18/00) adding which drive we used to write the file
         drive = ticket["fc"].get("drive","unknown:unknown")
 
+        # start (7/26/2004) adding which user wrote the file
+        uid = ticket["fc"].get("uid", None)
+        gid = ticket["fc"].get("gid", None)
+
         # look up in our dictionary the request bit field id
         record = self.dict[bfid] 
         if not record:
@@ -140,6 +144,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["pnfsvid"] = pnfsvid
         if pnfs_name0 != None:
             record["pnfs_name0"] = pnfs_name0
+        if uid != None:
+            record["uid"] = uid
+        if gid != None:
+            record["gid"] = gid
         record["deleted"] = "no"
 
         # record our changes
