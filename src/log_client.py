@@ -410,7 +410,10 @@ class LoggerClient(generic_client.GenericClient):
 	if severity > e_errors.MISC: severity = e_errors.MISC
 
         if string.find(msg, "MSG_TYPE") < 0:
-            msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
+	    try:
+		msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
+	    except NameError:
+		msg_type = "MSG_TYPE=NAME_ERROR"
             msg = "%s %s" % (msg, msg_type)
 
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
