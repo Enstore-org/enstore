@@ -396,7 +396,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             return 0
 
         pprint.pprint(ticket)
-        self.clear_buffer()
+        self.buffer.clear()
 
         self.current_work_ticket = ticket
         if not ticket.has_key('mover'):
