@@ -150,8 +150,6 @@ static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
 static long long get_fsync_threshold(long long bytes, int blk_size);
 static long align_to_page(long value);
-static int get_memory_alignment(void);
-static void* get_aligned_memory(int alignment_size, off_t segment_size);
 struct return_values setup_mmap(int fd, struct transfer *info);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
@@ -277,58 +275,7 @@ static long align_to_page(long value)
 	   value);
 }
 
-static int get_memory_alignment()
-{
-  int alignment_size = 0;
 
-#ifdef F_DIOINFO
-  /*
-  struct dioattr memalign_val;
-
-  if(fcntl(fd, F_DIOINFO, &memalign_val) < 0)
-    printf("fcntl(F_DIOINFO): %s\n", strerror(errno));
-  {
-    alignment_size = memalign_val.d_mem;
-    printf("dioattr.d_mem: %d\n", memalign_val.d_mem);
-    printf("dioattr.d_miniosz: %d\n", memalign_val.d_miniosz);
-    printf("dioattr.d_maxiosz: %d\n", memalign_val.d_maxiosz);
-  }
-  */
-#endif
-  /* Get the memory alignment information.  This code should work on all
-     modern POSIX compliant systems. */
-  if((alignment_size = sysconf(_SC_PAGE_SIZE)) < 0)
-    return 0;
-
-  return alignment_size;
-}
-
-static void* get_aligned_memory(int alignment_size, off_t segment_size)
-{
-  void *buffer = NULL;
-
-  /* Initialize the buffer, stored and buffer_lock arrays. */
-
-#if defined( O_DIRECT )
-  /* If xfs direct i/o is available make sure the memory is aligned.  If
-   this code is compiled use best guess alignment size. */
-  errno = 0;
-  if((buffer = memalign(alignment_size, segment_size)) == NULL)
-    return NULL;
-
-  memset(buffer, 0, segment_size);
-#else
-  /*allocate (and initalize) memory*/
-  errno = 0;
-  if((buffer = malloc(segment_size)) == NULL)
-    return NULL;
-
-  memset(buffer, 0, segment_size);
-#endif /* O_DIRECT */
-
-  return buffer;
-}
-/*#ifdef THREADED*/
 
 void set_done_flag(int* done)
 {
@@ -680,10 +627,10 @@ static void* thread_read(void *info)
   long long bytes = read_info->size;       /* Number of bytes to transfer. */
   int crc_flag = read_info->crc_flag;      /* Flag to enable crc checking. */
   int block_size = read_info->block_size;  /* Bytes to transfer at one time. */
-  int array_size = read_info->array_size; /* Number of buffer bins. */
+  int array_size = read_info->array_size;  /* Number of buffer bins. */
   struct timeval timeout = read_info->timeout; /* Time to wait for data. */
-  int direct_io = read_info->direct_io;   /* True if using direct io. */
-  int mmap_io = read_info->mmap_io;       /* True if using mem. mapped io. */
+  int direct_io = read_info->direct_io;    /* True if using direct io. */
+  /*int mmap_io = read_info->mmap_io;*/    /* True if using mem. mapped io. */
   size_t bytes_remaining;       /* Number of bytes to move in one loop. */
   size_t bytes_to_transfer;     /* Bytes to transfer in a single loop. */
   size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
@@ -1012,7 +959,7 @@ static void* thread_write(void *info)
   int array_size = write_info->array_size; /* Number of buffer bins. */
   struct timeval timeout = write_info->timeout; /* Time to wait for data. */
   int direct_io = write_info->direct_io;   /* True if using direct io. */
-  int mmap_io = write_info->mmap_io;       /* True if using mem. mapped io. */
+  /*int mmap_io = write_info->mmap_io;*/   /* True if using mem. mapped io. */
   size_t bytes_remaining;       /* Number of bytes to move in one loop. */
   size_t bytes_to_transfer;     /* Bytes to transfer in a single loop. */
   size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
@@ -1624,12 +1571,12 @@ do_read_write(int rd_fd, int wr_fd, long long size, struct timeval timeout,
       if (sts == -1)
       {   /* return a write error */
 	fprintf(stderr, "Low-level I/O failure: "
-		"write(%d, %#x, %lld) -> %lld, [Errno %d] %s:"
+		"write(%d, %p, %lld) -> %ld, [Errno %d] %s:"
 		"higher encp levels will process this error "
 		"and retry if possible\n",
 		wr_fd, (void*)((int)buffer + (int)bytes_transfered),
 		(long long)bytes_to_transfer,
-		(long long)sts, errno, strerror(errno));
+		(long)sts, errno, strerror(errno));
 	fflush(stderr);
 	time_elapsed = elapsed_time(&start_time, &end_time);
 	return *pack_return_values(0, errno, WRITE_ERROR, bytes,
