@@ -17,26 +17,128 @@ import libtpshelve
 JOURNAL_LIMIT=1000
 backup_flag=1
 
+# Index
+
+class Index:
+	def __init__(self, db, dbHome, dbName, field):
+		self.missing = []
+		self.extra = []
+		self.primary_db = db	# primary db
+		self.dbHome = dbHome	# DBHOME for all
+		self.dbName = dbName	# Name of the primary db
+		self.name = field	# name of the indexed colume
+		self.idxFile = self.dbName+"."+field+".index"	# name of index
+		dbEnvSet = {'create':1,'init_mpool':1, 'init_lock':1,
+			'init_txn':1}
+		dbEnv = libtpshelve.env(self.dbHome, dbEnvSet)
+		# check to see if the index file exists?
+		if os.path.isfile("%s/%s"%(self.dbHome, self.idxFile)):
+			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1)
+		else:	# build index file here
+			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1)
+			t = self.primary_db.txn()
+			c = self.primary_db.cursor(t)
+			try:
+				key, val = c.first()
+				while 1:
+					self.db[(val[field], t)] = key
+					key, val = c.next()
+			except:
+				pass
+			c.close()
+			t.commit()
+
+	# insert an index entry
+	def insert(self, key, value, txn = None):
+		self.db[(key, txn)] = value
+
+	# point a cursor to the beginning of certain key value
+	# No need to commit on locate
+	def locate(self, key, txn = None):
+		c = self.db.cursor(txn)
+		key, val = c.set(key)
+		return c
+
+	# delete the index according to key/value
+	def delete(self, key, val, txn = None):
+		c = self.db.cursor(txn)
+		key, val = c.set(key, val)
+		if (key, val) != (None, None):
+			c.delete()
+			c.close()
+
+	# txn -- to get an transction
+	def txn(self):
+		return self.db.txn()
+
+	# cursor -- get an cursor on itself
+	def cursor(self, txn = None):
+		return self.db.cursor(txn)
+
+	# check the consistency of index
+	def check(self):
+		status = 0
+		c = self.db.cursor()
+		pc = self.primary_db.cursor()
+		pck, pcv = pc.first()
+		while pck != None:
+			ipk, ipv = c.set(pcv[self.name], pck)
+			if ipk == None:
+				status = status + 1
+				self.missing.append((pcv[self.name], pck))
+			pck, pcv = pc.next()
+		ck, cv = c.first()
+		while ck != None:
+			try:
+				if self.primary_db[cv][self.name] != ck:
+					status = status + 1
+					self.extra.append((ck, cv))
+			except:
+				status = status + 1
+				self.extra.append((ck, cv))
+			ck, cv = c.next()
+		c.close()
+		pc.close()
+		return status
+
+	# fix the index according to previous check
+	def fix(self):
+		t = self.txn()
+		for (k, v) in self.missing:
+			self.insert(k, v, t)
+		for (k, v) in self.extra:
+			self.delete(k, v, t)
+		t.commit()
+		self.missing = []
+		self.extra = []
+
+	# check_and_fix: do both
+	def check_and_fix(self):
+		if self.check():
+			self.fix()
+			
 class DbTable:
-  def __init__(self,dbname, db_home, jou_home, indlst=None, auto_journal=1):
+  def __init__(self, dbname, db_home, jou_home, indlst=None, auto_journal=1):
     if indlst is None:
         indlst = []
     self.auto_journal = auto_journal
+    self.name = dbname
     self.dbHome = db_home
     self.jouHome = jou_home
     self.cursor_open = 0
     self.c = None
     self.t = None
 
-#    try:
-#	self.dbHome=configuration_client.ConfigurationClient(\
-#		(interface.default_host(),\
-#		interface.default_port())).get('database')['db_dir']
-#    except:
-#	self.dbHome=os.environ['ENSTORE_DIR']
+    # open database file
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
     dbEnv=libtpshelve.env(self.dbHome,dbEnvSet)
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
+
+    # Now, take care of the index
+    self.inx={}
+    for field in indlst:
+        self.inx[field] = Index(self.db, self.dbHome, self.name, field)
+
 #junk     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
 #junk     self.inx={}
 
@@ -47,7 +149,6 @@ class DbTable:
         self.jou=journal.JournalDict({},self.jouHome+"/"+dbname+".jou", 1)
         self.count=0
 
-    self.name=dbname
     if self.auto_journal:
       if len(self.jou):
         self.start_backup()
@@ -57,6 +158,10 @@ class DbTable:
   #def next(self):
   #  return self.cursor("next")
 
+  def newCursor(self, txn=None):
+    return self.db.cursor(txn)
+
+  # This is not backward compatible
   def cursor(self,action,KeyOrValue=None):
 
     if not self.cursor_open and action !="open":
@@ -170,6 +275,8 @@ class DbTable:
      if self.auto_journal:
        if 'db_flag' in value.keys(): del value['db_flag']
        self.jou[key]=value  ## was deepcopy
+       if self.auto_journal:
+         self.jou[key]['db_flag']='add'
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
@@ -178,11 +285,21 @@ class DbTable:
 #junk         self.inx[name][value[name]]=key
 
      t=self.db.txn()
+     # check if this is an update
+     try:
+       v0 = self.db[key]
+       for name in self.inx.keys():
+          self.inx[name].delete(v0[name], key, t)
+     except:
+       pass
+
+     # take care of index
+
+     for name in self.inx.keys():
+       self.inx[name].insert(value[name], key, t)
      self.db[(key,t)]=value
      t.commit()
 
-     if self.auto_journal:
-       self.jou[key]['db_flag']='add'
 
 #junk   def is_index(self,key):
 #junk         if self.inx.has_key(key):
@@ -211,6 +328,9 @@ class DbTable:
        del self.jou[key]
 
      t=self.db.txn()
+     # take care of index
+     for name in self.inx.keys():
+       self.inx[name].delete(value[name], key, t)
      del self.db[(key,t)]
      t.commit()
      if self.auto_journal:
