@@ -3097,7 +3097,7 @@ def write_to_hsm(e, tinfo):
         verify_write_request_consistancy(request_list, e)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
-        print_data_access_layer_format("", "", "", msg.ticket)
+        print_data_access_layer_format("", "", 0, msg.ticket)
         quit()
 
     #Where does this really belong???
@@ -4045,7 +4045,7 @@ def read_from_hsm(e, tinfo):
         verify_read_request_consistancy(requests_per_vol, e)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
-        print_data_access_layer_format("", "", "", msg.ticket)
+        print_data_access_layer_format("", "", 0, msg.ticket)
         quit()
 
     #Create the zero length file entry.
