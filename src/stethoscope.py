@@ -47,9 +47,10 @@ def do_real_work(intf):
             # exit
             erc.unsubscribe()
             erc.sock.close()
-            # see which servers have not sent an alive
-            for server in intf.servers:
-                os.system("%s %s"%(intf.filename, server))
+            if intf.servers:
+                # there are servers for which we did not get an
+                # alive.
+                os.system("%s %s"%(intf.filename, string.join(intf.servers)))
             return
 
 class StethoscopeInterface(generic_client.GenericClientInterface):
