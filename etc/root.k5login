@@ -64,6 +64,10 @@ host/d0enmvr19a.fnal.gov@PILOT.FNAL.GOV
 host/d0enmvr19a.fnal.gov@FNAL.GOV
 host/d0enmvr20a.fnal.gov@PILOT.FNAL.GOV
 host/d0enmvr20a.fnal.gov@FNAL.GOV
+host/d0enmvr21a.fnal.gov@PILOT.FNAL.GOV
+host/d0enmvr21a.fnal.gov@FNAL.GOV
+host/d0enmvr22a.fnal.gov@PILOT.FNAL.GOV
+host/d0enmvr22a.fnal.gov@FNAL.GOV
 host/stkensrv1.fnal.gov@PILOT.FNAL.GOV
 host/stkensrv1.fnal.gov@FNAL.GOV
 host/stkensrv2.fnal.gov@PILOT.FNAL.GOV
@@ -82,6 +86,8 @@ host/stkenmvr4a.fnal.gov@PILOT.FNAL.GOV
 host/stkenmvr4a.fnal.gov@FNAL.GOV
 host/stkenmvr5a.fnal.gov@PILOT.FNAL.GOV
 host/stkenmvr5a.fnal.gov@FNAL.GOV
+host/stkenmvr6a.fnal.gov@PILOT.FNAL.GOV
+host/stkenmvr6a.fnal.gov@FNAL.GOV
 host/rip9.fnal.gov@PILOT.FNAL.GOV
 host/rip9.fnal.gov@FNAL.GOV
 host/rip10.fnal.gov@PILOT.FNAL.GOV
