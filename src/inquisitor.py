@@ -154,6 +154,8 @@ class EventRelay:
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
     
     def get_server(self, name):
+	if type(name) == types.ListType:
+	    name = name[0]
 	servers = self.server_d.keys()
 	for server in servers:
 	    if name == self.server_d[server].name:
@@ -654,8 +656,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# make a list of the library managers that we will have to 
 		# check.
 		lm = self.get_server(server.library)
+		Trace.trace(enstore_constants.INQWORKDBG, 
+			    "CBW: bad mover %s with lm %s"%(server.name, lm.name))
+
 	elif enstore_functions.is_library_manager(server.name):
 	    lm = server
+	    Trace.trace(enstore_constants.INQWORKDBG, 
+			"CBW: lm %s"%(server.name, lm.name))
 	# now check the library managers' queue to make sure that -
 	#
 	#      o the file family limit has not been reached for writes/reads
@@ -667,6 +674,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# return, the enstore ball will be red already and we do not really
 	# know what is happening anyway.
 	if lm.server_status in [e_errors.BROKEN]:
+	    Trace.trace(enstore_constants.INQWORKDBG, 
+			"CBW: lm in bad state (%s - %s), no checks done"%(lm.name))
 	    return
 	# now parse the lm write wam queue and pull out any queue elements
 	# which have a mover in a bad state and match the criteria specified
@@ -691,6 +700,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		key = "%s-%s"%(node, ff)
 		if not bad_movers.has_key(key):
 		    bad_movers[key] = [[vc.get('file_family_width', None), node, ff]]
+		Trace.trace(enstore_constants.INQWORKDBG, 
+			    "CBW: found a bad mover in check %s (%s %s)"%(mover.name, 
+									  node, ff))
 		bad_movers[key].append(mover)
 	# now see if the number of bad node-ff combinations 
 	# is > the file_family_width
@@ -704,15 +716,23 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# we have exceeded the file_family width, check to see how long
 		# this problem has been occurring.  if longer than the specified
 		# time do the specified actions
+		Trace.trace(enstore_constants.INQWORKDBG, 
+			    "CBW: exceeded file family width (%s) for %s on %s"%(ffw, 
+										 ff, node))
 		time_bad = node_d[node][1]
 		now = time.time()
 		if lm.time_bad == 0:
 		    # this is the first time things are seen to be bad
 		    lm.time_bad = now
+		Trace.trace(enstore_constants.INQWORKDBG, 
+			    "CBW: check if do actions (%s) : now - time_bad = %s"%(time_bad,
+									   now - lm.time_bad))
 		if now - lm.time_bad >= time_bad:
 		    action_l = node_d[node][0]
 		    for action in action_l:
 			if action == enstore_constants.ALARM:
+			    Trace.trace(enstore_constants.INQWORKDBG, 
+					"CBW: action is raise an alarm")
 			    # raise an alarm
 			    mover_info = ""
 			    for mover in bad_movers[key][1:]:
@@ -720,6 +740,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 							      mover.server_status)
 			    Trace.alarm(e_errors.ERROR,"file family %s, from node %s has exceeded the file_family_width of %s %s"%(ff, node, ffw, mover_info))
 			if action == enstore_constants.RED:
+			    Trace.trace(enstore_constants.INQWORKDBG, 
+					"CBW: action is set ball red")
 			    # set the lm ball to red, this will set the enstore ball to red
 			    self.update_schedule_file({"work":"override", 
 						       "servers":lm.name,
