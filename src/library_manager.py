@@ -854,7 +854,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if not ticket.has_key('lm'):
                 ticket['lm'] = {'address':self.server_address }
             # set up priorities
-            ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel(ticket)
+            ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
             if status == e_errors.INPROGRESS:
