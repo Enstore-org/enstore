@@ -706,7 +706,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                   "USER ERROR, Duplicate request, ignored"    : "INPROGRESS",
                   "USER ERROR, File already exists"           : "EEXIST",
                   "TAPE ERROR, Tape not in robot or admin marked as bad" : "NOTALLOWED",
-		  "COMMUNICATION ERROR, retrying"             : "impostor",
+##              "COMMUNICATION ERROR, retrying"             : "impostor",
                   "TAPE TROUBLE, At least 2 IO errors on vol, pending request cancelled": "STATUS=N O",
                   "HARDWARE FAILURE, Drive didn't go online, retrying"  : "BADSWMOUNT",
                   "HARDWARE FAILURE, AML/2 robot failed"      : "BADMOUNT",
