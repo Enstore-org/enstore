@@ -186,7 +186,8 @@ if [ -z "${INSTALLDIR-}" ] ; then
       airedale*) INSTALLDIR=/home/products/$product;;
       pcfarm9*)  INSTALLDIR=/products/$product;;
       hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
-      rip*)      INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2/
+      ripsgi*)   INSTALLDIR=/usr/products/$product;;
+      rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2/
 	         setrev=0;;
       *)         INSTALLDIR=/p/`uname`/$product;;
    esac
