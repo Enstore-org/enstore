@@ -112,8 +112,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             try:
                 sock.connect(ticket['callback_addr'])
                 if not sock:
-                    print "unable to open connection to server"
-                    raise SERVER_CLOSED_CONNECTION
+                    print "unable to open connection to client"
+                    raise CLIENT_CLOSED_CONNECTION
                 break #Success, so get out of the loop.
             except socket.error, detail:
                 #We have seen that on IRIX, when the connection succeds, we
@@ -123,7 +123,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                 #Rename this error to be handled the same as the others.
                 elif detail[0] == errno.ECONNREFUSED:
                     print "connection refused"
-                    raise SERVER_CLOSED_CONNECTION, detail[0]
+                    return
+                    raise CLIENT_CLOSED_CONNECTION, detail[0]
                 else:
                     pass #somethin...something...something...
                 time.sleep(1)

@@ -92,6 +92,7 @@ class MonitorServerClient(generic_client.GenericClient):
                   'remote_interface' : server_address[0],
                   'block_count'      : self.block_count,
                   'block_size'       : self.block_size,
+                  'pid'              : os.getpid()
                   }
 
         try:
@@ -207,11 +208,11 @@ class MonitorServerClient(generic_client.GenericClient):
             while bytes_sent < ticket['block_size']*ticket['block_count']:
                 r,w,ex = select.select([], [data_socket], [data_socket],
                                self.timeout)
-                if not w:
-                    print "passive write failed to reach monitor server via TCP"
-                    raise CLIENT_CLOSED_CONNECTION
-                bytes_sent = bytes_sent + data_socket.send(sendstr,
+
+                if w:
+                    bytes_sent = bytes_sent + data_socket.send(sendstr,
                                                            socket.MSG_DONTWAIT)
+                print "bytes_sent:", bytes_sent
             reply['elapsed'] = -1
 
         #If we get here, the status is ok.
@@ -367,7 +368,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-#        vetos[socket.gethostname()] = 'thishost'
+        vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
@@ -422,7 +423,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
                     print "Skipping %s" % (vetos.veto_info(ip),)
                 continue
             if not summary:
-                print "Trying", host 
+                print "Trying", host, os.getpid()
             msc = MonitorServerClient(
                 (config_host, config_port),
                 (ip,                      enstore_constants.MONITOR_PORT),
