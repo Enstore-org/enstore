@@ -239,7 +239,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # if we raise an alarm we need to include the following info.
             alarm_info = {'server' : server.name}
             # first see if the server is supposed to be restarted.
-	    print server
             if server.norestart:
                 if not server.did_restart_alarm:
                     # do not restart, raise an alarm that the
