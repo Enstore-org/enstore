@@ -59,6 +59,9 @@ int ds_print_report(void) {
 #define DELTA 1 
 #define SUM_OF_DELTAS 2 
 #define BUMP 4 
+#define ABSOLUTE 8
+#define INIT 16
+#define RECENT 32
 
 /*************************************************************************
  *                                                                       *
