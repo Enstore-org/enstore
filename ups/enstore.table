@@ -66,7 +66,7 @@ QUALIFIERS = ""
         # control where the trace file goes
         execute("whoami", NO_UPS_ENV, meme)
         execute("mkdir -p /tmp/enstore/$meme", NO_UPS_ENV)
-	execute("chmod 777 /tmp/enstore",NO_UPS_ENV)
+	#execute("chmod 777 /tmp/enstore",NO_UPS_ENV)
 	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
         envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$tracehost")
         envUnset(tracehost)
@@ -74,7 +74,7 @@ QUALIFIERS = ""
 	
 	# we need a file lock to serialize access to requesting ports (callback.py)
 	execute("touch /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
-	execute("chmod go+rw /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
+	execute("chmod go+rw /tmp/enstore/hunt_port_lock 2>/dev/null 1>/dev/null",NO_UPS_ENV)
 
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/pcfarm.conf)
