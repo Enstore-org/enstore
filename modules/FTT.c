@@ -217,21 +217,19 @@ FTT_read(  PyObject *self
 	int ii;
 
 	ret_tp = Py_BuildValue( "s#", g_buf_p, no_bytes );
-	for (ii=0; ii<no_bytes; ii++)
+	for (ii=0; ii<(g_buf_bytes-no_bytes); ii++)
 	    g_buf_p[ii] = g_buf_p[ii+no_bytes];
 	g_buf_bytes -= no_bytes;
     }
     else if (no_bytes <= g_blocksize)
     {   /* do not have all the data, but can use global buffer */
-	int ii;
+	int ii, xx;
 
 	while (g_buf_bytes < no_bytes)
 	{   sts = ftt_read(  g_ftt_desc_tp, &g_buf_p[g_buf_bytes]
 			   , g_blocksize );
 	    if (sts == 0)
 	    {   /* eof so give them what we have */
-		ret_tp = Py_BuildValue( "s#", g_buf_p, g_buf_bytes );
-		g_buf_bytes = 0;
 		break;
 	    }
 	    else if (sts == -1) return (raise_ftt_exception("read"));
@@ -239,10 +237,11 @@ FTT_read(  PyObject *self
 	    g_buf_bytes += sts;
 	}
 
-	ret_tp = Py_BuildValue( "s#", g_buf_p, no_bytes );
-	for (ii=0; ii<no_bytes; ii++)
-	    g_buf_p[ii] = g_buf_p[ii+no_bytes];
-	g_buf_bytes -= no_bytes;
+	xx = (no_bytes<g_buf_bytes)? no_bytes: g_buf_bytes;
+	ret_tp = Py_BuildValue( "s#", g_buf_p, xx );
+	for (ii=0; ii<g_buf_bytes-xx; ii++)
+	    g_buf_p[ii] = g_buf_p[xx+ii];
+	g_buf_bytes -= xx;
     }
     else /* need to malloc an area (> g_blocksize) for all the data */
     {   char *buf_p = malloc( no_bytes+g_blocksize );
@@ -425,7 +424,7 @@ do_read(  int 		rd_fd
 	}
 	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
 
-	if (rd_fd)
+	if (rd_fd) /* i.e. if 'w' to HSM */
 	{   /* read from network OR a file -- but, as we will be writing to
 	       HSM, make sure we get what we ask for */
 	    /* it is ok to do partial block read from user! */
@@ -450,6 +449,8 @@ do_read(  int 		rd_fd
 	    /* do not crc g_buf_bytes */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
+		char	xxx[377];
+		strncpy( xxx, g_shmaddr_p+shm_off+g_buf_bytes, 377 ); xxx[376]='\0';
 		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
 					   , g_shmaddr_p+shm_off+g_buf_bytes
 					   , shm_bytes-g_buf_bytes
@@ -457,6 +458,7 @@ do_read(  int 		rd_fd
 		crc_i = PyInt_AsLong( rr );
 	    }
 	    shm_off += shm_bytes;
+	    shm_bytes = 0;
 	}
 	else
 	{   /* g_buf_bytes are to be used/crc-ed to fullfill user request */
@@ -480,6 +482,8 @@ do_read(  int 		rd_fd
 	    /* some or all of g_buf_bytes are to be crc-ed */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
+		char	xxx[377];
+		strncpy( xxx, g_shmaddr_p+shm_off, 377 ); xxx[376]='\0';
 		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
 					   , g_shmaddr_p+shm_off
 					   , user_bytes
@@ -624,13 +628,14 @@ FTT_fd_xfer(  PyObject *self
 			if (sts == -1) return (raise_exception("fd_xfer - write"));
 			if (no_bytes < msg_s.md.data)
 			{   /* left over goes into g_buf_p */
-			    while (no_bytes--)
-				g_buf_p[no_bytes] = msg_s.md.c_p[no_bytes];
+			    int ii=msg_s.md.data-no_bytes;
+			    while (ii--)
+				g_buf_p[ii] = msg_s.md.c_p[no_bytes+ii];
 			}
-			else no_bytes -= sts; /* count down */
+			no_bytes -= sts; /* count down */
 			*write_bytes_ip += sts;	/* count up */
 		    }
-		} while (sts != msg_s.md.data);
+		} while ((sts!=msg_s.md.data) && (no_bytes > 0));
 
 		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
 		if (sts == -1) return (raise_exception("fd_xfer - write - semop"));
