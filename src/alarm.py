@@ -61,15 +61,12 @@ class GenericAlarm:
         if self.patrol:
             host = string.split(self.host,".")
             return string.join((host[0], "Enstore", repr(self.severity), \
-                                enstore_status.format_time(self.timedate), \
-                                repr(self.pid), repr(self.uid), \
-                                e_errors.sevdict[self.severity], self.source, \
-                                rest, "\n"))
+                                self.short_text(), "\n"))
         else:    
             return string.join((repr(self.timedate), \
                                 self.host, repr(self.pid), repr(self.uid), \
                                 e_errors.sevdict[self.severity], self.source, \
-                                rest, "\n"))
+                                self.root_error, rest, "\n"))
 
     # format the alarm as a simple, short text string to use to signal
     # that there is something wrong that needs further looking in to
@@ -84,8 +81,8 @@ class GenericAlarm:
         if self.alarm_info.has_key(SHORT_TEXT):
             str = str+self.alarm_info[SHORT_TEXT]
         else:
-            str = str+DEFAULT_TEXT
-        return str+"\n"
+            str = str+self.root_error
+        return str
 
 class Alarm(GenericAlarm):
 
@@ -118,7 +115,7 @@ class AsciiAlarm(GenericAlarm):
         # formatted as follows -
         #     date_time node pid uid severity server text
         ntext = string.strip(text)
-        fields = string.split(ntext, " ", 6)
+        fields = string.split(ntext, " ", 7)
         self.timedate = string.atof(fields[0])
         self.host = fields[1]
         self.pid = string.atoi(fields[2])
@@ -129,8 +126,9 @@ class AsciiAlarm(GenericAlarm):
                 self.severity = key
                 break
         self.source = fields[5]
+        self.root_error = fields[6]
 
-        if len(fields) == 7:
-            self.alarm_info[TEXTKEY] = fields[6]
+        if len(fields) == 8:
+            self.alarm_info[TEXTKEY] = fields[7]
         else:
             self.alarm_info = {}
