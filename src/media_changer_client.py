@@ -8,9 +8,6 @@
 #                                                                       #
 #########################################################################
 
-# system imports
-import pdb
-
 #enstore imports
 import configuration_client
 import udp_client
@@ -18,7 +15,6 @@ import interface
 import generic_client
 import generic_cs
 import Trace
-import e_errors
 
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
@@ -115,8 +111,6 @@ class MediaChangerClientInterface(interface.Interface):
         generic_cs.enprint("        --maxwork=N        Max simultaneous operations allow (may be 0)")
         generic_cs.enprint("        --getwork          List oprations in progress")
         
-
-
 if __name__ == "__main__" :
     import sys
     Trace.init("medch cli")

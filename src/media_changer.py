@@ -23,8 +23,6 @@ import generic_server
 import generic_cs
 import interface
 import log_client
-import traceback
-import string
 import time				# sleep
 import Trace
 import e_errors
