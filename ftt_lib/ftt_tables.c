@@ -1001,21 +1001,21 @@ ftt_dev_entry devtable[] = {
     {"AIX", "EXB-8500", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
 	FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	"dev/rmt%d","dev/rmt%d", 1, AIXfind,  {
-    /*   string                  den mod hwd   pas fxd rewind            1st */
-    /*   ======                  === === ===   === === ======            === */
+    /*   string                den mod hwd   pas fxd rewind            1st */
+    /*   ======                === === ===   === === ======            === */
     /* Default, passthru */
         { "dev/rmt%d.5",        1,  0, 0x15, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",       -1,  0,   -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Variable Usable */
-        { "dev/rmt%d.5",        0,  0, 0x14, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        0,  0, 0x14, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Fixed Usable */
-        { "dev/rmt%d.5",        0,  0, 0x14, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        0,  0, 0x14, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  0, 0x15, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
     /* Descriptive */
-        { "dev/rmt%d",          1,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, 512},
-        { "dev/rmt%d.1",        1,  0, 0x00, 0,  1,                 0, 1, 512},
+        { "dev/rmt%d4",         1,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, 512},
+        { "dev/rmt%d",          0,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, 512},
+        { "dev/rmt%d.5",        1,  0, 0x00, 0,  1,                 0, 1, 512},
         { "dev/rmt%d.1",        0,  0, 0x14, 0,  1,          FTT_RDNW, 1, 512},
-        { "dev/rmt%d.1",        0,  1, 0x15, 0,  1,          FTT_RDNW, 1, 512},
         { "dev/rmt%d.2",        1,  0, 0x00, 0,  1, FTT_RWOC|FTT_RTOO, 1, 512},
         { "dev/rmt%d.3",        1,  0, 0x00, 0,  1,          FTT_RTOO, 1, 512},
         { "dev/rmt%d.4",        0,  0, 0x14, 0,  1, FTT_RWOC|       0, 1, EXB_MAX_BLKSIZE},

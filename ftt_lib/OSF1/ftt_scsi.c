@@ -8,6 +8,7 @@ static char rcsid[] = "#(@)$Id$";
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/errno.h>
+#include <sys/uio.h>
 
 #include <io/common/iotypes.h>
 #include <io/cam/cam.h>
@@ -176,14 +177,17 @@ ftt_scsi_close(scsi_handle n)
  *\arglend
 -*/
 int
-ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite){
+ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite) {
 
     int res;
+    static UAGT_CAM_CCB ua_ccb_sim_rel;
+    static CCB_RELSIM ccb_sim_rel;
     static UAGT_CAM_CCB ua_ccb;
     static CCB_SCSIIO ccb;
     static int gotstatus = 0;
 #   define SENSSIZ 64
     static char acSense[SENSSIZ];
+    int successful, retries;
 
     if (gotstatus && pcCmd[0] == 0x03) {
 	/* we already have mode sense data, so fake it */
@@ -192,6 +196,24 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	return 0;
     }
 
+    /* setup SIMQ_RELEASE request */
+    ccb_sim_rel.cam_ch.my_addr = (struct ccb_header*) &ccb_sim_rel;
+    ccb_sim_rel.cam_ch.cam_ccb_len = sizeof(CCB_RELSIM);
+    ccb_sim_rel.cam_ch.cam_func_code = XPT_REL_SIMQ;
+    ccb_sim_rel.cam_ch.cam_path_id    = open_devs[(int)n].id;
+    ccb_sim_rel.cam_ch.cam_target_id  = open_devs[(int)n].targid;
+    ccb_sim_rel.cam_ch.cam_target_lun = open_devs[(int)n].lun;
+    ccb_sim_rel.cam_ch.cam_flags =  CAM_DIR_NONE;
+    ua_ccb_sim_rel.uagt_ccb = (CCB_HEADER *)&ccb_sim_rel;
+    ua_ccb_sim_rel.uagt_ccblen = sizeof(CCB_RELSIM);
+    ua_ccb_sim_rel.uagt_buffer = 0;
+    ua_ccb_sim_rel.uagt_buflen = 0;
+    ua_ccb_sim_rel.uagt_snsbuf = 0;
+    ua_ccb_sim_rel.uagt_snslen = 0;
+    ua_ccb_sim_rel.uagt_cdb = 0;
+    ua_ccb_sim_rel.uagt_cdblen = 0;
+
+    /* setup actual SCSI_IO request */
     ccb.cam_ch.my_addr = (struct ccb_header *)&ccb;
     ccb.cam_ch.cam_ccb_len = sizeof(ccb);
     ccb.cam_ch.cam_func_code = XPT_SCSI_IO;
@@ -221,10 +243,31 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     DEBUG2(stderr,"sending scsi frame:\n");
     DEBUGDUMP2(pcCmd,nCmd);
 		
-    res = ioctl(open_devs[(int)n].fd, UAGT_CAM_IO, &ua_ccb);
-    if (res < 0) {
-	return res;
-    }
+    successful = 0;
+    retries = 0;
+    do {
+        DEBUG3(stderr, "try %d\n", retries);
+        res = ioctl(open_devs[(int)n].fd, UAGT_CAM_IO, &ua_ccb);
+	if (res < 0) {
+	    DEBUG1(stderr, "UAGT_CAM_IO ioctl failed\n");
+	    return res;
+	}
+	if ((ccb.cam_ch.cam_status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+	    DEBUG2(stderr, "cam_status is not completed\n");
+	    /* try to unfreeze the queue */
+	    if (ccb.cam_ch.cam_status & CAM_SIM_QFRZN) {
+	        DEBUG3(stderr, "unfreezing queue!\n");
+		res = ioctl(open_devs[(int)n].fd,UAGT_CAM_IO, &ua_ccb_sim_rel);
+		if (res < 0) {
+	            DEBUG3(stderr, "unfreeze failed!\n");
+		    return res;
+		}
+	    }
+	} else {
+	    successful = 1;
+	}
+    } while (!successful && ++retries < 3);
+
     gotstatus = ccb.cam_scsi_status != 0;
 
     res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
