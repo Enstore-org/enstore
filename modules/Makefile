@@ -58,7 +58,7 @@ adler32.a: adler32.c
 
 tape_copy: tape_copy.c
 	$(CC) -I. -I $(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
-	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt
+	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
 installpyc:
 	for m in $(PYMODULES) the-end; do \
 	  if [ "$$m" != the-end ]; then \
