@@ -361,9 +361,9 @@ ftt_next_supported(int *pi) {
 	if(devtable[*pi].os == 0) {
 		return 0;
 	}
-	/* gratuitous sprintf workaround... */
+	/* handle %s case... */
 	if (0 == strncmp(devtable[*pi].baseconv_out,"%s", 2)) {
-	    sprintf(namebuf, devtable[*pi].baseconv_out, "" , 0);
+	    sprintf(namebuf, devtable[*pi].baseconv_out, "xxx" , 0);
 	} else {
 	    sprintf(namebuf, devtable[*pi].baseconv_out, 0, 0);
 	}

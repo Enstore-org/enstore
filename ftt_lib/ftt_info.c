@@ -113,17 +113,23 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
      */
     for( i = 0; pp[i] != 0; i++){
         res = stat(pp[i],&sbuf);
-	if ( res< 0) {
-	  if ( errno == ENOENT ) continue ; 
-	  rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"stat",1);
-	  continue;
+	if (res < 0) {
+	    if ( errno == ENOENT ) {
+		continue; 
+	    } else {
+		rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,
+						"stat",1);
+		continue;
+	    }
 	}
 	res = chmod(pp[i],mode);
-	if( res < 0 )
+	if (res < 0) {
             rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chmod",1);
+	}
 	res = chown(pp[i],uid,gid);
-	if( res < 0 ) 
+	if (res < 0) {
             rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chown",1);
+	}
     }
     return rres;
 }
