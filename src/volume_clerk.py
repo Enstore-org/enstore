@@ -117,70 +117,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             else: ret = e_errors.NOSPACE
         return ret
 
-    # get_all_bfids(self, vol) -- return a list of bfids in a volume
-    def get_all_bfids(self, vol):
-        return self.bfid_db[vol]
-
-    # rename deleted volume
-    def rename_volume(self, old_label, new_label, restore="no"):
-     try:
-         cur_rec = self.dict[old_label]
-         # should not happen
-         if self.dict.has_key(new_label):
-             rec = self.dict[new_label]
-             if rec['system_inhibit'][0] != e_errors.RECYCLE: 
-                 return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
-         # rename volume names in the FC database
-         if string.find(new_label, ".deleted") != -1:
-             cur_rec["system_inhibit"][0] = e_errors.DELETED
-             set_deleted = "yes"
-             restore_dir = "no"
-         else:
-             cur_rec["system_inhibit"][0] = "none"
-             if restore == "yes":
-                 set_deleted = "no"
-                 restore_dir = "yes"
-             else:
-                 set_deleted = "yes"
-                 restore_dir = "yes"
-
-             
-         fcc = file_clerk_client.FileClient(self.csc)
-         # get volume map name
-         bfid_list = self.get_all_bfids(old_label)
-         if bfid_list:
-             fcc.bfid = bfid_list[0]
-             vm_ticket = fcc.get_volmap_name()
-             if vm_ticket.has_key('pnfs_mapname'):
-                 old_vol_map_name = vm_ticket["pnfs_mapname"]
-                 (old_vm_dir,file) = os.path.split(old_vol_map_name)
-                 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
-                 # rename map files
-                 Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
-                           (old_vm_dir, new_vm_dir))
-                 os.rename(old_vm_dir, new_vm_dir)
-                 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
-                       (old_vm_dir, new_vm_dir))
-         # replace file clerk database entries
-         for bfid in bfid_list:
-             ret = fcc.rename_volume(bfid, new_label, 
-                                     set_deleted, restore, restore_dir)
-             if ret["status"][0] != e_errors.OK:
-                 Trace.log(e_errors.ERROR, "rename_volume failed: "+repr(ret))
-                 
-         # create new record in the database
-         cur_rec['declared'] = time.time()
-         self.dict[new_label] = cur_rec
-         # remove current record from the database
-         del self.dict[old_label]
-         Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
-                                                           new_label))
-         return e_errors.OK, None
-     # even if there is an error - respond to caller so he can process it
-     except:
-         exc, val, tb = Trace.handle_error()
-         return str(exc), str(val)
-     
     # __rename_volume(old, new): rename a volume from old to new
     #
     # renaming a volume involves:
@@ -205,7 +141,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
          # have file clerk to rename the volume information for the files
 
-         r = fcc.rename_volume2(old, new)
+         r = fcc.rename_volume(old, new)
          if r['status'][0] == e_errors.OK:
              # modify the volume record
              # should we update other infromation?
@@ -221,7 +157,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     # rename_volume() -- server version of __rename_volume()
 
-    def rename_volume2(self, ticket):
+    def rename_volume(self, ticket):
         try:
             old = ticket['old']
             new = ticket['new']
@@ -533,99 +469,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
-    # remove deleted volume and all information about it
-    def remove_deleted_volume(self, external_label):
-     try:
-         cur_rec = self.dict[external_label]
-         # if volume is not marked as deleted it is an error
-         if cur_rec["system_inhibit"][0] != e_errors.DELETED:
-             return cur_rec["system_inhibit"][0], "Volume Clerk: volume "+external_label+" is not marked as deleted"
-         
-         ## if volume is marked as deleted copy its record into DB
-         ## and delete original
-         else:
-             # remove all bfids for this volume
-             fcc = file_clerk_client.FileClient(self.csc)
-             bfid_list = self.get_all_bfids(external_label)
-             vm_dir = ''
-             for bfid in bfid_list:
-                 fcc.bfid = bfid
-                 vm_ticket = fcc.get_volmap_name()
-                 if vm_ticket.has_key("pnfs_mapname"):
-                     vol_map_name = vm_ticket["pnfs_mapname"]
-                     (vm_dir,file) = os.path.split(vol_map_name)
-                     ret = fcc.del_bfid()
-                     os.remove(vol_map_name)
-                 else:
-                     Trace.log(e_errors.WARNING, "no pnfs_mapname entry for bfid %s"%
-                               (fcc.bfid,))
-             if vm_dir:
-                 os.rmdir(vm_dir)
-             # remove current record from the database
-             del self.dict[external_label]
-             new_label = string.replace(external_label, '.deleted','')
-             rec = self.dict[new_label]
-             rec['system_inhibit'] = ['none', 'none']
-             self.dict[new_label] = rec
-             Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
-
-             return e_errors.OK, None
-     # even if there is an error - respond to caller so he can process it
-     except:
-         exc, val, tb = Trace.handle_error()
-         return str(exc), str(val)
-         
-    # remove deleted volume(s)
-    # this method is called externally
-    def remove_deleted_vols(self, ticket):
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        # this could tie things up for awhile - fork and let child
-        # send the work list (at time of fork) back to client
-        #if self.fork() != 0:
-        #    return
-        vols = []
-        try:
-            if not self.get_user_sockets(ticket):
-                return
-            ticket["status"] = (e_errors.OK, None)
-            callback.write_tcp_obj(self.data_socket, ticket)
-            if not ticket.has_key("external_label"):
-                # fill in the list of volumes to delete
-                # REMOVE ME LATER
-                # The following commented out old style cursor usage
-                #   should be removed when the new style cursor usage is
-                #   proven to be stable
-                # self.dict.cursor("open")
-                # key,value=self.dict.cursor("first")
-                c = self.dict.newCursor()
-                key,value = c.first()
-                while key:
-                    if value["system_inhibit"][0] == e_errors.DELETED:
-                        vols.append(key)
-                    key,value = c.next()
-                c.close()
-            else:
-                if self.dict.has_key(ticket["external_label"]):
-                    record = self.dict[ticket["external_label"]]
-                    if record["system_inhibit"][0] == e_errors.DELETED:
-                        vols.append(ticket["external_label"])
-            Trace.log(e_errors.INFO,"remove_deleted_vols: vols %s" % (vols,)) 
-            for vol in vols:
-                ret = self.remove_deleted_volume(vol)
-                msg="VOLUME "+vol
-                if ret[0] == e_errors.OK: msg = msg+" removed"
-                else: msg = msg + " " + repr(ret)
-                callback.write_tcp_raw(self.data_socket,msg)                
-            self.data_socket.close()
-            callback.write_tcp_obj(self.control_socket, ticket)
-            self.control_socket.close()
-        except:
-            c.close()
-            Trace.handle_error()
-        return
-            
-
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
@@ -817,154 +660,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         del self.dict[external_label]
         ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
-    # !!! This is obsolete !!!
-    # delete a volume from the database
-    # def delvol(self, ticket):
-    def delvol_obsolete(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-        except KeyError, detail:
-            msg= "Volume Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-        
-        # get the current entry for the volume
-            record = self.dict[external_label]
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        force = ticket.get('force',0)
-        # get the volume state as seen by media changer
-        ret = self.get_media_changer_state(record["library"],
-                                            record["external_label"],
-                                            record["media_type"])
-        # the following code is robot type dependent!!!!!
-        if not force and ret != 'unmounted' and ret != '' and ret != 'E':
-           ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'. state %s" %
-                               (ret,))
-           self.reply_to_caller(ticket)
-           return
-        if record.has_key('non_del_files'):
-            if record['non_del_files']>0:
-                msg= "Volume Clerk: volume %s has %s active files"%(
-                    external_label,record['non_del_files'])
-                ticket["status"] = (e_errors.CONFLICT,msg)
-                Trace.log(e_errors.INFO, msg)
-                self.reply_to_caller(ticket)
-                return
-        else:
-            Trace.log(e_errors.ERROR,"non_del_files not found in volume ticket - old version of table")
-
-        if record['system_inhibit'][0] == e_errors.RECYCLE:
-            # volume has been deleted but still can be recovered
-            # to delete this volume it must be destroyed by admin.
-            ticket['status'] = (e_errors.RECYCLE, "volume must be deleted by administrator")
-            self.reply_to_caller(ticket)
-            return
-        if record['system_inhibit'][0] == e_errors.DELETED:
-            # volume is already deleted
-            ticket['status'] = (e_errors.DELETED, "volume is deleted")
-            self.reply_to_caller(ticket)
-            return
-        # if volume has not been written delete it
-        if record['sum_wr_access'] == 0:
-            # see what is the current counter
-            library = record['library']
-            sg = volume_family.extract_storage_group(record['volume_family'])
-            if sg != 'none' and self.quota_enabled(library, sg):
-                vol_count = self.sgdb.get_sg_counter(library, sg) - 1
-                Trace.trace(21, "delvol: volume_counter %s" % (vol_count,))
-                if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
-                if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
-            del self.dict[external_label]
-            ticket["status"] = (e_errors.OK, None)
-        else:
-            record["system_inhibit"][0] = e_errors.DELETED
-            cur_rec = self.dict[external_label]
-            self.dict[external_label] = record
-            # try to remove deleted volume and mark the current one as deleted
-            if self.dict.has_key(external_label+".deleted"):
-                # remove deleted volume
-                status = self.remove_deleted_volume(external_label+".deleted")
-                #if status[0] == e_errors.OK:
-            # rename current volume
-            status = self.rename_volume(external_label, 
-                                        external_label+".deleted")
-
-            ticket["status"] = status
-            if status[0] == e_errors.OK:
-                # return volume to its pool
-             
-                new_label = string.replace(cur_rec['external_label'], '.deleted', '')
-                if not self.dict.has_key(new_label):
-                    cur_rec['external_label'] = new_label
-                    # form a volume family
-                    sg = volume_family.extract_storage_group(cur_rec['volume_family'])
-                    cur_rec['volume_family'] = volume_family.make_volume_family(sg,'none', 'none')
-                    cur_rec['remaining_bytes'] = cur_rec['capacity_bytes']
-                    cur_rec['eod_cookie'] = '0000_000000000_0000001'
-                    cur_rec['last_access'] = -1
-                    cur_rec['first_access'] = -1
-                    #cur_rec['declared'] = time.time()
-                    cur_rec['system_inhibit'] = [e_errors.RECYCLE, "none"]
-                    cur_rec['user_inhibit'] = ["none", "none"]
-                    cur_rec['sum_wr_err'] = 0
-                    cur_rec['sum_rd_err'] = 0
-                    cur_rec['sum_wr_access'] = 0
-                    cur_rec['sum_rd_access'] = 0
-                    cur_rec['non_del_files'] = 0
-                    # write the new record out to the database
-                    self.dict[new_label] = cur_rec
-            
-                    Trace.log(e_errors.INFO,"Volume %s is deleted"%(external_label,))
-
-        self.reply_to_caller(ticket)
-        return
-
-    # restore a volume
-    # def restorevol(self, ticket):
-    def restorevol_obsolete(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-            restore_vm = ticket["restore"]
-        except KeyError, detail:
-            msg= "Volume Clerk: %s key is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # get the current entry for the volume
-        cl = external_label+".deleted"
-        try:
-            record = self.dict[cl]
-        except KeyError, detail:
-            msg="Volume Clerk: no such volume %s"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        status = self.rename_volume(cl, external_label, restore_vm)
-        ticket["status"] = status
-        if status[0] == e_errors.OK:
-            record = self.dict[external_label]
-            bfid_list = self.get_all_bfids(external_label)
-            record["system_inhibit"] = ["none","none"]
-            if restore_vm == "yes":
-                record["non_del_files"] = len(bfid_list)
-            self.dict[external_label] = record
-            Trace.log(e_errors.INFO,"Volume %s is restored"%(external_label,))
-
         self.reply_to_caller(ticket)
         return
 
@@ -2004,13 +1699,6 @@ class VolumeClerk(VolumeClerkMethods):
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
-        try:
-            self.bfid_db = db.Index(None, dbHome, 'file', 'external_label')
-        except:
-            msg = os.path.join(dbHome, 'file.external_label.index')+' does not exists. Volume Clerk quiting ...'
-            Trace.log(e_errors.ERROR, msg)
-            print msg
-            sys.exit(1)
 
         self.sgdb = sg_db.SGDb(dbHome)
 
@@ -2051,7 +1739,6 @@ if __name__ == "__main__":
             vc.serve_forever()
         except SystemExit, exit_code:
             vc.dict.close()
-            vc.bfid_db.close()
             sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)

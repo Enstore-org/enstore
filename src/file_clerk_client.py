@@ -229,21 +229,10 @@ class FileClient(generic_client.GenericClient,
                        "complete_crc": complete_crc})
         return r
         
-    # rename volume and volume map
-    def rename_volume(self, bfid, external_label, 
-		      set_deleted, restore_vm, restore_dir):
-        r = self.send({"work"           : "rename_volume",
-                       "bfid"           : bfid,
-		       "external_label" : external_label,
-		       "set_deleted"    : set_deleted,
-		       "restore"        : restore_vm,
-		       "restore_dir"    : restore_dir } )
-	return r
-
     # rename a volume
 
-    def rename_volume2(self, old, new):
-        r = self.send({"work"           : "rename_volume2",
+    def rename_volume(self, old, new):
+        r = self.send({"work"           : "rename_volume",
 		       "external_label" : old,
 		       "new_external_label" : new } )
 	return r

@@ -189,13 +189,6 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket['work']='modifyvol'
         return self.send(ticket)
 
-    # delete a volume from the stockpile
-    def delete_obsolete(self, external_label,force=0):
-        ticket= { 'work'           : 'delvol',
-                  'external_label' : external_label,
-                  'force'          : force }
-        return self.send(ticket)
-
     # remove a volume entry in volume database
     def rmvolent(self, external_label):
         ticket= { 'work'           : 'rmvolent',
@@ -280,54 +273,6 @@ class VolumeClerkClient(generic_client.GenericClient,
                 print vlist
                 
         ticket['volumes'] = volumes.get('volumes',{})
-        return ticket
-
-    # remove deleted volumes
-    def remove_deleted_vols(self, volume=None):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"         : "remove_deleted_vols",
-                  "callback_addr" : (host, port),
-                  "unique_id"    : str(time.time()) }
-        if volume: ticket["external_label"] = volume
-        # send the work ticket to the library manager
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-        r,w,x = select.select([listen_socket], [], [], 15)
-        if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
-        
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        
-        ticket = callback.read_tcp_obj(control_socket)
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes=''
-        while 1:
-            msg=callback.read_tcp_raw(data_path_socket)
-            if not msg: break
-            if volumes: volumes = volumes+"\012"+msg
-            else: volumes=msg
-        ticket['volumes'] = volumes
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
         return ticket
 
     # what is the current status of a specified volume?
@@ -463,7 +408,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         return  self.send(ticket)
 
     def rename_volume(self, old, new):
-        ticket = {'work': 'rename_volume2',
+        ticket = {'work': 'rename_volume',
                   'old' : old,
                   'new' : new }
         return self.send(ticket)
@@ -842,11 +787,6 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = vcc.get_vols(key, in_state, not_cond)
-    elif intf.rmvol:
-        # optional argument
-        if intf.rmvol == 'all': intf.rmvol = None
-        ticket = vcc.remove_deleted_vols(intf.rmvol)
-        print ticket['volumes']
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte

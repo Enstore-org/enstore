@@ -560,48 +560,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     # rename volume and volume map
-    def rename_volume(self, ticket):
-        try:
-            bfid = ticket["bfid"]
-            label = ticket["external_label"]
-            set_deleted = ticket[ "set_deleted"]
-            restore_volmap = ticket["restore"]
-            restore_dir = ticket["restore_dir"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        record = self.dict[bfid] 
-        # replace old volume name with new one
-        record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
-                                                record["external_label"], 
-                                                label)
-        ticket["pnfs_mapname"] = record["pnfs_mapname"]
-        record["external_label"] = label
-        record["deleted"] = set_deleted
-        if record["deleted"] == "no" and restore_volmap == "yes":
-            # restore pnfs entry
-            # import pnfs
-            map = pnfs.Pnfs(record["pnfs_mapname"])
-            status = map.restore_from_volmap(restore_dir)
-            del map
-            if status[0] != e_errors.OK:
-                ticket["status"] = status
-                self.reply_to_caller(ticket)
-                Trace.log(e_errors.ERROR,'rename_volume failed %s'%(ticket,))
-                return
-        self.dict[bfid] = record 
- 
-        # and return to the caller
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
-        return
-
-    # rename volume and volume map
     # this version rename volume for all files in it
     #
     # This only renames the file records. A complete volume renaming
@@ -654,7 +612,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     #
     # This is the newer version
 
-    def rename_volume2(self, ticket):
+    def rename_volume(self, ticket):
         try:
             old = ticket["external_label"]
             new = ticket[ "new_external_label"]
