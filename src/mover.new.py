@@ -631,6 +631,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def __init__( self, server_address, verbose=0 ):
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.verbose = verbose
+        logc.send( log_client.INFO, 0, "Mover starting - contacting libman")
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
 	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
@@ -843,13 +844,9 @@ import log_client
 # get an interface, and parse the user input
 intf = MoverInterface()
 
-# get clients -- these will be (readonly) global object instances
+# get configuration client
 csc  = configuration_client.ConfigurationClient( intf.config_host, 
                                                  intf.config_port, 0 )
-udpc =          udp_client.UDPClient()	# for server to send (client) request
-logc =          log_client.LoggerClient( csc, 'MOVER', 'logserver', 0 )
-fcc  = file_clerk_client.FileClient( csc )
-vcc  = volume_clerk_client.VolumeClerkClient( csc )
 
 # get my (localhost) configuration from the configuration server
 mvr_config = csc.get( intf.name )
@@ -863,6 +860,12 @@ del intf
 mvr_config['do_fork'] = 1
 if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
 del mvr_config['status']
+
+# get clients -- these will be (readonly) global object instances
+udpc =          udp_client.UDPClient()	# for server to send (client) request
+logc =          log_client.LoggerClient( csc, mvr_config['logname'], 'logserver', 0 )
+fcc  = file_clerk_client.FileClient( csc )
+vcc  = volume_clerk_client.VolumeClerkClient( csc )
 
 # need a media changer to control (mount/load...) the volume
 mcc = media_changer_client.MediaChangerClient( csc, 0,
