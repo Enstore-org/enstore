@@ -10,7 +10,9 @@ import configuration_server
 import enstore_status
 import e_errors
 
-prefix = "       host             filesystem              Threshold       Action\n#---   ----             ----------              ----------      ----------------------\n"
+prefix = "       host             filesystem              Threshold       Action\n#---   ----             ----------              ----------      ----------------------\nO      mailfrom         '\"Patrol\" <patrol@"
+
+prefix2 = ">'\n"
 
 suffix1 = "\n" +\
           "P envars <<EOF\n" +\
@@ -87,14 +89,30 @@ server_start_order = ("config_server", \
                       "inquisitor", \
                       "admin_clerk")
 
+DOMAIN = ".fnal.gov"
+
 class EnpatrolFile(enstore_status.EnFile):
 
+    def __init__(self, name, mnode):
+	# add on the default domain name if not included with the mail_node
+	if string.count(mnode, ".") == 0:
+	    self.mail_node = mnode+DOMAIN
+	else:
+	    self.mail_node = mnode
+
+	enstore_status.EnFile.__init__(self, name)
+
     def write(self, cdict):
-	self.filedes.write(prefix)
+	self.write_prefix()
         self.write_enlines(cdict)
         self.filedes.write(suffix1)
 	self.write_hosts(cdict)
         self.filedes.write(suffix2)
+
+    def write_prefix(self):
+	self.filedes.write(prefix)
+	self.filedes.write(self.mail_node)
+	self.filedes.write(prefix2)
 
     def write_enlines(self, cdict):
 	ckeys = cdict.configdict.keys()
@@ -134,6 +152,7 @@ class EnpatrolFileInterface(interface.Interface):
     def __init__(self):
 	# fill in the defaults
 	self.config_file = self.NAME_DEFAULT
+	self.mail_node = "????"
 	self.verbose = 0
 	interface.Interface.__init__(self)
 
@@ -147,7 +166,7 @@ class EnpatrolFileInterface(interface.Interface):
 
     # define the valid command line options
     def options(self):
-	return self.help_options()+["verbose=", "config_file="]
+	return self.help_options()+["verbose=", "config_file=", "mail_node="]
 
 
 if __name__ == "__main__" :
@@ -165,7 +184,7 @@ if __name__ == "__main__" :
         name = regsub.sub(".conf", "", intf.config_file)
     
         # Get an enpatrol file object
-        cffile = EnpatrolFile(name+"_enpatrol.cf")
+        cffile = EnpatrolFile(name+"_enpatrol.cf", intf.mail_node)
         cffile.open()
         cffile.write(cdict)
         cffile.close()
