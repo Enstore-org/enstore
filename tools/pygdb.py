@@ -21,6 +21,10 @@ class PyGdb(Gdb):
         self.cont = 0
         self.filename = None
         self.line = None
+        self.pygdb_prompt = "(pygdb) "
+        self.gdb_mode = 0
+        self.prompt = self.pygdb_prompt
+        
         self.help = ["Commands:",
                      " b: set breakpoint at line or in function",
                      " c: continue",
@@ -144,19 +148,27 @@ class PyGdb(Gdb):
         return ret
     
     def command(self,cmd):
+        if self.gdb_mode:
+            if cmd[:2]== 'py':
+                self.gdb_mode = 0
+                self.prompt = self.pygdb_prompt
+                return ['Entering pygdb mode']
+            else:
+                return self.gdb_command(cmd)
+
         tok = string.split(cmd)
         ntok = len(tok)
         cmd_chr = tok[0][0]
-        if cmd_chr in 'bB':
+        if cmd_chr == 'b':
             return self.set_breakpoint(tok[1])
-        elif cmd_chr in 'wW':
+        elif cmd_chr == 'w':
             return self.backtrace()
-        elif cmd_chr in 'tT':
+        elif cmd_chr == 't':
             self.trace = not self.trace
             if self.trace: s='on'
             else: s = 'off'
             return ['tracing is '+s]
-        elif cmd_chr in 'dD':
+        elif cmd_chr == 'd':
             if ntok==1:
                 self.delete_all_breakpoints()
                 return [ 'Deleted all breakpoints']
@@ -169,7 +181,7 @@ class PyGdb(Gdb):
                         return ['No breakpoint %d' % bp]
                 except ValueError:
                     return ['Usage: d[elete] [breakpoint_number]']
-        elif cmd_chr in 'iI':
+        elif cmd_chr == 'i':
             bps = self.breakpoints.values()
             if not bps:
                 return ['No breakpoints set']
@@ -184,19 +196,25 @@ class PyGdb(Gdb):
                         else: 
                             ret.append(" %d in %s" % (bp,k))
             return ret
-        elif cmd_chr in 'qQ':
+        elif cmd_chr == 'q':
             sys.exit(0)
-        elif cmd_chr in 'sS':
+        elif cmd_chr == 's':
             self.break_next_line = 1
             self.cont = 1
-        elif cmd_chr in 'lL':
+        elif cmd_chr == 'l':
             return self.list()
-        elif cmd_chr in 'cC':
+        elif cmd_chr == 'c':
             return self.gdb_command(cmd)
-        elif cmd_chr in 'hH?':
+        elif cmd_chr in 'h?':
             return self.help
-        elif cmd[:4]=='gdb ':
-            return self.gdb_command(cmd[4:])
+        elif cmd[:3]=='gdb':
+            if ntok>1:
+                return self.gdb_command(cmd[4:])
+            else:
+                self.gdb_mode = 1
+                self.prompt = self.gdb_prompt
+                return ['Entering gdb mode']
+            
         else:
             return ['Unrecognized command %s' % cmd]
         
@@ -210,10 +228,14 @@ if __name__ == "__main__":
     if not pid:
         print "Usage: %s pid" % sys.argv[0]
         sys.exit(-1)
+
+    try:
+        import readline
+    except ImportError:
+        pass
         
     pygdb = PyGdb(sys.argv[1:])
     welcome = pygdb.get_response()
-    prompt = "(pygdb) "
 
     def print_response(response):
         if not response:
@@ -228,7 +250,7 @@ if __name__ == "__main__":
                 if pygdb.cont:
                     cmd = 'c'
                 else:
-                    cmd = raw_input(prompt)
+                    cmd = raw_input(pygdb.prompt)
                     
                 if  not cmd and not pygdb.allow_default_repeat:
                     continue
