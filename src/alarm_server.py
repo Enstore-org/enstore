@@ -281,7 +281,8 @@ if __name__ == "__main__":
     Trace.trace( 6, "alarm server called with args "+repr(sys.argv) )
 
     intf = AlarmServerInterface()
-    als = AlarmServer(intf)
+    csc = intf.config_host, intf.config_port
+    als = AlarmServer(csc)
     als.handle_generic_commands(intf)
     
     while 1:
