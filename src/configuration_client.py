@@ -141,6 +141,31 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(10,'}alive '+repr(x))
         return x
 
+    # get list of the Library manager movers
+    def get_movers(self, library_manager):
+        Trace.trace(10,'{get_movers for '+repr(library_manager))
+        request = {'work' : 'get_movers' ,  'library' : library_manager }
+        while 1:
+            try:
+                x = self.u.send(request, self.config_address)
+                Trace.trace(16,'}load '+repr(x))
+                return x
+            except socket.error:
+                if sys.exc_info()[1][0] == errno.CONNREFUSED:
+                    delay = 3
+                    Trace.trace(0,"}get_movers retrying "+\
+                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+                    print sys.exc_info()[1][0], "socket error. configuration "\
+                          +"sending to",self.config_address\
+                          ,"server down?  retrying in ",delay," seconds"
+                    time.sleep(delay)
+                else:
+                    Trace.trace(0,"}get_movers "+str(sys.exc_info()[0])+\
+                                str(sys.exc_info()[1]))
+                    raise sys.exc_info()[0],sys.exc_info()[1]
+        Trace.trace(16,'}get_movers')
+	
+
 class ConfigurationClientInterface(interface.Interface):
     def __init__(self):
         # fill in the defaults for the possible options
