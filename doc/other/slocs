@@ -4,22 +4,21 @@ pnfs interface: rounded to 725
 encp client: rounded to 1475
         encp.py   1471
 
-mover: rounded to 4475
+mover: rounded to 3920
      108*.8 Devcodes.c
      505*.8 ECRC.c
-     444*.8 ETape.c
-     995*.8 EXfer.c
+     438*.8 EXfer.c
      906*.8 FTT.c
      430*.8 IPC.c
        0*.8 Devcodes.h
-      20*.8 ETape.h
       18*.8 IPC.h
      252*.8 zconf.h
      888*.8 zlib.h
-        741 mover.py
+        387 driver.py
+        818 mover.py
          77 mover_client.py
 
-servers: rounded to 11300
+servers: rounded to 10910
      198*.8 EMASS.c
      307*.8 STK.c
      355*.8 Trace.c
@@ -42,7 +41,6 @@ servers: rounded to 11300
          79 dbutil.py
          34 dict_to_a.py
         274 dispatching_worker.py
-        388 driver.py
          55 e_errors.py
         399 enstore_status.py
         307 file_clerk.py
