@@ -255,7 +255,7 @@ ftp.quit()
 setup_products
 
 # parse the common parameters
-if [ $# -lt 3];
+if [ $# -lt 3 ];
 then
     not_enough_parameters "the common parameters"
 fi
@@ -300,10 +300,8 @@ case $test_to_do in
 esac
 
 #clean up of old junk
-echo cleanup: rm -f ${l}*
-              rm -f ${l}*
-echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
-              rm -f $test_file $read_back $write_in_progress $read_in_progress
+echo cleanup: rm -f $read_back $write_in_progress $read_in_progress
+              rm -f $read_back $write_in_progress $read_in_progress
 
 echo `date` Finished.
 exit 0
