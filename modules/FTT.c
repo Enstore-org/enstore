@@ -114,7 +114,7 @@ raise_exception( char *msg )
 static PyObject *
 raise_ftt_exception( char *msg )
 {
-	char		buf[200];
+	char		buf[2000];
 	char		*ss;
 
     ss = ftt_get_error( 0 ); /* Zero says do not return errno into pointer */
