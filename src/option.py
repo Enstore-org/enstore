@@ -798,7 +798,9 @@ class Interface:
     # Parse the argv passed in and split the "=" values into spaced value.
     def split_on_equals(self, argv):
         for i in range(len(argv)):
-            if self.is_option(argv[i].split("=")[0]):#Make sure it is a switch.
+            #Make sure it is a switch.
+            #Note: the replace operation is necessary to suport _s.
+            if self.is_option(argv[i].split("=")[0].replace("_", "-")):
                 list = string.split(argv[i], "=")
                 argv[i:i + 1] = list
 
