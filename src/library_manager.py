@@ -129,24 +129,19 @@ def update_mover_list(self, mover, state):
     """
     return mv
 
-# remove mover from list
-def remove_mover(mover, mover_list, verbose=0):
-    global mover_cnt
-    global mover_index
-    generic_cs.enprint("removing mover "+repr(mover), generic_cs.DEBUG,\
-	               verbose)
-    Trace.trace(3,"{remove_mover " + repr(mover) + "from " + repr(mover_list))
-    mv = find_mover(mover, mover_list, verbose)
-    if mv == None:
-	return
-    if mv:
-	mover_list.remove(mv)
-	if mover_cnt > 0:
-	    mover_cnt = mover_cnt - 1
-	    if mover_index >= mover_cnt:
-		mover_index = mover_cnt - 1
-	Trace.trace(3,"}remove_mover " + repr(mv))
-	
+# remove mover from summon list and update the mover state
+def remove_from_summon_list(self, ticket, state):
+    update_mover_list(self, ticket, state)
+    mv = find_mover(ticket, self.summon_queue, self.verbose)
+    if ((mv != None) and mv):
+	mv['tr_error'] = 'ok'
+	mv['summon_try_cnt'] = 0
+	try:
+	    del(mv["work_ticket"])
+	except:
+	    pass
+	self.summon_queue.remove(mv)
+
 	
 
 ##############################################################
@@ -344,7 +339,8 @@ def next_work_this_volume(v,verbose):
 
         # reading from this volume?
         elif (w["work"]           == "read_from_hsm" and
-              w["fc"]["external_label"] == v['vc']["external_label"] ):
+              w["fc"]["external_label"] == v['vc']["external_label"] and
+	      v["vc"]["system_inhibit"] != e_errors.NOACCESS):
 	    try:
 		# if previous read for this file failed and volume
 		# is mounted have_bound_volume request will not
@@ -713,10 +709,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				       ticket["status"][0])
 	    Trace.trace(3,"}read_from_hsm: volume has no access")
 	    return
-	# if volume mouted on idle mover it is an error
+	# if volume mouted on idle mover summon it
+	mv_found = 0
 	if v['at_mover'][0] == 'mounted':
 	    # set summon flag for this mover
-	    mv_found = 0
 	    for mv in movers:
 		if mv['mover'] == v['at_mover'][1]:
 		    # !!! stronger condition is search by address but
@@ -724,6 +720,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    # it must be added there
 		    mv_found = 1
 		    break
+	    """
 	    if mv_found:
 		self.enprint("found mover:state= "+repr(mv['state']), generic_cs.DEBUG, self.verbose)
 		if mv['state'] == 'idle_mover':
@@ -736,6 +733,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 						repr(mv['mover']))
 		     self.reply_to_caller(ticket)
 		     return
+	    """
 
 
 	"""
@@ -771,8 +769,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# check if requested volume is busy
 	if  not is_volume_busy(ticket["fc"]["external_label"]):
-	    # find the next idle mover
-	    mv = idle_mover_next(self, ticket["fc"]["external_label"])
+	    self.enprint("VOLUME IS AVAILABLE", generic_cs.DEBUG, self.verbose)
+	    if not mv_found:
+		# find the next idle mover
+		mv = idle_mover_next(self, ticket["fc"]["external_label"])
+	    else: print "mover found"
 	    if mv != None:
 		# summon this mover
 		self.enprint("read_from_hsm will summon mover "+repr(mv), \
@@ -789,17 +790,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"{idle_mover " + repr(mticket))
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, \
 	             self.verbose)
-	update_mover_list(self, mticket, mticket['work'])
+
 	# remove the mover from the list of movers being summoned
-	mv = find_mover(mticket, self.summon_queue, self.verbose)
-	if ((mv != None) and mv):
-	    mv['tr_error'] = 'ok'
-	    mv['summon_try_cnt'] = 0
-	    try:
-		del(mv["work_ticket"])
-	    except:
-		pass
-	    self.summon_queue.remove(mv)
+	remove_from_summon_list(self, mticket, mticket['work'])
 
         w = self.schedule()
 
@@ -812,8 +805,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w["status"][0] == e_errors.NOWORK:
             self.reply_to_caller({"work" : "nowork"})
 
-        # ok, we have some work - bind the volume
+        # ok, we have some work - try to bind the volume
 	elif w["status"][0] == e_errors.OK:
+	    # check if volume can be used to do work
+	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    vol_info = vc.inquire_vol(w['fc']['external_label'])
+	    if (vol_info['system_inhibit'] == e_errors.NOACCESS or
+		(vol_info['system_inhibit'] != 'none' and 
+		 w['work'] == 'write_to_hsm') or
+		((vol_info['system_inhibit'] != 'none' and
+		  vol_info['system_inhibit'] != 'readonly') and
+		 w['work'] == 'read_from_hsm')):
+		self.enprint("work can not be done at this volume"+repr(vol_info),\
+	                             generic_cs.DEBUG, self.verbose)
+		self.reply_to_caller({"work" : "nowork"})
+		pending_work.delete_job(w)
+		send_regret(w, self.verbose)
+		return
+		
 	    # check if the volume for this work had failed on this mover
             self.enprint("SUSPECT_VOLS "+repr(self.suspect_volumes), \
 	                 generic_cs.DEBUG, self.verbose)
@@ -821,6 +830,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		if (w['fc']['external_label'] == item['external_label']):
                     self.enprint("FOUND volume "+item['external_label'], \
 	                         generic_cs.DEBUG, self.verbose)
+		    mov_is_suspect = 0
 		    for i in item['movers']:
 			if i == mticket['mover']:
                             self.enprint("FOUND mover "+repr(i), \
@@ -829,7 +839,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    self.reply_to_caller({"work" : "nowork"})
 			    Trace.trace(3,"}idle_mover: skipping " + \
 					repr(item))
+			    mov_is_suspect = 1
 			    break
+		    if not mov_is_suspect:
+			continue
 	            self.enprint("MOVERS= "+repr(mover_cnt), \
                                  generic_cs.DEBUG, self.verbose)
 
@@ -845,7 +858,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                         self.verbose)
 
 			# set volume as noaccess
-			vc = volume_clerk_client.VolumeClerkClient(self.csc)
+			#vc = volume_clerk_client.VolumeClerkClient(self.csc)
 			v = vc.set_system_noaccess(w['fc']['external_label'])
 
 			#remove entry from suspect volume list
@@ -873,12 +886,29 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			self.suspect_volumes.remove(item)
 			Trace.trace(3,"}idle_mover: only one mover in config." \
 				    + repr(item))
+		    else:
+			# summon mover that can do the work
+			next_mover_found = 0
+			for i in range(0, mover_cnt):
+			    next_mover = idle_mover_next(self, w['fc']['external_label'])
+			    self.enprint("current mover "+repr(mticket['mover'])+\
+					 " next mover "+ repr(next_mover), \
+					 generic_cs.DEBUG, self.verbose)
+			    if (next_mover != None) and \
+			       (next_mover['mover'] != mticket['mover']):
+				next_mover_found = 1
+				break
+
+			if next_mover_found:
+			    self.enprint("idle will summon mover "+ \
+					 repr(next_mover), generic_cs.DEBUG, self.verbose)
+			    summon_mover(self, next_mover, w)
+			
 			return
 
 	    # check the volume state and try to lock it
-	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    vol_info = vc.inquire_vol(w['fc']['external_label'])
-
+	    #vc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    #vol_info = vc.inquire_vol(w['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'unmounted':
 		# set volume to mounting
 		v = vc.set_at_mover(w['fc']['external_label'], 'mounting', 
@@ -897,7 +927,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		return
 		
 		
-
             # reply now to avoid deadlocks
             format = "%s work on vol=%s mover=%s requester:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
@@ -907,9 +936,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["wrapper"]["uname"])
 	    pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
-            self.enprint("MOVER WORK:", generic_cs.SERVER, self.verbose)
-            self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
-	                 self.verbose)
+            self.enprint("MOVER WORK:"+repr(w), generic_cs.DEBUG, 
+			 self.verbose)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
 	    mv = update_mover_list(self, mticket, 'work_at_mover')
@@ -946,19 +974,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    state = 'idle_mover'  # to make names consistent
 	else:
 	    state = mticket['state']
-	update_mover_list(self, mticket, state)
+
 	# remove the mover from the list of movers being summoned
-	mv = find_mover(mticket, self.summon_queue, self.verbose)
-	if ((mv != None) and mv):
-	    mv['tr_error'] = 'ok'
-	    mv['summon_try_cnt'] = 0
-            self.enprint("have bound vol mover "+repr(mv), generic_cs.DEBUG, \
-	                 self.verbose)
-	    try:
-		del(mv["work_ticket"])
-	    except:
-		pass
-	    self.summon_queue.remove(mv)
+	remove_from_summon_list(self, mticket, state)
 
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket['vc']["external_label"])
@@ -1058,7 +1076,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    'unmounting', 
 				    mticket["mover"])
 		if v['status'][0] != e_errors.OK:
-		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
+		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
 		    logticket = self.logc.send(log_client.INFO, 2, format,
 					       mticket['vc']['external_label'],
 					       v['at_mover'][1], 
@@ -1092,25 +1110,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	vc = volume_clerk_client.VolumeClerkClient(self.csc)
 
         # get the work ticket for the volume
-        self.enprint("unilateral_unbind", generic_cs.SERVER|generic_cs.DEBUG, \
+        self.enprint("unilateral_unbind "+repr(ticket), generic_cs.DEBUG, \
 	             self.verbose)
         self.enprint(ticket, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	             self.verbose)
         w = get_work_at_movers(ticket["external_label"])
 
-	# update mover list. If mover is in the list - update its state
-	update_mover_list(self, ticket, 'idle_mover')
-
 	# remove the mover from the list of movers being summoned
-	mv = find_mover(ticket, self.summon_queue, self.verbose)
-	if ((mv != None) and mv):
-	    mv['tr_error'] = 'ok'
-	    mv['summon_try_cnt'] = 0
-	    try:
-		del(mv["work_ticket"])
-	    except:
-		pass
-	    self.summon_queue.remove(mv)
+	remove_from_summon_list(self, ticket, 'idle_mover')
 
 	# update list of suspected volumes
         self.enprint("SUSPECT VOLUME LIST BEFORE", generic_cs.SERVER, \
@@ -1140,12 +1147,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	             generic_cs.DEBUG|generic_cs.PRETTY_PRINT, self.verbose)
 
         if w:
-            self.enprint("unbind: work_at_movers", generic_cs.DEBUG, \
+            self.enprint("unilateral_unbind: work_at_movers", generic_cs.DEBUG, \
 	                 self.verbose)
             self.enprint(w, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
             work_at_movers.remove(w)
-
 
 
 	    if ticket['state'] != 'offline':
@@ -1160,8 +1166,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					       v['at_mover'][1], 
 					       v['at_mover'][0])
 		else:
+		    self.enprint("unilateral_unbind: sending unbind", 
+				 generic_cs.DEBUG,
+				 self.verbose)
 		    self.reply_to_caller({"work" : "unbind_volume"})
 	    else:
+		self.enprint("unilateral_unbind: sending nowork", 
+			     generic_cs.DEBUG,
+			     self.verbose)
 		self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
@@ -1171,19 +1183,35 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	    # set volume as noaccess
 	    v = vc.set_system_noaccess(w['fc']['external_label'])
-	    self.enprint("set_system_noaccess retrned "+repr(v), 
-			 generic_cs.DEBUG)
+	    label = w['fc']['external_label']
+	    self.enprint("set_system_noaccess returned "+repr(v), 
+			 generic_cs.DEBUG, self.verbose)
 
 	    #remove entry from suspect volume list
 	    self.suspect_volumes.remove(vol)
 	    self.enprint("removed from suspect volume list "+repr(vol)+\
-	                 "\nSUSPECT VOLUME LIST AFTER", generic_cs.DEBUG)
-	    self.enprint(self.suspect_volumes, generic_cs.DEBUG)
+	                 "\nSUSPECT VOLUME LIST AFTER", generic_cs.DEBUG, self.verbose)
+	    self.enprint(self.suspect_volumes, generic_cs.DEBUG, self.verbose)
 	    
 	    pending_work.delete_job(w)
 	    # 01/22 do not send a regret as the mover had already
 	    # sent a status to encp
-	    # send_regret(w, self.verbose)
+	    call_back_addr = w['callback_addr']
+	    send_regret(w, self.verbose)
+	    # send regret to all clients requested this volume and remove
+	    # requests from a queue
+	    w = pending_work.get_init()
+	    while w:
+		try:
+		    if w['fc']['external_label'] == label:
+			w['status'] = (e_errors.NOACCESS, None)
+			#if w['callback_addr'] != call_back_addr:
+			send_regret(w, self.verbose)
+			w1 = pending_work.get_next()
+			pending_work.delete_job(w)
+			w = w1
+		except KeyError:
+		    pass
 	else:
 	
 	    # find next mover that can do this job

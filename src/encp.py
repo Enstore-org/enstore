@@ -1259,12 +1259,23 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                            requests[j]['file_size'],
                                            ticket)
 	    if not e_errors.is_retriable(ticket["status"][0]):
+		"""
 		# exit here
 		jraise(errno.errorcode[errno.EPROTO],\
 		       " encp.read_from_hsm: "\
 		       +"1st (pre-file-read) mover callback on socket "\
 		       +repr(address)+", failed to setup transfer: "\
 		       +"ticket[\"status\"]="+repr(ticket["status"]))
+	        """
+
+		del(requests[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+		print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+	       		 +"1st (pre-file-read) mover callback on socket "\
+	       		 +repr(address)+", failed to setup transfer: "\
+	       		 +"ticket[\"status\"]="+repr(ticket["status"]))
+		continue
 
 	    print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +"1st (pre-file-read) mover callback on socket "\
@@ -1312,15 +1323,63 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    else:            crc_fun = None
 	    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
 			       requests[j]['file_size'], bufsize, crc_fun )
-	except:
+	except (EXfer.error), err_msg:
 	    Trace.trace(0,"read_from_hsm EXfer error:"+\
 			str(sys.argv)+" "+\
 			str(sys.exc_info()[0])+" "+\
 			str(sys.exc_info()[1]))
-	    print "Error with encp EXfer trying to get %d bytes - continuing"%\
-		  requests[j]['file_size']
-	    traceback.print_exc()
+	    if verbose > 1:
+		traceback.print_exc()
+	    if err_msg.args[0] == "fd_xfer - read EOF unexpected":
+		data_path_socket.close()
+		try:
+		    done_ticket = callback.read_tcp_socket(control_socket,
+							       "red_from_hsm, error dialog")
+		except:
+		    # assume network error...
+		    # no done_ticket!
+		    # exit here
+		    jraise(errno.errorcode[errno.EPROTO],
+			   " encp._read_from_hsm: network problem or mover crash "+\
+			       str(err_msg))
+		    pass
+		control_socket.close()
 
+		print_data_access_layer_format(  requests[j]['infile'],  
+						 requests[j]['outfile'], 
+						 requests[j]['file_size'], 
+						 done_ticket )
+		
+		"""
+		if not e_errors.is_retriable(done_ticket["status"][0]):
+		    # exit here
+		    jraise(errno.errorcode[errno.EPROTO],
+			   " encp.read_from_hsm: 2nd (post-file-send)"+\
+			   "mover callback on socket "+\
+			   +repr(address)+", failed to transfer: "+\
+			   "done_ticket[\"status\"]="+\
+			   repr(done_ticket["status"]))
+		    pass
+		"""
+
+		if not e_errors.is_retriable(ticket["status"][0]):
+		    del(requests[j])
+		    if files_left > 0:
+			files_left = files_left - 1
+		    print_error (errno.errorcode[errno.EPROTO],
+				 " encp.read_from_hsm: 2nd (post-file-send)"+\
+				 "mover callback on socket "+\
+				 +repr(address)+", failed to transfer: "+\
+				 "done_ticket[\"status\"]="+\
+				 repr(done_ticket["status"]))
+		    continue
+
+		print_error(errno.errorcode[errno.EPROTO],
+			    " encp.read_from_hsm:2nd (post-file-send)"+\
+			    "mover callback on socket "+\
+			    repr(address)+", failed to transfer: "+\
+			    "done_ticket[\"status\"]="+\
+			    repr(done_ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
 		del(requests[j])
@@ -1328,9 +1387,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		    files_left = files_left - 1
 	    else:
 		requests[j]['retry'] = requests[j]['retry']+1
+		print "retrying",requests[j]['retry'] 
 	    continue
 	    print done_ticket, "retrying"
-
 
 	# if no exceptions, fsize is file_size[j]
 	fsize = requests[j]['file_size']
@@ -1376,12 +1435,23 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                            requests[j]['file_size'], done_ticket)
 	    # exit here
 	    if not e_errors.is_retriable(ticket["status"][0]):
+		"""
 		jraise(errno.errorcode[errno.EPROTO], \
 		       " encp.read_from_hsm: "\
 		       +"2nd (post-file-read) mover callback on socket "\
 		       +repr(address)+", failed to transfer: "\
 		       +"done_ticket[\"status\"]="\
 		       +repr(done_ticket["status"]))
+                """
+		del(requests[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+		print_error (errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+		       +"2nd (post-file-read) mover callback on socket "\
+		       +repr(address)+", failed to transfer: "\
+		       +"done_ticket[\"status\"]="\
+		       +repr(done_ticket["status"]))
+		continue
 
 
             print_error(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
