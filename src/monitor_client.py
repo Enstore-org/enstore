@@ -444,14 +444,14 @@ class MonitorServerClient(generic_client.GenericClient):
         #Send the information to the web server node.
         self._send_measurement(ticket)
             
-    #def flush_measurements(self):
-    #    reply = self._send_measurement (
-    #        {
-    #        'work'   : 'flush_measurements',
-    #        'dir'    : self.html_dir,
-    #        'refresh': self.refresh
-    #        }
-    #        )
+    def flush_measurements(self):
+        reply = self._send_measurement (
+            {
+            'work'   : 'flush_measurements',
+            'dir'    : self.html_dir,
+            'refresh': self.refresh
+            }
+            )
 
     #Either prints out message to screen, stores info. in a dictionary or both.
     #hostname: The current node that had its rate checked.
@@ -746,7 +746,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         #    (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
         write_measurement = msc.monitor_one_interface(
             (ip, port), SEND_TO_SERVER)
-        if write_measurement['status'] == ('ok', None):
+        if write_measurement['status'] == (e_errors.OK, None):
             write_rate = msc.calculate_rate(write_measurement)
         else:
             write_rate = {'elapsed':0, 'rate':0,
@@ -762,7 +762,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
 
         #Cleanup stuff..
         if msc:
-            #msc.flush_measurements()
+            msc.flush_measurements()
             msc.listen_sock.close()
             
     if summary:
