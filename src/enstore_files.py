@@ -313,7 +313,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    self.filelist = []
 	    for key in status_keys:
 		if enstore_functions.is_library_manager(key) and \
-		   not self.text[key][enstore_constants.STATUS] == \
+		   not self.text[key][enstore_constants.STATUS][0] == \
 		                 enstore_constants.NOT_MONITORING:
 		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh, 
 							  self.system_tag, 
