@@ -53,7 +53,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, \
 	                 (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
-	#self.insertNewLibName = "robot"  # default-default name
         self.lastWorkTime = time.time()
 	self.robotNotAtHome = 1
         self.timeInsert = time.time()
@@ -296,26 +295,26 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 class EMASS_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
-	import EMASS
-        self.load=EMASS.mount
-        self.unload=EMASS.dismount
-        self.prepare=EMASS.dismount
-
 	# robot choices are 'R1', 'R2' or 'Both'
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
 	else:
-	    self.robotArm = "R1"
             Trace.log(e_errors.ERROR, "ERROR:EMASS no robot arm key in configuration")
+	    self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
 	    return
 	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
-	    self.mediaIOassign = (self.mc_config['IOBoxMedia'])
+	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) 
 	else:
-	    self.mediaIOassign = {'ACI_8MM':['E02','E03','E04'],'ACI_DECDLT':['E01']}
             Trace.log(e_errors.ERROR, "ERROR:EMASS no IO box media assignments in configuration")
+	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) # force the exception
 	    return
 	if self.mc_config.has_key('IdleHomeTime'):
 	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleTimeHome']))
+
+	import EMASS
+        self.load=EMASS.mount
+        self.unload=EMASS.dismount
+        self.prepare=EMASS.dismount
         self.robotHome=EMASS.robotHome
         self.robotStatus=EMASS.robotStatus
         self.robotStart=EMASS.robotStart
