@@ -169,11 +169,6 @@ def sigsegv( sig, stack ):
 
     if mvr_srvr.client_obj_inst.pid:
 	mvr_srvr.client_obj_inst.usr_driver.close()
-	send_user_done( mvr_srvr.client_obj_inst, ticket,
-			e_errors.WRITE_ERROR )
-	return_or_update_and_exit( mvr_srvr.client_obj_inst,
-				   mvr_srvr.client_obj_inst.lm_origin_addr,
-				   e_errors.WRITE_ERROR )
     else:
 	sys.exit( 0x80 | sig )
     return None
@@ -387,6 +382,13 @@ def bind_volume( self, external_label ):
     return e_errors.OK
 
 def do_fork( self, ticket, mode ):
+    # get vcc and fcc for this xfer
+    fcc = file_clerk_client.FileClient( csc, 0,
+					ticket['fc']['address'][0],
+					ticket['fc']['address'][1] )
+    vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
+						 ticket['vc']['address'][0],
+						 ticket['vc']['address'][1] )
     self.hsm_driver._bytes_clear()
     self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
@@ -417,14 +419,6 @@ def forked_write_to_hsm( self, ticket ):
 	if sts == 'error':
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
-
-	# get vcc and fcc for this xfer
-	fcc = file_clerk_client.FileClient( csc, 0,
-					    ticket['fc']['address'][0],
-					    ticket['fc']['address'][1] )
-	vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
-						     ticket['vc']['address'][0],
-						     ticket['vc']['address'][1] )
 
 	t0 = time.time()
 	sts = bind_volume( self, ticket['fc']['external_label'] )
@@ -597,14 +591,6 @@ def forked_read_from_hsm( self, ticket ):
 	if sts == "error":
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
-
-	# get vcc and fcc for this xfer
-	fcc = file_clerk_client.FileClient( csc, 0,
-					    ticket['fc']['address'][0],
-					    ticket['fc']['address'][1] )
-	vcc = volume_clerk_client.VolumeClerkClient( csc, 0,
-						     ticket['vc']['address'][0],
-						     ticket['vc']['address'][1] )
 
 	t0 = time.time()
 	sts = bind_volume( self, ticket['fc']['external_label'] )
