@@ -1936,6 +1936,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 if routing_addr:
                     req['routing_callback_addr'] = routing_addr
 
+                #Send this to log file.
+                Trace.log(e_errors.WARNING, (e_errors.RESUBMITTING,
+                                             req.get('unique_id', None)))
+
                 #Since a retriable error occured, resubmit the ticket.
                 lm_responce = submit_one_request(req)
 
@@ -1951,18 +1955,31 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                            lm_responce,
                                                            None, None,
                                                            None, encp_intf)
-            if internal_result_dict['status'][0] != e_errors.OK:
-                status = internal_result_dict['status']
-            else:
-                status = (e_errors.RESUBMITTING, None)
-                
-            Trace.log(e_errors.WARNING, (e_errors.RESUBMITTING,
-                                         req.get('unique_id', None)))
 
-            result_dict = {'status':status,
-                           'retry':request_dictionary.get('retry', 0),
-                           'resubmits':request_dictionary.get('resubmits', 0),
-                           'queue_size':len(request_list)}
+            #If an unrecoverable error occured while resubmitting to LM.
+            if not e_errors.is_retriable(internal_result_dict['status'][0]):
+                result_dict = {'status':internal_result_dict['status'],
+                               'retry':request_dictionary.get('retry', 0),
+                               'resubmits':request_dictionary.get('resubmits',
+                                                                  0),
+                               'queue_size':0}
+                Trace.log(e_errors.ERROR, str(result_dict))
+            #If a retriable error occured while resubmitting to LM.
+            elif internal_result_dict['status'][0] != e_errors.OK:
+                result_dict = {'status':internal_result_dict['status'],
+                               'retry':request_dictionary.get('retry', 0),
+                               'resubmits':request_dictionary.get('resubmits',
+                                                                  0),
+                               'queue_size':len(request_list)}
+                Trace.log(e_errors.ERROR, str(result_dict))
+            #If no error occured while resubmitting to LM.
+            else:
+                result_dict = {'status':(e_errors.RESUBMITTING,
+                                         req.get('unique_id', None)),
+                               'retry':request_dictionary.get('retry', 0),
+                               'resubmits':request_dictionary.get('resubmits',
+                                                                  0),
+                               'queue_size':len(request_list)}
 
     #Change the unique id so the library manager won't remove the retry
     # request when it removes the old one.  Do this only when there was an
@@ -1989,6 +2006,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 except KeyError:
                     pass
 
+            #Send this to log file.
+            Trace.log(e_errors.WARNING, (e_errors.RETRY,
+                                         request_dictionary['unique_id']))
+
             #Since a retriable error occured, resubmit the ticket.
             lm_responce = submit_one_request(request_dictionary)
 
@@ -2006,17 +2027,28 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                        None, None,
                                                        None, encp_intf)
 
-        if internal_result_dict['status'][0] != e_errors.OK:
-            status = internal_result_dict['status']
+        
+        #If an unrecoverable error occured while retrying to LM.
+        if not e_errors.is_retriable(internal_result_dict['status'][0]):
+            result_dict = {'status':internal_result_dict['status'],
+                           'retry':request_dictionary.get('retry', 0),
+                           'resubmits':request_dictionary.get('resubmits',
+                                                              0),
+                           'queue_size':len(request_list) - 1}
+            Trace.log(e_errors.ERROR, str(result_dict))
+        elif internal_result_dict['status'][0] != e_errors.OK:
+            result_dict = {'status':internal_result_dict['status'],
+                           'retry':request_dictionary.get('retry', 0),
+                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'queue_size':len(request_list)}
+            Trace.log(e_errors.ERROR, str(result_dict))            
         else:
-            status = (e_errors.RETRY, request_dictionary['unique_id'])
+            result_dict = {'status':(e_errors.RETRY,
+                                     request_dictionary['unique_id']),
+                           'retry':request_dictionary.get('retry', 0),
+                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'queue_size':len(request_list)}
             
-        Trace.log(e_errors.WARNING, (e_errors.RETRY, status))
-
-        result_dict = {'status':status,
-                       'retry':request_dictionary.get('retry', 0),
-                       'resubmits':request_dictionary.get('resubmits', 0),
-                       'queue_size':len(request_list)}
 
     #If we get here, then some type of error occured.  This means one of
     # three things happend.
@@ -2086,7 +2118,7 @@ def calculate_rate(done_ticket, tinfo):
                      "%d bytes copied %s %s at %.3g MB/S " \
                      "(%.3g MB/S network) (%.3g MB/S drive) " \
                      "mover=%s " \
-                     "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%.05g "\
+                     "drive_id=%s drive_sn=%s drive_vendor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
                      "'driver' : '%s', 'storage_group':'%s', " \
                      "'encp_ip': '%s'}"
@@ -2637,7 +2669,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         try:
             delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
         except (IndexError, KeyError):
-            Trace.log(e_errors.INFO, "unable to register bfid")
+            Trace.log(e_errors.WARNING, "unable to register bfid")
         
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfile'],
@@ -3263,7 +3295,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
                 continue
             elif not e_errors.is_retriable(result_dict['status'][0]):
                 #del requests_to_submit[requests_to_submit.index(req)]
-                req['submitted'] = 0
+                req['submitted'] = 0 #This in not 1 nor None.
                 break
             
             #del requests_to_submit[requests_to_submit.index(req)]
