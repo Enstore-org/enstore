@@ -1301,11 +1301,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ## skip sending lm _update
                     ## to allow tape thread to complete
                     return
-                Trace.alarm(e_errors.ALARM,
-                            "Tape thread is running in the state %s. Will offline the mover"%
-                            (state_name(self.state),))
-                self.offline()
-                return
+                if self.config['product_id'].find("DLT") == -1:
+                    Trace.alarm(e_errors.ALARM,
+                                "Tape thread is running in the state %s. Will offline the mover"%
+                                (state_name(self.state),))
+                    self.offline()
+                    return
+                else:
+                    Trace.alarm(e_errors.WARNING,"Tape thread is running in the state %s."%
+                                (state_name(self.state),))
+                    
                 
         now = time.time()
 
@@ -2422,7 +2427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_to_sleep = 20
             if self.config['product_id'].find("DLT") != -1:
                 # for dlt drives make it bigger
-                time_to_sleep = 60
+                time_to_sleep = 300
             for i in range(time_to_sleep):
                 if self.read_tape_running == 0:
                     break
