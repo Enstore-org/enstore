@@ -8,12 +8,12 @@
 # trace, init, on,  mode, log, alarm,
 # set_alarm_func, set_log_func
 
-
 import sys				
 import e_errors				
 import os				
 import pwd				
 import time
+import socket
 
 if __name__== '__main__':
     print "No unit test, sorry"
@@ -36,13 +36,26 @@ print_levels = {}
 log_levels = {}
 alarm_levels = {}
 
+#XXX cgw temporary - this needs to come from config file
+event_relay_host = os.environ.get('ENSTORE_CONFIG_HOST')
+event_relay_port = 55510
+event_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def notify(msg):
+    if not event_relay_host:
+        return
+    try:
+        event_socket.sendto(msg, (event_relay_host, event_relay_port))
+    except:
+        print "msg send failed", event_relay_host, event_relay_port
+        pass
+    
 def trunc(x):
     if type(x) != type(""):
         x = str(x)
     if len(x)>=4096:
         x=x[:4080] + "(truncated)"
     return x
-
 
 def do_print(levels):
     if type(levels) != type([]):
@@ -96,7 +109,7 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
     if  log_func:
         try:
             log_func(time.time(), os.getpid(), logname, (severity,"%s %s" % (msg_type,msg)))
-        except: #XXX message too long?
+        except: #XXX what to do?
             pass
         
     if doprint and print_levels.has_key(severity):
@@ -156,6 +169,5 @@ def default_log_func( time, pid, name, args ):
     return None
 
 set_log_func(default_log_func)
-
 
 
