@@ -167,7 +167,20 @@ FTT_set_blocksize(  PyObject *self
     }
 
     return (Py_BuildValue(""));	/* return None */
-}
+}   /* set_blocksize */
+
+
+/*****************************************************************************
+ *  get_blocksize()
+ */
+static char FTT_get_blocksize_doc[] = "set the blocksize (so we do not have to pass it as param to open";
+
+static PyObject*
+FTT_get_blocksize(  PyObject *self
+		  , PyObject *args )
+{
+    return (Py_BuildValue("i",g_blocksize));
+}   /* get_blocksize */
 
 
 /*****************************************************************************
@@ -1408,6 +1421,7 @@ insint(  PyObject	*d
 static PyMethodDef FTT_Methods[] = {
     { "set_debug", FTT_set_debug, 1, FTT_set_debug_doc },
     { "set_blocksize", FTT_set_blocksize, 1, FTT_set_blocksize_doc },
+    { "get_blocksize", FTT_get_blocksize, 1, FTT_get_blocksize_doc },
     { "open", FTT_open, 1, FTT_open_doc },
     { "open_only", FTT_open_only, 1, FTT_open_only_doc },
     { "open_dev", FTT_open_dev, 1, FTT_open_dev_doc },
