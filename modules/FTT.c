@@ -17,6 +17,7 @@
 #include <sys/msg.h>		/* msg{snd,rcv} */
 #include <assert.h>		/* assert */
 #include <signal.h>		/* sigaction() and struct sigaction */
+#include <string.h>             /* strerror */
 
 #include "ftt.h"
 #include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
@@ -513,7 +514,7 @@ send_writer(  enum e_mtype	mtype
     }
     if (sts == -1)
     {   perror( "FTT: fatal reader (send_writer) error" );
-        /* printf("%d %d %d %s %d \n",g_msgqid,mtype,d1,c1,sizeof(struct s_msgdat)); */
+        printf("%d %d %d %s %d \n",g_msgqid,mtype,d1,c1,sizeof(struct s_msgdat));
         /*   system("/usr/bin/ipcs"); */
 	/* can not do much more, but lets try exitting */
 	exit( 1 );
@@ -549,7 +550,7 @@ do_read(  int 		rd_fd
 
     while (no_bytes)
     {
-	int	sts, shm_bytes=g_buf_bytes;
+	int	e, sts, shm_bytes=g_buf_bytes;
 
 	/* gain access to *blk* of shared mem */
  semop_try:
@@ -559,7 +560,13 @@ do_read(  int 		rd_fd
 		   , getpid() );
 	    goto semop_try;
 	}
-	if (sts == -1) { printf("%s %d\n",__FILE__,__LINE__);send_writer( Err, errno, 0 ); return (1); }
+	if (sts == -1) 
+	{   e = errno;
+	    printf("%s %d %d %s %d\n",__FILE__,__LINE__,e, strerror(e), g_semid);
+	    printf("... Unknown error, but most likely that user's encp process dropped connection with mover, most likely reason connection was dropped is because user ran out of resources(disk space\n");
+	    send_writer( Err, errno, 0 ); return (1); 
+	}
+	/* if (sts == -1) { printf("%s %d\n",__FILE__,__LINE__);send_writer( Err, errno, 0 ); return (1); } */
 
 	if (rd_fd) /* i.e. if 'w' to HSM */
 	{   /* read from network OR a file -- but, as we will be writing to
@@ -652,6 +659,7 @@ g_ipc_cleanup( void )
 {
 	union semun	 semun_u;
 
+    printf("g_ipc_cleanup\n");
     semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
     (void)semctl( g_semid, 0, IPC_RMID, semun_u );
     (void)shmdt(  g_shmaddr_p );
@@ -675,6 +683,7 @@ fd_xfer_SigHand( int sig )
     if ((sig==SIGINT) || (sig==SIGPIPE) || (sig==SIGTERM))
     {   /* only clean up when we are dead */
 	/* do not clean up on SIGTSTP (when we are suspended) */
+	printf("SIG=%d\n",sig);
 	g_ipc_cleanup();
 
 	if (g_pid)
