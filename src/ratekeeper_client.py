@@ -53,7 +53,13 @@ def do_work(intf):
 
     reply = rc.handle_generic_commands(intf.name, intf)
 
-    rc.check_ticket(reply)
+    #The user simply typed "enstore ratekeeper" and nothing else.
+    if reply == None:
+        intf.print_help()
+    #The user performed an action.
+    else:
+        rc.check_ticket(reply)
+        
 
 if __name__ == "__main__":
 
