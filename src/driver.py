@@ -107,6 +107,11 @@ class GenericDriver:
 	return None
 
     #-----------------
+    # extract statistics for use in OCS
+    # usable only with FTT driver
+    def OCS_stats(self, statistics):
+        return {}
+    
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
 		  eod_cookie ):
 	# gets/verifies cur_loc
@@ -289,6 +294,23 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
+    # extract statistics for use in OCS
+    # usable only with FTT driver
+    def OCS_stats(self, statistics):
+        keys = ['hostname','device','media_type','tur_status','write_prot',
+                'serial_num','vendor_id','product_id','firmware_rev',
+                'controller','power_hours','motion_hours','cleaning_bit',
+                'read_errors','write_errors','read_count','write_count',
+                'reporttime','count_origin','track_retry','underrun',
+                'retries','fail_retries']
+        out_dict = {}
+        for key in keys:
+            if statistics.has_key(key):
+                out_dict[key] = statistics[key]
+            else:
+                Trace.log(e_errors.ERROR,"statistics dict. does not have key:%s"%key)
+        return out_dict
+
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
 		  eod_cookie ):
 	# Get the position from the drive.
