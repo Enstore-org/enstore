@@ -1230,7 +1230,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 else:
                     dict = {"volume"         : key}
                     for k in ["capacity_bytes","remaining_bytes", "system_inhibit",
-                              "user_inhibit", "library", "volume_family"]:
+                              "user_inhibit", "library", "volume_family", "non_del_files"]:
                         dict[k]=value[k]
                     if msg:
                         msg["volumes"].append(dict)
