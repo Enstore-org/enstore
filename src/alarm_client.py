@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+###############################################################################
+# src/$RCSfile $   $Revision $
+#
 # system imports
 #
 import sys
@@ -34,11 +38,11 @@ class Lock:
 class AlarmClient(generic_client.GenericClient):
 
     def __init__(self, csc, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
-		 flags=0):
+		 flags=0, name=MY_NAME):
         # need the following definition so the generic client init does not
         # get another alarm client
 	flags = flags | enstore_constants.NO_ALARM
-        generic_client.GenericClient.__init__(self, csc, MY_NAME, flags=flags)
+        generic_client.GenericClient.__init__(self, csc, name, flags=flags)
         try:
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
@@ -108,6 +112,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.get_patrol_file = 0
+        self.client_name = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -116,6 +121,12 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                 self.alarm_options)
 
     alarm_options = {
+        option.CLIENT_NAME:{option.HELP_STRING:"set log client name",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"client_name",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
         option.DUMP:{option.HELP_STRING:
                         "print (stdout) alarms the alarm server has in memory",
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -143,7 +154,6 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                            "[D: UNKONWN]",
                            option.VALUE_TYPE:option.STRING,
                            option.VALUE_USAGE:option.REQUIRED,
-                           option.VALUE_LABEL:"node_name",
                            option.USER_LEVEL:option.ADMIN,
                            },
         option.SEVERITY:{option.HELP_STRING:"severity of raised alarm "
@@ -157,10 +167,15 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
         }
 
 def do_work(intf):
+    # get an alarm client name
+    if intf.client_name:
+        name = intf.client_name
+    else:
+        name = MY_NAME
+    Trace.init(name)
     # now get an alarm client
     alc = AlarmClient((intf.config_host, intf.config_port),
-                      intf.alive_rcv_timeout, intf.alive_retries)
-    Trace.init(alc.get_name(MY_NAME))
+                      intf.alive_rcv_timeout, intf.alive_retries, name=name)
     ticket = alc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
@@ -181,9 +196,6 @@ def do_work(intf):
     alc.check_ticket(ticket)
 
 if __name__ == "__main__" :
-    Trace.init(MY_NAME)
-    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
-    # fill in interface
     intf = AlarmClientInterface(user_mode=0)
 
     do_work(intf)

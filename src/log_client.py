@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -384,6 +385,7 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
         csc = configuration_client.ConfigurationClient((host,port))
         # create log client
         logc = LoggerClient(csc, logname, MY_SERVER)
+    Trace.init(logname)
     Trace.log(sev_level, message)
     
 # send a message to the logger
@@ -472,6 +474,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
 	self.get_logfile_name = 0
 	self.get_logfiles = ""
 	self.get_last_logfile_name = 0
+        self.client_name = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -501,6 +504,12 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
                              option.VALUE_LABEL:"period",
                              option.USER_LEVEL:option.ADMIN,
                              },
+        option.CLIENT_NAME:{option.HELP_STRING:"set log client name",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"client_name",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
         option.MESSAGE:{option.HELP_STRING:"log a message",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
@@ -509,19 +518,15 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
                         },
         }
 
-    """ 
-    This function takes two arguments:
-       severity - see severity codes above
-       msg      - any string
-    Example:
-        Trace.log( ERROR, 'Error: errno=%d, and its interpretation is: %s'%\
-	(err,os.strerror(err)) )
-    """
-
 
 def do_work(intf):
     # get a log client
-    logc = LoggerClient((intf.config_host, intf.config_port), MY_NAME,
+    if intf.client_name:
+        name = intf.client_name
+    else:
+        name = MY_NAME
+    Trace.init(name)
+    logc = LoggerClient((intf.config_host, intf.config_port), name,
                         MY_SERVER)
 
     ticket = logc.handle_generic_commands(MY_SERVER, intf)
@@ -556,9 +561,6 @@ def do_work(intf):
     logc.check_ticket(ticket)
 
 if __name__ == "__main__" :
-    Trace.init(MY_NAME)
-    Trace.trace(6,"logc called with args "+repr(sys.argv))
-
     # fill in interface
     intf = LoggerClientInterface(user_mode=0)
 
