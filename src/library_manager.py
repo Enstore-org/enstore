@@ -1191,10 +1191,16 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                        Trace.trace(14,"last work %s"%(last_work,))
                         if last_work == 'WRITE':
                             rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
-                        if not rq:
+                            Trace.trace(14,"rq 1 %s"%(rq,))
+                            if not rq:
+                                rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
+                                Trace.trace(14,"rq 2 %s"%(rq,))
+                        else:
                             rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
+                            Trace.trace(14,"rq 3 %s"%(rq,))
                         continue
                     else: break
                 else: break
