@@ -17,6 +17,8 @@ import generic_client
 
 MY_NAME = "ENSYNC"
 
+############################################################################
+############################################################################
 
 #Returns a string representing the mount point the path is under.
 def get_mount_point(path):
@@ -127,7 +129,8 @@ def ensync(original_dir, pnfs_backup_dir):
                        (new_filepath, str(msg))
                 sys.stderr.write(msg2)
 
-
+############################################################################
+############################################################################
 
 class EnsyncInterface(option.Interface):
 
@@ -151,13 +154,16 @@ class EnsyncInterface(option.Interface):
                         option.VALUE_TYPE:option.INTEGER,
                         option.USER_LEVEL:option.USER,},
         }
+
+############################################################################
+############################################################################
         
-def do_work(intf):
+def main(intf):
 
     Trace.init(MY_NAME)
     for x in xrange(0, intf.verbose+1):
         Trace.do_print(x)
-    Trace.trace( 6, 'ensync called with args: %s'%(sys.argv,) )
+    Trace.trace( 6, 'Ensync called with args: %s'%(sys.argv,) )
 
     original_dir = os.path.abspath(intf.args[0])
     pnfs_backup_dir = os.path.abspath(intf.args[1])
@@ -189,13 +195,15 @@ def do_work(intf):
         sys.stderr.write(msg2)
         sys.exit(1)
 
-
+############################################################################
+############################################################################
 
 if __name__ == '__main__':
 
+    encp.setup_signal_handling()
     
     intf = EnsyncInterface(user_mode=0)
 
     intf._mode = "admin"
 
-    do_work(intf)
+    main(intf)
