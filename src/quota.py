@@ -54,7 +54,7 @@ def show_query_result(res):
 		for i in range(w):
 			print format[i]%(r[i]),
 		# mark if the numbers are not quite right
-		if r[2] >= r[3] and r[3] >= r[4]:
+		if r[-1] >= r[-2] and r[-2] >= r[-1]:
 			print
 		else:
 			print "*"
