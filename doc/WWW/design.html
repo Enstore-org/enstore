@@ -2661,6 +2661,7 @@ association with the Enstore system. ***
 <p>
 <hr>
 <h3><a name="server_protocols">
+</h3>
 1.4 Server Protocols
 <p>
 Communications between clients and servers is implemented in the python modules udp_client.py
@@ -2683,7 +2684,7 @@ So far, we have mentioned modules that are imported with the python "import" com
 modules, there are python "new" commands that instantiate the corresponding classes.
 
 <p>
-All clients are them selves client of the configuration_server server; so, each time they send
+All clients are themselves clients of the configuration_server server; so, each time they send
 a request to their server, they send a request to the configuration server to get the address
 of their server.   In this way the configuration server is the only which has a hard coded address
 and when each process is started it is given the IP address of its configuration server.
@@ -2737,7 +2738,7 @@ When DispatchingWorker gets a request it first checks its request dictionary for
 same client id and request id and if it finds a match it resends the reply.
 <p>
 If the request dictionary grows beyond a certain size (currently 1000 entries) then entries older
-than 10 minutes are deleted.
+than 30 minutes are deleted.
 </h3>
 
 </h3>
