@@ -278,8 +278,8 @@ class DispatchingWorker:
         collect_children()
 
     def handle_error(self, request, client_address):
-	Trace.trace(0,"{handle_error request="+repr(request)+" add="+\
-		    repr(client_address))
+	mode = Trace.mode()
+	Trace.mode( mode&~1 ) # freeze circular que
 	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
 	generic_cs.enprint('-'*40)
 	self.enprint('Exception during request from '+str(client_address)+' request:'+str(request))
