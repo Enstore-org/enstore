@@ -4,5 +4,5 @@ all:
 	@echo nothing to build
 
 clean:
-	@ ../bin/enstoreClean
+	@ $(ENSTORE_DIR)/bin/enstoreClean
 	rm -f *.pyc

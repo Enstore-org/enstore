@@ -6,4 +6,4 @@ all:
 
 clean:
 	for d in bin src test etc doc ups ; do (cd $$d; make clean) ; done
-	@ bin/enstoreClean
+	@ $(ENSTORE_DIR)/bin/enstoreClean
