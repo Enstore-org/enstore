@@ -714,6 +714,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 					ticket['hsm_driver']['cur_loc_cookie']
 	self.client_obj_inst.hsm_driver.no_xfers = \
 					ticket['hsm_driver']['no_xfers']
+	logc.send( log_client.INFO, 2, "update_client_info - pid:"+str(self.client_obj_inst.pid) )
 	wait = 0
 	next_req_to_lm = get_state_build_next_lm_req( self, wait )
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
