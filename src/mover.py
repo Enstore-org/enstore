@@ -1276,12 +1276,16 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.reply_to_caller( out_ticket )
 	return
 
-    def stop_draining(self, ticket):		# put itself into idle state
-        if self.client_obj_inst.state == 'draining':
-            self.client_obj_inst.state = 'idle'
-	    out_ticket = {'status':(e_errors.OK,None)}
-	    self.reply_to_caller( out_ticket )
-	return
+    # do not add stop_draining as an option.  Once a mover is put into a start_draining
+    # state, the only correct thing to do is to stop the mvoer and restart it.  Otherwise
+    # the library manager gets totally confused.  The only reason to put a mover into a
+    # draining state is to stop it.
+    #def stop_draining(self, ticket):		# put itself into idle state
+    #    if self.client_obj_inst.state == 'draining':
+    #        self.client_obj_inst.state = 'idle'
+    #	    out_ticket = {'status':(e_errors.OK,None)}
+    #	    self.reply_to_caller( out_ticket )
+    #	return
 
     def shutdown( self, ticket ):
 	del self.client_obj_inst	# clean up shm??? I should not have to!

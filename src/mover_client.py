@@ -37,8 +37,12 @@ class MoverClient(generic_client.GenericClient):
     def start_draining(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
 
-    def stop_draining(self, rcv_timeout=0, tries=0):
-	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
+    # do not add stop_draining as an option.  Once a mover is put into a start_draining
+    # state, the only correct thing to do is to stop the mvoer and restart it.  Otherwise
+    # the library manager gets totally confused.  The only reason to put a mover into a
+    # draining state is to stop it.
+    #def stop_draining(self, rcv_timeout=0, tries=0):
+    #	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.mover)
@@ -65,7 +69,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover=", "cleanDrive", "start_draining", "stop_draining"]
+            return self.client_options()+["status", "local_mover=", "cleanDrive", "start_draining" ]
 
     #  define our specific help
     def parameters(self):
