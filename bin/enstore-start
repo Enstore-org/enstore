@@ -86,7 +86,7 @@ ENSTORE_CONFIG_PORT=$enstore_config_port;export ENSTORE_CONFIG_PORT
 node_servers=`conf.sh $local_host`
 if [ ! "$node_servers" ];then
     #echo try alternate host specification
-    if  hh=`expr "$local_host" : '\(.*\):'`;then
+    if  hh=`expr "$local_host" : '\([^.]*\)\.'`;then
         :
     else
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
@@ -95,7 +95,7 @@ if [ ! "$node_servers" ];then
 fi
 for server in $node_servers;do
     if t=`expr "$server" : '\(.*\):'`;then   #strip off port if it exists
-        server=t
+        server=$t
     fi
     case $server in
     *library_manager)
