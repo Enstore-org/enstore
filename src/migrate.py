@@ -766,10 +766,17 @@ def migrate_volume(vol):
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
 	# check if vol is set to "readonly". If not, set it.
+	# check more
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
 		error_log(MY_TASK, 'volume %s does not exist'%vol)
 		return 1
+	if v['system_inhibit'][0] != 'none':
+		error_log(MY_TASK, vol, 'is', v['system_inhibit'][0])
+		return 1
+	if v['system_inhibit'][1] == 'migrated':
+		log(MY_TASK, vol, 'has already been migrated')
+		return 0
 	if v['system_inhibit'][1] != "readonly":
 		vcc.set_system_readonly(vol)
 		log(MY_TASK, 'set %s to readonly'%(vol))
