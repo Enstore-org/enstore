@@ -177,8 +177,8 @@ dc27device=/dev/rmt/tps3d1n
 dc28device=/dev/rmt/tps0d1n
 dc29device=/dev/rmt/tps3d1n
 
-dm30device=/dev/rmt/tps3d1n
-dm31device=/dev/rmt/tps3d2n
+dm30device=/dev/rmt/tps2d1n
+dm31device=/dev/rmt/tps2d2n
 dm32device=/dev/rmt/tps0d1n
 dm33device=/dev/rmt/tps0d2n
 
