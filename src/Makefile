@@ -70,6 +70,17 @@ fileinfo:
 	cp $(ENSTORE_DIR)/ups/fileinfo.table FILEINFOBIN
 	- rm -rf FILEINFO_TEMP
 
+get:
+	- rm -rf GET_TEMP
+	mkdir GET_TEMP
+	- rm -rf GETBIN
+	mkdir GETBIN
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP get.py
+	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp GET_TEMP/get GETBIN
+	cp $(ENSTORE_DIR)/ups/get.table GETBIN
+	- rm -rf GET_TEMP
+
 
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
 #	mkdir MONITOR_CLIENT_BIN_TEMP
