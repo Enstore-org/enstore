@@ -1,1 +1,3 @@
+4  * * * * $ENSTORE_SBIN/ecron -p checkfile   enstore database --status file> /dev/null 2> /dev/null
+7  * * * * $ENSTORE_SBIN/ecron -p checkvolume enstore database --status volume> /dev/null 2> /dev/null
 10 * * * * $ENSTORE_SBIN/ecron -p backup enstore backup > /dev/null 2> /dev/null
