@@ -68,6 +68,118 @@ def	RelUdpUnpack(pkt):
 	data = pkt[i2+1:]
 	return type, seq, data
 	
+class	Link:
+	def	__init__(self, peer = (), sock = -1):
+		self.Peer = peer
+		self.InRecvd = 0
+		self.InNext = 1
+		self.OutSent = 0
+		self.OutAck = 0
+		self.Sent = {}
+		self.Received = {}    
+		self.Window = 10
+		self.Connected = 0
+
+		if sock >= 0: 	self.Sock = sock
+		else: 		self.Sock = socket(AF_INET, SOCK_DGRAM)
+		if peer != (): 	self.sendNak(1)
+
+	def	_isRecvd(self, seq):
+		if seq > self.InRecvd: 	return 0
+		try:
+			pkt = self.Received[seq]
+			gotit = 1
+		except KeyError: gotit = 0
+		return gotit
+
+	def	_isNextRecvd(self):
+		return self._isRecvd(self.InNext)
+
+	def	getData(self):
+		if self._isNextRecvd() == 0:	return 0
+		pkt = self.Received[self.InNext]
+		#print 'getData(): got it: <%s>' % pkt  
+		seq = self.InNext
+		del self.Received[seq]
+		self.InNext = seq + 1
+		return pkt  
+		
+	def	outBufferFull(self):	
+		return self.OutSent - self.OutAck > self.Window
+
+	def	dataOut(self, data):
+		seq = self.OutSent + 1
+		pkt = RelUdpPack('DATA', seq, data)
+		self.Sock.sendto(pkt, self.Peer)
+		#print 'Link %s: <DATA,%d> sent' % \
+		#	(self.Peer, seq)
+		self.OutSent = seq	
+		self.Sent[seq] = pkt
+
+	def	dataIn(self, pkt):
+		type, seq, data = RelUdpUnpack(pkt)
+		#print 'Link %s: <%s,%d> received' % \
+		# 	(self.Peer, type, seq)
+		#print 'dataIn(): got <%s %d> from %s  Ack/Sent = %d/%d' % \
+		#		(type, seq, self.Peer, self.OutAck, self.OutSent)
+
+		#
+		# Process the packet
+		#
+		if type == 'ACKN':
+			if seq <= self.OutSent and seq > self.OutAck:
+				while self.OutAck < seq:
+					self.OutAck = self.OutAck + 1
+					del self.Sent[self.OutAck]
+				#print 'ackn: out ack = %d' % \
+				#	self.OutAck
+
+		elif type == 'NACK':
+			#print 'NACK %d: OutAck/Sent = %d/%d' % \
+			#	(seq, self.OutAck, self.OutSent)
+			self.sendData(seq)
+
+		elif type == 'DATA':
+			self.Received[seq] = data
+			if seq > self.InRecvd: 	
+				self.InRecvd = seq
+			i = self.InNext
+			sendAck = -1
+			while i <= self.InRecvd and self._isRecvd(i):
+				sendAck = i
+				i = i + 1
+			if sendAck > 0:
+				self.sendAck(sendAck)
+
+		else: # unknown packet -- ignore
+			pass
+
+	def	sendAck(self, seq):
+		#print 'Sending ACK %d' % seq
+		if self.Peer != ():
+			pkt = RelUdpPack('ACKN', seq)
+			self.Sock.sendto(pkt, self.Peer)
+			#print 'Link %s: <ACKN,%d> sent' % \
+			#	(self.Peer, seq)
+		
+	def	sendNak(self, seq = -1):
+		if seq == -1:	seq = self.InNext
+		#print 'Sending NACK %d' % seq
+		if self.Peer != ():
+			pkt = RelUdpPack('NACK', seq)
+			self.Sock.sendto(pkt, self.Peer)
+			#print 'Link %s: <NACK,%d> sent' % \
+			#	(self.Peer, seq)
+		
+	def	sendData(self, seq = -1):
+		if seq == -1:
+			seq = self.OutAck + 1
+		if seq <= self.OutSent and seq > self.OutAck:
+			self.Sock.sendto(self.Sent[seq], self.Peer)
+			#print 'Link %s: <DATA,%d> sent' % \
+			#	(self.Peer, seq)
+
+
 class	UdpPeer:
 	def	__init__(self, sock = -1):
 		if sock != -1:
@@ -204,115 +316,4 @@ class	UdpPeer:
 		raise UdpTimeout
 	
 
-
-class	Link:
-	def	__init__(self, peer = (), sock = -1):
-		self.Peer = peer
-		self.InRecvd = 0
-		self.InNext = 1
-		self.OutSent = 0
-		self.OutAck = 0
-		self.Sent = {}
-		self.Received = {}    
-		self.Window = 10
-		self.Connected = 0
-
-		if sock >= 0: 	self.Sock = sock
-		else: 		self.Sock = socket(AF_INET, SOCK_DGRAM)
-		if peer != (): 	self.sendNak(1)
-
-	def	_isRecvd(self, seq):
-		if seq > self.InRecvd: 	return 0
-		try:
-			pkt = self.Received[seq]
-			gotit = 1
-		except KeyError: gotit = 0
-		return gotit
-
-	def	_isNextRecvd(self):
-		return self._isRecvd(self.InNext)
-
-	def	getData(self):
-		if self._isNextRecvd() == 0:	return 0
-		pkt = self.Received[self.InNext]
-		#print 'getData(): got it: <%s>' % pkt  
-		seq = self.InNext
-		del self.Received[seq]
-		self.InNext = seq + 1
-		return pkt  
-		
-	def	outBufferFull(self):	
-		return self.OutSent - self.OutAck > self.Window
-
-	def	dataOut(self, data):
-		seq = self.OutSent + 1
-		pkt = RelUdpPack('DATA', seq, data)
-		self.Sock.sendto(pkt, self.Peer)
-		#print 'Link %s: <DATA,%d> sent' % \
-		#	(self.Peer, seq)
-		self.OutSent = seq	
-		self.Sent[seq] = pkt
-
-	def	dataIn(self, pkt):
-		type, seq, data = RelUdpUnpack(pkt)
-		#print 'Link %s: <%s,%d> received' % \
-		# 	(self.Peer, type, seq)
-		#print 'dataIn(): got <%s %d> from %s  Ack/Sent = %d/%d' % \
-		#		(type, seq, self.Peer, self.OutAck, self.OutSent)
-
-		#
-		# Process the packet
-		#
-		if type == 'ACKN':
-			if seq <= self.OutSent and seq > self.OutAck:
-				while self.OutAck < seq:
-					self.OutAck = self.OutAck + 1
-					del self.Sent[self.OutAck]
-				#print 'ackn: out ack = %d' % \
-				#	self.OutAck
-
-		elif type == 'NACK':
-			#print 'NACK %d: OutAck/Sent = %d/%d' % \
-			#	(seq, self.OutAck, self.OutSent)
-			self.sendData(seq)
-
-		elif type == 'DATA':
-			self.Received[seq] = data
-			if seq > self.InRecvd: 	
-				self.InRecvd = seq
-			i = self.InNext
-			sendAck = -1
-			while i <= self.InRecvd and self._isRecvd(i):
-				sendAck = i
-				i = i + 1
-			if sendAck > 0:
-				self.sendAck(sendAck)
-
-		else: # unknown packet -- ignore
-			pass
-
-	def	sendAck(self, seq):
-		#print 'Sending ACK %d' % seq
-		if self.Peer != ():
-			pkt = RelUdpPack('ACKN', seq)
-			self.Sock.sendto(pkt, self.Peer)
-			#print 'Link %s: <ACKN,%d> sent' % \
-			#	(self.Peer, seq)
-		
-	def	sendNak(self, seq = -1):
-		if seq == -1:	seq = self.InNext
-		#print 'Sending NACK %d' % seq
-		if self.Peer != ():
-			pkt = RelUdpPack('NACK', seq)
-			self.Sock.sendto(pkt, self.Peer)
-			#print 'Link %s: <NACK,%d> sent' % \
-			#	(self.Peer, seq)
-		
-	def	sendData(self, seq = -1):
-		if seq == -1:
-			seq = self.OutAck + 1
-		if seq <= self.OutSent and seq > self.OutAck:
-			self.Sock.sendto(self.Sent[seq], self.Peer)
-			#print 'Link %s: <DATA,%d> sent' % \
-			#	(self.Peer, seq)
 
