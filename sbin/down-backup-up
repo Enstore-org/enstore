@@ -1,0 +1,20 @@
+#!/bin/sh
+set -u 
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+
+# The databases always keep hanging - this seems to happen
+# most often during a database backup.   Try stopping the 
+# file and volume clerk before performing the backup.  This
+# is not a stopgap solution at best.
+
+
+enstore stop
+
+enstore backup
+
+enstore Estart `uname -n`
+
+
