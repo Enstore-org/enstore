@@ -980,14 +980,14 @@ class LibraryManagerMethods:
         external_label = label
         Trace.trace(19, "check_write_request %s %s"%(external_label, rq.ticket))
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
-            if not external_label in vol_veto_list:
+            #if not external_label in vol_veto_list:
                 #if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
-                rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-                Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
-                            (external_label, rq.ticket["reject_reason"]))
-                rq.ticket['status'] = ("VOLS_IN_WORK",None)
-                return rq, rq.ticket['status']
-                
+            rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+            Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
+                        (external_label, rq.ticket["reject_reason"]))
+            rq.ticket['status'] = ("VOLS_IN_WORK",None)
+            return rq, rq.ticket['status']
+
             
         
         if self.mover_type(requestor) == 'DiskMover':
@@ -1180,7 +1180,7 @@ class LibraryManagerMethods:
                         host_from_ticket = hostaddr.address_to_name(callback[0])
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                    if host_from_ticket == requestor['unique_id'].split('-')[0]:
+                    if requestor['unique_id'] and host_from_ticket == requestor['unique_id'].split('-')[0]:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
@@ -1484,6 +1484,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
         self.suspect_vol_expiration_to = self.keys.get('suspect_volume_expiration_time',None)
+        self.share_movers = self.keys.get('share_movers', None) # for the federation to fair share
+                                                                # movers across multiple library managers
         
         LibraryManagerMethods.__init__(self, self.name,
                                        self.csc,
@@ -2079,7 +2081,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def mover_busy(self, mticket):
         Trace.trace(11,"BUSY RQ %s"%(mticket,))
         library = mticket.get('library', None)
-        if library and library != self.name.split(".")[0]:
+        if library and library != self.name.split(".")[0] and not self.share_movers:
             # this mover is currently assigned to another library
             # remove this mover from volumes_at_movers
             movers = self.volumes_at_movers.get_active_movers()
