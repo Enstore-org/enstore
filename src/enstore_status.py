@@ -82,6 +82,7 @@ class EncpLine:
 
     def __init__(self, line):
         self.line = line
+        self.valid = 0
 	# on linux, if there is some garbage in the log file, grep may decide the
 	# log file is a binary file. then it will produce a message -
 	# Binary file LOG-2001-02-08 matches
@@ -90,7 +91,6 @@ class EncpLine:
 	# probably something else wrong that produced the garbage in the log file
 	# in the first place.
 	if line[0:12] == "Binary file ":
-	    self.valid = 0
 	    return
         [self.time, self.node, self.pid, self.user, self.status, self.server, 
          self.text] = string.split(line, None, 6)
@@ -124,7 +124,8 @@ class EncpLine:
 		else:
 		    # we don't support this format, things may be really 
 		    # screwed up.
-		    
+		    return
+                
                 # get the total data transfer rate
                 [tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
                 [self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
