@@ -1016,7 +1016,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
 	#print "HAVE_BOUND", mticket
-	Trace.trace(13,"{have_bound_volume " + repr(mticket))
+	Trace.log(e_errors.INFO,"have_bound_volume %s"%mticket)
         self.enprint("LM:have_bound_volume "+repr(mticket), generic_cs.DEBUG, self.verbose)
         self.enprint(mticket, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	             self.verbose)
