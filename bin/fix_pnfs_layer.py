@@ -204,7 +204,7 @@ if __name__ == "__main__":
                                      bfinfo['size'],
                                      ff,
                                      bfinfo['pnfs_name0'],
-                                     bfinfo.get('pnfs_mapname','unknown)),
+                                     bfinfo.get('pnfs_mapname','unknown'),
                                      bfinfo['pnfsid'],
                                      bfinfo.get('pnfsvid','unknown'),
                                      bfinfo['bfid'],
