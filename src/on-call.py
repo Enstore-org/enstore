@@ -46,8 +46,12 @@ if __name__ == "__main__":
     else:
         choice = "date"
 
+    fshift = "ens-dev-shift"
+    fweek  = "ens-dev-week"
+    http   = "http://www-hppc.fnal.gov/enstore"
+    
     if choice == "schedule":
-        remlist = '/tmp/ens-dev-shift'
+        remlist = '/tmp/'+fshift
         webdir = '/usr/hppc_home/www/enstore'
         remfile = open(remlist,'w')
         remfile.write("SET Jan 1\n")
@@ -73,7 +77,7 @@ if __name__ == "__main__":
         os.popen(command,'r').readlines()
 
     elif choice == "week":
-        remweek = '/tmp/ens-dev-week'
+        remweek = '/tmp/'+fweek
         remfile = open(remweek,'w')
         remfile.write('Enstore developer schedule for the next week\n\n')
         for day in range(1,9):
@@ -82,6 +86,7 @@ if __name__ == "__main__":
             remfile.write("%s\n" % (p,))
             remfile.write("%s\n\n" % (b,))
         remfile.write("\nThis is the planned schedule only. Check on-call for up-to-date information\n")
+        remfile.write("\nA monthly schedule is available at %s/%s.gif\n" % (http,fshift))
         remfile.close()
         users = ""
         for user in dev_phones.phones.keys():
@@ -104,6 +109,7 @@ if __name__ == "__main__":
             remfile.write("\n Enstore Developer Schedule \n")
             remfile.write("%s\n" % (p,))
             remfile.write("%s\n\n" % (b,))
+            remfile.write("\nA monthly schedule is available at %s/%s.gif\n" % (http,fshift))
             remfile.close()
             users = ""
             for user in (primary,backup):
