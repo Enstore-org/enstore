@@ -10,7 +10,7 @@ if [ ! -d $lockdir ] ; then  mkdir -p $lockdir ; fi
 
 touch $lockfile
 
-# Should investigate it the sticky bit could protect us from a malicios user
+# Should investigate if the sticky bit could protect us from a malicios user
 # deleting this file.
 
 chmod +w $lockfile

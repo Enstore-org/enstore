@@ -24,7 +24,7 @@ Enstore system has four major kinds of software components
 
 Roughly, the system can be thought of in terms of the block diagram
 below. The number of user computers is unlimited, and the enstore
-system can run an unlimited ed number of physical tape libraries and
+system can run an unlimited number of physical tape libraries and
 tape drives.  components are connected via IP, and great care has
 been taken that the system will function under extreme load
 conditions. We control all of the source code for the system.
@@ -63,7 +63,7 @@ prescribed below.
 Like tcp, the sysetm is architected with distributed, end-to-ends approach
 to reliability.  Each request originating from the encp prorgam is branded
 with a uniuque i.d. encp retries under well-defined circumstances, issues
-an equivalent request wot a new unique i.d.  The system can instruct encp
+an equivalent request with a new unique i.d.  The system can instruct encp
 to re-try if it needs to back out of an operation.
 
 
@@ -153,10 +153,10 @@ A physical library can be thought of as consisting of
 	- volumes
 
 Virtual Library -- A virtual library contains one and only kind of
-media. For example, we are constrained to divided an STK powderhorn
+media. For example, we are constrained to divid an STK powderhorn
 library holding 50, 20 and 10 GB redwood media into at least three
 virtual libraries.  In common usage, the term "library" in Enstore
-refers to virtual library. Writes are directed to (virtual) a specific
+refers to virtual library. Writes are directed to a specific (virtual)
 library, thus selecting the media.
 
 Drives -- Drives are bound to special processes called mover clients. 
@@ -316,7 +316,7 @@ User requests --
 
 Writes into the system -- PNFS is used to identify the library for a
 write request, so encp program composes a write request and contacts the 
-appropriate library manager directly. The volume manager queues the work, and
+appropriate library manager directly. The library manager queues the work, and
 acknowledges the request.
 
 Read from the system. -- PNFS holds only the bit file i.d., so encp 
@@ -341,7 +341,7 @@ a volume unilaterally because it ran into trouble.  This is summarized in the
 tables below
 
 Mover sends		Library manager may respond
-===========		===========================
+-----------		---------------------------
 
 idle_mover		bind a volume, or just acknowledge
 
@@ -351,7 +351,7 @@ unilateral_unbind	just acknowledge
 
 
 Library has just responded	Mover sends	Library manager presumes
-=========================	===========	========================
+--------------------------	-----------	------------------------
 
 bind or...			idle_mover 	mover crashed and was
 read or..					re-started
@@ -360,7 +360,7 @@ write
 						if work, give it
 						if none, give unbind
 
-				unilat_unbnd	take any work I reserved for
+				unilat_unbnd	take any work reserved for
 						that mover and put it back
 						in the unassigned work queue
 
@@ -394,9 +394,9 @@ A mover task is bound to a drive, and seeks to use that drive to service
 read and write requests.  It executes a protocol with a library manager, 
 as desribed in the tables in the library manager section (above).
 
-A moveris bound to a drive, and a drive may be useful to more than one
-virtual library. The mover hunts for wark when it is idle by
-consulting a configuration server. (The configuration sevver holds a
+A mover is bound to a drive, and a drive may be useful to more than one
+virtual library. The mover hunts for work when it is idle by
+consulting a configuration server. (The configuration server holds a
 configuration set by an administration. A mover's configuraiton gives
 a list of library managers to hunt among for work) If there is no work
 at any library mamaneg, the mover sleeps and begins the hunt
@@ -404,8 +404,8 @@ again. (While sleeping the mover is sensitive to datagrams at a
 specific UDP address. A library manager uses this mechanism to try to
 hasten a mover when the library manager has work queud up)
 
-Whan a mover has found a library manager thathas work, it attempts
-to mount the salient volume, by containtin gthe physical librarys media
+When a mover has found a library manager that has work, it attempts
+to mount the salient volume, by contacting the physical librarys media
 changer.  If there is some error, it issues a unilateral unbind to the 
 library mamanegr. If all is well, it issues a have_bound_volume to the 
 library manager.
@@ -419,15 +419,15 @@ to a waiting encp prorgam. Two tcp ports are involved.
 	 	send the encp program the data transfer port address 
 		hold the control port open. If it is dropped, abort.
 	3) read the data from tape, (stripping any wrapper like tar headers)
-		verify the sanity crc. sned the data to the user.
+		verify the sanity crc. send the data to the user.
 	4) CLose the data port
 	5) Tel the user done and all is well
 
 If any errors occur while reading the tape attempt to characterise them as 
-either mediaor drive.  If drive, makr the tape as hung, and kill ourselves.
-If media, makr the media as no access.
+either media or drive.  If drive, mark the tape as hung, and kill ourselves.
+If media, mark the media as no access.
 
-Reads -- Once a volume is bound the mover may recieve data and write it to
+Writes -- Once a volume is bound the mover may recieve data and write it to
 tape. Two tcp ports are involved. 
 	The steps are:
 
@@ -443,14 +443,14 @@ tape. Two tcp ports are involved.
 	6) Close the data port
 	7) compute new eod_cookie and tell volume clerk that the 
 	   volume is writeable. Update remainig bytes as well
-	8) computer tha file location cookie, and tell the bit
-	   file cleark about the new file. get a bit file i.d. in
+	8) compute the file location cookie, and tell the bit
+	   file clerk about the new file. get a bit file i.d. in
 	   return
 	9) Give the bit file i.d. to encp. We are done.
 
 If any errors occur while reading the tape attempt to characterise them as 
-either mediaor drive.  If drive, mark the tape as hung, and kill ourselves.
-If media, makr the media as no access.  If the user drops the control tcp
+either media or drive.  If drive, mark the tape as hung, and kill ourselves.
+If media, mark the media as no access.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
 
 
