@@ -47,7 +47,7 @@ class LogMethods(DispatchingWorker) :
         # try to open log file for append
         if list :
             print "opening " + logfile_name
-        try :
+        try:
             self.logfile = open(logfile_name, 'a')
             if list :
                 print "opened for append"

@@ -137,7 +137,7 @@ class UDPClient:
                 if badsock != 0 :
                     print "udp_client send, post-recv error:",\
                           errno.errorcode[badsock]
-                try :
+                try:
                     exec ("number,  out, time  = "  + reply)
                 # did we read entire message (bigger than TRANSFER_MAX?)
                 except exceptions.SyntaxError :

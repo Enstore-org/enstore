@@ -47,7 +47,7 @@ class configuration_client :
     # return cached (or get from server) value for requested item
     def get(self, key):
         # try the cache
-        try :
+        try:
             return self.cache[key]
         except :
             return self.get_uncached(key)

@@ -39,7 +39,7 @@ class ConfigurationDict(DispatchingWorker) :
                 line = line[0:len(line)-1]
                 continue
             # ok, we have a complete line - execute it
-            try :
+            try:
                 exec ("x"+line)
             except :
                 f.close()
@@ -65,7 +65,7 @@ class ConfigurationDict(DispatchingWorker) :
     def config_exists(self) :
      try:
         need = 0
-        try :
+        try:
             if len(self.configdict) == 0 :
                 need =1
         except:
@@ -98,7 +98,7 @@ class ConfigurationDict(DispatchingWorker) :
             return
 
         # look up in our dictionary the lookup key
-        try :
+        try:
             out_ticket = self.configdict[lookup]
         except KeyError:
             out_ticket = {"status" : "Configuration Server: no such name: "\
@@ -133,7 +133,7 @@ class ConfigurationDict(DispatchingWorker) :
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket) :
      try:
-        try :
+        try:
             configfile = ticket["configfile"]
             list = 1
             out_ticket = {"status" : self.load_config(configfile,list)}

@@ -101,7 +101,7 @@ if __name__=="__main__":
 	bckHome=os.environ['ENSTORE_DB_BACKUP']
     except:
 	bckHome="/tmp/backup"
-        try :
+        try:
 	    os.mkdir(bckHome)
 	except  os.error :
 	    if sys.exc_info()[1][0] == errno.EEXIST :

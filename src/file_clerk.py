@@ -66,14 +66,14 @@ class FileClerkMethods(DispatchingWorker) :
             return
 
         # look up in our dictionary the request bit field id
-        try :
+        try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError :
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
             # unusual error - no id, but it is there
             # what to do - let's try again and see what happens
-            try :
+            try:
                 time.sleep(5)
                 finfo = copy.deepcopy(dict[bfid])
                 print "found on retry!!!!"
@@ -190,7 +190,7 @@ class FileClerkMethods(DispatchingWorker) :
             return
 
         # look up in our dictionary the request bit field id
-        try :
+        try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError :
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"

@@ -58,7 +58,7 @@ class pnfs :
     ##########################################################################
 
     # simple test configuration
-    def jon1(self) :
+    def jon1(self):
         if self.valid == valid :
             self.set_bit_file_id("1234567890987654321",123)
         else:
@@ -83,7 +83,7 @@ class pnfs :
     # if this file exists, then the system is "off"
     def check_pnfs_enabled(self) :
         if self.valid == valid :
-            try :
+            try:
                 os.stat(self.dir+'/.(config)(flags)/disabled')
             except os.error :
                 if sys.exc_info()[1][0] == errno.ENOENT :
@@ -99,7 +99,7 @@ class pnfs :
 
     # check if file is really part of pnfs file space
     def check_valid_pnfsFilename(self) :
-        try :
+        try:
             f = open(self.dir+'/.(const)('+self.file+')','r')
             f.close()
             self.valid = valid
@@ -112,7 +112,7 @@ class pnfs :
     def touch(self) :
         if self.valid == valid :
             t = int(time.time())
-            try :
+            try:
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
                 if sys.exc_info()[1][0] == errno.ENOENT :
@@ -126,7 +126,7 @@ class pnfs :
     # this function also seems to flush the nfs cache
     def utime(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
@@ -153,14 +153,14 @@ class pnfs :
     # this doesn't work - no nfs locks available
     def readlock(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 f = open(self.pnfsFilename,'r')
             # if we can not open the file, we can't set the times either
             except :
                 return
 
             if 0 :
-                try :
+                try:
                     # I can't find these in python -
                     #  got them from /usr/include/sys/file.h
                     # LOCK_EX 2    /* Exclusive lock.  */
@@ -174,7 +174,7 @@ class pnfs :
                           ,self.pnfsFilename,sys.exc_info()[1]
 
             if 0 :
-                try :
+                try:
                     lockfile.readlock(f)
                     lockfile.unlock(f)
                     print "locked/unlocked - worked, a miracle"
@@ -276,13 +276,13 @@ class pnfs :
     def get_stat(self) :
         if self.valid == valid :
             # first the file itself
-            try :
+            try:
                 self.pstat = os.stat(self.pnfsFilename)
                 self.exists = exists
             # if that fails, try the directory
             except os.error :
                 if sys.exc_info()[1][0] == errno.ENOENT :
-                    try :
+                    try:
                         self.pstat = os.stat(self.dir)
                         self.exists = direxists
                     except :
@@ -304,7 +304,7 @@ class pnfs :
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
             if self.file_size != 0 :
-                try :
+                try:
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
                     #self.utime()
                     self.pstatinfo()
@@ -379,7 +379,7 @@ class pnfs :
     # get the bit file id
     def get_bit_file_id(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 self.bit_file_id = self.readlayer(1)[0]
             except :
                 self.bit_file_id = unknown
@@ -389,7 +389,7 @@ class pnfs :
     # get the last parked layer
     def get_lastparked(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 self.lastparked = self.readlayer(2)[0]
             except :
                 self.lastparked = unknown
@@ -399,7 +399,7 @@ class pnfs :
     # get the information layer
     def get_info(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 self.info = self.readlayer(3)
             except :
                 self.info = unknown
@@ -409,7 +409,7 @@ class pnfs :
     # get the cross reference layer
     def get_xreference(self) :
         if self.valid == valid and self.exists == exists :
-            try :
+            try:
                 xinfo = self.readlayer(4)
                 self.volume,\
                 self.cookie,\
@@ -439,7 +439,7 @@ class pnfs :
     # get the tape library
     def get_library(self) :
         if self.valid == valid :
-            try :
+            try:
                 self.library = self.readtag("library")[0]
             except :
                 self.library = unknown
@@ -457,7 +457,7 @@ class pnfs :
     # get the file family
     def get_file_family(self) :
         if self.valid == valid :
-            try :
+            try:
                 self.file_family = self.readtag("file_family")[0]
             except :
                 pass
@@ -476,7 +476,7 @@ class pnfs :
     # get the file family width
     def get_file_family_width(self) :
         if self.valid == valid :
-            try :
+            try:
                 self.file_family_width = string.atoi(\
                     self.readtag("file_family_width")[0])
             except :
@@ -511,23 +511,23 @@ class pnfs :
     # get the uid from the stat member
     def pstat_decode(self) :
         if self.valid == valid and self.pstat[0] != error :
-            try :
+            try:
                 self.uid = self.pstat[stat.ST_UID]
             except :
                 self.uid = error
-            try :
+            try:
                 self.uname = pwd.getpwuid(self.uid)[0]
             except :
                 self.uname = unknown
-            try :
+            try:
                 self.gid = self.pstat[stat.ST_GID]
             except :
                 self.gid = error
-            try :
+            try:
                 self.gname = grp.getgrgid(self.gid)[0]
             except :
                 self.gname = unknown
-            try :
+            try:
                 # always return mode as if it were a file, not directory, so
                 #  it can use used in enstore cpio creation  (we will be
                 #  creating a file in this directory)
@@ -538,7 +538,7 @@ class pnfs :
                 self.mode = 0
                 self.mode_octal = 0
             if self.exists == exists :
-                try :
+                try:
                     self.file_size = self.pstat[stat.ST_SIZE]
                 except :
                     self.file_size = error

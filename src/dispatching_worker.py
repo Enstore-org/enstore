@@ -37,7 +37,7 @@ signal.signal(3,dodebug)
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children() :
-    try :
+    try:
 	pid, status = os.waitpid(0, os.WNOHANG)
 	if (pid!=0) :
 	    #print "Child reaped: pid=",pid," status=",status
@@ -60,7 +60,7 @@ class DispatchingWorker:
         self.client_number = number
         self.current_id = idn
 
-        try :
+        try:
 
             # UDPClient resends messages if it doesn't get a response from us
             # see it we've already handled this request earlier. We've
@@ -85,7 +85,7 @@ class DispatchingWorker:
             pass # first request or request purged by purge_stale_entries, fall through
 
         # look in the ticket and figure out what work user wants
-        try :
+        try:
             function = ticket["work"]
         except KeyError:
             ticket = {'status' : "cannot find requested function"}
