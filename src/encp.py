@@ -12,7 +12,6 @@ import pprint
 import pwd
 import grp
 import socket
-import regsub
 import copy
 import pdb
 import string
@@ -1775,26 +1774,18 @@ def pnfs_information(filelist,nfiles):
 
 def fullpath(filename):
     machine = socket.gethostbyaddr(socket.gethostname())[0]
-    dir, file = os.path.split(filename)
+    dirname, file = os.path.split(filename)
 
     # if the directory is empty - get the users current working directory
-    if dir == '' :
-        dir = os.getcwd()
-    command="(cd "+dir+";pwd)"
-    try:
-        dir = regsub.sub("\012","",os.popen(command,'r').readlines()[0])
-        filename = dir+"/"+file
-    except:
-        pass
+    if dirname == '' :
+        dirname = os.getcwd()
 
-    # take care of any inadvertant extra "/"
-    # Note: as far as I know, this only happens when the user specifies the
-    #       the filename as /
-    filename = regsub.sub("//","/",filename)
-    dir = regsub.sub("//","/",dir)
-    file = regsub.sub("//","/",file)
+    dirname=os.path.expandvars(dirname)
+    dirname=os.path.expanduser(dirname)
+    dirname=os.path.normpath(dirname)
+    filename = os.path.join(dirname,file)
 
-    return (machine, filename, dir, file)
+    return machine, filename, dirname, file
 
 ##############################################################################
 
@@ -1802,12 +1793,11 @@ def fullpath(filename):
 
 def inputfile_check(input):
     # create internal list of input unix files even if just 1 file passed in
-    try:
-        ninput = len(input)
-        inputlist = input
-    except TypeError:
+    if type(input)==type([]):
+        inputlist=input
+    else:
         inputlist = [input]
-        ninput = 1
+    ninput = len(input)
 
     # we need to know how big each input file is
     file_size = []
