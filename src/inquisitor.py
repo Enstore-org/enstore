@@ -885,7 +885,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         encplines2 = []
         date = ''
         date2 = ''
-        parsed_file = "%s%s"%(enstore_files.default_dir, "parsed")
+        parsed_file = "%s%s"%(enstore_functions.get_enstore_tmp_dir(), "/parsed")
         # look to see if the log server LOGs are accessible to us.  if so we
         # will need to parse them to get encp information.
         try:
