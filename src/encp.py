@@ -831,7 +831,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
         if test_fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
-            test_brand = test_fcc.get_brand()
+            test_brand = test_fcc.get_brand(5, 3)
             if not is_brand(test_brand):
                 Trace.log(e_errors.WARNING,
                           "File clerk (%s) returned invalid brand: %s\n"
@@ -849,7 +849,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
-        fcc_brand = fcc.get_brand()
+        fcc_brand = fcc.get_brand(5, 3)
         if not is_brand(fcc_brand):
             Trace.log(e_errors.WARNING,
                       "File clerk (%s) returned invalid brand: %s\n"
@@ -881,14 +881,14 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                 # next one.
                 continue
 
-            system_brand = fcc_test.get_brand()
+            system_brand = fcc_test.get_brand(5, 2)
             if not is_brand(system_brand):
                 Trace.log(e_errors.WARNING,
                           "File clerk (%s) returned invalid brand: %s\n"
                           % (fcc_test.server_address, system_brand))
             #If things match then use this system.
             if brand[:len(system_brand)] == system_brand:
-                if fcc.get_brand() != system_brand:
+                if fcc.get_brand(5, 2) != system_brand:
                     msg = "Using %s based on brand %s." % (system_brand, brand)
                     Trace.log(e_errors.INFO, msg)
 
@@ -1020,7 +1020,7 @@ def get_fcc(parameter = None):
 
     #First check that the cached version matches the bfid brand.
     if __fcc != None:
-        file_info = __fcc.bfid_info(bfid)
+        file_info = __fcc.bfid_info(bfid, 5, 3)
         if e_errors.is_ok(file_info):
             return __fcc
         #__fcc_brand = __fcc.get_brand()
@@ -1033,7 +1033,7 @@ def get_fcc(parameter = None):
         if fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
-            file_info = fcc.bfid_info(bfid)
+            file_info = fcc.bfid_info(bfid, 5, 3)
             if e_errors.is_ok(file_info):
                 __fcc = fcc
                 return __fcc
@@ -1049,7 +1049,7 @@ def get_fcc(parameter = None):
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
-        fcc_brand = fcc.get_brand()
+        fcc_brand = fcc.get_brand(5, 3)
         if not is_brand(fcc_brand):
             Trace.log(e_errors.WARNING,
                       "File clerk (%s) returned invalid brand: %s\n"
@@ -1082,14 +1082,14 @@ def get_fcc(parameter = None):
                 # next one.
                 continue
 
-            system_brand = fcc_test.get_brand()
+            system_brand = fcc_test.get_brand(5, 2)
             if not is_brand(system_brand):
                 Trace.log(e_errors.WARNING,
                           "File clerk (%s) returned invalid brand: %s\n"
                           % (fcc_test.server_address, system_brand))
             #If things match then use this system.
             if bfid[:len(system_brand)] == system_brand:
-                if fcc.get_brand() != system_brand:
+                if fcc.get_brand(5, 2) != system_brand:
                     brand = extract_brand(bfid)
                     msg = "Using %s based on brand %s." % (system_brand, brand)
                     Trace.log(e_errors.INFO, msg)
@@ -5365,7 +5365,7 @@ def verify_read_request_consistancy(requests_per_vol):
 def get_file_clerk_info(fcc, bfid):
 
     #Get the clerk info.
-    fc_ticket = fcc.bfid_info(bfid = bfid)
+    fc_ticket = fcc.bfid_info(bfid, 5, 3)
 
     if not e_errors.is_ok(fc_ticket['status'][0]):
         raise EncpError(None,
