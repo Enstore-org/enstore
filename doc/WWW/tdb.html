@@ -1,0 +1,131 @@
+<CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>Tdb</FONT></FONT></U></I></B></CENTER>
+
+
+
+<h1>Monitoring our daemons</H1>
+
+<p>A good part Enstore is a system of daemons which do not run with a
+terminal.  There is a need to get access to Python (as opposed to C-language")
+level access to the daemons in order to understand their behavoir better and
+to help debug them.
+
+<p>tdb is a package which allows one or more people to monitor a running
+program, inspecting it at the python level. The monitor also allows for one
+person to run the python debugger, pdb, if needed.
+
+<p>Access to the monitor is by telnet. The necessary setup is is done
+automatically in the Enstore Dispatching Worker object, if the threading is
+available.  Therefore, all servers which inherit form dispatching worker can
+be debugged and monitoed using this tool. the displatching worker
+implementaion uses the same number for its "well known" TCP port as the
+well-known UDP port for the sever's services. The hostname used right now is
+localhost, as there is no security (yet) in the package.
+
+
+
+<h2>Monitors</h2>
+
+<h3>Non blocking, no overhead monitor</h3>
+
+The package has has a non interfering monitor. This neither blocks
+the server's main thread nor intrinsically degrades the performance
+of the server.  The following functions are of this type:
+
+
+<h4>list</h4>
+
+List lines from a python source file. Specify the full path
+name, omitting the .py suffix.
+
+<h4>modules</h4>
+
+List modules imported into this program.
+
+<h4>who "module"</h4>
+
+List the variables at global scope in "module".  You can look at these
+variables in a detailed fashion using the eval stament, described below.
+
+<h4>whoall "module"</h4>
+
+List the variables and values of all variables at global scope in "module".
+You can look at these variables in a detailed fashion using the eval stament,
+described below.
+
+
+<h4>help </h4>
+
+Print a help message
+
+<h4>quit</h4>
+Quit the monitor, close the telnet session.
+
+<h4>eval</h4>
+
+Call eval with an arbitrary experession. The remainder of the line is passed
+to the eval function in the scope of the tbd monitor.  It may be necessary to
+exdend the scope of the tdb monitor with import statements if you
+command does not execute as expected.
+
+<h4>exec</h4>
+
+Issue an exec statement with arbitrary python statements. The remainder
+of the lib\ne is attached to an "exec" statement. The ststeme  is execed
+in the contect of the tbd monitor.  It may be necessary to
+exdend the scope of the tdb monitor with import statements if you
+command does not execute as expected.
+
+<h4>import</h4>
+
+Import a module into the name space seen by the monitor's exec and eval
+commands. Has one parameter, the module to load.
+
+</dir>
+
+<h3>Non blocking, tracing monitor</h3>
+
+<p> If you are willing to accept the overhead of using the python tracing
+facility, which runs python commands in between the main program's commands,
+the system can record the current python stack, which can, in turn, be
+displayed for display by the tdb monitor. The overhed is making a two-element
+dictionary and saving a referance to it in a variable in the tdb global name
+space
+
+<p> This feature may be most useful when a process "hangs" and you want to
+known where it is. Unfortunatley, one enabled, the the interpereter must
+execute at least one instruction before you can see the stack. This is due to
+the mechanics available to me through python.
+
+<p>Two addional commands will dump the save stack information:
+
+<h4>main</h4>
+
+Dumps a printout of the stack, very much like the pdb command "where". For
+each stack frame, the file, line number within file, and program text for that
+line is dumped.  This does not stop the main thread. Issuing this command
+repeatedly gives a kind of crude trace of the main thread.
+
+<h4>mainwhoall</h4>
+
+Prints the stack plus the local variables and their values for
+each stack frame. This does not stop the main thread. Issuing this command
+repeatedly gives a kind of crude trace of the main thread.
+
+
+<h3>pdb</h3>
+
+<p> If your program is not blocked, for example in a read or select call, then
+you can invoke and use pdb on the main thread, and you can execute all normal
+pdb commands. A side effect of this is that sys.stdin and sys.stdout are
+directed to your telnet session.
+
+<p> It is a bug, but also true that you cannot properly quit the debugger and
+let your program run.  Right now, you have to tear the program down when you
+quit pdb. As best I can tell, this is not a consequence of the mechanisms in
+python, I just need to write the code to support this, and have not done
+this as of yet.
+
+
+
+</BODY>
+</HTML>
