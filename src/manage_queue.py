@@ -161,7 +161,6 @@ class SortedList:
             r, err = self.find(request.unique_id,output_file_name)
             if r and r.ticket.has_key('routing_callback_addr') and request.ticket.has_key('routing_callback_addr'):
                 r.ticket['routing_callback_addr'] = request.ticket['routing_callback_addr']
-                print r.ticket
         return res, stat
 
     # get a record from the list
