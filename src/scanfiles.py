@@ -45,8 +45,12 @@ def check(f):
     f1 = open(layer_file(f, 1))
     bfid = f1.readline()
     f1.close()
-    if bfid != pf.bfid:
-        msg.append('bfid(%s, %s)'%(bfid, pf.bfid))
+    try:
+        if bfid != pf.bfid:
+            msg.append('bfid(%s, %s)'%(bfid, pf.bfid))
+    except:
+        msg.append('no or corrupted bfid')
+        return msg
     fr = fcc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
