@@ -39,6 +39,9 @@ class Driver:
     def get_status(self):
         raise NotImplementedError
 
+    def verify_label(self, volume_label, mode):
+        raise NotImplementedError
+    
     def set_mode(self, density=None, compression=None, blocksize=None):
         raise NotImplementedError
     

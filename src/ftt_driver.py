@@ -4,6 +4,8 @@
 
 import time
 import select
+import string
+import exceptions
 
 import Trace
 import driver
@@ -47,7 +49,6 @@ class FTTDriver(driver.Driver):
         self._rate = 0
         self._bytes_transferred = 0
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
-        self.fd = None
 
         self._open_dev(retry_count)
             
@@ -74,6 +75,7 @@ class FTTDriver(driver.Driver):
         return 1
     
     def _open_dev(self, retry_count):
+        self.fd = None
         for retry in xrange(retry_count):
             if retry:
                 Trace.trace(25, "retrying open %s"%(retry,))
@@ -130,6 +132,7 @@ class FTTDriver(driver.Driver):
                 self.ftt.skip_fm(target-current)
             except ftt.FTTError, detail:
                 if detail.errno == ftt.EBLANK and eot_ok:
+                    ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
                     pass
                 else:
                     Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.errno))
@@ -262,10 +265,33 @@ class FTTDriver(driver.Driver):
 
         return r
 
+    def verify_label(self, volume_label, mode):
+        buf=80*' '
+        try:
+            Trace.log(25, "rewinding tape to check volume label")
+            self.rewind()
+            self._open_dev()
+            if self.fd is None:
+                return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
+            nbytes=self.read(buf, 0, 80)
+            if nbytes != 80:
+                return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], None
+            if buf[:4] != "VOL1":
+                return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
+            s = string.split(buf[4:])
+            if not s:
+                return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
+            if s[0] != volume_label:
+                return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
+
+            return e_errors.OK, None
+        except exceptions.Exception, detail:
+            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], detail
+        
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._last_rate
-
+    
     
         
 if __name__ == '__main__':
