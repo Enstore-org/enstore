@@ -125,7 +125,7 @@ can read from, so in that sense pnfs also provides normal files as well.]
 Normal UNIX permissions and administered export points
 are used to prevent unauthorized access to the name space.
 <p>
-There are three kinds of access:
+Enstore uses pnfs for three different kinds of access and information:
 <ol>
 <li>Administration Interactions
     <br>
@@ -136,30 +136,26 @@ There are three kinds of access:
     <p>
 <li>Configuration Information
     <br>
-    When files are created on some media quite a bit of information
-    needs to be provided.
-    These files are created in a specific part of the name space.
-    <em>Enstore</em> looks up towards the root of the name space,
-    looking for special files, called tag files, which contain configuration
-information.
-    Examples of configuration information are:
-<pre>
-	pnfs_library = "activelibrary"
-	pnfs_quota_family = "family_raw"
-	pnfs_file_family = "family_raw"
-	pnfs_file_family_width = 2
-</pre>
-    <p>
+    When files are created on some media some creation details 
+    need to be provided. Enstore uses pnfs tag files for these purposes.
+    These files are created in a specific part of the name space and are
+     associated with a directory and not any specific file.
+    Examples of configuration information include file family name, file
+     family width, library manager and so forth.
+     <p>
+
 <li>User File information
     <br>
     The rest of the system identifies a file by a 64-bit numeric
     identifier, dubbed a "bit file ID".
-    <em>pnfs</em> binds a bit file ID to names of regular files in
-    the <em>pnfs</em> name space.
-    <em>encp</em> can access this bit file id, giving it to the servers
+    After a file is written to tape, the file clerk generates a bfid and
+     <em>encp</em>     stores this information 
+     in one of the pnfs file layers.
+    <em>Encp</em> can access this bit file id, giving it to the servers
     when fetching data from tape.
-    After a file is written to tape, <em>encp</em> parks the bfid into
-    the <em>pnfs</em> name space.
+     Other file transfer details, such as time of last access or location of
+     where the file was copied to or transfer rates, are stored in a different
+     layer of the same pnfs file.
 </ol>
 <h2><a name="encp">
 1.2 ENCP
