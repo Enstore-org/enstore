@@ -84,10 +84,17 @@ class Quota:
 		# where is the database
 		self.csc = configuration_client.ConfigurationClient(csc)
 		dbInfo = self.csc.get('database')
-		self.host = dbInfo['db_host']
+		# self.host = dbInfo['db_host']
+		self.host = 'localhost'
 		self.port = dbInfo['db_port']
 		self.dbname = dbInfo['dbname']
-		self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
+		try:
+			self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			print str(exc_type)+' '+str(exc_value)
+			print 'has to be user "enstore" on *srv0!'
+			sys.exit(0)
 		self.uname = whoami()
 
 	# informational log any way, stick user identity before the msg
