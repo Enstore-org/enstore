@@ -100,8 +100,12 @@ class GenericClient:
             import alarm_client
             self.alarmc = alarm_client.AlarmClient(self.csc)
 
-    def get_server_address(self, MY_SERVER):
-        ticket = self.csc.get(MY_SERVER)
+    def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
+        ticket = self.csc.get(MY_SERVER, rcv_timeout, tries)
+
+        if ticket['status'][0] != e_errors.OK:
+            return None
+        
         try:
             server_address = (ticket['hostip'], ticket['port'])
             return server_address

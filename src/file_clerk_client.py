@@ -33,14 +33,15 @@ MY_SERVER = "file_clerk"
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_address=None ):
+    def __init__( self, csc, bfid=0, server_address=None, timeout=0, tries=0):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
 	if server_address != None:
             self.server_address = server_address
 	else:
-            self.server_address = self.get_server_address(MY_SERVER)
+            self.server_address = self.get_server_address(MY_SERVER,
+                                                          timeout, tries)
 
     def new_bit_file(self, ticket):
         ticket['work'] = "new_bit_file"

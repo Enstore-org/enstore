@@ -313,6 +313,10 @@ def get_csc(ticket_or_bfid=None):
     else:  #Nothing valid, just return the default csc.
         return csc
 
+    #Before checking other systems, check the current system.
+    if brand == fcc.get_brand():
+        return csc
+
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if config_servers['status'][0] == e_errors.OK:
@@ -328,7 +332,8 @@ def get_csc(ticket_or_bfid=None):
                 config_servers[server])
 
             #Get the next file clerk client and its brand.
-            fcc_test = file_clerk_client.FileClient(csc_test)
+            fcc_test = file_clerk_client.FileClient(csc_test,
+                                                    timeout=10, tries=1)
             system_brand = fcc_test.get_brand()
 
             #If things match then use this system.
@@ -2391,7 +2396,7 @@ def verify_read_request_consistancy(requests_per_vol):
                 p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
                 p.get_xreference()
             except (OSError, IOError), detail:
-                request['stats'] = (errno.errorcode(detail.errno), str(detail))
+                request['stats'] = (errno.errorcode[detail.errno], str(detail))
                 print_data_access_layer_format(request['infile'],
                                                request['outfile'],
                                                request['file_size'], request)
