@@ -526,7 +526,24 @@ class LibraryManagerMethods:
                 return None, ret['status']
         return rq, ret['status']
             
-
+    def check_read_request(self, external_label, rq):
+        Trace.trace(11,"check_read_request")
+        ret = self.vcc.is_vol_available(rq.work,  external_label,
+                                        rq.ticket['vc']['volume_family'],
+                                        rq.ticket["wrapper"]["size_bytes"])
+        Trace.trace(11,"check_read_request: ret %s" % (ret,))
+        if ret['status'][0] != e_errors.OK:
+            Trace.trace(11,"work can not be done at this volume %s"%(ret,))
+            rq.ticket['status'] = ret['status']
+            self.pending_work.delete(rq)
+            self.send_regret(rq.ticket)
+            Trace.log(e_errors.ERROR,
+                      "check_read_request: cannot do the work for %s status:%s" % 
+                                  (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
+        else:
+            rq.ticket['status'] = (e_errors.OK, None)
+        return rq, rq.ticket['status']
+        
 
     # is there any work for this volume??  v is a volume info
     # last_work is a last work for this volume
@@ -561,12 +578,13 @@ class LibraryManagerMethods:
         if not rq:
             rq = self.tmp_rq
         if rq:
+            Trace.trace(14, "s1 rq %s" % (rq.ticket,))
             if rq.work == 'read_from_hsm':
-                # return work
-                rq.ticket['status'] = (e_errors.OK, None)
-                return rq, rq.ticket['status']
+                rq, status = self.check_read_request(external_label, rq)
+                if rq and status[0] == e_errors.OK:
+                    return rq, status
             elif rq.work == 'write_to_hsm':
-                rq, status = self.check_write_request(self, external_label, rq)
+                rq, status = self.check_write_request(external_label, rq)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
                 
@@ -593,6 +611,7 @@ class LibraryManagerMethods:
 
         exc_limit_rq = None
         if rq:
+            Trace.trace(14, "s2 rq %s" % (rq.ticket,))
             # fair share
             storage_group = volume_family.extract_storage_group(vol_family)
             active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
@@ -628,27 +647,34 @@ class LibraryManagerMethods:
                         elif (rq.ticket.has_key('reject_reason') and
                               rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
                             rq = exc_limit_rq                            
-                
+                Trace.trace(14, "s3 rq %s" % (rq.ticket,))
+            
             if rq.work == 'write_to_hsm':
                 while rq:
-                    Trace.trace(11,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
+                    Trace.trace(14,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
                     rq, status = self.check_write_request(external_label, rq)
-                    Trace.trace(11,"RQ1 %s STAT %s" %(rq,status))
-                    if rq: Trace.trace(11,"TICK %s" %(rq.ticket,))
+                    Trace.trace(14,"RQ1 %s STAT %s" %(rq,status))
+                    if rq: Trace.trace(14,"TICK %s" %(rq.ticket,))
                     if rq and status[0] == e_errors.OK:
                         return rq, status
                     if not rq: break
                     rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0)
             # return read work
             if rq:
-                rq.ticket['status'] = (e_errors.OK, None)
-                return rq, rq.ticket['status'] 
+                Trace.trace(14, "s4 rq %s" % (rq.ticket,))
+                
+                rq, status = self.check_read_request(external_label, rq)
+                return rq, status
         
         # try from the beginning
+        Trace.trace(14,"try from the beginning")
         rq = self.pending_work.get(external_label)
         if rq:
+            if rq.work == 'read_from_hsm':
+                rq, status = self.check_read_request(external_label, rq)
+            else:
+                rq.ticket['status'] = (e_errors.OK, None)
             # return work
-            rq.ticket['status'] = (e_errors.OK, None)
             return (rq, rq.ticket['status'])
         if status:
             return (None, status)
@@ -733,7 +759,6 @@ class LibraryManagerMethods:
             
 	Trace.trace(14, "SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
 	return vol
-
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
 		     generic_server.GenericServer,
@@ -979,6 +1004,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               # do better 
 		break
 	if found:
+            # check if it is a backed up request
+            now = time.time()
+            if now - wt['times']['lm_dequeued'] < 30.:
+                Trace.trace(15,"found backed up mover %s ts now %s updated at %s" % (mticket['mover'], now, wt['times']['lm_dequeued']))
+                return
 	    self.work_at_movers.remove(wt)
 	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
 	    Trace.log(e_errors.INFO, format%(wt,mticket))
@@ -1080,6 +1110,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'])
         if w:
+            # check if it is a backed up request
+            now = time.time()
+            if now - w['times']['lm_dequeued'] < 30.:
+                Trace.trace(15,"found backed up mover %s ts now %s updated at %s" % (mticket['mover'], now, w['times']['lm_dequeued']))
+                return
             Trace.trace(13,"removing %s  from the queue"%(w,))
             # file family may be changed by VC during the volume
             # assignment. Set file family to what VC has returned
