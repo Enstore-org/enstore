@@ -112,8 +112,8 @@ dm19node=$d0enmvr5a
 dc20node=$d0enmvr11a
 dc21node=$d0enmvr11a
 
-dc22node=$d0enmvr10a
-dc23node=$d0enmvr10a
+dc22node=$d0enmvr11a
+dc23node=$d0enmvr11a
 
 dc24node=$d0enmvr9a
 dc25node=$d0enmvr9a
@@ -167,9 +167,9 @@ dc17device=/dev/rmt/tps2d5n
 dm18device=/dev/rmt/tps3d1n
 dm19device=/dev/rmt/tps3d2n
 dc20device=/dev/rmt/tps0d1n
-dc21device=/dev/rmt/tps3d1n
-dc22device=/dev/rmt/tps0d1n
-dc23device=/dev/rmt/tps3d1n
+dc21device=/dev/rmt/tps1d1n
+dc22device=/dev/rmt/tps4d1n
+dc23device=/dev/rmt/tps5d1n
 dc24device=/dev/rmt/tps0d1n
 dc25device=/dev/rmt/tps3d1n
 dc26device=/dev/rmt/tps0d1n
