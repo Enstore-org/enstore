@@ -140,7 +140,7 @@ class Cpio :
             # partial tape block will be in ETape buffer????
 	    
 	else:
-	    self.write_driver.write_block(header,)
+	    self.write_driver.write_block( header )
 
 	    # now read input and write it out
 	    san_crc = 0; san_bytes = 0	# "in progress" (shorter 3-character names) crc's,
@@ -166,7 +166,7 @@ class Cpio :
 			san_bytes = sanity_bytes # finished
 		    san_crc = self.crc_fun(b[0:sanity_end],san_crc)
 
-		self.write_driver.write_block(b,)
+		self.write_driver.write_block( b )
 
         # write out the trailers
         self.write_driver.write_block( trailers(size,crc_header,dat_crc,trailer) )
@@ -195,7 +195,7 @@ class Cpio :
 	    # for now, just send the data back to the user, as read
 	    bad = str(sys.exc_info()[1]); print bad
 	    while 1:
-		self.write_driver.write_block(buffer,)
+		self.write_driver.write_block( buffer )
 		buffer = self.read_driver.read_block()
 		if len(buffer) == 0: return (-1,-1,-1,bad)
 
@@ -209,14 +209,16 @@ class Cpio :
 	    if buffer_len < data_bytes - dat_bytes:
 		dat_bytes = dat_bytes + buffer_len
 		dat_crc = self.crc_fun( buffer, dat_crc )
-		self.write_driver.write_block( buffer, )
+		self.write_driver.write_block( buffer )
 	    else:
 		dat_end   = data_bytes - dat_bytes
 		dat_bytes = data_bytes	# read all the data (finished), but still may be doing sanity
 		dat_crc = self.crc_fun(        buffer[:dat_end], dat_crc )  # so don't break here
-		self.write_driver.write_block( buffer[:dat_end], )
+		self.write_driver.write_block( buffer[:dat_end] )
+		# setup for trailer, but do not index past padd now as we may
+		# be at the edge of the buffer
 		padd = (4-(dat_bytes%4)) %4
-		trailer = buffer[dat_end+padd:]	# may be null (if right at edge)
+		trailer = buffer[dat_end:] # may be null (if right at edge)
 
             # look at first part of file to make sure it is right file
 	    if san_bytes < sanity_bytes:
@@ -255,12 +257,13 @@ class Cpio :
             if buffer_len == 0: break
             trailer =  trailer + buffer
 
-        recorded_crc = encrc( trailer )
+        recorded_crc = encrc( trailer[padd:] )
         if recorded_crc != dat_crc :
             raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
                   " but was expecting "+repr(recorded_crc)
 
         return (dat_bytes, dat_crc)
+
 
 ###############################################################################
 # cpio support functions
@@ -346,6 +349,7 @@ def trailers( siz, head_crc, data_crc, trailer ):
         # first need to pad data
         padd = (4-(size%4)) %4
         size = size + padd
+	print "ronDBG - padd =",padd
 
         # next is header for crc file, 8 bytes of crc info, and padding
         size = size + len(head_crc) + 8
