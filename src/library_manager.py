@@ -356,7 +356,7 @@ class LibraryManagerMethods:
         key_to_check = self.fair_share(rq)
         if key_to_check:
             self.continue_scan = 1
-            return rq, key_to_check
+            #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if not self.write_vf_list.has_key(vol_family):
             vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(vol_family)
@@ -370,7 +370,7 @@ class LibraryManagerMethods:
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
             rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
             self.continue_scan = 1
-            return rq, None
+            return rq, key_to_check
         Trace.trace(11,"process_write_request: request next write volume for %s" % (vol_family,))
 
         # before assigning volume check if it is bound for the current family
@@ -401,7 +401,7 @@ class LibraryManagerMethods:
                     rq.ticket["status"] = v["status"]
                     #rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
                 self.continue_scan = 1
-                return rq, None
+                return rq, key_to_check
             else:
                 external_label = v["external_label"]
         else:
@@ -430,7 +430,7 @@ class LibraryManagerMethods:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
         
-        return rq, None
+        return rq, key_to_check
 
     # is there any work for any volume?
     def next_work_any_volume(self, requestor, bound=None):
@@ -440,8 +440,6 @@ class LibraryManagerMethods:
 
         # look in pending work queue for reading or writing work
         rq=self.pending_work.get()
-        if rq:
-            if not self.tmp_rq: self.tmp_rq = rq
         while rq:
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
