@@ -60,12 +60,16 @@ def wait_rsp( sock, address, rcv_timeout ):
 class Container:
     pass
 
+_rexec = rexec.RExec()
+def r_eval(stuff):
+    return _rexec.r_eval(stuff)
+
 class UDPClient:
 
     def __init__(self):
         self.tsd = {} #Thread-specific data
         self._os = os
-        self.rexec = rexec.RExec()
+
         self.reinit()
 
     def reinit(self):
@@ -99,9 +103,29 @@ class UDPClient:
     def _mkident(self, host, port, pid):
         return "%s-%d-%f-%d" % (host, port, time.time(), pid )
         
+    def __del__(self):
+        # tell server we're done - this allows it to delete our unique id in
+        # its dictionary - this keeps things cleaner & stops memory from growing
+        try:
+            pid = self._os.getpid()
+            tsd = self.tsd.get(pid)
+            if not tsd:
+                return
+            for server in tsd.send_done.keys() :
+                try:
+                    self.send_no_wait({"work":"done_cleanup"}, server)
+                except:
+                    pass
+                try:
+                    tsd.socket.close()
+                except:
+                    pass
+        except:
+            pass
+        
     def _eval_reply(self, reply): #private to send
         try:
-            number, out, t = self.rexec.r_eval(reply) #XXX
+            number, out, t = r_eval(reply) #XXX
             # catch any error and keep going. server needs to be robust
         except:
             exc,msg,tb=sys.exc_info()
@@ -208,6 +232,8 @@ class UDPClient:
         ##if we got here, it's because we didn't receive a response to the message we sent.
         raise errno.errorcode[errno.ETIMEDOUT]
 
+        
+    
         
 if __name__ == "__main__" :
 
