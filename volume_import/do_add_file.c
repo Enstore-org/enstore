@@ -39,23 +39,6 @@ do_add_file(char *destination, char *source)
 	return -1;
     }
     
-    sprintf(buf,"%07d", file_number+1);
-    
-    if (write_db_s(dbpath, "next_file", buf)){
-	perror(dbpath);
-	return -1;
-    }
-    
-    
-    /*use some verify function to do this XXX */
-    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
-    
-    if (mkdir(dbpath, 0775)){
-	fprintf(stderr, "%s: cannot create directory ", progname);
-	perror(dbpath);
-	return -1;
-    }
-    
 
     /* We already verified all the files when building up the file list, but there's 
      * always the possibility that a file was removed or otherwise changed between 
@@ -68,20 +51,11 @@ do_add_file(char *destination, char *source)
     }
 
     size = sbuf.st_size;
+    early_checksum_size=min(size, EARLY_CHECKSUM_SIZE);
 
-    /* Once we start writing into the database we need to make sure that if any 
-     * error occurred, we completely undo the partial addition */
-
-    if (write_db_i(dbpath,"blocksize",blocksize)
-	||write_db_i(dbpath,"size", size) 
-	||write_db_s(dbpath,"source", source)
-	||write_db_s(dbpath,"destination", destination)
-	||write_db_i(dbpath,"early_checksum_size", 
-		     early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
-	||cpio_start(source)
-	) goto cleanup;
-    
-    /* terminate when nbytes=0, i.e. we've handled the last block */
+    if (cpio_start(source))
+	return -1;
+   /* terminate when nbytes=0, i.e. we've handled the last block */
     while ( (nbytes=cpio_next_block(read_buffer, blocksize)) ){
 	if (nbytes<0){
 	    break;
@@ -99,18 +73,42 @@ do_add_file(char *destination, char *source)
 	}
     }
     
-    if (nbytes<0
+    if (nbytes<0){
+	rewind_tape();
+	return -1;
+    }
+
+    /*use some verify function to do this? */
+    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
+    
+    if (mkdir(dbpath, 0775)){
+	fprintf(stderr, "%s: cannot create directory ", progname);
+	perror(dbpath);
+	return -1;
+    }
+    
+    /* Once we start writing into the database we need to make sure that if any 
+     * error occurred, we completely undo the partial addition */
+    
+    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
+    if (write_db_u(dbpath,"checksum", checksum)
+	||write_db_i(dbpath,"blocksize",blocksize)
+	||write_db_i(dbpath,"size", size) 
+	||write_db_s(dbpath,"source", source)
+	||write_db_s(dbpath,"destination", destination)
+	||write_db_i(dbpath,"early_checksum_size", early_checksum_size)
 	||write_db_u(dbpath,"early_checksum", early_checksum)
-	||write_db_u(dbpath,"checksum", checksum)
 	) goto cleanup;
+    
+    sprintf(buf,"%07d", file_number+1);
+    sprintf(dbpath, "%s/volumes/%s", tape_db, volume_label);
+    if(write_db_s(dbpath, "next_file", buf))
+	goto cleanup;
     
     return 0;
     
- cleanup:
+  cleanup:
     rm_rf(dbpath);
-    sprintf(dbpath,"%s/volumes/%s", tape_db, volume_label);
-    sprintf(buf,"%07d",file_number);
-    write_db_s(dbpath, "next_file", buf);
     return -1;
 }
     
