@@ -238,6 +238,20 @@ class Logger(  dispatching_worker.DispatchingWorker
         self.debug_logfile.flush()
 	self.write_to_extra_logfile(message)
 
+    def check_for_extended_files(self, filename):
+        file_l = os.listdir(self.logfile_dir_path)
+        # pull out all the files that match the current name at a min
+        size = len(filename)
+        matching_l = []
+        for file in file_l:
+            if file[:size] == filename:
+                matching_l.append(file)
+        else:
+            if matching_l:
+                matching_l.sort()
+                return matching_l[-1]
+        return filename
+
     def serve_forever(self):                      # overrides UDPServer method
         self.repeat_count=0
         self.last_message=''
@@ -251,7 +265,10 @@ class Logger(  dispatching_worker.DispatchingWorker
             ft = '-%02d-%02d' % (tm[3], tm[4])
             fn = fn + ft
 
+        fn = self.check_for_extended_files(fn)
         self.logfile_name = self.logfile_dir_path + "/" + fn
+        # check for any of the extra log files (.1, .2 ...) open the latest
+        # one of these if they exist.
         self.logfile_name_orig = self.logfile_name
 	self.last_logfile_name = ""
         # open log file
@@ -287,6 +304,8 @@ class Logger(  dispatching_worker.DispatchingWorker
                     size = os.stat(self.logfile_name)[6]
                     if size >= self.max_log_file_size:
                         self.logfile.close()
+                        self.debug_logfile.close()
+                        self.close_extra_logs()
                         # and open the new one
                         self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
                         self.index = self.index + 1
