@@ -1027,7 +1027,7 @@ class LibraryManagerMethods:
         rq =self.pending_work.get_admin_request()
         while rq:
             # skip over tape read requests they are processed only in the idle state
-            method = ticket.get("method", None)
+            method = rq.ticket.get("method", None)
             if method and method == "start_read_tape":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
@@ -1110,7 +1110,7 @@ class LibraryManagerMethods:
         loop = 1
         while rq:
             # skip over tape read requests they are processed only in the idle state
-            method = ticket.get("method", None)
+            method = rq.ticket.get("method", None)
             if method and method == "start_read_tape":
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
