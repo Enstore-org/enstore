@@ -1,0 +1,14 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile d0$  $Revision$
+
+#rsh rip1 "/usr/local/bin/traceMode 1"
+
+cd $ENSTORE_DIR/test
+make jobs
+volume-declare red50
+cd /pnfs/stk/red50/
+for i in 1 2 3; do mkdir jon$i; cd jon$i; pcmd file_family jon-red50-$i; cd ..; done
+cd $ENSTORE_DIR/test

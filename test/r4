@@ -1,0 +1,4 @@
+$ENSTORE_DIR/test/roll -noread /pnfs/grau/dlt/jon1     $ENSTORE_DIR/test/rip4a.in  9 30 0
+$ENSTORE_DIR/test/roll -noread /pnfs/grau/dlt/jon1     $ENSTORE_DIR/test/rip4b.in 10 30 0
+$ENSTORE_DIR/test/roll -noread /pnfs/grau/mammoth/jon1 $ENSTORE_DIR/test/rip4a.in 11 30 0
+
