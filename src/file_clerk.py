@@ -131,8 +131,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 deleted = "yes"
                 decr_count = 1
             else:
-                self.deleted = "no"
+                deleted = "no"
                 decr_count = -1
+            # the foolowing fixes a problem with lost 'deleted' entry'
+            if not record.has_key('deleted'):
+                record["deleted"] = deleted
+                
             if record["deleted"] == deleted:
                 # don't return a status error to the user - she needs a 0 status in order to delete
                 # the file in the trashcan.  Otherwise we are in a hopeless loop & it makes no sense
