@@ -12,12 +12,12 @@ import time
 
 ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
 if ENSTORE_DIR:
-    TCL_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
+    TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
 else:
-    TCL_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
-os.environ["TCL_LIBRARY"]=TCL_DIR
-os.environ["TK_LIBRARY"]=TCL_DIR
-sys.path.insert(0, os.path.join(TCL_DIR, sys.platform))
+    TCLTK_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
+os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
+os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
+sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
 
 from Tkinter import *
 from tkFont import Font
