@@ -226,14 +226,18 @@ def generate_unique_id():
     return ret
 
 def extract_brand(bfid):
-    #Newer files have brands.
-    if len(bfid) == 19:
-        if bfid[4:].isdigit() and bfid[:4].isalnum():
+
+    if type(bfid) != types.StringType:
+        return None
+        
+    #Newer files have brands.  See is_bfid() for comments.
+    if len(bfid) >= 18:
+        if bfid[:4].isalnum() and bfid[4:].isdigit():
             return bfid[:4]
         else:
             return None
     #Older files may not have a brand.
-    elif len(bfid) == 14:
+    elif len(bfid) >= 14:
         if bfid.isdigit():
             return ""
 
@@ -242,9 +246,21 @@ def extract_brand(bfid):
 def is_bfid(bfid):
 
     if type(bfid) == types.StringType:
-        if len(bfid) == 19 and bfid[:4].isupper() and bfid[4:].isdigit():
+        #The only part of the bfid that is of constant form is that the last
+        # n characters are all digits.  There are no restrictions on what
+        # is in a brand or how long it can be (though there should be).
+        # Since, the bfid is based on its creation time, as time passes the
+        # number of digits in a bfid will grow.  (Assume 14 as minumum).
+        #
+        #Encp can only handle these problems if the first four characters
+        # are the brand and are only alphanumeric.  The remaining characters
+        # must only be digits.
+        #
+        #Older files that do not have bfid brands should only be digits.
+        
+        if len(bfid) >= 18 and bfid[:4].isalnum() and bfid[4:].isdigit():
             return 1
-        elif len(bfid) == 15 and bfid.isdigit():
+        elif len(bfid) >= 14 and bfid.isdigit():
             return 1
             
     return 0
@@ -655,6 +671,9 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     sys.exit(0)
     return None #Make pychecker quiet.
 
+#The string brand could be either a bfid or brand.  This is because a brand
+# can be of arbitrary length making it impossible to know how much of it is
+# the numerical part (which can change size as time grows) or the brand part.
 def _get_csc_from_brand(brand): #Should only be called from get_csc().
     global __csc
 
@@ -665,7 +684,8 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     fcc = file_clerk_client.FileClient(csc)
 
     #Before checking other systems, check the current system.
-    if brand == fcc.get_brand():
+    fcc_brand = fcc.get_brand()
+    if brand[:len(fcc_brand)] == fcc.get_brand():
         return csc
 
     #Get the list of all config servers and remove the 'status' element.
@@ -696,14 +716,14 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
             system_brand = fcc_test.get_brand()
 
             #If things match then use this system.
-            if brand == system_brand:
+            if brand[:len(system_brand)] == system_brand:
                 if fcc.get_brand() != system_brand:
                     msg = "Using %s based on brand %s." % (system_brand, brand)
                     Trace.log(e_errors.INFO, msg)
                 #csc = csc_test
                 #break
                 __csc = csc_test  #Set global for performance reasons.
-                return csc
+                return __csc
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
@@ -3449,7 +3469,14 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         #only do this the first time.
         if not vcc or not fcc:
-            vcc, fcc = get_clerks()
+            try:
+                vcc, fcc = get_clerks()
+            except EncpError, detail:
+                print_data_access_layer_format(
+                    ifullname, ofullname, file_size,
+                    {'status':(detail.type, detail.strerror)})
+                quit()
+                
         #Get the information needed to contact the file clerk, volume clerk and
         # the library manager.
         volume_clerk = {"address"            : vcc.server_address,
@@ -4243,13 +4270,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                         'Cannot have multiple output files',
                         e_errors.USERERROR)
 
-    #e.input[0] can be a filename, bfid or volume name at this point.
-    # get_clerks() can determine which it is and return the volume_clerk
-    # and file clerk that it corresponds to.
-    vcc, fcc = get_clerks(e.input[0]) #Inintialize these.
-
     if e.volume: #For reading a VOLUME (--volume).
 
+        # get_clerks() can determine which it is and return the volume_clerk
+        # and file clerk that it corresponds to.
+        try:
+            vcc, fcc = get_clerks(e.volume)
+        except EncpError, msg:
+            print_data_access_layer_format(
+                e.input, e.output, 0,
+                {'status':(msg.type, msg.strerror)})
+            quit()
         try:
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the volume.
@@ -4303,6 +4334,16 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                            e.output[0]))})
                 quit()
 
+            # get_clerks() can determine which it is and return the
+            # volume_clerk and file clerk that it corresponds to.
+            try:
+                vcc, fcc = get_clerks(bfids_list[i])
+            except EncpError:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit()
+            
             #Contact the file clerk and get current bfid that is on the list.
             try:
                 vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfids_list[i])
@@ -4413,7 +4454,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #### BFID #######################################################
         #If the user specified a bfid for the file to read.
         elif e.get_bfid:
-            
+
+            # get_clerks() can determine which it is and return the
+            # volume_clerk and file clerk that it corresponds to.
+            try:
+                vcc, fcc = get_clerks(e.get_bfid)
+            except EncpError:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit()
+                
             try:
                 #Get the system information from the clerks.  In this case
                 # e.input[i] doesn't contain the filename, but the bfid.
@@ -4473,6 +4524,16 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                str(msg))})
                 quit()
 
+            # get_clerks() can determine which it is and return the
+            # volume_clerk and file clerk that it corresponds to.
+            try:
+                vcc, fcc = get_clerks(bfid)
+            except EncpError:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit()
+
             try:
                 #Get the system information from the clerks.
                 vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
@@ -4510,6 +4571,16 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                str(msg))})
                 quit()
 
+            # get_clerks() can determine which it is and return the
+            # volume_clerk and file clerk that it corresponds to.
+            try:
+                vcc, fcc = get_clerks(bfid)
+            except EncpError:
+                print_data_access_layer_format(
+                    e.input, e.output, 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit()
+                
             try:
                 #Get the system information from the clerks.
                 vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
