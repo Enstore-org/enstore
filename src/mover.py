@@ -1034,7 +1034,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.ENCP_GONE:
-	if client_obj_inst.vol_info.external_label == '':
+	if client_obj_inst.vol_info['external_label'] == '':
 	    # This is the case where a just started mover determines ENCP_GONE
 	    # before mounting the volume, so the mover does not have a volume
 	    next_req_to_lm = idle_mover_next( client_obj_inst )
