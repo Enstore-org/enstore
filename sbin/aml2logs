@@ -16,10 +16,10 @@ esac
 if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
   BASE=/diska/aml2Shadow/AMU/LOGS-TRC
   DECODED=/diska/aml2-log
-#  REPORTED=/diska/aml2-report
+# REPORTED=/diska/aml2-report
 fi
 
-#set -u  # force better programming and ability to use check for not set
+# set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # if called with no arguments, then assume that we have get the logs first
@@ -30,11 +30,11 @@ if [ -z "${1-}" ]; then
       BASE=/rip8a/enstore/aml2Shadow/AMU/LOGS-TRC
    fi
 
-  #mirror $ENSTORE_DIR/sbin/aml2.mirror
+#  mirror $ENSTORE_DIR/sbin/aml2.mirror
    mirror /home/enstore/CRON/aml2.log.mirror
    find $BASE -type f -name "lo*" -maxdepth 1 -exec $0 {} \;
 
-  # make the nice calendar display of log files
+# make the nice calendar display of log files
   if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
       set -xv
       python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
@@ -44,14 +44,13 @@ if [ -z "${1-}" ]; then
              --html_file="$DECODED/aml2_log_file.html" \
              --caption_title="$robot Log Files"
 
-      #python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
-      #       --title="$robot Report Files" \
-      #       --web_host="http://${gang}srv2.fnal.gov/enstore/aml2rpt" \
-      #       --logfile_dir="$REPORTED" \
-      #       --output="$REPORTED/aml2_report_file.html" \
-      #       --caption="$robot Summary Report Files"
+#     python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
+#            --title="$robot Report Files" \
+#            --web_host="http://${gang}srv2.fnal.gov/enstore/aml2rpt" \
+#            --logfile_dir="$REPORTED" \
+#            --output="$REPORTED/aml2_report_file.html" \
+#            --caption="$robot Summary Report Files"
   fi
-
 
 # otherwise we need to create a version people can read
 # then gzip it to save space - note that most browsers can decode gzip formats
@@ -60,9 +59,9 @@ else
     if [ -z "${DECODED-}" ]; then
        DECODED=$BASEPATH/aml2log
     fi
-#    if [ -z "${REPORTED-}" ]; then
-#       REPORTED=$BASEPATH/aml2rpt
-#    fi
+#   if [ -z "${REPORTED-}" ]; then
+#      REPORTED=$BASEPATH/aml2rpt
+#   fi
 
     fname=`basename $1`
     thisYear=`date +%Y`
@@ -70,15 +69,15 @@ else
     if [ `echo $fname | grep -c log` -ne 0 ]; then
       binary=1
       month=`echo $fname | cut -b6-7`
-      day=`echo $fname | cut -b8-9`
+      day=`echo $fname | cut -b4-5`
       asc=$DECODED/$fname.ascii
-#      arpt=$REPORTED/$fname.rpt
+#     arpt=$REPORTED/$fname.rpt
     elif [ `echo $fname | grep -c lo` -ne 0 ]; then
       binary=0
       month=`echo $fname | cut -b5-6`
       day=`echo $fname | cut -b7-8`
       asc=$DECODED/log$day$month.ascii #force old format for now (until AML/2 upgraded)
-#      arpt=$REPORTED/log$day$month.rpt #force old format for now (until AML/2 upgraded)
+#     arpt=$REPORTED/log$day$month.rpt #force old format for now (until AML/2 upgraded)
     else
       return
     fi
@@ -94,9 +93,9 @@ else
            cp $1 $asc
          fi
          chmod 644 $asc
-#         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
-#         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc
-#         chmod 644 $arpt
+#        nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
+#        nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc
+#        chmod 644 $arpt
       fi
     fi
 fi
