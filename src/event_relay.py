@@ -5,9 +5,7 @@ import socket
 import select
 import time
 import string
-import traceback
 import sys
-import traceback
 
 import enstore_constants
 import Trace
