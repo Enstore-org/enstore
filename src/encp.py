@@ -460,14 +460,27 @@ def filesystem_check(target_filesystem, inputfile):
     #Get filesize
     size = get_file_size(inputfile)
 
-    #Not all operating systems support this optional POSIX limit (ie OSF1).
+    #Since, the file should not exist yet, check the directory.
+    if os.path.isfile(target_filesystem):
+        target_filesystem = os.path.split(target_filesystem)[0]
+
+    #Not all operating systems support this POSIX limit yet (ie OSF1).
     try:
         #get the maximum filesize the local filesystem allows.
-        bits = os.pathconf(os.path.split(target_filesystem)[0],
+        bits = os.pathconf(target_filesystem,
                            os.pathconf_names['PC_FILESIZEBITS'])
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
     except KeyError, detail:
         return
-
+    except:
+        exc, msg, tb = sys.exc_info()
+        msg = "System error getting filesystem file size limit: %s: %s" \
+              % (str(exc), str(msg))
+        Trace.log(e_errors.ERROR, msg)
+        raise exc, msg, tb
+        
     filesystem_max = 2L**(bits - 1) - 1
     
     #Compare the max sizes.
@@ -762,10 +775,10 @@ def file_check(e):
 
 #######################################################################
 
-def get_server_info(library = None):
+def get_server_info(library = None, bfid = None):
 
     #Get the appropriate configuration server client.
-    csc = get_csc()
+    csc = get_csc(bfid)
 
     #Get the file clerk configuration info.
     fc_ticket = csc.get("file_clerk")
@@ -2293,10 +2306,18 @@ def same_cookie(c1, c2):
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
 def verify_read_request_consistancy(requests_per_vol):
+
+    bfid_brand = None
+    
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
         request_list = requests_per_vol[vol]
+
+        #Only aquire the first loop.  This might be a performance hit for
+        # a large number of requests.
+        if not bfid_brand:
+            bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
 
         for request in request_list:
 
@@ -2332,7 +2353,8 @@ def verify_read_request_consistancy(requests_per_vol):
                 Trace.alarm(e_errors.ERROR, e_errors.UNKNOWN, rest)
             
             elif request['fc']['external_label'] != p.volume or \
-               not same_cookie(request['fc']['location_cookie'], p.location_cookie) or \
+               not same_cookie(request['fc']['location_cookie'],
+                               p.location_cookie) or \
                long(request['fc']['size']) != long(p.size):
 
                 rest = {'infile':request['infile'],
@@ -2352,6 +2374,13 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
+            if request['fc']['bfid'] != bfid_brand:
+                msg = "All bfids must have the same brand."
+                request['status'] = (e_errors.USERERROR, msg)
+                print_data_access_layer_format(request['infile'],
+                                               request['outfile'],
+                                               request['file_size'], request)
+                quit() #Harsh, but necessary.
 
 #######################################################################
 
@@ -2896,8 +2925,10 @@ def read_from_hsm(e, tinfo):
                   (host, port))
 
     #Contact the configuration server for the file clerk, volume clerk and
-    # library manager addresses.
-    fc_ticket, vc_ticket, lm_ticket = get_server_info()
+    # library manager addresses.  To support bfid branding, this will also
+    # take a branded bfid.  This assumes that all the bifds in the transfer,
+    # have the same brand, which is checked in verify_read_request_consistancy.
+    fc_ticket, vc_ticket, lm_ticket = get_server_info(bfid=bfid[0])
 
     file_clerk_address = (fc_ticket["hostip"], fc_ticket["port"])
     volume_clerk_address = (vc_ticket["hostip"], vc_ticket["port"])
