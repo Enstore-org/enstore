@@ -196,27 +196,27 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
-     Trace.trace(6,"{load")
-     try:
-        try:
-            configfile = ticket["configfile"]
-            list = 1
-            out_ticket = {"status" : self.load_config(configfile,list)}
-        except KeyError:
-            out_ticket = {"status" : "Configuration Server: no such name"}
+	Trace.trace(6,"{load")
+	try:
+	    try:
+		configfile = ticket["configfile"]
+		list = 1
+		out_ticket = {"status" : self.load_config(configfile,list)}
+	    except KeyError:
+		out_ticket = {"status" : "Configuration Server: no such name"}
 
-        self.reply_to_caller(out_ticket)
-        Trace.trace(6,"}load"+repr(out_ticket))
-        return
+	    self.reply_to_caller(out_ticket)
+	    Trace.trace(6,"}load"+repr(out_ticket))
+	    return
 
-     # even if there is an error - respond to caller so he can process it
-     except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         pprint.pprint(ticket)
-         self.reply_to_caller(ticket)
-         Trace.trace(0,"}load "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1]))
-         return
+	# even if there is an error - respond to caller so he can process it
+	except:
+	    ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+	    pprint.pprint(ticket)
+	    self.reply_to_caller(ticket)
+	    Trace.trace(0,"}load "+str(sys.exc_info()[0])+\
+			str(sys.exc_info()[1]))
+	    return
 
 
 class ConfigurationServer(ConfigurationDict,\
