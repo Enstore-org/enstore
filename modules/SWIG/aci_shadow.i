@@ -29,6 +29,7 @@
 #include "derrno.h"     /* das errnos   */
 #include <netinet/in.h>
 
+%include "typemaps.i"   /* SWIG standard typemaps */
 %include "aci_typedefs.h"
 %include "aci_typemaps.i"
 
@@ -145,6 +146,7 @@ struct aci_volserinfo
 /*-------------------------------------------------------------------------*/
 
 int aci_robhome (char *); /*cgw*/
+int aci_robstat (char *, char *); /*tgj*/
 
 int aci_cancel (int);
 extern int aci_clientaccess (char *, enum aci_command, char *, enum aci_media,
@@ -159,7 +161,7 @@ extern int aci_eject_complete( char *, char *, enum aci_media );
 extern int aci_force (char *);
 extern int aci_foreign (enum aci_command, char *, enum aci_media, char *,short);
 extern int aci_init (void);
-extern int aci_insert (char *, char *[], enum aci_media *);
+extern int aci_insert (char *, char *volser_ranges[ACI_MAX_RANGES], enum aci_media *); /*tgj*/
 extern int aci_list (char *, struct aci_req_entry *[ACI_MAX_REQ_ENTRIES]);
 extern int aci_mount (char *, enum aci_media, char *);
 extern int aci_move (char *, enum aci_media, char *);
