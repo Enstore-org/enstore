@@ -417,7 +417,7 @@ def bind_volume( object, external_label ):
 	pass
     elif external_label != object.vol_info['external_label']:
 	object.vol_info['err_external_label'] = external_label
-	fatal_enstore( self, "unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
+	fatal_enstore( object,"unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
     return e_errors.OK  # bind_volume
