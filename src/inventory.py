@@ -43,7 +43,7 @@ def format_storage_size(size_in_bytes,mode="GB"):
 
     if mode == "GB":
         z = size_in_bytes/1024./1024./1024. # GB
-        return "%7.2fGB"%(z,)
+        return z,"GB"
   
     #suffix list
     suffix = ("B", "KB", "MB", "GB", "TB", "PB")
