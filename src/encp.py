@@ -194,7 +194,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                                "fc"                 : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
-                               "pnfs_info"          : pinfo[i],\
+                               "pinfo"              : pinfo[i],\
                                "uinfo"              : uinfo,\
                                "unique_id"          : unique_id[i]
                                }
@@ -584,7 +584,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 work_ticket = {"work"              : "read_from_hsm",\
                                "uinfo"             : uinfo,\
                                "fc"                : file_clerk,\
-                               "pnfs_info"         : pinfo[i],\
+                               "pinfo"             : pinfo[i],\
                                "unique_id"         : unique_id[i]
                                }
 

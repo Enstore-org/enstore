@@ -179,7 +179,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["uinfo"]["fullname"]),
-                                   ticket["pnfs_info"]["pnfsFilename"],
+                                   ticket["pinfo"]["pnfsFilename"],
                                    ticket["library"],ticket["file_family"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
@@ -189,7 +189,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
         logticket = self.logc.send(log_client.INFO, 2, format,
-                                   ticket["pnfs_info"]["pnfsFilename"],
+                                   ticket["pinfo"]["pnfsFilename"],
                                    repr(ticket["uinfo"]["fullname"]),
                                    ticket["fc"]["external_label"],
 				   ticket["fc"]["bfid"],
