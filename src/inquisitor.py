@@ -384,7 +384,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# carry on.
 		self.server_status_file_event.clear()
 		Trace.handle_error()
-		inq.serve_forever_error(inq.log_name+"WT")
+		self.serve_forever_error(inq.log_name+"WT")
 
     # signal the thread that the server status file can be written
     def write_server_status_file(self):
