@@ -90,7 +90,6 @@ if [ $do_active = 1 ]; then
   stat1=$?
   if [ $stat1 -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Active read kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null  STAT=$stat1"
-          enstore alarm --raise --severity "A" --root-error "Active read kftpcp -p 24127 -v enstore@$dcache:$f3 /dev/null  STAT=$stat1"
   fi
   echo
 else
@@ -107,7 +106,6 @@ if [ $do_active = 1 -a $do_kftp_write = 1 ]; then
   stat1a=$?
   if [ $stat1a -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1a"
-          enstore alarm --raise --severity "A" --root-error "Active write kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1a"
   fi
   echo
 else
@@ -125,14 +123,12 @@ if [ $do_active = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   stat1b=$?
   if [ $stat1b -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1b"
-          enstore alarm --raise --severity "A" --root-error "Active readback kftpcp -p 24127 -v $test_file enstore@$dcache:$w3 STAT=$stat1b"
      stat1c=0
   else
      cmp $test_file $read_back
      stat1c=$?
      if [ $stat1c -ne 0 ]; then
          echo enstore alarm --raise --severity "A" --root-error "Active readback kftpcp. cmp fails STAT=$stat1c"
-              enstore alarm --raise --severity "A" --root-error "Active readback kftpcp. cmp fails STAT=$stat1c"
      fi
   fi
   echo
@@ -150,7 +146,6 @@ if [ $do_passive = 1 ]; then
   stat2=$?
   if [ $stat1 -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Passive kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null  STAT=$stat2"
-          enstore alarm --raise --severity "A" --root-error "Passive kftpcp -p 24127 -m p -v enstore@$dcache:$f3 /dev/null  STAT=$stat2"
   fi
   echo
 else
@@ -170,7 +165,6 @@ if [ $do_passive = 1 -a $do_kftp_write = 1 ]; then
   stat2a=$?
   if [ $stat2a -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2a"
-          enstore alarm --raise --severity "A" --root-error "Passive write kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2a"
   fi
   echo
 else
@@ -189,14 +183,12 @@ if [ $do_passive = 1 -a $do_kftp_write = 1 -a $do_readback = 1 ]; then
   stat2b=$?
   if [ $stat2b -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2b"
-          enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp -p 24127 -m p -v $test_file enstore@$dcache:$w3 STAT=$stat2b"
      stat2c=0
   else
      cmp $test_file $read_back
      stat2c=$?
      if [ $stat2c -ne 0 ]; then
         echo enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp. cmp fails STAT=$stat2c"
-             enstore alarm --raise --severity "A" --root-error "Passive readback kftpcp. cmp fails STAT=$stat2c"
      fi
   fi
   echo
@@ -265,7 +257,6 @@ print ftp.retrbinary("RETR '$f3'",x)
 
   if [ $stat3 -ne 0 ]; then
   echo enstore alarm --raise --severity "A" --root-error "anonymous ftp read enstore-test@$dcache:$f3 /dev/null.  STAT=$stat3"
-       enstore alarm --raise --severity "A" --root-error "anonymous ftp read enstore-test@$dcache:$f3 /dev/null.  STAT=$stat3"
   fi
   echo
 else
@@ -327,14 +318,12 @@ if [ $do_dccpwrite = 1 -a $do_readback = 1 ]; then
   stat7=$?
   if [ $stat7 -ne 0 ]; then
      echo enstore alarm --raise --severity "A" --root-error "dccp readback ~bakken/dccp -d 2 $w $read_back"
-          enstore alarm --raise --severity "A" --root-error "dccp readback ~bakken/dccp -d 2 $w $read_back"
      stat7c=0
   else
      cmp $test_file $read_back
      stat7c=$?
      if [ $stat7c -ne 0 ]; then
         echo enstore alarm --raise --severity "A" --root-error "dccp readback cmp fails STAT=$stat7c"
-             enstore alarm --raise --severity "A" --root-error "dccp readback cmp fails STAT=$stat7c"
      fi
   fi
   echo
