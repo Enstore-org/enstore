@@ -33,7 +33,7 @@ MY_SERVER = "monitor"
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
 SERVER_CLOSED_CONNECTION = "Server closed connection"
-
+CLIENT_CLOSED_CONNECTION = "Client closed connection"
 
 class MonitorServerClient(generic_client.GenericClient):
 
@@ -57,7 +57,17 @@ class MonitorServerClient(generic_client.GenericClient):
         self.summary = summary
         self.c_hostip, self.c_port, self.c_socket =\
                        callback.get_callback(verbose=0)
-        self.c_socket.listen(4)
+        self.c_socket.listen(1)
+
+        #If socket.MSG_DONTWAIT isn't there add it, because should be.
+        if not hasattr(socket, "MSG_DONTWAIT"): #Python 1.5 test
+            socket.MSG_DONTWAIT = None
+            host_type = os.uname()[0]
+            if host_type == 'Linux':
+                socket.MSG_DONTWAIT = 64
+            elif host_type[:4]=='IRIX':
+                socket.MSG_DONTWAIT = 128
+
         
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
@@ -108,7 +118,9 @@ class MonitorServerClient(generic_client.GenericClient):
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
+            print "timeout"
         except SERVER_CLOSED_CONNECTION:
+            print "server closed connection"
             sys.exit(1)
             #reply = {}
             #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
@@ -158,12 +170,13 @@ class MonitorServerClient(generic_client.GenericClient):
                     break
                 #Rename this error to be handled the same as the others.
                 elif detail[0] == errno.ECONNREFUSED:
+                    print "connection refused"
                     raise SERVER_CLOSED_CONNECTION, detail[0]
                 else:
                     pass #somethin...something...something...
                 time.sleep(1)
         else: #If we did not break out of the for loop, flag the error.
-            raise SERVER_CLOSED_CONNECTION
+            raise CLIENT_CLOSED_CONNECTION
 
         #Success on the connection!  Restore flag values.
         fcntl.fcntl(data_socket.fileno(), FCNTL.F_SETFL, flags)
@@ -189,14 +202,16 @@ class MonitorServerClient(generic_client.GenericClient):
 
         #When sending, the time isn't important.
         elif ticket['transfer'] == SEND_TO_SERVER:
+            bytes_sent = 0
             sendstr = "S"*ticket['block_size']
-            for x in xrange(ticket['block_count']):
+            while bytes_sent < ticket['block_size']*ticket['block_count']:
                 r,w,ex = select.select([], [data_socket], [data_socket],
                                self.timeout)
                 if not w:
                     print "passive write failed to reach monitor server via TCP"
-                    raise SERVER_CLOSED_CONNECTION
-                data_socket.send(sendstr)
+                    raise CLIENT_CLOSED_CONNECTION
+                bytes_sent = bytes_sent + data_socket.send(sendstr,
+                                                           socket.MSG_DONTWAIT)
             reply['elapsed'] = -1
 
         #If we get here, the status is ok.
@@ -261,7 +276,6 @@ class MonitorServerClient(generic_client.GenericClient):
         if read_rate['status'] == ('ok', None) and \
            write_rate['status'] == ('ok', None):
             if not summary:
-                print "  Success."
                 print "Network rate measured at %.4g MB/S recieving " \
                       "and %.4g MB/S sending." % \
                       (read_rate['rate'], write_rate['rate'])
@@ -353,7 +367,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-        vetos[socket.gethostname()] = 'thishost'
+#        vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
@@ -408,7 +422,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
                     print "Skipping %s" % (vetos.veto_info(ip),)
                 continue
             if not summary:
-                print "Trying", host, 
+                print "Trying", host 
             msc = MonitorServerClient(
                 (config_host, config_port),
                 (ip,                      enstore_constants.MONITOR_PORT),
@@ -430,7 +444,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             else:
                 read_rate = {'elapsed':0, 'rate':0,
                              'status':('READ_ERROR', None)}
-        
+
             #Test rate sending to the server.  Since, the time is recorded on
             # the other end use the value returned, and not the one stored
             # in msc.measurement (which is for read info).

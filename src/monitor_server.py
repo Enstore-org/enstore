@@ -59,6 +59,8 @@ MY_NAME = "MNTR_SRV"
 
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
+SERVER_CLOSED_CONNECTION = "Server closed connection"
+CLIENT_CLOSED_CONNECTION = "Client closed connection"
 
 class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
@@ -72,6 +74,15 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         dispatching_worker.DispatchingWorker.__init__(self, csc)
 
 	self.running = 1
+
+        #If socket.MSG_DONTWAIT isn't there add it, because should be.
+        if not hasattr(socket, "MSG_DONTWAIT"): #Python 1.5 test
+            socket.MSG_DONTWAIT = None
+            host_type = os.uname()[0]
+            if host_type == 'Linux':
+                socket.MSG_DONTWAIT = 64
+            elif host_type[:4]=='IRIX':
+                socket.MSG_DONTWAIT = 128
 
         # always nice to let the user see what she has
         Trace.trace(10, repr(self.__dict__))
@@ -111,11 +122,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                     break
                 #Rename this error to be handled the same as the others.
                 elif detail[0] == errno.ECONNREFUSED:
+                    print "connection refused"
                     raise SERVER_CLOSED_CONNECTION, detail[0]
                 else:
                     pass #somethin...something...something...
                 time.sleep(1)
         else: #If we did not break out of the for loop, flag the error.
+            print "major problem"
             raise SERVER_CLOSED_CONNECTION
 
         #Success on the connection!  Restore flag values.
@@ -132,7 +145,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             print "passive listen did not hear back from monitor client via TCP"
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
             self.reply_to_caller(reply)
-            data_sock.close()
+            listen_sock.close()
             return
 
         data_sock, address = listen_sock.accept()
@@ -147,24 +160,30 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
-        #When sending, the time isn't important.
-        sendstr = "S"*ticket['block_size']
         if ticket['transfer'] == SEND_FROM_SERVER:
-            for x in xrange(ticket['block_count']):
+            bytes_sent = 0
+            sendstr = "S"*ticket['block_size']
+            print "Blocking on write select for", self.timeout, "seconds"
+            while bytes_sent < ticket['block_size']*ticket['block_count']:
                 r,w,ex = select.select([], [data_sock], [data_sock],
                                self.timeout)
                 if not w:
                     print "passive write failed to reach monitor client via TCP"
-                    #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
-                    #self.reply_to_caller(reply)
+                    reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
+                    self.reply_to_caller(reply)
                     data_sock.close()
+                    print "Timing out after send."
                     return
-                data_sock.send(sendstr)
+
+                bytes_sent = bytes_sent + data_sock.send(sendstr,
+                                                         socket.MSG_DONTWAIT)
+            print "Data sent"
             reply['elapsed'] = -1
-        #Since we are recieving the data, recording the time is important.
+
         elif ticket['transfer'] == SEND_TO_SERVER:
             bytes_received = 0
-            t0=time.time()
+            t0=time.time() #Grab the current time.
+            print "Blocking on read select for", self.timeout, "seconds"
             while bytes_received < ticket['block_size']*ticket['block_count']:
                 r,w,ex = select.select([data_sock], [], [data_sock],
                                self.timeout)
@@ -173,14 +192,15 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                     #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
                     #self.reply_to_caller(reply)
                     data_sock.close()
+                    print "Timming out after recv."
                     return
-                    
                 data = data_sock.recv(ticket['block_size'])
                 if not data: #socket is closed
                     print "Client closed connection before completion."
                     data_sock.close()
                     return
                 bytes_received=bytes_received+len(data)
+            print "Data recieved"
             reply['elapsed']=time.time()-t0
 
         reply['status'] = ('ok', None)
