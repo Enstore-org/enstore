@@ -367,7 +367,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.inquisitor.update_config(config.get(self.inquisitor.name, {}))
         if not self.inquisitor.config:
             # the inquisitor information is no longer in the config file.  exit 
-            self.update_exit()
+            self.update_exit(1)
         for skey in self.server_d.keys():
             server = self.server_d[skey]
             new_server_config = config.get(server.name, {})
