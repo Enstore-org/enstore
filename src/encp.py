@@ -517,7 +517,13 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
                   "   cum=",time.time()-t0
             #done_formatted  = pprint.pformat(done_ticket)
             #print done_formatted
-        logticket = logc.send(log_client.INFO, "this is an INFO message")
+
+        format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
+                     "%s MB/S    cum= %f"
+        logticket = logc.send(log_client.INFO, format, p.pnfsFilename,
+                              uinfo["fullname"], fsize,
+                              done_ticket["external_label"], tinfo["total"],
+                              done_ticket["MB_per_S"], time.time()-t0)
 
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
