@@ -292,8 +292,7 @@ for try in list doit; do
 
         2) echo "Step $Step:   bump encp version number to $REV in encp.py   `starting`"
            if [ "$try" = "doit" ] ; then
-              encpnew=`mktemp /tmp/$productCut.XXXXXXX`
-              check_status $? "encpnew mktemp /tmp/$productCut.XXXXXXX"
+              encpnew=/tmp/$productCut.encpnew
               sed -e "s+return \".*  CVS +return \"$REV  CVS +" $ENSTORE_DIR/src/encp.py > $encpnew
               check_status $? "sed bump version to $REV"
               diff $ENSTORE_DIR/src/encp.py $encpnew
@@ -351,8 +350,7 @@ for try in list doit; do
            if [ "$try" = "doit" ] ; then
              find $ENSTORE_DIR -name "*\.pyc" | xargs -r rm
              check_status $? "rm of old pyc files"
-             compileall_output=`mktemp /tmp/$productCut.XXXXXXX`
-             check_status $? "compileall mktemp /tmp/$productCut.XXXXXXX"
+             compileall_output=/tmp/$productCut.compileall_output`
              python -c '
 import os,compileall
 compileall.compile_dir(os.environ["ENSTORE_DIR"])
@@ -403,8 +401,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 
               elif [ $product = "enstore" ]; then
 
-                copylist=`mktemp /tmp/$productCut.XXXXXXX`
-                check_status $? "copylist mktemp /tmp/$productCut.XXXXXXX"
+                copylist=/tmp/$productCut.copylist
                 find $ENSTORE_DIR/ -type f| egrep -v "/CVS|/templates|\.o$|\~$|\.#|.cvsignore|/test/[0-9]+|/test/data|core|enstore_variables.table">$copylist
                 check_status $? "find files > $copylist"
                 if [ -z "${cvs_nq_update-}"]; then
@@ -436,8 +433,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 manifest=$INSTALLDIR/ups/.encpCut.manifest
              fi
 
-             filelist=`mktemp /tmp/$productCut.XXXXXXX`
-             check_status $? "filelist mktemp /tmp/$productCut.XXXXXXX"
+             filelist=/tmp/$productCut.filelist
              find $INSTALLDIR -type f > $filelist
              check_status $? "find $INSTALLDIR -type f > $filelist"
              cat $filelist | while read f; do
