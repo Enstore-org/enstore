@@ -512,17 +512,13 @@ class AML2_MediaLoader(MediaLoaderMethods):
         "get current state of the tape"
         external_label = ticket['external_label']
         media_type = ticket['media_type']
-        rt = self.retry_function(aml2.view,external_label, media_type)
-        Trace.trace( 11, "getVolState returned %s"%(rt,))
-        if rt[5] == '\000':
-            Trace.trace( 11, "RT5 is 0")
-            state=''
-        else :
-            Trace.trace( 11, "RT5 is %s"%(rt[5],))
-            state = rt[5]
-        if not state and rt[2]:  # volumes not in the robot
-            state = rt[2]
-        return (rt[0], rt[1], rt[2], state)
+        stat,volstate = aml2.view(external_label,media_type)
+	state='U' # unknown
+        if stat!=0:
+            return 'BAD', stat, 'aci_view return code', state
+        if volstate == None:
+            return 'BAD', stat, 'volume %s not found'%(external_label,),state
+        return (e_errors.OK, 0, "",volstate.attrib)
         
     def cleanCycle(self, inTicket):
         import aml2
