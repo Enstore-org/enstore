@@ -20,8 +20,6 @@ def print_usage():
     print "[-s <num>] [-t <num>] [-n <name>] [--help]"
     print "   -t     number of days to plot (default=2)"
     print "   -s     number of 15 second intervals smoothed.  (default=40)"
-    print "   -n     name of the system to plot." \
-          "  (default=$ENSTORE_CONFIG_HOST)"
     print "  --help  print this message"
     print "See configuration dictionary entry \"ratekeeper\" for defaults."
 
@@ -139,10 +137,19 @@ def write_scale_file(log_dir, rate_log_files, scaled_file):
             line = in_file.readline()
             if not line:
                 break
-            date, time, read, write = string.split(line)
-            scaled_file.write("%s %s %s %s\n" %
-                            (date, time, BP15S_TO_TBPD * float(read),
-                             BP15S_TO_TBPD * float(write)))
+            split_line = string.split(line)
+            if len(split_line) == 4: #Older ratekeepers.
+                date, time, read, write = split_line
+                null_read, null_write = (0, 0)
+            elif len(split_line) == 6:
+                date, time, read, write, null_read, null_write = split_line
+            scaled_file.write("%s %s %s %s %s %s\n" %
+                            (date, time,
+                             BP15S_TO_TBPD * float(read),
+                             BP15S_TO_TBPD * float(write),
+                             BP15S_TO_TBPD * float(null_read),
+                             BP15S_TO_TBPD * float(null_write),
+                             ))
 
 
 #Take the file writen out in write_scale_file and smooth the data.
@@ -152,20 +159,32 @@ def write_scale_file(log_dir, rate_log_files, scaled_file):
 def write_smooth_file(smooth_file, scaled_file, smooth_num = 40):
     n = smooth_num
     tr, tw = 0.0, 0.0
+    tnr, tnw = 0.0, 0.0
     c = 0
 
     while 1:
         line = string.strip(scaled_file.readline())
         if not line:
             break
-        date, time, r, w = string.split(line)
+        split_line = string.split(line)
+        if len(split_line) == 4: #Older ratekeepers.
+            date, time, r, w = split_line
+            n_r, n_w = (0.0, 0.0)
+        elif len(split_line) == 6:
+            date, time, r, w, n_r, n_w = split_line
         tr = tr + float(r)
         tw = tw + float(w)
+        tnr = tnr + float(n_r)
+        tnw = tnw + float(n_w)
         c = (c+1)%n
         if not c:
-            smooth_file.write("%s %s %s %s %s\n" %
-                              (date, time, tr/n, tw/n, (tr + tw) / n))
+            smooth_file.write("%s %s %s %s %s %s %s %s\n" %
+                              (date, time,
+                               tr / n, tw / n, (tr + tw) / n,
+                               tnr / n, tnw / n, (tnr + tnw) / n,))
+            #Reset these.
             tr, tw = 0.0, 0.0
+            tnr, tnw = 0.0, 0.0
 
 
 
@@ -173,10 +192,14 @@ def write_smooth_file(smooth_file, scaled_file, smooth_num = 40):
 # sys_name = The node name that will be the plot title.
 # smooth_file = the file that contains the data to be ploted.
 # plot_file = the file that will be read in by gnuplot.
-def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
+def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename,
+                    group, group_n, supplemental_title_text=""):
 
-    plot_file.write("set title \"Data Rates on %s (Plotted: %s)\"\n" %
-                    (sys_name,time.ctime(time.time())))
+    group_title = string.upper(group[0]) + group[1:]
+
+    plot_file.write("set title \"%s Data Rates on %s (Plotted: %s) %s\"\n" %
+                    (group_title, sys_name, time.ctime(time.time()),
+                     supplemental_title_text))
     plot_file.write("set ylabel \"Terabytes/day\"\n")
     plot_file.write("set xdata time\n")
     plot_file.write("set timefmt \"%s\"\n" % ("%m-%d-%Y %H:%M:%S"))
@@ -185,10 +208,12 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
     plot_file.write("set terminal postscript color solid\n")
     plot_file.write("set size 1.4,1.2\n")
     plot_file.write("set output \"%s\"\n" % graphic_filename)
-    plot_file.write("plot \"%s\" using 1:3 title \"read\" with lines," \
-                    "\"%s\" using 1:4 title \"write\" with lines," \
-                    "\"%s\" using 1:5 title \"both\" with lines\n" %
-                    (smooth_filename, smooth_filename, smooth_filename))
+    plot_file.write("plot \"%s\" using 1:%d title \"read\" with lines," \
+                    "\"%s\" using 1:%d title \"write\" with lines," \
+                    "\"%s\" using 1:%d title \"both\" with lines" \
+                    % ((smooth_filename, group_n * 3 + 3,
+                        smooth_filename, group_n * 3 + 4,
+                        smooth_filename, group_n * 3 + 5,)))
 
 ##########################################################################
 ##########################################################################
@@ -198,73 +223,77 @@ if __name__ == "__main__":
         print_usage()
         sys.exit(1)
     
-    log_dir, tmp_dir, sys_name, rate_nodes, ps_filename, jpg_filename, \
-             jpg_stamp_filename = get_rate_info()
+    log_dir, tmp_dir, sys_name, rate_nodes, ps_filename_template, \
+          jpg_filename_template, jpg_stamp_filename_template = get_rate_info()
 
     #Check the command line arguments.
     #-t stands for Time smoothing, which is the number of points that get
     # averaged together.
     if "-s" in sys.argv:
-        smooth_num = int(sys.argv[sys.argv.index("-t") + 1])
+        smooth_num = int(sys.argv[sys.argv.index("-s") + 1])
     else:
         smooth_num = 40
     if "-t" in sys.argv:
         time_in_days = int(sys.argv[sys.argv.index("-t") + 1])
     else:
         time_in_days = 2
-    #-n stands for Name, which is the name of the system to plot.
-    if "-n" in sys.argv:
-        sys_name = sys.argv[sys.argv.index("-n") + 1]
-        
-        if rate_nodes != 'MISSING':
-            for short_name in rate_nodes.keys():
-                if sys_name[:len(short_name)] == short_name:
-                    sys_name = rate_nodes[short_name][1]
-                    ps_filename = string.replace(ps_filename, '*', sys_name)
-                    jpg_filename = string.replace(jpg_filename, '*', sys_name)
-                    jpg_stamp__filename = string.replace(jpg_stamp_filename,
-                                                         '*', sys_name)
-                    break
-
-    #If the *s haven't been replaced yet, then replace it with nothing.
-    ps_filename = string.replace(ps_filename, '*', "")
-    jpg_filename = string.replace(jpg_filename, '*', "")
-    jpg_stamp_filename = string.replace(jpg_stamp_filename, '*', "")
-
+    
     rate_log_files = filter_out_files(sys_name, log_dir, time_in_days)
 
     if not rate_log_files:
         print "No %s rate files found." % (sys_name)
         sys.exit(1)
 
+    groups = ["real", "null"] #Order matters here!
+    sst = {'null':"(only null movers)", 'real':"(no null movers)"}
+    ps_filename = {}
+    jpg_filename = {}
+    jpg_stamp_filename = {}
+    plot_filename = {}
+
+    #Replace the *s with text for the filenames.
+    for group in groups:
+        ps_filename[group] = string.replace(ps_filename_template, '*',
+                                            group + "_")
+        jpg_filename[group] = string.replace(jpg_filename_template, '*',
+                                             group + "_")
+        jpg_stamp_filename[group] = string.replace(jpg_stamp_filename_template,
+                                                   '*', group + "_")
+
     #Create temporary files.
     tempfile.tempdir = tmp_dir
     scaled_filename = tempfile.mktemp(".plot")
     smooth_filename = tempfile.mktemp(".plot")
-    plot_filename = tempfile.mktemp(".plot")
+    for group in groups:
+        plot_filename[group] = tempfile.mktemp(".plot")
 
-    #Open these files for writing.
+    #Write the scaled file
     scaled_file = open(scaled_filename, "w")
-    smooth_file = open(smooth_filename, "w")
-    plot_file = open(plot_filename, "w")
-
     write_scale_file(log_dir, rate_log_files, scaled_file)  #Scale the data.
     scaled_file.close()   #Start reading from beginning of file.
+
+    smooth_file = open(smooth_filename, "w")
     scaled_file = open(scaled_filename, "r")
     write_smooth_file(smooth_file, scaled_file, smooth_num)  #Smooth the data.
     smooth_file.close()   #Start reading from beginning of file.
-    smooth_file = open(smooth_filename, "r")
-    #Write the gnuplot command file.
-    write_plot_file(sys_name, smooth_filename, plot_file, ps_filename)
-    smooth_file.close()
-    plot_file.close()     #Close this file so gnuplot can read it.
+    scaled_file.close()   #Start reading from beginning of file.
 
-    os.system("gnuplot < %s" % plot_filename)
+    for group in groups:
+        #Write the gnuplot command file.
+        plot_file = open(plot_filename[group], "w")
+        write_plot_file(sys_name, smooth_filename, plot_file,
+                        ps_filename[group], group, groups.index(group),
+                        sst[group])
+        plot_file.close()     #Close this file so gnuplot can read it.
 
-    os.system("convert -rotate 90  %s %s\n" % (ps_filename,jpg_filename))
-    os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s\n" %
-              (ps_filename, jpg_stamp_filename))
+        os.system("gnuplot < %s" % plot_filename[group])
+        
+        os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
+                                                   jpg_filename[group]))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s\n"
+                  % (ps_filename[group], jpg_stamp_filename[group]))
     
     os.remove(scaled_filename)
     os.remove(smooth_filename)
-    os.remove(plot_filename)
+    for group in groups:
+        os.remove(plot_filename[group])
