@@ -141,7 +141,7 @@ class Interface:
 	                       str(sys.exc_info()[1]))
             self.print_help()
             sys.exit(1)
-
+	    
         for (opt,value) in optlist :
             value=self.strip(value)
 	    generic_cs.enprint("opt = "+repr(opt)+", value = "+repr(value), \
@@ -197,6 +197,8 @@ class Interface:
                 self.nextvol = 1
             elif opt == "--vol" :
                 self.vol = value
+            elif opt == "--statvol" :
+                self.statvol = value
             elif opt == "--view" :
                 self.view = value
             elif opt == "--newlib" :
