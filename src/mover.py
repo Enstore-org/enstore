@@ -1613,18 +1613,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return 0
 
                 try:
-                    if self.driver_type == 'FTTDriver':
-                        import ftt
-                        stats = self.tape_driver.ftt.get_stats()
-                        if stats[ftt.WRITE_PROT]:
-                            self.vcc.set_system_noaccess(volume_label)
-                            Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
-                            self.transfer_failed(e_errors.WRITE_ERROR,
-                                                 "attempt to label write protected tape",
-                                                 error_source=TAPE)
-                            return 0
-                            
                     self.tape_driver.rewind()
+                    import ftt
+                    time.sleep(3)
+                    stats = self.tape_driver.ftt.get_stats()
+                    if stats[ftt.WRITE_PROT]:
+                        self.vcc.set_system_noaccess(volume_label)
+                        Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
+                        self.transfer_failed(e_errors.WRITE_ERROR,
+                                             "attempt to label write protected tape",
+                                             error_source=TAPE)
+                        return 0
                     vol1_label = 'VOL1'+ volume_label
                     vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
