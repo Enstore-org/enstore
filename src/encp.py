@@ -1459,6 +1459,31 @@ def outputfile_check(inputlist, outputlist, e):
                     else:
                         #The layers are empty.
                         outputlist.append(outputlist[i])
+
+                    #Get the outfile size.
+                    try:
+                        ofilesize = long(os.stat(outputlist[i])[stat.ST_SIZE])
+                    except OSError, msg:
+                        raise EncpError(msg.errno,
+                                        "Unable to get file size for file %s."
+                                        % (outputlist[i]),
+                                        e_errors.OSERROR)
+                    #Get the infile size.
+                    try:
+                        ifilesize = long(os.stat(inputlist[i])[stat.ST_SIZE])
+                    except OSError, msg:
+                        raise EncpError(msg.errno,
+                                        "Unable to get file size for file %s."
+                                        % (inputlist[i]),
+                                        e_errors.OSERROR)
+
+                    #Test if the output file size matches the input file size.
+                    if ifilesize != ofilesize:
+                        raise EncpError(None,
+                                        "Expected local file size (%s) to "
+                                        "equal remote file size (%s)." %
+                                        (ifilesize, ofilesize),
+                                        e_errors.FILE_MODIFIED)
                 except (OSError, IOError), msg:
                     #Some other non-foreseen error has occured.
                     raise EncpError(msg.errno, str(msg), e_errors.PNFS_ERROR)
@@ -1511,7 +1536,7 @@ def outputfile_check(inputlist, outputlist, e):
         except EncpError:
             exc, msg = sys.exc_info()[:2]
             size = get_file_size(inputlist[i])
-            print_data_access_layer_format('', outputlist[i], size,
+            print_data_access_layer_format("", outputlist[i], size,
                                            {'status':(msg.type, msg.strerror)})
             quit()
 
@@ -2543,20 +2568,20 @@ def verify_file_size(ticket):
     if pnfs_filesize == 1:
         if full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
-                  " size (%s) for file %s." \
+                  "size (%s) for file %s." \
                   % (full_filesize, pnfs_real_size, ticket['outfile'])
-            ticket['status'] = (e_errors.EPROTO, msg)
+            ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     #Test if the sizes are correct.
     elif ticket['file_size'] != out_filesize:
-        msg = "Expected file size (%s) equal to actuall file size " \
+        msg = "Expected file size (%s) to equal actuall file size " \
               "(%s) for file %s." % \
               (ticket['file_size'], out_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.EPROTO, msg)
+        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     elif full_filesize != pnfs_filesize:
         msg = "Expected local file size (%s) to equal remote file " \
-              " size (%s) for file %s." \
+              "size (%s) for file %s." \
               % (full_filesize, pnfs_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.EPROTO, msg)
+        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     
 ############################################################################
 
@@ -3479,8 +3504,13 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point)
-
-            ofullname = p.get_path()
+            try:
+                ofullname = p.get_path()
+            except (OSError, IOError), msg:
+                print_data_access_layer_format(
+                    e.input[0], e.put_cache, 0,
+                    {'status':(e_errors.OSERROR, str(msg))})
+                quit()
 
             imachine, ifullname, idir, ibasename = fullpath(e.input[0])
 
