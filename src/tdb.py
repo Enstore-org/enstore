@@ -7,6 +7,7 @@ import tdb
 import linecache
 import pdb
 import thread
+import os
 
 Quit = "tdb.Quit"
 Help = "tdb.Help"
@@ -14,8 +15,13 @@ Help = "tdb.Help"
 MODE_OFF = 0
 MODE_TRACE_ALL = 1
 MODE_TRACE_CALL  = 2
-MODE_PDB        = 3
+MODE_PDB = 3
 
+
+#
+# This class alters the behavoir of the PDB.  WE will try to 
+# stop it from throwing an execption on quitting, and allow continuation
+# of the daemon.. (no luck yet...)
 
 class Hackpdb(pdb.Pdb) :
     def __init__(self):
@@ -24,20 +30,37 @@ class Hackpdb(pdb.Pdb) :
     def do_quit(self, arg):
         #self.quitting = 1
         print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        install()
+        install()  # set the global trace function
         tdb.mode = MODE_TRACE_ALL
-    
+    do_q = do_quit
+
+# WARNING VOODOO Code around:
+# The python we are using when I developed this seems to have 
+# a buggy stdout when we run programs in the backgronnd.
+# the followng did not work:
+#  python tdb.py &
+#   ....
+#  def pdb(...) :
+#	....
+#	sys.stdout = self.outFile
+#       print "This is never put to the socket..."
+#  interposing this Hackio instead of an obect of socket or file type 
+#  "fixes" the problem. It is almost surely a bug in python, So if you are
+#  off maintaining this code, try the simple case of sys.stdout = self.outFile.
+
+class Hackio:
+    outFile = sys.stdout
+
+    def write(self, text):
+        self.outFile.write(text)
+        self.outFile.flush()
 
 def saver(frame, type, u) :
-    if 0:
-        print ("attention, in saver",  frame, type, u, tdb.mode,
-               linecache.getline(frame.f_code.co_filename, frame.f_lineno))
-
     if tdb.mode is MODE_TRACE_ALL :
         tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
         return saver
     elif tdb.mode is MODE_TRACE_CALL :
-        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }        
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }       
         return None
     elif tdb.mode is MODE_PDB :
         Hackpdb().set_trace()
@@ -172,12 +195,14 @@ class Tdb(threading.Thread) :
             self.writeln(m)
 
     def cmd_pdb(self, args):
-        self.writeln("***** Quitting the debugger crashes the program** ")
-        self.writeln("***** This is as far as I am ** ")
-        import os  #hack -- dup "works" clobbering sys.stdin did not
-        os.dup2(self.outFile.fileno(), sys.stdout.fileno())
-        os.dup2(self.inFile.fileno(),  sys.stdin.fileno() )
+	h = Hackio()
+	h.outFile = self.outFile
+	sys.stdout = h
+	sys.stdin  = self.inFile
+        print "***** Quitting the debugger crashes the program** "
+        print "***** This is as far as I am ** "
         tdb.setmode(MODE_PDB)
+
         #pdb.set_trace()
         while 1:
             time.sleep(1000)
@@ -245,6 +270,6 @@ if __name__ == "__main__":
 
     tdb.TdbListener().start()
     tdb.install()
-    tdb.setmode(MODE_TRACE_ALL)
+    tdb.setmode(MODE_TRACE_CALL)
     I_()
     
