@@ -246,20 +246,21 @@ class Logger(  dispatching_worker.DispatchingWorker
 	self.write_to_extra_logfile(message)
 
     def check_for_extended_files(self, filename):
-        file_l = os.listdir(self.logfile_dir_path)
-        # pull out all the files that match the current name at a min
-        size = len(filename)
-        matching_l = []
-        for file in file_l:
-            if file[:size] == filename:
-                matching_l.append(file)
-        else:
-            if matching_l:
-                matching_l.sort()
-                # set next file to be 1 greater than latest one
-                # (size+1 so can skip ".")
-                if matching_l[-1] != filename:
-                    self.index = int(matching_l[-1][size+1:]) + 1
+        if not self.max_log_file_size == NO_MAX_LOG_FILE_SIZE:
+            file_l = os.listdir(self.logfile_dir_path)
+            # pull out all the files that match the current name at a min
+            size = len(filename)
+            matching_l = []
+            for file in file_l:
+                if file[:size] == filename:
+                    matching_l.append(file)
+            else:
+                if matching_l:
+                    matching_l.sort()
+                    # set next file to be 1 greater than latest one
+                    # (size+1 so can skip ".")
+                    if matching_l[-1] != filename:
+                        self.index = int(matching_l[-1][size+1:]) + 1
                 return matching_l[-1]
         return filename
 
@@ -288,7 +289,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         except OSError:
             # don't worry if file did not exist
             size = 0
-        if size >= self.max_log_file_size:
+        if not self.max_log_file_size == NO_MAX_LOG_FILE_SIZE and \
+           size >= self.max_log_file_size:
             self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
             self.index = self.index + 1
         # open log file
