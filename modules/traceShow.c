@@ -374,7 +374,7 @@ traceInfo( int start, int num )
     printf( "\
   initialLvl: 0x%08x TtyLvl: 0x%08x\n\
 trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
-	   , trc_cntl_sp->intl_lvl, 0
+	   , trc_cntl_sp->intl_lvl, trc_cntl_sp->tty_lvl
 	   , trc_cntl_sp->mode );
 
     if (start > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
