@@ -2,6 +2,7 @@ import sys
 import time
 import timeofday
 import traceback
+import binascii	# for crc
 
 #enstore modules
 import configuration_client
@@ -12,7 +13,6 @@ import callback
 import log_client
 import media_changer_client
 import cpio
-import binascii
 from driver import RawDiskDriver, FTTDriver
 
 
