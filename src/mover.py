@@ -1388,6 +1388,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         #self.vcc.set_system_noaccess(self.current_volume)
                         #self.set_volume_noaccess(self.current_volume)
                         self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE, dismount_allowed=0)
+                        self.offline()
                         return
                         
                     else:
@@ -2546,15 +2547,6 @@ class Mover(dispatching_worker.DispatchingWorker,
     def assert_vol(self):
         ticket = self.current_work_ticket
         self.t0 = time.time()
-        try:
-            #Setup self.client_ip to contain the correct value for
-            # enstore mov --status <mover> requests.  Also, send out a
-            # notify message for entv.
-            address = self.control_socket.getpeername()
-            self.client_ip = address[0]
-            Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
-        except:
-            pass
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=ticket['vc']['address'])
         vc = ticket['vc']
@@ -2612,8 +2604,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.dismount_volume(after_function=self.idle)
 
-        #Tell entv that we are done.
-        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         
         
     def finish_transfer_setup(self):
@@ -2979,7 +2969,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
                     self.offline() # stop here for investigation
                     return
-                    
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
@@ -3094,7 +3083,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                    e_errors.WRITE_VOL1_MISSING,
                    e_errors.READ_VOL1_MISSING,
                    e_errors.READ_VOL1_READ_ERR,
-                   e_errors.WRITE_VOL1_READ_ERR):
+                   e_errors.WRITE_VOL1_READ_ERR,
+                   e_errors.MOVER_STUCK):
            self.set_volume_noaccess(volume_label) 
         if dism_allowed:
             if save_state == DRAINING:
@@ -3167,7 +3157,14 @@ class Mover(dispatching_worker.DispatchingWorker,
              needs_cleaning = 1
              Trace.log(e_errors.INFO, "Force clean is set")
         else:
-            needs_cleaning = self.tape_driver.get_cleaning_bit()
+            try:
+                needs_cleaning = self.tape_driver.get_cleaning_bit()
+            except self.ftt.FTTError, detail:
+                Trace.alarm(e_errors.ALARM,"Possible Drive problem %s %s"%(self.ftt.FTTError, detail))
+                self.set_volume_noaccess(self.current_volume)
+                self.offline()
+                return 1
+                
         self.force_clean = 0
         did_cleaning = 0
         if needs_cleaning:
@@ -4131,7 +4128,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.transfer_failed(e_errors.POSITIONING_ERROR,
                                      'positioning error %s' % (detail,),
-                                     error_source=TAPE)
+                                     error_source=DRIVE)
+                return
             ########## Zalokar: April 1, 2004 ##########################
             failed=1
         self.timer('seek_time')
