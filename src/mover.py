@@ -844,9 +844,10 @@ class Mover(dispatching_worker.DispatchingWorker,
     # restart itselfs
     def restart(self):
         cmd = '/usr/bin/at now+1minute'
-        fn = os.path.join(os.environ.get("ENSTORE_DIR"),'src/mover.py')
+        #fn = os.path.join(os.environ.get("ENSTORE_DIR"),'src/mover.py')
+        ecmd = "enstore Estart %s '--just %s'\n"%(self.config['host'],self.name) 
         p=os.popen(cmd, 'w')
-        p.write('python %s %s\n' % (fn, self.name))
+        p.write(ecmd)
         p.close()
         sys.exit(0)
         
