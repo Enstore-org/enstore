@@ -7,19 +7,23 @@
 # ============================================================================
 
 device=${FTT_TAPE:-""}
-usage="ftt_fast [-u] [-a] [devfile]
+usage="ftt_fast [-u] [-a] [-p] [devfile]
 		-u = do unload test at end (will leave tape unloaded)
 		-a = do alignment tests (may cause scsi resets)
+		-p = do partition testing
 		[devfile] = name of device to use. FTT_TAPE is default"
 align=false
 unload=false
+partition=false
 
-while getopts au i               # list valid options
+while getopts pau i               # list valid options
 do
    case $i in
    u)  unload=true
        ;;
    a)  align=true
+       ;;
+   p)  partition=true
        ;;
    \?) echo "Usage: $usage"
        exit 2
@@ -45,6 +49,13 @@ then
    echo "align test - may cause scsi resets!"
    echo "==============================================================="
    ftt_run_test align
+fi
+if $partitions
+then
+   echo "==============================================================="
+   echo "partition test"
+   echo "==============================================================="
+   ftt_run_test partition
 fi
 echo "==============================================================="
 echo "mode test"
