@@ -126,7 +126,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
             sys.exit(1)
 
 if __name__ == "__main__" :
-    Trace.init("ALARM-client")
+    Trace.init("ALARM client")
     Trace.trace(1,"alrmc called with args "+repr(sys.argv))
 
     # fill in interface
