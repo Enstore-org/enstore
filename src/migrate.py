@@ -67,7 +67,7 @@ import time
 import thread
 import Queue
 
-debug = True	# debugging mode
+debug = False	# debugging mode
 
 icheck = True	# instant readback check after swap
 		# this is turned by default for file based migration
@@ -229,6 +229,17 @@ def log(*args):
 		log_f.write('\n')
 		log_f.flush()
 	io_lock.release()
+
+# close_log(*args) -- close open log
+def close_log(*args):
+	if log_f:
+		for i in args:
+			log_f.write(i+' ')
+		log_f.write("\n")
+		log_f.flush()
+	for i in args:
+		print i,
+	print
 
 # log_copied(bfid1, bfid2) -- log a successful copy
 def log_copied(bfid1, bfid2, db):
@@ -690,9 +701,9 @@ def final_scan_volume(vol):
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
-				log('OK')
+				close_log('OK')
 			else:
-				log("FAILED ... ERROR")
+				close_log("FAILED ... ERROR")
 				local_error = local_error + 1
 				continue
 
