@@ -89,7 +89,7 @@ echo "`date`: tar complete"
 ls -alR $M
 STASH=$CACHE/$d.$node.files.tgz
 echo "`date` stashing a copy on $STASH'"
-enrcp  $M/files.tgz $STASH
+echo disabled enrcp  $M/files.tgz $STASH
 
 # on server1, also copy all "special" node-specific files from all nodes
 if [ $node = ${gang}srv1 ]; then
@@ -146,7 +146,7 @@ enrcp \$F $node:$SPECIAL
   #now copy everything over to the cache
   for i in `ls -1 $SPECIAL`; do
       echo enrcp $SPECIAL/$i $CACHE/$d.$i
-           enrcp $SPECIAL/$i $CACHE/$d.$i
+      echo disabled enrcp $SPECIAL/$i $CACHE/$d.$i
   done
 
 
@@ -176,7 +176,7 @@ if [ `echo $node | grep -c mvr` -eq 0 ]; then
 
   #now copy everything over to the cache
   echo enrcp $SPECIALE $CACHE/$d.`basename $SPECIALE`
-       enrcp $SPECIALE $CACHE/$d.`basename $SPECIALE`
+  echo disabled enrcp $SPECIALE $CACHE/$d.`basename $SPECIALE`
 
 fi
 
