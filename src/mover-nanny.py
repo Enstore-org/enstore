@@ -109,7 +109,7 @@ def start(mover):
     conf = config[mover]
     host = conf['host']
     print ssh(host, "rm -f /tmp/enstore/root/mover_lock")
-    print ssh(host, ". /usr/local/etc/setups.sh; setup enstore; enstore Estart %s --just %s" % (host, mover))
+    print ssh(host, ". /usr/local/etc/setups.sh; setup enstore; enstore Estart %s '--just %s'" % (host, mover))
     
 def stop(mover):
     conf = config[mover]
