@@ -3913,6 +3913,10 @@ class DiskMover(Mover):
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
+        # send a trigger message to the client
+        bytes_written = self.net_driver.write(bytes_notified, # write anything
+                                              0,
+                                              1) # just 1 byte
 
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
