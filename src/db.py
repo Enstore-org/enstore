@@ -108,7 +108,7 @@ class DbTable:
         len=len+1
         c.set(pos)
         if 0: print val # quiet lint
-      return len
+      return len+1
 
     if action=="has_key":
       pos,value=c.get()
