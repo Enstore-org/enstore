@@ -5,7 +5,6 @@ import time
 
 import event_relay_client
 import event_relay_messages
-import enstore_functions
 
 TEN_MINUTES = 600
 
@@ -29,9 +28,8 @@ def do_real_work():
 		erc.sock.close()
 		return
 	    else:
-		msg = enstore_functions.read_erc(erc)
-		if msg:
-		    print time.ctime(now), msg.type, msg.extra_info
+		msg = erc.read()
+		print time.ctime(now), msg.type, msg.extra_info
 	if now - start > TEN_MINUTES:
 	    # resubscribe
 	    erc.subscribe()

@@ -11,10 +11,7 @@ import grp
 import string
 import time
 import fcntl
-import pprint
-import pdb
-import traceback
-import select
+
 
 # enstore imports
 import Trace
@@ -23,9 +20,7 @@ try:
     import Devcodes # this is a compiled enstore module
 except ImportError:
     Trace.log(e_errors.INFO, "Devcodes unavailable")
-#import interface
-import option
-import enstore_constants
+import interface
 
 ENABLED = "enabled"
 DISABLED = "disabled"
@@ -40,77 +35,41 @@ do_log = 0 #If this is set, PNFS errors will be logged
 
 ##############################################################################
 
-#This is used to print out some of the results to the terminal that are more
-# than one line long and contained in a list.  The list is usually generated
-# by a f.readlines() where if is a file object.  Otherwise the result is
-# printed as is.
-def print_results(result):
-    if type(result) == type([]):
-         for line in result:
-            print line, #constains a '\012' at the end.
-    else:
-        print result
-
-##############################################################################
-
-class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
+class Pnfs:
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self, pnfsFilename="", pnfsDirectory="", pnfs_id="",
-                 get_details=1, get_pinfo=0, timeit=0, mount_point=""):
+    def __init__(self,pnfsFilename,get_details=1,get_pinfo=0,timeit=0):
         t1 = time.time()
         self.print_id = "PNFS"
-        self.mount_point = mount_point
-
-        #verify the filename (or directory).  If valid, place the directory
-        # inside self.dir and the file in self.file.  If a pnfs id was
-        # specified, this will set internal directory values to the current
-        # working directory.
-        #self.check_valid_pnfs_filename(pnfsFilename, pnfsDirectory)
-
-        #Some commands take a pnfs id instead of a filename.  Set the self.id
-        # variable and determine the pnfsFilename.
-        if pnfs_id:
-            self.id = pnfs_id
-            self.check_valid_pnfs_id(pnfs_id)
-        else:
-            self.check_valid_pnfs_filename(pnfsFilename, pnfsDirectory)
-            try:
-                self.get_id()
-            except IOError:
-                for file in os.listdir(self.dir):
-                    p = Pnfs(os.path.join(self.dir, file), get_details=1,
-                             mount_point=self.mount_point)
-                    p.get_parent()
-                    if p.id != None and p.id != p.parent:
-                        self.id = p.parent
-                        break
-                else:
-                    self.id = UNKNOWN
-
-            
+        self.pnfsFilename = pnfsFilename
+        (dir,file) = os.path.split(pnfsFilename)
+        if dir == '':
+            dir = '.'
+        self.dir = dir
+        self.file = file
+        self.exists = UNKNOWN
+        self.check_valid_pnfs_filename()
+        self.pstatinfo()
+        self.rmajor = 0
+        self.rminor = 0
         self.get_bit_file_id()
-        #self.get_const()
-
+        #self.get_xreference()
+        self.get_id()
         if get_details:
             self.get_library()
             self.get_file_family()
             self.get_file_family_wrapper()
             self.get_file_family_width()
             self.get_storage_group()
-            try:
-                self.get_xreference()
-            except IOError: #If id is a directory
-                pass
-
-        #if get_pinfo:
-        #    self.get_pnfs_info()
+            self.get_xreference()
+            
+        if get_pinfo:
+            self.get_pnfs_info()
         if timeit != 0:
             Trace.log(e_errors.INFO, "pnfs__init__ dt: "+time.time()-t1)
 
     # list what is in the current object
     def dump(self):
-        #Trace.trace(14, repr(self.__dict__))
-        print repr(self.__dict__)
+        Trace.trace(14, repr(self.__dict__))
 
     ##########################################################################
 
@@ -155,169 +114,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return DISABLED+": "+reason
 
 
-    # check if file is really exists inside the pnfs file system.
-    def check_valid_pnfs_filename(self, pnfsFilename, pnfsDirectory):
-        self.pnfsFilename = pnfsFilename
+    # check if file is really part of pnfs file space
+    def check_valid_pnfs_filename(self):
         try:
-            #This block of code, takes a filename and determines the absolute
-            # path to the file and splits the path from the file.
-            if self.pnfsFilename:
-                self.pnfsFilename = os.path.abspath(self.pnfsFilename)
-                if os.path.isfile(self.pnfsFilename):
-                    (self.dir, self.file) = os.path.split(self.pnfsFilename)
-                elif os.path.isdir(self.pnfsFilename): #is directory
-                    self.dir = self.pnfsFilename #os.path.abspath(directory)
-                    self.file = os.path.basename(self.pnfsFilename) #file
-                else: #File doesn't exist (yet).
-                    (self.dir, self.file) = os.path.split(self.pnfsFilename)
-            elif pnfsDirectory:
-                self.dir = os.path.abspath(pnfsDirectory)
-                self.file = ""
-            else: #self.pnfs_id: ??
-                self.dir = os.getcwd()
-                self.file = ""
-
-            #print "dir", self.dir
-            #print "file", self.file
-            #print "name", self.pnfsFilename
-            
-            #If the directory is valid, then this will return a file with a
-            # lot of complex pnfs data.
-            fname = self.dir+'/.(const)('+self.file+')'
-            f = open(fname,'r')
+            f = open(self.dir+'/.(const)('+self.file+')','r')
             f.close()
-
-            #If we set this then the path is valid.
             self.valid = VALID
-
-            #Next determine if the file exists.  If not, then check the
-            # directory.
-            self.exists = UNKNOWN
-            self.pstatinfo()
-
-            self.get_cursor()
-            self.dir_id = string.replace(self.cursor[0], "\n", "")
-            self.dir_perm = string.replace(self.cursor[1], "\n", "")
-            self.mount_id = string.replace(self.cursor[2], "\n", "")
-
-            #something with devcodes???
-            self.rmajor = 0
-            self.rminor = 0
         except:
-            exc, msg, tb = sys.exc_info()
-            #print "cvpf:", exc, msg
-            #traceback.print_tb(tb)
             self.valid = INVALID
-
-    # check if file is really exists inside the pnfs file system.
-    def check_valid_pnfs_id(self, pnfsID):
-        id = self.id = pnfsID #Remember this for later.
-        path = ""
-
-        #Determine the mount point that should be used.
-        dirs = os.listdir("/pnfs/")
-        if self.mount_point: #A mount point was given by the user.
-            mount = "/"
-            for dir in string.split(self.mount_point, "/")[1:]:
-                mount = os.path.join(mount, dir)
-                if os.path.ismount(mount):
-                    mount_points = [mount]
-                    break
-        elif os.getcwd()[:6] == "/pnfs/": #Determine the mount point of cwd.
-            mount = "/"
-            for dir in string.split(os.getcwd(), "/")[1:]:
-                mount = os.path.join(mount, dir)
-                if os.path.ismount(mount):
-                    mount_points = [mount]
-                    break
-        else: #Scan all directories in /pnfs for mountpoints.
-            mount_points = []
-            for directory in dirs:
-                test_dir = os.path.join("/pnfs/" + directory)
-                if os.path.ismount(test_dir):
-                    mount_points.append(test_dir)
-                else:
-                    dirs = dirs + os.listdir(test_dir)
-
-        self.valid = VALID
-        self.exists = DIREXISTS
-        matched_id_list = []
-        matched_mp_list = []
-
-        #Determine which mount point is being refered to, if possible.
-        # This only determines if they really exist for the specified and
-        # cwd cases above.  For the last case it attempts to pick the
-        # correct mount point.
-        for directory in mount_points:
-            try:
-                fname = "%s/.(nameof)(%s)"%(directory, self.id)
-                try:
-                    f = open(fname, "r")
-                    nameof = f.readlines()[0][:-1]
-                    f.close()
-                except IOError:
-                    nameof=UNKNOWN
-
-                if nameof != UNKNOWN or nameof == "":
-                    matched_id_list.append(nameof)
-                    matched_mp_list.append(directory)
-            except IOError, detail:
-                pass
-
-        if len(matched_id_list) == 0:
-            #print "No references"
-            self.check_valid_pnfs_filename("", "")
-            self.valid = INVALID
-            return
-        elif len(matched_id_list) == 1:
-            #print "One reverence"
-            #Don't use check_valid_pnfs_filename() here.  This function tries
-            # to determine that the file really exists.  Since, the directory
-            # isn't known yet, (because that is what is being determined)
-            # this would always return unknown status.
-            self.file = matched_id_list[0]
-            self.dir = matched_mp_list[0]
-        else:
-            #print "Too many references"
-            self.check_valid_pnfs_filename("", "")
-            self.valid = INVALID
-            return
-
-        self.get_parent()
-
-        #Create a new instance of Pnfs for the parent directory.  This makes
-        # the algorithm recursive.  Until it tries to instantiate a class
-        # for a directory that is returned UNKNOWN.  When that happens the
-        # recursion breaks and the code continues onward building the path
-        # string of the original file.
-        p = Pnfs(pnfs_id=self.parent, get_details=1,
-                 mount_point=matched_mp_list[0])
-
-        #Base case for when the recursion first stops recursing.
-        if self.file == "root":
-            self.dir = os.path.join("/", self.file)
-        #Case for all other recursion cases.
-        else:
-            self.dir = os.path.join(p.pnfsFilename, self.file)
-
-        #path may or may not be the final path name, in either case don't
-        # risk destroying what is known to be correct in self.dir.
-        path = self.dir
-
-        #At some point it will be possible to remove the local pnfs directory
-        # with the remote pnfs directory.  Thus, for example
-        # /root/fs/usr/mist/zaa/100MB_002 becomes /pnfs/mist/zaa/100MB_002,
-        try:
-            #By requiring that the "/" exists at the end of "/root/fs/usr/",
-            # there must be one more directory listed in path
-            # ( ie./root/fs/usr/rip6disk1 ).  When this occurs the mount
-            # point should be supsituted in.
-            if path[:13] ==  "/root/fs/usr/":
-                path = matched_mp_list[0]
-        except:
-            pass
-
-        self.check_valid_pnfs_filename(path, "")
 
     ##########################################################################
 
@@ -367,7 +171,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #self.utime()
         self.pstatinfo()
 
-    ##########################################################################
 
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
@@ -392,6 +195,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         l = f.readlines()
         f.close()
         return l
+
 
     ##########################################################################
 
@@ -446,59 +250,44 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if self.valid != VALID or self.exists != EXISTS:
             self.id = UNKNOWN
             return
-        fname = "%s/.(id)(%s)" % os.path.split(self.pnfsFilename)
+        fname = "%s/.(id)(%s)"%(self.dir,self.file)
         f = open(fname,'r')
-        self.id = f.readlines()
+        i = f.readlines()
         f.close()
-        self.id = string.replace(self.id[0],'\n','')
+        self.id = string.replace(i[0],'\n','')
 
-    def get_showid(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.showid = UNKNOWN
-            return
-        fname = "%s/.(showid)(%s)"%(self.dir, self.id)
-        f = open(fname,'r')
-        self.showid = f.readlines()
-        f.close()
 
     # get the nameof information, given the id
     def get_nameof(self):
-        if self.valid != VALID:
+        if self.valid != VALID or self.exists != EXISTS:
             self.nameof = UNKNOWN
-            self.file = ""
             return
-        fname = "%s/.(nameof)(%s)"%(self.dir, self.id)
+        fname = "%s/.(nameof)(%s)"%(self.dir,self.id)
         f = open(fname,'r')
         self.nameof = f.readlines()
         f.close()
-        self.file = self.nameof = string.replace(self.nameof[0],'\n','')
 
     # get the parent information, given the id
-    def get_parent(self, id=None):
-        if self.valid != VALID:# or self.exists != DIREXISTS:
+    def get_parent(self):
+        if self.valid != VALID or self.exists != EXISTS:
             self.parent = UNKNOWN
             return
-        fname = "%s/.(parent)(%s)"%(self.dir, self.id)
+        fname = "%s/.(parent)(%s)"%(self.dir,self.id)
         f = open(fname,'r')
         self.parent = f.readlines()
         f.close()
-        self.parent = string.replace(self.parent[0],'\n','')
 
     # get the total path of the id
     def get_path(self):
-        if self.valid != VALID: #
-            self.path = UNKNOWN
-            self.pnfsFilename = ""
-            return
-        self.pnfsFilename = self.path = os.path.join(self.dir, self.file)
-        
+        # not implemented
+        pass
+
     # get the cursor information
     def get_cursor(self):
         if self.valid != VALID or self.exists != EXISTS:
             self.cursor = UNKNOWN
             return
-        fname = "%s/.(get)(cursor)"%(self.dir,)
-        f = open(fname,'r')
+        f = open(self.dir+'/.(get)(cursor)','r')
         self.cursor = f.readlines()
         f.close()
 
@@ -511,42 +300,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         f=open(fname,'r')
         self.counters = f.readlines()
         f.close()
-
-    # get the cursor information
-    def get_countersN(self, dbnum):
-        fname = "%s/.(get)(counters)(%s)"%(self.dir, dbnum)
-        f=open(fname,'r')
-        self.countersN = f.readlines()
-        f.close()
-
-    # get the position information
-    def get_position(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.position = UNKNOWN
-            return
-        fname = "%s/.(get)(postion)"%(self.dir,)
-        f=open(fname,'r')
-        self.position = f.readlines()
-        f.close()
-
-    # get the position information
-    def get_database(self):
-        if self.valid != VALID or self.exists != EXISTS:
-            self.database = UNKNOWN
-            return
-        fname = "%s/.(get)(database)"%(self.dir,)
-        f=open(fname,'r')
-        self.database = f.readlines()
-        f.close()
-        self.database = string.replace(self.database[0], "\n", "")
-
-    # get the position information
-    def get_databaseN(self, dbnum):
-        fname = "%s/.(get)(database)(%s)"%(self.dir, dbnum)
-        f=open(fname,'r')
-        self.databaseN = f.readlines()
-        f.close()
-        self.databaseN = string.replace(self.databaseN[0], "\n", "")
 
     ##########################################################################
 
@@ -646,23 +399,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # store the cross-referencing data
     def set_xreference(self,volume,location_cookie,size,drive):
-        Trace.trace(11,'pnfs.set_xref %s %s %s %s'%(volume, location_cookie,
-                                                    size,drive))
-        self.volmap_filepath(volume=volume, cookie=location_cookie)
-        Trace.trace(11,'making volume_filepath=%s'%(self.volume_filepath,))
+        Trace.trace(11,'pnfs.set_xref %s %s %s %s'%(volume,location_cookie,size,drive))
+        self.volmap_filename(volume,location_cookie)
+        Trace.trace(11,'making volume_file=%s'%(self.volume_file,))
         self.make_volmap_file()
-
         value = (10*"%s\n")%(volume,
-                             location_cookie,
-                             size,
-                             self.file_family,
-                             self.pnfsFilename,
-                             self.volume_filepath,
-                             self.id,
-                             self.volume_fileP.id,
-                             self.bit_file_id,
-                             drive)
-
+                            location_cookie,
+                            size,
+                            self.file_family,
+                            self.pnfsFilename,
+                            self.volume_file,
+                            self.id,
+                            self.volume_fileP.id,
+                            self.bit_file_id,
+                            drive)
         Trace.trace(11,'value='+value)
         self.writelayer(4,value)
         self.get_xreference()
@@ -688,27 +438,22 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except:
             self.log_err("get_info")
 
-        return self.info
 
     # get the cross reference layer
     def get_xreference(self):
-        (self.volume, self.location_cookie, self.size, self.origff,
-         self.origname, self.mapfile, self.pnfsid_file, self.pnfsid_map,
-         self.bfid, self.origdrive) = self.xref = (UNKNOWN,)*10
-
+        (self.volume, self.location_cookie, self.size,
+         self.origff, self.origname, self.mapfile, self.origdrive) = (UNKNOWN,)*7
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
-                xinfo = map(string.strip, xinfo[:10])
-
+                if len(xinfo)>=10:
+                    self.origdrive = string.strip(xinfo[9])
+                xinfo = map(string.strip, xinfo[:6])
                 (self.volume, self.location_cookie, self.size,
-                 self.origff, self.origname, self.mapfile, self.pnfsid_file,
-                 self.pnfsid_map, self.bfid, self.origdrive) = xinfo
-
-                self.xref = xinfo
-
-            except ValueError:
+                 self.origff, self.origname, self.mapfile) = xinfo
+            except:
                 self.log_err("get_xreference")
+
 
     ##########################################################################
 
@@ -729,6 +474,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except:
             self.log_err("get_library")
 
+
     ##########################################################################
 
     # store a new file family tag
@@ -747,6 +493,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.file_family = self.readtag("file_family")[0]
         except:
             self.log_err("get_file_family")
+
 
     ##########################################################################
 
@@ -788,6 +535,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except:
             self.log_err("get_file_family_width")
 
+
     ##########################################################################
 
     # store a new storage group tag
@@ -812,6 +560,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # enstore versions 
             #self.log_err("get_storage_group")
             return
+
 
     ##########################################################################
 
@@ -885,62 +634,51 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
 ##############################################################################
 
-    #This function determines the volmap directory if the cwd is inside
-    # /pnfs.  The directory, if determined, is placed inside
-    # self.volume_filepath and is also returned.  If the volmap directory
-    # is not found, then it is set to an empty string.  The optional
-    # arguments are appended to the path in the following pattern:
-    #  /pnfs/XXXX/volmap/off/volume/cookie
-    # If they are not specified, then code doesn't use them.
-    def volmap_filepath(self, origff="", volume="", cookie=""):
-        dir_elements = string.split(self.dir,"/")
-        directory = "/"
+    # generate volmap directory name and filename
+    # the volmap directory looks like:
+    #         /pnfs/xxxx/volmap/origfilefamily/volumename/file_number_on_tape
+    def volmap_filename(self,vol="",cookie=""):
+        self.volume_file = UNKNOWN
+        if self.valid != VALID or self.exists != EXISTS:
+            return
 
-        #Handle file family stuff.
-        if origff:
-            ff = origff
-        elif self.origff != UNKNOWN:
+        # origff not set until xref layer is filled in, use current file
+        #    family in this case.
+        if self.origff!=UNKNOWN:
             ff = self.origff
-        elif self.file_family != UNKNOWN:
+        else:
             ff = self.file_family
+        # volume not set until xref layer is filled in, has to be specified
+        if self.volume!=UNKNOWN:
+            volume = self.volume
         else:
-            ff = ""
-
-        #Handle volume stuff
-        if volume:
-            vol = volume
-        elif self.volume != UNKNOWN:
-            vol = self.volume
-        else:
-            vol = ""
-
+            volume = vol
         # cookie  not set until xref layer is filled in, has to be specified
-        if cookie:
-            lc = cookie
-        elif self.location_cookie != UNKNOWN:
-            lc = self.location_cookie
+        if self.location_cookie!=UNKNOWN:
+            cookie = self.location_cookie
+
+        dir_elements = string.split(self.dir,'/')
+        if dir_elements[1] != "pnfs":
+            Trace.trace(6,'bad filename for - no pnfs as first element'+self.file)
+            self.voldir=UNKNOWN
         else:
-            lc = ""
+            vd="/pnfs"
+            # march from top 
+            for e in range(2,len(dir_elements)):
+                vd=os.path.join(vd,dir_elements[e])
+                try:
+                    d=os.path.join(vd,'volmap')
+                    os.stat(d)
+                    self.voldir=os.path.join(d,ff,volume)
+                    break
+                except:
+                    pass
+        Trace.trace(11,'Voldir='+self.voldir)
 
-        #March through each segment of the current directory (aka self.dir)
-        # testing for the following pattern:
-        # /pnfs/xxxxx/volmap/origfilefamily/volumename/
-        for d_e in dir_elements:
-            directory = os.path.join(directory, d_e)
-            try:
-                test_dir = os.path.join(directory, "volmap")
+        # make the filename lexically sortable.  since this could be a byte offset,
+        #     allow for 100 GB offsets
+        self.volume_file = os.path.join(self.voldir,cookie)
 
-                #If the volmap directory hasn't been found, keep trying.
-                if not os.path.exists(test_dir):
-                    raise errno.ENOENT
-                self.volume_filepath = os.path.join(test_dir, ff, vol, lc)
-                return self.volume_filepath
-            except:
-                pass
-
-        #If we get here, then the directory wasn't found.
-        self.volume_filepath = UNKNOWN
-        return self.volume_filepath
 
 
     # create a directory
@@ -955,33 +693,22 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
-
-        if self.volume_filepath==UNKNOWN:
+        if self.volume_file==UNKNOWN:
             return
-
         old_mask = os.umask(0)
-
-        try:
-            ret=self.make_dir(os.path.dirname(self.volume_filepath), 0777)
-        except:
-            exc, msg, tb = sys.exc_info()
-            print traceback.print_tb(tb)
-            print exc, msg
-            raise exc, msg, tb
-
+        ret=self.make_dir(self.voldir, 0777)
         os.umask(old_mask)
-
         if ret[0]!=e_errors.OK:
             return
-
         # create the volume map file and set its size the same as main file
-        self.volume_fileP = Pnfs(self.volume_filepath, get_details=0)
+        self.volume_fileP = Pnfs(self.volume_file, get_details=0)
         self.volume_fileP.touch()
         self.volume_fileP.set_file_size(self.file_size)
 
+
     # file in the already existing volume map file
     def fill_volmap_file(self):
-        if self.volume_filepath==UNKNOWN:
+        if self.volume_file==UNKNOWN:
             return
         # now copy the appropriate layers to the volmap file
         for layer in [1,4]: # bfid and xref
@@ -990,14 +717,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             for e in range(0,len(inlayer)):
                 value=value+inlayer[e]
                 self.volume_fileP.writelayer(layer,value)
+
         # protect it against accidental deletion - and give ownership to root.root
         Trace.trace(11,'changing write access')
-        #Disable write access for all but owner.
-
-        os.chmod(self.volume_filepath,0644)
+        os.chmod(self.volume_file,0644)  # disable write access except for owner
         Trace.trace(11,'changing to root.root ownership')
         try:
-            os.chown(self.volume_filepath,0,0)   # make the owner root.root
+            os.chown(self.volume_file,0,0)   # make the owner root.root
         except:
             self.log_err("fill_volmap_file")
 
@@ -1031,7 +757,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                       "file %s restored from volmap"%(self.origname,))
             return e_errors.OK, None
         except:
-            exc, val, tb = e_errors.handle_error()
+            exc, val, tb = Trace.handle_error()
             return e_errors.ERROR, (str(exc), str(val))
 
     def log_err(self,func_name):
@@ -1042,308 +768,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 func_name, self.file, exc,msg))
         ##Note:  I had e_errors.ERROR, and lots of non-fatal errors
         ##were showing up in the weblog
-
-##############################################################################
-
-    #Print out the current settings for all directory tags.
-    def ptags(self, intf):
-        if hasattr(intf, "directory"):
-            filename = os.path.join(os.path.abspath(intf.directory),
-                                    ".(tags)(all)")
-        else:
-            filename = os.path.join(os.getcwd(), ".(tags)(all)")
-
-        try:
-            file = open(filename, "r")
-            data = file.readlines()
-            rtn_val = file.close()
-        except IOError, detail:
-            print detail
-            return
-
-        #print the top portion of the output.  Note: the values placed into
-        # line have a newline at the end of them, this is why line[:-1] is
-        # used to remove it.
-        for line in data:
-            try:
-                tag = string.split(line[7:], ")")[0]
-                tag_info = self.readtag(tag)
-                print line[:-1], "=",  tag_info[0]
-            except IOError, detail:
-                print line[:-1], ":", detail
-
-        #Print the bottom portion of the output.
-        for line in data:
-            tag_file = os.path.join(intf.directory, line[:-1])
-            os.system("ls -l \"" + tag_file + "\"")
-
-    def ptag(self, intf):
-        tag = self.readtag(intf.named_tag)
-        print tag[0]
-
-    #Print or edit the library
-    def plibrary(self, intf):
-        if intf.library == 1:
-            print self.library
-        else:
-            self.set_library(intf.library)
-
-    #Print or edit the file family.
-    def pfile_family(self, intf):
-        if intf.file_family == 1:
-            print self.file_family
-        else:
-            self.set_file_family(intf.file_family)
-
-    #Print or edit the file family wrapper.
-    def pfile_family_wrapper(self, intf):
-        if intf.file_family_wrapper == 1:
-            print self.file_family_wrapper
-        else:
-            self.set_file_family_wrapper(intf.file_family_wrapper)
-
-    #Print or edit the file family width.
-    def pfile_family_width(self, intf):
-        if intf.file_family_width == 1:
-            print self.file_family_width
-        else:
-            self.set_file_family_width(intf.file_family_width)
-
-    #Print or edit the storage group.
-    def pstorage_group(self, intf):
-        if intf.storage_group == 1:
-            print self.storage_group
-        else:
-            self.set_storage_group(intf.storage_group)
-
-    #Returns the files on a specified volume.
-    #Volume is the volume that a listing of all files contained on it has
-    # been requested.
-    def pfiles(self, intf):
-        #make sure this data is available
-        #self.get_file_family() #stores file-family in self.file_family
-
-        #Determine he location of the specified volumes volmap file.
-        self.volmap_filepath(self.file_family,  intf.volume_tape)
-
-        #If this wasn't set, then it wasn't found.
-        if not self.volume_filepath: #set by self.volmap_filepath()
-            return
-
-        #Note: contains the file names, but since the names of the file are
-        # the file ids, then using the name works just fine.
-        for file in os.listdir(self.volume_filepath):
-            #create the full filename of the volmap file.
-            # Example filename (is based on location cookie):
-            # /pnfs/rip6/volmap/null0/null00//0000_000000000_0000001
-            filename = self.volume_filepath + "/" + file
-
-            #Using the location cookie, retrieve the full pnfs filename.
-            self.__init__(filename)            #re-init this instance
-            #get the pnfs filename and remove the newline.
-            filename = self.readlayer(enstore_constants.XREF_LAYER)[4][:-1]
-            os.system("ls -l " + filename)
-
-    #Prints out the specified layer of the specified file.
-    def player(self, intf):
-        data = self.readlayer(intf.named_layer)
-        for datum in data:
-            print datum,
-    
-    #Snag the cross reference of the file inside self.file.
-    #***LAYER 4***
-    def pxref(self, intf):
-        #First make sure the file does exist.
-        if not os.path.isfile(self.pnfsFilename):
-            print "Error: file " + self.file + " not found."
-            return
-
-        data = self.xref
-        names = ["volume", "location_cookie", "size", "file_family",
-                 "original_name", "map_file", "pnfsid_file", "pnfsid_map",
-                 "bfid", "origdrive"]
-        
-        #With the data stored in lists, with corresponding values based on the
-        # index, then just pring them out.
-        for i in range(10):
-            print "%s: %s" % (names[i], data[i])
-
-    #Prints out the bfid value for the specified file.
-    #***LAYER 1***
-    def pbfid(self, intf):
-        data = self.readlayer(enstore_constants.BFID_LAYER)
-        print data[0]
-
-    #If dupl is empty, then show the duplicate data for the file
-    # (in self.file).  If dupl is there then set the duplicate for the file
-    # in self.file to that in dupl.
-    #***LAYER 3***
-    def pduplicate(self, intf):
-        #Handle the add/edit duplicate feature.
-        if intf.file and intf.duplicate_file:
-            if os.path.isfile(intf.duplicate_file):
-                self.writelayer(enstore_constants.DUPLICATE_LAYER,
-                                intf.duplicate_file)
-            else:
-                print "Specified duplicate file does not exist."
-                
-        #Display only the duplicates for the specified file.
-        elif intf.file:
-            print "%s:" % (self.file),
-            for filename in self.readlayer(enstore_constants.DUPLICATE_LAYER):
-                print filename,
-            print
-        else:
-            #Display all the duplicates for every file specified.
-            for file in os.listdir(os.getcwd()):
-                intf.file = file
-                self.__init__(intf.file)
-                self.pduplicate(intf)
-
-    def penstore_state(self, intf):
-        fname = os.path.join(self.dir, ".(config)(flags)/disabled")
-        print fname
-        if os.access(fname, os.F_OK):# | os.R_OK):
-            f=open(fname,'r')
-            self.enstore_state = f.readlines()
-            f.close()
-            print "Enstore disabled:", self.enstore_state[0],
-        else:
-            print "Enstore enabled"
-            
-    def ppnfs_state(self, intf):
-        fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
-        if os.access(fname, os.F_OK | os.R_OK):
-            f=open(fname,'r')
-            self.pnfs_state = f.readlines()
-            f.close()
-            print "Pnfs:", self.pnfs_state[0],
-        else:
-            print "Pnfs: unknown"
-
-##############################################################################
-
-    def pls(self, intf):
-        filename = "\".(use)(%s)(%s)\"" % (intf.named_layer, self.file)
-        os.system("ls -alsF " + filename)
-        
-    def pvolume(self, intf):
-        self.volmap_filepath(self.file_family, intf.volumename)
-        print self.volume_filepath
-    
-    def pecho(self, intf):
-        self.writelayer(intf.named_layer, intf.text)
-        
-    def prm(self, intf):
-        self.writelayer(intf.named_layer, "")
-
-    def pcp(self, intf):
-        f = open(intf.unixfile, 'r')
-
-        data = f.readlines()
-        file_data_as_string = ""
-        for line in data:
-            file_data_as_string = file_data_as_string + line
-
-        f.close()
-
-        self.writelayer(intf.named_layer, file_data_as_string)
-        
-    def psize(self, intf):
-        self.set_file_size(intf.filesize)
-    
-    def ptagecho(self, intf):
-        self.writetag(intf.named_tag, intf.text)
-        
-    def ptagrm(self, intf):
-        print "Feature not yet implemented."
-
-    def pio(self, intf):
-        print "Feature not yet implemented."
-
-        #fname = "%s/.(fset)(%s)(io)(on)" % (self.dir, self.file)
-        #os.system("touch" + fname)
-    
-    def pid(self, intf):
-        print self.id
-        
-    def pshowid(self, intf):
-        self.get_showid()
-        print_results(self.showid)
-    
-    def pconst(self, intf):
-        self.get_const()
-        print_results(self.const)
-        
-    def pnameof(self, intf):
-        self.get_nameof()
-        print_results(self.nameof)
-        
-    def ppath(self, intf):
-        self.get_path()
-        print_results(self.path)
-        
-    def pparent(self, intf):
-        self.get_parent()
-        print_results(self.parent)
-    
-    def pcounters(self, intf):
-        self.get_counters()
-        print_results(self.counters)
-        
-    def pcountersN(self, intf):
-        self.get_countersN(intf.dbnum)
-        print_results(self.countersN)
-    
-    def pcursor(self, intf):
-        self.get_cursor()
-        print_results(self.cursor)
-            
-    def pposition(self, intf):
-        self.get_position()
-        print_results(self.position)
-        
-    def pdatabase(self, intf):
-        self.get_database()
-        print_results(self.database)
-            
-    def pdatabaseN(self, intf):
-        self.get_databaseN(intf.dbnum)
-        print_results(self.databaseN)
-
-
-    def pdown(self, intf):
-        if os.environ['USER'] != "root":
-            print "must be root to create enstore system-down wormhole"
-            return
-        
-        dname = "/pnfs/fs/admin/etc/config/flags"
-        if not os.access(dname, os.F_OK | os.R_OK):
-            print "/pnfs/fs is not mounted"
-            return
-
-        fname = "/pnfs/fs/admin/etc/config/flags/disabled"
-        f = open(fname,'w')
-        f.write(intf.reason)
-        f.close()
-
-        os.system("touch .(fset)(disabled)(io)(on)")
-        
-    def pup(self, intf):
-        if os.environ['USER'] != "root":
-            print "must be root to create enstore system-down wormhole"
-            return
-        
-        dname = "/pnfs/fs/admin/etc/config/flags"
-        if not os.access(dname, os.F_OK | os.R_OK):
-            print "/pnfs/fs is not mounted"
-            return
-
-        os.remove("/pnfs/fs/admin/etc/config/flags/disabled")
-
-    def pdump(self, intf):
-        self.dump()
-
 ##############################################################################
 
 # this routine returns a list of (filenames,bit_file_ids) given a list of file
@@ -1392,494 +816,158 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
         bfids.append(v.bit_file_id)
     return (filenames,bfids)
 
-##############################################################################
+class PnfsInterface(interface.Interface):
 
-class PnfsInterface(option.Interface):
-
-    def __init__(self, args=sys.argv, user_mode=1):
+    def __init__(self):
         # fill in the defaults for the possible options
-        #self.test = 0
-        #self.status = 0
-        #self.info = 0
-        #self.file = ""
-        #self.restore = 0
-        #These my be used, they may not.
-        #self.duplicate_file = None
-        #interface.Interface.__init__(self)
-        option.Interface.__init__(self, args, user_mode)
-
-    pnfs_user_options = {
-        option.TAGS:{option.HELP_STRING:"lists tag values and permissions",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"tags",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_USAGE:option.IGNORED,
-                option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
-                                      option.DEFAULT_NAME:"directory",
-                                      option.DEFAULT_TYPE:option.STRING,
-                                      option.VALUE_NAME:"directory",
-                                      option.VALUE_TYPE:option.STRING,
-                                      option.VALUE_USAGE:option.OPTIONAL,
-                                      option.FORCE_SET_DEFAULT:1,
-                                      }]
-                },
-        option.TAG:{option.HELP_STRING:"lists the tag of the directory",
-               option.DEFAULT_VALUE:1,
-               option.DEFAULT_NAME:"tag",
-               option.DEFAULT_TYPE:option.INTEGER,
-               option.VALUE_NAME:"named_tag",
-               option.VALUE_TYPE:option.STRING,
-               option.VALUE_USAGE:option.REQUIRED,
-               option.FORCE_SET_DEFAULT:1,
-               option.USER_LEVEL:option.USER,
-               option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
-                                     option.DEFAULT_NAME:"directory",
-                                     option.DEFAULT_TYPE:option.STRING,
-                                     option.VALUE_NAME:"directory",
-                                     option.VALUE_TYPE:option.STRING,
-                                     option.VALUE_USAGE:option.OPTIONAL,
-                                     option.FORCE_SET_DEFAULT:1,
-                                     }]
-               },
-        option.LIBRARY:{option.HELP_STRING:"gets library tag, default; " \
-                                      "sets library tag, optional",
-                   option.DEFAULT_VALUE:1,
-                   option.DEFAULT_NAME:"library",
-                   option.DEFAULT_TYPE:option.INTEGER,
-                   option.VALUE_TYPE:option.STRING,
-                   option.VALUE_USAGE:option.OPTIONAL,
-                   },
-        option.FILE_FAMILY:{option.HELP_STRING:"gets file family tag, " \
-                            "default; sets file family tag, optional",
-                       option.DEFAULT_VALUE:1,
-                       option.DEFAULT_NAME:"file_family",
-                       option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_TYPE:option.STRING,
-                       option.VALUE_USAGE:option.OPTIONAL,
-                   },
-        option.FILE_FAMILY_WIDTH:{option.HELP_STRING:"gets file family " \
-                        "width tag, default; sets file family tag, optional",
-                             option.DEFAULT_VALUE:1,
-                             option.DEFAULT_NAME:"file_family_width",
-                             option.DEFAULT_TYPE:option.INTEGER,
-                             option.VALUE_TYPE:option.STRING,
-                             option.VALUE_USAGE:option.OPTIONAL,
-                   },
-        option.FILE_FAMILY_WRAPPER:{option.HELP_STRING:"gets file family " \
-                       "width tag, default; sets file family tag, optional",
-                               option.DEFAULT_VALUE:1,
-                               option.DEFAULT_NAME:"file_family_wrapper",
-                               option.DEFAULT_TYPE:option.INTEGER,
-                               option.VALUE_TYPE:option.STRING,
-                               option.VALUE_USAGE:option.OPTIONAL,
-                   },
-        option.STORAGE_GROUP:{option.HELP_STRING:"gets storage group tag, " \
-                            "default; sets storage group tag, optional",
-                         option.DEFAULT_VALUE:1,
-                         option.DEFAULT_NAME:"storage_group",
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.OPTIONAL,
-                   },
-        option.FILES:{option.HELP_STRING:"lists all the files on specified " \
-                                         "tape in volmap-tape",
-                 option.DEFAULT_VALUE:1,
-                 option.DEFAULT_NAME:"files",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"volume_tape",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:1,
-                   },
-        option.BFID:{option.HELP_STRING:"lists the bit file id for file",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"bfid",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_NAME:"file",
-                option.VALUE_TYPE:option.STRING,
-                option.VALUE_USAGE:option.REQUIRED,
-                option.FORCE_SET_DEFAULT:1,
-                },
-        option.XREF:{option.HELP_STRING:"lists the cross reference " \
-                                        "data for file",
-                     option.DEFAULT_VALUE:1,
-                     option.DEFAULT_NAME:"xref",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_NAME:"file",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.FORCE_SET_DEFAULT:1,
-                },
-        option.LAYER:{option.HELP_STRING:"lists the layer of the file",
-                 option.DEFAULT_VALUE:1,
-                 option.DEFAULT_NAME:"layer",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"file",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:1,
-                 option.USER_LEVEL:option.USER,
-                 option.EXTRA_VALUES:[{option.DEFAULT_VALUE:1,
-                                       option.DEFAULT_NAME:"named_layer",
-                                       option.DEFAULT_TYPE:option.INTEGER,
-                                       option.VALUE_NAME:"named_layer",
-                                       option.VALUE_TYPE:option.INTEGER,
-                                       option.VALUE_USAGE:option.OPTIONAL,
-                                        }]
-                 },
-        option.DUPLICATE:{option.HELP_STRING:"gets/sets duplicate file values",
-                     option.DEFAULT_VALUE:1,
-                     option.DEFAULT_NAME:"duplicate",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
-                                           option.DEFAULT_NAME:"file",
-                                           option.DEFAULT_TYPE:option.STRING,
-                                           option.VALUE_NAME:"file",
-                                           option.VALUE_TYPE:option.STRING,
-                                           option.VALUE_USAGE:option.OPTIONAL,
-                                           option.FORCE_SET_DEFAULT:1,
-                                           },
-                                          {option.DEFAULT_VALUE:"",
-                                          option.DEFAULT_NAME:"duplicate_file",
-                                           option.DEFAULT_TYPE:option.STRING,
-                                           option.VALUE_NAME:"duplicat_file",
-                                           option.VALUE_TYPE:option.STRING,
-                                           option.VALUE_USAGE:option.OPTIONAL,
-                                           option.FORCE_SET_DEFAULT:1,
-                                           },]
-                     },
-        option.ENSTORE_STATE:{option.HELP_STRING:"lists whether enstore " \
-                                                 "is still alive",
-                         option.DEFAULT_VALUE:1,
-                         option.DEFAULT_NAME:"enstore_state",
-                         option.DEFAULT_TYPE:option.INTEGER,
-                         option.VALUE_NAME:"directory",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.FORCE_SET_DEFAULT:1,
-                     },
-        option.PNFS_STATE:{option.HELP_STRING:"lists whether pnfs is " \
-                                              "still alive",
-                      option.DEFAULT_VALUE:1,
-                      option.DEFAULT_NAME:"pnfs_state",
-                      option.DEFAULT_TYPE:option.INTEGER,
-                      option.VALUE_NAME:"directory",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.FORCE_SET_DEFAULT:1,
-                      },
-        }
-
-    pnfs_admin_options = {
-        option.LS:{option.HELP_STRING:"does an ls on the named layer " \
-                                      "in the file",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"ls",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:"file",
-              option.VALUE_TYPE:option.STRING,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.FORCE_SET_DEFAULT:1,
-              option.USER_LEVEL:option.ADMIN,
-              option.EXTRA_VALUES:[{option.DEFAULT_VALUE:1,
-                                    option.DEFAULT_NAME:"named_layer",
-                                    option.DEFAULT_TYPE:option.INTEGER,
-                                    option.VALUE_NAME:"named_layer",
-                                    option.VALUE_TYPE:option.STRING,
-                                    option.VALUE_USAGE:option.OPTIONAL,
-                               }]
-              },
-        option.VOLUME:{option.HELP_STRING:"lists all the volmap-tape for the" \
-                                     " specified volume",
-                 option.DEFAULT_VALUE:1,
-                 option.DEFAULT_NAME:"volume",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"volumename",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:1,
-                 option.USER_LEVEL:option.ADMIN,
-                   },
-        option.ID:{option.HELP_STRING:"prints the pnfs id",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"id",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:"file",
-              option.VALUE_TYPE:option.STRING,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.FORCE_SET_DEFAULT:1,
-              option.USER_LEVEL:option.ADMIN,
-              },
-        option.SHOWID:{option.HELP_STRING:"prints the pnfs id information",
-                  option.DEFAULT_VALUE:1,
-                  option.DEFAULT_NAME:"showid",
-                  option.DEFAULT_TYPE:option.INTEGER,
-                  option.VALUE_NAME:"pnfs_id",
-                  option.VALUE_TYPE:option.STRING,
-                  option.VALUE_USAGE:option.REQUIRED,
-                  option.FORCE_SET_DEFAULT:1,
-                  option.USER_LEVEL:option.ADMIN,
-              },
-        option.CONST:{option.HELP_STRING:"",
-                 option.DEFAULT_VALUE:1,
-                 option.DEFAULT_NAME:"const",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"file",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:1,
-                 option.USER_LEVEL:option.ADMIN,
-                 },
-        option.NAMEOF:{option.HELP_STRING:"prints the filename of the pnfs id",
-                  option.DEFAULT_VALUE:1,
-                  option.DEFAULT_NAME:"nameof",
-                  option.DEFAULT_TYPE:option.INTEGER,
-                  option.VALUE_NAME:"pnfs_id",
-                  option.VALUE_TYPE:option.STRING,
-                  option.VALUE_USAGE:option.REQUIRED,
-                  option.FORCE_SET_DEFAULT:1,
-                  option.USER_LEVEL:option.ADMIN,
-                 },
-        option.PATH:{option.HELP_STRING:"prints the file path of the pnfs id",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"path",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_NAME:"pnfs_id",
-                option.VALUE_TYPE:option.STRING,
-                option.VALUE_USAGE:option.REQUIRED,
-                option.FORCE_SET_DEFAULT:1,
-                option.USER_LEVEL:option.ADMIN,
-                },
-        option.PARENT:{option.HELP_STRING:"prints the pnfs id of the parent " \
-                                     "directory",
-                  option.DEFAULT_VALUE:1,
-                  option.DEFAULT_NAME:"parent",
-                  option.DEFAULT_TYPE:option.INTEGER,
-                  option.VALUE_NAME:"pnfs_id",
-                  option.VALUE_TYPE:option.STRING,
-                  option.VALUE_USAGE:option.REQUIRED,
-                  option.FORCE_SET_DEFAULT:1,
-                  option.USER_LEVEL:option.ADMIN,
-                },
-        option.CURSOR:{option.HELP_STRING:"",
-                  option.DEFAULT_VALUE:1,
-                  option.DEFAULT_NAME:"cursor",
-                  option.DEFAULT_TYPE:option.INTEGER,
-                  option.VALUE_NAME:"file",
-                  option.VALUE_TYPE:option.STRING,
-                  option.VALUE_USAGE:option.REQUIRED,
-                  option.FORCE_SET_DEFAULT:1,
-                  option.USER_LEVEL:option.ADMIN,
-                  },
-        option.COUNTERS:{option.HELP_STRING:"",
-                    option.DEFAULT_VALUE:1,
-                    option.DEFAULT_NAME:"counters",
-                    option.DEFAULT_TYPE:option.INTEGER,
-                    option.VALUE_NAME:"file",
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.FORCE_SET_DEFAULT:1,
-                    option.USER_LEVEL:option.ADMIN,
-                    },
-        option.COUNTERSN:{option.HELP_STRING:"(must have cwd in pnfs)",
-                     option.DEFAULT_VALUE:1,
-                     option.DEFAULT_NAME:"countersN",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_NAME:"dbnum",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.FORCE_SET_DEFAULT:1,
-                     option.USER_LEVEL:option.ADMIN,
-                    },
-        option.POSITION:{option.HELP_STRING:"",
-                    option.DEFAULT_VALUE:1,
-                    option.DEFAULT_NAME:"position",
-                    option.DEFAULT_TYPE:option.INTEGER,
-                    option.VALUE_NAME:"file",
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.FORCE_SET_DEFAULT:1,
-                    option.USER_LEVEL:option.ADMIN,
-                    },
-        option.DATABASE:{option.HELP_STRING:"",
-                    option.DEFAULT_VALUE:1,
-                    option.DEFAULT_NAME:"database",
-                    option.DEFAULT_TYPE:option.INTEGER,
-                    option.VALUE_NAME:"file",
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.FORCE_SET_DEFAULT:1,
-                    option.USER_LEVEL:option.ADMIN,
-                },
-        option.DATABASEN:{option.HELP_STRING:"(must have cwd in pnfs)",
-                     option.DEFAULT_VALUE:1,
-                     option.DEFAULT_NAME:"databaseN",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_NAME:"dbnum",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.FORCE_SET_DEFAULT:1,
-                     option.USER_LEVEL:option.ADMIN,
-                },
-        option.ECHO:{option.HELP_STRING:"sets text to named layer of the file",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"echo",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_NAME:"text",
-                option.VALUE_TYPE:option.STRING,
-                option.VALUE_USAGE:option.REQUIRED,
-                option.FORCE_SET_DEFAULT:1,
-                option.USER_LEVEL:option.ADMIN,
-                option.EXTRA_VALUES:[{option.VALUE_NAME:"file",
-                                 option.VALUE_TYPE:option.STRING,
-                                 option.VALUE_USAGE:option.REQUIRED,
-                                 },
-                                {option.VALUE_NAME:"named_layer",
-                                 option.VALUE_TYPE:option.INTEGER,
-                                 option.VALUE_USAGE:option.REQUIRED,
-                                 },]
-                },
-        option.RM:{option.HELP_STRING:"deletes (clears) named layer of the file",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"rm",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:"file",
-              option.VALUE_TYPE:option.STRING,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.FORCE_SET_DEFAULT:1,
-              option.USER_LEVEL:option.ADMIN,
-              option.EXTRA_VALUES:[{option.VALUE_NAME:"named_layer",
-                               option.VALUE_TYPE:option.INTEGER,
-                               option.VALUE_USAGE:option.REQUIRED,
-                               },]
-              },
-        option.CP:{option.HELP_STRING:"echos text to named layer of the file",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"cp",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:"unixfile",
-              option.VALUE_TYPE:option.STRING,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.FORCE_SET_DEFAULT:1,
-              option.USER_LEVEL:option.ADMIN,
-              option.EXTRA_VALUES:[{option.VALUE_NAME:"file",
-                               option.VALUE_TYPE:option.STRING,
-                               option.VALUE_USAGE:option.REQUIRED,
-                               },
-                              {option.VALUE_NAME:"named_layer",
-                               option.VALUE_TYPE:option.INTEGER,
-                               option.VALUE_USAGE:option.REQUIRED,
-                               },]
-              },
-        option.TAGECHO:{option.HELP_STRING:"echos text to named tag",
-                   option.DEFAULT_VALUE:1,
-                   option.DEFAULT_NAME:"tagecho",
-                   option.DEFAULT_TYPE:option.INTEGER,
-                   option.VALUE_NAME:"text",
-                   option.VALUE_TYPE:option.STRING,
-                   option.VALUE_USAGE:option.REQUIRED,
-                   option.FORCE_SET_DEFAULT:1,
-                   option.USER_LEVEL:option.ADMIN,
-                   option.EXTRA_VALUES:[{option.VALUE_NAME:"named_tag",
-                                         option.VALUE_TYPE:option.STRING,
-                                         option.VALUE_USAGE:option.REQUIRED,
-                                         },]
-                   },
-        option.SIZE:{option.HELP_STRING:"sets the size of the file",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"size",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_NAME:"file",
-                option.VALUE_TYPE:option.STRING,
-                option.VALUE_USAGE:option.REQUIRED,
-                option.FORCE_SET_DEFAULT:1,
-                option.USER_LEVEL:option.ADMIN,
-                option.EXTRA_VALUES:[{option.VALUE_NAME:"filesize",
-                                      option.VALUE_TYPE:option.INTEGER,
-                                      option.VALUE_USAGE:option.REQUIRED,
-                                      },]
-                },
-        option.TAGRM:{option.HELP_STRING:"removes the tag (tricky, see DESY "
-                               "documentation)",
-                 option.DEFAULT_VALUE:1,
-                 option.DEFAULT_NAME:"tagrm",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"named_tag",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:1,
-                 option.USER_LEVEL:option.ADMIN,
-                 },
-        option.IO:{option.HELP_STRING:"sets io mode (can't clear it easily)",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"io",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_NAME:"file",
-              option.VALUE_TYPE:option.STRING,
-              option.VALUE_USAGE:option.REQUIRED,
-              option.FORCE_SET_DEFAULT:1,
-              option.USER_LEVEL:option.ADMIN,
-              },
-        option.DOWN:{option.HELP_STRING:"creates enstore system-down " \
-                                        "wormhole to prevent transfers",
-                option.DEFAULT_VALUE:1,
-                option.DEFAULT_NAME:"down",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_NAME:"reason",
-                option.VALUE_TYPE:option.STRING,
-                option.VALUE_USAGE:option.REQUIRED,
-                option.FORCE_SET_DEFAULT:1,
-                option.USER_LEVEL:option.ADMIN,
-                },
-        option.UP:{option.HELP_STRING:"removes enstore system-down wormhole",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"up",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_USAGE:option.IGNORED,
-              option.USER_LEVEL:option.ADMIN,
-              },
-        option.DUMP:{option.HELP_STRING:"dumps info",
-              option.DEFAULT_VALUE:1,
-              option.DEFAULT_NAME:"dump",
-              option.DEFAULT_TYPE:option.INTEGER,
-              option.VALUE_USAGE:option.IGNORED,
-              option.USER_LEVEL:option.ADMIN,
-              },
-        }
-    
-    def valid_dictionaries(self):
-        return (self.help_options, self.pnfs_user_options,
-                self.pnfs_admin_options)
-
-    # parse the options like normal but make sure we have other args
-    def parse_options(self):
-        self.pnfs_id = "" #Assume the command is a dir and/or file.
+        self.test = 0
+        self.status = 0
+        self.info = 0
         self.file = ""
-        self.directory = ""
-        option.Interface.parse_options(self)
+        self.restore = 0
+        interface.Interface.__init__(self)
 
-        if getattr(self, "help", None):
-            self.print_help()
+        # now parse the options
+        self.parse_options()
 
-        if getattr(self, "usage", None):
-            self.print_usage()
-
-##############################################################################
-def do_work(intf):
-
-    p=Pnfs(intf.file, intf.directory, intf.pnfs_id, 1, 1)
-    for arg in intf.option_list:
-        if string.replace(arg, "_", "-") in intf.options.keys():
-            apply(getattr(p, "p" + arg), (intf,))
-
-    return
+    # define the command line options that are valid
+    def options(self):
+        return ["test","status","file=","restore="
+                ] + self.help_options()
 
 ##############################################################################
 if __name__ == "__main__":
 
-    intf = PnfsInterface()
+    intf = Pnfs.interface()
 
-    intf._mode = "admin"
+    if intf.info:
+        p=Pnfs(intf.file,1,1)
+        p.dump()
 
-    do_work(intf)
+    elif intf.status:
+        Trace.log(e_errors.INFO, "not yet")
+
+    elif intf.restore:
+        p=Pnfs(intf.file)
+        p.restore_from_volmap("no")
+
+    elif intf.test:
+
+        base = "/pnfs/enstore/test2"
+        count = 0
+        for pf in os.path.join(base,str(time.time())), "/impossible/path/test":
+            count = count+1;
+            
+            Trace.trace(14,"Self test from %s using file %s: %s"%(
+                __name__,count,pf))
+
+            p = Pnfs(pf)
+
+            e = p.check_pnfs_enabled()
+            Trace.trace(14, "enabled: %s"%(e,))
+
+            if p.valid == VALID:
+                if count==2:
+                    Trace.log(e_errors.INFO, "ERROR: File %s is invalid, but valid flag is set"%(count,))
+                    continue
+                p.jon1()
+                p.get_pnfs_info()
+                p.dump()
+                l = p.library
+                f = p.file_family
+                w = p.file_family_width
+                i=p.bit_file_id
+                s=p.file_size
+
+                nv = "crunch"
+                nvn = 222222
+                Trace.trace(14, "Changing to new values")
+
+                p.set_library(nv)
+                if p.library == nv:
+                    Trace.trace(14, " library changed")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't change library tag: still is "
+                          +p.library)
+
+                p.set_file_family(nv)
+                if p.file_family == nv:
+                    Trace.trace(14, " file_family changed")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_family tag: still is "
+                          +p.file_family)
+
+                p.set_file_family_width(nvn)
+                if p.file_family_width == nvn:
+                    Trace.trace(14, " file_family_width changed")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_family_width tag: "
+                          +"still is "+repr(p.file_family_width))
+
+                p.set_bit_file_id(nv,nvn)
+                if p.bit_file_id == nv:
+                    Trace.trace(14, " bit_file_id changed")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't change bit_file_id layer: still is "
+                          +repr(p.bit_file_id))
+
+                if p.file_size == nvn:
+                    Trace.trace(14, " file_size changed")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't change file_size: still is "
+                          +repr(p.file_size))
+
+                p.dump()
+                Trace.trace(14, "Restoring original values")
+
+                p.set_library(l)
+                if p.library == l:
+                    Trace.trace(14, " library restored")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore library tag: still is "
+                          +p.library)
+
+                p.set_file_family(f)
+                if p.file_family == f:
+                    Trace.trace(14, " file_family restored")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_family tag: still is "
+                          +p.file_family)
+
+                p.set_file_family_width(w)
+                if p.file_family_width == w:
+                    Trace.trace(14, " file_family_width restored")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_family_width tag: "
+                          +"still is "+repr(p.file_family_width))
+
+                p.set_bit_file_id(i,s)
+                if p.bit_file_id == i:
+                    Trace.trace(14, " bit_file_id restored")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore bit_file_id layer: "
+                          +"still is "+repr(p.bit_file_id))
+
+                if p.file_size == s:
+                    Trace.trace(14, " file size restored")
+                else:
+                    Trace.log(e_errors.INFO, " ERROR: didn't restore file_size: still is "
+                          +repr(p.file_size))
+
+                p.dump()
+                p.rm()
+                if p.exists != EXISTS:
+                    Trace.trace(14, p.pnfsFilename+ "deleted")
+                else:
+                    Trace.log(e_errors.INFO, "ERROR: could not delete "+
+                                       p.pnfsFilename)
+
+            else:
+                if count==2:
+                    continue
+                else:
+                    Trace.log(e_errors.INFO, "ERROR: File "+repr(count)
+                          +" is valid - but invvalid flag is set")
+                    Trace.log(e_errors.INFO, p.pnfsFilename+
+                                       "file is not a valid pnfs file")
+
