@@ -1521,10 +1521,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 (defer_write and (self.bytes_read < self.bytes_to_read and self.buffer.low()))):
                 if empty:
                     defer_write = 1
-                Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s, defer=%s"%
+                Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s, defer=%s empty=%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
                              self.bytes_written, self.bytes_to_write,
-                             defer_write))
+                             defer_write, empty))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 now = time.time()
