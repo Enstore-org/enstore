@@ -274,7 +274,7 @@ case $test_to_do in
 	      not_enough_parameters dccp
 	  fi
 	  w=$1
-	  dcap_test
+	  dccp_test
 	  ;;
     kftp) # get the specific parameters first
 	  if [ $# -ne 4 ];
