@@ -168,8 +168,13 @@ class AtMovers:
        
 
 class LibraryManagerMethods:
-    def __init__(self, csc, sg_limits):
+    def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
+        self.name = name
+        self.min_file_size = min_file_size
+        self.max_suspect_movers = max_suspect_movers
+        self.max_suspect_volumes = max_suspect_volumes
         # instantiate volume clerk client
+        self.csc = csc
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
@@ -378,7 +383,7 @@ class LibraryManagerMethods:
         if self.process_for_bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
             v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
-                                            rq.ticket["wrapper"]["size_bytes"],
+                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                             vol_family, 
                                             vol_veto_list,
                                             first_found=0)
@@ -511,7 +516,7 @@ class LibraryManagerMethods:
                 ret = self.vcc.is_vol_available(rq.work,
                                                 w['fc']['external_label'],
                                                 w["vc"]["volume_family"],
-                                                w["wrapper"]["size_bytes"])
+                                                w["wrapper"]["size_bytes"]+self.min_file_size)
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
                         # temporarily save last state:
@@ -568,7 +573,7 @@ class LibraryManagerMethods:
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
-                                        rq.ticket["wrapper"]["size_bytes"])
+                                        rq.ticket["wrapper"]["size_bytes"]+self.min_file_size)
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -852,7 +857,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               # generation
     def __init__(self, libman, csc):
         self.name_ext = "LM"
-        generic_server.GenericServer.__init__(self, csc, libman)
+        self.csc = csc
+        generic_server.GenericServer.__init__(self, self.csc, libman)
         self.name = libman
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -892,7 +898,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             sg_limits = self.keys['storage_group_limits']
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
-        LibraryManagerMethods.__init__(self, csc, sg_limits)
+        # add this to file size when requesting
+        # a tape for writes to avoid FTT_ENOSPC at the end of the tape
+        # due to inaccurate REMAINING_BYTES
+        min_file_size = self.keys.get('min_file_size',0L)
+        
+        LibraryManagerMethods.__init__(self, self.name,
+                                       self.csc,
+                                       sg_limits,
+                                       min_file_size,
+                                       self.max_suspect_movers,
+                                        self.max_suspect_volumes)
         self.set_udp_client()
 
     # check startup flag
