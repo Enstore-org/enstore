@@ -12,7 +12,11 @@ thisDay=`date +%d`
 
 # let's start with the logs that enstore creates
 if [ -z "${1-}" ] ; then
-  LOGS=/fnal/ups/prd/www_pages/enstore/log
+  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+    LOGS=/diska/enstore-log
+  else
+    LOGS=/fnal/ups/prd/www_pages/enstore/log
+  fi
 else
   LOGS=$1
 fi
