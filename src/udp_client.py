@@ -186,9 +186,22 @@ class UDPClient:
                 reply, server, timeout = wait_rsp( tsd.socket, dst, timeout)
                 if not reply: # receive timed out
                     break #resend
-                rcvd_txn_id, out, t = self._eval_reply(reply)
-                if type(out) == type({}) and out.has_key('status') and out['status'][0] == e_errors.MALFORMED:
-                    return out
+                try:
+                    rcvd_txn_id, out, t = self._eval_reply(reply)
+                    if type(out) == type({}) and out.has_key('status') \
+                       and out['status'][0] == e_errors.MALFORMED:
+                        return out
+                except TypeError:
+                    #If a this error occurs, keep retrying.  Most likely it is
+                    # an "expected string without null bytes".
+                    exc, msg, tb = sys.exec_info()
+                    try:
+                        message = "%s: %s: %s" % (exc, msg, reply[:100])
+                    except IndexError:
+                        message = "%s: %s: %s" % (exc, msg, reply)
+
+                    Trace.log(e_errors.INFO, message)
+                    rcvd_txn_id=None
             else: # we got a good reply
                 return out
 
