@@ -869,13 +869,27 @@ def submit_one_request(ticket, verbose):
 
 ############################################################################
 
-def open_local_file(filename):
+#mode should only contain two values, "read", "write".
+def open_local_file(filename, mode):
+    #Determine the os.open() flags to use.
+    if mode == "write":
+            flags = os.O_RDONLY
+    elif mode == "read":
+        if filename == "/dev/null":
+            flags = os.O_WRONLY
+        else:
+            flags = os.O_WRONLY | os.O_CREAT
+    else:
+        done_ticket = {'status':(e_errors.UNKNOWN,
+                                 "Unable to open local file.")}
+        return done_ticket
+
     #Try to open the local file for read/write.
     try:
-        if filename == "/dev/null":
-            local_fd = os.open("/dev/null", os.O_RDWR)
-        else:
-            local_fd = os.open(filename, os.O_CREAT|os.O_RDWR, 0)
+        #if filename == "/dev/null":
+        #    local_fd = os.open("/dev/null", flags)
+        #else:
+        local_fd = os.open(filename, flags, 0)
     except OSError, detail:
         #USERERROR is on the list of non-retriable errors.  Because of
         # this the return from handle_retries will remove this request
@@ -1634,7 +1648,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         #maybe this isn't a good idea...
         work_ticket = combine_dict(ticket, work_ticket)
 
-        done_ticket = open_local_file(work_ticket['infile'])
+        done_ticket = open_local_file(work_ticket['infile'], "write")
 
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, None, e)
@@ -2296,7 +2310,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         Trace.message(5, pprint.pformat(request_ticket))
 
         #Open the output file.
-        done_ticket = open_local_file(request_ticket['outfile'])
+        done_ticket = open_local_file(request_ticket['outfile'], "read")
 
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, None, e)
