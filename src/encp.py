@@ -2992,15 +2992,15 @@ def calculate_rate(done_ticket, tinfo):
         else:
             acc_drive_rate = int(done_ticket['file_size'] / drive_time)
         if disk_time == 0.0:
-            acc_disk_rate = 0.0
+            acc_disk_rate = int(0.0)
         else:
             acc_disk_rate = int(done_ticket['file_size'] / disk_time)
         if overall_time == 0.0:
-            acc_overall_rate = 0.0
+            acc_overall_rate = int(0.0)
         else:
-            acc_overall_rate = int(done_ticket['file_size'] / overall_time),
+            acc_overall_rate = int(done_ticket['file_size'] / overall_time)
         if transfer_time == 0.0:
-            acc_transfer_rate = 0.0
+            acc_transfer_rate = int(0.0)
         else:
             acc_transfer_rate = int(done_ticket['file_size'] / transfer_time)
         
