@@ -268,6 +268,8 @@ class Interface:
                 self.addvol = 1
             elif opt == "--delvol" :
                 self.delvol = 1
+            elif opt == "--restorevol" :
+                self.restorevol = 1
             elif opt == "--force" :
                 self.force = 1
             elif opt == "--clrvol" :

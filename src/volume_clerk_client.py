@@ -100,6 +100,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
         x = self.send(ticket)
         return x
 
+    # delete a volume from the stockpile
+    def restorevol(self, external_label):
+        ticket= { 'work'           : 'restorevol',
+                  'external_label' : external_label }
+        x = self.send(ticket)
+        return x
+
 
     # get a list of all volumes
     def get_vols(self):
@@ -222,9 +229,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # get the state of the media changer for the volume
-    def update_mc_state(self,external_label):
+    def update_mc_state(self, external_label, media_changer=None):
         ticket= { 'work'           : 'update_mc_state',
-                  'external_label' : external_label }
+                  'external_label' : external_label,
+		  'media_changer'  : media_changer }
         x = self.send(ticket)
         return x
 
@@ -339,6 +347,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.chkvol = ""
         self.addvol = 0
         self.delvol = 0
+        self.restorevol = 0
         self.force  = 0
         self.newlib = 0
         self.rdovol = 0
@@ -351,7 +360,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def options(self):
         return self.client_options()+\
                ["clrvol", "backup", "vols","nextvol","vol=","chkvol=","addvol","statvol=",
-	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force"]
+	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force","restorevol"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -367,6 +376,10 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         elif self.delvol:
             if len(self.args) < 1:
                 self.print_delvol_args()
+                sys.exit(1)
+        elif self.restorevol:
+            if len(self.args) < 1:
+                self.print_restorevol_args()
                 sys.exit(1)
         elif self.clrvol:
             if len(self.args) < 1:
@@ -419,11 +432,16 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def print_delvol_args(self):
         print "   delvol arguments: volume_name"
 
+    # print delvol arguments
+    def print_restorevol_args(self):
+        print "   restrevol arguments: volume_name"
+
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
         self.print_addvol_args()
         self.print_delvol_args()
+        self.print_restorevol_args()
         self.print_clr_inhibit_args()
         self.print_update_mc_state_args()
         self.print_set_system_readonly_args()
@@ -482,6 +500,8 @@ if __name__ == "__main__":
                                  intf.args[1])         # new library name
     elif intf.delvol:
         ticket = vcc.delvol(intf.args[0],intf.force)   # name of this volume
+    elif intf.restorevol:
+        ticket = vcc.restorevol(intf.args[0])   # name of this volume
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
     elif intf.statvol != "":

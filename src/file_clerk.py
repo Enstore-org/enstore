@@ -190,7 +190,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    import pnfs
 	    map = pnfs.Pnfs(record["pnfs_mapname"])
 	    map.restore_from_volmap()
-
+	    del map
         # become a client of the volume clerk and decrement the non-del files on the volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         vticket = vcc.decr_file_count(record['external_label'],decr_count)
@@ -245,17 +245,25 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
      self.get_user_sockets(ticket)
      ticket["status"] = (e_errors.OK, None)
-     callback.write_tcp_obj(self.data_socket,ticket)
+     callback.write_tcp_socket(self.data_socket,ticket,
+                                  "file_clerk get bfids, controlsocket")
+     msg=""
      dict.cursor("open")
      key,value=dict.cursor("first")
      while key:
-         callback.write_tcp_raw(self.data_socket,repr(key))
-         key,value=dict.cursor("next")
-     callback.write_tcp_raw(self.data_socket,"")
+        msg=msg+repr(key)+","
+        if len(msg) >= 16384:
+           callback.write_tcp_buf(self.data_socket,msg,
+                                  "file_clerk get bfids, datasocket")
+           msg=""
+        key,value=dict.cursor("next")
      dict.cursor("close")
-     callback.write_tcp_raw(self.data_socket,"")
+     msg=msg[:-1]
+     callback.write_tcp_buf(self.data_socket,msg,
+                                  "file_clerk get bfids, datasocket")
      self.data_socket.close()
-     callback.write_tcp_obj(self.control_socket,ticket)
+     callback.write_tcp_socket(self.control_socket,ticket,
+                                  "file_clerk get bfids, controlsocket")
      self.control_socket.close()
      return
 
@@ -336,6 +344,48 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(10,"bfid_info "+repr(ticket["status"]))
          return
 
+    # return volume map name for given bfid
+    def get_volmap_name(self, ticket):
+     try:
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            return
+
+        # look up in our dictionary the request bit field id
+        try:
+            finfo = copy.deepcopy(dict[bfid])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: bfid "+repr(bfid)+" not found")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            return
+
+        # copy all file information we have to user's ticket
+        ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
+	ticket["status"] = (e_errors.OK, None)
+
+	self.reply_to_caller(ticket)
+	Trace.trace(10,"get_volmap_name "+repr(ticket["status"]))
+	return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.INFO, repr(ticket))
+         self.reply_to_caller(ticket)
+         Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+         return
+
     # change the delete state element in the dictionary
     def del_bfid(self, ticket):
      try:
@@ -368,6 +418,56 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          Trace.trace(10,"bfid_info "+repr(ticket["status"]))
          return
+
+    # rename volume and volume map
+    def rename_volume(self, ticket):
+     try:
+        # everything is based on bfid - make sure we have this
+        try:
+            key="bfid"
+            bfid = ticket[key]
+	    key = "external_label"
+	    label = ticket[key]
+	    key = "set_deleted"
+	    set_deleted = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "File Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"rename_volume "+repr(ticket["status"]))
+            return
+
+	record = copy.deepcopy(dict[bfid])
+	# replace old volume name with new one
+	record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
+						record["external_label"], 
+						label)
+	ticket["pnfs_mapname"] = record["pnfs_mapname"]
+	record["external_label"] = label
+	record["deleted"] = set_deleted
+	if record["deleted"] == "no":
+	    # restore pnfs entry
+	    import pnfs
+	    map = pnfs.Pnfs(record["pnfs_mapname"])
+	    map.restore_from_volmap()
+	    del map
+	dict[bfid] = copy.deepcopy(record)
+ 
+        # and return to the caller
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'rename_volume '+repr(ticket))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.INFO, repr(ticket))
+         self.reply_to_caller(ticket)
+         Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+         return
+
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -404,9 +504,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          return
      # get a user callback
      self.get_user_sockets(ticket)
-     callback.write_tcp_obj(self.data_socket,ticket)
+     callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
      msg="     label            bfid       size        location_cookie delflag original_name\n"
-     callback.write_tcp_raw(self.data_socket, msg)
+
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
      key,value=dict.cursor("first")
@@ -421,26 +521,29 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                  deleted = "unknown"
              if not value.has_key('pnfs_name0'):
                  value['pnfs_name0'] = "unknown"
-             msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+             msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
-             callback.write_tcp_raw(self.data_socket, msg)
+             if len(msg) >= 16384:
+                 #print "sending len(msg)"
+                 callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list, datasocket")
+                 msg=""
          key,value=dict.cursor("next")
      dict.cursor("close")
-     callback.write_tcp_raw(self.data_socket,"")
+     callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list(2), datasocket")
      self.data_socket.close()
-     callback.write_tcp_obj(self.control_socket,ticket)
+     callback.write_tcp_socket(self.control_socket,ticket, "file_clerk tape_list, controlsocket")
      self.control_socket.close()
      return
 
     def start_backup(self,ticket):
         dict.start_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "start_backup"  : 'yes' })
 
     def stop_backup(self,ticket):
         dict.stop_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "stop_backup"  : 'yes' })
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):

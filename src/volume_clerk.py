@@ -25,6 +25,81 @@ MY_NAME = "volume_clerk"
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
+
+    # rename deleted volume
+    def rename_volume(self, old_label, new_label):
+     try:
+	 cur_rec = dict[old_label]
+	 # should not happen
+	 if dict.has_key(new_label):
+	     return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
+	 # rename volume names in the FC database
+	 if string.find(new_label, ".deleted") != -1:
+	     cur_rec["system_inhibit"] = e_errors.DELETED
+	     set_deleted = "eys"
+	 else:
+	     cur_rec["system_inhibit"] = "none"
+	     set_deleted = "no"
+	     
+	 import file_clerk_client
+	 fcc = file_clerk_client.FileClient(self.csc)
+	 # get volume map name
+	 fcc.bfid = cur_rec['bfids'][0]
+	 vm_ticket = fcc.get_volmap_name()
+	 old_vol_map_name = vm_ticket["pnfs_mapname"]
+	 (old_vm_dir,file) = os.path.split(old_vol_map_name)
+	 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
+	 # rename map files
+	 os.rename(old_vm_dir, new_vm_dir)
+	 # replace file clerk database entries
+	 for bfid in cur_rec['bfids']:
+	     ret = fcc.rename_volume(bfid, new_label, set_deleted)
+	 # create new record in the database
+	 dict[new_label] = cur_rec
+	 # remove current record from the database
+	 del dict[old_label]
+	 Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
+							   new_label))
+	 return e_errors.OK, None
+     # even if there is an error - respond to caller so he can process it
+     except:
+         Trace.log(e_errors.INFO,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+         return str(sys.exc_info()[0]), str(sys.exc_info()[1])
+     
+    # remove deleted volume and all information about it
+    def remove_deleted_volume(self, external_label):
+     try:
+	 cur_rec = dict[external_label]
+	 # if volume is not marked as deleted it is an error
+	 if cur_rec["system_inhibit"] != e_errors.DELETED:
+	     return cur_rec["system_inhibit"], "Volume Clerk: volume "+external_label+" is not marked as deleted"
+	 
+	 ## if volume is marked as deleted copy its record into DB
+	 ## and delete original
+	 else:
+	     # remove all bfids for this volume
+	     import file_clerk_client
+	     fcc = file_clerk_client.FileClient(self.csc)
+	     
+	     for bfid in cur_rec['bfids']:
+		 fcc.bfid = bfid
+		 vm_ticket = fcc.get_volmap_name()
+		 vol_map_name = vm_ticket["pnfs_mapname"]
+		 (vm_dir,file) = os.path.split(vol_map_name)
+		 ret = fcc.del_bfid()
+		 os.remove(vol_map_name)
+	     os.rmdir(vm_dir)
+	     # remove current record from the database
+	     del dict[external_label]
+	     Trace.log(e_errors.INFO, "volume removed %s"%external_label)
+	     return e_errors.OK, None
+     # even if there is an error - respond to caller so he can process it
+     except:
+         Trace.log(e_errors.INFO,str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+         return str(sys.exc_info()[0]), str(sys.exc_info()[1])
+     
+	 
+	 
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
@@ -122,7 +197,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          return
 
-
     # delete a volume from the database
     def delvol(self, ticket):
      try:
@@ -140,7 +214,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = copy.deepcopy(dict[external_label])
+            record = dict[external_label]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: volume "+external_label\
@@ -151,8 +225,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         if record.has_key('non_del_files'):
-            force = ticket.get("force",0)
-            if record['non_del_files']>0 and not force:
+            if record['non_del_files']>0:
                 ticket["status"] = (e_errors.CONFLICT,
                                     "Volume Clerk: volume "+external_label
                                     +" has "+repr(record['non_del_files'])+" active files")
@@ -166,11 +239,25 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         else:
             Trace.log(e_errors.INFO,"non_del_files not found in volume ticket - old version of table")
 
-
-        # delete if from the database
-	del dict[external_label]
-	ticket["status"] = (e_errors.OK, None)
-	Trace.trace(10,'delvol ok '+repr(external_label))
+	# if volume has not been written delete it
+	if record['sum_wr_access'] == 0:
+	    del dict[external_label]
+	    ticket["status"] = (e_errors.OK, None)
+	else:
+	    record["system_inhibit"] = e_errors.DELETED
+	    dict[external_label] = record
+	    # try to remove deleted volume and mark the current one as deleted
+	    if dict.has_key(external_label+".deleted"):
+		# remove deleted volume
+		status = self.remove_deleted_volume(external_label+".deleted")
+		#if status[0] == e_errors.OK:
+	    # rename current volume
+	    status = self.rename_volume(external_label, 
+					external_label+".deleted")
+	    ticket["status"] = status
+	    if status[0] == e_errors.OK:
+		Trace.log(e_errors.INFO,"Volume %s is deleted"%external_label)
+		Trace.trace(10,'delvol ok '+repr(external_label))
 
         self.reply_to_caller(ticket)
         return
@@ -178,6 +265,57 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
          Trace.trace(8,"delvol "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.INFO, repr(ticket))
+         self.reply_to_caller(ticket)
+         return
+
+    # restore a volume
+    def restorevol(self, ticket):
+     try:
+        # everything is based on external label - make sure we have this
+        key="external_label"
+        try:
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "Volume Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(8,"restorevol "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+	cl = external_label+".deleted"
+        try:
+            record = dict[cl]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "Volume Clerk: volume "+cl\
+                               +" no such volume")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(8,"restorevol "+repr(ticket["status"]))
+            return
+
+	status = self.rename_volume(cl, external_label)
+	ticket["status"] = status
+	if status[0] == e_errors.OK:
+	    record = dict[external_label]
+	    record["system_inhibit"] = "none"
+	    record["non_del_files"] = len(record["bfids"])
+	    dict[external_label] = record
+
+	    Trace.log(e_errors.INFO,"Volume %s is restored"%external_label)
+	    Trace.trace(10,'restorevol ok '+repr(external_label))
+
+        self.reply_to_caller(ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         Trace.trace(8,"restorevol "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          Trace.log(e_errors.INFO, repr(ticket))
@@ -616,14 +754,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         count = ticket.get("count",1)
 
         # decrement the number of non-deleted files on the tape
-	cc=record ["non_del_files"]
         record ["non_del_files"] = record["non_del_files"] - count
-	# if file count is 0 declare it deleted
-	if record ["non_del_files"] == 0:
-	    record["system_inhibit"] = e_errors.DELETED
-	# if count was 0 and then went up reset system inhibit
-	elif cc == 0 and record ["non_del_files"] == 1:
-	    record["system_inhibit"] = "none"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
@@ -755,8 +886,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      try:
         # everything is based on external label - make sure we have this
         try:
-            key="external_label"
+	    key = "external_label"
             external_label = ticket[key]
+	    key = "media_changer"
+	    m_changer = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: "+key+" key is missing")
@@ -780,7 +913,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # update the fields that have changed
         ll = list(record['at_mover'])
         ll[0]= self.get_media_changer_state(record["library"],
-                                  record["external_label"], record["media_type"])
+					    record["external_label"], 
+					    record["media_type"],
+					    m_changer)
         record['at_mover']=tuple(ll)
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
@@ -824,14 +959,20 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"vc.clr_system_inhibit "+repr(ticket["status"]))
             return
 
-        # update the fields that have changed
-        record ["system_inhibit"] = "none"
-        ll = list(record['at_mover'])
-        ll[0]= self.get_media_changer_state(record["library"],
-                                  record["external_label"], record["media_type"])
-        record['at_mover']=tuple(ll)
-        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-        record["status"] = (e_errors.OK, None)
+	if record ["system_inhibit"] == e_errors.DELETED:
+	    # if volume is deleted no data can be changed
+	    record["status"] = (e_errors.DELETED, 
+				"Cannot perform action on deleted volume")
+	else:    
+	    # update the fields that have changed
+	    record ["system_inhibit"] = "none"
+	    ll = list(record['at_mover'])
+	    ll[0]= self.get_media_changer_state(record["library"],
+						record["external_label"], 
+						record["media_type"])
+	    record['at_mover']=tuple(ll)
+	    dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+	    record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'vc.clr_system_inhibit '+repr(record))
         return
@@ -846,13 +987,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     # get the actual state of the media changer
-    def get_media_changer_state(self, libMgr, volume, m_type):
-     import library_manager_client
-     lmc = library_manager_client.LibraryManagerClient(self.csc,
-                                                     libMgr+".library_manager")
-     mchgr = lmc.get_mc()      # return media changer
-     del lmc
-     if None != mchgr :
+    def get_media_changer_state(self, libMgr, volume, m_type, m_changer=None):
+     # optional m_changer must be provided by LM
+     if not m_changer:
+	 # only library as a central server has correct info about media
+	 # changer
+	 import library_manager_client
+	 lmc = library_manager_client.LibraryManagerClient(self.csc,
+							   libMgr+".library_manager")
+	 mchgr = lmc.get_mc()      # return media changer
+	 del lmc
+     else: mchgr = m_changer
+     if mchgr:
          import media_changer_client
          mcc = media_changer_client.MediaChangerClient(self.csc, mchgr )
          del mchgr

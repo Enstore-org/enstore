@@ -181,6 +181,25 @@ class FileClient(generic_client.GenericClient, \
                        "deleted": deleted} )
         return r
 
+    # rename volume and volume map
+    def rename_volume(self, bfid, external_label, set_deleted):
+        r = self.send({"work"           : "rename_volume",\
+                       "bfid"           : bfid,
+		       "external_label" : external_label,
+		       "set_deleted"    : set_deleted} )
+	return r
+    # get volume map name for given bfid
+    def get_volmap_name(self):
+        r = self.send({"work"           : "get_volmap_name",\
+                       "bfid"           : self.bfid} )
+	return r
+
+    # delete bitfile
+    def del_bfid(self):
+        r = self.send({"work"           : "del_bfid",\
+                       "bfid"           : self.bfid} )
+	return r
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
