@@ -1,0 +1,87 @@
+<MA-config>
+   <ID>local_cronjob</ID>
+   <Update>180</Update>
+   <Ncs heartbeat="300" port="19997" host="ngop.fnal.gov"/>
+   <System>
+      <ID>Cronjob</ID>
+      <Cluster>local</Cluster>
+      <Monitored-element>
+         <ID>enstore</ID>
+         <Type>Daeman</Type>
+         <Host>local</Host>
+         <ConditionSet>
+         <fn name="checkcron" arg="enstore" retVal="int:x"/>
+         <Condition sevLevel="0" description="enstore cron job has been running for 3 times of regular">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-2</cn>
+               </reln>
+            </apply>
+         </Condition>
+        <Condition sevLevel="0" description="enstore cron job info is not available">
+            <State>-1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="0" description="enstore cron job works good">
+            <State>1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition> 
+         </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>root</ID>
+         <Type>Hardware</Type>
+         <Host>localhost</Host>
+         <ConditionSet>
+         <fn name="checkcron" arg="root" retVal="int:x"/>
+         <Condition sevLevel="0" description="root cron job has been running for 3 times of regular">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-2</cn>
+               </reln>
+            </apply>
+         </Condition>
+        <Condition sevLevel="0" description="root cron job info is not available">
+            <State>-1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="6" description="root cron job has been running for 2 times of regular">
+            <State>1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         </ConditionSet>
+      </Monitored-element>
+   </System>
+</MA-config>
+
