@@ -657,7 +657,7 @@ SEEK_TIME=%.02f
 MOUNT_TIME=%.02f
 QWAIT_TIME=%.02f
 TIME2NOW=%.02f
-CRC=%d
+CRC=%s
 STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 
     out.write(data_access_layer_format % (inputfile, outputfile, filesize,
@@ -3040,6 +3040,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         work_ticket['file_size'] = file_size
         work_ticket['infile'] = ifullname
         work_ticket['outfile'] = ofullname
+        work_ticket['override_ro_mount'] = e.override_ro_mount
         work_ticket['retry'] = 0 #retry,
         work_ticket['routing_callback_addr'] = routing_addr
         work_ticket['route_selection'] = route_selection
@@ -3917,6 +3918,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         request['file_size'] = file_size
         request['infile'] = ifullname
         request['outfile'] = ofullname
+        request['override_ro_mount'] = e.override_ro_mount
         request['retry'] = 0
         request['routing_callback_addr'] = routing_addr
         request['route_selection'] = route_selection
@@ -4411,6 +4413,8 @@ class EncpInterface(option.Interface):
         #self.bytes = None          #obsolete???
         #self.test_mode = 0         #obsolete???
         self.pnfs_is_automounted = 0 # true if pnfs is automounted.
+        self.override_ro_mount = 0 # Override a tape marked read only to be
+                                   # mounted read/write.
 
         #Special options for operation with a disk cache layer.
         #self.dcache = 0            #obsolete???
@@ -4543,6 +4547,11 @@ class EncpInterface(option.Interface):
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.DEFAULT_VALUE:0,
                        option.USER_LEVEL:option.USER,},
+        option.OVERRIDE_RO_MOUNT:{option.HELP_STRING:
+                                  "Override read only tape for read/write.",
+                                  option.DEFAULT_TYPE:option.INTEGER,
+                                  option.DEFAULT_VALUE:1,
+                                  option.USER_LEVEL:option.ADMIN,},
         option.PNFS_IS_AUTOMOUNTED:{option.HELP_STRING:
                                     "Set this when the pnfs filesystem is "
                                     "auto-mounted.",
