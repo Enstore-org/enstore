@@ -213,7 +213,7 @@ ptagdir()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               cat "$dir/.(tags)(all)" ; }
 
 ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
-              for i in `ptagdir $dir`; do v=`eval cat '$i'`; echo $i " = " $v; done ; }
+              for i in `ptagdir $dir`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; }
 
 ptagecho()  { uj="Usage:  ptagecho text tagname"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
