@@ -992,6 +992,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ### r=self.tape_driver.rewind()
                     err = r
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
+                    if s != 0:
+                        # XXX we cannot dismount the tape. Charles, could you check if code is correct?
+                        self.error("cannot open tape device for positioning") # we do not need to notify LM
+                        return
 
                 except:
                     exc, detail, tb = sys.exc_info()
@@ -1403,6 +1407,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ejected = self.tape_driver.eject()
                 if ejected == -1:
                     self.error("Cannot eject tape")
+                    ### XXXX Shouldn't code return here? Moibenko
+                    return
             self.tape_driver.close()
             Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
@@ -1441,7 +1447,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.idle()
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
-        elif status[-1] == "the drive did not contain an unloaded volume":
+        elif status[-1] == "the drive did not contain an unloaded volume" and not have_tape:
             self.idle()
         else:
             self.error(status[-1], status[0])
