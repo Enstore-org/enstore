@@ -18,6 +18,7 @@ enstore_start_config=0
 enstore_start_fileclerk=0
 enstore_start_volumeclerk=0
 enstore_start_log=0
+enstore_start_admin=0
 
 if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_db=/bakken/bakken/enstore_db
@@ -25,6 +26,7 @@ if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_start_fileclerk=1
   enstore_start_volumeclerk=1
   enstore_start_log=1
+  enstore_start_admin=1
 
 elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
   enstore_libraries="8500.library_manager fntt1disk.library_manager"
