@@ -54,7 +54,8 @@ def get_config_dict():
     name = os.environ.get("ENSTORE_CONFIG_FILE", "")
     if name:
         cdict = configuration_server.ConfigurationDict()
-        cdict.read_config(name)
+	if not cdict.load_config(name) == (e_errors.OK, None):
+	    cdict = {}
     else:
         cdict = {}
     return cdict
