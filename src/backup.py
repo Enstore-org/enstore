@@ -80,7 +80,7 @@ def backup_dbase(dbHome):
 
 def pgdb_backup(host, port, dbHome):
     path = os.path.join(dbHome, 'enstoredb.dmp')
-    cmd = "pg_dump -h %s -p %d -f %s enstoredb"%(host, port, path)
+    cmd = "pg_dump -h %s -p %d -F c -f %s enstoredb"%(host, port, path)
     os.system(cmd)
 
 
@@ -124,15 +124,9 @@ def archive_backup(hst_bck,hst_local,dir_bck):
             fjbk = 'file.tar.Z'
             vjbk = 'volume.tar.Z'
 
-        if pgdb:
-            pgbk = 'enstoredb.dmp.gz'
-            if os.system("gzip -f enstoredb.dmp"):
-                os.system("compress enstoredb.dmp")
-                pgbk = 'enstoredb.dmp.Z'
-        else:
-            pgbk = ''
+        # do not gzip enstoredb.dmp any more, it is already compressed
 
-	cmd="enrcp *.tar* " + " %s "%(pgbk)+ hst_bck+":"+dir_bck
+	cmd="enrcp *.tar* " + " %s "%(enstoredb.dmp)+ hst_bck+":"+dir_bck
 	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
