@@ -15,6 +15,8 @@ BIN  = ../bin/
 SRC  = ../src/
 SRCWWW = $(WWW)
 
+ENSTORE_HOME = /usr/hppc_home/www/enstore
+
 HTML_FILES = architecture.html assumptions.html db.html detail_req.html \
 	error.html implementation.html overview.html prim_req.html \
 	scope.html system_architecture.html testing.html
@@ -53,9 +55,14 @@ install :
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc
 	cp Makefile mk_inherit class4module $(ENSTORE_INSTALL_DIR)/doc
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc/www
-	cp www_new/*.html    $(ENSTORE_INSTALL_DIR)/doc/www
-	cp www_new/*.gif    $(ENSTORE_INSTALL_DIR)/doc/www
+	cp www_new/*.html  $(ENSTORE_INSTALL_DIR)/doc/www
+	cp www_new/*.gif   $(ENSTORE_INSTALL_DIR)/doc/www
 	cp www_new/*.ps    $(ENSTORE_INSTALL_DIR)/doc/www
+	if [ -d "$(ENSTORE_HOME)" ]; then \
+		cp www_new/*.html  $(ENSTORE_HOME) \
+		cp www_new/*.gif   $(ENSTORE_HOME) \
+		cp www_new/*.ps    $(ENSTORE_HOME) \
+	fi;
 
 #
 #
