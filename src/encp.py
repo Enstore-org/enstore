@@ -714,7 +714,7 @@ def filesystem_check(target_filesystem, inputfile):
         raise exc, msg, tb
     except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
-        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
         
     #os.pathconf likes its targets to exist.  If the target is not a directory,
     # use the parent directory.
@@ -736,12 +736,12 @@ def filesystem_check(target_filesystem, inputfile):
         msg2 = "System error obtaining maximum file size for " \
                "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
-        if hasattr(msg, "errno") and msg.errno == errno.EINVAL:
+        if getattr(msg, "errno", None) == errno.EINVAL:
             sys.stderr.write("WARNING: %s  Continuing." % (msg2,))
             return  #Nothing to test, user needs to be carefull.
         else:
-            raise EncpError(msg.errno, msg2, e_errors.OSERROR)
-        
+            raise EncpError(getattr(msg,"errno",None), msg2, e_errors.OSERROR)
+
     filesystem_max = 2L**(bits - 1) - 1
     
     #Compare the max sizes.
@@ -772,7 +772,7 @@ def wrappersize_check(target_filepath, inputfile):
         raise exc, msg, tb
     except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
-        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     if size > wrapper_max:
         raise EncpError(errno.EFBIG,
@@ -798,7 +798,7 @@ def librarysize_check(target_filepath, inputfile):
         raise exc, msg, tb
     except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
-        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+        raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     #Compare the max sizes allowed for these various conditions.
     if size > library_max:
@@ -861,9 +861,10 @@ def inputfile_check(input_files):
         except (OSError, IOError), detail:
             exc, msg, tb = sys.exc_info()
             size = get_file_size(inputlist[i])
+            error = errno.errorcode.get(getattr(msg, "errno", None),
+                                        errno.errorcode[errno.ENODATA])
             print_data_access_layer_format(
-                inputlist[i], "", size,
-                {'status':(errno.errorcode[msg.errno], str(msg))})
+                inputlist[i], "", size, {'status':(error, str(msg))})
             quit()
 
     return
@@ -907,7 +908,7 @@ def outputfile_check(inputlist, outputlist, dcache):
             #Test case when used by a user and the file does not exist (as is
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
-                #Check for permissions.
+                #Check for write permissions to the directory.
                 if access_check(os.path.dirname(outputlist[i]), os.W_OK):
                     outputlist.append(outputlist[i])
                 else:
@@ -933,8 +934,8 @@ def outputfile_check(inputlist, outputlist, dcache):
 
             #The file exits, as it should, for a dache transfer.
             elif access_check(outputlist[i], os.F_OK) and dcache:
-                #Check for permissions.
-                if access_check(outputlist[i], os.W_OK):
+                #Check for write permissions to the directory.
+                if access_check(os.path.dirname(outputlist[i]), os.W_OK):
                     outputlist.append(outputlist[i])
                 else:
                     raise EncpError(errno.EACCES,outputlist[i],
@@ -996,7 +997,7 @@ def create_zero_length_files(filenames):
 
         except OSError:
             exc, msg, tb = sys.exc_info()
-            error = errno.errorcode.get(msg.errno,
+            error = errno.errorcode.get(getattr(msg, "errno", None),
                                         errno.errorcode[errno.ENODATA])
             print_data_access_layer_format('', f, 0,
                                            {'status': (error, str(msg))})
@@ -1229,10 +1230,8 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                 #This is were the interface selection magic occurs.
                 host_config.setup_interface(route_ticket['mover_ip'], ip)
             except (OSError, IOError, socket.error), msg:
-                if hasattr(msg, "errno"):
-                    raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
-                else:
-                    raise EncpError(None, str(msg), e_errors.OSERROR)
+                raise EncpError(getattr(msg,"errno",None),
+                                str(msg), e_errors.OSERROR)
 
     (route_ticket['callback_addr'], listen_socket) = \
 				    get_callback_addr(encp_intf, ip=ip)
@@ -1361,10 +1360,10 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
             exc, msg, tb = sys.exc_info()
-            if msg.errno == errno.ETIMEDOUT:
+            if getattr(msg, "errno", None) == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             elif hasattr(msg, "type"):
-                ticket = {'status':(msg.type, msg.strerror)}                
+                ticket = {'status':(msg.type, str(msg))}                
             else:
                 ticket = {'status':(e_errors.NET_ERROR, str(msg))}
                 
@@ -1399,7 +1398,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 			#If the error was timeout, resend the reply
 			# Since, there was an exception, "ticket" is still
 			# the ticket returned from the routing call.
-			if msg.errno == errno.ETIMEDOUT:
+			if getattr(msg, "errno", None) == errno.ETIMEDOUT:
 			    route_server.reply_to_caller_using_interface_ip(
 				ticket, use_listen_socket.getsockname()[0])
 			else:
@@ -1413,10 +1412,10 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 		    use_listen_socket, encp_intf.mover_timeout)
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
-            if msg.errno == errno.ETIMEDOUT:
+            if getattr(msg, "errno", None) == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             elif hasattr(msg, "type"):
-                ticket = {'status':(msg.type, msg.strerror)}                
+                ticket = {'status':(msg.type, str(msg))}                
             else:
                 ticket = {'status':(e_errors.NET_ERROR, str(msg))}
                 
