@@ -1,0 +1,42 @@
+#
+# $Id$
+#
+
+#
+# Makefile for Linux
+#
+
+CC = gcc
+
+#
+# libc dynamic symbols for simple IO operations
+#
+IO_SYM = -DOPEN_SYM=\"open\" -DCLOSE_SYM=\"close\" \
+	-DREAD_SYM=\"read\" -DWRITE_SYM=\"write\" \
+	-DLSEEK_SYM=\"lseek\" -DPREAD_SYM=\"pread\" \
+	-DPWRITE_SYM=\"pwrite\" -DSTAT_SYM=\"__xstat\" \
+	-DSTAT64_SYM=\"__xstat64\" -DFSTAT64_SYM=\"__fxstat64\" \
+	-DLSTAT_SYM=\"__lxstat\" -DLSTAT64_SYM=\"__lxstat64\" \
+	-DFSTAT_SYM=\"__fxstat\" -DFSYNC_SYM=\"fsync\" \
+	-DDUP_SYM=\"dup\"
+
+#CFLAGS = -g -I. -Wall -pedantic -D_REENTRANT -DLIBC_SYSCALLS -DLIBC=\"/lib/libc.so.6\" $(IO_SYM) -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS = -g -I. -I$(DCAP_DIR) -Wall -pedantic -D_REENTRANT -DLIBC_SYSCALLS -DLIBC=\"/lib/libc.so.6\" $(IO_SYM) -D_LARGEFILE64_SOURCE
+CPP = cpp
+
+
+SO_EXT = .so
+A_EXT = .a
+EXE_EXT =
+
+
+RANLIB = ranlib
+ARFLAGS = rv
+
+MAKEDEP = $(CC) -M -I.
+#MAP = --version-script=mapfile
+LIBS = -ldl -lpthread -lc
+LDFLAGS = -shared
+
+include Makefile.inc
+
