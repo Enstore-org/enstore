@@ -150,6 +150,15 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def s_update_exit(self, the_signal, frame):
 	self.update_exit(0)
 
+    def is_server_known_down(self, server):
+	# check to see if the server is known to be down by enstore.
+	sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+	if offline_d.has_key(server.name):
+	    # server is known to be down
+	    return 1
+	else:
+	    return 0
+
     # function called to attempt a restart on a 'dead' server
     def restart_function(self, server):
 	prefix = "INQ_CHILD"
@@ -157,11 +166,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	try:
 	    # we should try to restart the server.  try 3X
 	    i = 0
-	    retries = 1
-	    pid = os.getpid()
-	    Trace.log(e_errors.INFO,
-		      "%s: Attempting restart of %s (%s)"%(prefix, server.name, 
-							   pid))
+	    known_down = 0
+	    first_time = 1
 	    # we need just the node name part of the host name
 	    node = string.split(server.host, ".", 1)
 	    alarm_info['node'] = node
@@ -174,16 +180,19 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 			      "%s: Aborting restart attempt of %s"%(prefix, 
 								    server.name))
 		    break
-		# do not do the stop and start if the event relay is not alive.  wait
-		# awhile and see if the event relay comes back up.
-		if self.event_relay.is_alive():
-		    Trace.trace(7, "%s: Server restart: try %s"%(prefix, i))
+		# do not do the stop and start if the event relay is not alive or if this
+		# server is marked as known down.
+		known_down = self.is_server_known_down(server)
+		if self.event_relay.is_alive() and not known_down:
+		    if first_time:
+			Trace.log(e_errors.INFO,
+				  "%s: Attempting restart of %s"%(prefix, server.name))
+			first_time = 0
 		    os.system('enstore Estop %s "--just %s"'%(node[0], server.name))
 		    j = 0
 		    while j < 15:
 			time.sleep(1)
 			j = j + 1
-
 		    os.system('enstore Estart %s "--just %s"'%(node[0], server.name))
 
 		# check if now alive - to do this, wait the equivalent of hung_interval
@@ -200,11 +209,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    else:
 		# we could not restart the server, do not try again
 		server.cant_restart()
-		if not server.name == enstore_constants.ALARM_SERVER:
-		    Trace.alarm(e_errors.ERROR, e_errors.CANTRESTART, alarm_info)
+		# do not send an alarm if the server is known down as we really did not
+		# try to restart it
+		if known_down:
+		    Trace.log(e_errors.INFO,
+			      "%s: %s is marked known down, no restart attempted"%(prefix,
+										   server.name))
 		else:
-		    Trace.log(e_errors.ERROR, "%s: Can't restart %s"%(prefix, 
-								      server.name))
+		    if not server.name == enstore_constants.ALARM_SERVER:
+			Trace.alarm(e_errors.ERROR, e_errors.CANTRESTART, alarm_info)
+		    else:
+			Trace.log(e_errors.ERROR, "%s: Can't restart %s"%(prefix, 
+									  server.name))
 	except:
 	    # we catch any exception from the thread as we do not want it to
 	    # escape from this area and start executing the main loop of the
@@ -555,15 +571,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.event_relay.alive(now)
 	self.sent_event_relay_alarm = 0  
 	msg = self.erc.read(fd)
-        if msg:
+	# ignore messages that originated with us
+        if msg and not msg.server == self.inquisitor.name:
             if msg.type == event_relay_messages.ALIVE:
-                server = self.server_is_alive(msg.server)
-                # if server is a mover, we need to get some extra status
-                if enstore_functions.is_mover(msg.server):
-                    self.update_mover(server)
-                # if server is a library_manager, we need to get some extra status
-                if enstore_functions.is_library_manager(msg.server):
-                    self.update_library_manager(server)
+		# check if this is one of the servers we are watching.
+		if self.server_d.has_key(msg.server):
+		    server = self.server_is_alive(msg.server)
+		    # if server is a mover, we need to get some extra status
+		    if enstore_functions.is_mover(msg.server):
+			self.update_mover(server)
+		    # if server is a library_manager, we need to get some extra status
+		    if enstore_functions.is_library_manager(msg.server):
+			self.update_library_manager(server)
             elif msg.type == event_relay_messages.NEWCONFIGFILE:
                 # a new config file was loaded into the config server, get it
                 self.make_config_html_file()
@@ -837,6 +856,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.erc.start([event_relay_messages.ALIVE,
 			event_relay_messages.NEWCONFIGFILE,
 			event_relay_messages.ENCPXFER])
+
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.INQUISITOR, 
+				 self.inquisitor.alive_interval)
 
 	# keep track of when we receive event relay messages.  maybe we can tell if
 	# the event relay process goes down.
