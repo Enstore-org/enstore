@@ -6,10 +6,13 @@ import tempfile
 import types
 import pwd
 import signal
+import socket
 
 import configuration_server
+import configuration_client
 import enstore_constants
 import enstore_files
+import enstore_functions2
 import Trace
 import e_errors
 import www_server
@@ -141,3 +144,33 @@ if threading:
         except exceptions.Exception, detail:
             Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
         return 0
+
+
+## Return the directory where temporary enstore files should go.
+def get_enstore_tmp_dir():
+
+    #First check the config file.  If local to the config server machine
+    # read the config file directly.  Otherwise contact the config server.
+    config_hostname = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
+    hostnames = socket.gethostbyname_ex(socket.gethostname())
+    hostnames = [hostnames[0]] + hostnames[1] + hostnames[2]
+    if config_hostname in hostnames:
+        rtn_dir = get_from_config_file("temp_dir", "temp_dir", None)
+    else:
+        def_host = enstore_functions2.default_host()
+        def_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((def_host, def_port))
+        temp_dict = csc.get("temp_dir", 3, 3)
+        rtn_dir = temp_dict.get("temp_dir", None)
+
+    #Use the temp. directory the config server had it.
+    if rtn_dir != None:
+        return rtn_dir
+
+    #Next, use 'tmp' under ENSTORE_DIR.
+    try:
+        rtn_dir = os.path.join(os.environ['ENSTORE_DIR'], "tmp")
+    except (OSError, KeyError):
+        rtn_dir = "/tmp/enstore/"
+
+    return rtn_dir
