@@ -76,7 +76,7 @@ def remove_files(files,dir):
 
 
 
-def configure():
+def configure(configuration = None):
     csc = configuration_client.ConfigurationClient(config)
     backup = csc.get('backup',timeout,tries)
     check_ticket('Configuration Server',backup)
@@ -93,21 +93,22 @@ def configure():
     if backup_dir == 'MISSING':
         print timeofday.tod(), "ERROR Backup directory not determined."
         sys.exit(1)
-    check_existance(backup_dir,0)
+    if configuration:
+        check_existance(backup_dir,0)
 
     check_dir = backup.get('extract_dir','MISSING')
     if check_dir == 'MISSING':
         print timeofday.tod(), "ERROR Extraction directory not determined."
         sys.exit(1)
-    check_existance(check_dir,0)
-    old_files = os.listdir(check_dir)
-    remove_files(old_files,check_dir)
+    if configuration:
+        check_existance(check_dir,0)
+        old_files = os.listdir(check_dir)
+        remove_files(old_files,check_dir)
     
     current_dir = os.getcwd() #Remember the original directory
 
     #Return the directory the backup file is in and the directory the backup
     # file will be ungzipped and untared to, respectively.
-    print "check_dir:", check_dir
     return backup_dir, check_dir, current_dir
 
 
@@ -173,9 +174,12 @@ def check_files(check_dir):
 #            os.chdir(current_dir)
             sys.exit(istat)
 
-def clean_up(check_dir, current_dir):
-#    check_these = os.listdir(check_dir)
-#    remove_files(check_these,check_dir)
+def clean_up(current_dir, check_dir = None):
+    if check_dir:
+        check_these = os.listdir(check_dir)
+        remove_files(check_these,check_dir)
+        os.rmdir(check_dir)
+    
     os.chdir(current_dir)
 
 
@@ -186,8 +190,8 @@ if __name__ == "__main__":
     print timeofday.tod(), 'Checking Enstore on',config,'with timeout of',
     print timeout,'and tries of',tries
 
-    (backup_dir, check_dir, current_dir) = configure()
+    (backup_dir, check_dir, current_dir) = configure(1) #non-None argument!
     extract_backup(check_dir, check_backup(backup_dir))
     check_files(check_dir)
-    clean_up(check_dir, current_dir)
+    clean_up(current_dir)
     
