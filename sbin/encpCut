@@ -183,6 +183,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
    case `uname -n` in
       airedale*) INSTALLDIR=/home/products/$product;;
       pcfarm9*)  INSTALLDIR=/products/$product;;
+      hpcc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
       *)         INSTALLDIR=/p/`uname`/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
