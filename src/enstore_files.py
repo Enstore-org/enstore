@@ -335,10 +335,10 @@ class HtmlAlarmFile(EnFile):
         os.rename(self.file_name, self.real_file_name)
 
     # format the file name and write it to the file
-    def write(self, data):
+    def write(self, data, www_host):
         if self.filedes:
 	    doc = enstore_html.EnAlarmPage()
-	    doc.body(data)
+	    doc.body(data, www_host)
             self.filedes.write(str(doc))
 
 class HTMLPatrolFile(EnFile):

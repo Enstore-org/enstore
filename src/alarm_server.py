@@ -188,12 +188,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     # create the web page that contains the list of raised alarms
     def write_html_file(self):
 	self.alarmhtmlfile.open()
-	self.alarmhtmlfile.write(self.alarms)
+	self.alarmhtmlfile.write(self.alarms, self.get_www_host())
 	self.alarmhtmlfile.close()
 
     def get_log_path(self):
         log = self.csc.get("log_server")
         return log.get("log_file_path", ".")
+        
+    def get_www_host(self):
+        inq = self.csc.get("inquisitor")
+        return inq.get("www_host", ".")
         
     def get_www_path(self):
         inq = self.csc.get("inquisitor")
