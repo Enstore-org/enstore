@@ -1,5 +1,16 @@
 #!/bin/sh
 
+if [ -n "${1:-}" ]; then
+  exclude_file=$1
+  if [ ! -r $exclude_file ]; then
+     echo `date` Can not read $exclude_file
+     exit 1
+  fi
+else
+  exclude_file=/dev/null
+fi
+if [ "$exclude_file" != "/dev/null" ]; then echo `date` excluding files from $exclude_file; fi
+
 . /usr/local/etc/setups.sh
 setup enstore
 
@@ -62,6 +73,7 @@ i=`get_i`
 count=0
 vols=""
 cat $flip_list | while read vol type rest; do
+    if [ `grep -c $vol $exclude_file` -ne 0 ]; then continue
     vols="$vols $vol"
     count=`expr $count + 1`
     if [ $count -eq 21 ]; then 
