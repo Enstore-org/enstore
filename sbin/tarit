@@ -101,10 +101,8 @@ if [ $node = ${gang}srv1 ]; then
 #$bang/bin/sh
 thisnode=\`uname -n| sed -e 's/\([^\.]\)\..*/\1/'\`
 F=/tmp/\${thisnode}.special.tgz
-rm -fr \$F
-. /usr/local/etc/setups.sh
-setup enstore
-tar -czf \$F \\
+rm -f /tmp/precious
+for precious in \\
   /etc/fstab \\
   /etc/rc.d/rc.local \\
   /etc/rc.d/rc.sysinit \\
@@ -133,7 +131,11 @@ tar -czf \$F \\
   /usr/local/etc/farmlets \\
   /usr/etc/ \\
   /var/adm/krb5/ \\
-  /var/spool/cron/
+  /var/spool/cron/; do if [ -r \$precious ]; then echo \$precious >>/tmp/precious; fi; done
+rm -fr \$F
+. /usr/local/etc/setups.sh
+setup enstore
+tar -czf \$F \`cat /tmp/precious\`
 enrcp \$F $node:$SPECIAL
 "
   chmod +x $SF
