@@ -1822,18 +1822,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_volume(after_function=self.idle)
             return
         eod = self.vol_info['eod_cookie']
-        if eod=='none':
-            eod = None
-            verify_label = 0
-        else:
-            verify_label = 1
-        volume_label = self.current_volume
-
-        if verify_label:
-            status = self.tape_driver.verify_label(volume_label, self.mode)
-            if status[0] != e_errors.OK:
-                self.transfer_failed(status[0], status[1], error_source=TAPE)
+        status = self.tape_driver.verify_label(ticket['vc']['external_label'], READ)
+        if status[0] != e_errors.OK:
+            if status[0] == e_errors.READ_VOL1_READ_ERR and eod == 'none':
+                self.dismount_volume(after_function=self.idle)
                 return
+            self.transfer_failed(status[0], status[1], error_source=TAPE)
+            return
 
         self.dismount_volume(after_function=self.idle)
 
@@ -2091,8 +2086,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return 0
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     Trace.trace(10, "ticket %s"%(self.current_work_ticket))
-                    wrapper_dict = self.wrapper.create_wrapper_dict(self.current_work_ticket)
-                    vol1_label = self.wrapper.vol_labels(volume_label, wrapper_dict)
+                    vol1_label = self.wrapper.vol_labels(volume_label, self.wrapper_ticket)
                     self.tape_driver.write(vol1_label, 0, len(vol1_label))
                     self.tape_driver.writefm()
 	            # WAYNE FOO
@@ -2212,10 +2206,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             cur_thread_name = None
 
         dismount_allowed = 0
-        Trace.trace(26,"current thread %s"%(cur_thread_name,))
+        encp_gone = 0
+        if exc == e_errors.ENCP_GONE: encp_gone = 1
+        Trace.trace(26,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
         if cur_thread_name:
             if cur_thread_name == 'tape_thread':
-                dismount_allowed = 1
+                # if encp is gone there is no need to dismount a tape
+                dismount_allowed = not encp_gone
 
             elif cur_thread_name == 'net_thread':
                 # check if tape_thread is active before allowing dismount
@@ -2223,16 +2220,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                 thread = getattr(self, 'tape_thread', None)
                 for wait in range(60):
                     if thread and thread.isAlive():
-                        Trace.trace(27, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                        Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
-                    else:
-                        dismount_allowed = 1
+                        dismount_allowed = not encp_gone
                         break
                 else:
-                    dismount_allowed = 1
+                    dismount_allowed = not encp_gone
             else:
                 # Main thread ?
-                dismount_allowed = 1
+                dismount_allowed = not encp_gone
+        Trace.trace(26,"dismount_allowed %s"%(dismount_allowed,))
+        if encp_gone:
+            self.net_driver.close()
+            self.current_location = self.tape_driver.tell()
+            self.dismount_time = time.time() + self.delay
+            self.state = HAVE_BOUND
+            if self.maybe_clean():
+                self.state = IDLE
+                self.log_state()
                 
         if dismount_allowed:
             self.dismount_volume()
@@ -2242,8 +2247,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             #self.state = OFFLINE
             self.offline()
         else:
-            self.maybe_clean()
-            self.idle()
+            if not encp_gone:
+                self.maybe_clean()
+                self.idle()
         
         self.tr_failed = 0   
         #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
