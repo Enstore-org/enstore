@@ -213,8 +213,8 @@ class Mover :
             inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
             ticket["size_bytes"], pnfs["major"], pnfs["minor"], pnfs["rmajor"],
             pnfs["rminor"], pnfs["pnfsFilename"],ticket["sanity_size"])
-        print "cpio.write size:",wr_size,"crc:",complete_crc, \
-              "sanity_crc:",sanity_cookie
+        #print "cpio.write size:",wr_size,"crc:",complete_crc, \
+        #      "sanity_crc:",sanity_cookie
 
         if 0 :
             # read the file from the user and write it out
@@ -366,8 +366,8 @@ class Mover :
         self.wrapper = cpio.cpio(self.driver,self,binascii.crc_hqx)
 
         (bytes_sent, complete_crc, recorded_crc, match) = self.wrapper.read()
-        print "cpio.read returned: ",\
-              bytes_sent, complete_crc, recorded_crc, match
+        #print "cpio.read  size:",wr_size,"crc:",complete_crc,\
+        #      "recorded_crc:",recorded_crc,"crc_match:",match
 
         if 0:
             # read the file from hsm and send to user

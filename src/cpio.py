@@ -95,13 +95,15 @@ class cpio :
         for h in [(filename,filesize), (filename+".encrc",8)] :
             fname = h[0]
             fsize = h[1]
+	    # set this dang mode to something that works on all machines!
+	    jonmode = 0x81a4
             # make all filenames relative - strip off leading slash
             if fname[0] == "/" :
                 fname = fname[1:]
             head = \
                  "070701" +\
                  "%08x" % inode +\
-                 "%08x" % mode +\
+                 "%08x" % jonmode +\
                  "%08x" % uid +\
                  "%08x" % gid +\
                  "%08x" % nlink +\
