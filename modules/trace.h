@@ -14,7 +14,8 @@
 
 
 void
-trace_init( const char	*name );
+trace_init(  const char	*name
+	   , const char	*key_file );
 void
 trace(  int		lvl
       , const char	*msg
@@ -23,10 +24,11 @@ trace(  int		lvl
 #define TRACE_MODE		trc_cntl_sp->mode
 #define TRACE_MODE_SET( mode )  (trc_cntl_sp->mode = mode)
 
-
-
 void
-trace_init_trc( void );
+trace_init_trc( const char *key_file );
+char *
+trc_basename(  char	*name
+	     , char	cc );
 
 extern int			trc_sem_id;
 extern pid_t			trc_pid;
@@ -62,14 +64,16 @@ USE MACRO W/ VARARGS - can at least do checks inline
 
 */
 
-#define TRC_LCK_FIL	"trace.lock"
-#define TRC_BUF_FIL	"trace.buffer"
+#define TRC_LCK_FIL	"trace.lck"
+#define TRC_KEY_FIL	"trace.key"
 #define TRC_BUF_SZ	0x800000 /* mmap -> shm_open(2)? -> shmget(2) -> SHMMAX */
 #define TRC_MAX_MSG	100
 #define TRC_MAX_PIDS	200
 #define TRC_MAX_PROCS	200
 #define TRC_MAX_PARAMS	6
-#define TRC_MAX_NAME	12
+#define TRC_MAX_NAME	10
+#define TRC_D2S(x)		#x
+#define TRC_DEF_TO_STR(x)	TRC_D2S(x)
 
 struct s_trc_ent
 {
@@ -86,6 +90,7 @@ struct s_trc_cntl
 {
     int		mode;
     int		intl_lvl;
+    int		tty_lvl;
     int		last_idx;
     int		head_idx;
     int		tail_idx;
