@@ -32,7 +32,7 @@ LIBSO=		`$(PYMAKE) -s echodestshared`
 # Put the object files for your module here:
 
 WARN=  `if [ \`uname\` = Linux ];then echo -Wall; fi`
-CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include -lc
+CFLAGS=-g $(WARN) -D`uname` -I./ -I$(FTT_DIR)/include -lc
 
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
@@ -67,10 +67,12 @@ EXfer:
 	$(MAKEIT)
 
 Trace:	trace_1st Trace.so
-	@echo done with Trace # do not use default rule
+# do not use default rule
+	@echo done with Trace 
 
 trace_1st:
-	make -f trace.mk trace.a all # add all and mv traceShow to sbin for now
+# add all and mv traceShow to sbin for now
+	make -f trace.mk trace.a all 
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	@mv traceShow trace_delta ../sbin
 	@cd ../sbin;\
@@ -81,8 +83,9 @@ trace_1st:
 	ln -fs traceShow traceOff;
 
 Trace.so: trace.a Trace.c
-	rm -f Trace.so	# must force relink as $(LIBPL)/Makefile does not
-			# check agains YOURLIBS
+# must force relink as $(LIBPL)/Makefile does not
+# check agains YOURLIBS
+	rm -f Trace.so	
 	MODULE=Trace; \
 	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a -lc"; \
 	OBS=Trace.o ; \
