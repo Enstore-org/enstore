@@ -50,7 +50,7 @@ then
    echo "==============================================================="
    ftt_run_test align
 fi
-if $partitions
+if $partition
 then
    echo "==============================================================="
    echo "partition test"
