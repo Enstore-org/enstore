@@ -7,43 +7,9 @@
 %module drivestat
 
 %{
+#include <string.h>
 #include "drivestat.h"
 #include "ds_api.h"
-
-DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag);
-DS_REPORT *ds_getnext(int list_sd);
-
-DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d){
-	DS_OPEN_PARMS *parms;
-	DS_DESCRIPTOR *ds_desc=NULL;
-
-	parms = (DS_OPEN_PARMS *) malloc(sizeof(DS_OPEN_PARMS));
-	if (parms==NULL) {
-	    printf("FATAL ERROR: Can not malloc space for parms.\n");
-	    return NULL;	
-	}
-	parms->ftt_d = ftt_d;
-
-	ds_desc = ds_open(parms, FTT_DESC);
-	if (ds_desc==NULL) {
-	    printf("FATAL ERROR: ds_open returned NULL.\n");
-	    /* fall thru and return NULL*/
-	}
-
-	return ds_desc;
-}
-
-DS_STATS * ds_get_stats_buff(void) {
-	DS_STATS *stats_buff;
-
-	stats_buff = (DS_STATS *) malloc(sizeof(DS_STATS));
-	if (stats_buff==NULL) {
-	    printf("FATAL ERROR: Can not malloc space for stats_buff.\n");
-	    /* fall thru and return NULL*/
-	}
-
-	return stats_buff;
-}
 
 int ds_print_report(void) {
    DS_REPORT *report;
@@ -96,11 +62,52 @@ int ds_print_report(void) {
 
 /*************************************************************************
  *                                                                       *
- * ds_open_from_ftt_d()                                                  *
- *   Create a drivestat descriptor, given an already=open FTT descriptor *
+ * ds_alloc()                                                            *
+ *   allocate drivestat descriptor                                       *
  *                                                                       *
  *************************************************************************/
-DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d);
+DS_DESCRIPTOR *ds_alloc();
+
+/*************************************************************************
+ *                                                                       *
+ * ds_translate_ftt_drive_id()                                           *
+ *   translate ftt drive id                                              *
+ *                                                                       *
+ *************************************************************************/
+int ds_translate_ftt_drive_id(DS_DESCRIPTOR* ds_desc,ftt_stat_buf ftt_stat_buff);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_translate_ftt_stats()                                              *
+ *   translate ftt stats                                                 *
+ *                                                                       *
+ *************************************************************************/
+int ds_translate_ftt_stats(DS_DESCRIPTOR* ds_desc,ftt_stat_buf ftt_stat_buff,int flag);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_free()                                                             *
+ *   deallocate drivestat descriptor                                     *
+ *                                                                       *
+ *************************************************************************/
+void ds_free(DS_DESCRIPTOR* ds_desc);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_init()                                                             *
+ *   initialize drivestat descriptor                                     *
+ *                                                                       *
+ *************************************************************************/
+int ds_init(DS_DESCRIPTOR* ds_desc, ftt_descriptor ftt_d);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_update()                                                           *
+ *   update drivestat descriptor                                         *
+ *                                                                       *
+ *************************************************************************/
+int ds_update(DS_DESCRIPTOR* ds_desc, ftt_descriptor ftt_d);
+
 
 /*************************************************************************
  *                                                                       *
@@ -108,7 +115,7 @@ DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d);
  *   Create a drivestat DS_STATS buffer                                  *
  *                                                                       *
  *************************************************************************/
-DS_STATS * ds_get_stats_buff(void);
+/*DS_STATS * ds_get_stats_buff(void);*/
 
 /*************************************************************************
  *                                                                       *
@@ -125,12 +132,12 @@ int ds_print_report(void);
  *   the deltas.                                                            *
  *                                                                          *
  ****************************************************************************/
-int ds_init_stats(DS_DESCRIPTOR *d);
+#int ds_init_stats(DS_DESCRIPTOR *d);
 
 /***************************************************************************
  *                                                                         *
- * ds_print_stats()                                                        *
- *   Print stats in current drivestat descriptor to file.  If file is NULL,*
+ * ds_print()                                                              *
+ *   Print ds_decriptorto file.  If file is NULL,                          *
  *   reports are printed to stdout.  Return 0 on success, 1 on failure.    *
  *                                                                         *
  ***************************************************************************/
@@ -140,42 +147,56 @@ int ds_init_stats(DS_DESCRIPTOR *d);
     else
 	 $target = PyString_AsString($source);
 }
-int ds_print_stats(DS_DESCRIPTOR *d, char *file);
+int ds_print(const DS_DESCRIPTOR* ds_desc, char* file);
 
-/*************************************************************************
- *                                                                       *
- * ds_set_delta()                                                        *
- *    Set the delta portion of the ds_descriptor with the data passed in *
- *    in the stat_buf.                                                   *
- *                                                                       *
- *************************************************************************/
-int ds_set_delta(DS_DESCRIPTOR *d, DS_STATS *stat_buf);
+/***************************************************************************
+ *                                                                         *
+ * ds_print_stats()                                                        *
+ *   Print stats in current drivestat descriptor to file.  If file is NULL,*
+ *   reports are printed to stdout.  Return 0 on success, 1 on failure.    *
+ *                                                                         *
+ ***************************************************************************/
+%typemap(python, in) FILE * {
+        if (!PyFile_Check($source)) {
+            PyErr_SetString(PyExc_TypeError, "Expected file object");
+            return NULL;
+        }
+        $target = PyFile_AsFile($source);
+}
+void ds_print_stats(FILE* fp,const char* stat_name, DS_STATS* stats_pointer);
 
-/*************************************************************************
- *                                                                       *
- * ds_set_deltasum()                                                     *
- *    Set the delta sum portion of the ds_descriptor with the data passed*
- *    in the stat_buf.                                                   *
- *                                                                       *
- *************************************************************************/
-int ds_set_deltasum(DS_DESCRIPTOR *d, DS_STATS *stat_buf);
 
-/*************************************************************************
- *                                                                       *
- * ds_set_init()                                                         *
- *    Set the init portion of the ds_descriptor with the data passed in  *
- *    in the stat_buf.                                                   *
- *                                                                       *
- *************************************************************************/
-int ds_set_init(DS_DESCRIPTOR *d, DS_STATS *stat_buf);
+/***************************************************************************
+ *                                                                         *
+ * ds_set_character_field()                                                *
+ *   set a character field in ds descriptor                                *
+ *                                                                         *
+ ***************************************************************************/
+int ds_set_character_field(DS_DESCRIPTOR* ds_desc,char* string, int field);
 
-/************************************************************************
- *                                                                      *
- * ds_set_operation()                                                   *
- *   Set the operation field in the drivestat descriptor.               *
- *                                                                      *
- ************************************************************************/
-int ds_set_operation(DS_DESCRIPTOR *d,char *s);
+/***************************************************************************
+ *                                                                         *
+ * ds_set_stats()                                                          *
+ *   set stats                                                             *
+ *                                                                         *
+ ***************************************************************************/
+int ds_set_stats(DS_DESCRIPTOR* ds_desc, DS_STATS* stat_buf, int flag);
+
+/***************************************************************************
+ *                                                                         *
+ * ds_extract_stats()                                                      *
+ *   extract stats                                                         *
+ *                                                                         *
+ ***************************************************************************/
+int ds_extract_stats(DS_DESCRIPTOR* ds_desc, DS_STATS* stat_buf, int flag);
+
+/***************************************************************************
+ *                                                                         *
+ * ds_bump_deltasum()                                                      *
+ *   bump delta sum                                                        *
+ *                                                                         *
+ ***************************************************************************/
+int ds_bump_deltasum(DS_DESCRIPTOR* ds_desc, DS_STATS* stat_buf);
 
 /************************************************************************
  *                                                                      *
@@ -216,15 +237,6 @@ DS_REPORT *ds_getnext(int list_sd);
  *                                                                      *
  ************************************************************************/
 int ds_close_list(int list_sd);
-
-/************************************************************************
- *                                                                      *
- * i_get_current_drive_stats                                            *
- *   internal routine to get the current drive statistics.              *
- *                                                                      *
- ************************************************************************/
-int i_get_current_drive_stats(DS_STATS stats);
-
 
 /************************************************************************
  *                                                                      *
@@ -299,3 +311,4 @@ int send_data(char *buf);
  *                                                                           *
  *****************************************************************************/
 int _write_sock(int sd,char *buf);
+
