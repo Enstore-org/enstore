@@ -1860,7 +1860,7 @@ class Display(Tkinter.Canvas):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
         mover.draw()
-        if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
+        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown']:
             msg="Need to disconnect because mover state changed to: %s"
             if self.connections.get(mover.name, None):
                 Trace.trace(1, msg % (what_state,))
