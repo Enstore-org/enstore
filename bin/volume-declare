@@ -143,8 +143,8 @@ case $1 in
                      "
          ;;
   mam)   rm -fr    /pnfs/grau/mammoth/*
-         mkdir     /pnfs/grau/ait/volmap
-	 chmod 777 /pnfs/grau/ait/volmap
+         mkdir     /pnfs/grau/mammoth/volmap
+	 chmod 777 /pnfs/grau/mammoth/volmap
          volumes_del="
                       CA2251
                       CA2252
