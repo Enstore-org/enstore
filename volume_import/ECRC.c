@@ -18,14 +18,14 @@
 
 unsigned long adler32(adler, buf, len)
     unsigned long adler;
-    char *buf;
+    unsigned char *buf;
     unsigned int len;
 {
     unsigned long s1 = adler & 0xffff;
     unsigned long s2 = (adler >> 16) & 0xffff;
     int k;
 
-    if (buf == (char*)0) return 1L;
+    if (buf == (unsigned char*)0) return 1L;
 
     while (len > 0) {
         k = len < NMAX ? len : NMAX;
@@ -45,3 +45,30 @@ unsigned long adler32(adler, buf, len)
     return (s2 << 16) | s1;
 }
 
+#ifdef TESTING
+#include <stdlib.h>
+#include <stdio.h>
+main(int argc, char **argv)
+{
+    char *fname, *buf;
+    unsigned long val,len;
+    FILE *fp;
+
+    if (argc!=4){
+	fprintf(stderr,"Usage: %s file len init-val\n", argv[0]);
+	exit(-1);
+    }
+    fname=argv[1];
+    len=strtoul(argv[2],0,10);
+    val=strtoul(argv[3],0,10);
+    buf=(char*)malloc(len);
+    fp=fopen(fname,"r");
+    fread(buf, 1, len, fp);
+    fclose(fp);
+    printf("adler32(%u,%s,%d)=%u\n",
+	   val,buf,len,adler32(val,buf,len));
+}
+
+#endif
+
+	   
