@@ -983,6 +983,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_bound_volume"
         elif state in (ACTIVE, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
+            if error_info:
+                status = error_info
         elif state in (ERROR, OFFLINE):
             work = "mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
             if error_info is None:
