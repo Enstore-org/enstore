@@ -11,7 +11,7 @@ if map(int, version) < [1, 6, 0]:
     print "must use python 1.6 or greater"
     sys.exit(127)
 
-if len(sys.argv) < 6:
+if len(sys.argv) != 6:
     print sys.argv[0], " <tapelabel> <mjd> <TarTape|TapeLog> <pfnsdir> <outputdir>"
     sys.exit(126)
 
