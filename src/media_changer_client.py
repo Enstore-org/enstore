@@ -88,10 +88,7 @@ class MediaChangerClient(generic_client.GenericClient):
 		return rt
         return rt
 
-    def viewvol(self, vol_ticket):
-        ticket = {'work'           : 'viewvol',
-                  'vol_ticket' : vol_ticket
-                  }
+    def viewvol(self, ticket):
 	rt = self.send(ticket)
         return rt
 
@@ -116,6 +113,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.maxwork=-1
         self.volume = 0
 	self.view = 0
+	self.viewattrib = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
 
@@ -139,7 +137,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         else:
             self.media_changer = self.args[0]
         if (self.alive == 0) and (self.verbose == 0) and (self.maxwork==-1) and \
-           (self.getwork==0) and (self.view == 0):
+           (self.getwork==0) and (self.view == 0) and (self.viewattrib == 0):
             # bomb out if we number of arguments is wrong
             self.print_help()
 	    sys.exit(1)
@@ -166,10 +164,10 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.ALIVE
     elif intf.view:
         # get a volume clerk client
-        vcc = volume_clerk_client.VolumeClerkClient(0,intf.verbose,intf.config_host, intf.config_port)
-        ticket = vcc.inquire_vol(intf.view)
-	v_ticket=mcc.viewvol(ticket)
-	print v_ticket['viewvol']
+        vcc = volume_clerk_client.VolumeClerkClient(0, intf.verbose, \
+	                                 intf.config_host, intf.config_port)
+        v_ticket = vcc.inquire_vol(intf.view)
+	ticket=mcc.viewvol(v_ticket)
 	del vcc
         msg_id = generic_cs.CLIENT
     elif intf.verbose:

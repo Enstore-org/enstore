@@ -77,9 +77,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # wrapper method for client - server communication
     def viewvol(self, ticket):
         Trace.trace(10, '>view')
-        rl = self.view(ticket["vol_ticket"]["external_label"], ticket["vol_ticket"]["media_type"])
-        ticket["viewvol"] = rl
-	ticket["status"] =  (e_errors.OK, 0, None) 
+        ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
+	               ticket["vol_ticket"]["media_type"])
         self.reply_to_caller(ticket)
 
     def maxwork(self,ticket):
@@ -119,9 +118,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # view volume in the drive;  default overridden for other media changers
     def view(self,
                external_label,  # volume external label
-	       media_type) :         # drive id
+	       media_type) :         # drive id 
         if 0: print media_type #lint fix
-	return (e_errors.OK, 0, None)
+	return (e_errors.OK, 0, None, None)
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
@@ -195,7 +194,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 self.work_list.append(ticket)
                 Trace.trace(10, '<<< Parent')
     
-
     def WorkDone(self, ticket):
         # dispatching_worker sends "WorkDone" ticket here and we reply_to_caller
         # remove work from outstanding work list
@@ -221,8 +219,19 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
         import EMASS
         self.load=EMASS.mount
         self.unload=EMASS.dismount
-        self.view=EMASS.view
+        #self.view=EMASS.view
         self.prepare=EMASS.dismount
+
+    def view(self, external_label, media_type):
+        import EMASS
+	rt = EMASS.view(external_label, media_type)
+        if 'O' == rt[5] :
+          state = 'O'
+        elif 'M' == rt[5] :
+          state = 'M'
+        else :
+          state = rt[5]
+        return (rt[0], rt[1], rt[2], state)
 
 
 # STK robot loader server
@@ -242,6 +251,9 @@ class RDD_MediaLoader(MediaLoaderMethods) :
                  host=interface.default_host(), \
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
+
+    def view(self, external_label, media_type):
+        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
 class MediaLoaderInterface(generic_server.GenericServerInterface):
 
