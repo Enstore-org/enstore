@@ -90,6 +90,41 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                         (self.filename_base, year, month, day))
             self.outfile=open(outfile_name, 'a')
 
+    def count_bytes(self, words, bytes_read_dict, bytes_written_dict, group):
+        mover = words[1]
+        mover = string.upper(mover)
+        
+
+        #Get the number of bytes moved (words[2]) and total bytes ([3]).
+        num = atol(words[2])  #NB -bytes = read;  +bytes=write
+        writing = num>0
+        num = abs(num)
+        denom = atol(words[3])
+
+        #Get the last pair of numbers for each mover.
+        prev = self.mover_msg.get(mover)
+        self.mover_msg[mover] = (num, denom)
+
+        #When a new file is started, the first transfer occurs, a mover
+        # quits, et al, then initialize these parameters.
+        if not prev:
+            num_0 = denom_0 = 0
+        else:
+            num_0, denom_0 = prev
+        if num_0 >= denom or denom_0 != denom:
+            num_0 = denom_0 = 0
+
+        #Caluclate the number of bytes transfered at this time.
+        bytes = num - num_0
+        if writing:
+            bytes_written_dict[group] = bytes_written_dict.get(group,0L)+bytes
+        else:
+            bytes_read_dict[group] = bytes_read_dict.get(group,0L) + bytes
+
+        #If the file is known to be transfered, reset these to zero.
+        if num == denom:
+            num_0 = denom_0 = 0
+
     
     def main(self):
         now = time.time()
@@ -101,8 +136,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #sys.stderr.write("starting\n")
         print "starting"
         N = 1L
-        bytes_read = 0L
-        bytes_written = 0L
+        bytes_read_dict = {} # = 0L
+        bytes_written_dict = {} #0L
         while 1:
             now = time.time()
 
@@ -115,16 +150,21 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             remaining = end_time - now
             if remaining <= 0:
                 try:
-                    self.outfile.write( "%s %d %d\n" %
+                    self.outfile.write( "%s %d %d %d %d\n" %
                                         (time.strftime("%m-%d-%Y %H:%M:%S",
                                                        time.localtime(now)),
-                                         bytes_read, bytes_written))
+                                         bytes_read_dict.get("REAL", 0),
+                                         bytes_written_dict.get("REAL", 0),
+                                         bytes_read_dict.get("NULL", 0),
+                                         bytes_written_dict.get("NULL", 0),))
                     self.outfile.flush()
                 except:
                     sys.stderr.write("Can't write to output file\n")
-                    
-                bytes_read = 0L
-                bytes_written = 0L
+
+                for key in bytes_read_dict.keys():
+                    bytes_read_dict[key] = 0L
+                    bytes_written_dict[key] = 0L
+                
                 N = N + 1
                 end_time = self.start_time + N * self.interval
                 remaining = end_time - now
@@ -156,40 +196,13 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             if words[0] != 'transfer' or words[4] != 'network':
                 continue
 
-            mover = words[1]
-            mover = string.upper(mover)
-            if string.find(mover, 'NULL')>=0:
-                continue
-
-            #Get the number of bytes moved (words[2]) and total bytes ([3]).
-            num = atol(words[2])  #NB -bytes = read;  +bytes=write
-            writing = num>0
-            num = abs(num)
-            denom = atol(words[3])
-
-            #Get the last pair of numbers for each mover.
-            prev = self.mover_msg.get(mover)
-            self.mover_msg[mover] = (num, denom)
-
-            #When a new file is started, the first transfer occurs, a mover
-            # quits, et al, then initialize these parameters.
-            if not prev:
-                num_0 = denom_0 = 0
+            if string.find(string.upper(words[1]), 'NULL') >= 0:
+                self.count_bytes(words, bytes_read_dict,
+                                 bytes_written_dict,"NULL")
             else:
-                num_0, denom_0 = prev
-            if num_0 >= denom or denom_0 != denom:
-                num_0 = denom_0 = 0
-
-            #Caluclate the number of bytes transfered at this time.
-            bytes = num - num_0
-            if writing:
-                bytes_written = bytes_written + bytes
-            else:
-                bytes_read = bytes_read + bytes
-
-            #If the file is known to be transfered, reset these to zero.
-            if num == denom:
-                num_0 = denom_0 = 0
+                self.count_bytes(words, bytes_read_dict,
+                                 bytes_written_dict,"REAL")
+            
                 
 class RatekeeperInterface(generic_server.GenericServerInterface):
 
