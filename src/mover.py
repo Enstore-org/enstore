@@ -62,9 +62,37 @@ def  mode_name(mode):
     else:
         return ['READ','WRITE','CLEANING'][mode]
 
+KB=1L<<10
 MB=1L<<20
 GB=1L<<30
 
+
+class Buffer:
+    def __init__(self, min_bytes = 0, max_bytes = 1*MB):
+        self.buf = []
+        self.buf_bytes = 0L
+        self.min_bytes = min_bytes
+        self.max_bytes = max_bytes
+    def full(self):
+        return self.buf_bytes >= self.max_bytes
+    def empty(self):
+        return self.buf_bytes <= self.min_bytes
+    def push(self, data):
+        self.buf.append(data)
+        self.buf_bytes = self.buf_bytes + len(data)
+    def pull(self):
+        data = self.buf.pop(0)
+        self.buf_bytes = self.buf_bytes - len(data)
+        return data
+    def reset(self):
+        self.buf = []
+        self.buf_bytes = 0
+    def nonzero(self):
+        return self.buf_bytes > 0
+
+    def __repr__(self):
+        return "Buffer %s  %s  %s" % (self.min_bytes, self.buf_bytes, self.max_bytes)
+    
 class Mover(  dispatching_worker.DispatchingWorker,
               generic_server.GenericServer):
     def __init__( self, csc_address, name):
@@ -83,18 +111,20 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.address = (self.config['hostip'], self.config['port'])
 
         self.do_eject = 1
-        self.max_buffer = 256*MB;
-        self.min_buffer = 16*MB;
 
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
+        min_buffer = 16*KB;
+        max_buffer = 256*MB;
+                
         if self.config.has_key('min_buffer'):
-            self.min_buffer = string.atoi(self.config['min_buffer'])
+            min_buffer = string.atoi(self.config['min_buffer'])
         if self.config.has_key('max_buffer'):
-            self.min_buffer = string.atoi(self.config['max_buffer'])
-
+            max_buffer = string.atoi(self.config['max_buffer'])
+        self.buffer = Buffer(min_buffer, max_buffer)
+            
         self.udpc =  udp_client.UDPClient()
         self.state = IDLE
         self.last_error = ()
@@ -109,7 +139,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.current_volume = None #external label of current mounted volume
         self.next_volume = None # external label of pending (MC) volume
         self.volume_family = None 
-        self.volume_status = ((None,None), (None,None))
+        self.volume_status = (["none", "none"], ["none", "none"])
         self.files = ('','')
         self.hsm_drive_sn = ''
         self.no_transfers = 0
@@ -121,7 +151,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.dismount_time = None
         self.delay = 0
         
-        self.clear_buffer() #creates self.buffer and self.buffer_bytes
         
         self.driveStatistics = {'mount':{},'dismount':{}}
 ##        self.mcc = media_changer_client.MediaChangerClient( self.csc,
@@ -216,87 +245,106 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	return {}
 
     #I/O callbacks
-    def read_tape(self, fd):
-        if verbose:  print "read tape"
-        nbytes = min(self.bytes_to_transfer - self.bytes_read, self.blocksize)
-        if nbytes == 0:
-            if verbose: print "Nothing to do!"
-            return 
-        data = os.read(fd, nbytes)
-        if len(data) != nbytes:
-            self.transfer_aborted(e_errors.READ_ERROR)
-            return
-        self.buffer.append(data)
-        self.buffer_bytes = self.buffer_bytes + nbytes
-        self.bytes_read = self.bytes_read + nbytes
-        if self.buffer_bytes:
-            if verbose: print "enabling write cli"
-            self.add_select_fd(self.client_socket, WRITE, self.write_client)
-        
-    def write_client(self, sock):
-        if verbose: print "write client"
-        if self.buffer_bytes == 0:
-            self.remove_select_fd(cli)
-            return
-        
-
-        nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
-        data = self.buffer.pop(0)
-        nbytes = len(data)
-        self.buffer_bytes = self.buffer_bytes - len(data)
-        status = sock.send(data)
-        if status != nbytes:
-            # XXX network write error, what to do?
-            pass
-        self.bytes_written = self.bytes_written + nbytes
-        if self.bytes_written == self.bytes_to_transfer:
-            self.transfer_complete()
-        pass
-    
-    def write_tape(self, fd):
-        if self.buffer_bytes == 0:
-            # turn off the select fd!
-            self.remove_select_fd(fd)
-            return
-        
-        nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
-        if verbose: print "write tape", nbytes
-        if nbytes > self.buffer_bytes:
-            if verbose: print "only have", self.buffer_bytes
-            self.remove_select_fd(fd)
-            #not enough data in buffer to keep tape streaming
-            return
-        data = self.buffer.pop(0)
-        nbytes = len(data)
-        self.buffer_bytes = self.buffer_bytes - nbytes
-        status = os.write(fd, data)
-        if status != nbytes:
-            self.transfer_aborted(e_errors.WRITE_ERROR)
-        self.bytes_written = self.bytes_written + nbytes
-        if self.bytes_written == self.bytes_to_transfer:
-            self.transfer_complete()
-            
-
+    #################################
     def read_client(self, sock):
         if verbose: print "read client"
-        nbytes = min(self.bytes_to_transfer - self.bytes_read, self.blocksize)
-        if nbytes == 0:
-            if verbose: print "nothing to do!"
-            return 
-        data = sock.recv(nbytes)
 
-        if not data:  #  The client went away!
-            self.transfer_aborted(None)
-            return
-        nbytes = len(data)
-        self.buffer.append(data)
-        self.buffer_bytes = self.buffer_bytes + nbytes
-        self.bytes_read = self.bytes_read + nbytes
-        if self.buffer_bytes:
+        while self.bytes_read < self.bytes_to_transfer and not self.buffer.full():
+
+            nbytes = min(self.bytes_to_transfer - self.bytes_read, self.blocksize)
+
+            data = sock.recv(nbytes)
+
+            if not data:  #  The client went away!
+                self.transfer_aborted(None)
+                return
+            nbytes = len(data)
+            self.buffer.push(data)
+            self.bytes_read = self.bytes_read + nbytes
+            r, w, x = select.select([sock], [], [], 0)
+            if not r:
+                break #do not block 
+            
+        if not self.buffer.empty() or self.bytes_read==self.bytes_to_transfer:
             if verbose: print "enabling write tape"
             self.add_select_fd(self.tape_fd, WRITE, self.write_tape)
-        if verbose: print "read client exits, buffer bytes=", self.buffer_bytes
+                        
+    def write_tape(self, fd):
+        if self.buffer.empty() and self.bytes_read != self.bytes_to_transfer:
+            # turn off the select fd, read_client will turn it back on
+            self.remove_select_fd(fd)
+            return
+        while self.bytes_written<self.bytes_to_transfer: #keep pumping data to tape
+            nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
+            if verbose: print "write tape", nbytes
+            if nbytes > self.buffer_bytes:
+                if verbose: print "only have", self.buffer_bytes
+                self.remove_select_fd(fd)
+                #not enough data in buffer to keep tape streaming
+                return
+            data = self.buffer.pull()
+            nbytes = len(data)
+            self.buffer_bytes = self.buffer_bytes - nbytes
+            status = os.write(fd, data)
+            if status != nbytes:
+                self.transfer_aborted(e_errors.WRITE_ERROR)
+                break
+            self.bytes_written = self.bytes_written + nbytes
+            if self.bytes_written == self.bytes_to_transfer:
+                self.transfer_complete()
+                break
+            r,w,x = select.select([], [fd], [], 0)
+            if not w:
+                break # do not block
 
+    ###################
+
+    def read_tape(self, fd):
+        if verbose:  print "read tape"
+        while self.bytes_read < self.bytes_to_transfer and self.buffer_bytes < self.max_buffer:
+            ##keep reading as long as the device has data for us 
+            nbytes = min(self.bytes_to_transfer - self.bytes_read, self.blocksize)
+           
+            data = os.read(fd, nbytes)
+            if len(data) != nbytes:
+                self.transfer_aborted(e_errors.READ_ERROR)
+                return
+            self.buffer.append(data)
+            self.buffer_bytes = self.buffer_bytes + nbytes
+            self.bytes_read = self.bytes_read + nbytes
+            r,w,x = select.select([fd],[],[],0)
+            if not r:
+                break # avoid blocking, tape not ready for reading
+            
+        if self.buffer_bytes > self.min_buffer or self.bytes_read==self.bytes_to_transfer:
+            if verbose: print "enabling write cli"
+            self.add_select_fd(self.client_socket, WRITE, self.write_client)
+
+    def write_client(self, sock):
+        if verbose: print "write client"
+        if self.buffer_bytes <= self.min_buffer and self.bytes_read != self.bytes_to_transfer:
+            self.remove_select_fd(cli) #turn off select fd, read_tape will turn it back on
+            return
+        while self.bytes_written<self.bytes_to_transfer: #keep pumping data out to the client
+            nbytes = min(self.bytes_to_transfer - self.bytes_written, self.blocksize)
+            data = self.buffer.pop(0)
+            nbytes = len(data)
+            self.buffer_bytes = self.buffer_bytes - len(data)
+            status = sock.send(data, 0x40) #XXX Linux MSG_NOWAIT
+            if status != nbytes:
+                # XXX network write error, what to do?
+                pass
+            self.bytes_written = self.bytes_written + nbytes
+            if self.bytes_written == self.bytes_to_transfer:
+                self.transfer_complete()
+                break
+            r,w,x = select.select([], [sock], [], 0)
+            if not w:
+                break
+    ##################
+    
+
+        
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
         if verbose: print "WRITE TO HSM"
@@ -309,7 +357,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if verbose: print "client fd=", self.client_socket
         if verbose: print "tape_fd=", self.tape_fd
         self.add_select_fd( self.client_socket, READ, self.read_client)
-        self.add_select_fd( self.tape_fd, WRITE, self.write_tape)
         self.state = ACTIVE        
         self.mode = WRITE
         
@@ -325,7 +372,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if verbose: print "client fd=", self.client_socket
         if verbose: print "tape_fd=", self.tape_fd
         self.add_select_fd( self.tape_fd, READ, self.read_tape)
-        self.add_select_fd( self.client_socket, WRITE, self.write_client)
         self.state = ACTIVE
         self.mode = READ
 
@@ -461,27 +507,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if verbose: print "set remaining returns", reply
             
         self.send_client_done(self.current_work_ticket, e_errors.OK)
-
-
-
         self.reset()
-        if verbose: print "YO CGW", state_name(self.state)
+
         self.update()
 
 
         
     def reset(self):
-        
         self.current_work_ticket = None
-        self.clear_buffer()
+        self.buf.reset()
         self.bytes_read = 0L
         self.bytes_written = 0L
 
-            
-        
-    def clear_buffer(self):
-        self.buffer = []
-        self.buffer_bytes = 0L
         
     def return_work_to_lm(self,ticket):
         try:
@@ -546,7 +583,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             work = "mover_busy"
         elif state is ERROR:
             work = "mover_error"
-            if ext_info is None:
+            if error_info is None:
                 status = self.last_error
             else:
                 status = error_info
