@@ -72,7 +72,7 @@ clean:
 test:
 	sh test/TestScript
 
-spotless:
+spotless: clean
 	rm -rf bin lib
 	rm -f ftt_lib/local
 
