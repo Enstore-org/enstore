@@ -72,7 +72,7 @@ class DbTable(db.DbTable):
 			if not self.has_key(i):
 				print 'M> key('+i+') is not in database'
 				error = error + 1
-			elif self.dict[i] != self.__getitem__(i):
+			elif `self.dict[i]` != `self.__getitem__(i)`:
 				print 'C> database and journal disagree on key('+i+')'
 				print 'C>  journal['+i+'] =', self.dict[i]
 				print 'C> database['+i+'] =', self.__getitem__(i)
