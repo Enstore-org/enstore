@@ -56,7 +56,7 @@ class MonitorServerClient(generic_client.GenericClient):
         self.html_server_addr = html_server_addr
         self.html_dir = html_dir
         self.refresh = refresh
-        self.timeout = 10#timeout
+        self.timeout = timeout
         self.block_size = block_size
         self.block_count = block_count
         self.summary = summary
@@ -189,7 +189,7 @@ class MonitorServerClient(generic_client.GenericClient):
         except socket.error, detail:
             #We have seen that on IRIX, when the connection succeds, we
             # get an ISCONN error.
-            if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+            if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
                 pass
             #The TCP handshake is in progress.
             elif detail[0] == errno.EINPROGRESS:
@@ -580,7 +580,10 @@ def get_host_list(csc, config_host, config_port, hostip=None):
         ip_list = get_all_ips(config_host, config_port, csc)
 
         for ip in ip_list:
-            host_list.append((socket.gethostbyaddr(ip)[0], ip))
+            try:
+                host_list.append((socket.gethostbyaddr(ip)[0], ip))
+            except socket.error:
+                print "Skipping: %s" % ip
         host_list.sort()
 
     return host_list, vetos
