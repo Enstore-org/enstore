@@ -1479,38 +1479,39 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	filename = "%s_%s.html"%(lm, enstore_constants.PENDING)
 	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
 	# do the read queue first
-	if the_work and not the_work[enstore_constants.READ] == []:
-	    qlen = len(the_work[enstore_constants.READ])
-	    if max_lm_rows == DEFAULT_ALL_ROWS or qlen <= max_lm_rows:
-		rows_on_page = qlen
-		extra_rows = 0
-	    else:
-		rows_on_page = max_lm_rows
-		extra_rows = qlen - max_lm_rows
-		    
-	    for qelem in the_work[enstore_constants.READ][0:rows_on_page]:
-		rows.append(self.make_lm_pend_read_row(qelem, cols))
+	if the_work and type(the_work) == types.DictionaryType:
+	    if not the_work[enstore_constants.READ] == []:
+	        qlen = len(the_work[enstore_constants.READ])
+		if max_lm_rows == DEFAULT_ALL_ROWS or qlen <= max_lm_rows:
+		    rows_on_page = qlen
+		    extra_rows = 0
+		else:
+		    rows_on_page = max_lm_rows
+		    extra_rows = qlen - max_lm_rows
 
-	    if extra_rows > 0:
-		for qelem in  the_work[enstore_constants.READ][rows_on_page:]:
-		    extra_read_rows.append(self.make_lm_pend_read_row(qelem, 
-								      cols))
-	if the_work and not the_work[enstore_constants.WRITE] == []:
-	    qlen = len(the_work[enstore_constants.WRITE])
-	    if max_lm_rows == DEFAULT_ALL_ROWS or not qlen > max_lm_rows:
-		rows_on_page = qlen
-		extra_rows = 0
-	    else:
-		rows_on_page = max_lm_rows
-		extra_rows = qlen - max_lm_rows
-		    
-	    for qelem in the_work[enstore_constants.WRITE][0:rows_on_page]:
-		rows.append(self.make_lm_pend_write_row(qelem, cols))
+		for qelem in the_work[enstore_constants.READ][0:rows_on_page]:
+		    rows.append(self.make_lm_pend_read_row(qelem, cols))
 
-	    if extra_rows > 0:
-		for qelem in  the_work[enstore_constants.WRITE][rows_on_page:]:
-		    extra_write_rows.append(self.make_lm_pend_write_row(qelem, 
-									cols))
+		if extra_rows > 0:
+		    for qelem in  the_work[enstore_constants.READ][rows_on_page:]:
+			extra_read_rows.append(self.make_lm_pend_read_row(qelem, 
+									  cols))
+	    if not the_work[enstore_constants.WRITE] == []:
+		qlen = len(the_work[enstore_constants.WRITE])
+		if max_lm_rows == DEFAULT_ALL_ROWS or not qlen > max_lm_rows:
+		    rows_on_page = qlen
+		    extra_rows = 0
+		else:
+		    rows_on_page = max_lm_rows
+		    extra_rows = qlen - max_lm_rows
+
+		for qelem in the_work[enstore_constants.WRITE][0:rows_on_page]:
+		    rows.append(self.make_lm_pend_write_row(qelem, cols))
+
+		if extra_rows > 0:
+		    for qelem in  the_work[enstore_constants.WRITE][rows_on_page:]:
+			extra_write_rows.append(self.make_lm_pend_write_row(qelem, 
+									    cols))
 	extra_rows = extra_read_rows + extra_write_rows
 	if extra_rows:
 	    # we will need to cut short the number of queue elements that we 
