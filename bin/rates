@@ -49,44 +49,32 @@ import traceback
 import udp_client
 import errno
 u = udp_client.UDPClient()
-bytes=-1
 t=-1
-nt=-1.
 tfmt="%a %m-%d-%Y-%H:%M:%S"
 while 1==1:
   try:
     s = u.send( {"work":"status"}, ("'$host'",'$port'), '${opt_udp_timeout:-3}', '${opt_udp_retries:-2}' )
-    nt=time.time()
     #print "s=",s
-    sts=0
-    rate = -1.
-    moved = 0.
+    sts = 0
     state = "unknown"
     if s["state"]=="idle":
-      rate = 0.
-      moved = 0
       state = "idle"
+      wr_rate = 0.
+      rd_rate = 0.
+      print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), 0.,      0.,      0,       0,       0,       0., "idle", "'$mvr'","'$host'",'$port')
     elif s["mode"]=="w" and s["state"]=="busy":
-      if t==-1 or bytes==-1:
-        rate = 0.
-        moved = 0
-        state = "rate_init"
-      else:
-        rate = (s["wr_bytes"]-bytes)/(nt-t)/1024./1024.
-        moved = s["wr_bytes"]
-        state = "writing"
-        if rate<0.:
-          rate = 0.
-      bytes=s["wr_bytes"]
-    print "%s %.3f %.10i %9.9s %s %s %i %.3f" % (time.strftime(tfmt,time.localtime(nt)), rate, moved, state, "'$mvr'","'$host'",'$port',nt)
+      state = "writing"
+      dt = s["time_stamp"]-s["zlast_status"]["time_stamp"]
+      written = s["wr_bytes"]-s["zlast_status"]["wr_bytes"]
+      readten = s["rd_bytes"]-s["zlast_status"]["rd_bytes"]
+      left2write = s["rd_bytes"]-s["wr_bytes"]
+      wr_rate = written/dt/1024./1024.
+      rd_rate = readten/dt/1024./1024.
+      print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), wr_rate, rd_rate, written, readten, left2write, dt, state, "'$mvr'","'$host'",'$port')
     sys.stdout.flush()
-    t=nt
     time.sleep('${opt_update_delay:-60}')
   except errno.errorcode[errno.ETIMEDOUT]:
-    rate = 0.
-    moved = 0
-    state = "timeout"
-    print "%s %.3f %.10i %9.9s %s %s %i %.3f" % (time.strftime(tfmt,time.localtime(nt)), rate, moved, state, "'$mvr'","'$host'",'$port',nt)
+    print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), 0.,      0.,      0,       0,       0,       0., "timeout", "'$mvr'","'$host'",'$port')
     sys.stdout.flush()
   except:
     traceback.print_exc()
