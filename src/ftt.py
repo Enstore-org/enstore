@@ -99,7 +99,8 @@ class FTT:
     def open_dev(self):
         return check(_ftt.ftt_open_dev(self.d))
     def close(self):
-##    assert self.d!=None
+        if self.d is None:
+            return 0
         ret = check(_ftt.ftt_close(self.d))
         self.d = None
         return ret
