@@ -323,10 +323,10 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         itsthere = 1
     except:
         itsthere = 0
-    if itsthere:
-        jraise(errno.errorcode[errno.EEXIST],"encp.write_to_hsm: "\
-               +outfile+" already exists")
     (machine, fullname, dir) = fullpath(outfile)
+    if itsthere:
+        jraise(errno.errorcode[errno.EEXIST],"encp.read_to_hsm: "\
+               +fullname+" already exists")
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
