@@ -1,13 +1,14 @@
 <body>
 <font size=7><b><i>
-Enstore Data Storage System
+<center>Enstore Technical Design Document</center>
 </i></b></font>
 <p>
 <font size=+3><b>Table of Contents</b></font>
 <ul>
 <li><a href="#overview">1 Enstore Architecture</a>
-<li><a href="#scope">1.0.1 Scope</a>
+<li><a href="#scope">1.0.1 Scope and Overview</a>
 <li><a href="#assum">1.0.2 Assumptions and Constraints</a>
+<li><a href="#aintro">1.0.3 Components</a>
 <li><a href="#pnfs">1.1 The DESY <em>Pnfs</em> Namespace</a>
 <li><a href="#pserver">1.1.1 <em>Pnfs</em> Tests</a>
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
@@ -60,7 +61,7 @@ Enstore Data Storage System
 <h2><a name="overview">
 1 Enstore Architecture
 </h2>
-The Enstore system provides a generic interface for end users to
+The Enstore system provides a generic interface for experimenters to
 efficiently use mass storage systems as easily as if they were native file
 systems.
 <p>
@@ -70,29 +71,75 @@ systems.
 <p>
 
 <h3><a name="scope">
-1.0.1 Scope
+1.0.1 Scope and Overview
 </h3>
 
+
+Enstore provides distributed access to and management of petabytes of data
+stored on tape. The data can be made of up to billions of files of varying
+sizes - typically of between 1 and 2 Gigabytes in size. At any time, many of
+the tapes are accessible through automated tape libraries. The system supports
+migration of tapes to and from shelves - export and import - where operator
+intervention is required to move the tapes between the shelves and roboticly
+accessible tape drives. The system treats robot's shelves as a scarce
+commodity.
 Enstore is a system to provide mass storage for large Run II data sets.  As
 such it is not a general purpose mass storage system, but optimized to
 allow access to large datasets made of many files.  The system supports
 random access of files, but also streaming, the sequential access of
-successive files on tape. The system treats robot's shelves as a scarce
-commodity.
-
+successive files on tape. 
 <p>
 
-Enstore has been designed to provide logging of data directly from the
-experiment's data acquisition systems. The writing and reading of tapes
+The Enstore system provides for access to the data by user/client applications
+which are distributed across an IP network. It supports tape
+drives attached locally to the users' computer, as well as those
+remotely accessible over the network.
+<p>
+
+The Enstore system provides resource management of the available tape drives
+such that, for example, logging of data from the data acquisition systems can
+be given guaranteed access to the tape bandwidth whatever other user accesses
+are being requested.
+Enstore is designed to be used by Fermilab experiments data acquisition, data
+processing and analysis systems. Well defined interfaces will be provided to
+these data handling systems to allow them to easily use the services provided.
+The writing and reading of tapes
 must therefore be reliable and efficient, and the system must be robust
 enough to support this critical application without compromising data
 taking.  Enstore's goal is to provide a system that can be extended as
 needed for the experiments actual data taking needs, as well as be easily
 maintainable for the duration of several data taking runs.
-
 <p>
 
-Enstore provides the following features:
+Enstore is based on a client-server model that allows hot swapping of
+hardware components and dynamic software configuration, is platform
+independent, runs on heterogeneous environments and is easily extendable.
+Most of the operations are transparent to the user.  System performance is
+monitored and fine tunable.  A great deal of care has been taken to ensure
+that it is able to prevent or to recover from a worst case scenario.  The
+system has layers around it to customize and address problems as they
+occur.  When possible, these layers are expected to use already existing
+components (e.g. FTT, pnfs).
+<p>
+
+The Enstore system is designed to provide for the needed Run II data access
+throughput requirements within the budget assigned.
+The system software is layered and accessible to
+the Run II developers such that needed modifications can be made in a timely
+manner to meet the needs of commissioning and running of the Run II detectors.
+<p>
+
+Enstore is designed to support "lights out" operation of the Run II
+automated tape library systems. To this end, the design is targeted
+towards requiring operator intervention at no more than 8 hour
+intervals - for example, to import/export requests are queued and need only be
+handled only within the daytime operator shifts. Careful attention
+is paid to error reporting, handling and recovery in order to
+require the minimal possible load on the operations and support staff.
+<p>
+
+
+To summarize, Enstore provides the following features:
 
 <menu>
 
@@ -104,8 +151,8 @@ Enstore provides the following features:
   <li>Reliable, efficient and prioritized write access from the experiment
        data acquisition systems for the logging of raw data.
 
-  <li>Optimzed access to large (Petabyte) datasets made up of many (100s of
-       millions of) files of 1-5 Gbytes in size.
+  <li>Optimized access to large (petabyte) datasets made up of many (100s of
+       millions of) files of 1-5 GB in size.
 
   <li>Efficient and flexible support for "write streaming" of data to tape,
        where data is physically clustered on tapes according to a simple
@@ -143,18 +190,6 @@ Enstore provides the following features:
 
 </menu>
 
-<p>
-
-Enstore is based on a client-server model that allows hot swapping of
-hardware components and dynamic software configuration, is platform
-independent, runs on heterogeneous environments and is easily extendable.
-Most of the operations are transparent to the user.  System performance is
-monitored and fine tunable.  A great deal of care has been taken to ensure
-that it is able to prevent or to recover from a worst case scenario.  The
-system has layers around it to customize and address problems as they
-occur.  When possible, these layers are expected to use already existing
-components (e.g. ftt, pnfs).
-<p>
 
 <h3><a name="assum">
 1.0.2 Assumptions and Constraints
@@ -181,19 +216,31 @@ true, real, or certain.
 <LI> Fermilab FTT, a platform-independent SCSI tape package is suitable for
      the selected hardware, and useful over Run II projects.
 
+<li> OCS will be available and usable for operator mounts.
+
+<li> OCS will be available and usable as the repository of the tape and
+     drive statistics.  Enstore, itself will not store long term statistics.
+    
+
 <LI> Tape drives may be attached to user's computers via IP, and an adequate
      IP based network is constructed for Run II.
 
-<LI> A non-transparent interface FMSS-like interface + C API is
+<LI> A non-transparent interface FMSS-like interface is
      appropriate for the users.
 
 <li> Python is an appropriate choice for implementing the project.  Loadable C
      modules will be used where appropriate, for example, to increase
      performance.
 
+<li> Enstore does not yet support a disk cache or buffer in front of the media.
+     However, one is conceivable and planned for a future release.
+<p>
 </menu>
 
---------
+<h3><a name="aintro">
+1.0.3 Components
+</h3>
+
 
 Enstore uses a client-server architecture to provide a generic interface for users
 to efficiently use mass storage systems.
@@ -248,9 +295,6 @@ We control all of the source code for the system except for that of
 <img src="enstoreSimple.gif">
 <p>
 <a href="enstoreSimple.ps">(also available in Postscript)</a>
-<p>
-Enstore does not yet support a disk cache or buffer in front of the media.
-However, one is conceivable and planned for a future release.
 <p>
 Like <em>tcp</em>, the system is architected with distributed and
 peer-to-peer reliability.
