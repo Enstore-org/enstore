@@ -228,8 +228,6 @@ class Interface:
                 self.backup = 1
             elif opt == "--bfid":
                 self.bfid = value
-            elif opt == "--bfids":
-                self.bfids = 1
             elif opt == "--bytes":
                 if not self.test_mode:
                     sys.stderr.write("bytecount may only be specified in test mode\n")
