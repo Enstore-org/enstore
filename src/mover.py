@@ -1423,7 +1423,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = save_state
                 return 0
             wrapper_type = volume_family.extract_wrapper(self.vol_info['volume_family'])
-            if ticket['work'] == 'write_to_hsm' and wrapper_type is not "null":
+            if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
                 ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
                 self.send_client_done(ticket, e_errors.USERERROR,
                                       'only "null" wrapper is allowed for NULL mover')
