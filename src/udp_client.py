@@ -61,10 +61,17 @@ class UDPClient:
             if badsock != 0 :
                 print "udp_client send, pre-sendto error:", \
                       errno.errorcode[badsock]
-	    try:
-		self.socket.sendto (message, address)
-	    except:
-		print message,address
+            sent = 0
+            while sent == 0:
+                try:
+                    self.socket.sendto(message, address)
+                    sent = 1
+                except socket.error:
+                    print time.strftime("%c",time.localtime(time.time())),\
+                          "udp_client: Nameserver not responding\n",\
+                          message,"\n",address,"\n",\
+                          sys.exc_info()[0],"\n", sys.exc_info()[1]
+                    sleep(1)
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
                 print "udp_client send, post-sendto error:", \
@@ -121,11 +128,29 @@ class UDPClient:
         # stringify message and check if it is too long
         message = `(self.ident, self.number, text)`
         if len(message) > TRANSFER_MAX :
-            raise errorcode[EMSGSIZE],"UDPClient.send:message too big.Size = "\
+            raise errorcode[EMSGSIZE],"UDPCl.send_n_w:message too big.Size = "\
                   +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message
 
         # send the udp message
-        self.socket.sendto (message, address)
+        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+        if badsock != 0 :
+            print "udp_client send_no_wait, pre-sendto error:", \
+                  errno.errorcode[badsock]
+        sent = 0
+        while sent == 0:
+            try:
+                self.socket.sendto(message, address)
+                sent = 1
+            except socket.error:
+                print time.strftime("%c",time.localtime(time.time())),\
+                      "udp_client (no wait): Nameserver not responding\n",\
+                      message,"\n",address,"\n",\
+                      sys.exc_info()[0],"\n", sys.exc_info()[1]
+                sleep(1)
+        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+        if badsock != 0 :
+            print "udp_client send_no_wait, post-sendto error:", \
+                  errno.errorcode[badsock]
 
 if __name__ == "__main__" :
     import getopt
