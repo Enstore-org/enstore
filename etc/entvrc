@@ -793,11 +793,11 @@ client_color ketchup        #ff9900
 client_color mayo           #ff9900
 client_color mustard        #ff9900
 client_color pesto          #ff9900
-client_color cmsstore01     #ff9900
-#client_color cmsstore02     #ff9900
-#client_color cmsstore03     #ff9900
-#client_color cmsstore04     #ff9900
-client_color cmsstore05     #ff9900
+client_color cmsstor01     #ff9900
+#client_color cmsstor02     #ff9900
+#client_color cmsstor03     #ff9900
+#client_color cmsstor04     #ff9900
+client_color cmsstor05     #ff9900
 
 #entv generated information
 
