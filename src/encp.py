@@ -6005,20 +6005,20 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
 #######################################################################
 
-def get_file_clerk_info(bfid):
+def get_file_clerk_info(bfid_or_ticket):
     #While __get_fcc() can accept None as the parameter value,
     # we expect that it will not be, since the purpose of
     # get_file_clerk_info() is to return the information about a bfid.
 
     #Get the clerk info.
-    fcc, fc_ticket = __get_fcc(bfid)
+    fcc, fc_ticket = __get_fcc(bfid_or_ticket)
 
     # Determine if the information returned is complete.
     if fc_ticket == None or \
            not e_errors.is_ok(fc_ticket) or \
            not fc_ticket.get('external_label', None):
         raise EncpError(None,
-                        "Failed to obtain information for bfid %s." % bfid,
+              "Failed to obtain information for bfid %s." % fc_ticket['bfid'],
                         fc_ticket.get('status', e_errors.EPROTO), fc_ticket)
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
@@ -6032,13 +6032,15 @@ def get_file_clerk_info(bfid):
 
     return fc_ticket
 
-def get_volume_clerk_info(volume):
+def get_volume_clerk_info(volume_or_ticket):
     #While __get_vcc() can accept None as the parameter value,
     # we expect that it will not be, since the purpose of
     # get_volume_clerk_info() is to return the information about a bfid.
     
     #Get the clerk info.
-    vcc, vc_ticket = __get_vcc(volume)
+    vcc, vc_ticket = __get_vcc(volume_or_ticket)
+
+    volume = vc_ticket['external_label']
     
     # Determine if the information returned is complete.
     
@@ -6052,12 +6054,12 @@ def get_volume_clerk_info(volume):
     if not vc_ticket.get('system_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain system_inhibit information."
-                        % volume,
+                        % vc_ticket['external_label'],
                         e_errors.EPROTO, vc_ticket)
     if not vc_ticket.get('user_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain user_inhibit information."
-                        % volume,
+                        % vc_ticket['external_label'],
                         e_errors.EPROTO, vc_ticket)
 
     #Include the server address in the returned info.
@@ -6081,13 +6083,13 @@ def get_volume_clerk_info(volume):
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         raise EncpError(None,
-                        "Volume %s is marked %s." % (volume, inhibit),
+            "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
                         inhibit, vc_ticket)
 
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         raise EncpError(None,
-                        "Volume %s is marked %s." % (volume, inhibit),
+            "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
                         inhibit, vc_ticket)
 
     return vc_ticket
