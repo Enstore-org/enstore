@@ -1,5 +1,7 @@
 import os
+import sys
 import tempfile
+import popen2
 
 def callGet(tapeLabel, files, pnfsDir, outputDir):
     fname = tempfile.mktemp()
@@ -30,4 +32,18 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
     args = ("python", path, "--list", fname, tapeLabel,pnfsDir, outputDir)
 
     print "python", args
-    return os.spawnvp(os.P_WAIT, "python", args)
+
+    standard_out, standard_in, standard_err = popen2.popen3(args)
+    missingFiles = []
+    line = standard_err.readline()
+    while line:
+        if line[:17] == "unable to deliver":
+            missingFiles.append(line[19:])
+        line = standard_err.readline()
+
+    if missingFiles:
+        print >>sys.stderr, "The following files were requested, but not delivered"
+        for missingFile in missingFiles:
+            print >>sys.stderr, "file:", missingFile
+        
+    #return os.spawnvp(os.P_WAIT, "python", args)
