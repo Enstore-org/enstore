@@ -24,6 +24,7 @@ import udp_client
 import checksum
 import udp_server
 import cleanUDP
+import volume_family
 
 #Completion status field values.
 SUCCESS = "SUCCESS"
@@ -53,15 +54,7 @@ def untried_output(request_list):
             request['status'] = (e_errors.UNKNOWN,
                                  "File transfer not attempted.")
             error_output(request)
-                
-        
-#def get_request_callback_addr(intf):
-#
-#    u = udp_client.UDPClient()
-#    tsd = u.get_tsd()
-#    
-#    return (tsd.host, tsd.port), u
-    
+
 def transfer_file(in_fd, out_fd):
 
     bytes = 0L #Number of bytes transfered.
@@ -74,18 +67,21 @@ def transfer_file(in_fd, out_fd):
         if in_fd not in r:
             status = (e_errors.TIMEDOUT, "Read")
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
+            break
         
         data = os.read(in_fd, 1048576)
 
         if len(data) == 0: #If read the EOF, return number of bytes transfered.
             status = (e_errors.OK, None)
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
+            break
 
         r, w, x = select.select([], [out_fd], [], 15 * 60)
 
         if out_fd not in w:
             status = (e_errors.TIMEDOUT, "Write")
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
+            break
 
         bytes = bytes + os.write(out_fd, data)
 
@@ -163,6 +159,9 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
 
+        #Store what there is in the 'exfer' sub-ticket.
+        work_ticket['exfer'] = done_ticket
+
         Trace.message(5, "Completed reading from tape.")
         Trace.message(10, "DONE_TICKET (transfer_file):")
         Trace.message(10, pprint.pformat(done_ticket))
@@ -173,23 +172,20 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
                                      None, None, e)
 
         if not e_errors.is_ok(result_dict):
-            work_ticket = encp.combine_dict(result_dict,
-                                            work_ticket)
+            #work_ticket = encp.combine_dict(result_dict,
+            #                                work_ticket)
             Trace.log(e_errors.ERROR, str(result_dict['status']))
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
             return work_ticket
 
+        #We should not need this process_request() call.  The mover shoule
+        # only send one message on the udp
+        #
         #Pretend we are the library manager.
         #request = udp_socket.process_request()
-        #print "LENGTH OF LM RESPONSE:", len(str(request))
         #Trace.message(10, "LM MESSAGE:")
         #Trace.message(10, pprint.pformat(request))
-
-        #Combine these tickets.  Encp would have this already done, in
-        # its transfer_file() function, but not gets transfer_file() function.
-        work_ticket = encp.combine_dict({'exfer' : done_ticket},
-                                        result_dict, work_ticket)
 
         #Get the final success/failure message from the mover.  If this side
         # has an error, don't wait for the mover in case the mover is waiting
@@ -206,45 +202,35 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(10, "MOVER_REQUEST:")
         Trace.message(10, pprint.pformat(mover_request))
 
+        #Combine these tickets.
+        work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
+        
         #For the case where we don't know how many files exist and we tried
         # to read passed the last file, we don't want to handle any retries
         # because we are done.
         if mover_done_ticket['status'] == (e_errors.READ_ERROR,
                                            e_errors.READ_EOD):
             Trace.log(e_errors.INFO, str(mover_done_ticket['status']))
-            work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
+            #work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
+            #return work_ticket
             return work_ticket
-        #For the case where we are reading (SDSS) tapes with two file marks
-        # after the VOL1 header, we don't want to handle any retries, just
-        # pass the error up a level.
-        if mover_done_ticket['status'] == (e_errors.READ_ERROR,
-                                           e_errors.READ_NODATA):
-            Trace.log(e_errors.INFO, str(mover_done_ticket['status']))
-            work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
-            # Close these descriptors before they are forgotten about.
-            encp.close_descriptors(out_fd, data_path_socket)
-            return work_ticket
-
+        
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
                                                 mover_done_ticket, None,
                                                 None, None, e)
 
         if not e_errors.is_ok(mover_result_dict):
-            work_ticket = encp.combine_dict(mover_result_dict,
-                                            work_ticket)
-            Trace.log(e_errors.ERROR, str(mover_result_dict['status']))
+            #work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
+            Trace.log(e_errors.ERROR, str(mover_done_ticket['status']))
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
+            #return work_ticket
             return work_ticket
-
-        #Combine these tickets.
-        work_ticket = encp.combine_dict(mover_done_ticket,
-                                        mover_result_dict,
-                                        work_ticket)
-
+            
+        
         #Check the crc.
         encp.check_crc(work_ticket, e, out_fd)
 
@@ -257,11 +243,11 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
-            work_ticket = encp.combine_dict(result_dict, work_ticket)
-            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            #work_ticket = encp.combine_dict(result_dict, work_ticket)
+            Trace.log(e_errors.ERROR, str(work_ticket['status']))
             return work_ticket
         
-        work_ticket = encp.combine_dict(result_dict, work_ticket)
+        #work_ticket = encp.combine_dict(result_dict, work_ticket)
         return work_ticket
         
 def set_metadata(ticket, intf):
@@ -431,27 +417,32 @@ def main(e):
     for request in requests_per_vol[e.volume]:
         encp.create_zero_length_files(request['outfile'])
 
-    while requests_outstanding(requests_per_vol[e.volume]):
-
-        #Get the next volume in the list to transfer.
-        request, index = get_next_request(requests_per_vol[e.volume])
-
-        #Only the first submission goes to the LM for volume reads.
+    #Get the next volume in the list to transfer.
+    request, index = get_next_request(requests_per_vol[e.volume])
+    
+    #Only the first submission goes to the LM for volume reads.  On errors,
+    # encp.handle_retries() will send the request to the LM.  Thus this
+    # code should only be done once.
+    for request in requests_per_vol[e.volume]:
+        #Set this for each request.
         request['method'] = "read_tape_start" #evil hacks
         request['route_selection'] = 1 #On for Get..
         request['submitted'] = None #Failures won't be re-sent if not None.
-        Trace.message(10, "LM SUBMISSION TICKET:")
-        Trace.message(10, pprint.pformat(request))
-        submitted, reply_ticket = encp.submit_read_requests(
-            [request], tinfo, e)
+    Trace.message(10, "LM SUBMISSION TICKET:")
+    Trace.message(10, pprint.pformat(request))
+    submitted, reply_ticket = encp.submit_read_requests(
+        [request], tinfo, e)
+    Trace.message(10, "LM RESPONCE TICKET:")
+    Trace.message(10, pprint.pformat(reply_ticket))
+    Trace.message(4, "Read tape submission sent to LM.")
+    
+    if not e_errors.is_ok(reply_ticket):
+        sys.stderr.write("Unable to read volume %s: %s\n" %
+                         (e.volume, reply_ticket['status']))
+        encp.quit(1)
 
-        if not e_errors.is_ok(reply_ticket):
-            sys.stderr.write("Unable to read volume %s: %s\n" %
-                             (e.volume, reply_ticket['status']))
-            encp.quit(1)
-
-        Trace.message(4, "Read tape submission sent to LM.")
-
+    while requests_outstanding(requests_per_vol[e.volume]):
+        
         #Open the routing socket.
         #config = host_config.get_config()
         use_listen_socket = listen_socket
@@ -521,7 +512,7 @@ def main(e):
 
             #Combine the ticket from the mover with the current information.
             # Remember the ealier dictionaries 'win' in setting values.
-            request = encp.combine_dict(request, ticket)
+            request = encp.combine_dict(ticket, request)
             #Encp create_read_request() gives each file a new unique id.
             # The LM can't deal with multiple mover file requests from one
             # LM request.  Thus, we need to set this back to the last unique
@@ -540,6 +531,7 @@ def main(e):
 
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
+
                 #Tell the user what happend.
                 Trace.message(e_errors.INFO,
                           "File %s copied successfully." % request['infile'])
@@ -581,37 +573,7 @@ def main(e):
                 request, index = get_next_request(requests_per_vol[e.volume],
                                                   file_number)
                 continue
-            elif done_ticket['status'] == (e_errors.READ_ERROR,
-                                           e_errors.READ_NODATA):
-                #This error is recieved from the mover.  It should (in theory)
-                # only occur on ingested SDSS 'gang' tapes.  These tapes
-                # are a problem because there are two filemarks after
-                # the VOL1 header (instead of just one).
-                
-                #When this error occurs, we need to update all uncompleted
-                # transfers.
-                for i in range(len(requests_per_vol[e.volume])):
-                    request = requests_per_vol[e.volume][i]
 
-                    #The required update involves adding one to the file
-                    # position part of the location cookie.
-                    if request.get('completion_status', None) != SUCCESS:
-                        lc = request['fc']['location_cookie']
-                        number = encp.extract_file_number(lc)
-                        number = number + 1
-                        lc = encp.generate_location_cookie(number)
-                        request['fc']['location_cookie'] = lc
-                        requests_per_vol[e.volume][i] = request
-
-                #What is the correct action on this 'error?'
-                #Go back to the LM (end_session & break) or mini-loop
-                # back to mover (continue)?
-
-                continue
-
-                #We are done with this mover.  Go to next LM.
-                #end_session(udp_socket, control_socket)
-                #break
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
             elif done_ticket['status'] == (e_errors.READ_ERROR,
@@ -666,6 +628,7 @@ def main(e):
                 #We are done with this mover.
                 end_session(udp_socket, control_socket)
                 break
+                #continue #The retry alread sent request to mover.
 
     #Perform any necessary file cleanup.
     encp.quit(0)
