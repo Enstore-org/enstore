@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import os
 import sys
@@ -32,7 +36,7 @@ import enstore_constants
 import enstore_functions2
 #import log_client
 
-MY_NAME = "MNTR_CLI"
+MY_NAME = enstore_constants.MONITOR_CLIENT       #"MNTR_CLI"
 MY_SERVER = enstore_constants.MONITOR_SERVER
 
 SEND_TO_SERVER = "send_to_server"
@@ -452,6 +456,9 @@ class MonitorServerClient(generic_client.GenericClient):
             'refresh': self.refresh
             }
             )
+
+        if not e_errors.is_ok(reply):
+            sys.stderr.write("Failed to update measurements.\n")
 
     #Either prints out message to screen, stores info. in a dictionary or both.
     #hostname: The current node that had its rate checked.

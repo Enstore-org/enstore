@@ -33,9 +33,10 @@ import volume_clerk_client
 import volume_family
 import pnfs
 import info_client
+import enstore_constants
 
-MY_NAME = "FILE_C_CLIENT"
-MY_SERVER = "file_clerk"
+MY_NAME = enstore_constants.FILE_CLERK_CLIENT   #"FILE_C_CLIENT"
+MY_SERVER = enstore_constants.FILE_CLERK        #"file_clerk"
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 

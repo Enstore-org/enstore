@@ -23,9 +23,10 @@ import time
 import callback
 import hostaddr
 import e_errors
+import enstore_constants
 
-MY_NAME = "info_client"
-MY_SERVER = "info_server"
+MY_NAME = enstore_constants.INFO_CLIENT     #"info_client"
+MY_SERVER = enstore_constants.INFO_SERVER   #"info_server"
 RCV_TIMEOUT = 10
 RCV_TRIES = 1
 

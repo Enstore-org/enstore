@@ -3,35 +3,44 @@
 # system import
 import os
 import sys
-import string
-import pprint
+#import string
+#import pprint
 import pwd
 import socket
+import time
 
 # enstore import
 import generic_client
 import option
-import time
+import enstore_constants
 
-MY_NAME = "drivestat_client"
-MY_SERVER = "drivestat_server"
+
+MY_NAME = enstore_constants.DRIVESTAT_CLIENT    #"drivestat_client"
+MY_SERVER = enstore_constants.DRIVESTAT_SERVER  #"drivestat_server"
 RCV_TIMEOUT = 10
 RCV_TRIES = 1
 
 class dsClient(generic_client.GenericClient):
 	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
-		rcv_tries = RCV_TRIES):
+		     rcv_tries = RCV_TRIES, server_address = None,
+		     flags = 0, logc = None, alarmc = None):
 		self.logname = logname
 		self.node = os.uname()[1]
 		self.pid = os.getpid()
-		generic_client.GenericClient.__init__(self, csc, MY_NAME)
+		generic_client.GenericClient.__init__(
+			self, csc, MY_NAME, server_address = server_address,
+			flags = flags, logc = logc, alarmc = alarmc,
+			rcv_timeout = rcv_timeout, rcv_tries = rcv_tries,
+			server_name = MY_SERVER)
 		try:
 			self.uid = pwd.getpwuid(os.getuid())[0]
 		except:
 			self.uid = "unknown"
 		self.rcv_timeout = rcv_timeout
 		self.rcv_tries = rcv_tries
-		self.server_address = self.get_server_address(MY_SERVER, self.rcv_timeout, self.rcv_tries)
+		#self.server_address = self.get_server_address(MY_SERVER,
+		#                                             self.rcv_timeout,
+		#					      self.rcv_tries)
 
 	# send_no_wait
 	def send2(self, ticket):

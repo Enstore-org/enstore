@@ -33,9 +33,10 @@ import e_errors
 import file_clerk_client
 import cPickle
 import info_client
+import enstore_constants
 
-MY_NAME = "VOLUME_C_CLIENT"
-MY_SERVER = "volume_clerk"
+MY_NAME = enstore_constants.VOLUME_CLERK_CLIENT  #"VOLUME_C_CLIENT"
+MY_SERVER = enstore_constants.VOLUME_CLERK       #"volume_clerk"
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 

@@ -19,8 +19,8 @@ import e_errors
 import option
 import Trace
 
-MY_NAME = "INQ_CLIENT"
-MY_SERVER = "inquisitor"
+MY_NAME = enstore_constants.INQUISITOR_CLIENT    #"INQ_CLIENT"
+MY_SERVER = enstore_constants.INQUISITOR         #"inquisitor"
 
 RCV_TIMEOUT = 0
 RCV_TRIES = 0
