@@ -937,6 +937,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
+        # log the activity
+        Trace.log(e_errors.INFO, "start listing "+external_label)
         vol = {}
         if self.dict.inx.has_key('external_label'):  # use index
             # now get a cursor so we can loop on the database quickly:
@@ -965,6 +967,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
+        Trace.log(e_errors.INFO, "finish listing "+external_label)
         return
 
     def tape_list_saved(self,ticket):
