@@ -22,7 +22,7 @@ dofull=${1:-0}
 # you store the LABEL name in $VAULT/CURRENT_TAPE
 
 LABEL=NOLABL; export LABEL
-
+VERBOSE=""
 
 
 # function to return date so it can be used in filename
@@ -122,7 +122,7 @@ counter=0
 cat $PNFS_FILES| while read file; do
   counter=`expr $counter + 1`;
   echo "$counter of $lines PNFS database files"
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $file"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL $VERBOSE --pnfs-dir=/pnfs/backups $file"
 done
 rm -f $PNFS_FILES
 find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
@@ -143,7 +143,7 @@ counter=0
 cat $ENSTORE_FILES| while read file; do
   counter=`expr $counter + 1`;
   echo "$counter of $lines ENSTORE database files"
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups  $file"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL $VERBOSE --pnfs-dir=/pnfs/backups  $file"
 done
 rm -f $ENSTORE_FILES
 find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
@@ -166,7 +166,7 @@ cat $ENSTORELOG_FILES| while read file; do
   echo "$counter of $lines ENSTORE log files"
   output=$VAULT/`basename $file`.$now.tbz2
   doit "bzip2 < $file > $output"
-  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $output"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL $VERBOSE --pnfs-dir=/pnfs/backups $output"
   rm -f $output
 done
 rm -f $ENSTORELOG_FILES
@@ -180,7 +180,7 @@ echo "$kind backup performed for AML/2 shadow"
 doit "tar $tar_options -cf - $AML2 | bzip2 > $AML2_TAR"
 ls -l $AML2_TAR
 doit "bunzip2 < $AML2_TAR | tar -tvf -"
-doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --verbose --pnfs-dir=/pnfs/backups $AML2_TAR"
+doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL $VERBOSE --pnfs-dir=/pnfs/backups $AML2_TAR"
 rm -f $AML2_TAR
 
 
