@@ -19,15 +19,15 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
     
     path=os.getenv("ENSTORE_DIR")
     if path:
-        path = path + "/bin/get.py"
+        path = os.path.join(path, "bin/get")
     else:
         path = os.getenv("SDSS_DIR")
         if not path:
-            print "SDSS_DIR not set, can't find get.py"
+            print "SDSS_DIR not set, can't find get."
             return -2
         else:
-            path = path + "/get.py"
-        
+            path = os.path.join(path , "get")
+
     #args = ("python", path, "--verbose", "1", "--list", fname, tapeLabel,pnfsDir, outputDir)
     args = ("python", path, "--list", fname, tapeLabel,pnfsDir, outputDir)
 
@@ -42,8 +42,9 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         line = standard_err.readline()
 
     if missingFiles:
-        print >>sys.stderr, "The following files were requested, but not delivered"
+        sys.stderr.write("The following files were requested, "
+                         "but not delivered.\n")
         for missingFile in missingFiles:
-            print >>sys.stderr, "file:", missingFile
+            sys.stderr.write("file: %s\n" % missingFile)
         
     #return os.spawnvp(os.P_WAIT, "python", args)
