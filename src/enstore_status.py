@@ -65,6 +65,14 @@ def format_time(theTime, sep=" "):
     Trace.trace(12,"}format_time ")
     return ftime
 
+# strip off anything before the '/'
+def strip_file_dir(str):
+    Trace.trace(10,"{strip_file_dir "+str)
+    ind = string.rfind(str, "/")
+    if not ind == -1:
+	str = str[(ind+1):]
+    Trace.trace(10,"}strip_file_dir ")
+
 # parse the encp line
 def parse_encp_line(line):
     Trace.trace(12,"{parse_encp_line "+repr(line))
@@ -648,14 +656,6 @@ class EnDataFile(EnFile):
 	             "inquisitor plot system error"
 	    Trace.trace(5,"}__init__ "+format)
 
-    # strip off anything before the '/'
-    def strip_file_dir(self, str):
-	Trace.trace(10,"{strip_file_dir "+str)
-        ind = string.rfind(str, "/")
-	if not ind == -1:
-	    str = str[(ind+1):]
-	Trace.trace(10,"}strip_file_dir ")
-
     def read(self, max_lines):
 	Trace.trace(10,"{read "+repr(max_lines))
 	i = 0
@@ -733,7 +733,7 @@ class EnMountDataFile(EnDataFile):
 	    start = MMOUNT
 	# parse out the file directory , a remnant from the grep in the time 
 	# field
-	self.strip_file_dir(etime)
+	strip_file_dir(etime)
 
 	Trace.trace(12,"}parse_line ")
 	return [etime, enode, euser, estatus, dev, start]
@@ -756,7 +756,7 @@ class EnEncpDataFile(EnDataFile):
 	if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
 	    # the time info may contain the file directory which we must
 	    # strip off
-	    self.strip_file_dir(einfo[ETIME])
+	    strip_file_dir(einfo[ETIME])
 	    Trace.trace(12,"}parse_line  - info status")
 	    return [einfo[ESTATUS], einfo[ETIME], einfo[EBYTES]]
 	else:
