@@ -89,6 +89,9 @@ FILE_LIST_NAME = "enstore_files.html"
 PAGE_THRESHOLDS= "page_thresholds"
 FILE_LIST = "file_list"
 ENCP_IP = "encp_ip"
+OVERALL_RATE = "overall_rate"
+DISK_RATE = "disk_rate"
+DRIVE_RATE = "drive_rate"
 
 # server names used in enstore_up_down
 ACCS = "Accounting Server"

@@ -1728,7 +1728,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
 	headings = ["Time", "Node", "User/Storage Group", "Mover Interface", "Bytes", 
-		    "Volume", "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]
+		    "Volume", "Network Rate (MB/S)", "Transfer Rate (MB/S)",
+                    "Drive Rate (MB/S)", "Disk Rate (MB/S)", "Overall Rate (MB/S)"]
 	num_headings = len(headings)
 	for hding in headings:
 	    tr.append(self.make_th(hding))
@@ -1764,6 +1765,18 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(row[4]))
 		tr.append(HTMLgen.TD(row[5]))
 		tr.append(HTMLgen.TD(row[6]))
+                if not row[10]:
+                    tr.append(empty_data())
+                else:
+                    tr.append(HTMLgen.TD(row[10]))
+                if not row[11]:
+                    tr.append(empty_data())
+                else:
+                    tr.append(HTMLgen.TD(row[11]))
+                if not row[12]:
+                    tr.append(empty_data())
+                else:
+                    tr.append(HTMLgen.TD(row[12]))
 	    else:
 		# this row is an error row
 		tr.append(HTMLgen.TD(row[1]))

@@ -420,9 +420,12 @@ class HTMLEncpStatusFile(EnStatusFile):
                                             node, user, encp_line.bytes, 
                                             "%s %s"%(encp_line.direction, 
                                                      encp_line.volume), 
-                                            encp_line.xfer_rate, encp_line.user_rate,
+                                            encp_line.network_rate, encp_line.transfer_rate,
                                             encp_line.infile, encp_line.outfile,
-					    encp_line.interface])
+					    encp_line.interface,
+                                            encp_line.overall_rate,
+                                            encp_line.drive_rate,
+                                            encp_line.disk_rate])
                 elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
                                             node, user, encp_line.text])

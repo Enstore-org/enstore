@@ -119,13 +119,15 @@ class EncpLine:
         self.bytes = QUESTION
         self.direction = QUESTION
         self.volume = QUESTION
-        self.user_rate = QUESTION
         self.work = QUESTION
         self.infile = QUESTION
         self.outfile = QUESTION
         self.msg_type = QUESTION
-        self.xfer_rate = QUESTION
-        self.disk_rate = QUESTION
+        self.overall_rate = ""
+        self.network_rate = QUESTION   # was data transfer rate
+        self.disk_rate = ""
+        self.transfer_rate = QUESTION   # was user rate
+        self.drive_rate = ""
 	self.storage_group = None
         self.mc = QUESTION
 	self.interface = QUESTION
@@ -161,7 +163,7 @@ class EncpLine:
                 
                 # get the total data transfer rate
                 [tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
-                [self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
+                [self.network_rate, tmp2] = string.splitfields(tmp2, " ",1)
 		# get the dictionary at the end
 		self.dict = get_dict(tmp2)
                 # pull out the name of the media changer and other things
@@ -176,11 +178,17 @@ class EncpLine:
 			self.storage_group = aDict[enstore_constants.STORAGE_GROUP]
                     if aDict.has_key(enstore_constants.ENCP_IP):
                         self.encp_ip = aDict[enstore_constants.ENCP_IP]
+                    if aDict.has_key(enstore_constants.OVERALL_RATE):
+                        self.overall_rate = "%.3g"%(aDict[enstore_constants.OVERALL_RATE],)
+                    if aDict.has_key(enstore_constants.DRIVE_RATE):
+                        self.drive_rate = "%.3g"%(aDict[enstore_constants.DRIVE_RATE],)
+                    if aDict.has_key(enstore_constants.DISK_RATE):
+                        self.disk_rate = "%.3g"%(aDict[enstore_constants.DISK_RATE],)
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]
                 self.volume = tmp_list[4]
-                self.user_rate = tmp_list[6]
+                self.transfer_rate = tmp_list[6]
 		tmp_list = string.splitfields(tmp2, " ")
                 if "disk)" in tmp_list:
                     # this is the new format with disk rate added
