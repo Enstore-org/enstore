@@ -1,27 +1,27 @@
 #server_name              geometry(WxH+X+Y)    background
 
 #Halloween colors.
-#cdfensrv2.fnal.gov        400x800+745+0        #ffcc66    animate
-#d0ensrv2.fnal.gov         445x800+300+0        #ffffff    animate
-#stkensrv2.fnal.gov        300x800+0+0          #ffcc66    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ffcc66    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ffffff    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ffcc66    animate
 
 #Summer fun colors (Beach).
-#cdfensrv2.fnal.gov        400x800+745+0        #ffffdd    animate
-#d0ensrv2.fnal.gov         445x800+300+0        #ddddff    animate
-#stkensrv2.fnal.gov        300x800+0+0          #bbbbff    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ffffdd    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ddddff    animate
+#stkensrv2.fnal.gov        371x800+0+0          #bbbbff    animate
 
 #Independance Day colors.
-#cdfensrv2.fnal.gov        400x800+745+0        #ffdddd    animate
-#d0ensrv2.fnal.gov         445x800+300+0        #ffffff    animate
-#stkensrv2.fnal.gov        300x800+0+0          #ddddff    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ffdddd    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ffffff    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ddddff    animate
 
 #Spring colors.
-#cdfensrv2.fnal.gov        400x800+745+0        #ffdddd    animate
-#d0ensrv2.fnal.gov         445x800+300+0        #ffffdd    animate
-#stkensrv2.fnal.gov        300x800+0+0          #ddddff    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ffdddd    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ffffdd    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ddddff    animate
 
 #St. Patrick's day colors.
-#cdfensrv2.fnal.gov        366x800+780+0        #ddfddd    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ddfddd    animate
 #d0ensrv2.fnal.gov         413x800+375+0        #ddffdd    animate
 #stkensrv2.fnal.gov        371x800+0+0          #ddffdd    animate
 
