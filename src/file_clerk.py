@@ -5,12 +5,9 @@
 import sys
 import time
 import copy
-#import os
-#import regsub
-#import stat
+import string
 
 # enstore imports
-#import timeofday
 import traceback
 import callback
 import log_client
@@ -20,7 +17,6 @@ import dispatching_worker
 import generic_server
 import generic_cs
 import interface
-#import udp_client
 import db
 import Trace
 import e_errors
@@ -87,7 +83,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key2="pnfsid";
             pnfsid = ticket["fc"][key2]
             # temporary try block - sam doesn't want to update encp too often --> put back into main try in awhile
-            try: 
+            try:
                 key2="pnfsvid";      pnfsvid      = ticket["fc"][key2]
                 key2="pnfs_name0";   pnfs_name0   = ticket["fc"][key2]
                 key2="pnfs_mapname"; pnfs_mapname = ticket["fc"][key2]
@@ -114,7 +110,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # add the pnfsid
         record["pnfsid"] = pnfsid
         # temporary try block - sam doesn't want to update encp too often --> put back into main try in awhile
-        try: 
+        try:
             record["pnfsvid"] = pnfsvid
             record["pnfs_name0"] = pnfs_name0
             record["pnfs_mapname"] = pnfs_mapname
@@ -158,6 +154,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             key2="deleted"
             deleted = ticket[key2]
+            if string.find(string.lower(deleted),'y') !=-1 or string.find(string.lower(deleted),'Y') !=-1:
+                deleted = "yes"
+                decr_count = 1
+            else:
+                self.deleted = "no"
+                decr_count = -1
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             self.enprint(ticket, generic_cs.PRETTY_PRINT)
@@ -175,17 +177,28 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             Trace.trace(0,"set_deleted "+repr(ticket["status"]))
             return
-
+        
+        if record["deleted"] == deleted:
+            ticket["status"] = (e_errors.USER_ERROR,
+                                "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+            self.logc.send(e_errors.USER_ERROR, 1,
+                           "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+            self.reply_to_caller(ticket)
+            Trace.trace(12,'}set_deleted '+repr(ticket))
+            return
+            
         # mod the delete state
         record["deleted"] = deleted
 
         # become a client of the volume clerk and decrement the non-del files on the volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-        decr_count = 1
         vticket = vcc.decr_file_count(record['external_label'],decr_count)
-        
+
         # record our changes
         dict[bfid] = copy.deepcopy(record)
+
+        self.logc.send(e_errors.INFO, 2, "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
+                       (bfid,record["pnfs_name0"],record["deleted"],record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
 
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
@@ -400,14 +413,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
          Trace.trace(0,"}tape_list "+repr(ticket["status"]))
          return
- 
+
      if self.fork() != 0:
          return
      # get a user callback
      self.get_user_sockets(ticket)
      callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
      msg=""
-        
+
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
      key,value=dict.cursor("first")
