@@ -2021,9 +2021,6 @@ class encp(interface.Interface):
         # normal parsing of options
         interface.Interface.parse_options(self)
 
-        if not client: 
-            clients(self.config_host, self.config_port)
-
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
         if self.arglen < 2 :
@@ -2031,6 +2028,9 @@ class encp(interface.Interface):
             self.print_help()
             sys.exit(1)
 
+        if not client: 
+            clients(self.config_host, self.config_port)
+            
         # get fullpaths to the files
         p = []
         for i in range(0,self.arglen):
