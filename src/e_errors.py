@@ -187,16 +187,12 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          FILE_MODIFIED, #When writing the file changed.
                          )
 
-raise_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
-                       #UNKNOWNMEDIA,
-                       #NOVOLUME,
-                       #QUOTAEXCEEDED,
-                       #DEVICE_ERROR, #EXfer read/write call stuck in kernel
-                       CONFLICT, #Metadata is not consistant.
+raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
                        )
 
-email_alarm_errors = (CRC_ECRC_ERROR,  #Set by encp
-                      DEVICE_ERROR, #EXfer read/write call stuck in kernel
+email_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
+                       CRC_ECRC_ERROR,  #Set by encp
+                       DEVICE_ERROR, #EXfer read/write call stuck in kernel
                       )
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
