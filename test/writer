@@ -35,7 +35,8 @@ while /bin/true; do
         fb=`basename $f`
         output=$base/${fb}__`date +"%b%d%H%M%S"`$p
 	if [ `$ENSTORE_DIR/test/aran.sh 0 20` -eq 0 ] ; then
-          cmd="ecmd encp $f $output"
+          #cmd="ecmd encp $f $output"
+	  cmd="encp $f $output"
         else
           priority=`$ENSTORE_DIR/test/aran.sh 1 10`
           delpri=`$ENSTORE_DIR/test/aran.sh 1 10`
@@ -51,7 +52,8 @@ while /bin/true; do
 	  else
 	    crc="--crc"
           fi
-	  cmd="ecmd encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
+	  #cmd="ecmd encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
+	  cmd="encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
         fi
 	echo $cmd
 	eval $cmd
