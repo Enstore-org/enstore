@@ -82,4 +82,4 @@ for vol in $volumes; do
 done
 IFS="${oldifs}"
 
-ecmd vcc --list --vols
+ecmd vcc --verbose=1 --vols

@@ -20,10 +20,11 @@ import Trace
 import e_errors
 
 class MediaChangerClient(generic_client.GenericClient):
-    def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, name="", \
+                 host=interface.default_host(), \
                  port=interface.default_port()):
         self.media_changer=name
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 
     # send the request to the Media Changer server and then send answer to user
@@ -49,7 +50,6 @@ class MediaChangerClient(generic_client.GenericClient):
 
 class MediaChangerClientInterface(interface.Interface):
     def __init__(self):
-        self.config_list = 0
         self.config_file = ""
         self.alive = 0
         self.alive_rcv_timeout = 0
@@ -64,8 +64,8 @@ class MediaChangerClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.list_options() +\
-               ["config_list", "config_file=", "alive","alive_rcv_timeout=","alive_retries="] +\
+        return self.config_options() +\
+               ["verbose=", "config_file=", "alive","alive_rcv_timeout=","alive_retries="] +\
                self.help_options()
 
     #  define our specific help
@@ -101,7 +101,7 @@ if __name__ == "__main__" :
     intf = MediaChangerClientInterface()
 
     # get a media changer client
-    mcc = MediaChangerClient(0, intf.config_list, intf.media_changer, \
+    mcc = MediaChangerClient(0, intf.verbose, intf.media_changer, \
                             intf.config_host, intf.config_port)
 
     if intf.alive:
@@ -113,7 +113,7 @@ if __name__ == "__main__" :
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
     if ticket['status'][0] == e_errors.OK :
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(ticket)
         Trace.trace(1,"mcc exit ok")
         sys.exit(0)

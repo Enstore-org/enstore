@@ -46,7 +46,7 @@ class Interface:
 
 	self.check_host()
 	self.check_port(port)
-        self.list = 0
+        self.verbose = 0
 
     def charopts(self):
         return [""]
@@ -62,9 +62,6 @@ class Interface:
 
     def alive_options(self):
 	return ["alive"]+self.alive_rcv_options()
-
-    def list_options(self):
-        return ["list", "verbose="]
 
     def help_line(self):
         return "python"+repr(sys.argv[0])+repr(self.options())
@@ -114,6 +111,7 @@ class Interface:
 
         for (opt,value) in optlist :
             value=self.strip(value)
+#	    print "opt = "+repr(opt)+", value = "+repr(value)
             if opt == "--config_host" :
                 self.parse_config_host(value)
             elif opt == "--config_port" :
@@ -129,8 +127,6 @@ class Interface:
                 # bomb out if we can't find the file
     	        if len(self.config_file) :
                     statinfo = os.stat(self.config_file)
-            elif opt == "--config_list" :
-                self.config_list = 1
             elif opt == "--dict" :
                 self.dict = 1
             elif opt == "--get_keys" :
@@ -190,19 +186,18 @@ class Interface:
                 self.delpri = string.atoi(value)
             elif opt == "--agetime" :
                 self.agetime = string.atoi(value)
-            elif opt == "--list":
-                self.list = 1
             elif opt == "--debug":
                 self.debug = 1
             elif opt == "--nosummon":
                 self.summon = 1
-            elif opt == "--log":
-                self.list = string.atoi(value)
             elif opt == "--verbose" :
-                self.list = string.atoi(value)
+                if value == "":
+                    self.verbose = self.verbose | 1
+                else:
+                    self.verbose = self.verbose | string.atoi(value)
             elif opt == "--d0sam":
-                # if d0sam has been requested, just add 4096 to the list option
-                self.list = self.list | 0x1000 
+                # if d0sam has been requested, just add 4096 to verbose option
+                self.verbose = self.verbose | 0x1000 
             elif opt == "--faccess":
   	        self.criteria['first_access']=self.check(value)
             elif opt == "--laccess":

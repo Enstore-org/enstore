@@ -289,10 +289,10 @@ if __name__ == "__main__" :
     size = 760000
     device = "./rdd-testfile.fake"
     eod_cookie = "0"
-    list = 0
+    verbose = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["size=","device=","eod_cookie=","list","verbose","help"]
+    options = ["size=","device=","eod_cookie=","verbose=","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--size" :
@@ -301,15 +301,15 @@ if __name__ == "__main__" :
             device = value
         elif opt == "--eod_cookie":
             eod_cookie = value
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
+        elif opt == "--verbose=":
+            verbose = string.atoi(value)
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
 
-    if list:
+    if verbose:
         print "Creating RawDiskDriver device",device, "with",size,"bytes"
     rdd = RawDiskDriver (device,eod_cookie,size)
     #rdd = DelayDriver (device,eod_cookie,size)
@@ -318,63 +318,63 @@ if __name__ == "__main__" :
     cookie = {}
 
     try:
-        if list:
+        if verbose:
             print "writing 1 0's"
         rdd.open_file_write()
         rdd.write_block("0"*1)
         cookie[0] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[0]
 
-        if list:
+        if verbose:
             print "writing 10 1's"
         rdd.open_file_write()
         rdd.write_block("1"*10)
         cookie[1] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[1]
 
-        if list:
+        if verbose:
             print "writing 100 2's"
         rdd.open_file_write()
         rdd.write_block("2"*100)
         cookie[2] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[2]
 
-        if list:
+        if verbose:
             print "writing 1,000 3's"
         rdd.open_file_write()
         rdd.write_block("3"*1000)
         cookie[3] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[3]
 
-        if list:
+        if verbose:
             print "writing 10,000 4's"
         rdd.open_file_write()
         rdd.write_block("4"*10000)
         cookie[4] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[4]
 
-        if list:
+        if verbose:
             print "writing 100,000 5's"
         rdd.open_file_write()
         rdd.write_block("5"*100000)
         cookie[5] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[5]
 
-        if list:
+        if verbose:
             print "writing 1,000,000 6's"
         rdd.open_file_write()
         rdd.write_block("6"*1000000)
         cookie[6] = rdd.close_file_write()
-        if list:
+        if verbose:
             print "   ok",cookie[6]
 
-        if list:
+        if verbose:
             print "writing 1,000,000 7's"
         rdd.open_file_write()
         rdd.write_block("7"*1000000)
@@ -382,11 +382,11 @@ if __name__ == "__main__" :
         print "   ok",cookie[7]
 
     except:
-        if list:
+        if verbose:
             print "ok, processed exception:"\
                   #,sys.exc_info()[0],sys.exc_info()[1]
 
-    if list:
+    if verbose:
         print "EOD cookie:",rdd.get_eod()
         print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
 
@@ -398,7 +398,7 @@ if __name__ == "__main__" :
             print "Read error on cookie",k, cookie[k],"- not enough bytes. "\
                   +"Read=",rlen ," should have read= ",10**k
             status = status|1
-        if list:
+        if verbose:
             print "cookie=",k," readback[0]=",readback[0]\
                   ,"readback[end]=",readback[rlen-1]
         if readback[0] != repr(k) or readback[rlen-1] != repr(k) :

@@ -688,7 +688,7 @@ class Pnfs:
     # retore the original entry based on info from the duplicate
     def restore_from_volmap(self):
         # create the original entry and set its size
-        orig = pnfs(self.origname)
+        orig = Pnfs(self.origname)
         orig.touch()
         orig.set_file_size(self.file_size)
 
@@ -744,7 +744,7 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
             continue
         else:
             last = i
-        v = pnfs(voldir+'/'+volfiles[files[i]])
+        v = Pnfs(voldir+'/'+volfiles[files[i]])
         filenames.append(v.origname)
         bfids.append(v.bit_file_id)
     return (filenames,bfids)
@@ -759,11 +759,11 @@ if __name__ == "__main__":
     status = 0
     info = 0
     file = ""
-    list = 0
+    verbose = 0
     restore = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["test","status","file=","list","restore=","verbose""help"]
+    options = ["test","status","file=","restore=","verbose=","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--test":
@@ -776,23 +776,23 @@ if __name__ == "__main__":
         elif opt == "--restore":
             restore = 1
             file = value
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
+        elif opt == "--verbose=":
+            verbose = 1
         elif opt == "--help":
             print "python",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
     if info:
-        p=pnfs(file,1,1)
-        if list:
+        p=Pnfs(file,1,1)
+        if verbose:
             p.dump()
 
     elif status:
         print "not yet"
 
     elif restore:
-        p=pnfs(file)
+        p=Pnfs(file)
         p.restore_from_volmap()
 
     elif test:
@@ -801,14 +801,14 @@ if __name__ == "__main__":
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-            if list: print ""
-            if list:
+            if verbose: print ""
+            if verbose:
                 print "Self test from ",__name__," using file ",count,": ",pf
 
-            p = pnfs(pf)
+            p = Pnfs(pf)
 
             e = p.check_pnfs_enabled()
-            if list: print "enabled: ", e
+            if verbose: print "enabled: ", e
 
             if p.valid == VALID:
                 if count==2:
@@ -817,7 +817,7 @@ if __name__ == "__main__":
                     continue
                 p.jon1()
                 p.get_pnfs_info()
-                if list: p.dump()
+                if verbose: p.dump()
                 l = p.library
                 f = p.file_family
                 w = p.file_family_width
@@ -826,85 +826,85 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-                if list: print ""
-                if list: print "Changing to new values"
+                if verbose: print ""
+                if verbose: print "Changing to new values"
 
                 p.set_library(nv)
                 if p.library == nv:
-                    if list: print " library changed"
+                    if verbose: print " library changed"
                 else:
                     print " ERROR: didn't change library tag: still is "\
                           ,p.library
 
                 p.set_file_family(nv)
                 if p.file_family == nv:
-                    if list: print " file_family changed"
+                    if verbose: print " file_family changed"
                 else:
                     print " ERROR: didn't change file_family tag: still is "\
                           ,p.file_family
 
                 p.set_file_family_width(nvn)
                 if p.file_family_width == nvn:
-                    if list: print " file_family_width changed"
+                    if verbose: print " file_family_width changed"
                 else:
                     print " ERROR: didn't change file_family_width tag: "\
                           +"still is ",p.file_family_width
 
                 p.set_bit_file_id(nv,nvn)
                 if p.bit_file_id == nv:
-                    if list: print " bit_file_id changed"
+                    if verbose: print " bit_file_id changed"
                 else:
                     print " ERROR: didn't change bit_file_id layer: still is "\
                           ,p.bit_file_id
 
                 if p.file_size == nvn:
-                    if list: print " file_size changed"
+                    if verbose: print " file_size changed"
                 else:
                     print " ERROR: didn't change file_size: still is "\
                           ,p.file_size
 
-                if list: p.dump()
-                if list: print ""
-                if list: print "Restoring original values"
+                if verbose: p.dump()
+                if verbose: print ""
+                if verbose: print "Restoring original values"
 
                 p.set_library(l)
                 if p.library == l:
-                    if list: print " library restored"
+                    if verbose: print " library restored"
                 else:
                     print " ERROR: didn't restore library tag: still is "\
                           ,p.library
 
                 p.set_file_family(f)
                 if p.file_family == f:
-                    if list: print " file_family restored"
+                    if verbose: print " file_family restored"
                 else:
                     print " ERROR: didn't restore file_family tag: still is "\
                           ,p.file_family
 
                 p.set_file_family_width(w)
                 if p.file_family_width == w:
-                    if list: print " file_family_width restored"
+                    if verbose: print " file_family_width restored"
                 else:
                     print " ERROR: didn't restore file_family_width tag: "\
                           +"still is ",p.file_family_width
 
                 p.set_bit_file_id(i,s)
                 if p.bit_file_id == i:
-                    if list: print " bit_file_id restored"
+                    if verbose: print " bit_file_id restored"
                 else:
                     print " ERROR: didn't restore bit_file_id layer: "\
                           +"still is ",p.bit_file_id
 
                 if p.file_size == s:
-                    if list: print " file size restored"
+                    if verbose: print " file size restored"
                 else:
                     print " ERROR: didn't restore file_size: still is "\
                           ,p.file_size
 
-                if list: p.dump()
+                if verbose: p.dump()
                 p.rm()
                 if p.exists != EXISTS:
-                    if list: print p.pnfsFilename," deleted"
+                    if verbose: print p.pnfsFilename," deleted"
                 else:
                     print "ERROR: could not delete ",p.pnfsFilename
 

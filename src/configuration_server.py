@@ -24,7 +24,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	pass
 
     # load the configuration dictionary - the default is a wormhole in pnfs
-    def load_config(self, configfile,list=1):
+    def load_config(self, configfile,verbose=1):
      Trace.trace(6,"{load_config configfile="+repr(configfile))
      try:
         try:
@@ -37,7 +37,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             return msg
         line = ""
 
-        if list:
+        if verbose:
             print "Configuration Server load_config: "\
                   +"loading enstore configuration from ",configfile
         while 1:
@@ -234,8 +234,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	try:
 	    try:
 		configfile = ticket["configfile"]
-		list = 1
-		out_ticket = {"status" : self.load_config(configfile,list)}
+		verbose = 1
+		out_ticket = {"status" : self.load_config(configfile,verbose)}
 	    except KeyError:
 		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
 
@@ -295,13 +295,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
-    def __init__(self, list=0, host=interface.default_host(), \
+    def __init__(self, verbose=0, host=interface.default_host(), \
                  port=interface.default_port(), \
                  configfile=interface.default_file()):
         Trace.trace(3,"{ConfigurationServer address="+repr(host)+" "+\
-                    repr(port)+" configfile="+repr(configfile)+" list="+\
-                    repr(list))
-        if list:
+                    repr(port)+" configfile="+repr(configfile)+" verbose="+\
+                    repr(verbose))
+        if verbose:
             print "Instantiating Configuration Server at ", server_address,\
                   " using config file ",config_file
 
@@ -312,13 +312,13 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         dispatching_worker.DispatchingWorker.__init__(self, (host, port))
 
         # now (and not before,please) load the config file user requested
-        self.load_config(configfile,list)
+        self.load_config(configfile,verbose)
 
         #check that it is valid - or else load a "good" one
         self.config_exists()
 
         # always nice to let the user see what she has
-        if list:
+        if verbose:
             pprint.pprint(self.__dict__)
 
 class ConfigurationServerInterface(interface.Interface):
@@ -326,7 +326,6 @@ class ConfigurationServerInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{csi.__init__')
         # fill in the defaults for possible options
-        self.config_list = 0
 	self.config_file = ""
         interface.Interface.__init__(self)
 
@@ -341,7 +340,7 @@ class ConfigurationServerInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["config_file=", "list", "verbose"] +\
+        return self.config_options()+["config_file=", "verbose="] +\
                self.help_options()
 
 
@@ -356,7 +355,7 @@ if __name__ == "__main__":
     intf = ConfigurationServerInterface()
 
     # get a configuration server
-    cs = ConfigurationServer(intf.list, intf.config_host, intf.config_port,
+    cs = ConfigurationServer(intf.verbose, intf.config_host, intf.config_port,
 	                     intf.config_file)
 
     while 1:

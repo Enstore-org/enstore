@@ -14,7 +14,7 @@ fi
 python -c '
 import configuration_client
 intf=configuration_client.ConfigurationClientInterface()
-csc=configuration_client.ConfigurationClient("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT',intf.config_list)
+csc=configuration_client.ConfigurationClient("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT',intf.verbose)
 t=csc.u.send({"work":"reply_serverlist"},csc.config_address)
 servers = t["server_list"]
 #import pprint;pprint.pprint(t)

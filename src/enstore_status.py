@@ -26,7 +26,7 @@ html_header = "<title>Inquisitor</title>\n"+\
 
 class EnstoreStatus:
 
-    def __init__(self, file, fileType, hname, max_ascii_size, list=0):
+    def __init__(self, file, fileType, hname, max_ascii_size, verbose=0):
         Trace.trace(10,'{__init__ essfile '+file+"  "+repr(fileType))
         self.file_name = file 
 	self.file_type = fileType
@@ -42,18 +42,18 @@ class EnstoreStatus:
         Trace.trace(12,"}write_header ")
 
     # open the file
-    def open(self, list=0):
+    def open(self, verbose=0):
         Trace.trace(12,"{open "+self.file_name)
-	if list :
+	if verbose :
             print "opening " + self.file_name
         # try to open status file for append
         try:
             self.file = open(self.file_name, 'a')
-            if list :
+            if verbose :
                 print "opened for append"
         except:
             self.file = open(self.file_name, 'w')
-            if list :
+            if verbose :
                 print "opened for write"
         Trace.trace(12,"}open")
 
@@ -285,19 +285,19 @@ class EnstoreStatus:
         Trace.trace(12,"}output_nofunc")
 
     # output the library manager queues
-    def output_lmqueues(self, ticket, key, list):
+    def output_lmqueues(self, ticket, key, verbose):
         Trace.trace(12,"{output_lmqueues "+repr(ticket))
 	fq = self.format_lm_queues(ticket)
-	if list:
+	if verbose:
 	  pprint.pprint(fq)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmqueues ")
 
     # output the library manager mover list
-    def output_lmmoverlist(self, ticket, key, list):
+    def output_lmmoverlist(self, ticket, key, verbose):
         Trace.trace(12,"{output_lmmoverlist "+repr(ticket))
 	fq = self.format_lm_moverlist(ticket)
-	if list:
+	if verbose:
 	  pprint.pprint(fq)
 	self.text[key] = self.text[key]+fq
         Trace.trace(12,"}output_lmmoverlist ")

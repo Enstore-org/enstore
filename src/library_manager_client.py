@@ -71,11 +71,11 @@ def getlist(self, work):
     return worklist
 
 class LibraryManagerClient(generic_client.GenericClient) :
-    def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
-                 port=interface.default_port()):
+    def __init__(self, csc=0, verbose=0, name="", \
+                 host=interface.default_host(), port=interface.default_port()):
         self.name=name
         # we always need to be talking to our configuration server
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
@@ -91,7 +91,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def read_from_hsm(self, ticket) :
         return self.send(ticket)
 
-    def getwork(self,list) :
+    def getwork(self,verbose) :
 	return getlist(self,"getwork")
 
     def getmoverlist(self):
@@ -100,7 +100,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
 class LibraryManagerClientInterface(interface.Interface) :
     def __init__(self) :
         self.name = ""
-        self.config_list = 0
         self.getwork = 0
         self.alive = 0
         self.alive_rcv_timeout = 0
@@ -113,8 +112,8 @@ class LibraryManagerClientInterface(interface.Interface) :
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options()+self.list_options() +\
-	       ["config_list", "getwork", "alive","getmoverlist","alive_rcv_timeout=","alive_retries="] +\
+        return self.config_options()+\
+	       ["verbose=", "getwork", "alive","getmoverlist","alive_rcv_timeout=","alive_retries="] +\
 	       self.help_options()
 
     #  define our specific help
@@ -141,13 +140,13 @@ if __name__ == "__main__" :
     intf = LibraryManagerClientInterface()
 
     # get a library manager client
-    lmc = LibraryManagerClient(0, intf.config_list, intf.name,
+    lmc = LibraryManagerClient(0, intf.verbose, intf.name,
                                intf.config_host, intf.config_port)
 
     if intf.alive:
         ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     elif  intf.getwork:
-        ticket = lmc.getwork(intf.list)
+        ticket = lmc.getwork(intf.verbose)
     elif  intf.getmoverlist:
 	ticket = lmc.getmoverlist()
 
@@ -155,7 +154,7 @@ if __name__ == "__main__" :
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     if ticket['status'][0] == e_errors.OK:
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(ticket)
         Trace.trace(1,"lmc exit ok")
         sys.exit(0)

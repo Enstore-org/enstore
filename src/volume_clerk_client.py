@@ -24,11 +24,11 @@ import e_errors
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
-        Trace.trace(10,'{__init__ csc='+repr(csc)+' list='+repr(list)+\
+        Trace.trace(10,'{__init__ csc='+repr(csc)+' verbose='+repr(verbose)+\
                     ' host='+repr(host)+' port='+repr(port))
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
         Trace.trace(10,'}__init__ u='+repr(self.u))
 
@@ -281,7 +281,6 @@ class VolumeClerkClientInterface(interface.Interface):
 
     def __init__(self):
         Trace.trace(10,'{__init__ vcci')
-        self.config_list = 0
         self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
@@ -292,6 +291,7 @@ class VolumeClerkClientInterface(interface.Interface):
         self.vol = ""
         self.addvol = 0
         self.delvol = 0
+	self.verbose = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -301,8 +301,8 @@ class VolumeClerkClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(20,'{}options')
-        return self.config_options() + self.list_options()  +\
-               ["config_list", "alive","alive_rcv_timeout=","alive_retries=","clrvol", "backup" ] +\
+        return self.config_options() +\
+               ["verbose=", "alive","alive_rcv_timeout=","alive_retries=","clrvol", "backup" ] +\
                ["vols","nextvol","vol=","addvol","delvol" ] +\
                self.help_options()
 
@@ -363,7 +363,7 @@ if __name__ == "__main__":
     intf = VolumeClerkClientInterface()
 
     # get a volume clerk client
-    vcc = VolumeClerkClient(0, intf.config_list, intf.config_host,\
+    vcc = VolumeClerkClient(0, intf.verbose, intf.config_host,\
                             intf.config_port)
 
     if intf.alive:
@@ -399,7 +399,7 @@ if __name__ == "__main__":
         pprint.pprint(ticket)
         Trace.trace(0,"vcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
-    elif intf.list:
+    elif intf.verbose:
         pprint.pprint(ticket)
 
     Trace.trace(1,"vcc exit ok")

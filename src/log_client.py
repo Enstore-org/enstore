@@ -72,8 +72,7 @@ class LoggerClient(generic_client.GenericClient):
                                             # try to make it of capital letters
                                             # not more than 8 characters long
                  servername = "logserver",  # log server name
-                 list=0,
-                 config_list=0,
+                 verbose=0,
                  host=interface.default_host(),
                  port=interface.default_port()):
 
@@ -84,8 +83,8 @@ class LoggerClient(generic_client.GenericClient):
         self.uname = pwdb_entry[0]
         self.logger = servername
         self.log_priority = 7
-        self.debug = list
-        configuration_client.set_csc(self, csc, host, port, config_list)
+        self.debug = verbose
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 
     def send (self, severity, priority, format, *args) :
@@ -133,7 +132,6 @@ class LoggerClient(generic_client.GenericClient):
 class LoggerClientInterface(interface.Interface):
 
     def __init__(self):
-        self.config_list = 0
         self.config_file = ""
         self.test = 0
         self.logit1 = 0
@@ -147,8 +145,8 @@ class LoggerClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.list_options() +\
-               ["config_list", "config_file=", "test", "logit=", "alive","alive_rcv_timeout=","alive_retries="] +\
+        return self.config_options() +\
+               ["verbose=", "config_file=", "test", "logit=", "alive","alive_rcv_timeout=","alive_retries="] +\
                self.help_options()
 
     # our help stuff
@@ -182,8 +180,8 @@ if __name__ == "__main__" :
     intf = LoggerClientInterface()
 
     # get a log client
-    logc = LoggerClient(0, "LOGCLNT", "logserver", intf.list, \
-                        intf.config_list, intf.config_host, intf.config_port)
+    logc = LoggerClient(0, "LOGCLNT", "logserver", intf.verbose, \
+                        intf.config_host, intf.config_port)
 
     if intf.alive:
         ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
@@ -202,7 +200,7 @@ if __name__ == "__main__" :
         pprint.pprint(ticket)
         Trace.trace(0,"logc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
-    elif list:
+    elif intf.verbose:
         pprint.pprint(ticket)
 	Trace.trace(1,"logc exit ok")
 	sys.exit(0)

@@ -311,8 +311,7 @@ class UDPClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(20,'{}options')
-        return self.list_options() +\
-               ["msg=","host=","port="] +\
+        return ["verbose=", "msg=","host=","port="] +\
                self.help_options()
 
 if __name__ == "__main__" :
@@ -328,7 +327,7 @@ if __name__ == "__main__" :
 
     #pprint.pprint(u.__dict__)
 
-    if intf.list:
+    if intf.verbose:
         print "Sending:\n",intf.msg,"\nto",intf.sendhost,intf.sendport,"with calback on",intf.port
     back = u.send(intf.msg, (intf.sendhost, intf.sendport))
 
@@ -336,7 +335,7 @@ if __name__ == "__main__" :
         print "Error: sent:\n",intf.msg,"\nbut read:\n",back
         status = status|1
 
-    elif intf.list:
+    elif intf.verbose:
         print "Read back:\n",back
 
     sys.exit(status)

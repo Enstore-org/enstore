@@ -779,11 +779,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 class VolumeClerk(VolumeClerkMethods,\
                   generic_server.GenericServer):
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
         Trace.trace(10, '{__init__')
         # get the config server
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -802,7 +802,6 @@ class VolumeClerkInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{vcsi.__init__')
         # fill in the defaults for possible options
-        self.config_list = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -812,7 +811,7 @@ class VolumeClerkInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["config_list"] +\
+        return self.config_options()+["verbose="] +\
                self.help_options()
 
 
@@ -826,7 +825,7 @@ if __name__ == "__main__":
     intf = VolumeClerkInterface()
 
     # get a volume clerk
-    vc = VolumeClerk(0, intf.config_list, intf.config_host, intf.config_port)
+    vc = VolumeClerk(0, intf.verbose, intf.config_host, intf.config_port)
 
     indlst=['media_type','file_family','library']
     dict = db.DbTable("volume",vc.logc,indlst)

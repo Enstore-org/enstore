@@ -15,11 +15,11 @@ import e_errors
 
 class Inquisitor(generic_client.GenericClient):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
         Trace.trace(10,'}__init')
 
@@ -33,7 +33,7 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(12,"}send"+repr(s))
         return s
 
-    def update (self, server="", list=0):
+    def update (self, server="", verbose=0):
 	Trace.trace(16,"{update")
 	t = {"work"       : "update" }
 	# see if we have a server or not
@@ -106,7 +106,6 @@ class InquisitorClientInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{iqc.__init__')
         # fill in the defaults for the possible options
-        self.config_list = 0
 	self.update = 0
 	self.timeout = 0
 	self.reset_timeout = 0
@@ -139,9 +138,8 @@ class InquisitorClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.config_options()+self.list_options()  +\
-	       self.alive_options() +\
-               ["config_list","timeout=","get_timeout", "reset_timeout"] +\
+        return self.config_options()+self.alive_options() +\
+               ["verbose=","timeout=","get_timeout", "reset_timeout"] +\
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size"] +\
                self.help_options()
@@ -158,14 +156,14 @@ if __name__ == "__main__" :
     intf = InquisitorClientInterface()
 
     # now get an inquisitor client
-    iqc = Inquisitor(0, intf.config_list, intf.config_host, \
+    iqc = Inquisitor(0, intf.verbose, intf.config_host, \
                           intf.config_port)
 
     if intf.alive:
         ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.update:
-        ticket = iqc.update(intf.server, intf.list)
+        ticket = iqc.update(intf.server, intf.verbose)
 
     elif intf.timeout:
         ticket = iqc.set_timeout(intf.timeout, intf.server)
@@ -189,7 +187,7 @@ if __name__ == "__main__" :
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)
 
     if ticket['status'][0] == e_errors.OK:
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(ticket)
         Trace.trace(1,"iqc exit ok")
         sys.exit(0)

@@ -25,20 +25,20 @@ except ImportError:
     import socket
 
 def set_csc(self, csc=0, host=interface.default_host(),\
-            port=interface.default_port(), list=0):
+            port=interface.default_port(), verbose=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
     if csc == 0:
-        self.csc = ConfigurationClient(host, port, list)
+        self.csc = ConfigurationClient(host, port, verbose)
     else:
         self.csc = csc
     Trace.trace(10,'}set_csc csc='+repr(self.csc))
 
 class ConfigurationClient(generic_client.GenericClient) :
 
-    def __init__(self, config_host, config_port, config_list):
+    def __init__(self, config_host, config_port, verbose):
         Trace.trace(10,'{__init__ cc')
         self.clear()
-	if config_list>3 :
+	if verbose>3 :
             print "Connecting to configuration server at ",\
 	        config_host, config_port
         self.config_address=(config_host,config_port)
@@ -201,8 +201,9 @@ class ConfigurationClient(generic_client.GenericClient) :
 class ConfigurationClientInterface(interface.Interface):
     def __init__(self):
         # fill in the defaults for the possible options
+	self.config_list = {}
        	self.config_file = ""
-        self.config_list = 0
+        self.verbose = 0
         self.dict = 0
         self.load = 0
         self.alive = 0
@@ -216,8 +217,8 @@ class ConfigurationClientInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.list_options()+\
-	       ["config_file=","config_list","get_keys","dict","load","alive","alive_rcv_timeout=","alive_retries="] + \
+        return self.config_options() +\
+	       ["config_file=","verbose=","get_keys","dict","load","alive","alive_rcv_timeout=","alive_retries="] + \
 	       self.help_options()
 
 if __name__ == "__main__":
@@ -231,16 +232,16 @@ if __name__ == "__main__":
 
     # now get a configuration client
     csc = ConfigurationClient(intf.config_host, intf.config_port,\
-                               intf.config_list)
+                               intf.verbose)
     stat = (e_errors.OK, None)
 
     if intf.alive:
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(stati)
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.list:
+        if intf.verbose:
             print csc.config_list["list"]
             #pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
@@ -248,13 +249,13 @@ if __name__ == "__main__":
     elif intf.load:
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
 	                intf.alive_retries)
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(stati)
         stat=stati['status']
 
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(stati)
         stat=stati['status']
 

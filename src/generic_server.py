@@ -20,16 +20,6 @@ import Trace
 
 class GenericServer:
 
-    # we need to know where the configuration server is - keep track of it
-    def set_csc(self, configuration_client):
-        Trace.trace(10,'{}set_csc config_client='+repr(configuration_client))
-        self.csc = configuration_client
-
-    # we need to know where the logger is - keep track of it
-    def set_logc(self, log_client):
-        Trace.trace(10,'{}set_csc config_client='+repr(log_client))
-        self.logc = log_client
-
     # this overrides the server_bind in TCPServer for the hsm system
     def server_bind(self):
         Trace.trace(10,'{server_bind')

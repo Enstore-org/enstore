@@ -29,15 +29,16 @@ import time				# sleep
 import Trace
 import e_errors
 
-list = 0
+verbose = 0
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
 
-    def __init__(self, medch, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, medch, csc=0, verbose=0,\
+	         host=interface.default_host(), \
 	         port=interface.default_port()):
         Trace.trace(10, '{__init__')
         # get the config server
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -216,8 +217,7 @@ class MediaLoaderInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{mlsi.__init__')
         # fill in the defaults for possible options
-        self.config_list = 0
-	self.list = 0
+	self.verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -227,7 +227,7 @@ class MediaLoaderInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16, "{}options")
-        return self.config_options()+["config_list","list","log="] +\
+        return self.config_options()+["verbose=","log="] +\
                self.help_options()
 
     #  define our specific help
@@ -262,13 +262,13 @@ if __name__ == "__main__" :
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if intf.name == 'STK.media_changer' :
-        mc =  STK_MediaLoader(intf.name, 0, intf.config_list, \
+        mc =  STK_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
     elif intf.name == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader(intf.name, 0, intf.config_list, \
+        mc =  FTT_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
     else :
-        mc =  RDD_MediaLoader(intf.name, 0, intf.config_list, \
+        mc =  RDD_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
 
     while 1:

@@ -19,12 +19,13 @@ import e_errors
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
-                 port=interface.default_port()):
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
+                 port=interface.default_port(), bfid=0):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
-        configuration_client.set_csc(self, csc, host, port, list)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+	self.bfid = bfid
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):
@@ -130,7 +131,6 @@ class FileClerkClientInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{fci.__init__')
         # fill in the defaults for the possible options
-        self.config_list = 0
         self.bfids = 0
         self.bfid = 0
         self.alive = 0
@@ -146,8 +146,8 @@ class FileClerkClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.config_options()+self.list_options()  +\
-               ["config_list","bfids","bfid=","alive","backup","alive_rcv_timeout=","alive_retries="] +\
+        return self.config_options()+\
+               ["verbose=","bfids","bfid=","alive","backup","alive_rcv_timeout=","alive_retries="] +\
                self.help_options()
 
 
@@ -162,8 +162,8 @@ if __name__ == "__main__" :
     intf = FileClerkClientInterface()
 
     # now get a file clerk client
-    fcc = FileClient(0, intf.config_list, intf.config_host, \
-                          intf.config_port)
+    fcc = FileClient(0, intf.verbose, intf.config_host, \
+                          intf.config_port, intf.bfid)
 
     if intf.alive:
         ticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
@@ -180,7 +180,7 @@ if __name__ == "__main__" :
         ticket = fcc.bfid_info()
 
     if ticket['status'][0] == e_errors.OK:
-        if intf.list:
+        if intf.verbose:
             pprint.pprint(ticket)
         Trace.trace(1,"fcc exit ok")
         sys.exit(0)

@@ -300,11 +300,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
 	Trace.trace(10, '{__init__')
 	# get the config server
-	configuration_client.set_csc(self, csc, host, port, list)
+	configuration_client.set_csc(self, csc, host, port, verbose)
 	#   pretend that we are the test system
 	#   remember, in a system, there is only one bfs
 	#   get our port and host from the name server
@@ -324,7 +324,6 @@ class FileClerkInterface(interface.Interface):
     def __init__(self):
 	Trace.trace(10,'{fcsi.__init__')
 	# fill in the defaults for possible options
-	self.config_list = 0
 	interface.Interface.__init__(self)
 
 	# now parse the options
@@ -334,7 +333,7 @@ class FileClerkInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
 	Trace.trace(16, "{}options")
-	return self.config_options()+["config_list"] +\
+	return self.config_options()+["verbose="]+\
 	       self.help_options()
 
 
@@ -347,7 +346,7 @@ if __name__ == "__main__":
     intf = FileClerkInterface()
 
     # get a file clerk
-    fc = FileClerk(0, intf.config_list, intf.config_host, intf.config_port)
+    fc = FileClerk(0, intf.verbose, intf.config_host, intf.config_port)
 
     indlst=['external_label']
     dict = db.DbTable("file",fc.logc,indlst)

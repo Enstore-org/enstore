@@ -51,17 +51,17 @@ import Trace
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
-    def __init__(self, csc=0, clist=0, host=interface.default_host(), \
-                 port=interface.default_port(), test=0, list=0):
+    def __init__(self, csc=0, host=interface.default_host(), \
+                 port=interface.default_port(), test=0, verbose=0):
         Trace.trace(10, '{__init__')
         # get the config server
-        configuration_client.set_csc(self, csc, host, port, clist)
+        configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("logserver")
-        if list :
+        if verbose :
             pprint.pprint(keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
@@ -76,16 +76,16 @@ class Logger(  dispatching_worker.DispatchingWorker
 	else:
 	    self.logfile_dir_path =  keys["log_file_path"]
 	self.test = test
-	self.list = list
+	self.verbose = verbose
         Trace.trace(10, '}__init__')
 
     def open_logfile(self, logfile_name) :
         # try to open log file for append
-        if self.list :
+        if self.verbose :
             print "opening " + logfile_name
         try:
             self.logfile = open(logfile_name, 'a')
-            if self.list :
+            if self.verbose :
                 print "opened for append"
         except :
 	    try:
@@ -93,7 +93,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    except:
 		print "Can not open log ",logfile_name
 		os._exit(1)
-            if self.list :
+            if self.verbose :
                 print "opened for write"
 
     # log the message recieved from the log client
@@ -110,11 +110,11 @@ class Logger(  dispatching_worker.DispatchingWorker
                    host,
                    ticket['message'])
 
-        if self.list:
+        if self.verbose:
             print message          # for test
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        if self.list :
+        if self.verbose :
             pprint.pprint(res)
 
     def serve_forever(self):                      # overrides UDPServer method
@@ -170,9 +170,8 @@ class LoggerInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{logi.__init__')
         # fill in the defaults for possible options
-        self.config_list = 0
 	self.config_file = ""
-	self.list = 0
+	self.verbose = 0
 	self.test = 0
         interface.Interface.__init__(self)
 
@@ -184,7 +183,7 @@ class LoggerInterface(interface.Interface):
     def options(self):
         Trace.trace(16, "{}options")
         return self.config_options()+\
-	       ["config_list", "config_file=", "list", "verbose", "test"] +\
+	       ["config_file=", "verbose=", "test"] +\
                self.help_options()
 
 
@@ -197,8 +196,8 @@ if __name__ == "__main__" :
     # get the interface
     intf = LoggerInterface()
 
-    logserver = Logger(0, intf.config_list, intf.config_host, \
-	               intf.config_port, intf.test, intf.list)
+    logserver = Logger(0, intf.config_host, \
+	               intf.config_port, intf.test, intf.verbose)
 
     while 1:
         try:

@@ -723,8 +723,6 @@ class MoverInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'{lmsi.__init__')
         # fill in the defaults for possible options
-        self.config_list = 0
-        self.list = 0
         self.summon = 1
         self.debug = 0
         interface.Interface.__init__(self)

@@ -52,7 +52,7 @@ def write_to_hsm(input, output,
         t0 = time.time()
     Trace.trace(6,"{write_to_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
-                " config_port="+repr(config_port)+" list="+repr(ilist)+\
+                " config_port="+repr(config_port)+" verbose="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -60,9 +60,9 @@ def write_to_hsm(input, output,
     # check if there special d0sam printing requested. This is designated by
     # the having bit 2^12 set (4096)
     d0sam = (ilist & 0x1000) !=0
-    list = ilist & 0x0fff
+    verbose = ilist & 0x0fff
 
-    if list>2:
+    if verbose>2:
         print "Getting clients, storing/checking local info   cumt=",\
               time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
@@ -71,7 +71,7 @@ def write_to_hsm(input, output,
     maxretry = 2
     unique_id = []
     global logc # needs to be global so other defs can use it in this file
-    (csc,u,uinfo) = clients(config_host,config_port,list)
+    (csc,u,uinfo) = clients(config_host,config_port,verbose)
 
     # create the wrapper subticket - copy all the user info into for starters
     wrapper = {}
@@ -90,15 +90,15 @@ def write_to_hsm(input, output,
     times["t0"] = tinfo["abs_start"]
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "csc=",csc
         print "u=",u
         print "logc=",logc
         print "uinfo=",uinfo
 
-    if list>2:
+    if verbose>2:
         print "Checking input unix files:",input, "   cumt=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
 
@@ -110,15 +110,15 @@ def write_to_hsm(input, output,
         delayed_dismount = 0
 
     tinfo["filecheck"] = time.time() - t1 #---------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "ninput=",ninput
         print "inputlist=",inputlist
         print "file_size=",file_size
         print "delayed_dismount=",delayed_dismount
 
-    if list>2:
+    if verbose>2:
         print "Checking output pnfs files:",output, "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
@@ -143,9 +143,9 @@ def write_to_hsm(input, output,
                    " library, file_family, width not all the same")
 
     tinfo["pnfscheck"] = time.time() - t1 #---------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["pnfscheck"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "outputlist=",outputlist
         print "library=",library
         print "file_family=",file_family
@@ -154,7 +154,7 @@ def write_to_hsm(input, output,
         print "p=",p
 
     t1 = time.time() #----------------------------------------------------Start
-    if list>1:
+    if verbose>1:
         print "Requesting callback ports", "   cumt=",time.time()-t0
 
     # get a port to talk on and listen for connections
@@ -166,11 +166,11 @@ def write_to_hsm(input, output,
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
 
     tinfo["get_callback"] = time.time() - t1 #------------------------------End
-    if list>1:
+    if verbose>1:
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
 
-    if list>1:
+    if verbose>1:
         print "Calling Config Server to find file clerk",\
               "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
@@ -182,11 +182,11 @@ def write_to_hsm(input, output,
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
-    if list>1:
+    if verbose>1:
         print " ",fticket["hostip"],fticket["port"]
         print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
 
-    if list>1:
+    if verbose>1:
         print "Calling Config Server to find",library[0]+".library_manager",\
               "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
@@ -200,7 +200,7 @@ def write_to_hsm(input, output,
                 repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
     tinfo["get_libman"] = time.time() - t1 #--------------------------------End
-    if list>1:
+    if verbose>1:
         print "  ",vticket["hostip"],vticket["port"]
         print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
 
@@ -218,7 +218,7 @@ def write_to_hsm(input, output,
         retry = maxretry
         while retry:  # note that real rates are not correct in retries
 
-            if list:
+            if verbose:
                 print "Sending ticket to",library[i]+".library_manager",\
                       "   cumt=",time.time()-t0
             t1 = time.time() #----------------------------------------Lap Start
@@ -264,7 +264,7 @@ def write_to_hsm(input, output,
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
             ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
-            if list > 3:
+            if verbose > 3:
                 print "ENCP: write_to_hsm LM returned"
                 pprint.pprint(ticket)
             if ticket['status'][0] != "ok" :
@@ -274,14 +274,14 @@ def write_to_hsm(input, output,
                        +", ticket[\"status\"]="+repr(ticket["status"]))
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
-            if list:
+            if verbose:
                 print "  Q'd:",inputlist[i], library[i],\
                       "family:",file_family[i],\
                       "bytes:", file_size[i],\
                       "dt:",tinfo1["send_ticket"+repr(i)],\
                           "   cumt=",time.time()-t0
 
-            if list>1:
+            if verbose>1:
                 print "Waiting for mover to call back", \
                       "   cumt=",time.time()-t0
             t1 = time.time() #----------------------------------------Lap-Start
@@ -300,7 +300,7 @@ def write_to_hsm(input, output,
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp write_to_hsm, mover call back")
-                if list > 3:
+                if verbose > 3:
                     print "ENCP:write_to_hsm MV called back with"
                     pprint.pprint(ticket)
                 callback_id = ticket['unique_id']
@@ -327,13 +327,13 @@ def write_to_hsm(input, output,
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-------------------------------------Lap-End
-            if list>1:
+            if verbose>1:
                 print " ",ticket["mover"]["callback_addr"][0],\
                       ticket["mover"]["callback_addr"][1],\
                       "cum:",tinfo1["tot_to_mover_callback"+repr(i)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
 
-            if list:
+            if verbose:
                 print "Sending data for file ", outputlist[i],\
                       "   cumt=",time.time()-t0
             t1 = time.time() #----------------------------------------Lap-Start
@@ -375,7 +375,7 @@ def write_to_hsm(input, output,
         in_file.close()
 
         tinfo1["sent_bytes"+repr(i)] = time.time()-t1 #------------------Lap-End
-        if list>1:
+        if verbose>1:
             if tinfo1["sent_bytes"+repr(i)]!=0:
                 wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+repr(i)]
             else:
@@ -383,7 +383,7 @@ def write_to_hsm(input, output,
             print "  bytes:",fsize, " Socket Write Rate = ",wtrate," MB/S"
             print "  dt:",tinfo1["sent_bytes"+repr(i)],\
                   "   cumt=",time.time()-t0
-        if list>1:
+        if verbose>1:
             print "Waiting for final mover dialog",\
                   "   cumt=",time.time()-t0
         t1 = time.time() #--------------------------------------------Lap-Start
@@ -413,10 +413,10 @@ def write_to_hsm(input, output,
                            +repr(complete_crc)+" "+repr(mycrc))
 
         tinfo1["final_dialog"] = time.time()-t1 #------------------------Lap End
-        if list>1:
+        if verbose>1:
             print "  dt:",tinfo1["final_dialog"], "   cumt=",time.time()-t0
 
-        if list>1:
+        if verbose>1:
             print "Adding file to pnfs", "   cumt=",time.time()-t0
         t1 = time.time() #--------------------------------------------Lap Start
 
@@ -434,7 +434,7 @@ def write_to_hsm(input, output,
         done_ticket["fc"]["pnfsid"] = p.id
         done_ticket["work"] = "set_pnfsid"
         binfo  = u.send(done_ticket, (fticket['hostip'], fticket['port']))
-        if list > 3:
+        if verbose > 3:
             print "ENCP: write_to_hsm FC returned"
             pprint.pprint(done_ticket)
         if done_ticket['status'][0] != "ok" :
@@ -450,7 +450,7 @@ def write_to_hsm(input, output,
         Trace.trace(10,"write_to_hsm done adding to pnfs")
 
         tinfo1["pnfsupdate"+repr(i)] = time.time() - t1 #---------------Lap End
-        if list>1:
+        if verbose>1:
             print "  dt:",tinfo1["pnfsupdate"+repr(i)],"   cumt=",time.time()-t0
 
 
@@ -468,7 +468,7 @@ def write_to_hsm(input, output,
         format = "  %s -> %s : %d bytes copied to %s at"+\
                  " %s MB/S  requestor:%s     cumt= %f"
 
-        if list:
+        if verbose:
             print format %\
                   (inputlist[i], outputlist[i], fsize,
                    done_ticket["fc"]["external_label"],
@@ -513,14 +513,14 @@ def write_to_hsm(input, output,
     msg ="Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in "+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/S"
-    if list:
+    if verbose:
         print msg
 
     # tell library manager we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (vticket['hostip'], vticket['port']))
 
-    if list > 3:
+    if verbose > 3:
         print "DONE TICKET"
         pprint.pprint(done_ticket)
 
@@ -537,7 +537,7 @@ def read_from_hsm(input, output,
         t0 = time.time()
     Trace.trace(6,"{read_from_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
-                " config_port="+repr(config_port)+" list="+repr(ilist)+\
+                " config_port="+repr(config_port)+" verbose="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -545,9 +545,9 @@ def read_from_hsm(input, output,
     # check if there special d0sam printing requested. This is designated by
     # the having bit 2^12 set (4096)
     d0sam = (ilist & 0x1000) !=0
-    list = ilist & 0x0fff
+    verbose = ilist & 0x0fff
 
-    if list>2:
+    if verbose>2:
         print "Getting clients, storing/checking local info   cumt=",\
               time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
@@ -564,9 +564,9 @@ def read_from_hsm(input, output,
 
     global logc
     client = {}
-#    (csc,u,uinfo) = clients(config_host,config_port,list)
+#    (csc,u,uinfo) = clients(config_host,config_port,verbose)
     (client['csc'],client['u'],client['uinfo']) = clients(config_host, \
-							  config_port,list)
+							  config_port,verbose)
 
     wrapper = {}
     for key in client['uinfo'].keys():
@@ -582,15 +582,15 @@ def read_from_hsm(input, output,
 
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "csc=",client['csc']
         print "u=",client['u']
         print "logc=",logc
         print "uinfo=",client['uinfo']
 
-    if list>2:
+    if verbose>2:
         print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
 
@@ -599,9 +599,9 @@ def read_from_hsm(input, output,
     (bfid,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
 
     tinfo["pnfscheck"] = time.time() - t1 #---------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["pnfscheck"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "ninput=",ninput
         print "inputlist=",inputlist
         print "file_size=",file_size
@@ -609,7 +609,7 @@ def read_from_hsm(input, output,
         print "pinfo=",pinfo
         print "p=",p
 
-    if list>2:
+    if verbose>2:
         print "Checking output unix files:",output, "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
@@ -618,12 +618,12 @@ def read_from_hsm(input, output,
     outputlist = outputfile_check(ninput,inputlist,output)
 
     tinfo["filecheck"] = time.time() - t1 #---------------------------------End
-    if list>2:
+    if verbose>2:
         print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
-    if list>3:
+    if verbose>3:
         print "outputlist=",outputlist
 
-    if list>2:
+    if verbose>2:
         print "Requesting callback ports", "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
@@ -636,11 +636,11 @@ def read_from_hsm(input, output,
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
 
     tinfo["get_callback"] = time.time() - t1 #------------------------------End
-    if list>2:
+    if verbose>2:
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
 
-    if list>1:
+    if verbose>1:
         print "Calling Config Server to find file clerk",\
               "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
@@ -652,11 +652,11 @@ def read_from_hsm(input, output,
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
-    if list>1:
+    if verbose>1:
         print " ",fticket["hostip"],fticket["port"]
         print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
 
-    if list>1:
+    if verbose>1:
         print "Calling file clerk for file info", "   cumt=",time.time()-t0
     t1 = time.time() # ---------------------------------------------------Start
 
@@ -686,10 +686,10 @@ def read_from_hsm(input, output,
         tinfo['fc'+repr(i)] = time.time() - t2 #------------------------Lap--End
 
     tinfo['fc'] =  time.time() - t1 #-------------------------------End
-    if list>1:
+    if verbose>1:
         print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
 
-    if list:
+    if verbose:
         print "Sending ticket to file clerk", "   cumt=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
@@ -712,13 +712,14 @@ def read_from_hsm(input, output,
 							 volume, finfo, 
 							 vinfo, encp, files_left,
 							 retry,
-							 list, unique_id, retry_flag)
+							 verbose, unique_id, \
+							 retry_flag)
 
 
 	    tinfo["send_ticket"] = time.time() - t1 #---------------------------End
-	    if list:
+	    if verbose:
 		print Qd
-	    if list>1:
+	    if verbose>1:
 		print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
 
 		# We have placed our work in the system and now we have to 
@@ -733,7 +734,7 @@ def read_from_hsm(input, output,
 					       inputlist, outputlist, 
 					       file_size, pinfo, finfo, vinfo,
 					       tinfo, wrapper, chk_crc, d0sam,
-					       encp, maxretry, retry, list)
+					       encp, maxretry, retry, verbose)
 	    print "FILES_LEFT ", files_left
 	    if files_left > 0:
 	      retry_flag = 1
@@ -755,10 +756,10 @@ def read_from_hsm(input, output,
     msg = "Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in"+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/s"
-    if list:
+    if verbose:
         print msg
 
-    if list > 3:
+    if verbose > 3:
         print "DONE TICKET"
         pprint.pprint(done_ticket)
 
@@ -774,7 +775,7 @@ def read_from_hsm(input, output,
 
 def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size, 
 			 pinfo, client, tinfo, vol, volume, finfo, vinfo, 
-			 encp, ninput, retry, list, unique_id, retry_flag):
+			 encp, ninput, retry, verbose, unique_id, retry_flag):
 
     t2 = time.time() #--------------------------------------------Lap-Start
     Trace.trace(7,"{submit_read_requests="+repr(inputlist)+" t2="+repr(t2))
@@ -798,7 +799,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
                 if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
                     wrapper[key] = pinfo[i][key]
 
-	    if list > 1: print "RETRY_CNT=", retry[i]
+	    if verbose > 1: print "RETRY_CNT=", retry[i]
 
             # generate the work ticket
             work_ticket = {"work"              : "read_from_hsm",
@@ -822,7 +823,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
                 current_library = library
                 Trace.trace(8,"submit_read_requests calling config server\
                 to find "+current_library+".library_manager")
-                if list > 3:
+                if verbose > 3:
                     print "calling Config. Server to get LM info for", \
                           current_library
                 lmticket = client['csc'].get(current_library+".library_manager")
@@ -837,7 +838,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 
             # send to library manager and tell user
             ticket = client['u'].send(work_ticket, (lmticket['hostip'], lmticket['port']))
-            if list > 3:
+            if verbose > 3:
                 print "ENCP:read_from_hsm FC read_from_hsm returned"
                 pprint.pprint(ticket)
             if ticket['status'][0] != "ok" :
@@ -849,7 +850,7 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
             submitted = submitted+1
 
             tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
-            if list :
+            if verbose :
                 if len(Qd)==0:
                     format = "  Q'd: %s %s bytes: %d on %s %s "\
                              "dt: %f   cumt=%f"
@@ -878,12 +879,12 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 # read hsm files in the loop after read requests have been submitted
 
 def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outputlist, file_size, pinfo, finfo, vinfo, tinfo, wrapper,
-		   chk_crc, d0sam, encp, maxretry, retry, list):
+		   chk_crc, d0sam, encp, maxretry, retry, verbose):
     Trace.trace(7,"{read_hsm_files:"+repr(inputlist))
     files_left = ninput
     bytes = 0
     for waiting in range(0,submitted):
-        if list>1:
+        if verbose>1:
             print "Waiting for mover to call back",\
                   "   cumt=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
@@ -896,7 +897,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             control_socket, address = listen_socket.accept()
             ticket = callback.read_tcp_socket(control_socket,\
                          "encp read_from_hsm, mover call back")
-            if list > 3:
+            if verbose > 3:
                 print "ENCP:read_from_hsm MV called back with"
                 pprint.pprint(ticket)
             callback_id = ticket['unique_id']
@@ -955,13 +956,13 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 
         tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
         dt = time.time() - t2 #-------------------------------------Lap-End
-        if list>1:
+        if verbose>1:
             print " ",ticket["mover"]["callback_addr"][0],\
                   ticket["mover"]["callback_addr"][1],\
                   "cum:",tinfo["tot_to_mover_callback"+repr(j)]
             print "  dt:",dt,"   cumt=",time.time()-t0
 
-        if list:
+        if verbose:
             print "Receiving data for file ", outputlist[j],\
                   "   cumt=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
@@ -988,7 +989,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         fsize = l
 
         tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
-        if list>1:
+        if verbose>1:
             if tinfo["recvd_bytes"+repr(j)]!=0:
                 rdrate = 1.*fsize/1024./1024./tinfo["recvd_bytes"+repr(j)]
             else:
@@ -996,7 +997,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             print "  bytes:",fsize, " Socket read Rate = ",rdrate," MB/S"
             print "  dt:",tinfo["recvd_bytes"+repr(j)],\
                   "   cumt=",time.time()-t0
-        if list>1:
+        if verbose>1:
             print "Waiting for final mover dialog",\
                   "   cumt=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
@@ -1075,7 +1076,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 		
 
         tinfo["final_dialog"+repr(j)] = time.time()-t2 #-----------Lap-End
-        if list>1:
+        if verbose>1:
             print "  dt:",tinfo["final_dialog"+repr(j)],\
             "   cumt=",time.time()-t0
 
@@ -1083,14 +1084,14 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	
         # update the last parked info if we have write access
         if 0:
-            if list>1:
+            if verbose>1:
                 print "Updating pnfs last parked",\
                       "   cumt=",time.time()-t0
             try:
                 p.set_lastparked(repr(wrapper['fullname']))
             except:
                 print "Failed to update last parked info"
-            if list>1:
+            if verbose>1:
                 print "  dt:",tinfo["last_parked"],\
                       "   cumt=",time.time()-t0
 
@@ -1108,7 +1109,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         format = "  %s -> %s : %d bytes copied from %s at"+\
                  " %s MB/S  requestor:%s     cumt= %f"
 
-        if list:
+        if verbose:
             print format %\
                   (inputlist[j], outputlist[j], fsize,\
                    done_ticket["fc"]["external_label"],\
@@ -1138,7 +1139,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	    if files_left > 0:
 		files_left = files_left - 1
 
-	if list > 3:
+	if verbose > 3:
 	    print "Done"
 	    pprint.pprint(done_ticket)
     
@@ -1229,13 +1230,13 @@ def jraise(errcode,errmsg,exit_code=1) :
 # get the configuration client and udp client and logger client
 # return some information about who we are so it can be used in the ticket
 
-def clients(config_host,config_port,list):
+def clients(config_host,config_port,verbose):
     Trace.trace(16,"{clients config_host="+repr(config_host)+\
-                " port="+repr(config_port)+" list="+repr(list))
+                " port="+repr(config_port)+" verbose="+repr(verbose))
 
     # get a configuration server
     csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    list)
+                                                    verbose)
     # get a udp client
     u = udp_client.UDPClient()
 
@@ -1503,6 +1504,7 @@ class encp(interface.Interface):
         self.delpri = 0  # priority doesn't change
         self.agetime = 0 # priority doesn't age
         self.d0sam = 0   # no special sam listings
+        self.verbose = 0 # no output yet
 
         host = 'localhost'
         port = 0
@@ -1518,8 +1520,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      self.list_options()+\
-                      ["nocrc","pri=","delpri=","agetime=", "d0sam"] +\
+                      ["verbose=","nocrc","pri=","delpri=","agetime=","d0sam"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
@@ -1605,14 +1606,14 @@ if __name__  ==  "__main__" :
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output,
                      e.config_host, e.config_port,
-                     e.list, e.chk_crc,
+                     e.verbose, e.chk_crc,
                      e.pri, e.delpri, e.agetime, t0)
 
     # have we been called "encp hsmfile unixfile" ?
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,
                       e.config_host, e.config_port,
-                      e.list, e.chk_crc,
+                      e.verbose, e.chk_crc,
                       e.pri, e.delpri, e.agetime, t0)
 
     # have we been called "encp unixfile unixfile" ?
