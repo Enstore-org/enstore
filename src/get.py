@@ -1138,6 +1138,12 @@ def main(e):
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
 
+            #Flush out the standard output and error descriptors.  This
+            # should help in some cases when they are redirected to a file
+            # and the bytes get stuck in buffer(s).
+            sys.stdout.flush()
+            sys.stderr.flush()
+
             #Grab a new clean udp_socket.
             unused, unused = encp.get_routing_callback_addr(e,
                                                             udp_socket)
