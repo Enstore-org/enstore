@@ -1079,18 +1079,11 @@ def get_pinfo(p):
             
         return pinf
 
-    except (OSError, IOError), detail:
-        raise EncpError(errno, None, errno.errorcode[detail.errno])
-        #print_data_access_layer_format(
-        #    inputlist[i], outputlist[i], file_size[i],
-        #    {'status':(errno.errorcode[detail.errno], str(detail))})
-        #quit()
+    except (OSError, IOError), msg:
+        error = getattr(msg, "error", errno.EIO)
+        raise EncpError(error, None, errno.errorcode[error])
     except (IndexError,), detail:
         raise EncpError(None, "Unable to obtain bfid.", e_errors.OSERROR)
-        #print_data_access_layer_format(
-        #    inputlist[i], outputlist[i], file_size[i],
-        #    {'status':(e_errors.OSERROR, "Unable to obtain bfid.")})
-        #quit()
 
 def get_uinfo():
     uinfo = {}
@@ -2505,10 +2498,11 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                 file_family_wrapper = t.get_file_family_wrapper()
             if not storage_group:
                 storage_group = t.get_storage_group()
-        except (OSError, IOError), detail:
-            print_data_access_layer_format('', '', 0,
-                                     {'status':(errno.errorcode[detail.errno]
-                                                ,str(detail))})
+        except (OSError, IOError), msg:
+            print_data_access_layer_format(
+                '', '', 0, {'status':
+                            (errno.errorcode[getattr(msg, "errno", errno.EIO)],
+                             str(msg))})
             quit()
 
         #Get the data aquisition information.
@@ -3019,8 +3013,9 @@ def verify_read_request_consistancy(requests_per_vol, e):
             try:
                 p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
                 p.get_xreference()
-            except (OSError, IOError), detail:
-                request['stats'] = (errno.errorcode[detail.errno], str(detail))
+            except (OSError, IOError), msg:
+                request['status'] = (errno.errorcode[
+                    getattr(msg, "errno", errno.EIO)], str(msg))
                 print_data_access_layer_format(request['infile'],
                                                request['outfile'],
                                                request['file_size'], request)
@@ -3213,10 +3208,11 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         try:
             p = pnfs.Pnfs(ifullname)
             bfid = p.get_bit_file_id()
-        except (OSError, IOError), detail:
+        except (OSError, IOError), msg:
             print_data_access_layer_format(
                 ifullname, ofullname, file_size,
-                {'status':(errno.errorcode[detail.errno], str(detail))})
+                {'status':(errno.errorcode[getattr(msg, "errno", errno.EIO)],
+                           str(msg))})
             quit()
 
         #only do this the first time.
@@ -3792,10 +3788,11 @@ class encp(interface.Interface):
                 p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
                 p.get_path()
                 remote_file = p.path
-            except (OSError, IOError), detail:
+            except (OSError, IOError), msg:
                 print_data_access_layer_format(
                     local_file, pnfs_id, 0,
-                    {'status':(errno.errorcode[detail.errno],str(detail))})
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
                 quit()
                 
             #self.args[0:2] = [remote_file[0][:-1], local_file]
@@ -3809,10 +3806,11 @@ class encp(interface.Interface):
                 p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
                 p.get_path()
                 remote_file = p.path
-            except (OSError, IOError), detail:
+            except (OSError, IOError), msg:
                 print_data_access_layer_format(
                     local_file, pnfs_id, 0,
-                    {'status':(errno.errorcode[detail.errno],str(detail))})
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
                 quit()
             #self.args[0:2] = [local_file, remote_file[0][:-1]]
             self.args[0:2] = [local_file, remote_file]
