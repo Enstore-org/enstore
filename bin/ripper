@@ -34,9 +34,9 @@ case `uname -n` in
 
    rip11*)
     stopit; starttrc
-   #cmd="python /home/jurgenst/enstore/sam/src/mover.py DE13DLT.mover &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DM18AIT.mover &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DM19AIT.mover &"; doit
+   #cmd="python /home/bakken/sam/src/mover.py DE13DLT.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DM18AIT.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DM19AIT.mover &"; doit
    #(sleep 2;ecmd mvc --alive DE13DLT.mover; if [ $? -ne 0 ]; then echo DE13DLT.MOVER DEAD; else echo de13dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM18AIT.mover; if [ $? -ne 0 ]; then echo DM18AIT.MOVER DEAD; else echo dm18ait.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DM19AIT.mover; if [ $? -ne 0 ]; then echo DM19AIT.MOVER DEAD; else echo dm19ait.mover alive; fi) &
@@ -44,10 +44,10 @@ case `uname -n` in
 
    rip12*)
     stopit; starttrc
-   #cmd="python /home/jurgenst/enstore/sam/src/mover.py DE14DLT.mover &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DC15MAM.mover &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DC16MAM.mover &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/mover.py DC17MAM.mover &"; doit
+   #cmd="python /home/bakken/sam/src/mover.py DE14DLT.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DC15MAM.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DC16MAM.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DC17MAM.mover &"; doit
    #(sleep 2;ecmd mvc --alive DE14DLT.mover; if [ $? -ne 0 ]; then echo DE14DLT.MOVER DEAD; else echo de14dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC15MAM.mover; if [ $? -ne 0 ]; then echo DC15MAM.MOVER DEAD; else echo dc15mam.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC16MAM.mover; if [ $? -ne 0 ]; then echo DC16MAM.MOVER DEAD; else echo dc16mam.mover alive; fi) &
@@ -185,12 +185,12 @@ case `uname -n` in
 
    rip3*)
     stopit; starttrc
-    cmd="python /home/jurgenst/enstore/sam/src/volume_clerk.py &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/file_clerk.py &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/library_manager.py sammam.library_manager &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/library_manager.py samait.library_manager &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/library_manager.py samdlt.library_manager &"; doit
-    cmd="python /home/jurgenst/enstore/sam/src/media_changer.py adicr2.media_changer &"; doit
+    cmd="python /home/bakken/sam/src/volume_clerk.py &"; doit
+    cmd="python /home/bakken/sam/src/file_clerk.py &"; doit
+    cmd="python /home/bakken/sam/src/library_manager.py sammam.library_manager &"; doit
+    cmd="python /home/bakken/sam/src/library_manager.py samait.library_manager &"; doit
+    cmd="python /home/bakken/sam/src/library_manager.py samdlt.library_manager &"; doit
+    cmd="python /home/bakken/sam/src/media_changer.py adicr2.media_changer &"; doit
     cmd="db_checkpoint -h /raid/enstore/db -p 5 &"; doit
     cmd="db_deadlock   -h /raid/enstore/db -t 1 &"; doit
     (sleep 2;ecmd vcc --alive;                        if [ $? -ne 0 ]; then echo VOLUME DEAD;                 else echo volume alive;                 fi) &
