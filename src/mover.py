@@ -90,12 +90,12 @@ class MoverError(exceptions.Exception):
 
 
 #states
-IDLE, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR = range(10)
+IDLE, SETUP, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR = range(11)
 
-_state_names=['IDLE', 'MOUNT_WAIT', 'SEEK', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
+_state_names=['IDLE', 'SETUP', 'MOUNT_WAIT', 'SEEK', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
              'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
 
-##assert len(_state_names)==10
+##assert len(_state_names)==11
 
 def state_name(state):
     return _state_names[state]
@@ -364,7 +364,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0
-        self._in_setup = 0 ##HACK XXX
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -610,12 +609,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(exc, msg)
             except:
                 pass
-    
+
+    ## This is the function which is responsible for updating the LM.
     def update(self, state=None, reset_timer=None, error_source=None):
         if state is None:
             state = self.state
         
-        Trace.trace(20,"update: %s" % (state_name(state)))
+        Trace.trace(20,"update: %s %s" % (state_name(state), self.unique_id))
         inhibit = 0
         
         if not hasattr(self,'_last_state'):
@@ -626,17 +626,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             #Don't tease the library manager!
             inhibit = 1
 
-        if self._in_setup: #HACK XXX FIXME!
-            inhibit = 1
-        
         if reset_timer:
             self.reset_interval_timer(self.update)
 
         if not inhibit:
             ticket = self.format_lm_ticket(state=state, error_source=error_source)
             for lib, addr in self.libraries:
-##                if state is OFFLINE and self._last_state is OFFLINE:
-##                    continue
                 if state != self._last_state:
                     Trace.trace(10, "Send %s to %s" % (ticket, addr))
                 self.udpc.send_no_wait(ticket, addr)
@@ -961,16 +956,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.setup_transfer(ticket, mode=READ)
 
     def setup_transfer(self, ticket, mode):
-        self._in_setup = 1
         self.lock_state()
         save_state = self.state
+        self.state = SETUP
+        self.unique_id = ticket['unique_id']
         Trace.trace(10, "setup transfer")
         ## pprint.pprint(ticket)
-        if self.state not in (IDLE, HAVE_BOUND):
+        if save_state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
-            self._in_setup = 0
             return 0
 
         #prevent a delayed dismount from kicking in right now
@@ -985,7 +980,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
                 self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
                 self.state = save_state
-                self._in_setup = 0
                 return 0
         self.reset()
 
@@ -994,15 +988,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
-        self.unique_id = ticket['unique_id']  ####Why?
         self.control_socket, self.client_socket = self.connect_client()
         
         Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
         if not self.client_socket:
+            ## Connecting to client failed
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
             self.update(reset_timer=1)
-            self._in_setup = 0
             return 0
 
         self.t0 = time.time()
@@ -1035,7 +1028,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
             self.send_client_done(ticket, msg[0], msg[1])
             self.state = save_state
-            self._in_setup = 0
             return 0
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
@@ -1053,7 +1045,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.send_client_done(ticket, msg[0], msg[1])
             self.state = save_state
-            self._in_setup = 0
             return 0
         
         client_filename = ticket['wrapper'].get('fullname','?')
@@ -1092,11 +1083,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if volume_label == self.current_volume: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
-            self._in_setup = 0
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
-            self._in_setup = 0
         
     def error(self, msg, err=e_errors.ERROR):
         self.last_error = (str(err), str(msg))
@@ -1205,7 +1194,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = self.tape_driver.verify_label(volume_label, self.mode)
             if status[0] != e_errors.OK:
                 self.transfer_failed(status[0], status[1], error_source=TAPE)
-                self.error(status[1], status[0])
                 return 0
         location = cookie_to_long(self.target_location)
         self.run_in_thread('seek_thread', self.seek_to_location,
@@ -1216,7 +1204,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         broken = ""
-        self._in_setup = 0
         Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
             exc, msg, self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -1287,7 +1274,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def transfer_completed(self):
         self.consecutive_failures = 0
-        self._in_setup = 0
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -1522,12 +1508,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = (status, None)
 
         if self.unique_id and state in (IDLE, HAVE_BOUND):
-            ## If we've been idle for more than 5 minutes, force the LM to clear
+            ## If we've been idle for more than 15 minutes, force the LM to clear
             ## any entry for this mover in the work_at_movers.  Yes, this is a
             ## kludge, but it keeps the system from getting completely hung up
             ## if the LM doesn't realize we've finished a transfer.
             now = time.time()
-            if time.time() - self.state_change_time > 300:
+            if time.time() - self.state_change_time > 900:
                 self.unique_id = None
 
         if not self.vol_info:
@@ -1700,6 +1686,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         status = mcc_reply.get('status')
         Trace.trace(10, 'mc replies %s' % (status,))
 
+        #Do another query volume, just to make sure its status has not changed
+        self.vol_info.update(self.vcc.inquire_vol(volume_label))
+
+        
         if status and status[0] == e_errors.OK:
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             Trace.log(e_errors.INFO, "mounted %s"%(volume_label,),
@@ -1747,7 +1737,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         #If we've gotten this far, we've mounted, positioned, and connected to the client.
         #Just start up the work threads and watch the show...
         self.state = ACTIVE
-        self._in_setup = 0
         if self.mode is WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
