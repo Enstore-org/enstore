@@ -75,8 +75,8 @@ def signal_handler(sig, frame):
     except:
         pass
     
-    #if sig != signal.SIGTERM: #If they kill, don't do anything.
-    quit(1)
+    if sig != signal.SIGTERM: #If they kill, don't do anything.
+        quit(1)
 
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
@@ -1671,12 +1671,12 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             pprint.pprint(done_ticket)
 
         print "BEFORE CHECK_CRC"
-        pprint.pprint(done_ticket)
+        #pprint.pprint(done_ticket)
         
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-
+        print "DURRING CHECK_CRC"
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, None, e)
@@ -1684,11 +1684,12 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
-
+        print "AFTER CHECK_CRC"
+        print "BEFORE PNFS_SETTING"
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
         set_pnfs_settings(done_ticket, client, e.verbose)
-
+        print "DURRING PNFS_SETTING"
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, None, e)
@@ -1696,22 +1697,25 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
-        
+        print "AFTER PNFS_SETTING"
+        print "BEFORE FILE PERMISIONS"
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
         #This error should result in the file being left where it is, but it
         # is still considered a failed transfer (aka. exit code = 1 and
         # data access layer is still printed).
+        print "DURRING FILE PERMISIONS"
         if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
             print_data_access_layer_format(done_ticket['infile'],
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
-
+        print "AFTER FILE PERMISIONS"
+        print "BEFORE DELETE AT EXIT"
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
         delete_at_exit.unregister(done_ticket['outfile']) #localname
-
+        print "AFTER DELETE AT EXIT"
         if e.verbose > 1:
             print "File status after verification: %s   elapsed=%s" % \
                   (done_ticket['status'], time.time()-tinfo['encp_start_time'])
