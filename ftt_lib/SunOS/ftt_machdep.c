@@ -20,6 +20,16 @@ ftt_status(ftt_descriptor d, int time_out) {
 	    return res;
 	}
     }
+       while (time_out > 0 ) {
+                p = ftt_extract_stats(&block, FTT_READY);
+                if ( p && atoi(p)) {
+                        break;
+                }
+                sleep(1);
+                time_out--;
+                res = ftt_get_stats(d,&block);
+        }
+
     res = 0;
     p = ftt_extract_stats(&block, FTT_BOT);
     if ( p && atoi(p)) {

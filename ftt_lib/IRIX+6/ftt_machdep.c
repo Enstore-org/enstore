@@ -18,6 +18,7 @@ ftt_status(ftt_descriptor d, int time_out) {
     ENTERING("ftt_status");
     CKNULL("ftt_descriptor", d);
 
+    ftt_close_scsi_dev(d);
     if (0 > (res = ftt_open_io_dev(d))) { 
 	if( FTT_EBUSY == ftt_errno ){
 	    return FTT_BUSY;
