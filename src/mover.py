@@ -39,9 +39,9 @@ import hostaddr
 def print_args(*args):
     print args
 
-verbose=10 
+verbose=0
     
-Trace.trace = print_args
+##Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
