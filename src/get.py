@@ -1409,8 +1409,24 @@ def do_work(intf):
     try:
         exit_status = main(intf)
 	halt(exit_status)
-    except SystemExit:
+    except (SystemExit, KeyboardInterrupt):
 	halt(1)
+    except:
+        #Get the uncaught exception.
+        exc, msg, tb = sys.exc_info()
+        ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
+                              "%s: %s" % (str(exc), str(msg)))}
+
+        #Print the data access layer and send the information to the
+        # accounting server (if possible).
+        encp.print_data_access_layer_format(None, None, None, ticket)
+        #Send to the log server the traceback dump.  If unsuccessful,
+        # print the traceback to standard error.
+        Trace.handle_error(exc, msg, tb)
+        del tb #No cyclic references.
+        #Remove any zero-length files left haning around.  Also, return
+        # a non-zero exit status to the calling program/shell.
+        halt(1)
 
 if __name__ == '__main__':
 
