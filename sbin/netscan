@@ -176,7 +176,7 @@ ALLOW_BASE="
        LISTEN,inetd,:klogin,TCP,x
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
-       LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src|/home/petravic/Zope
+       LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src|/home/petravic/Zope|inquisitor
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
@@ -405,7 +405,8 @@ fi
 filecheck "check_watchdog_reset.py"
 filecheck "ntpset"
 filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
-filecheck "ekill -v -9"
+#filecheck "ekill -v -9"
+filecheck "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror_reset.py\""
 filecheck "boot_cleanup -x" /etc/rc.d/rc.local
 
 # check that ipmisrv is running without watchdog timer
