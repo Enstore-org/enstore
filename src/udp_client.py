@@ -9,6 +9,7 @@ import errno
 import exceptions
 import errno
 import sys
+import threading
 
 # enstore imports
 import setpath
@@ -67,12 +68,18 @@ class UDPClient:
         tsd.txn_counter = 0L
         tsd.ident = self._mkident(tsd.host, tsd.port, pid)
         tsd.send_done = {}
+        tsd.thread = threading.currentThread() 
         return tsd
 
     def get_tsd(self):
         pid = self._os.getpid()
         tsd = self.tsd.get(pid)
         if not tsd:
+            for key, value in self.tsd.items():
+            #Clean up resources of exited threads
+            if not value.thread.isAlive():
+                del self.tsd[key]
+
             tsd = self.reinit()
         return tsd
     
