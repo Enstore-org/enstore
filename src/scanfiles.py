@@ -30,6 +30,7 @@ def layer_file(f, n):
 
 def check(f):
     f_orig = f
+    cf = f
     msg = []
     warn = []
     if not os.access(f, os.F_OK):
@@ -37,11 +38,15 @@ def check(f):
     if not os.access(f, os.R_OK):
         f = pnfs.get_local_pnfs_path(f)
         if not os.access(f, os.R_OK):
-            return ['no read permission'], []
+            # try the back door
+            cf = pnfs.get_local_pnfs_path(f)
+            if not os.access(cf, os.R_OK):
+                return ['no read permission'], []
     try:
-        pf = pnfs.File(f)
+        pf = pnfs.File(cf)
     except:
         return ['corrupted meta-data'], []
+
     # get bfid
     f1 = open(layer_file(f, 1))
     bfid = f1.readline()
@@ -133,7 +138,7 @@ def check(f):
     try:
         if pf.path != fr['pnfs_name0'] and \
            pf.path != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
-            warn.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+            warn.append('original_pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     except:
         msg.append('no or corrupted pnfs_path')
 
@@ -141,7 +146,7 @@ def check(f):
     try:
         if pf.path != pf.p_path and \
            pf.path != pnfs.get_local_pnfs_path(pf.p_path):
-            warn.append('path(%s, %s)'%(pf.path, pf.p_path))
+            warn.append('moved_path(%s, %s)'%(pf.path, pf.p_path))
     except:
         msg.append('no or corrupted l4_pnfs_path')
 
