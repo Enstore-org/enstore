@@ -442,6 +442,9 @@ class Interface:
             elif opt == "--up":
                 self.stop_draining = 1
                 self.up = value
+            elif opt == "--warm-restart":
+                self.warm_restart = 1
+                self.up = value
             elif opt == "--stop-time":
                 self.stop_time = value
             elif opt == "--storage-groups":
