@@ -463,7 +463,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 
              if [ $puntUPS -eq 1 ]; then
 	        rm -f $HOME/${product}_$REV.tar
-		cd $INSTALLDIR
+		cd $INSTALLDIR/..
 		check_status $? "cd $INSTALLDIR"
 		basen=`basename $INSTALLDIR`
 		tar -cf $HOME/${product}_$REV.tar $basen
