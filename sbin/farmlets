@@ -40,12 +40,17 @@ NSTK=`echo "$STK"|awk '/Number of files transferred:/ {print $NF}'`
 NCDF=`echo "$CDF"|awk '/Number of files transferred:/ {print $NF}'`
 NENS=`echo "$ENS"|awk '/Number of files transferred:/ {print $NF}'`
 
+if [ -z "$ND0" -o -z "$NSTK" -o -z "$NCDF" -o -z "$NENS" ]; then 
+    #enstore alarm --raise --severity "A" --root-error "farmlet kerberos trouble"
+    #/usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman  </dev/null
+fi
+
 if [ $ND0  != 0 ]; then echo "$D0" ; fi
 if [ $NSTK != 0 ]; then echo "$STK"; fi
 if [ $NCDF != 0 ]; then echo "$CDF"; fi
 if [ $NENS != 0 ]; then echo "$ENS"; fi
 
-rc=1
+rc=0
 
 if [ $ND0 != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
     msg="`date` BAD CONFIGURATION: Farmlet mismatch ND0=$ND0 NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
