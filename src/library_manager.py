@@ -1930,6 +1930,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"BUSY RQ %s"%(mticket,))
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0]:
+            # this mover is currently assigned to another library
+            # remove this mover from volumes_at_movers
+            movers = self.volumes_at_movers.get_active_movers()
+            movers_to_delete = []
+            for mv in movers:
+                if mticket['mover'] == mv['mover']:
+                    movers_to_delete.append(mv)
+            if movers_to_delete:
+                for mv in movers_to_delete:
+                    Trace.trace(11, "mover_busy removing from at movers %s"%(mv,))
+                    self.volumes_at_movers.delete(mv)
             return
         state = mticket.get('state', None)
         if state is 'IDLE':
@@ -2126,7 +2137,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ((mticket['state'] == mover_constants.OFFLINE) or # mover finished request and went offline
             (mticket['status'][0] == e_errors.ENCP_GONE)):
             self.volumes_at_movers.delete(mticket)
-            #self.reply_to_caller({'work': 'no_work'})
             return
         if mticket.has_key('returned_work') and mticket['returned_work']:
             # put this ticket back into the pending queue
