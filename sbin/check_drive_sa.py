@@ -115,6 +115,7 @@ def check_mover(drive, test_tape, media, f_size=250):
     bs=FTT.get_blocksize()
     ret = FTT.skip_fm(1)
     #print "WRITE SKIP",ret
+    print "WRITING DATA"
     t1 = time.time()
     for i in range (0,f_size):
         sts = FTT.write(ran_arr)
@@ -134,7 +135,7 @@ def check_mover(drive, test_tape, media, f_size=250):
     bs=FTT.get_blocksize()
     ret = FTT.skip_fm(1)
     #print "READ SKIP",ret
-    
+    print "READING DATA"
     t1 = time.time()
     for i in range (0,f_size):
         #print "READING",block_size/1024,"Kbytes"
