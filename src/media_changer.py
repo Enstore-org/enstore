@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-# src/$RCSfile$   $Revision$
+#########################################################################
+#
+# $Id$
 #
 #########################################################################
 #                                                                       #
@@ -48,6 +50,7 @@ import traceback
 import e_errors
 import volume_clerk_client
 import timeofday
+import event_relay_messages
 
 def _lock(f, op):
         dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
@@ -81,7 +84,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.logdetail = 1
         self.name = medch
         self.name_ext = "MC"
-        generic_server.GenericServer.__init__(self, csc, medch)
+        generic_server.GenericServer.__init__(self, csc, medch,
+                                              function = self.handle_er_msg)
         Trace.init(self.log_name)
         self.max_work = max_work
         self.workQueueClosed = 0
@@ -101,8 +105,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
         self.timeInsert = time.time()
-        ##start our heartbeat to the event relay process
-        self.erc.start_heartbeat(self.name, self.alive_interval, self.return_max_work)
+
+        # setup the communications with the event relay task
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
+        # start our heartbeat to the event relay process
+        self.erc.start_heartbeat(self.name, self.alive_interval,
+                                 self.return_max_work)
 
     # retry function call
     def retry_function(self,function,*args):
