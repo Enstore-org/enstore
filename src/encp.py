@@ -37,7 +37,7 @@ import library_manager_client
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but DO NOT CHANGE THE SYNTAX
-    return "v0_43  CVS $Revision$"
+    return "v0_99  CVS $Revision$"
 
 
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
