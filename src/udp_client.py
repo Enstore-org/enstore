@@ -7,7 +7,6 @@ import time
 import os
 import errno
 import exceptions
-import errno
 import sys
 try:
     import threading

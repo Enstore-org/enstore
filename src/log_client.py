@@ -527,7 +527,6 @@ def do_work(intf):
     logc.check_ticket(ticket)
 
 if __name__ == "__main__" :
-    import sys
     Trace.init(MY_NAME)
     Trace.trace(6,"logc called with args "+repr(sys.argv))
 

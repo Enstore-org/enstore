@@ -130,7 +130,6 @@ def read_tcp_obj_new(sock) :
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("CALLBACK")
     Trace.trace(6,"callback called with args "+repr(sys.argv))
 

@@ -9,7 +9,6 @@
 # set_alarm_func, set_log_func
 
 import sys				
-import e_errors				
 import traceback
 import os				
 import pwd				

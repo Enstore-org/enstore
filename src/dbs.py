@@ -5,7 +5,6 @@
 #   particular reason, we choose the volume clerk node to check.
 
 import db
-import interface
 import os
 import getopt
 import time
