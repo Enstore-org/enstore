@@ -33,6 +33,14 @@ ecmd clrvol  volume_name
 ecmd rdovol  volume_name
 ecmd noavol  volume_name
 ecmd newlib  volume_name new_library_name
+
+
+ecmd Estart   farmlet  global Enstore start   on all farmlet nodes
+ecmd Estop    farmlet  global Enstore start   on all farmlet nodes
+ecmd Erestart farmlet  global Enstore restart on all farmlet nodes
+ecmd Egrau             lists the current mount state and queue list on the emass robot
+ecmd Esys     farmlet  global "enstore-associated" ps on all farmlet nodes
+
 "
 
 if [ -z "${1-}" ] ; then
@@ -157,6 +165,30 @@ case $cmd in
     stat=$?
     ;;
 
+  Estart)
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estart"
+    stat=$?
+    ;;
+
+  Estop)
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"    
+    stat=$?
+    ;;
+
+  Erestart)
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/erestart'" 
+    stat=$?
+    ;;
+
+  Egrau)
+    rsh rip1 "$ENSTORE_DIR/sbin/egrau"    
+    stat=$?
+    ;;
+
+  Esys)
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "ps auxww | egrep 'python|ecmd|encp|reader|writer'" 
+    stat=$?
+    ;;
 
   help)
     echo "$usage"
