@@ -3442,7 +3442,7 @@ raise_exception2(struct transfer *rtn_val)
     /* What does the above comment mean??? */
     v = Py_BuildValue("(s,i,s,i,O,O,O,s,i)",
 		      rtn_val->msg, i, strerror(i), getpid(),
-		      PyLong_FromLongLong(rtn_val->size),
+		      PyLong_FromLongLong(rtn_val->bytes),
 		      PyFloat_FromDouble(rtn_val->transfer_time),
 		      PyFloat_FromDouble(rtn_val->transfer_time),
 		      rtn_val->filename, rtn_val->line);
@@ -3597,7 +3597,7 @@ EXfd_xfer(PyObject *self, PyObject *args)
     rr = Py_BuildValue("(i,O,O,i,s,O,O,s,i)",
 		       writes.exit_status, 
 		       PyLong_FromUnsignedLong(writes.crc_ui),
-		       PyLong_FromLongLong(writes.size),
+                       PyLong_FromLongLong(writes.bytes),
 		       writes.errno_val, writes.msg,
 		       PyFloat_FromDouble(reads.transfer_time),
 		       PyFloat_FromDouble(writes.transfer_time),
