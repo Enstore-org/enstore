@@ -53,7 +53,7 @@ M_loop:
 
 int
 ftt_status(ftt_descriptor d, int time_out) {
-    DWORD fres, fres2;
+    DWORD fres, fres2,fres3,pos=(DWORD)-1,pos2=(DWORD)-1,par=(DWORD)-1;
     int res=0;
 	TAPE_GET_MEDIA_PARAMETERS gmp;
 	HANDLE fh;
@@ -79,29 +79,33 @@ ftt_status(ftt_descriptor d, int time_out) {
 		time_out--;
 	}
 
-    res = 0;
+    res = FTT_ONLINE;
     
-    if     (fres == ERROR_BEGINNING_OF_MEDIA )		res = FTT_ONLINE	| FTT_ABOT;
-    else if(fres == ERROR_BUS_RESET)				res = FTT_ONLINE;
-	else if(fres == ERROR_END_OF_MEDIA)				res = FTT_ONLINE	| FTT_AEOT | FTT_AEW;
-    else if(fres == ERROR_FILEMARK_DETECTED)		res = FTT_ONLINE;
-    else if(fres == ERROR_SETMARK_DETECTED)			res = FTT_ONLINE;
-    else if(fres == ERROR_NO_DATA_DETECTED)			res = FTT_ONLINE;
-    else if(fres == ERROR_PARTITION_FAILURE)		res = FTT_ONLINE;
-    else if(fres == ERROR_INVALID_BLOCK_LENGTH)		res = FTT_ONLINE;
-    else if(fres == ERROR_DEVICE_NOT_PARTITIONED)	res = FTT_ONLINE;
-    else if(fres == ERROR_MEDIA_CHANGED)			res = FTT_ONLINE;
-    else if(fres == ERROR_NO_MEDIA_IN_DRIVE)		;
-    else if(fres == ERROR_NOT_SUPPORTED)			res = FTT_ONLINE;
-    else if(fres == ERROR_UNABLE_TO_LOCK_MEDIA)		res = FTT_ONLINE;
-    else if(fres == ERROR_UNABLE_TO_UNLOAD_MEDIA)	res = FTT_ONLINE;
-    else if(fres == ERROR_WRITE_PROTECT)			res = FTT_ONLINE	| FTT_PROT;
+    if     (fres == ERROR_BEGINNING_OF_MEDIA )		res |= FTT_ABOT;
+    else if(fres == ERROR_BUS_RESET)				;
+	else if(fres == ERROR_END_OF_MEDIA)				res |= FTT_AEOT | FTT_AEW;
+    else if(fres == ERROR_FILEMARK_DETECTED)		;
+    else if(fres == ERROR_SETMARK_DETECTED)			;
+    else if(fres == ERROR_NO_DATA_DETECTED)			;
+    else if(fres == ERROR_PARTITION_FAILURE)		;
+    else if(fres == ERROR_INVALID_BLOCK_LENGTH)		;
+    else if(fres == ERROR_DEVICE_NOT_PARTITIONED)	;
+    else if(fres == ERROR_MEDIA_CHANGED)			res = 0;
+    else if(fres == ERROR_NO_MEDIA_IN_DRIVE)		res = 0;
+    else if(fres == ERROR_NOT_SUPPORTED)			;
+    else if(fres == ERROR_UNABLE_TO_LOCK_MEDIA)		;
+    else if(fres == ERROR_UNABLE_TO_UNLOAD_MEDIA)	;
+    else if(fres == ERROR_WRITE_PROTECT)			res |= FTT_PROT;
 
 	fres2 = ftt_win_get_paramters(d,&gmp,0);
 
 	if ( fres2 == NO_ERROR ) {
 		if (gmp.WriteProtected ) res |= FTT_PROT;
 	}
+	
+	fres3 = GetTapePosition(fh,TAPE_LOGICAL_POSITION,&par,&pos,&pos2);
+
+	if(fres3==NO_ERROR && pos==0) res |= FTT_ABOT;
     return res;
 }
 

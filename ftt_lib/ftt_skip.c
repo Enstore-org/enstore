@@ -95,6 +95,7 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 
 			if ( opn == FTT_OPN_RSKIPFM || opn == FTT_OPN_SKIPFM ) {
 				fres = SetTapePosition(fh,TAPE_SPACE_FILEMARKS,0,LowOff,0,0);
+			
 			} else if ( opn == FTT_OPN_RSKIPREC || opn == FTT_OPN_SKIPREC ) {
 				fres = SetTapePosition(fh,TAPE_SPACE_RELATIVE_BLOCKS,0,LowOff,0,0);
 			} else if ( opn == FTT_OPN_WRITEFM ) {
@@ -156,27 +157,36 @@ ftt_skip_fm(ftt_descriptor d, int n) {
 
     if ( n < 0 ) {
         d->last_pos = -1;/* we skipped backwards, so this can't be valid */
-	res = ftt_write_fm_if_needed(d); 	if (res < 0) {return res;}
+		res = ftt_write_fm_if_needed(d); 	if (res < 0) {return res;}
     }
 
-    res = ftt_skip_fm_internal(d,n); 		if (res < 0) {return res;}
-
+    res = ftt_skip_fm_internal(d,n); 
+	if (res   < 0 ) {
+		if ( ftt_errno == FTT_ELEADER )
+			ftt_eprintf("ftt_skip_fm: At BOT after doing a skip filemark");
+		else if (ftt_errno == FTT_EBLANK ) 
+			ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
+		return res;
+	}
+	
     res2 = ftt_status(d,0);
     DEBUG3(stderr, "ftt_status returns %d after skip\n", res2);
 
-    if (res2 > 0 && (res2 & FTT_ABOT)) {
-	d->unrecovered_error = 2;
-	ftt_errno = FTT_ELEADER;
-	ftt_eprintf("ftt_skip_fm: At BOT after doing a skip filemark");
-	res =  -1;
+    if ((res   < 0 && ftt_errno == FTT_ELEADER ) ||
+		( res2 > 0 && (res2 & FTT_ABOT))) {
+		d->unrecovered_error = 2;
+		ftt_errno = FTT_ELEADER;
+		ftt_eprintf("ftt_skip_fm: At BOT after doing a skip filemark");
+		res =  -1;
     }
-    if (res > 0 && (res2 & FTT_AEOT)) {
-	d->unrecovered_error = 2;
-	ftt_errno = FTT_EBLANK;
-	ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
-	res = -1;
-    }
-
+    if ((res   < 0 && ftt_errno == FTT_EBLANK ) ||
+		( res2 > 0 && (res2 & FTT_AEOT) )) {
+		d->unrecovered_error = 2;
+		ftt_errno = FTT_EBLANK;
+		ftt_eprintf("ftt_skip_fm: At EOT after doing a skip filemark");
+		res = -1;
+	}
+	
     return res;
 }
 

@@ -1786,6 +1786,8 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	 /* ======		=== === === === === ======                   === */
 	{ ".\\tape%d",	 0,  0,	  0, 0,  0,                 0, 1, WIN_MAX_BLKSIZE},
 	{ ".\\tape%d",	 0,  1,	  0, 0,  0,                 0, 0, WIN_MAX_BLKSIZE},
+	{ ".\\tape%d",	 0,  0,	  0, 0,  1,                 0, 0, WIN_MAX_BLKSIZE},
+	{ ".\\tape%d",	 0,  1,	  0, 0,  1,                 0, 0, WIN_MAX_BLKSIZE},
 	{ ".\\tape%d",	-1,  0,	 -1, 1,  0,                 0, 0, WIN_MAX_BLKSIZE},
     { 0,},
     }},

@@ -655,8 +655,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
 #else /* this is the WIN32 part */
 	{
-		DWORD fres;
-		HANDLE fh = (HANDLE)d->file_descriptor;
+		DWORD fres,par,pos,pos2;
+		
+		HANDLE fh ;
 		TAPE_GET_MEDIA_PARAMETERS gmp;
 		TAPE_GET_DRIVE_PARAMETERS gdp;
 		if ( ftt_open_io_dev(d) < 0 ) {
@@ -664,21 +665,29 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 				ftt_errno = FTT_EPARTIALSTAT;
 				return -1;
 		}
+		fh = (HANDLE)d->file_descriptor;
 		fres = ftt_win_get_paramters(d,&gmp,&gdp);
-		if ( fres == NO_ERROR ) {
+		if ( fres < 1100 ) {
+			set_stat(b,FTT_BLOCK_SIZE,ftt_itoa(gmp.BlockSize),0);
+			set_stat(b,FTT_WRITE_PROT,ftt_itoa((int)gmp.WriteProtected),0);
+		
 			if ( gdp.FeaturesLow & TAPE_DRIVE_TAPE_REMAINING ) {
 				set_stat(b,FTT_REMAIN_TAPE, ftt_itoa_Large(gmp.Remaining),0);
 			}
-			if (gdp.FeaturesLow & TAPE_DRIVE_COMPRESSION ) {
-				set_stat(b,FTT_TRANS_COMPRESS,ftt_itoa(gdp.Compression),0);
-			}
-
 			
+			set_stat(b,FTT_TRANS_COMPRESS,ftt_itoa(gdp.Compression),0);
+			set_stat(b,FTT_TRANS_DENSITY,"0",0); /*this has to be 0*/
+
 		}
 		else {
 			ftt_eprintf("ftt_get_stats, Getting Media & Drive Parameters Failed \n");
 			ftt_errno = FTT_EPARTIALSTAT;
 			return -1;
+		}
+		par = pos = pos = (DWORD)-1;
+		fres = GetTapePosition(fh,TAPE_LOGICAL_POSITION,&par,&pos,&pos2);
+		if ( pos >= 0 ) { 
+			set_stat(b,FTT_BOT,ftt_itoa((pos == 0 )?1:0),0);
 		}
 	}
 #endif
