@@ -1,85 +1,236 @@
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>IMPLEMENTATION</FONT></FONT></U></I></B></CENTER>
-
-
+<p>
 There will be 4 major phases:
-
-1. Manuals, Policies, and Guidelines
-2. Study, Decide on Changes, and Document.
-3. Recreate Baseline System - has at least the functionality of the
+<ol>
+<li> Manuals, Policies, and Guidelines
+<li> Study, Decide on Changes, and Document.
+<li> Recreate Baseline System - has at least the functionality of the
    prototype (most likely more) and has (at least) hooks/structure for all
    required features .
-4. Parallel - continuous strain testing and feature enabling
-
-
+<li>Parallel - continuous strain testing and feature enabling
+</ol>
+<p>
 
 Effort estimate - estimates based on prototype project
-
-   Task
-  -----
-        manual/policies/guides
-    1) 	packaging (i.e. encp separate/special)                          2 MW
-    2)	coding standards                                                2 MW
-    3)	design review, code walk-through procedures                     2 MW
-    4)	initial tools (make/build, release/distribute procedures)       2 MW
-    5)	testing/integration plan                                        2 MW
-    6)	bug reporting/tracking procedure                                2 MW
-
-        design documents
-    7)  base test/debug framework (essential to test/integration plan^) 3 MW
-    8)  options/switchs (config server vs others servers vs encp)       2 MW
-    9)  base client server frame work (protocol,etc)                    3 MW
-    10) base error handling philosophy                                  2 MW
-    11) base database framework (include fault tolerent and backup)     2 MW
-    12) encp                                                            2 MW
-    13) admin tools (includes configuration of pnfs, web status)        4 MW
-    14) config server                                                   2 MW
-    15) volume server                                                   2 MW
-    16) file server                                                     2 MW
-    17) library manager                                                 2 MW
-    18) mover and wrappering                                            2 MW
-    19) media changer                                                   2 MW
-    20) log server                                                      2 MW
-
-    21) design reviews                                                  3 MW
-
-    22) design review analysis                                          1 MW
-    23) resultant interation (specifically, msg flow diagrams)          4 MW
-
-    24) build test stand based on plan (includes setup of pnfs)         2 MW
-
-        actual coding (referencing prototype)
-    25) create stubs to aid parallel devel where possible               2 MW
-    26) base test/debug framework                                       2 MW
-    27) options/switchs (config server vs others servers vs encp)       1 MW
-    28) base client server frame work                                   2 MW
-    29) base error handling philosophy                                  3 MW
-    30) base database framework (include fault tolerent and backup)     1 MW
-    31) encp                                                            1 MW
-    32) admin tools (includes configuration of pnfs, web status)        8 MW
-    33) config server                                                   1 MW
-    34) volume server                                                   1 MW
-    35) file server                                                     1 MW
-    36) library manager                                                 2 MW
-    37) mover and wrappering                                            4 MW
-    38) media changer                                                   1 MW
-    39) log server                                                      1 MW
-
-    40) code walkthroughs                                               2 MW
-    41) resultant interation                                            4 MW
-
-    42) initial integration                                             6 MW
-    43) resultant interation (includes additional admin tools)          8 MW
-    44) document update                                                 4 MW
-    45) final testing/interations (includes reports,etc.               12 MW
-        release
-								     ---------
-total								      121 MW
-
+<p>
+<table>
+<td valign=top>Task
+<td valign=top>
+<tr>
+<td>
+<td valign=top colspan=2>
+<hr>
+manual/policies/guides
+<hr>
+<tr>
+<td valign=top> 1
+<td valign=top> packaging (i.e. encp separate/special)
+<td valign=top align=right> 2 MW
+<tr>
+<td valign=top>2
+<td valign=top>coding standards
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>3
+<td valign=top>design review, code walk-through procedures
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>4
+<td valign=top>initial tools (make/build, release/distribute procedures)
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>5
+<td valign=top>testing/integration plan
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>6
+<td valign=top>bug reporting/tracking procedure
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>
+<td valign=top colspan=2>
+<hr>
+design documents
+<hr>
+<tr>
+<td valign=top>7
+<td valign=top>base test/debug framework (essential to test/integration plan)
+<td valign=top align=right>3 MW
+<tr>
+<td valign=top>8
+<td valign=top>options/switchs (config server vs others servers vs encp)
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>9
+<td valign=top>base client server frame work (protocol,etc)
+<td valign=top align=right>3 MW
+<tr>
+<td valign=top>10
+<td valign=top>base error handling philosophy
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>11
+<td valign=top>base database framework (include fault tolerent and backup)
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>12
+<td valign=top>encp
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>13
+<td valign=top>admin tools (includes configuration of pnfs, web status)
+<td valign=top align=right>4 MW
+<tr>
+<td valign=top>14
+<td valign=top>config server
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>15
+<td valign=top>volume server
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>16
+<td valign=top>file server
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>17
+<td valign=top>library manager
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>18
+<td valign=top>mover and wrappering
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>19
+<td valign=top>media changer
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>20
+<td valign=top>log server
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>21
+<td valign=top>design reviews
+<td valign=top align=right>3 MW
+<tr>
+<td valign=top>22
+<td valign=top>design review analysis
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>23
+<td valign=top>resultant interation (specifically, msg flow diagrams)
+<td valign=top align=right>4 MW
+<tr>
+<td valign=top>24
+<td valign=top>build test stand based on plan (includes setup of pnfs)
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>
+<td valign=top colspan=2>
+<hr>
+actual coding (referencing prototype)
+<hr>
+<tr>
+<td valign=top>25
+<td valign=top>create stubs to aid parallel devel where possible
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>26
+<td valign=top>base test/debug framework
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>27
+<td valign=top>options/switchs (config server vs others servers vs encp)
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>28
+<td valign=top>base client server frame work
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>29
+<td valign=top>base error handling philosophy
+<td valign=top align=right>3 MW
+<tr>
+<td valign=top>30
+<td valign=top>base database framework (include fault tolerent and backup)
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>31
+<td valign=top>encp
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>32
+<td valign=top>admin tools (includes configuration of pnfs, web status)
+<td valign=top align=right>8 MW
+<tr>
+<td valign=top>33
+<td valign=top>config server
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>34
+<td valign=top>volume server
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>35
+<td valign=top>file server
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>36
+<td valign=top>library manager
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>37
+<td valign=top>mover and wrappering
+<td valign=top align=right>4 MW
+<tr>
+<td valign=top>38
+<td valign=top>media changer
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>39
+<td valign=top>log server
+<td valign=top align=right>1 MW
+<tr>
+<td valign=top>40
+<td valign=top>code walkthroughs
+<td valign=top align=right>2 MW
+<tr>
+<td valign=top>41
+<td valign=top>resultant interation
+<td valign=top align=right>4 MW
+<tr>
+<td valign=top>42
+<td valign=top>initial integration
+<td valign=top align=right>6 MW
+<tr>
+<td valign=top>43
+<td valign=top>resultant interation (includes additional admin tools)
+<td valign=top align=right>8 MW
+<tr>
+<td valign=top>44
+<td valign=top>document update
+<td valign=top align=right>4 MW
+<tr>
+<td valign=top>45
+<td valign=top>final testing/interations (includes reports,etc.)
+<td valign=top align=right>12 MW
+<tr>
+<td valign=top>
+<td valign=top colspan=2>
+<hr>
+release
+<hr>
+<tr>
+<td valign=top>
+<td valign=top>Total
+<td valign=top align=right>121 MW
+</table>
+<p>
 allowing a scaling factor of 0.7, as specified by the run II steering
 committee, the effort needed to complete the project is 121/0.7=173 FTE
 weeks, or 3.3 FTE years.
-
-
+<p>
+<pre>
 Pert Chart
 worker A
        B
@@ -144,7 +295,7 @@ Task                1         2         3         4         5
     that schedule optimization is not possible
 + = most, if not all people involved (possibly a fraction of the time but
     at least some schedule optimization is possible
-
+</pre>
 
 
 </BODY>
