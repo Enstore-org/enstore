@@ -17,13 +17,17 @@ SRCWWW = $(WWW)
 
 ENSTORE_HOME = /usr/hppc_home/www/enstore
 
-HTML_FILES = architecture.html assumptions.html db.html detail_req.html \
-	implementation.html overview.html prim_req.html \
-	scope.html system_architecture.html testing.html
+HTML_FILES = $(WWW)/design.html $(WWW)/assumptions.html $(WWW)/db.html \
+	$(WWW)/detail_req.html $(WWW)/implementation.html \
+	$(WWW)/overview.html $(WWW)/prim_req.html $(WWW)/scope.html \
+	$(WWW)/system_architecture.html $(WWW)/testing.html
 
-HOME_FILE = index.html
+HOME_FILE = $(WWW)/index.html
 
-PS_FILES = enstore.ps read.ps test-stand.ps write.ps
+PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
+	$(WWW)/write.ps
+
+GIF_FILES = $(WWW)/bookshelf.gif
 
 WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(HOME_FILE)
 
@@ -37,10 +41,10 @@ www_new: $(WWW_NEW_FILES)
 	@echo Begin www_new
 	@- rm -rf $(WWW_NEW)
 	mkdir $(WWW_NEW)
-	./moveAndAddButton.pl $(WWW) $(WWW_NEW) $(HTML_FILES)
-	@cp $(WWW)/$(HOME_FILE) $(WWW_NEW)
-	@cp $(WWW)*.ps $(WWW_NEW)
-	@cp $(WWW)*.gif $(WWW_NEW)
+	./moveAndAddButton.pl $(WWW_NEW) $(HTML_FILES)
+	@cp $(HOME_FILE) $(WWW_NEW)
+	@cp $(PS_FILES) $(WWW_NEW)
+	@cp $(GIF_FILES) $(WWW_NEW)
 
 obj.ps:
 	./mk_inherit
@@ -55,13 +59,9 @@ install :
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc
 	cp Makefile mk_inherit class4module $(ENSTORE_INSTALL_DIR)/doc
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc/www
-	cp www_new/*.html  $(ENSTORE_INSTALL_DIR)/doc/www
-	cp www_new/*.gif   $(ENSTORE_INSTALL_DIR)/doc/www
-	cp www_new/*.ps    $(ENSTORE_INSTALL_DIR)/doc/www
-	if [ -d "$(ENSTORE_HOME)" ]; then \
-		cp www_new/*.html  $(ENSTORE_HOME) \
-		cp www_new/*.gif   $(ENSTORE_HOME) \
-		cp www_new/*.ps    $(ENSTORE_HOME) \
+	cp $(WWW_NEW)/*.*   $(ENSTORE_INSTALL_DIR)/doc/www
+	@if [ -d "$(ENSTORE_HOME)" ]; then \
+		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME) \
 	fi;
 
 #
