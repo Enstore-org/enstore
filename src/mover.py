@@ -563,7 +563,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                           (external_label,self.mvr_config['device']))
             except:
                 e_errors.handle_error()
-                return 'BADMOUNT' # generic, not read or write specific
+                return 'BADSWMOUNT' # generic, not read or write specific
 
             # at this point, we have the volume in our tape drive,
             # so if anything goes wrong from this point on, we can let whoever
