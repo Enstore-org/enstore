@@ -334,7 +334,6 @@ def next_work_this_volume(v):
             v["vc"]["user_inhibit"]        == "none"           and
             v["vc"]["system_inhibit"]      == "none"           and
             w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
-            w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v['vc']["external_label"]
             w["fc"]["size"] = w["wrapper"]["size_bytes"]
             # ok passed criteria, return write work ticket
