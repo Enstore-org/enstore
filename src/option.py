@@ -164,6 +164,7 @@ BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK = "bypass-filesystem-max-filesize-check"
                                              #encp
 BYPASS_LABEL_CHECK = "bypass-label-check"    #volume
 CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
+CAPTURE_TIMEOUT = "capture-timeout"          #entv
 CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume, encp
 CLEAN_DRIVE = "clean-drive"                  #mover
@@ -407,7 +408,8 @@ valid_option_list = [
     ADD, AGE_TIME, ALIVE, ALL, ARRAY_SIZE, ASSIGN_SG,
     BACKUP, BFID, BFIDS, BUFFER_SIZE,
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
-    CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CLIENT_NAME,
+    CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
+    CLEAN_DRIVE, CLEAR, CLIENT_NAME,
     CONDITION, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,

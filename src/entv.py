@@ -727,7 +727,7 @@ def handle_messages(display, csc, intf):
     global stop_now
 
     #This is a time hack to get a clean output file.
-    timeout_time = time.time() + 120
+    timeout_time = time.time() + intf.capture_timeout
     
     # we will get all of the info from the event relay.
     if intf.messages_file:
@@ -983,6 +983,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
     
     # parse the options like normal but make sure we have other args
     def parse_options(self):
+        self.capture_timeout = 120  #seconds for capture.
         self.dont_show = ""
         self.verbose = 0
         self.generate_messages_file = 0
@@ -1003,12 +1004,12 @@ class EntvClientInterface(generic_client.GenericClientInterface):
             Trace.do_message(10)
     
     entv_options = {
-        option.MESSAGES_FILE:{option.HELP_STRING:
-                              "Use 'canned' version of entv.",
-                              option.VALUE_USAGE:option.REQUIRED,
-                              option.VALUE_TYPE:option.STRING,
-                              option.VALUE_LABEL:"messages_file",
-                              option.USER_LEVEL:option.ADMIN,},
+        option.CAPTURE_TIMEOUT:{option.HELP_STRING:"Duration (in seconds) that"
+                                " --generate-messages-file should display"
+                                " new transfers. (default 120 seconds.)",
+                                option.VALUE_USAGE:option.REQUIRED,
+                                option.VALUE_TYPE:option.INTEGER,
+                                option.USER_LEVEL:option.USER,},
         option.DONT_SHOW:{option.HELP_STRING:"Don't display the movers that"
                           " belong to the specified library manager(s).",
                           option.VALUE_USAGE:option.REQUIRED,
@@ -1017,9 +1018,16 @@ class EntvClientInterface(generic_client.GenericClientInterface):
                           option.USER_LEVEL:option.USER,},
         option.GENERATE_MESSAGES_FILE:{option.HELP_STRING:
                                      "Output to standard output the sequence"
-                                     " of messages that create the display.",
+                                     " of messages that create the display."
+                                     "  This is done in a visually clean way.",
                                      option.VALUE_USAGE:option.IGNORED,
                                      option.USER_LEVEL:option.ADMIN,},
+        option.MESSAGES_FILE:{option.HELP_STRING:
+                              "Use 'canned' version of entv.",
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_LABEL:"messages_file",
+                              option.USER_LEVEL:option.ADMIN,},
         option.MOVERS_FILE:{option.HELP_STRING:"Use 'canned' version of entv.",
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_TYPE:option.STRING,
