@@ -657,6 +657,7 @@ SEEK_TIME=%.02f
 MOUNT_TIME=%.02f
 QWAIT_TIME=%.02f
 TIME2NOW=%.02f
+CRC=%d
 STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 
     out.write(data_access_layer_format % (inputfile, outputfile, filesize,
@@ -664,7 +665,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
                                           device, device_sn,
                                           transfer_time, seek_time,
                                           mount_time, in_queue,
-                                          total, status))
+                                          total, crc, status))
 
     out.write('\n')
     out.flush()
@@ -677,7 +678,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s " +\
                  "DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+ \
                  "SEEK_TIME=%.02f MOUNT_TIME=%.02f QWAIT_TIME=%.02f " + \
-                 "TIME2NOW=%.02f STATUS=%s"
+                 "TIME2NOW=%.02f CRC=%s STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
@@ -686,7 +687,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
                        device,device_sn,
                        transfer_time, seek_time, mount_time,
                        in_queue, total,
-                       status)
+                       crc, status)
 
         if msg:
             #Attach the data access layer info to the msg, but first remove
