@@ -43,6 +43,7 @@ class GenericAlarm:
 
     def __init__(self):
         self.timedate = time.time()
+        self.timedate_last = self.timedate
         self.id = str(self.timedate)
         self.host = ""
         self.pid = DEFAULT_PID
@@ -104,6 +105,7 @@ class GenericAlarm:
             self.ticket_generated = "YES"
             
     def seen_again(self):
+        self.timedate_last = time.time()
 	try:
 	    self.num_times_raised = self.num_times_raised + 1
 	except errno.errorcode[errno.EOVERFLOW]:
@@ -111,7 +113,7 @@ class GenericAlarm:
 
     # return the a list of the alarm pieces we need to output
     def list_alarm(self):
-	return [self.id, self.host, self.pid, self.uid, 
+	return [self.id, self.timedate_last, self.host, self.pid, self.uid, 
 		"%s (%s)"%(self.severity, self.num_times_raised),
 		self.source, self.root_error,
                 self.condition, self.type,
@@ -127,8 +129,9 @@ class GenericAlarm:
         # ths simple string has the following format -
         #         servername on node - text string
         # where servername and node are replaced with the appropriate values
-        str = "%s on %s at %s - "%(self.source, self.host,
-                                  enstore_functions2.format_time(self.timedate))
+        str = "%s on %s at %s (%s) - "%(self.source, self.host,
+					enstore_functions2.format_time(self.timedate),
+					enstore_functions2.format_time(self.timedate_last))
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem
@@ -191,12 +194,13 @@ class AsciiAlarm(GenericAlarm):
     def __init__(self, text):
         GenericAlarm.__init__(self)
 
-	# sometimes the alarm file has junk in it. so protect against that
-	try:
-	    [self.id, self.host, self.pid, self.uid, sev,
-	     self.source, self.root_error, self.alarm_info] = eval(text)
-	    self.severity, self.num_times_raised = self.split_severity(sev)
-	except ValueError:
+	# if the alarm file has junk in it. protect against that
+        try:
+            [self.id, self.host, self.pid, self.uid, sev,
+             self.source, self.root_error, self.alarm_info] = eval(text)
+            self.severity, self.num_times_raised = self.split_severity(sev)
+            self.timedate_last = float(self.id)
+        except ValueError:
             # try the new format with the remedy ticket information in it
             try:
                 [self.id, self.host, self.pid, self.uid, sev,
@@ -204,8 +208,19 @@ class AsciiAlarm(GenericAlarm):
                  self.condition, self.type,
                  self.ticket_generated, self.alarm_info] = eval(text)
                 self.severity, self.num_times_raised = self.split_severity(sev)
-            except TypeError:
-                self.id = 0    # not a valid alarm
+                self.timedate_last = float(self.id)
+            except ValueError:
+                try:
+                    # try the format with 2 timedates in it
+                    [self.id, self.timedate_last, self.host, self.pid, self.uid, sev,
+                     self.source, self.root_error,
+                     self.condition, self.type,
+                     self.ticket_generated, self.alarm_info] = eval(text)
+                    self.severity, self.num_times_raised = self.split_severity(sev)
+                    self.timedate_last = float(self.timedate_last)
+                except (TypeError, ValueError):
+                    self.id = 0    # not a valid alarm
+
 
 class LogFileAlarm(GenericAlarm):
 
@@ -245,6 +260,7 @@ class LogFileAlarm(GenericAlarm):
                          self.timedate[6], self.timedate[7],
                          -1)
 	self.id = str(self.timedate)
+	self.timedate_last = self.timedate
 	
 	text = string.strip(text)
 	# text may be only a dictionary or it may be of the following format -

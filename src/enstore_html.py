@@ -99,6 +99,11 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour (no null mvs)"],
 
 DEFAULT_LABEL = "UNKNOWN INQ PLOT"
 
+def noNone(aStr):
+    if aStr == None:
+        aStr = NBSP
+    return aStr
+
 def sort_keys(dict):
     keys = dict.keys()
     keys.sort()
@@ -319,7 +324,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
     # create a table header
     def make_th(self, name):
 	return HTMLgen.TH(HTMLgen.Bold(HTMLgen.Font(name, size="+2", 
-						    color=BRICKRED)),
+						    color=BRICKRED,
+                                                    html_escape='OFF')),
 			  align="CENTER")
 
     def trailer(self, table, cols=1):
@@ -2038,8 +2044,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
-        for hdr in ["Key", "Time", "Node", "PID", "User", "Severity", 
-                    "Process", "Error", "Condition", "Type", "Ticket Generated",
+        for hdr in ["%sKey%s"%(NBSP*8,NBSP*8), "Time\n(last)", "Node", "PID", "User", "Severity", 
+                    "Process", "Error", "Ticket Generated\n(Condition/Type)",
                     "Additional Information"]:
             tr.append(self.make_th(hdr))
 	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
@@ -2054,10 +2060,20 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	    td.append("%s%s"%(NBSP*3, alarm[0]))
 	    tr = HTMLgen.TR(td)
 	    # remove .fnal.gov
-	    alarm[1] = enstore_functions2.strip_node(alarm[1])
-	    tr.append(HTMLgen.TD(enstore_functions2.format_time(float(alarm[0]))))
-	    for item in alarm[1:]:
+	    alarm[2] = enstore_functions2.strip_node(alarm[2])
+            td = HTMLgen.TD("%s"%(enstore_functions2.format_time(float(alarm[0]))))
+            td.append(HTMLgen.BR())
+	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(enstore_functions2.format_time(alarm[1],)), size="-1")))
+	    tr.append(td)
+	    for item in alarm[2:8]:
 		tr.append(HTMLgen.TD(item))
+            tmp = noNone(alarm[10])
+            td = HTMLgen.TD(noNone(tmp), html_escape='OFF')
+            if not tmp == NBSP:
+                td.append(HTMLgen.BR())
+                td.append("(%s/%s)"%(alarm[8], alarm[9]))
+            tr.append(td)
+            tr.append(HTMLgen.TD(alarm[11]))
 	    table.append(tr)
 	    i = i + 1
 	return table
@@ -2100,7 +2116,8 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
 	for hdr in ["Time", "Node", "PID", "User", "Severity", 
-		    "Process", "Error", "Additional Information"]:
+		    "Process", "Error", "Ticket Generated\n(Condition/Type)",
+		    "Additional Information"]:
 	    tr.append(self.make_th(hdr))
 	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
@@ -2109,9 +2126,16 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	    alarm = alarms[akey].list_alarm()
 	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions2.format_time(time.mktime(eval(alarm[0]))))))
 	    # remove .fnal.gov
-	    alarm[1] = enstore_functions2.strip_node(alarm[1])
-	    for item in alarm[1:]:
+	    alarm[2] = enstore_functions2.strip_node(alarm[2])
+	    for item in alarm[2:8]:
 		tr.append(HTMLgen.TD(item))
+            tmp = noNone(alarm[10])
+            td = HTMLgen.TD(noNone(tmp), html_escape='OFF')
+            if not tmp == NBSP:
+                td.append(HTMLgen.BR())
+                td.append("(%s/%s)"%(alarm[8], alarm[9]))
+            tr.append(td)
+            tr.append(HTMLgen.TD(alarm[11]))
 	    table.append(tr)
 	return table
 
