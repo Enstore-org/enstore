@@ -1,4 +1,4 @@
-class GenericClient ():
+class GenericClient:
 
     # check on alive status
     def alive(self):
