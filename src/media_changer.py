@@ -207,7 +207,7 @@ class RDD_MediaLoader(MediaLoaderMethods,
                       generic_server.GenericServer) :
     pass
 
-# Raw Disk media loaded server
+# FTT tape drives with no robot loader server
 class FTT_MediaLoader(FTT_MediaLoaderMethods,
                       generic_server.GenericServer) :
     pass
