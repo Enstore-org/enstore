@@ -8,20 +8,12 @@
 
 %module aci_shadow
 
-/* build default constructors/destructors for shadow classes */
-%pragma make_default
 
 %{
 #include "aci.h"
 #include "aci_typedefs.h"
 %}
 
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
-/*  aci.h - the header file for ACI users                                  */
-/*                                                                         */
-/*  version: 1.30C3 or later                                               */
-/*                                                                         */
 /*-------------------------------------------------------------------------*/
 
 #include <sys/types.h>
@@ -33,10 +25,6 @@
 %include "aci_typedefs.h"
 %include "aci_typemaps.i"
 
-
-
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
 /*-------------------------------------------------------------------------*/
 
 enum aci_media { ACI_3480 = 1, ACI_OD_THICK, ACI_OD_THIN,
@@ -47,8 +35,6 @@ enum aci_media { ACI_3480 = 1, ACI_OD_THICK, ACI_OD_THIN,
 enum aci_command {ACI_ADD = 1, ACI_MODIFY, ACI_DELETE};
 enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP};
 
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
 /*-------------------------------------------------------------------------*/
 
 #define ACI_COORD_LEN   11      /* should match das.h setting */
@@ -75,9 +61,6 @@ enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP};
 #define ACI_VOLSER_ATTRIB_OCCUPIED  'O'
 #define ACI_VOLSER_ATTRIB_UNDEFINED 'U'
 
-
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
 /*-------------------------------------------------------------------------*/
 
 struct aci_vol_desc {
@@ -104,7 +87,6 @@ struct aci_drive_entry {
     short clean_count;
 };
 
-/*cgw*/
 struct in_addr {
 	unsigned int s_addr;
 };
@@ -127,10 +109,6 @@ struct aci_req_entry {
         char req_type [ACI_REQTYPE_LEN + 1];
 };
 
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
-/*-------------------------------------------------------------------------*/
-
 struct aci_volserinfo
 {
        char            volser [ ACI_VOLSER_LEN ];
@@ -138,20 +116,13 @@ struct aci_volserinfo
        char            attrib;
 };
 
+int aci_robhome (char *); 
+int aci_robstat (char *, char *); 
 
-
-
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
-/*-------------------------------------------------------------------------*/
-
-int aci_robhome (char *); /*cgw*/
-int aci_robstat (char *, char *); /*tgj*/
-
-int aci_cancel (int);
-extern int aci_clientaccess (char *, enum aci_command, char *, enum aci_media,
-			     char *); /*cgw*/
-extern int aci_clientstatus (char *, struct aci_client_entry *); /*cgw*/
+int aci_cancel (int request_id);
+extern int aci_clientaccess (char *clientname, enum aci_command, char *volser_range,
+			     enum aci_media, char *drive_range); 
+extern int aci_clientstatus (char *clientname, struct aci_client_entry *);
 extern int aci_dismount (char *, enum aci_media);
 extern int aci_driveaccess (char *, char *, enum aci_drive_status);
 extern int aci_drivestatus (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES]);
@@ -161,7 +132,7 @@ extern int aci_eject_complete( char *, char *, enum aci_media );
 extern int aci_force (char *);
 extern int aci_foreign (enum aci_command, char *, enum aci_media, char *,short);
 extern int aci_init (void);
-extern int aci_insert (char *, char *volser_ranges[ACI_MAX_RANGES], enum aci_media *); /*tgj*/
+extern int aci_insert (char *, char *volser_ranges[ACI_MAX_RANGES], enum aci_media *); 
 extern int aci_list (char *, struct aci_req_entry *[ACI_MAX_REQ_ENTRIES]);
 extern int aci_mount (char *, enum aci_media, char *);
 extern int aci_move (char *, enum aci_media, char *);
@@ -173,7 +144,6 @@ extern int aci_view (char *, enum aci_media, struct aci_vol_desc *);
 
 extern int aci_initialize( void );
 
-
 extern int aci_qversion( version_string, version_string);
 extern int aci_qvolsrange( char *, char *, int, char *, int *,
                            struct aci_volserinfo *               );
@@ -184,9 +154,6 @@ extern int aci_scratch_get (char *, enum aci_media , char * );
 extern int aci_scratch_unset (char *, enum aci_media , char * );
 extern int aci_scratch_info (char *,  enum aci_media , long *, long *);
 
-
-/*-------------------------------------------------------------------------*/
-/*                                                                         */
 /*-------------------------------------------------------------------------*/
 
 extern int d_errno;     /*  global object for error return from aci_ call */
