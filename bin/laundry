@@ -13,14 +13,14 @@ import os
 import re
 import stat
 import time
+import getopt
 import sys
-
-dirt = ["bakken", "fnal", "d0"]
 
 # various files to ignore
 ignoreEnds = ["\.pyc$", "\.o$", "\.so$", "\.a$", "\.ps$", "\.gif$", "\.kil$",
 	      "\.jou$"]
-ignoreDirs = ["CVS"]
+ignoreDirs = ["CVS", "WWW_new"]
+ignoreFiles = ["laundry", ".cvsignore", "trace_delta", "traceShow"]
 ignoreStarts = ["^LOG-.*", "^__db.*", "^\.#.*"]
 ignoreStartsPatterns = []
 ignoreEndsPatterns = []
@@ -34,7 +34,7 @@ def patternSearch(pats, file):
 	return 0
     return 1
 
-def do_the_walk(dirtFile, dir, files):
+def do_the_walk((dirtFile, dirt), dir, files):
     
     toRemove = []
     for file in files:
@@ -51,9 +51,9 @@ def do_the_walk(dirtFile, dir, files):
 	    if patternSearch(ignoreStartsPatterns, file) or \
 	       patternSearch(ignoreEndsPatterns, file):
 		# this file's end/start labels it as ignorable
-		sys.stderr.write("%s ignored\n"%(thefile))
+		print "%s ignored"%(thefile,)
 		continue
-	    elif not file == dirtFile:
+	    elif not file == dirtFile and not file in ignoreFiles:
 		# check this file for the dirt - open the output file
 		df = open(dirtFile, 'a')
 		df.write("FILE: %s - \n"%(thefile,))
@@ -70,8 +70,25 @@ class Laundry:
 
     currentDir = "."
     dirtFile = "dirt.txt"
+    defaultDirt = ["bakken", "fnal", "d0"]
+    dirt = defaultDirt
+
 
     def __init__(self):
+	# process imputs
+	try:
+	    options = ["dirt="]
+	    optlist, args = getopt.getopt(sys.argv[1:], "", options)
+	except getopt.error, detail:
+	    print "error: ", detail
+	    sys.exit(1)
+	    
+	if not len(optlist) == 0:
+	    # we have some input
+	    for (opt, value) in optlist:
+		if opt == "--dirt":
+		    self.dirt = eval(value)
+
 	# write the header to the output file
 	df = open(self.dirtFile, 'w')
 	df.write("Laundry done on %s at %s\n\n"%(os.uname()[1], 
@@ -86,10 +103,9 @@ class Laundry:
 
     def doLaundry(self):
 	# walk the directory to search for files 
-	os.path.walk(self.currentDir, do_the_walk, self.dirtFile)
+	os.path.walk(self.currentDir, do_the_walk, (self.dirtFile, self.dirt))
 
 if __name__ == "__main__" :
 
     lf = Laundry()
     lf.doLaundry()
-
