@@ -206,6 +206,8 @@ class GenericClient:
     def send(self, ticket, rcv_timeout=0, tries=0):
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             if exc == errno.errorcode[errno.ETIMEDOUT]:
