@@ -1,5 +1,5 @@
-<MA-config Update="180" Name="LocalCronEnstore">
-   <NCS Heartbeat="300" Port="19997" Host="ngop.fnal.gov" Type="Daemon"/>
+<MA-config Update="180" Name="LocalCronEnstore" Type="Daemon">
+   <NCS Heartbeat="300" Port="19997" Host="ngop.fnal.gov"/>
    <System Name="Cronjob" Cluster="localhost">
       <MonitoredElement Name="enstore" Host="localhost" Type="Daemon">
          <ConditionSet>
