@@ -100,7 +100,6 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	   
 
 def sigterm( sig, stack ):
-    print 'ronDBG -------', mvr_srvr.client_obj_inst.pid
     if mvr_srvr.client_obj_inst.pid:
 	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
 	time.sleep(3)
@@ -117,7 +116,6 @@ def sigterm( sig, stack ):
     sys.exit( 0x80 | sig )
     return None
 def sigint( sig, stack ):
-    print 'ronDBG -------'
     del mvr_srvr.client_obj_inst.hsm_driver
     print 'Traceback (innermost last):'
     traceback.print_stack( stack )
