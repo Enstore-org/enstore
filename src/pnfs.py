@@ -130,6 +130,7 @@ class Pnfs:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
+		    print "problem with pnfsFilename =",self.pnfsFilename
                     raise sys.exc_info()[0],sys.exc_info()[1]
             self.pstatinfo()
 
