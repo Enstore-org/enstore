@@ -1,0 +1,1 @@
+18 * * * * $ENSTORE_SBIN/ecron -p aml2mirror mirror /home/enstore/CRON/aml2.mirror > /dev/null 2> /dev/null
