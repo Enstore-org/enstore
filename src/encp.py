@@ -24,8 +24,7 @@ import select
 
 import setpath #cgw
 
-import Trace_lite
-Trace=Trace_lite
+import Trace
 import pnfs
 import callback
 import log_client
@@ -2101,12 +2100,8 @@ if __name__  ==  "__main__" :
     if e.test_mode:
         print "WARNING: running in test mode"
 
-    if e.verbose>5 and Trace is Trace_lite:
-        def trace(*args):
-            for arg in args[1:]:
-                print arg,
-            print
-        Trace.trace = trace
+    for x in xrange(6, e.verbose+1):
+        Trace.add_print(x)
 
     if e.data_access_layer:
         data_access_layer_requested.set()
