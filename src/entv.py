@@ -90,22 +90,23 @@ def handle_status(mover, status):
             client = client[:colon]
         if client:
             send("connect %s %s" % (mover, client))
-            
+    
 def main():
     global s, dst
 
     if len(sys.argv) > 1:
-        event_relay_host = sys.argv[1]
+        event_relay_host = sys.argv[1] # gets command line parameters
     else:
-        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST")
-        system_name = event_relay_host
+        event_relay_host = os.environ.get("ENSTORE_CONFIG_HOST") #if we don't specify a host, this will get the default host which is rip7
+        system_name = event_relay_host #this will be the name of display
     if event_relay_host[:2]=='d0':
         event_relay_host = 'd0ensrv2.fnal.gov'
         system_name = 'd0en'
     elif event_relay_host[:3]=='stk':
         event_relay_host = 'stkensrv2.fnal.gov'
         system_name = 'stken'
-        
+
+
     event_relay_port = 55510
     os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
 
@@ -128,18 +129,18 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
-    config = get_config()
+    config = get_config()#we need the config file to locate: port numbers....
 
     u = udp_client.UDPClient()
-    tsd = u.get_tsd()
-    sock =  tsd.socket.socket
+    tsd = u.get_tsd()#thread specific data (this is where we get socket)
+    sock =  tsd.socket.socket #XXXXXXXXXX
     reqs = {}
     ticket = {"work" : "status"}
         
     for mover in movers:
         mover_config = config[mover+'.mover']
         mover_addr = (mover_config['hostip'], mover_config['port'])
-        u.send_no_wait(ticket, mover_addr)
+        u.send_no_wait(ticket, mover_addr)#the ticket and mover_addr is found in the figure file  (ex.  hostip and port numbers can be found there)
         reqs[tsd.txn_counter] = mover
         
     
@@ -167,7 +168,7 @@ def main():
             try:
                 msg_id, status, timestamp = eval(msg)
                 mover = reqs[msg_id]
-                handle_status(mover, status)
+                handle_status(mover, status)### sending statements like : sending state DI53M2 IDLE 536451.44303
             except:
                 print "Error", msg
             
@@ -185,7 +186,8 @@ def main():
                 last_sub = now
             except:
                 pass
-        
+
 if __name__ == "__main__":
     main()
+   
     
