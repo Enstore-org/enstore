@@ -103,6 +103,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.pnfsFilename = self.filepath
         except AttributeError:
             sys.stderr.write("self.filepath DNE after initialization\n")
+
     ##########################################################################
 
     def is_pnfsid(self, pnfsid):
@@ -263,6 +264,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     def get_showid(self, id=None, directory=""):
 
+        if directory:
+            use_dir = directory
+        else:
+            use_dir = self.dir
+
         if id:
             fname = os.path.join(directory, ".(showid)(%s)"%(id,))
         else:
@@ -279,11 +285,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # get the nameof information, given the id
     def get_nameof(self, id=None, directory=""):
 
-        if id:
-            fname = os.path.join(directory, ".(nameof)(%s)"%(id,))
+        if directory:
+            use_dir = directory
         else:
-            fname = os.path.join(self.dir, ".(nameof)(%s)"%(self.id,))
+            use_dir = self.dir
 
+        if id:
+            fname = os.path.join(use_dir, ".(nameof)(%s)"%(id,))
+        else:
+            fname = os.path.join(use_dir, ".(nameof)(%s)"%(self.id,))
+            
         f = open(fname,'r')
         nameof = f.readlines()
         f.close()
@@ -295,11 +306,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the parent information, given the id
     def get_parent(self, id=None, directory=""):
-
-        if id:
-            fname = os.path.join(directory, ".(parent)(%s)"%(id,))
+        if directory:
+            use_dir = directory
         else:
-            fname = os.path.join(self.dir, ".(parent)(%s)"%(self.id,))
+            use_dir = self.dir
+            
+        if id:
+            fname = os.path.join(use_dir, ".(parent)(%s)"%(id,))
+        else:
+            fname = os.path.join(use_dir, ".(parent)(%s)"%(self.id,))
             
         f = open(fname,'r')
         parent = f.readlines()
@@ -311,37 +326,56 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return parent
 
     # get the total path of the id
-    def get_path(self, id=None):
+    def get_path(self, id=None, directory=""):
+        if directory:
+            use_dir = directory
+        else:
+            use_dir = self.dir
+
         if id:
             use_id = id
         else:
             use_id = self.id
 
+        ###Note: The filepath should be munged with the mountpoint.
+        search_path = os.path.join("/", use_dir.split("/")[0])
+        for d in self.dir.split("/")[1:]:
+            search_path = os.path.join(search_path, d)
+            if os.path.ismount(search_path):
+                #If the path is of the master /pnfs/fs, then the /usr should
+                # be appended.  This is the user that is the equivalent of
+                # the /root/fs/usr, but in this case the /usr compent of the
+                # directory is required because it is removed from the filepath
+                # variable when the entire /root/fs/usr is removed from the
+                # beginning.
+                if search_path == "/pnfs/fs":
+                    search_path = "/pnfs/fs/usr"
+                break;
+        else:
+            raise OSError(errno.ENODEV, "%s: %s"%(os.strerror(errno.ENODEV),
+                                            "Unable to determine mount point"))
+
         #Obtain the root file path.  This is done by obtaining a directory
         # component id, its name and parents id.  Then with the parents id
         # the process is repeated.  It stops when the component is the /root
         # directory (pnfs_id=000000000000000000001020).
-        filepath = self.get_nameof(use_id) # starting point.
+        try:
+            filepath = self.get_nameof(use_id, use_dir) # starting point.
+        except (OSError, IOError):
+            raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
+                                                    "Not a valid pnfs id"))
         name = ""  # compoent name of a directory.
         while name != "root" and use_id != "000000000000000000001020":
-            use_id = self.get_parent(use_id) #get parent id
-            name = self.get_nameof(use_id) #get nameof parent id
+            use_id = self.get_parent(use_id, use_dir) #get parent id
+            name = self.get_nameof(use_id, use_dir) #get nameof parent id
             filepath = os.path.join(name, filepath) #join filepath together
         filepath = os.path.join("/", filepath)
         #Truncate the begining false directories.
         if filepath[:13] == "/root/fs/usr/":
             filepath = filepath[13:]
         else:
-            raise OSError(errno.ENOENT, "Not a valid pnfs id")
-
-        ###Note: The filepath should be munged with the mountpoint.
-        search_path = os.path.join("/", self.dir.split("/")[0])
-        for d in self.dir.split("/")[1:]:
-            search_path = os.path.join(search_path, d)
-            if os.path.ismount(search_path):
-                break;
-        else:
-            raise OSError(errno.ENODEV, "No valid mountpoint found")
+            raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
+                                                    "Not a valid pnfs id"))
 
         #Munge the mount point and the directories.  First check if the two
         # paths can be munged without modification.
