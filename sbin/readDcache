@@ -1,0 +1,73 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+
+# get a file that is old.  As time moves on, choose a different
+# file.  But keep old choice for a reasonable amount of time.
+date_string_d() { date +"%Y/%m" --date="1 week ago" ; }
+place=/pnfs/eagle/backups/`date_string_d`
+file=`find $place -type f -print | head -n 1`
+if [ ! -r $file ]; then
+  echo "Can not read $file from $place.  Trouble with script"
+  exit 9
+fi
+f2=`echo $file | sed -e 's%/pnfs%%'`
+f3=`echo $file | sed -e 's%/pnfs/eagle%%'`
+
+# Use Eileen's enrsh method to get a ticket
+krbdir="/usr/krb5/bin"
+defaultDomain=".fnal.gov"
+host=`uname -n`
+if expr $host : '.*\.' >/dev/null;then
+   thisHost=$host;
+else
+   thisHost=${host}${defaultDomain};
+fi
+KRB5CCNAME=/tmp/krb5cc_enstore_$$
+export KRB5CCNAME
+echo "`date` ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}"
+             ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+${krbdir}/klist -fea
+
+
+# transfer the file via the dcache's kerberized door
+echo "`date` kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null"
+             kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null
+stat1=$?
+echo "`date`: Kerberized door check finished. stat = $stat1"
+
+echo "`date` ${krbdir}/kdestroy"
+             ${krbdir}/kdestroy
+${krbdir}/klist -fea
+
+if [ $stat1 -ne 0 ]; then
+ echo enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f2 /dev/null.  STAT=$stat1"
+      enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f2 /dev/null.  STAT=$stat1"
+fi
+
+# transfer the same file via the dcache's non-kerberized door (anonymous read)
+echo "`date` anonymous ftp read enstore-test@fndca:$f3 /dev/null"
+python -c '
+def x(dum):
+ return
+from ftplib import FTP
+import sys
+ftp=FTP()
+ftp.connect("fndca",24126)
+ftp.login("enstore-test","anon-read")
+print ftp.retrbinary("RETR '$f3'",x)
+'
+stat2=$?
+echo "`date`: Non-kerberized door check finished. stat = $stat2"
+
+if [ $stat2 -ne 0 ]; then
+ echo enstore alarm --raise --severity "A" --root-error "anonymous ftp read enstore-test@fndca:$f3 /dev/null.  STAT=$stat2"
+      enstore alarm --raise --severity "A" --root-error "anonymous ftp read enstore-test@fndca:$f3 /dev/null.  STAT=$stat2"
+fi
+
+stat=`expr $stat1 + $stat2 `
+exit $stat
