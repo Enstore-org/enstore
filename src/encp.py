@@ -33,6 +33,13 @@ import access
 import hostaddr
 import library_manager_client
 
+def encp_client_version():
+    return "v1_0 $Revision$"
+    ##this should get set automatically somehow,
+    ##as it is this has to be edited manually when a new
+    ##version is cut.  Don't forget to do this!
+    
+
 data_access_layer_format = "INFILE=%s\n"+\
                            "OUTFILE=%s\n"+\
                            "FILESIZE=%d\n"+\
@@ -1688,7 +1695,11 @@ def clients(config_host,config_port,verbose):
     logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     # convenient, but maybe not correct place, to hack in log message that shows how encp was called
-    Trace.trace(e_errors.INFO, '%s' % sys.argv)
+    
+    Trace.trace(e_errors.INFO,
+                'encp version %s, args %s' %
+                (encp_client_version(), sys.argv[1:]))
+        
 
     uinfo = {}
     uinfo['uid'] = os.getuid()
