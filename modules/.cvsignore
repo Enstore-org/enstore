@@ -18,5 +18,5 @@ data
 9
 *_pids
 trace.key
-mk_setup
+mksetup
 Makefile.modules
