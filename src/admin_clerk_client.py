@@ -11,32 +11,15 @@ import configuration_client
 import udp_client
 import Trace
 
-import generic_client_server
+import interface
 import generic_client
 
-class AdminClerkClient(generic_client_server.GenericClientServer, \
-                       generic_client.GenericClient) :
+class AdminClerkClient(generic_client.GenericClient) :
 
-    def __init__(self, csc=[], \
-                 host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()) :
-        self.config_list = 0
-        self.criteria={}
-        self.dbname="volume"
-        self.doalive=0
-        configuration_client.set_csc(self, csc, host, port)
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port()):
+        configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.config_options(self)+\
-               ["config_list", "alive", "dbname=", "faccess=",
-                "laccess=","declared=","capacity=","rem_bytes=",] +\
-               generic_client_server.GenericClientServer.options(self)
-
-    # define the single character options
-    def charopts(self):
-        return "v:f:l:m:w:u:s:"
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket) :
@@ -113,6 +96,31 @@ class AdminClerkClient(generic_client_server.GenericClientServer, \
 	   msg=msg[index+1:]
    	return msg
 
+class AdminClerkClientInterface(interface.Interface) :
+
+    def __init__(self):
+        self.config_list = 0
+        self.alive=0
+        self.set_dbname()
+        self.criteria={}
+
+        # parse the options
+        self.parse_options()
+
+    def set_dbname(self, dbname="volume"):
+        self.dbname=dbname
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options()+self.list_options() +\
+               ["config_list", "alive", "dbname=", "faccess=",
+                "laccess=","declared=","capacity=","rem_bytes=",] +\
+               self.help_options()
+
+    # define the single character options
+    def charopts(self):
+        return "v:f:l:m:w:u:s:"
+
     def check(self, value):
         import regex
         index=regex.search("[^0-9><=!]",value)
@@ -130,7 +138,7 @@ class AdminClerkClient(generic_client_server.GenericClientServer, \
         return newVal 
 
     def print_help(self):
-        generic_client_server.GenericClientServer.print_help(self)
+        interface.Interface.print_help(self)
         print "help             : to see this messsage and exit"
         print "dbname           : table name (volume or file)"
         print "faccess,laccess  : time(YYYYMMDDHHMM) of first/last access"
@@ -155,27 +163,29 @@ class AdminClerkClient(generic_client_server.GenericClientServer, \
         print "selection could be very slow:"
         print "f(file_family),m(media_type),v(volume name for file table)"
 
+
 if __name__ == "__main__" :
     import sys
     import pprint
     Trace.init("admin cli")
     Trace.trace(1,"acc called with args "+repr(sys.argv))
 
-    # fill in defaults
-    acc = AdminClerkClient()
+    # get interface
+    intf = AdminClerkClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    acc.parse_options()
-    acc.csc.connect()
-	
-    if acc.doalive:
+    # get an admin clerk client
+    acc = AdminClerkClient(0, intf.config_list, intf.config_host,\
+                           intf.config_port)
+
+    if intf.alive:
         ticket = acc.alive()
     else :
-	if acc.dbname=="file" and len(acc.criteria)>0:
+	if intf.dbname=="file" and len(acc.criteria)>0:
 	   for key in acc.criteria.keys():
 		if key != 'external_label':
-		   acc.dbname="volume,file"	
-    	ticket=acc.select(acc.criteria,acc.dbname) 
+		   intf.set_dbname("volume,file")
+    	ticket=acc.select(acc.criteria,intf.dbname) 
+
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
        	pprint.pprint(ticket)

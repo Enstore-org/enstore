@@ -406,10 +406,8 @@ if __name__ == "__main__" :
         print "   do not forget the '--' in front of each option"
         sys.exit(1)
 
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client.configuration_client(config_host,config_port)
-    csc.connect()
+    csc = configuration_client.configuration_client(config_host,config_port,\
+                                                    config_list)
 
     keys = csc.get(args[0])
 

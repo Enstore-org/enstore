@@ -20,9 +20,9 @@ import errno
 import socket
 
 #enstore imports
-import generic_client_server
 import generic_client
 import configuration_client
+import interface
 import udp_client
 import pprint
 import Trace
@@ -63,64 +63,30 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 
 
 
-class LoggerClient(generic_client_server.GenericClientServer, generic_client.GenericClient):
+class LoggerClient(generic_client.GenericClient):
 
     def __init__(self,
-                 csc = [],                  # get our own configuration client
+                 csc = 0,                   # get our own configuration client
                  i_am_a = "LOGCLNT",        # Abbreviated client instance name
                                             # try to make it of capital letters
                                             # not more than 8 characters long
                  servername = "logserver",  # log server name
-                 debug=0,                   # debug output
-                 host=generic_client_server.default_host(),
-                 port=generic_client_server.default_port()):
+                 list=0,
+                 config_list=0,
+                 host=interface.default_host(),
+                 port=interface.default_port()):
+
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
         pwdb_entry = pwd.getpwuid(self.uid)
         self.uname = pwdb_entry[0]
         self.logger = servername
-        self.debug = debug
         self.log_priority = 7
-        self.config_list = 0
-        self.list = 0
-        self.doalive = 0
-        self.test = 0
-        self.logit1 = 0
-        configuration_client.set_csc(self, csc, host, port)
+        self.debug = list
+        configuration_client.set_csc(self, csc, host, port, config_list)
         self.u = udp_client.UDPClient()
 
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.config_options(self)+\
-               generic_client_server.GenericClientServer.list_options(self) +\
-               ["config_list", "config_file=", "test", "logit=", "alive"] +\
-               generic_client_server.GenericClientServer.options(self)
-
-    # parse our own options
-    def parse_options(self):
-        generic_client_server.GenericClientServer.parse_options(self)
-        self.debug = self.dolist
-
-    # our help stuff 
-    def help_line(self):
-        return generic_client_server.GenericClientServer.help_line(self)+" media_changer volume drive"
-
-    """ send the request to the Media Loader server and then send answer
-    to user.
-    This function takes arbitrary number of arguments. The mandatory arguments
-    are:
-       severity - see severity codes above
-       priority - an integer which is compared to a bit mask(log_priority) 
-		  1 implies always log, 2 imply normally go to logger,
-                  4 more complete file tracing, 8,16,... detailed debugging.
-                  the log_priority is set on a per server basis.
-                  note, a log_prioirty = 0 should turn off logging
-       format - any string which can contain formatters
-    Example:
-        send (ticket = logc.send (ERROR, 1, 'Error: errno=%d, and its \
-        interpretation is: %s', err, os.strerror(err))
-    """
     def send (self, severity, priority, format, *args) :
         if  (priority & self.log_priority) == 0 :
            return
@@ -161,29 +127,66 @@ class LoggerClient(generic_client_server.GenericClientServer, generic_client.Gen
         return  self.u.send({'work':'alive'},
                             (lticket['host'], lticket['port']))
 
+class LoggerClientInterface(interface.Interface):
+
+    def __init__(self):
+        self.config_list = 0
+        self.config_file = ""
+        self.test = 0
+        self.logit1 = 0
+        self.alive = 0
+        interface.Interface.__init__(self)
+
+        # fill in the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options() + self.list_options() +\
+               ["config_list", "config_file=", "test", "logit=", "alive"] +\
+               self.help_options()
+
+    # our help stuff 
+    def help_line(self):
+        return interface.Interface.help_line(self)+" media_changer volume drive"
+
+    """ send the request to the Media Loader server and then send answer
+    to user.
+    This function takes arbitrary number of arguments. The mandatory arguments
+    are:
+       severity - see severity codes above
+       priority - an integer which is compared to a bit mask(log_priority) 
+		  1 implies always log, 2 imply normally go to logger,
+                  4 more complete file tracing, 8,16,... detailed debugging.
+                  the log_priority is set on a per server basis.
+                  note, a log_prioirty = 0 should turn off logging
+       format - any string which can contain formatters
+    Example:
+        send (ticket = logc.send (ERROR, 1, 'Error: errno=%d, and its \
+        interpretation is: %s', err, os.strerror(err))
+    """
+
 
 if __name__ == "__main__" :
     Trace.init("log client")
-    import getopt
-    import socket
-    import string
+    import pprint
 
-    # fill in defaults
-    logc = LoggerClient()
+    # fill in interface
+    intf = LoggerClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    logc.parse_options()
-    logc.csc.connect()
+    # get a log client
+    logc = LoggerClient(0, "LOGCLNT", "logserver", intf.list, \
+                        intf.config_list, intf.config_host, intf.config_port)
 
-    if logc.doalive:
+    if intf.alive:
         ticket = logc.alive()
 
-    elif logc.test:
+    elif intf.test:
         ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
         #ticket = logc.send(INFO, 21, "this is an INFO message")
 
-    elif logc.logit:
-        ticket = logit(logc.logmsg)
+    elif intf.logit:
+        ticket = logit(intf.logmsg)
 
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']

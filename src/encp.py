@@ -25,7 +25,7 @@ import log_client
 import configuration_client
 import udp_client
 import EXfer
-import generic_client_server
+import interface
 import Trace
 
 ##############################################################################
@@ -841,19 +841,15 @@ def clients(config_host,config_port,list):
     Trace.trace(16,"{clients config_host="+repr(config_host)+\
                 " port="+repr(config_port)+" list="+repr(list))
 
-    if list>3 :
-        print "Connecting to configuration server at ",config_host,config_port
-
     # get a configuration server
-    csc = configuration_client.configuration_client(config_host,config_port)
-    csc.connect()
-
+    csc = configuration_client.configuration_client(config_host,config_port,\
+                                                    list)
     # get a udp client
     u = udp_client.UDPClient()
 
     # get a logger client
     global logc
-    logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)
+    logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
 
     uinfo = {}
     uinfo['uid'] = os.getuid()
@@ -1104,7 +1100,7 @@ def outputfile_check(ninput,inputlist,output):
 
 ##############################################################################
 
-class encp(generic_client_server.GenericClientServer):
+class encp(interface.Interface):
 
     def __init__(self):
         Trace.trace(16,"{encp.__init__")
@@ -1112,7 +1108,10 @@ class encp(generic_client_server.GenericClientServer):
         self.chk_crc = 1
         host = 'localhost'
         port = 0
-        generic_client_server.GenericClientServer.__init__(self, host, port)
+        interface.Interface.__init__(self, host, port)
+
+        # parse the options
+        self.parse_options()
         Trace.trace(16,"{encp.__init__")
 
     ##########################################################################
@@ -1120,10 +1119,10 @@ class encp(generic_client_server.GenericClientServer):
     def options(self):
         Trace.trace(16,"{encp.options")
 
-        the_options = generic_client_server.GenericClientServer.config_options(self)+\
-                      generic_client_server.GenericClientServer.list_options(self)+\
+        the_options = self.config_options()+\
+                      self.list_options()+\
                       ["nocrc"] +\
-                      generic_client_server.GenericClientServer.options(self)
+                      self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
         return the_options
@@ -1133,9 +1132,9 @@ class encp(generic_client_server.GenericClientServer):
     def help_line(self):
         Trace.trace(16,"{encp.help_line")
 
-        the_help = generic_client_server.GenericClientServer.help_line(self)+\
+        the_help = interface.Interface.help_line(self)+\
                    " inputfilename outputfilename \n  or\n"+\
-                   generic_client_server.GenericClientServer.help_line(self)+\
+                   interface.Interface.help_line(self)+\
                    " inputfilename1 ... inputfilenameN outputdirectory"
 
         Trace.trace(16,"}encp.help_line help_line="+the_help)
@@ -1147,7 +1146,7 @@ class encp(generic_client_server.GenericClientServer):
         Trace.trace(16,"{encp.parse_options")
 
         # normal parsing of options
-        generic_client_server.GenericClientServer.parse_options(self)
+        interface.Interface.parse_options(self)
 
         # bomb out if we don't have an input and an output
         arglen = len(self.args)
@@ -1204,20 +1203,17 @@ if __name__  ==  "__main__" :
     # use class to get standard way of parsing options
     e = encp()
 
-    # see what the user has specified. bomb out if wrong options specified
-    e.parse_options()
-
     # have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output,\
                      e.config_host, e.config_port,\
-                     e.dolist, e.chk_crc, t0)
+                     e.list, e.chk_crc, t0)
 
     # have we been called "encp hsmfile unixfile" ?
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,\
                       e.config_host, e.config_port,\
-                      e.dolist, e.chk_crc, t0)
+                      e.list, e.chk_crc, t0)
 
     # have we been called "encp unixfile unixfile" ?
     elif e.intype=="unixfile" and e.outtype=="unixfile" :
@@ -1235,3 +1231,4 @@ if __name__  ==  "__main__" :
         jraise(errno.errorcode[errno.EPROTO],emsg)
 
     Trace.trace(1,"encp finished at "+repr(time.time()))
+

@@ -14,48 +14,16 @@ import pdb
 #enstore imports
 import configuration_client 
 import udp_client
-import generic_client_server
+import interface
 import generic_client
 import Trace
 
-class MediaLoaderClient(generic_client_server.GenericClientServer, \
-                        generic_client.GenericClient):
-    def __init__(self, csc=[], \
-                 host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()) :
-        self.media_changer = ""
-        self.volume = 0
-        self.drive = 0
-        self.config_file = ""
-        self.config_list = 0
-        self.doalive = 0
-        self.dolist = 0
-        configuration_client.set_csc(self, csc, host, port)
+class MediaLoaderClient(generic_client.GenericClient):
+    def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
+                 port=interface.default_port()):
+        self.media_changer=name
+        configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.config_options(self)+\
-               generic_client_server.GenericClientServer.list_options(self) +\
-               ["config_list", "config_file=", "alive"] +\
-               generic_client_server.GenericClientServer.options(self)
-
-    #  define our specific help
-    def help_line(self):
-        return generic_client_server.GenericClientServer.help_line(self)+" media_changer volume drive"
-
-    def set_mc(self, mc) :
-        self.media_changer = mc
-
-    # parse the options like normal but make sure we have a enough args
-    def parse_options(self):
-        generic_client_server.GenericClientServer.parse_options(self)
-        # bomb out if the number of arguments is wrong
-        if len(self.args) < 1 :
-            self.print_help()
-            sys.exit(1)
-        else:
-            self.set_mc(self.args[0])
 
     # send the request to the Media Loader server and then send answer to user
     def send (self, ticket) :
@@ -76,34 +44,68 @@ class MediaLoaderClient(generic_client_server.GenericClientServer, \
                   }
         return self.send(ticket)
 
+class MediaLoaderClientInterface(interface.Interface):
+    def __init__(self):
+        self.config_list = 0
+        self.config_file = ""
+        self.alive = 0
+        self.media_changer = ""
+        self.volume = 0
+        self.drive = 0
+        interface.Interface.__init__(self)
+
+        # parse the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options() + self.list_options() +\
+               ["config_list", "config_file=", "alive"] +\
+               self.help_options()
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" media_changer volume drive"
+
+    # parse the options like normal but make sure we have other args
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        if len(self.args) < 1 :
+            self.print_help()
+            sys.exit(1)
+        else:
+            self.media_changer = self.args[0]
+
+        if self.alive == 0:
+            # bomb out if we number of arguments is wrong
+            if len(self.args) < 3 :
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.volume = self.args[1]
+                self.drive = self.args[2]
+
+
 if __name__ == "__main__" :
     Trace.init("medch cli")
     import sys
     import pprint
 
-    # fill in defaults
-    mlc = MediaLoaderClient()
+    # fill in the interface
+    intf = MediaLoaderClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    mlc.parse_options()
-    mlc.csc.connect()
+    # get a media changer client
+    mlc = MediaLoaderClient(0, intf.config_list, intf.media_changer, \
+                            intf.config_host, intf.config_port)
 
-    if mlc.doalive:
+    if intf.alive:
         ticket = mlc.alive()
     else:
-        # bomb out if we number of arguments is wron
-        if len(mlc.args) < 3 :
-            mlc.print_help()
-            sys.exit(1)
-        else:
-            mlc.volume = mlc.args[1]
-            mlc.drive = mlc.args[2]
-
-        ticket = mlc.unloadvol(self.volume, self.drive)
+        ticket = mlc.unloadvol(intf.volume, intf.drive)
         print 'unload returned:' + ticket['status']
 
     if ticket['status'] == 'ok' :
-        if mlc.dolist:
+        if intf.list:
             pprint.pprint(ticket)
         sys.exit(0)
     else :

@@ -13,7 +13,7 @@ import sys
 import binascii
 
 # enstore imports
-import generic_client_server
+import interface
 import timeofday
 
 TRANSFER_MAX=16384
@@ -42,45 +42,18 @@ def get_client() :
 
 
 
-class UDPClient(generic_client_server.GenericClientServer):
+class UDPClient:
 
-    def __init__(self):
+    def __init__(self, host="", port=0, socket=0):
+        if host == "":
+            host, port, self.socket = get_client()
+        else:
+            self.socket = socket
         self.number = 0
-        self.host, self.port, self.socket = get_client()
         self.ident = "%s-%d-%f-%d" \
-                     % (self.host, self.port, time.time(), os.getpid() )
-        self.dolist = 0
-        self.msg = "All dogs have fleas, but cats are cuter!"
+                     % (host, port, time.time(), os.getpid() )
         self.sendport = 7
         self.where_sent = {}
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.list_options(self) +\
-               ["msg=","host=","port="] +\
-               generic_client_server.GenericClientServer.options(self)
-
-    # parse any command line options
-    def parse_options(self):
-	try:
-            optlist,self.args=getopt.getopt(sys.argv[1:],'',self.options())
-	except:
-            print "ERROR: ", sys.exc_info()[0], sys.exc_info()[1]
-            self.print_help()
-            sys.exit(1)
-
-        for (opt,value) in optlist :
-            if opt == "--msg" :
-                self.msg = value
-            elif opt == "--host" :
-                self.sendhost = value
-            elif opt == "--port" :
-                self.sendport = string.atoi(value)
-            elif opt == "--list" or opt == "--verbose":
-                self.dolist = 1
-            elif opt == "--help" :
-                self.print_help()
-                sys.exit(0)
 
     def __del__(self):
         # tell file clerk we are done - this allows it to delete our unique id in
@@ -233,28 +206,44 @@ class UDPClient(generic_client_server.GenericClientServer):
             print "udp_client send_no_wait, post-sendto error:", \
                   errno.errorcode[badsock]
 
+class UDPClientInterface(interface.Interface):
+
+    def __init__(self):
+        self.msg = "All dogs have fleas, but cats are cuter!"
+        self.host, self.port, self.socket = get_client()
+        interface.Interface.__init__(self)
+
+        # parse the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.list_options() +\
+               ["msg=","host=","port="] +\
+               self.help_options()
+
 if __name__ == "__main__" :
     import pprint
 
     status = 0
 
-    # fill in defaults
-    u = UDPClient()
+    # fill in the interface
+    intf = UDPClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    u.parse_options()
+    # get a UDP client
+    u = UDPClient(intf.host, intf.port, intf.socket)
 
     #pprint.pprint(u.__dict__)
 
-    if u.dolist:
-        print "Sending:\n",u.msg,"\nto",u.sendhost,u.sendport,"with calback on",u.port
-    back = u.send(u.msg, (u.sendhost, u.sendport))
+    if intf.list:
+        print "Sending:\n",intf.msg,"\nto",intf.sendhost,intf.sendport,"with calback on",intf.port
+    back = u.send(intf.msg, (intf.sendhost, intf.sendport))
 
-    if back != u.msg :
-        print "Error: sent:\n",u.msg,"\nbut read:\n",back
+    if back != intf.msg :
+        print "Error: sent:\n",intf.msg,"\nbut read:\n",back
         status = status|1
 
-    elif list:
+    elif intf.list:
         print "Read back:\n",back
 
     sys.exit(status)

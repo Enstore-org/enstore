@@ -7,40 +7,24 @@ import string
 
 # enstore imports
 import configuration_client
-import generic_client_server
 import generic_client
 import backup_client
 import udp_client
 import db
 import callback
+import interface
 import Trace
 
-class FileClerkClient(generic_client_server.GenericClientServer, \
-                      generic_client.GenericClient, \
+class FileClerkClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
-    def __init__(self, csc=[], \
-                 host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()):
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port()):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
-        self.config_list = 0
-        self.doalive = 0
-        self.dolist = 0
-        self.bfid = 0
-        self.bfids = 0
-        self.backup=0
-        configuration_client.set_csc(self, csc, host, port)
+        configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
         Trace.trace(10,'}__init')
-
-    # define the command line options that are valid
-    def options(self):
-        Trace.trace(16,"{}options")
-        return generic_client_server.GenericClientServer.config_options(self)+\
-               generic_client_server.GenericClientServer.list_options(self)  +\
-               ["config_list","bfids","bfid=","alive","backup"] +\
-               generic_client_server.GenericClientServer.options(self)
 
     def send (self, ticket):
         Trace.trace(12,"{send"+repr(ticket))
@@ -141,35 +125,60 @@ class FileClerkClient(generic_client_server.GenericClientServer, \
         Trace.trace(10,"}bfid_info"+repr(r))
         return r
 
-if __name__ == "__main__":
+class FileClerkClientInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{fci.__init__')
+        # fill in the defaults for the possible options
+        self.config_list = 0
+    	self.bfids = 0
+  	self.bfid = 0
+        self.alive = 0
+    	self.backup = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}fci.__init')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16,"{}options")
+        return self.config_options()+self.list_options()  +\
+	       ["config_list","bfids","bfid=","alive","backup"] +\
+	       self.help_options()
+
+
+
+if __name__ == "__main__" :
     import sys
     import pprint
     Trace.init("FC client")
     Trace.trace(1,"fcc called with args "+repr(sys.argv))
 
-    # fill in defaults
-    fcc = FileClerkClient()
+    # fill in interface
+    intf = FileClerkClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    fcc.parse_options()
-    fcc.csc.connect()
+    # now get a file clerk client
+    fcc = FileClerkClient(0, intf.config_list, intf.config_host, \
+                          intf.config_port)
 
-    if fcc.doalive:
+    if intf.alive:
         ticket = fcc.alive()
 
-    elif fcc.backup:
+    elif intf.backup:
         ticket = fcc.start_backup()
         db.do_backup("file")
         ticket = fcc.stop_backup()
 
-    elif fcc.bfids:
+    elif intf.bfids:
         ticket = fcc.get_bfids()
 
-    elif fcc.bfid:
+    elif intf.bfid:
         ticket = fcc.bfid_info()
 
     if ticket['status'] == 'ok':
-        if fcc.dolist:
+        if intf.list:
             pprint.pprint(ticket)
         Trace.trace(1,"fcc exit ok")
         sys.exit(0)

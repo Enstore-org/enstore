@@ -8,7 +8,7 @@ import time
 # enstore imports
 import callback
 import dict_to_a
-import generic_client_server
+import interface
 import generic_client
 import backup_client
 import configuration_client 
@@ -17,40 +17,13 @@ import db
 import Trace
 import pdb
 
-class VolumeClerkClient(generic_client_server.GenericClientServer, \
-                        generic_client.GenericClient,\
-                        backup_client.BackupClient):
+class VolumeClerkClient(generic_client.GenericClient,\
+                        backup_client.BackupClient) :
 
-    def __init__(self, csc=[], \
-                 host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()):
-        self.config_list = 0
-        self.vol = ""
-        self.vols = 0
-        self.nextvol = 0
-        self.doaddvol = 0
-        self.dodelvol = 0
-        self.clrvol = 0
-        self.backup=0
-        self.doalive = 0
-        self.dolist = 0
-        configuration_client.set_csc(self, csc, host, port)
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port()) :
+        configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_client_server.GenericClientServer.config_options(self)+\
-      	       generic_client_server.GenericClientServer.list_options(self)  +\
-	       ["config_list", "alive","clrvol", "backup" ] +\
-               ["vols","nextvol","vol=","addvol","delvol" ] +\
-	       generic_client_server.GenericClientServer.options(self)
-
-    # print out our extended help
-    def print_help(self):
-        generic_client_server.GenericClientServer.print_help(self)
-        print "   addvol arguments: library file_family media_type"\
-              +", volume_name, volume_byte_capacity remaining_capacity"
-        print "   delvol arguments: volume_name"
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket):
@@ -249,65 +222,114 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
 
         return self.send(ticket)
 
+class VolumeClerkClientInterface(interface.Interface):
+
+    def __init__(self):
+        self.config_list = 0
+        self.alive = 0
+        self.clrvol = 0
+        self.backup = 0
+        self.vols = 0
+        self.nextvol = 0
+        self.vol = ""
+        self.addvol = 0
+        self.delvol = 0
+        interface.Interface.__init__(self)
+
+        # parse the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options() + self.list_options()  +\
+	       ["config_list", "alive","clrvol", "backup" ] +\
+               ["vols","nextvol","vol=","addvol","delvol" ] +\
+	       self.help_options()
+
+    # parse the options like normal but make sure we have necessary params
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        if self.nextvol:
+            if len(self.args) < 3:
+                self.print_addvol_args()
+                sys.exit(1)
+        elif self.addvol:
+            if len(self.args) < 6 :
+                self.print_addvol_args()
+                sys.exit(1)
+        elif self.delvol:
+            if len(self.args) < 1 :
+                self.print_delvol_args()
+                sys.exit(1)
+        elif self.clrvol:
+            if len(self.args) < 1 :
+                self.print_clr_inhibit_args()
+                sys.exit(1)
+
+    # print clr_inhibit arguments
+    def print_clr_inhibit_args(self):
+        print "   clr_inhibit arguments: volume_name"
+
+    # print addvol arguments
+    def print_addvol_args(self):
+        print "   addvol arguments: library file_family media_type"\
+              +", volume_name, volume_byte_capacity remaining_capacity"
+
+    # print delvol arguments
+    def print_delvol_args(self):
+        print "   delvol arguments: volume_name"
+
+    # print out our extended help
+    def print_help(self):
+        interface.Interface.print_help(self)
+        self.print_addvol_args()
+        self.print_delvol_args()
+
+
 if __name__ == "__main__":
     Trace.init("VC client")
     import sys
     import pprint
 
-    # fill in defaults
-    vcc = VolumeClerkClient()
+    # fill in the interface
+    intf = VolumeClerkClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    vcc.parse_options()
-    vcc.csc.connect()
+    # get a volume clerk client
+    vcc = VolumeClerkClient(0, intf.config_list, intf.config_host,\
+                            intf.config_port)
 
-    if vcc.doalive:
+    if intf.alive:
         ticket = vcc.alive()
-    elif vcc.backup:
+    elif intf.backup:
         ticket = vcc.start_backup()
         db.do_backup("volume")
         ticket = vcc.stop_backup()
-    elif vcc.vols:
+    elif intf.vols:
         ticket = vcc.get_vols()
-    elif vcc.nextvol:
-        ticket = vcc.next_write_volume(vcc.args[0], #library
-                                       string.atol(vcc.args[1]), #min_remaining_byte
-                                       vcc.args[2], #file_family
+    elif intf.nextvol:
+        ticket = vcc.next_write_volume(intf.args[0], #library
+                                       string.atol(intf.args[1]), #min_remaining_byte
+                                       intf.args[2], #file_family
                                             [], #vol_veto_list
                                              1) #first_found
-    elif vcc.vol:
-        ticket = vcc.inquire_vol(vcc.vol)
-    elif vcc.doaddvol:
-        # bomb out if we don't have correct number of add vol arguments
-        if len(vcc.args) < 6:
-            print "   addvol arguments: library file_family media_type"\
-                  +", volume_name, volume_byte_capacity remaining_capacity"
-            sys.exit(1)
-        ticket = vcc.addvol(vcc.args[0],              # library
-                            vcc.args[1],              # file family
-                            vcc.args[2],              # media type
-                            vcc.args[3],              # name of this volume
-                            string.atol(vcc.args[4]), # cap'y of vol (bytes)
-                            string.atol(vcc.args[5])) # rem cap'y of volume
-    elif vcc.dodelvol:
-        # bomb out if we don't have correct number of del vol arguments
-        if len(vcc.args) < 1:
-            print "   delvol arguments: volume_name"
-            sys.exit(1)
-        ticket = vcc.delvol(vcc.args[0])              # name of this volume
-    elif vcc.clrvol:
-        # bomb out if we don't have correct number of clr_inhibit arguments
-        if len(vcc.args) < 1:
-            print "   clr_inhibit arguments: volume_name"
-            sys.exit(1)
-        ticket = vcc.clr_system_inhibit(vcc.args[0])  # name of this volume
-    else:
-	print "syntax error"
-	sys.exit(1)
-    if ticket['status'] != 'ok' :
+    elif intf.vol:
+        ticket = vcc.inquire_vol(intf.vol)
+    elif intf.addvol:
+        ticket = vcc.addvol(intf.args[0],              # library
+                            intf.args[1],              # file family
+                            intf.args[2],              # media type
+                            intf.args[3],              # name of this volume
+                            string.atol(intf.args[4]), # cap'y of vol (bytes)
+                            string.atol(intf.args[5])) # rem cap'y of volume
+    elif intf.delvol:
+        ticket = vcc.delvol(intf.args[0])              # name of this volume
+    elif intf.clrvol:
+        ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
+
+    if ticket['status'] != 'ok':
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
-    elif vcc.dolist:
+    elif intf.list:
         pprint.pprint(ticket)
         sys.exit(0)

@@ -8,7 +8,8 @@ import time
 import errno
 
 # enstore imports
-import generic_client_server
+import interface
+import generic_client
 import udp_client
 import Trace
 
@@ -22,59 +23,24 @@ try:
 except ImportError:
     import socket
 
-def set_csc(self, csc=[], host=generic_client_server.default_host(), port=generic_client_server.default_port()):
+def set_csc(self, csc=0, host=interface.default_host(),\
+            port=interface.default_port(), list=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
-    if csc == []:
-        # this calls GenericClientServer.__init__ too
-        self.csc = configuration_client(host, port)
+    if csc == 0:
+        self.csc = configuration_client(host, port, list)
     else:
         self.csc = csc
     Trace.trace(10,'}set_csc csc='+repr(self.csc))
 
-class configuration_client(generic_client_server.GenericClientServer):
+class configuration_client(generic_client.GenericClient) :
 
-    def __init__(self, host=generic_client_server.default_host(), port=generic_client_server.default_port()):
+    def __init__(self, config_host, config_port, config_list):
         Trace.trace(10,'{__init__ cc')
         self.clear()
-        generic_client_server.GenericClientServer.__init__(self, host, port)
-        self.config_list = 0
-        self.dict = 0
-        self.doload = 0
-        self.doalive = 0
-        self.dolist = 0
-        self.config_file = ""
-        Trace.trace(10,'}__init__ cc')
-
-    # define the command line options that are valid
-    def options(self):
-        Trace.trace(20,'{}options')
-        return generic_client_server.GenericClientServer.config_options(self)+\
-               generic_client_server.GenericClientServer.list_options(self)  +\
-               ["config_file=","config_list","dict","load","alive"] + \
-               generic_client_server.GenericClientServer.options(self)
-
-    # we cannot use the one in GenericClientServer because it assumes that the
-    # value is actually stored in self.csc
-    def parse_config_host(self, value):
-        Trace.trace(11,'{parse_config_host value='+repr(value))
-        self.config_host = value
-        self.check_host()
-        Trace.trace(11,'}parse_config_host')
-
-    # we cannot use the one in GenericClientServer because it assumes that the
-    # value is actually stored in self.csc
-    def parse_config_port(self, value):
-        Trace.trace(11,'{parse_config_port value='+repr(value))
-        self.check_port(value)
-        Trace.trace(11,'}parse_config_port')
-
-    # connect to the configuration client
-    def connect(self):
-        Trace.trace(11,'{connect')
-        if self.config_list:
+	if config_list>3 :
             print "Connecting to configuration server at ",\
-                self.config_host, self.config_port
-        self.config_address=(self.config_host,self.config_port)
+	        config_host, config_port
+        self.config_address=(config_host,config_port)
         self.u = udp_client.UDPClient()
         Trace.trace(11,'}connect add='+repr(self.config_address)+\
                     ' udp='+repr(self.u))
@@ -175,6 +141,24 @@ class configuration_client(generic_client_server.GenericClientServer):
         Trace.trace(10,'}alive '+repr(x))
         return x
 
+class ConfigurationClientInterface(interface.Interface):
+    def __init__(self):
+        # fill in the defaults for the possible options
+       	self.config_file = ""
+        self.config_list = 0
+        self.dict = 0
+        self.load = 0
+        self.alive = 0
+        interface.Interface.__init__(self)
+
+        # parse the options
+        self.parse_options()
+
+    # define the command line options that are valid
+    def options(self):
+        return self.config_options() + self.list_options()+\
+	       ["config_file=","config_list","dict","load","alive"] + \
+	       self.help_options()
 
 if __name__ == "__main__":
     import sys
@@ -182,29 +166,28 @@ if __name__ == "__main__":
     Trace.init("config cli")
     Trace.trace(1,"config client called with args "+repr(sys.argv))
 
-    # fill in defaults
-    csc = configuration_client()
+    # fill in interface
+    intf = ConfigurationClientInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    csc.parse_options()
-    csc.connect()
+    # now get a configuration client
+    csc = configuration_client(intf.config_host, intf.config_port,\
+                               intf.config_list)
     stat = "ok"
 
-    if csc.doalive:
+    if intf.alive:
         stati = csc.alive()
-        if csc.dolist:
+        if intf.list:
             pprint.pprint(stati)
-
-    elif csc.dict:
+    elif intf.dict:
         csc.list()
-        if csc.dolist:
+        if intf.list:
             print csc.config_list["list"]
             #pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
 
-    elif csc.doload:
-        stati= csc.load(csc.config_file)
-        if csc.dolist:
+    elif intf.load:
+        stati= csc.load(intf.config_file)
+        if intf.list:
             pprint.pprint(stati)
         stat=stati['status']
 

@@ -172,11 +172,8 @@ if __name__ == "__main__" :
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-
-    csc = configuration_client.configuration_client(config_host,config_port)
-    csc.connect()
+    csc = configuration_client.configuration_client(config_host,config_port,\
+                                                    config_list)
 
     keys = csc.get("logserver")
     if list :
