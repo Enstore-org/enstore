@@ -166,10 +166,10 @@ beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
 ALL_9940 = open('ALL_9940.tapes','a')
 ALL_9940B = open('ALL_9940B.tapes', 'a')
-CD-9940B = open('CD-9940B.tapes', 'a')
+CD_9940B = open('CD-9940B.tapes', 'a')
 group_fd['ALL_9940'] = ALL_9940
 group_fd['ALL_9940B'] = ALL_9940B
-group_fd['CD-9940B'] = CD-9940B
+group_fd['CD-9940B'] = CD_9940B
 
 
 print 'sorting drivestat into storage group and library'
