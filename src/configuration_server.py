@@ -4,7 +4,6 @@
 # system imports
 import sys
 import string
-import copy
 import types
 import socket
 import os
@@ -15,6 +14,7 @@ import generic_server
 import interface
 import Trace
 import e_errors
+import traceback
 
 MY_NAME = "CONFIG_SERVER"
 
@@ -22,60 +22,44 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     def __init__(self):
 	self.print_id="CONFIG_DICT"
-
+        self.serverlist = {}
     def read_config(self, configfile):
-        xconfigdict = {} # will load new config file into xconfigdict - clear it
         try:
-            f = open(configfile)
+            f = open(configfile,'r')
         except:
-            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config"\
-                   +str(configfile)+" does not exists")
+            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config"
+                   +str(configfile)+" does not exist")
             Trace.log( e_errors.ERROR, msg[1] )
             return msg
-        line = ""
-
-        Trace.trace(9, "Configuration Server read_config: "+\
+        code = string.join(f.readlines(),'')
+        Trace.trace(9, "Configuration Server read_config: "
                      "loading enstore configuration from %s"%configfile)
-        while 1:
-            # read another line - appending it to what we already have
-            nextline = f.readline()
-            if nextline == "":
-                break
-            # strip the line - this includes blank space and NL characters
-            nextline = string.strip(nextline)
-            if len(nextline) == 0 or nextline[0] == '#':
-                continue
-            line = line+nextline
-            # are we at end of line or is there a continuation character "\"
-            if line[len(line)-1] == "\\":
-                line = line[0:len(line)-1]
-                continue
-            # ok, we have a complete line - execute it - the exec creates a dictionary
-            #   called xconfigdict (because the config file has lines like configdict =)
-            #   once we know it is ok, we will change the name from xconfigdict to configdict
-            try:
-                Trace.trace(10, line)
-                exec ("x"+line)
-            except:
-                f.close()
-                msg = (e_errors.EXECERROR, "Configuration Server: "\
-                      +"can not process line: ",line \
-                      ,"\ndictionary unchanged.")
-                return msg
-            # start again
-            line = ""
-        f.close()
+        try:
+            exec(code) #would like to do this in a restricted namespace, but
+                       ##the dict uses modules like e_errors, which it does not import
+        except:
+            x = sys.exc_info()
+            tb=x[2]
+            while tb.tb_next:
+                tb=tb.tb_next
+            msg = (e_errors.ERROR, "Configuration Server: "+
+                   configfile+(" line %d \n"%
+                               tb.tb_lineno)+
+                   traceback.format_exception(x[0],x[1],x[2])[-1])
+            Trace.trace(msg[0],msg[1])
+            print msg[1]
+            os._exit(-1)
         # ok, we read entire file - now set it to real dictionary
-        self.configdict=copy.deepcopy(xconfigdict)
+        self.configdict=configdict
         return (e_errors.OK, None)
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
      try:
 	msg = self.read_config(configfile)
-	if not msg == (e_errors.OK, None):
+	if msg != (e_errors.OK, None):
 	    return msg
-        self.serverlist = {}
+        self.serverlist={}
 	conflict = 0
         for key in self.configdict.keys():
 	    if not self.configdict[key].has_key('status'):
@@ -87,9 +71,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 			self.configdict[key]['port'] = -1
 		    # check if server is already configured
 		    for configured_key in self.serverlist.keys():
-			if (self.serverlist[configured_key][1] == \
-			   self.configdict[key]['hostip']) and \
-			   (self.serverlist[configured_key][2] == \
+			if (self.serverlist[configured_key][1] == 
+                            self.configdict[key]['hostip'] and 
+                            self.serverlist[configured_key][2] == 
 			    self.configdict[key]['port']):
 			    msg = "Configuration Conflict detected for "\
 				  "hostip "+\
@@ -104,7 +88,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		    break
 		
 	if conflict:
-	    return(e_errors.CONFLICT, "Configuration conflict detected. "\
+	    return(e_errors.CONFLICT, "Configuration conflict detected. "
 		   "Check configuration file")
         return (e_errors.OK, None)
 
@@ -113,34 +97,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
          return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 
 
-    # does the configuration dictionary exist?
-    def config_exists(self):
-     try:
-        need = 0
-        try:
-            if len(self.configdict) == 0:
-                need =1
-        except:
-            need = 1
-        if need:
-            configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"
-            msg ="Configuration Server: invalid dictionary, " \
-                  +"loading "+repr(configfile)
-            Trace.trace(8,"config_exists "+msg)
-            self.load_config(configfile)
-        return
-
-     # even if there is an error - respond to caller so he can process it
-     except:
-         Trace.trace(8,"config_exists "+str(sys.exc_info()[0])+\
-                     str(sys.exc_info()[1]))
-         return
-
-
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
      try:
-        self.config_exists()
         # everything is based on lookup - make sure we have this
         try:
             key="lookup"
@@ -156,8 +115,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             out_ticket = self.configdict[lookup]
         except KeyError:
             Trace.trace(8,"lookup no such name"+repr(lookup))
-            out_ticket = {"status": (e_errors.KEYERROR, "Configuration Server: no such name: "\
-                          +repr(lookup))}
+            out_ticket = {"status": (e_errors.KEYERROR,
+                                     "Configuration Server: no such name: "
+                                     +repr(lookup))}
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"lookup "+repr(lookup)+"="+repr(out_ticket))
         return
@@ -166,14 +126,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      except:
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          self.reply_to_caller(ticket)
-         Trace.trace(6,"lookup "+str(sys.exc_info()[0])+\
+         Trace.trace(6,"lookup "+str(sys.exc_info()[0])+
                      str(sys.exc_info()[1]))
          return
 
     # return a dump of the dictionary back to the user
     def get_keys(self, ticket):
      try:
-        self.config_exists()
         skeys = self.configdict.keys()
 	skeys.sort()
         out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
@@ -184,15 +143,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      except:
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          self.reply_to_caller(ticket)
-         Trace.trace(6,"get_keys "+str(sys.exc_info()[0])+\
+         Trace.trace(6,"get_keys "+str(sys.exc_info()[0])+
                      str(sys.exc_info()[1]))
          return
 
 
     # return a dump of the dictionary back to the user
-    def list(self, ticket):
+    def dump(self, ticket):
      try:
-        self.config_exists()
         sortedkey = self.configdict.keys()
         sortedkey.sort()
         formatted= "configdict = {}\n"
@@ -201,12 +159,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
            len2 = len(key)
            count4 = 0
            for key2 in self.configdict[key].keys():
-              count4 = count4+1
+              if key2 not in ('hostip', 'status'):
+                  count4 = count4+1
            count3 = 0
            sortedkeyinside = self.configdict[key].keys()
            sortedkeyinside.sort()
            for key2 in sortedkeyinside:
-              if key2 == 'hostip':
+              if key2 in ('hostip','status'):
                   continue
               count3 = count3 + 1
               if count3 != 1:
@@ -218,10 +177,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
               else:
                  formatted= formatted + " '"  + key2 + "'  : " + repr(self.configdict[key][key2])
               if count3 != count4:
-                 formatted= formatted + ", \\"
+                 formatted= formatted + ","
               else:
                  formatted= formatted + " }\n"
-        out_ticket = {"status" : (e_errors.OK, None), "list" : formatted}
+        out_ticket = {"status" : (e_errors.OK, None), "dump" : formatted}
         self.reply_to_caller(out_ticket)
         return
 
@@ -229,7 +188,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
      except:
          ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          self.reply_to_caller(ticket)
-         Trace.trace(6,"list "+str(sys.exc_info()[0])+\
+         Trace.trace(6,"dump "+str(sys.exc_info()[0])+
                      str(sys.exc_info()[1]))
          return
 
@@ -250,7 +209,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	except:
 	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    self.reply_to_caller(ticket)
-	    Trace.trace(6,"load "+str(sys.exc_info()[0])+\
+	    Trace.trace(6,"load "+str(sys.exc_info()[0])+
 			str(sys.exc_info()[1]))
 	    return
 
@@ -267,15 +226,15 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 			if type(item['library']) == types.ListType:
 			    for i in item['library']:
 				if i == ticket['library']:
-				    mv = {'mover' : key,\
-					  'address' : (item['hostip'], \
+				    mv = {'mover' : key,
+					  'address' : (item['hostip'], 
 						      item['port'])
 					  }
 				    ret.append(mv)
 			else:
 			    if item['library'] == ticket['library']:
-				mv = {'mover' : key,\
-				      'address' : (item['hostip'], \
+				mv = {'mover' : key,
+				      'address' : (item['hostip'], 
 						   item['port'])
 				      }
 				ret.append(mv)
@@ -294,17 +253,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 ret[library_name] = {'address':(item['host'],item['port'])}
         self.reply_to_caller(ret)
         Trace.trace(6,"get_library_managers"+repr(ret))
-                           
-    def reply_configdict( self, ticket ):
-        out_ticket = {"status" : (e_errors.OK, None), "list" : self.configdict }
-        self.reply_to_caller(out_ticket)
-        Trace.trace(6,"reply_configdict"+repr(out_ticket))
 
     def reply_serverlist( self, ticket ):
-        out_ticket = {"status" : (e_errors.OK, None), "server_list" : self.serverlist }
+        out_ticket = {"status" : (e_errors.OK, None), 
+                      "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
-        Trace.trace(6,"reply_serverlist"+repr(out_ticket))
-
+ 
+        
     def get_dict_element(self, ticket):
         ret = {"status" : (e_errors.OK, None)}
         slist = []
@@ -323,7 +278,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 	self.running = 0
 	self.print_id = MY_NAME
         Trace.trace(10,
-            "Instantiating Configuration Server at %s %s using config file %s"\
+            "Instantiating Configuration Server at %s %s using config file %s"
             %(csc[0], csc[1], configfile))
 
         # make a configuration dictionary
@@ -335,8 +290,6 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         # now (and not before,please) load the config file user requested
         self.load_config(configfile)
 
-        #check that it is valid - or else load a "good" one
-        self.config_exists()
 	self.running = 1
 
         # always nice to let the user see what she has
