@@ -4,18 +4,18 @@
  *    routeDel(destination) -- delate destination
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
-
+#include <sys/stat.h>
 #include "enrouteError.h"
 
 /* errstr(errno) -- return error message for the errno */
 
-char *errstr(errno)
-int errno;
+char *errstr(int errno)
 {
 	switch(errno)
 	{
@@ -29,6 +29,23 @@ int errno;
 	return("unknown error");
 }
 
+/* is_root_setuid_exe(path) -- check if path is an executable owned by
+ *				root and its suid bit is set
+ */
+
+static int is_root_setuid_exe(char *path)
+{
+        struct stat stbuf;
+
+        if (stat(path, &stbuf))
+        {
+                return(0);
+        }
+
+        return((stbuf.st_uid == 0) && (stbuf.st_mode & S_ISUID) &&
+		!access(path, X_OK));	/* access() does more */
+}
+
 /* getexecpath(path) -- set path for enroute2, which will be at either
  *		$ENCP_DIR/enroute2 or $ENSTORE_DIR/sbin/renroute2
  *
@@ -36,43 +53,54 @@ int errno;
  *	getexecpath() returns path or NULL, if none is found
  */
 
-static char *getexecpath(path)
-char *path;
+static char *getexecpath(char *path)
 {
 	char *p;
-#if 0
-	/* modified to have enrout2 at /usr/local/bin/enroute2 */
-	if ((p = getenv("ENCP_DIR")) != NULL)
-	{
-		strcpy(path, p);
-		strcat(path, "/enroute2");
-	}
-	else if ((p = getenv("ENSTORE_DIR")) != NULL)
-	{
-		strcpy(path, p);
-		strcat(path, "/sbin/enroute2");
-	}
-	else	/* no ENCP_DIR nor ENSTORE_DIR defined */
-	{
-		strcpy(path, "enroute2");
-	}
-#endif
+
+	/* try ENROUTE2 first so that user may override defaults */
 
 	if ((p = getenv("ENROUTE2")) != NULL)
 	{
 		strcpy(path, p);
-	}
-	else
-	{
-		strcpy(path, "/usr/local/bin/enroute2");
-	}
-
-	if (access(path, X_OK))
-	{
-		return(NULL);
+		if (is_root_setuid_exe(path))
+		{
+			return(path);
+		}
 	}
 
-	return(path);
+	/* try $ENCP_DIR */
+
+	if ((p = getenv("ENCP_DIR")) != NULL)
+	{
+		strcpy(path, p);
+		strcat(path, "/enroute2");
+		if (is_root_setuid_exe(path))
+		{
+			return(path);
+		}
+	}
+
+	/* try $ENSTORE_DIR/sbin */
+
+	if ((p = getenv("ENSTORE_DIR")) != NULL)
+	{
+		strcpy(path, p);
+		strcat(path, "/sbin/enroute2");
+		if (is_root_setuid_exe(path))
+		{
+			return(path);
+		}
+	}
+
+	/* try /usr/local/bin/enroute2 */
+
+	strcpy(path, "/usr/local/bin/enroute2");
+	if (is_root_setuid_exe(path))
+	{
+		return(path);
+	}
+
+	return(NULL);
 }
 
 /* keygen(key) -- generate the key to activate enroute2
@@ -82,8 +110,7 @@ char *path;
  *	keygen shall never fail and it always returns key
  */
 
-static char *keygen(key)
-char *key;
+static char *keygen(char *key)
 {
 	int i, l, m;
 	char c;
@@ -107,10 +134,7 @@ char *key;
 
 /* route() -- python interface to route */
 
-static int route(cmd, dest, gw)
-char *cmd;
-char *dest;
-char *gw;
+static int route(char *cmd, char *dest, char *gw)
 {
 	char path[512];
 	int pid, child;
@@ -142,15 +166,12 @@ char *gw;
 	return(OK);
 }
 
-int routeAdd(dest, gw)
-char *dest;
-char *gw;
+int routeAdd(char *dest, char *gw)
 {
 	return route("add", dest, gw);
 }
 
-int routeDel(dest)
-char *dest;
+int routeDel(char *dest)
 {
 	return route("del", dest, NULL);
 }
