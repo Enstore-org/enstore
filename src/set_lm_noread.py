@@ -2,6 +2,7 @@ import os
 import sys
 
 import library_manager_client
+import configuration_client
 import volume_family
 import log_client
 import enstore_functions
@@ -11,6 +12,7 @@ import e_errors
 
 MY_NAME = "SET_LM_NOREAD"
 WRITE_LIMIT = 20
+PANIC_WRITE_LIMIT = 50
 READ_LIMIT = 0
 NOREAD = 'noread'
 UNLOCKED = 'unlocked'
@@ -39,14 +41,17 @@ def parse_queue(queue, ff_d, ff_k):
 Trace.init(MY_NAME)
 config_host = interface.default_host()
 config_port = interface.default_port()
-csc = (config_host, config_port)
 
 if config_host and config_port:
-    logc = log_client.LoggerClient(csc, MY_NAME)
+    logc = log_client.LoggerClient((config_host, config_port), MY_NAME)
     if len(sys.argv) < 3:
 	# there was no lib man or file family entered, exit
-	Trace.log(e_errors.WARNING, "No library manager specified or file family specified")
+        msg = "No library manager specified or file family specified"
+	Trace.log(e_errors.WARNING, msg)
+        print msg
     else:
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
 	lm = sys.argv[1]
 	ff_l = []
 	ff_d = {}
@@ -57,7 +62,7 @@ if config_host and config_port:
 	    ff_d_r[arg] = 0
 
 	ff_k = ff_d.keys()
-	lmc = library_manager_client.LibraryManagerClient((config_host, config_port), lm)
+	lmc = library_manager_client.LibraryManagerClient(csc, lm)
 	ticket = lmc.get_lm_state()
 	if enstore_functions.is_ok(ticket):
 	    state = ticket['state']
@@ -74,13 +79,13 @@ if config_host and config_port:
 
 		for ff in ff_k:
 		    print ff, ff_d[ff], ff_d_r[ff]
-		    if ff_d[ff] > WRITE_LIMIT and ff_d_r[ff] > READ_LIMIT:
+		    if (ff_d[ff] > WRITE_LIMIT and ff_d_r[ff] > READ_LIMIT) or \
+                       ff_d[ff] > PANIC_WRITE_LIMIT:
 			if not state == NOREAD:
-			    Trace.log(e_errors.WARNING, 
-				    "Setting %s to %s, %s has %s writes and %s reads"%(lm, 
-										       NOREAD,
-										  ff, ff_d[ff],
-										  ff_d_r[ff]))
+                            msg = "Setting %s to %s, %s has %s writes and %s reads"%(lm, 
+							 NOREAD, ff, ff_d[ff], ff_d_r[ff])
+			    Trace.log(e_errors.WARNING, msg)
+                            print msg
 			    lmc.change_lm_state(NOREAD)
 			# we do not have to check any more
 			break
@@ -88,5 +93,7 @@ if config_host and config_port:
 		    # we did not change the state of the lm to noread.  
 		    # see if it is in noread, if so set it back to normal
 		    if state == NOREAD:
-			Trace.log(e_errors.WARNING, "Setting %s to %s"%(lm, UNLOCKED))
+                        msg = "Setting %s to %s"%(lm, UNLOCKED)
+			Trace.log(e_errors.WARNING, msg)
+                        print msg
 			ticket = lmc.change_lm_state(UNLOCKED)
