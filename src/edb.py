@@ -29,9 +29,6 @@ import os
 import Trace
 import e_errors
 
-# to maintain a backward compatible BerkeleyDB
-import db
-
 default_database = 'enstoredb'
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -219,12 +216,8 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None, auto_journal=1):
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
 		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb)
-		if dbHome:
-			self.bdb = db.DbTable(self.name, dbHome, jou, ['external_label'],0)
-		else:
-			self.bdb = None
 
 		self.retrieve_query = "\
         		select \
@@ -321,41 +314,10 @@ class FileDB(DbTable):
 			'sanity_crc': sanity_crc,
 			'size': s['size']
 			}
-	def __setitem__(self, key, value):
-		DbTable.__setitem__(self, key, value)
-		if self.bdb != None:
-			self.bdb[key] = value
-
-	def __delitem__(self, key):
-		DbTable.__delitem__(self, key)
-		if self.bdb != None:
-			del self.bdb[key]
-
-	# This is to be backward compatible with BerkeleyDB
-	def rename_volume(self, old, new):
-		if self.bdb:
-			if self.bdb.inx.has_key('external_label'):
-				bfids = []
-				c = self.bdb.inx['external_label'].cursor()
-				key, pkey = c.set(old)
-				while key:
-					bfids.append(pkey)
-					key, pkey = c.nextDup()
-				c.close()
-				for i in bfids:
-					record = self.bdb[i]
-					record['external_label'] = new
-					self.bdb[i] = record
-			else:
-				Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None, auto_journal=1):
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
 		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb)
-		if dbHome:
-			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
-		else:
-			self.bdb = None
 
 		self.retrieve_query = "\
         		select \
@@ -450,16 +412,3 @@ class VolumeDB(DbTable):
 			'wrapper': s['wrapper'],
 			'comment': s['comment']
 			}
-
-	def __setitem__(self, key, value):
-		DbTable.__setitem__(self, key, value)
-		if self.bdb != None:
-			# handling rename
-			self.bdb[value['external_label']] = value
-			if key != value['external_label']:
-				del self.bdb[key]
-
-	def __delitem__(self, key):
-		DbTable.__delitem__(self, key)
-		if self.bdb != None:
-			del self.bdb[key]
