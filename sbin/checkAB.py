@@ -140,6 +140,11 @@ def check(f):
 	print f, '...',
 
 	# does file exist?
+	if not os.access(f, os.F_OK):
+		error('not exist')
+		print 'ERROR'
+		return
+
 	if not os.access(f, os.R_OK):
 		error('not readable')
 		print 'ERROR'
@@ -147,13 +152,28 @@ def check(f):
 
 	fb = b_path(f)
 	# does B file exist? readable?
+	if not os.access(fb, os.F_OK):
+		error(fb+' not exist')
+		print 'ERROR'
+		return
+
 	if not os.access(fb, os.R_OK):
 		error(fb+' not readable')
 		print 'ERROR'
 		return
 
 	f_o = pnfs.File(f)
+	if len(f_o) < 11:
+		error(' missing layer 4')
+		print 'ERROR'
+		return
+
 	f_b = pnfs.File(fb)
+
+	if len(f_b) < 11:
+		error(fb+' missing layer 4')
+		print 'ERROR'
+		return
 
 	# check size
 	if long(f_o.size) != long(f_b.size):
@@ -209,6 +229,9 @@ class Interface(option.Interface):
 		usage()
 
 	def print_usage(self, message=None):
+		if message:
+			print message
+			print
 		usage()
 
 if __name__ == '__main__':
