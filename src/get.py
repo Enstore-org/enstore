@@ -22,6 +22,7 @@ import Trace
 import udp_client
 import checksum
 import udp_server
+import cleanUDP
 
 #Completion status field values.
 SUCCESS = "SUCCESS"
@@ -120,12 +121,14 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         Trace.message(5, "Sending next file request to the mover.")
 
-        # Send the request to the mover. (evil hacks)
+        # Send the request to the mover.  This is an evil hack to modify
+        # work_ticket outside of create_read_requests().
         work_ticket['method'] = "read_next"
+        print "3", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
         request  = udp_socket.process_request()
-        Trace.message(10, "MOVER_MESSAGE:")
+        Trace.message(1, "MOVER_MESSAGE:")
         Trace.message(10, pprint.pformat(request))
-        Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
+        Trace.message(1, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
         udp_socket.reply_to_caller(work_ticket)
         
@@ -445,10 +448,14 @@ def main(e):
                 encp.quit(1)
 
             Trace.message(4, "Opened routing socket.")
+            print "1", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
         except (encp.EncpError,), detail:
-            sys.stderr.write("Unable to handle routing: %s\n" %
-                             (str(detail),))
-            encp.quit(1)
+            if detail.errno == errno.ETIMEDOUT:
+                continue
+            else:
+                sys.stderr.write("Unable to handle routing: %s\n" %
+                                 (str(detail),))
+                encp.quit(1)
 
         #Open the control socket.
         Trace.message(4, "Opening control socket.")
@@ -462,9 +469,13 @@ def main(e):
                     (ticket['status'],))
                 encp.quit(1)
         except (encp.EncpError,), detail:
-            sys.stderr.write("Unable to open control socket with mover: %s\n"
-                             % (str(detail),))
-            encp.quit(1)
+            if detail.errno == errno.ETIMEDOUT:
+                continue
+            else:
+                sys.stderr.write(
+                    "Unable to open control socket with mover: %s\n"
+                    % (str(detail),))
+                encp.quit(1)
 
         Trace.message(4, "Opened control socket.")
 
@@ -482,17 +493,24 @@ def main(e):
         else:
             file_number = None
 
+        use_unique_id = request['unique_id']
+
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
 
             #Combine the ticket from the mover with the current information.
             # Remember the ealier dictionaries 'win' in setting values.
             request = encp.combine_dict(request, ticket)
+            #Encp create_read_request() gives each file a new unique id.
+            # The LM can't deal with multiple mover file requests from one
+            # LM request.  Thus, we need to set this back to the last unique
+            # id sent to the library manager.
+            request['unique_id'] = use_unique_id
             #Store these changes back into the master list.
             requests_per_vol[e.volume][index] = request
             
             Trace.message(4, "Preparing to read %s." % request['outfile'])
-            
+            print "2", cleanUDP.Select([udp_socket], [], [], e.mover_timeout)
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
