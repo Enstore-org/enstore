@@ -15,6 +15,6 @@ typedef struct s_ETdesc
     int			block_size;
     char		*bufptr;    /* buffer to build output blk - write only*/
     int			hadeof;	    /* seen an eof on this file - read only */
-    long		filesize;   /* # of bytes */
+    long		bytes_xferred;   /* # of bytes */
 } ET_descriptor;
 
