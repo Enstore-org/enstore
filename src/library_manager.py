@@ -1174,13 +1174,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   (mticket['vc']['external_label'],
                                    mover, 
                                    state))
-		
-                    format = "unbind vol %s mover=%s"
-                    Trace.log(e_errors.INFO, format %\
-                              (mticket['vc']["external_label"],
-                               mticket["mover"]))
-                    mv['state'] = 'unbind_sent'
-                    self.reply_to_caller({"work" : "unbind_volume"})
+                        self.reply_to_caller({"work" : "nowork"})
+                    else:
+                        format = "unbind vol %s mover=%s"
+                        Trace.log(e_errors.INFO, format %\
+                                  (mticket['vc']["external_label"],
+                                   mticket["mover"]))
+                        mv['state'] = 'unbind_sent'
+                        self.reply_to_caller({"work" : "unbind_volume"})
             else:
                 self.reply_to_caller({'work': 'nowork'})
             return
@@ -1283,13 +1284,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			      (mticket['vc']['external_label'],
 			       mover, 
 			       state))
-		
-		format = "unbind vol %s mover=%s"
-		Trace.log(e_errors.INFO, format %\
-			  (mticket['vc']["external_label"],
-			   mticket["mover"]))
-		mv['state'] = 'unbind_sent'
-		self.reply_to_caller({"work" : "unbind_volume"})
+                    self.reply_to_caller({"work" : "nowork"})
+                else:
+                    format = "unbind vol %s mover=%s"
+                    Trace.log(e_errors.INFO, format %\
+                              (mticket['vc']["external_label"],
+                               mticket["mover"]))
+                    mv['state'] = 'unbind_sent'
+                    self.reply_to_caller({"work" : "unbind_volume"})
 
         # alas
         else:
