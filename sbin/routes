@@ -510,7 +510,7 @@ test*)
         enrsh ${gang}mvr${num1}b "$netperf -l $testTime -H ${gang}mvr${num}b >> $o 2>&1 <$N &" &
         sleep $testTime
         sleep 3
-        enrsh ${gang}mvr${num1}a "(killall $netperf 2>$N) 1>&- 2>&- <&- &" &
+        enrsh ${gang}mvr${num1}a '(. /fnal/ups/etc/setups.sh;setup enstore;$ENSTORE_DIR/sbin/ekill $netperf 2>$N) 1>&- 2>&- <&- &' &
 
         o=netperf.${num}a-${num1}a.output
         $netperf -l $testTime -H ${gang}mvr${num1}a >> $o 2>&1 <$N &
@@ -518,7 +518,7 @@ test*)
         $netperf -l $testTime -H ${gang}mvr${num1}b >> $o 2>&1 <$N &
         sleep $testTime
         sleep 3
-        killall $netperf 2>$N
+        $ENSTORE_DIR/sbin/ekill $netperf 2>$N
 
         loop=`expr $loop + 1`
       done

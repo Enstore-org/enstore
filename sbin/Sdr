@@ -23,7 +23,7 @@ EOF
 if [ -z "${2-}" ] ; then
   for i in `cat $farmlet`; do
    date > $filebase$i
-   enrsh $i '. /fnal/ups/etc/setups.sh;setup ipmi;killall -9 $IPMI_DIR/sdrread; $IPMI_DIR/sdrread  | egrep "^sdr [0-9][0-9]?:"' >> $filebase$i &
+   enrsh $i '. /fnal/ups/etc/setups.sh;setup enstore;$ENSTORE_DIR/sbin/ekill -9 $IPMI_DIR/sdrread; $IPMI_DIR/sdrread  | egrep "^sdr [0-9][0-9]?:"' >> $filebase$i &
   done
   #wait
   sleep 30 # wait doesn't work if rsh fails ???
