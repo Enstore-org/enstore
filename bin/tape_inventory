@@ -24,7 +24,7 @@ vols=`ecmd vcc --vols | sed -e "s/'//g" -e "s/,/ /g"`
 # now loop over them and save the output
 for vol in $vols; do
   #echo $vol
-  finfo=`ecmd fcc --tape_list=$vol`
+  finfo=`ecmd fcc --list=$vol`
   vinfo=`ecmd vcc --vol=$vol`
   la=`echo "$vinfo" | awk '($1 ~ /last_access/) {print $2}'`
   lat="`ptime $la`"

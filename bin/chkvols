@@ -9,5 +9,5 @@ for vol in $vols; do
   #ecmd vcc --atmover $vol
   #status=`ecmd vcc --vol=$vol | egrep 'at_mover|label|inhibit'`
   #echo $status
-  ecmd vcc --chkvol=$vol
+  ecmd vcc --check=$vol
 done
