@@ -8,12 +8,14 @@ XFER = "xfer"
 MLAT = "mlat"
 MPH = "mph"
 MPD = "mpd_total"
+MPD_MONTH = "mpd_month"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 
 # used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
+MPD_MONTH_FILE = "%s%s"%(FILE_PREFIX, MPD_MONTH)
 MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
 BPD_FILE = "%s%s"%(FILE_PREFIX, BPD)
 BPD_FILE_R = "%s_r"%(BPD_FILE,)
@@ -134,7 +136,7 @@ INQSERVERDBG = 5
 INQFILEDBG = 6
 INQSTARTDBG = 8
 INQWORKDBG = 9
-
+INQSERVERTIMESDBG = 10
 # other Trace.trace levels
 DISPWORKDBG = 7
 
