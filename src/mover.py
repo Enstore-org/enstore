@@ -799,6 +799,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("DRIVE SERNO:            %s\n"%(stats[self.ftt.SERIAL_NUM],))
                 fd.write("VENDOR:                 %s\n"%(stats[self.ftt.VENDOR_ID],))
                 fd.write("PROD TYPE:              %s\n"%(stats[self.ftt.PRODUCT_ID],))
+                fd.write("FIRMWARE:               %s\n"%(stats[self.ftt.FIRMWARE],))
                 fd.write("LOGICAL NAME:           %s\n"%(self.logname,))
                 fd.write("HOST:                   %s\n"%(self.config['host'],))
                 fd.write("VOLSER:                 %s\n"%(self.current_volume,))
@@ -820,6 +821,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.dsc.log_stat(stats[self.ftt.SERIAL_NUM],
                                   stats[self.ftt.VENDOR_ID],
                                   stats[self.ftt.PRODUCT_ID],
+                                  stats[self.ftt.FIRMWARE],
                                   self.config['host'],
                                   self.logname,
                                   "ABSOLUTE",
