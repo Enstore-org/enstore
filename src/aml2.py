@@ -103,13 +103,19 @@ def drive_state(drive,client=""):
     Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
     return stat,None
 
+def drive_volume(drive):
+    stat,drive=drive_state(drive)
+    if stat!=0:
+        return None
+    if drive!=None:
+        return drive.volser
 
 def mount(volume, drive, media_type,view_first=1):
     print 'mount called', volume, drive, media_type, view_first
 
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
-        return 'BAD',9998,'Media code is None. media_type= %s'%(media_type,)
+        return 'BAD',9997,'Media code is None. media_type= %s'%(media_type,)
     
     # check if tape is in the storage location or somewhere else
     if view_first:
