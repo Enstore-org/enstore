@@ -64,8 +64,8 @@ def extract_minor(device):
 def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
              major, minor, rmajor, rminor, filename):
     
-    # files greater than 2  GB are just not allowed right now
-    max = 2**30-1+2**30
+    # files greater than 8GB are just not allowed right now
+    max = long(2**30) * 8 - 1
     if filesize > max :
 	raise errno.errorcode[errno.EOVERFLOW],"Files are limited to "\
 	      +repr(max) + " bytes and your "+filename+" has "\
