@@ -36,7 +36,7 @@ right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 
 #rpm -Va | grep bin
 
-if [ "`/usr/sbin/xntpdc -p|grep ^\*|wc|awk '{print $1}'`" != "1" ]; then 
+if [ "`/usr/sbin/xntpdc -p|egrep '^\*|^~'|wc|awk '{print $1}'`" != "1" ]; then 
     echo NO TIME SYNC
     /usr/sbin/xntpdc -p
 fi
@@ -50,7 +50,7 @@ ALLOW_BASE="
        LISTEN,inetd,:klogin,TCP,x
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
-       LISTEN,python,:,TCP,/home/enstore/enstore/bin/encp|/home/enstore/enstore/bin/enstore system
+       LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src
        LISTEN,netserver,:,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
