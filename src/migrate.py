@@ -82,10 +82,14 @@ fcc = None
 vcc = None
 db = None
 
-
 # job queue for coping files
 copy_queue = Queue.Queue(1024)
 scan_queue = Queue.Queue(1024)
+
+# migration log file
+LOG_DIR = SPOOL_DIR
+LOG_FILE = "MigrationLog@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))
+log_f = None
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
@@ -103,7 +107,7 @@ def time2timestamp(t):
 
 # initialize vcc, fcc, ... etc.
 def init():
-	global fcc, vcc, db
+	global fcc, vcc, db, log_f
 	intf = option.Interface()
 	vcc = volume_clerk_client.VolumeClerkClient((intf.config_host,
 		intf.config_port))
@@ -111,6 +115,7 @@ def init():
 	db_info = vcc.csc.get('database')
 	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
 		dbname=db_info['dbname'])
+	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 	return
 
 # The following three functions query the state of a migrating file
@@ -120,7 +125,7 @@ def init():
 def is_copied(bfid):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		print q
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -131,7 +136,7 @@ def is_copied(bfid):
 def is_swapped(bfid):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		print q
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -143,7 +148,7 @@ def is_swapped(bfid):
 def is_checked(bfid):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
-		print q
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -152,23 +157,39 @@ def is_checked(bfid):
 
 # open_log(*args) -- log message without final line-feed
 def open_log(*args):
-	print time.time(),
+	t = time.time()
+	print time.ctime(t),
 	for i in args:
 		print i,
+	if log_f:
+		log_f.write(time.ctime(t)+' ')
+		for i in args:
+			log_f.write(i+' ')
+		log_f.flush()
+		
 
 # error_log(s) -- handling error message
 def error_log(*args):
 	open_log(*args)
 	print '... ERROR'
+	if log_f:
+		log_f.write('... ERROR\n')
+		log_f.flush()
 
 def ok_log(*args):
 	open_log(*args)
 	print '... OK'
+	if log_f:
+		log_f.write('... OK\n')
+		log_f.flush()
 
 # log(*args) -- log message
 def log(*args):
 	open_log(*args)
 	print
+	if log_f:
+		log_f.write('\n')
+		log_f.flush()
 
 # log_copied(bfid1, bfid2) -- log a successful copy
 def log_copied(bfid1, bfid2):
@@ -176,7 +197,7 @@ def log_copied(bfid1, bfid2):
 		values ('%s', '%s', '%s');" % (bfid1, bfid2,
 		time2timestamp(time.time()))
 	if debug:
-		print q
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -190,7 +211,7 @@ def log_swapped(bfid1, bfid2):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		print q
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -204,7 +225,7 @@ def log_checked(bfid1, bfid2):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		print q
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -224,7 +245,7 @@ def run_encp(args):
 		cmd = cmd + " " + i
 	cmd = cmd + " >/dev/null 2>1"
 	if debug:
-		print cmd
+		log(cmd)
 	ret = os.system(cmd)
 	return ret
 
@@ -259,7 +280,7 @@ def copy_files(files):
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
 		if debug:
-			print q
+			log(q)
 		res = db.query(q).dictresult()
 
 		# does it exist?
@@ -269,12 +290,12 @@ def copy_files(files):
 
 		f = res[0]
 		if debug:
-			print `f`
+			log(`f`)
 		tmp = temp_file(f['label'], f['location_cookie'])
 		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
 		if debug:
-			print "src:", src
-			print "tmp:", tmp
+			log("src:", src)
+			log("tmp:", tmp)
 		if not os.access(src, os.R_OK):
 			error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
 			continue
@@ -311,7 +332,7 @@ def migration_file_family(ff):
 def compare_metadata(p, f):
 	if debug:
 		p.show()
-		print `f`
+		log(`f`)
 	if p.bfid != f['bfid'] or \
 		p.volume != f['external_label'] or \
 		p.location_cookie != f['location_cookie'] or \
@@ -415,11 +436,11 @@ def restore(bfid):
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	if debug:
-		print "migrating()"
+		log("migrating()")
 	job = copy_queue.get(True)
 	while job:
 		if debug:
-			print `job`
+			log(`job`)
 		(bfid, src, tmp, ff, sg) = job
 		ff = migration_file_family(ff)
 		dst = migration_path(src)
@@ -572,8 +593,10 @@ def migrate_volume(vol):
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
 	return res
 
-# nuke_pnfs() -- nuke the pnfs entry
-def nuke_pnfs(p):
+# nulify_pnfs() -- nulify the pnfs entry so that when the entry is
+#			removed, its layer4 won't be put in trashcan
+#			hence won't be picked up by delfile
+def nulify_pnfs(p):
 	p1 = pnfs.File(p)
 	for i in [1,2,4]:
 		f = open(p1.layer_file(i), 'w')
