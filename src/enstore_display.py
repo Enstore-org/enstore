@@ -140,24 +140,24 @@ class Mover:
         self.display.delete(self.timer_display)
         self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
 
-    def load_tape(self, volume_name):
-        self.volume = Volume(volume_name, self.display)
+    def load_tape(self, volume):
+        self.volume = volume
         self.volume.x, self.volume.y = self.x + 5, self.y + 2
         self.volume.draw()
 
     def unload_tape(self, volume):
         if not self.volume or volume != self.volume.name: 
             print "Mover does not have this tape : ", volume
-        else:
-            k=self.index
-            N=self.N
-            angle=math.pi/(N-1)
-            i=(0+1J)
-            coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
-            x,y=coord.real,coord.imag
-            self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
-            self.volume.moveto(self.volume.x, self.volume.y)
-            self.volume.draw()
+            return
+        k=self.index
+        N=self.N
+        angle=math.pi/(N-1)
+        i=(0+1J)
+        coord=.75+.5*cmath.exp(i*(math.pi/2 + angle*k))
+        x,y=coord.real,coord.imag
+        self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
+        self.volume.moveto(self.volume.x, self.volume.y)
+        self.volume.draw()
 
     def robot_move(self, volume_name, robot_command):
         robot=self.display.robot
@@ -659,20 +659,14 @@ class Display(Canvas):
             mover.show_progress(None)
             return
 
-        if words[0]=='loading':
+        if words[0] in ['loading', 'loaded']:
             what_volume = words[2]
             volume=self.volumes.get(what_volume)
             if volume is None:
                 volume=Volume(what_volume,self)
-                self.volumes[what_volume]=volume
-                mover.load_tape(what_volume)
-            else:
-                print "!!! Error !!!  Volume already exists."
-            return
-
-        if words[0]=='loaded':
-            what_volume = words[2]
-            mover.load_tape(what_volume)
+            self.volumes[what_volume]=volume
+            volume.loaded = words[0]=='loaded'
+            mover.load_tape(volume)
             return
         
         if words[0]=='unload':
