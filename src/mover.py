@@ -2766,7 +2766,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.buffer:
             bytes_buffered = self.buffer.nbytes()
             buffer_min_bytes = self.buffer.min_bytes
-            buffer_max_bytes = buffer.max_bytes
+            buffer_max_bytes = self.buffer.max_bytes
         else:
             bytes_buffered = 0
             buffer_min_bytes = 0
@@ -3902,7 +3902,7 @@ class DiskMover(Mover):
         if self.buffer:
             bytes_buffered = self.buffer.nbytes()
             buffer_min_bytes = self.buffer.min_bytes
-            buffer_max_bytes = buffer.max_bytes
+            buffer_max_bytes = self.buffer.max_bytes
         else:
             bytes_buffered = 0
             buffer_min_bytes = 0
