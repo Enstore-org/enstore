@@ -537,20 +537,9 @@ def write_to_hsm(input_files, output, output_file_family='',
     junk,library,file_family,ff_wrapper,width,pinfo,p=pnfs_information(outputlist,ninput)
 
     if output_file_family != "":
-	if output_file_family == "ephemeral":
-	    if ninput > 1:
-                stati={}
-                msg=" only 1 file allowed with --ephemeral"
-                stati['status']=(e_errors.USERERROR, msg)
-                print_data_access_layer_format('','',0,stati)
-		jraise(errno.errorcode[errno.EPROTO],msg)
-	    else:
-		file_family[0] = "ephemeral"
-		width[0] = 1
-	else:
-	    for i in range(0,ninput):
-		file_family[i] = output_file_family
-		width[i] = 1
+        for i in range(0,ninput):
+            file_family[i] = output_file_family
+            width[i] = 1
 
     # note: Since multiple input files all go to 1 directory:
     #       all libraries are the same
@@ -705,8 +694,10 @@ def write_to_hsm(input_files, output, output_file_family='',
 		work_ticket["unique_id"] = unique_id[i]
 		work_ticket["retry"] = retry
             else:
+                try: rq_file_family = file_fam
+                except NameError: rq_file_family = file_family[i]
                 volume_clerk = {"library"            : library[i],
-                                "file_family"        : file_family[i],
+                                "file_family"        : rq_file_family,
                                 # technically width does not belong here, but it associated with the volume
                                 "file_family_width"  : width[i],
 				"wrapper"            : ff_wrapper[i],
@@ -750,7 +741,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 tinfo1["send_ticket%d"%(i,)] = time.time() - t1 #--Lap End
                 if verbose:
                     print "  Q'd:",inputlist[i], library[i],\
-                          "family:",file_family[i],\
+                          "family:",rq_file_family,\
                           "bytes:", file_size[i],\
                           "dt:",tinfo1["send_ticket%d"%(i,)],\
                               "   cumt=",time.time()-t0
@@ -1086,7 +1077,11 @@ def write_to_hsm(input_files, output, output_file_family='',
 					     time.time()-t0),
                       Trace.MSG_ENCP_XFER )
 	    retry = 0
-
+            if (i == 0 and rq_file_family == "ephemeral"):
+                file_fam = string.split(done_ticket["vc"]["file_family"], ".")[0]
+                if verbose:
+                    print "New file family %s has been created for --ephemeral RQ"%(file_fam,)
+                
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
