@@ -312,27 +312,18 @@ class DispatchingWorker:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        Trace.trace(18,"reply_to_caller number="+repr(self.client_number)+
-                    " id ="+repr(self.current_id))
-
-        # There is some path that causes bfids to be in the ticket -- delete it XXX FIXME
-        has_bfids = 0                            # XXX FIXME
-        if type(ticket) is types.DictionaryType: # XXX FIXME
-            has_bfids = ticket.has_key("bfids")  # XXX FIXME
-            if has_bfids:                        # XXX FIXME
-                bfids=ticket["bfids"]            # XXX FIXME
-                del ticket["bfids"]              # XXX FIXME
+        Trace.trace(18,"reply_to_caller number=%s id=%s"%(self.client_number,
+                                                          self.current_id))
         reply = (self.client_number, ticket, time.time()) 
         self.reply_with_list(reply)          
-        Trace.trace(18,"reply_to_caller number="+repr(self.client_number))
-        if has_bfids:                            # XXX FIXME
-            ticket["bfids"]=bfids                # XXX FIXME
+        Trace.trace(18,"reply_to_caller number=%s"%(self.client_number,))
+
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        Trace.trace(19,"reply_with_list number="+repr(self.client_number)+
-                    " id ="+repr(self.current_id))
+        Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number,
+                                                          self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
 
@@ -344,8 +335,9 @@ class DispatchingWorker:
         self.client_number = ticket["ra"][1]
         self.current_id    = ticket["ra"][2]
         reply = (self.client_number, ticket, time.time())
-        Trace.trace(19,"reply_with_address "+ 
-                   repr(self.reply_address)+" "+ 
-                   repr(self.current_id)+" " + 
-                   repr(self.client_number)+" "+repr(reply))
+        Trace.trace(19,"reply_with_address %s %s %s %s"%( 
+            self.reply_address,
+            self.current_id,
+            self.client_number,
+            reply))
         self.reply_to_caller(ticket)
