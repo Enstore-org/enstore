@@ -75,7 +75,7 @@ def dismount(volume, drive, media_type):
     if aci.aci_force(drive):
         status=aci.cvar.d_errno
         if status > len(status_table):
-            stat= EDASINT
+            status = EDASINT
 
     return status_table[status][0], status, status_table[status][1]    
 

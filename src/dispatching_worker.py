@@ -90,7 +90,7 @@ class DispatchingWorker:
         # start up some threads for monitoring - experimental
         # use telnet to get to it; use same node and port as UDP server 
         try:
-            import tdb
+            import tdb1
             t=tdb.TdbListener()
             t.host=server_address[0]
             t.port=server_address[1]
