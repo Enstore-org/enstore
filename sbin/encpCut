@@ -119,7 +119,8 @@ if [ -z "${ENSTORE_DIR-}" ] ; then
 fi
 cd $ENSTORE_DIR
 check_status $? "cd $ENSTORE_DIR"
-FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
+#FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
+FLAVOR=`$UPS_DIR/bin/ups flavor -2`
 if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
 fi
@@ -217,7 +218,6 @@ if [ -z "${INSTALLDIR-}" ] ; then
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
       d0ola*)    INSTALLDIR=$ENSTORE_DIR/$product #this stinks! but I don't know what else to do
-		 FLAVOR="OSF1+V4"
 	         puntUPS=1;;
       *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
    esac
