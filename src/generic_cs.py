@@ -24,7 +24,6 @@ ALL_SERVER   = SERVER | ALIVE | CONNECTING | SOCKET_ERROR
 ALL_CLIENT   = CLIENT | ALIVE | CONNECTING | SOCKET_ERROR
 PRETTY_PRINT = 020000000000
 ALL          = 037777777777
-
 global_print_id = ""
 
 def add_id(id, msg):
@@ -41,7 +40,8 @@ def add_id(id, msg):
 	nmsg = id+": "+repr(msg)
     return nmsg
 
-def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, id=""):
+def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
+	    log_severity=ENNONE, id=""):
     global global_print_id
 
     # send the message to STDOUT.
@@ -61,9 +61,8 @@ def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, id=""):
 	        except:
 	            pass
 	    # also send to the logger
-	    if logger != 0:
-	        print "sending to logger\n"
-	        logger.send(log_client.WARNING, 1, nmsg)
+	    if logger != ENNONE:
+	        logger.send(log_severity, 1, nmsg)
     else:
 	# no verbosity was entered, try to print the message
 	nmsg = add_id(id, msg)
@@ -77,18 +76,23 @@ def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, id=""):
 	        print nmsg
 	    except:
 	        pass
+	# also send to the logger
+	if logger != ENNONE:
+	    logger.send(log_severity, 1, nmsg)
+
     # reset the following so if the next time we are called generically,
     # we do not retain the old value.
     global_print_id = ""
 
 class GenericCS:
 
-    def enprint(self, msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE):
+    def enprint(self, msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
+ 	        log_severity=ENNONE):
 	global global_print_id
 	try:
 	    global_print_id = self.print_id
 	except:
 	    global_print_id = ""
 
-	enprint(msg, msg_bit, verbosity, logger)
+	enprint(msg, msg_bit, verbosity, logger, log_severity)
 
