@@ -1219,7 +1219,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         broken = ""
         self._in_setup = 0
-        Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
+        Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
+            exc, msg, self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         
         ### XXX translate this to an e_errors code?
@@ -1289,7 +1290,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_completed(self):
         self.consecutive_failures = 0
         self._in_setup = 0
-        Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
+        Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         if self.mode == WRITE:
@@ -1400,7 +1401,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.current_volume:
             self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
         else:
-            Trace.log(e_errors.ERROR, "update_after_writing: current_volume=%s" % (self.current_volume,))
+            Trace.log(e_errors.ERROR, "update_after_writing: volume=%s" % (self.current_volume,))
         self.volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                               self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
         return 1
@@ -1611,7 +1612,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "dismount_volume: inquire_vol(%s)->%s" %
                                   (self.current_volume, v))
                 else:
-                    Trace.log(e_errors.ERROR, "dismount_volume: current_volume=%s" % (self.current_volume,))
+                    Trace.log(e_errors.ERROR, "dismount_volume: volume=%s" % (self.current_volume,))
 
         if not self.vol_info.get('external_label'):
             if self.current_volume:
