@@ -798,7 +798,9 @@ class stk_MediaLoader(MediaLoaderMethods):
 	nlines=0
 	ntries=0
 	jonflag=0
-	while nlines<19 and ntries<3:
+        # async message start with a date:  2001-12-20 07:33:17     0    Drive   0, 0,10,12: Cleaned.
+        async_date=re.compile("20\d\d-\d\d-\d\d \d\d:\d\d:\d\d")  
+        while nlines<19 and ntries<3:
 	  ntries=ntries+1
           while blanks<2 and nread<maxread:
             msg=os.read(c2pread,200)
@@ -816,7 +818,11 @@ class stk_MediaLoader(MediaLoaderMethods):
           resp = string.split(message,'\012')
 	  nl=0
 	  for l in resp:
-	    if string.find(l,'Place cartridges in CAP') != -1 or \
+            if async_date.match(l):
+                 if self.DEBUG:
+	          print "ASYNC DELETED:", l
+	       jonflag=1
+	    elif string.find(l,'Place cartridges in CAP') != -1 or \
 	       string.find(l,'Remove cartridges from CAP') != -1 or \
 	       string.find(l,'Library error, LSM offline') != -1 or \
 	       string.find(l,'Library error, Transport failure') != -1 or \
