@@ -58,8 +58,58 @@ fronts. Here is a short summary of the effort during the last 6 months.
 	       many useful web pages, plots, patrol investigations begun.
 	</ul>
 
-   <li> Volume Import and Export - plan for remote sites understood (not done)
-   <li> Test System - constructed and working.
+   <li> Volume Import and Export - plan for remote sites understood (not done).
+	
+   <li> Test System - 10 Linux node cluster constructed, installed into FNAL and RIP networks, Tests working, SAM integration begun.
+	<p>
+	<center><img src="test-network.gif"></center>
+	<p>
+	<div align=right><a href="test-network.ps">(also available in Postscript)</a><div align=left>
+	<p>
+	<p>
+	<p>
+	<b><center>Preliminary Rates Measurements</center></b>
+	<center><table cols=5 width="50%">
+	<tr>
+	<td> Tape Drive
+	<td> Writing
+	<td> Reading
+	<td> Network
+	<td> "Memory->tape"
+	<tr>
+	<td> &nbsp;
+	<td> (MB/S)
+	<td> (MB/S)
+	<td> (Mbits/S)
+	<td> (MB/S)
+	<tr>
+	<td> AIT
+	<td> 2.7
+	<td> 2.7
+	<td> 94
+	<td> 2.7
+	<tr>
+	<td> Mammoth
+	<td> 2.8
+	<td> 2.7
+	<td> 94
+	<td> 2.8
+	<tr>
+	<td> DLT
+	<td> 4.9
+	<td> 4.8
+	<td> 94
+	<td> 4.9
+	<tr>
+	<td> STK
+	<td> 8.8*
+	<td> 7.5*
+	<td> 83
+	<td> 9.8
+	</table></center>
+	<i><center>* == STK tests not repeated (yet) after coding changes that improved performance</center></i>
+
+	Typical CPU usage, per transfer, for the AITs, Mammoths, and DLTS is 5-10% on a client node 1-20% on the mover nodes.
 </ul>
 
 For further details, please consult the Technical Design Document at
