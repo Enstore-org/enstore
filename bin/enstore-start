@@ -164,7 +164,7 @@ enstore_start_inquisitor=0
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
 #note that conf.sh will reset the above vars.
 echo "`date` Calling configuration server to get list of servers to start"
-nodeplus_servers=`conf.sh $local_host $timeout $tries`
+nodeplus_servers=`conf.sh $local_host 5 10`
 # check if Configuration Server is up
 if [ $? -ne 0 ] ; then
     echo "   ...Configuration Server not reachable..."
@@ -183,7 +183,7 @@ if [ ! "$node_servers" ];then
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
     echo "`date` Calling configuration server to get list of servers to start (alternate host specification)"
-    nodeplus_servers=`conf.sh $hh $timeout $tries`
+    nodeplus_servers=`conf.sh $hh 5 10`
     # check if Configuration Server is up
     if [ $? -ne 0 ] ; then
 	echo "   ...Configuration Server not reachable..."
