@@ -1250,7 +1250,10 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
                                  e.bufsize, crc_flag, 0)
         EXfer_ticket = {'status':(e_errors.OK, None)}
     except EXfer.error, msg:
-        EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
+        if msg.args[1] == errno.ENOSPC: #This should be non-retriable.
+            EXfer_ticket = {'status':(e_errors.NOSPACE, str(msg))}
+        else:
+            EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     # File has been read - wait for final dialog with mover.
@@ -1259,7 +1262,10 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     #Even though the functionality is there for this to be done in
     # handle requests, this should be recieved outside since there must
     # be one... not only receiving one on error.
-    done_ticket = receive_final_dialog(control_socket)
+    if EXfer_ticket['status'][0] == e_errors.NOSPACE:
+        done_ticket = {'status':(e_errors.OK, None)}
+    else:
+        done_ticket = receive_final_dialog(control_socket)
 
     if not e_errors.is_retriable(done_ticket['status'][0]):
         return done_ticket, 0
