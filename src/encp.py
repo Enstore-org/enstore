@@ -4349,7 +4349,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     requests_per_vol = {}
 
     #vcc = fcc = None #Initialize these, so that they can be set only once.
-    
+    #print time.ctime(time.time())
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input)==types.ListType:
         e.input = e.input
@@ -4399,7 +4399,27 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 e.input, e.output, 0, {'status':bfids_dict['status']})
             quit(1)
 
-        #Set these here.
+        #Just be sure that the output target is a directory.
+        if not os.path.exists(e.output[0]):
+            print_data_access_layer_format(
+                e.volume, e.output[0], 0,
+                {'status':(e_errors.USERERROR,
+                           "%s: %s" % (errno.errorcode[errno.ENOENT],
+                                       e.output[0]))})
+            quit(1)
+            
+            raise EncpError(errno.ENOENT,
+                            e.output[0],
+                            e_errors.USERERROR)
+        elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
+            print_data_access_layer_format(
+                e.volume, e.output[0], 0,
+                {'status':(e_errors.USERERROR,
+                           "%s: %s" % (errno.errorcode[errno.ENOTDIR],
+                                       e.output[0]))})
+            quit(1)
+
+        #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
             try:
@@ -4412,10 +4432,21 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     e.input, e.output, 0,
                     {'status' : ("Unable to read list file", str(msg))})
                 quit(1)
+
+            #Obtain the complete listing of the volume.  It is best to do
+            # this now as opposed to each iteration in the large while
+            # loop below.
+            tape_ticket = fcc.tape_list(e.volume)
+            
+            #First check for errors.
+            if not e_errors.is_ok(tape_ticket):
+                raise EncpError(None, "Error obtaining tape listing.",
+                                e_errors.BROKEN)
+
         else:        
             number_of_files = len(bfids_dict['bfids'])
             #Always say one (for the ticket to send to the LM) when the
-            # number of files is unkown.
+            # number of files is unknown.
             if number_of_files == 0:
                 number_of_files = 1
     else: # Normal read, --get-dcache, --put-cache, --get-bfid.
@@ -4426,110 +4457,91 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
         #### VOLUME from list #############################################
         if e.volume and e.list:
-
-            #Just be sure that the output target is a directory.
-            if not os.path.exists(e.output[0]):
-                print_data_access_layer_format(
-                    e.volume, e.output[0], 0,
-                    {'status':(e_errors.USERERROR,
-                               "%s: %s" % (errno.errorcode[errno.ENOENT],
-                                           e.output[0]))})
-                quit(1)
-
-                raise EncpError(errno.ENOENT,
-                                e.output[0],
-                                e_errors.USERERROR)
-            elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
-                print_data_access_layer_format(
-                    e.volume, e.output[0], 0,
-                    {'status':(e_errors.USERERROR,
-                               "%s: %s" % (errno.errorcode[errno.ENOTDIR],
-                                           e.output[0]))})
-                quit(1)
-
-            #Get the number and filename for the next line on the file.
-            number, ifilename = list_of_files[i].split()[:2]
-
-            ifilename = os.path.join(e.input[0], ifilename)
-            imachine, ifullname, idir, ibasename = fullpath(ifilename)
-
+            
             # Check the file number on the tape to make sure everything is
             # correct.  This mass of code obtains a bfid or determines
             # that it is not known.
             try:
-                tape_ticket = fcc.tape_list(e.volume)
-
-                #First check for errors.
-                if not e_errors.is_ok(tape_ticket):
-                    raise EncpError(None, "Error obtaining tape listing.",
-                                    e_errors.BROKEN)
-
-                #If everythin is okay, search the listing for the location
+                #Get the number and filename for the next line on the file.
+                number, filename = list_of_files[i].split()[:2]
+                
+                #If everything is okay, search the listing for the location
                 # of the file requested.
-                lc = generate_location_cookie(number)
                 for item in tape_ticket.get("tape_list", {}).values():
                     #For each file number on the tape, compare it with
                     # a location cookie in the list of tapes.
-                    if same_cookie(item['location_cookie'], lc):
-                        status = (e_errors.USERERROR,
-                                  "Requesting file (%s) that has been deleted."
-                                  % (lc,))
+
+                    if int(number) == \
+                       extract_file_number(item['location_cookie']):
+
                         #Check to make sure that this file is not marked
                         # as deleted.  If so, print error and exit.
-                        if item['deleted'] == "yes":
+                        if item.get('deleted', None) == "yes":
+                            status = (e_errors.USERERROR,
+                                  "Requesting file (%s) that has been deleted."
+                                  % (generate_location_cookie(number),))
+
                             print_data_access_layer_format(
-                                ifullname, "", 0,
+                                filename, filename, 0,
+                                {'status' : status, 'volume' : e.volume})
+                            quit(1)
+                        #Check to make sure that the file was successfully
+                        # written to tape.
+                        if item.get('deleted', None) == None:
+                            status = (e_errors.USERERROR,
+                                  "Requesting file (%s) with unknown status."
+                                  % (generate_location_cookie(number),))
+
+                            print_data_access_layer_format(
+                                filename, filename, 0,
                                 {'status' : status, 'volume' : e.volume})
                             quit(1)
                             
                         #If the file is already known to enstore.
                         bfid = item['bfid']
-                        p = pnfs.Pnfs(ifullname)
+                        #p = pnfs.Pnfs(ifullname)
                         break
                 else:
                     #If we get here then we don't know anything about
                     # the file location requested.
-                    p = pnfs.Pnfs()
+                    #p = pnfs.Pnfs()
                     bfid = None
+                    sys.stdout.write("Location %s has no known metadata.\n" %
+                                     (generate_location_cookie(number),))
             except:
                 exc, msg = sys.exc_info()[:2]
                 print_data_access_layer_format(
-                    ifullname, "", 0,
+                    filename, filename, 0,
                     {'status' : (str(exc), str(msg)), 'volume':e.volume})
-                quit(1)
-
-            file_size = None
-            read_work = 'read_from_hsm'
-
-            if e.output[0] == "/dev/null":
-                ofullname = e.output[0]
-            else:
-                ofilename = os.path.join(e.output[0],
-                                         os.path.basename(ifullname))
-                omachine, ofullname, odir, obasename = fullpath(ofilename)
-
-            
-            # get_clerks() can determine which it is and return the
-            # volume_clerk and file clerk that it corresponds to.
-            try:
-                vcc, fcc = get_clerks(e.volume)
-            except EncpError:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror)})
                 quit(1)
 
             #Contact the file clerk and get current bfid that is on the list.
             if bfid:
                 try:
+                    #This is a paranoid check for the clerk classes.  Creating
+                    # new client classes is a sizable performance hit, this
+                    # we don't want to do this unless absolutly necessary.
+                    if not vcc or not fcc:
+                        vcc, fcc = get_clerks(e.volume)
+
+                    #Get the clerk information.
                     vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+
+                    #Handle any errors.
+                    if not e_errors.is_ok(vc_reply):
+                        raise EncpError(None, vc_reply['status'][1],
+                                        vc_reply['status'][0])
+                    if not e_errors.is_ok(fc_reply):
+                        raise EncpError(None, fc_reply['status'][1],
+                                        fc_reply['status'][0])
                 except EncpError, msg:
                     if msg.type == e_errors.DELETED:
                         continue
                     else:
                         print_data_access_layer_format(
                             e.volume, e.output[0], 0,
-                            {'status':(msg.type, msg.strerror)})
+                            {'status':(msg.type, msg.strerror),
+                             'volume':e.volume})
                         quit(1)
             else:
                 vc_reply = vcc.inquire_vol(e.volume)
@@ -4549,44 +4561,112 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                             'size': None,
                             'status' : (e_errors.OK, None)
                             }
+
+            try:
+                #Determine the inupt filename.  If necessary, get the current
+                # filename by using the pnfs id.
+                ifilename = os.path.join(e.input[0], filename)
+                imachine, ifullname, idir, ibasename = fullpath(ifilename)
+                if ifullname != fc_reply.get('pnfs_name0', None):
+                    #If we fall into here, then there is not a file with
+                    # the original name.  It may not exists, in which case
+                    # we will fall into the execpt clause.  If the file
+                    # has been moved/renamed, then we need to find the
+                    # new name based on the original pnfs id.
+
+                    #Attempt to get the location cookie.  This should NEVER
+                    # fail.
+                    try:
+                        lc = fc_reply['location_cookie']
+                    except KeyError:
+                        print_data_access_layer_format(
+                            ifullname, "", 0,
+                            {'status':(e_errors.CONFLICT,
+                                       'No location cookie found.'),
+                             'volume':e.volume})
+                        quit(1)
+
+                    #Attempt to get the pnfs ID.  If an encp failed in the
+                    # right way it is possible for this entry to not exist.
+                    try:
+                        pnfsid = fc_reply['pnfsid']
+                    except KeyError:
+                        #If we get here, then a file does not have all
+                        # the information in the file database, but does
+                        # have the deleted field set to 'no'.
+                        pnfsid = None
+                        sys.stdout.write("Location %s is active, but the "
+                                         "pnfs id is unknown.\n" % lc)
+                
+                    #Using the original directory, try and determine
+                    # the new file name.
+                    orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
+                    #Try to obtain the file name and path that the
+                    # file currently has.
+                    p = pnfs.Pnfs(pnfsid, orignal_directory)
+                    ifullname = p.get_path() #pnfsid, orignal_directory)
+                else:
+                    p = pnfs.Pnfs(ifullname)
+
+                #Determine the output filename.
+                if e.output[0] == "/dev/null":
+                    ofullname = e.output[0]
+                else:
+                    ofullname = os.path.join(e.output[0],
+                                             os.path.basename(ifullname))
+
+                #Determine the filesize.
+                file_size = get_file_size(ifullname)
+                
+            except (OSError, KeyError, AttributeError):
+                #If we get here then there was a problem determining
+                # the name and path of the file.  Most likely, there
+                # is an entry in pnfs but the metadata is not complete.
+
+                #Attempt to get the location cookie.  This should NEVER
+                # fail.
+                try:
+                    lc = fc_reply['location_cookie']
+                except KeyError:
+                    print_data_access_layer_format(
+                        ifullname, "", 0,
+                        {'status':(e_errors.CONFLICT,
+                                   'No location cookie found.'),
+                         'volume':e.volume})
+                    quit(1)
+                
+                ifullname = os.path.join(e.input[0], lc)
+                
+                p = pnfs.Pnfs(ifullname)
+                
+                if e.output[0] == "/dev/null":
+                    ofullname = e.output[0]
+                else:
+                    ofullname = os.path.join(e.output[0], lc)
+                    
+                file_size = None #Not known.
+                    
+                #sys.stdout.write("Location %s is active, but the "
+                #                 "file has been deleted.\n" % lc)
+                #continue
+
+            read_work = 'read_from_hsm' #'read_tape'
             
         #### VOLUME #######################################################
         #If the user specified a volume to read.
         elif e.volume:
 
-            #Just be sure that the output target is a directory.
-            if not os.path.exists(e.output[0]):
-                print_data_access_layer_format(
-                    e.volume, e.output[0], 0,
-                    {'status':(e_errors.USERERROR,
-                               "%s: %s" % (errno.errorcode[errno.ENOENT],
-                                           e.output[0]))})
-                quit(1)
-
-                raise EncpError(errno.ENOENT,
-                                'e.output[0]',
-                                e_errors.USERERROR)
-            elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
-                print_data_access_layer_format(
-                    e.volume, e.output[0], 0,
-                    {'status':(e_errors.USERERROR,
-                               "%s: %s" % (errno.errorcode[errno.ENOTDIR],
-                                           e.output[0]))})
-                quit(1)
-
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             try:
-                if bfids_list:
-                    vcc, fcc = get_clerks(bfids_list[i])
-                else:
+                if not vcc or not fcc:
                     vcc, fcc = get_clerks(e.volume)
             except EncpError:
                 print_data_access_layer_format(
                     e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror)})
+                    {'status':(msg.type, msg.strerror), 'volume':e.volume})
                 quit(1)
-            
+
             #Contact the file clerk and get current bfid that is on the list.
             try:
                 vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfids_list[i])
@@ -4595,9 +4675,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     continue
                 else:
                     print_data_access_layer_format(
-                        #e.input[i], e.output[i], 0,
                         e.volume, e.output[0], 0,
-                        {'status':(msg.type, msg.strerror)})
+                        {'status':(msg.type, msg.strerror), 'volume':e.volume})
                     quit(1)
             except IndexError:
                 #This exception is raised if the bfids_list[] is empty, but
@@ -4624,7 +4703,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if not e_errors.is_ok(vc_reply):
                 print_data_access_layer_format(
                         e.volume, e.output[0], 0,
-                        {'status':vc_reply['status']})
+                        {'status':vc_reply['status'], 'volume':e.volume})
                 quit(1)
                             
             if e_errors.is_ok(fc_reply): # and fc_reply['deleted'] != "yes":
@@ -4657,7 +4736,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     # file currently has.
                     p = pnfs.Pnfs(pnfsid, orignal_directory)
                     ifullname = p.get_path() #pnfsid, orignal_directory)
-
                     if e.output[0] == "/dev/null":
                         ofullname = e.output[0]
                     else:
@@ -4684,7 +4762,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     sys.stdout.write("Location %s is active, but the "
                                      "file has been deleted.\n" % lc)
                     #continue
-
+                    
                 try:
                     bfid = bfids_list[i] #Set this alias...
                 except IndexError:
@@ -4926,6 +5004,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
         nfiles = nfiles+1
 
+    #print time.ctime(time.time())
     return requests_per_vol
 
 #######################################################################

@@ -389,24 +389,27 @@ def main(e):
     routing_addr, udp_socket = encp.get_routing_callback_addr(e)
 
     #Create all of the request dictionaries.
+    Trace.message(4, "Creating read requests.")
     requests_per_vol = encp.create_read_requests(callback_addr, routing_addr,
                                                  tinfo, e)
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         encp.quit()
-    
+
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()
     encp.max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
 
-    #This might be a problem when zero information is available...
+    #Make sure that we are not clobbering files.
+    Trace.message(4, "Checking status of files.")
     for request in requests_per_vol[e.volume]:
-        #Make sure that we are not clobbering files.
+        #This might be a problem when zero information is available...
         encp.outputfile_check(request['infile'], request['outfile'], e)
 
+    #Create the zero length file entries.
+    Trace.message(4, "Creating zero length output files.")
     for request in requests_per_vol[e.volume]:
-        #Create the zero length file entry.
         encp.create_zero_length_files(request['outfile'])
 
     while requests_outstanding(requests_per_vol[e.volume]):
