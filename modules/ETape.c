@@ -31,6 +31,7 @@ raise_ftt_exception(location, ET_desc, va_alist)
   char errbuf[500];
 /*  dealloc and raise exception fix */
   sprintf(errbuf,"Error at %s - FTT reports: %s\n", location, ftt_get_error(ET_desc->ftt_desc));
+  printf("%s\n",errbuf);
   PyErr_SetString(ETErrObject,errbuf);
   return NULL;
 }
@@ -52,6 +53,7 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 {
   char *fname;
   int position;
+  int loc;
   int sts;
   long *thisET;
   PyObject *ETobj;
@@ -63,7 +65,7 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /*
 	Parse the arguments 
 */
-  PyArg_ParseTuple(args, "sii", &fname, &position, &ET_desc->block_size);
+  PyArg_ParseTuple(args, "siii", &fname, &position, &loc, &ET_desc->block_size);
 /*
 	Allocate a read buffer
 */
@@ -74,6 +76,8 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /*
 	Open the FTT way
 */
+  printf(" ETOPENREAD %s %d %d\n",fname,loc,position);
+
   ET_desc->ftt_desc = ftt_open(fname, FTT_RDONLY);
   sts = ftt_open_dev(ET_desc->ftt_desc);
   if (!sts) 
@@ -81,17 +85,29 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /*
 	Position to the file, if backwards then skip back forward to BOF
 */
-  if (position != 0) 
+  printf(" ETOPENREAD %d %d\n",loc,position);
+  if ((loc == 0) && (position != 0))
   {
-    sts = ftt_skip_fm(ET_desc->ftt_desc, position);
+    sts = ftt_rewind(ET_desc->ftt_desc);
+    printf("rewind %d\n",sts,position);
     if (sts)
-      return raise_ftt_exception("ET_OpenRead_skipfm", ET_desc, "%s", fname);
-  }
-  if (position < 0)
-  {
-    sts = ftt_skip_fm(ET_desc->ftt_desc, 1);
-    if (sts)
-      return raise_ftt_exception("ET_OpenRead_NegForward", ET_desc, "%s", fname);
+    {
+        return raise_ftt_exception("ET_OpenRead_rew", ET_desc, "%s", fname);
+    }
+  } else {
+    if (position != 0) 
+    {
+      sts = ftt_skip_fm(ET_desc->ftt_desc, position);
+      printf("skip %d  \n",sts,position);
+      if (sts)
+        return raise_ftt_exception("ET_OpenRead_skipfm", ET_desc, "%s", fname);
+    }
+    if (position < 0)
+    {
+      sts = ftt_skip_fm(ET_desc->ftt_desc, 1);
+      if (sts)
+        return raise_ftt_exception("ET_OpenRead_NegForward", ET_desc, "%s", fname);
+    }
   }
   
   return Py_BuildValue("l",(long int)ET_desc);}
