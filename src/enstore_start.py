@@ -310,7 +310,6 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         print "ENSTORE_CONFIG_HOST is not set. Exiting"
         sys.exit(1)
     
-    print host,config_host
     host_ip = socket.gethostbyname(host)
     config_host_ip = socket.gethostbyname(config_host)
     
@@ -335,7 +334,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         if pipeObj:
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            if len(result) > 1:
+            if len(result) >= 1:
                 # running, don't start
                 rtn = {'status':(e_errors.OK,"running")}
             else:
@@ -357,8 +356,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
             if pipeObj:
                 stat = pipeObj.wait()
                 result = pipeObj.fromchild.readlines()  # result has returned string
-                if len(result) > 1:
-                    # running, don't start
+                if len(result) >= 1:
                     rtn = {'status':(e_errors.OK,"running")}
                     break
                 
