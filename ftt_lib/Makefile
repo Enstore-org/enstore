@@ -29,7 +29,7 @@ CFLAGS=-I. -Ilocal -g  $(WARN)
 
 LIB=libftt.a
 
-PROGS=ftt_suid asyncdemo listdemo
+PROGS=ftt_suid asyncdemo 
 
 all: local $(LIB) $(PROGS)
 

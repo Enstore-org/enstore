@@ -2,6 +2,8 @@ static char rcsid[] = "#(@)$Id$";
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "ftt_private.h"
 
 char *
@@ -84,22 +86,29 @@ ftt_list_all(ftt_descriptor d) {
 }
 
 int
-ftt_chall(ftt_descriptor d, int uid, int gid, int mode){
+ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
+    static struct stat sbuf;
     char **pp;
-    int res;
+    int res, rres;
     int i;
 
     ENTERING("ftt_chall");
     CKNULL("ftt_descriptor", d);
 
+    rres = 0;
     pp = ftt_list_all(d);
     for( i = 0; pp[i] != 0; i++){
+        res = stat(pp[i],&sbuf);
+	if ( res == ENOENT )
+	    continue;
 	res = chmod(pp[i],mode);
-	if( res < 0 ) return ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chmod",1);
+	if( res < 0 )
+            rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chmod",1);
 	res = chown(pp[i],uid,gid);
-	if( res < 0 ) return ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chown",1);
+	if( res < 0 ) 
+            rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chown",1);
     }
-    return 0;
+    return rres;
 }
 
 static char *comptable[] = {"uncompressed", "compressed"};
