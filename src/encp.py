@@ -2052,12 +2052,12 @@ def get_clerks(bfid_or_volume=None):
         fcc = get_fcc(None)
         vcc = get_vcc(None)
         
-    if not fcc:
+    if not fcc or fcc.server_address == None:
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
                         e_errors.NET_ERROR)
     
-    if not vcc:
+    if not vcc or vcc.server_address == None:
         raise EncpError(errno.ENOPROTOOPT,
                         "Volume clerk not available",
                         e_errors.NET_ERROR)
