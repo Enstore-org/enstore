@@ -704,16 +704,28 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_xreference(self):
         (self.volume, self.location_cookie, self.size, self.origff,
          self.origname, self.mapfile, self.pnfsid_file, self.pnfsid_map,
-         self.bfid, self.origdrive) = self.xref = (UNKNOWN,)*10
+         self.bfid, self.origdrive) = self.xref = [UNKNOWN]*10
 
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
                 xinfo = map(string.strip, xinfo[:10])
 
-                (self.volume, self.location_cookie, self.size,
-                 self.origff, self.origname, self.mapfile, self.pnfsid_file,
-                 self.pnfsid_map, self.bfid, self.origdrive) = xinfo
+                xinfo = xinfo + ([UNKNOWN] * (10 - len(xinfo)))
+
+                try:
+                    self.volume = xinfo[0]
+                    self.location_cookie = xinfo[1]
+                    self.size = xinfo[2]
+                    self.origff = xinfo[3]
+                    self.origname = xinfo[4]
+                    self.mapfile = xinfo[5]
+                    self.pnfsid_file = xinfo[6]
+                    self.pnfsid_map = xinfo[7]
+                    self.bfid = xinfo[8]
+                    self.origdrive = xinfo[9]
+                except ValueError:
+                    pass
 
                 self.xref = xinfo
 
