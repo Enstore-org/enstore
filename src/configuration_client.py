@@ -15,6 +15,7 @@ import os
 import socket
 import select
 import types
+import time
 
 # enstore imports
 import generic_client
@@ -25,9 +26,9 @@ import Trace
 import callback
 import e_errors
 import hostaddr
-import enstore_erc_functions
-import event_relay_client
-import event_relay_messages
+#import enstore_erc_functions
+#import event_relay_client
+#import event_relay_messages
 
 MY_NAME = enstore_constants.CONFIGURATION_CLIENT         #"CONFIG_CLIENT"
 MY_SERVER = enstore_constants.CONFIGURATION_SERVER
@@ -54,32 +55,9 @@ class ConfigFlag:
     def reset_new_config(self):
         #if self.do_caching == self.ENABLE:
         self.new_config_file = self.MSG_NO
-
-        self.__recv_new_config_message()  #Must keep stale messages out.
-
-    def __recv_new_config_message(self):
-        return_status = 0
-        r = 1 #python true
-
-        if not self.erc:
-            return return_status    
         
-        while r:
-            r, w, x = select.select([self.erc.sock], [], [], 0)
-
-            if r:
-                return_status = 1
-
-                enstore_erc_functions.read_erc(self.erc)
-
-        return return_status
-
     def have_new_config(self):
-        #This must go first.  Must keep stale messages out.
-        if self.__recv_new_config_message():
-            self.new_config_file = self.MSG_YES #Set this.
-            return 1
-        elif self.do_caching == self.DISABLE:
+        if self.do_caching == self.DISABLE:
             return 1
 	elif self.new_config_file == self.MSG_YES:
 	    return 1
@@ -89,19 +67,9 @@ class ConfigFlag:
     def disable_caching(self):
         self.do_caching = self.DISABLE
 
-        self.erc = None
-
-    def enable_caching(self, er_addr):
-        #We only want 2-tuple address/port pairs.
-        if type(er_addr) != types.TupleType or len(er_addr) != 2:
-            return
-        
+    def enable_caching(self):
         self.do_caching = self.ENABLE
 
-        self.erc = event_relay_client.EventRelayClient(
-            event_relay_host = er_addr[0], event_relay_port = er_addr[1])
-        self.erc.start([event_relay_messages.NEWCONFIGFILE])
-        
 class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, address=None):
@@ -118,6 +86,7 @@ class ConfigurationClient(generic_client.GenericClient):
         self.new_config_obj = ConfigFlag()
 	self.saved_dict = {}
         self.have_complete_config = 0
+        self.config_load_timestamp = None
 
     #Retrun these values when requested.
     def get_address(self):
@@ -126,6 +95,22 @@ class ConfigurationClient(generic_client.GenericClient):
         return self.timeout
     def get_retry(self):
         return self.retry
+
+    #This function is needed by clients that use dump_and_save() to determine
+    # if the cached configuration is the current configuration loaded into
+    # the configuration_server.  Server's that use dump_and_save() have
+    # have_new_config() to determine this same information from event_relay
+    # NEWCONFIGFILE messages.
+    def is_config_current(self):
+        if self.config_load_timestamp == None:
+            return False
+
+        result = self.config_load_time(5, 5)
+        if e_errors.is_ok(result):
+            if result['config_load_timestamp'] <= self.config_load_timestamp:
+                return True
+
+        return False
 
     #Return which key in the 'known_config_servers' configuration dictionary
     # entry refers to this client's server (if present).  If there is
@@ -181,6 +166,7 @@ class ConfigurationClient(generic_client.GenericClient):
 		self.saved_dict = {}
                 #The config cache was just clobbered.
                 self.have_complete_config = 0
+                self.config_load_timestamp = None
 		ret = self.do_lookup(key, timeout, retry)
 		if self.new_config_obj:
 		    self.new_config_obj.reset_new_config()
@@ -234,13 +220,15 @@ class ConfigurationClient(generic_client.GenericClient):
     # dump the configuration dictionary and save it too
     def dump_and_save(self, timeout=0, retry=0):
         if not self.new_config_obj or self.new_config_obj.have_new_config() \
-               or self.have_complete_config == 0:
-            config_ticket = self.dump(timeout = timeout, retry = retry)
+           or not self.is_config_current():
 
+            config_ticket = self.dump(timeout = timeout, retry = retry)
             if e_errors.is_ok(config_ticket):
                 self.saved_dict = config_ticket['dump'].copy()
                 self.saved_dict['status'] = (e_errors.OK, None)
                 self.have_complete_config = 1
+                self.config_load_timestamp = \
+                               config_ticket.get('config_load_timestamp', None)
                 if self.new_config_obj:
                     self.new_config_obj.reset_new_config()
 
@@ -249,7 +237,12 @@ class ConfigurationClient(generic_client.GenericClient):
             return config_ticket  #An error occured.
 
         return self.saved_dict #Used cached dictionary.
-        
+
+    def config_load_time(self, timeout=0, retry=0):
+        request = {'work' : 'config_timestamp' }
+        x = self.send(request,  timeout,  retry )
+        return x
+
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
         request = {'work' : 'get_keys' }
@@ -305,6 +298,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.summary = 0
+        self.timestamp = 0
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -330,6 +324,10 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.DEFAULT_TYPE:option.STRING,
 			    option.USER_LEVEL:option.ADMIN},
+        option.TIMESTAMP:{option.HELP_STRING:
+                          "last time configfile was reloaded",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.USER_LEVEL:option.ADMIN},
          }
 
     # parse the options like normal but make sure we have other args
@@ -369,7 +367,13 @@ def do_work(intf):
     elif intf.summary:
         result= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
         pprint.pprint(result['get_keys'])
-        
+
+    elif intf.timestamp:
+        result = csc.config_load_time(intf.alive_rcv_timeout,
+                                      intf.alive_retries)
+        if e_errors.is_ok(result):
+            print time.ctime(result['config_load_timestamp'])
+    
     else:
 	intf.print_help()
         sys.exit(0)
