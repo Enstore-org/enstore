@@ -78,9 +78,9 @@ if __name__ == "__main__":
         remfile.write('Enstore developer schedule for the next week\n\n')
         for day in range(1,9):
             today = time.asctime(time.localtime(now+day*86400))[0:10]
-            primary, backup = getInfo(today)
-            remfile.write("%s\n" % (primary,))
-            remfile.write("%s\n\n" % (backup,))
+            p, b = getInfo(today)
+            remfile.write("%s\n" % (p,))
+            remfile.write("%s\n\n" % (b,))
         remfile.write("\nThis is the planned schedule only. Check on-call for up-to-date information\n")
         remfile.close()
         users = ""
@@ -95,13 +95,15 @@ if __name__ == "__main__":
         (primary,backup)= getDeveloper(date)
         primary_phone = getNumber(primary)
         backup_phone = getNumber(backup)
+        p, b = getInfo(today)
+
 
         if choice == 'mail':
             remmail = '/tmp/ens-dev-mail'
             remfile = open(remmail,'w')
             remfile.write("\n Enstore Developer Schedule \n")
-            remfile.write("%s\n" % (primary,))
-            remfile.write("%s\n\n" % (backup,))
+            remfile.write("%s\n" % (p,))
+            remfile.write("%s\n\n" % (b,))
             remfile.close()
             users = ""
             for user in (primary,backup):
@@ -111,5 +113,5 @@ if __name__ == "__main__":
             os.popen(command,'r').readlines()
 
         else:
-            print "%s\n" % (primary,)
-            print "%s\n\n" % (backup,)
+            print "%s" % (p,)
+            print "%s" % (b,)
