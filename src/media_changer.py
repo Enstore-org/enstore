@@ -161,7 +161,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
     # unload volume from the drive;   ron said the tape will be ejected.
     def unload(self, external_label, tape_drive,media_type) :
       # form dismount command to be executed
-      command = "dasadmin dismount -t " + media_type + external_label + " 2>&1"
+      command = "dasadmin dismount -t " + media_type + " " + external_label + " 2>&1"
 
       # retry dismount once if it fails
       count=2
