@@ -25,14 +25,14 @@ case $1 in
                       000008
                       000009
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
          volumes="
-                      red50 none redwood 000004 50000000000 50000000000
-                      red50 none redwood 000005 50000000000 50000000000
-                      red50 none redwood 000006 50000000000 50000000000
-                      red50 none redwood 000007 50000000000 50000000000
-                      red50 none redwood 000008 50000000000 50000000000
-                      red50 none redwood 000009 50000000000 50000000000
+                      000004 red50 none redwood 50000000000 50000000000
+                      000005 red50 none redwood 50000000000 50000000000
+                      000006 red50 none redwood 50000000000 50000000000
+                      000007 red50 none redwood 50000000000 50000000000
+                      000008 red50 none redwood 50000000000 50000000000
+                      000009 red50 none redwood 50000000000 50000000000
                      "
          ;;
   red20) rm -fr    /pnfs/stk/red20/*
@@ -59,27 +59,27 @@ case $1 in
                       000038
                       000039
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
          volumes="
-                      red20 none redwood 000020 20000000000 20000000000
-                      red20 none redwood 000021 20000000000 20000000000
-                      red20 none redwood 000022 20000000000 20000000000
-                      red20 none redwood 000023 20000000000 20000000000
-                      red20 none redwood 000024 20000000000 20000000000
-                      red20 none redwood 000025 20000000000 20000000000
-                      red20 none redwood 000026 20000000000 20000000000
-                      red20 none redwood 000027 20000000000 20000000000
-                      red20 none redwood 000028 20000000000 20000000000
-                      red20 none redwood 000030 20000000000 20000000000
-                      red20 none redwood 000031 20000000000 20000000000
-                      red20 none redwood 000032 20000000000 20000000000
-                      red20 none redwood 000033 20000000000 20000000000
-                      red20 none redwood 000034 20000000000 20000000000
-                      red20 none redwood 000035 20000000000 20000000000
-                      red20 none redwood 000036 20000000000 20000000000
-                      red20 none redwood 000037 20000000000 20000000000
-                      red20 none redwood 000038 20000000000 20000000000
-                      red20 none redwood 000039 20000000000 20000000000
+                      000020 red20 none redwood 20000000000 20000000000
+                      000021 red20 none redwood 20000000000 20000000000
+                      000022 red20 none redwood 20000000000 20000000000
+                      000023 red20 none redwood 20000000000 20000000000
+                      000024 red20 none redwood 20000000000 20000000000
+                      000025 red20 none redwood 20000000000 20000000000
+                      000026 red20 none redwood 20000000000 20000000000
+                      000027 red20 none redwood 20000000000 20000000000
+                      000028 red20 none redwood 20000000000 20000000000
+                      000030 red20 none redwood 20000000000 20000000000
+                      000031 red20 none redwood 20000000000 20000000000
+                      000032 red20 none redwood 20000000000 20000000000
+                      000033 red20 none redwood 20000000000 20000000000
+                      000034 red20 none redwood 20000000000 20000000000
+                      000035 red20 none redwood 20000000000 20000000000
+                      000036 red20 none redwood 20000000000 20000000000
+                      000037 red20 none redwood 20000000000 20000000000
+                      000038 red20 none redwood 20000000000 20000000000
+                      000039 red20 none redwood 20000000000 20000000000
                      "
          ;;
   ait)   rm -fr    /pnfs/grau/ait/*
@@ -137,58 +137,58 @@ case $1 in
 		      CA2959
 		      CA2960
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype  capacity   bytes left
          volumes="
-                      ait   none 8MM     CA2901 26016563200 26016563200
-                      ait   none 8MM     CA2902 26016563200 26016563200
-                      ait   none 8MM     CA2903 26016563200 26016563200
-                      ait   none 8MM     CA2904 26016563200 26016563200
-                      ait   none 8MM     CA2905 26016563200 26016563200
-                      ait   none 8MM     CA2906 26016563200 26016563200
-                      ait   none 8MM     CA2907 26016563200 26016563200
-                      ait   none 8MM     CA2908 26016563200 26016563200
-                      ait   none 8MM     CA2909 26016563200 26016563200
-                      ait   none 8MM     CA2910 26016563200 26016563200
-                      ait   none 8MM     CA2911 26016563200 26016563200
-                      ait   none 8MM     CA2912 26016563200 26016563200
-                      ait   none 8MM     CA2913 26016563200 26016563200
-                      ait   none 8MM     CA2914 26016563200 26016563200
-                      ait   none 8MM     CA2915 26016563200 26016563200
-                      ait   none 8MM     CA2916 26016563200 26016563200
-                      ait   none 8MM     CA2917 26016563200 26016563200
-                      ait   none 8MM     CA2918 26016563200 26016563200
-                      ait   none 8MM     CA2919 26016563200 26016563200
-                      ait   none 8MM     CA2920 26016563200 26016563200
-                      ait   none 8MM     CA2921 26016563200 26016563200
-                      ait   none 8MM     CA2922 26016563200 26016563200
-                      ait   none 8MM     CA2923 26016563200 26016563200
-                      ait   none 8MM     CA2924 26016563200 26016563200
-                      ait   none 8MM     CA2925 26016563200 26016563200
-                      ait   none 8MM     CA2926 26016563200 26016563200
-                      ait   none 8MM     CA2927 26016563200 26016563200
-                      ait   none 8MM     CA2928 26016563200 26016563200
-                      ait   none 8MM     CA2929 26016563200 26016563200
-                      ait   none 8MM     CA2930 26016563200 26016563200
-                      ait   none 8MM     CA2931 26016563200 26016563200
-                      ait   none 8MM     CA2932 26016563200 26016563200
-                      ait   none 8MM     CA2933 26016563200 26016563200
-                      ait   none 8MM     CA2934 26016563200 26016563200
-                      ait   none 8MM     CA2935 26016563200 26016563200
-                      ait   none 8MM     CA2936 26016563200 26016563200
-                      ait   none 8MM     CA2937 26016563200 26016563200
-                      ait   none 8MM     CA2938 26016563200 26016563200
-                      ait   none 8MM     CA2939 26016563200 26016563200
-                      ait   none 8MM     CA2940 26016563200 26016563200
-                      ait   none 8MM     CA2941 26016563200 26016563200
-                      ait   none 8MM     CA2942 26016563200 26016563200
-                      ait   none 8MM     CA2943 26016563200 26016563200
-                      ait   none 8MM     CA2944 26016563200 26016563200
-                      ait   none 8MM     CA2955 26016563200 26016563200
-                      ait   none 8MM     CA2956 26016563200 26016563200
-                      ait   none 8MM     CA2957 26016563200 26016563200
-                      ait   none 8MM     CA2958 26016563200 26016563200
-                      ait   none 8MM     CA2959 26016563200 26016563200
-                      ait   none 8MM     CA2960 26016563200 26016563200
+                      CA2901 ait   none 8MM     26016563200 26016563200
+                      CA2902 ait   none 8MM     26016563200 26016563200
+                      CA2903 ait   none 8MM     26016563200 26016563200
+                      CA2904 ait   none 8MM     26016563200 26016563200
+                      CA2905 ait   none 8MM     26016563200 26016563200
+                      CA2906 ait   none 8MM     26016563200 26016563200
+                      CA2907 ait   none 8MM     26016563200 26016563200
+                      CA2908 ait   none 8MM     26016563200 26016563200
+                      CA2909 ait   none 8MM     26016563200 26016563200
+                      CA2910 ait   none 8MM     26016563200 26016563200
+                      CA2911 ait   none 8MM     26016563200 26016563200
+                      CA2912 ait   none 8MM     26016563200 26016563200
+                      CA2913 ait   none 8MM     26016563200 26016563200
+                      CA2914 ait   none 8MM     26016563200 26016563200
+                      CA2915 ait   none 8MM     26016563200 26016563200
+                      CA2916 ait   none 8MM     26016563200 26016563200
+                      CA2917 ait   none 8MM     26016563200 26016563200
+                      CA2918 ait   none 8MM     26016563200 26016563200
+                      CA2919 ait   none 8MM     26016563200 26016563200
+                      CA2920 ait   none 8MM     26016563200 26016563200
+                      CA2921 ait   none 8MM     26016563200 26016563200
+                      CA2922 ait   none 8MM     26016563200 26016563200
+                      CA2923 ait   none 8MM     26016563200 26016563200
+                      CA2924 ait   none 8MM     26016563200 26016563200
+                      CA2925 ait   none 8MM     26016563200 26016563200
+                      CA2926 ait   none 8MM     26016563200 26016563200
+                      CA2927 ait   none 8MM     26016563200 26016563200
+                      CA2928 ait   none 8MM     26016563200 26016563200
+                      CA2929 ait   none 8MM     26016563200 26016563200
+                      CA2930 ait   none 8MM     26016563200 26016563200
+                      CA2931 ait   none 8MM     26016563200 26016563200
+                      CA2932 ait   none 8MM     26016563200 26016563200
+                      CA2933 ait   none 8MM     26016563200 26016563200
+                      CA2934 ait   none 8MM     26016563200 26016563200
+                      CA2935 ait   none 8MM     26016563200 26016563200
+                      CA2936 ait   none 8MM     26016563200 26016563200
+                      CA2937 ait   none 8MM     26016563200 26016563200
+                      CA2938 ait   none 8MM     26016563200 26016563200
+                      CA2939 ait   none 8MM     26016563200 26016563200
+                      CA2940 ait   none 8MM     26016563200 26016563200
+                      CA2941 ait   none 8MM     26016563200 26016563200
+                      CA2942 ait   none 8MM     26016563200 26016563200
+                      CA2943 ait   none 8MM     26016563200 26016563200
+                      CA2944 ait   none 8MM     26016563200 26016563200
+                      CA2955 ait   none 8MM     26016563200 26016563200
+                      CA2956 ait   none 8MM     26016563200 26016563200
+                      CA2957 ait   none 8MM     26016563200 26016563200
+                      CA2958 ait   none 8MM     26016563200 26016563200
+                      CA2959 ait   none 8MM     26016563200 26016563200
+                      CA2960 ait   none 8MM     26016563200 26016563200
                      "
          ;;
   samait)rm -fr    /pnfs/sam/ait/*
@@ -201,13 +201,13 @@ case $1 in
                       CA2948
                       CA2949
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib      ff   medtype capacity    bytes left
          volumes="
-                      samait   none 8MM     CA2945 26016563200 26016563200
-                      samait   none 8MM     CA2946 26016563200 26016563200
-                      samait   none 8MM     CA2947 26016563200 26016563200
-                      samait   none 8MM     CA2948 26016563200 26016563200
-                      samait   none 8MM     CA2949 26016563200 26016563200
+                      CA2945 samait   none 8MM     26016563200 26016563200
+                      CA2946 samait   none 8MM     26016563200 26016563200
+                      CA2947 samait   none 8MM     26016563200 26016563200
+                      CA2948 samait   none 8MM     26016563200 26016563200
+                      CA2949 samait   none 8MM     26016563200 26016563200
                      "
          ;;
   mam)
@@ -266,58 +266,58 @@ case $1 in
                       CA2298
                       CA2299
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
          volumes="
-                      mam   none 8MM     CA2250 20113227776 20113227776
-                      mam   none 8MM     CA2251 20113227776 20113227776
-                      mam   none 8MM     CA2252 20113227776 20113227776
-                      mam   none 8MM     CA2253 20113227776 20113227776
-                      mam   none 8MM     CA2254 20113227776 20113227776
-                      mam   none 8MM     CA2255 20113227776 20113227776
-                      mam   none 8MM     CA2256 20113227776 20113227776
-                      mam   none 8MM     CA2257 20113227776 20113227776
-                      mam   none 8MM     CA2258 20113227776 20113227776
-                      mam   none 8MM     CA2259 20113227776 20113227776
-                      mam   none 8MM     CA2260 20113227776 20113227776
-                      mam   none 8MM     CA2261 20113227776 20113227776
-                      mam   none 8MM     CA2262 20113227776 20113227776
-                      mam   none 8MM     CA2263 20113227776 20113227776
-                      mam   none 8MM     CA2264 20113227776 20113227776
-                      mam   none 8MM     CA2265 20113227776 20113227776
-                      mam   none 8MM     CA2266 20113227776 20113227776
-                      mam   none 8MM     CA2267 20113227776 20113227776
-                      mam   none 8MM     CA2268 20113227776 20113227776
-                      mam   none 8MM     CA2269 20113227776 20113227776
-                      mam   none 8MM     CA2270 20113227776 20113227776
-                      mam   none 8MM     CA2271 20113227776 20113227776
-                      mam   none 8MM     CA2272 20113227776 20113227776
-                      mam   none 8MM     CA2273 20113227776 20113227776
-                      mam   none 8MM     CA2274 20113227776 20113227776
-                      mam   none 8MM     CA2275 20113227776 20113227776
-                      mam   none 8MM     CA2276 20113227776 20113227776
-                      mam   none 8MM     CA2277 20113227776 20113227776
-                      mam   none 8MM     CA2278 20113227776 20113227776
-                      mam   none 8MM     CA2279 20113227776 20113227776
-                      mam   none 8MM     CA2280 20113227776 20113227776
-                      mam   none 8MM     CA2281 20113227776 20113227776
-                      mam   none 8MM     CA2282 20113227776 20113227776
-                      mam   none 8MM     CA2283 20113227776 20113227776
-                      mam   none 8MM     CA2284 20113227776 20113227776
-                      mam   none 8MM     CA2285 20113227776 20113227776
-                      mam   none 8MM     CA2286 20113227776 20113227776
-                      mam   none 8MM     CA2287 20113227776 20113227776
-                      mam   none 8MM     CA2288 20113227776 20113227776
-                      mam   none 8MM     CA2289 20113227776 20113227776
-                      mam   none 8MM     CA2290 20113227776 20113227776
-                      mam   none 8MM     CA2291 20113227776 20113227776
-                      mam   none 8MM     CA2292 20113227776 20113227776
-                      mam   none 8MM     CA2293 20113227776 20113227776
-                      mam   none 8MM     CA2294 20113227776 20113227776
-                      mam   none 8MM     CA2295 20113227776 20113227776
-                      mam   none 8MM     CA2296 20113227776 20113227776
-                      mam   none 8MM     CA2297 20113227776 20113227776
-                      mam   none 8MM     CA2298 20113227776 20113227776
-                      mam   none 8MM     CA2299 20113227776 20113227776
+                      CA2250 mam   none 8MM     20113227776 20113227776
+                      CA2251 mam   none 8MM     20113227776 20113227776
+                      CA2252 mam   none 8MM     20113227776 20113227776
+                      CA2253 mam   none 8MM     20113227776 20113227776
+                      CA2254 mam   none 8MM     20113227776 20113227776
+                      CA2255 mam   none 8MM     20113227776 20113227776
+                      CA2256 mam   none 8MM     20113227776 20113227776
+                      CA2257 mam   none 8MM     20113227776 20113227776
+                      CA2258 mam   none 8MM     20113227776 20113227776
+                      CA2259 mam   none 8MM     20113227776 20113227776
+                      CA2260 mam   none 8MM     20113227776 20113227776
+                      CA2261 mam   none 8MM     20113227776 20113227776
+                      CA2262 mam   none 8MM     20113227776 20113227776
+                      CA2263 mam   none 8MM     20113227776 20113227776
+                      CA2264 mam   none 8MM     20113227776 20113227776
+                      CA2265 mam   none 8MM     20113227776 20113227776
+                      CA2266 mam   none 8MM     20113227776 20113227776
+                      CA2267 mam   none 8MM     20113227776 20113227776
+                      CA2268 mam   none 8MM     20113227776 20113227776
+                      CA2269 mam   none 8MM     20113227776 20113227776
+                      CA2270 mam   none 8MM     20113227776 20113227776
+                      CA2271 mam   none 8MM     20113227776 20113227776
+                      CA2272 mam   none 8MM     20113227776 20113227776
+                      CA2273 mam   none 8MM     20113227776 20113227776
+                      CA2274 mam   none 8MM     20113227776 20113227776
+                      CA2275 mam   none 8MM     20113227776 20113227776
+                      CA2276 mam   none 8MM     20113227776 20113227776
+                      CA2277 mam   none 8MM     20113227776 20113227776
+                      CA2278 mam   none 8MM     20113227776 20113227776
+                      CA2279 mam   none 8MM     20113227776 20113227776
+                      CA2280 mam   none 8MM     20113227776 20113227776
+                      CA2281 mam   none 8MM     20113227776 20113227776
+                      CA2282 mam   none 8MM     20113227776 20113227776
+                      CA2283 mam   none 8MM     20113227776 20113227776
+                      CA2284 mam   none 8MM     20113227776 20113227776
+                      CA2285 mam   none 8MM     20113227776 20113227776
+                      CA2286 mam   none 8MM     20113227776 20113227776
+                      CA2287 mam   none 8MM     20113227776 20113227776
+                      CA2288 mam   none 8MM     20113227776 20113227776
+                      CA2289 mam   none 8MM     20113227776 20113227776
+                      CA2290 mam   none 8MM     20113227776 20113227776
+                      CA2291 mam   none 8MM     20113227776 20113227776
+                      CA2292 mam   none 8MM     20113227776 20113227776
+                      CA2293 mam   none 8MM     20113227776 20113227776
+                      CA2294 mam   none 8MM     20113227776 20113227776
+                      CA2295 mam   none 8MM     20113227776 20113227776
+                      CA2296 mam   none 8MM     20113227776 20113227776
+                      CA2297 mam   none 8MM     20113227776 20113227776
+                      CA2298 mam   none 8MM     20113227776 20113227776
+                      CA2299 mam   none 8MM     20113227776 20113227776
                      "
          ;;
 ## sammam)rm -fr    /pnfs/sam/mammoth/*
@@ -330,13 +330,13 @@ case $1 in
 ##                      CA2273
 ##                      CA2274
 ##                     "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
 ##         volumes="
-##                      sammam   none 8MM     CA2270 20113227776 20113227776
-##                      sammam   none 8MM     CA2271 20113227776 20113227776
-##                      sammam   none 8MM     CA2272 20113227776 20113227776
-##                      sammam   none 8MM     CA2273 20113227776 20113227776
-##                      sammam   none 8MM     CA2274 20113227776 20113227776
+##                      CA2270 sammam   none 8MM     20113227776 20113227776
+##                      CA2271 sammam   none 8MM     20113227776 20113227776
+##                      CA2272 sammam   none 8MM     20113227776 20113227776
+##                      CA2273 sammam   none 8MM     20113227776 20113227776
+##                      CA2274 sammam   none 8MM     20113227776 20113227776
 ##                     "
 ##         ;;
   dlt)   rm -fr    /pnfs/grau/dlt/*
@@ -360,24 +360,24 @@ case $1 in
                       CA2515
                       CA2516
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
          volumes="
-                      dlt   none DECDLT  CA2501 35520749568 35520749568
-                      dlt   none DECDLT  CA2502 35520749568 35520749568
-                      dlt   none DECDLT  CA2503 35520749568 35520749568
-                      dlt   none DECDLT  CA2504 35520749568 35520749568
-                      dlt   none DECDLT  CA2505 35520749568 35520749568
-                      dlt   none DECDLT  CA2506 35520749568 35520749568
-                      dlt   none DECDLT  CA2507 35520749568 35520749568
-                      dlt   none DECDLT  CA2508 35520749568 35520749568
-                      dlt   none DECDLT  CA2509 35520749568 35520749568
-                      dlt   none DECDLT  CA2510 35520749568 35520749568
-                      dlt   none DECDLT  CA2511 35520749568 35520749568
-                      dlt   none DECDLT  CA2512 35520749568 35520749568
-                      dlt   none DECDLT  CA2513 35520749568 35520749568
-                      dlt   none DECDLT  CA2514 35520749568 35520749568
-                      dlt   none DECDLT  CA2515 35520749568 35520749568
-                      dlt   none DECDLT  CA2516 35520749568 35520749568
+                      CA2501 dlt   none DECDLT  35520749568 35520749568
+                      CA2502 dlt   none DECDLT  35520749568 35520749568
+                      CA2503 dlt   none DECDLT  35520749568 35520749568
+                      CA2504 dlt   none DECDLT  35520749568 35520749568
+                      CA2505 dlt   none DECDLT  35520749568 35520749568
+                      CA2506 dlt   none DECDLT  35520749568 35520749568
+                      CA2507 dlt   none DECDLT  35520749568 35520749568
+                      CA2508 dlt   none DECDLT  35520749568 35520749568
+                      CA2509 dlt   none DECDLT  35520749568 35520749568
+                      CA2510 dlt   none DECDLT  35520749568 35520749568
+                      CA2511 dlt   none DECDLT  35520749568 35520749568
+                      CA2512 dlt   none DECDLT  35520749568 35520749568
+                      CA2513 dlt   none DECDLT  35520749568 35520749568
+                      CA2514 dlt   none DECDLT  35520749568 35520749568
+                      CA2515 dlt   none DECDLT  35520749568 35520749568
+                      CA2516 dlt   none DECDLT  35520749568 35520749568
                      "
          ;;
   samdlt)rm -fr    /pnfs/sam/dlt/*
@@ -390,13 +390,13 @@ case $1 in
                       CA2548
                       CA2549
                      "
-#                     lib   ff   medtype label  capacity    bytes left
+#                     label  lib   ff   medtype capacity    bytes left
          volumes="
-                      samdlt   none DECDLT  CA2545 35520749568 35520749568
-                      samdlt   none DECDLT  CA2546 35520749568 35520749568
-                      samdlt   none DECDLT  CA2547 35520749568 35520749568
-                      samdlt   none DECDLT  CA2548 35520749568 35520749568
-                      samdlt   none DECDLT  CA2549 35520749568 35520749568
+                      CA2545 samdlt   none DECDLT  35520749568 35520749568
+                      CA2546 samdlt   none DECDLT  35520749568 35520749568
+                      CA2547 samdlt   none DECDLT  35520749568 35520749568
+                      CA2548 samdlt   none DECDLT  35520749568 35520749568
+                      CA2549 samdlt   none DECDLT  35520749568 35520749568
                      "
          ;;
   disk)  
@@ -520,122 +520,122 @@ case $1 in
                       disk-58
                       disk-59
                      "
-#                     lib   ff   medtype   label   capacity    bytes left
+#                     label    lib   ff    medtype   capacity    bytes left
          volumes="
-                      null7 none  nullfile  null7-01 2147483648000 2147483648000
-                      null7 none  nullfile  null7-02 2147483648000 2147483648000
-                      null7 none  nullfile  null7-03 2147483648000 2147483648000
-                      null7 none  nullfile  null7-04 2147483648000 2147483648000
-                      null7 none  nullfile  null7-05 2147483648000 2147483648000
-                      null7 none  nullfile  null7-06 2147483648000 2147483648000
-                      null7 none  nullfile  null7-07 2147483648000 2147483648000
-                      null7 none  nullfile  null7-08 2147483648000 2147483648000
-                      null7 none  nullfile  null7-09 2147483648000 2147483648000
-                      null7 none  nullfile  null7-10 2147483648000 2147483648000
-                      null7 none  nullfile  null7-11 2147483648000 2147483648000
-                      null7 none  nullfile  null7-12 2147483648000 2147483648000
-                      null7 none  nullfile  null7-13 2147483648000 2147483648000
-                      null7 none  nullfile  null7-14 2147483648000 2147483648000
-                      null7 none  nullfile  null7-15 2147483648000 2147483648000
-                      null7 none  nullfile  null7-16 2147483648000 2147483648000
-                      null7 none  nullfile  null7-17 2147483648000 2147483648000
-                      null7 none  nullfile  null7-18 2147483648000 2147483648000
-                      null7 none  nullfile  null7-19 2147483648000 2147483648000
-                      null7 none  nullfile  null7-20 2147483648000 2147483648000
-                      null1 none  nullfile  null1-01 2147483648000 2147483648000
-                      null1 none  nullfile  null1-02 2147483648000 2147483648000
-                      null1 none  nullfile  null1-03 2147483648000 2147483648000
-                      null1 none  nullfile  null1-04 2147483648000 2147483648000
-                      null1 none  nullfile  null1-05 2147483648000 2147483648000
-                      null1 none  nullfile  null1-06 2147483648000 2147483648000
-                      null1 none  nullfile  null1-07 2147483648000 2147483648000
-                      null1 none  nullfile  null1-08 2147483648000 2147483648000
-                      null1 none  nullfile  null1-09 2147483648000 2147483648000
-                      null1 none  nullfile  null1-10 2147483648000 2147483648000
-                      null1 none  nullfile  null1-11 2147483648000 2147483648000
-                      null1 none  nullfile  null1-12 2147483648000 2147483648000
-                      null1 none  nullfile  null1-13 2147483648000 2147483648000
-                      null1 none  nullfile  null1-14 2147483648000 2147483648000
-                      null1 none  nullfile  null1-15 2147483648000 2147483648000
-                      null1 none  nullfile  null1-16 2147483648000 2147483648000
-                      null1 none  nullfile  null1-17 2147483648000 2147483648000
-                      null1 none  nullfile  null1-18 2147483648000 2147483648000
-                      null1 none  nullfile  null1-19 2147483648000 2147483648000
-                      null1 none  nullfile  null1-20 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-01 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-02 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-03 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-04 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-05 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-06 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-07 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-08 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-09 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-10 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-11 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-12 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-13 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-14 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-15 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-16 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-17 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-18 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-19 2147483648000 2147483648000
-                      nullI none  nullfile  nullI-20 2147483648000 2147483648000
-                      disk none  diskfile  disk-01      140000      140000
-                      disk none  diskfile  disk-02      140000      140000
-                      disk none  diskfile  disk-03     1400000     1400000
-                      disk none  diskfile  disk-04    14000000     1400000
-                      disk none  diskfile  disk-05    14000000    14000000
-                      disk none  diskfile  disk-06    14000000    14000000
-                      disk none  diskfile  disk-07   140000000   140000000
-                      disk none  diskfile  disk-08   140000000   140000000
-                      disk none  diskfile  disk-09  1400000000  1400000000
-                      disk none  diskfile  disk-11      140000      140000
-                      disk none  diskfile  disk-12      140000      140000
-                      disk none  diskfile  disk-13     1400000     1400000
-                      disk none  diskfile  disk-14    14000000     1400000
-                      disk none  diskfile  disk-15    14000000    14000000
-                      disk none  diskfile  disk-16    14000000    14000000
-                      disk none  diskfile  disk-17   140000000   140000000
-                      disk none  diskfile  disk-18   140000000   140000000
-                      disk none  diskfile  disk-19  1400000000  1400000000
-                      disk none  diskfile  disk-21      140000      140000
-                      disk none  diskfile  disk-22      140000      140000
-                      disk none  diskfile  disk-23     1400000     1400000
-                      disk none  diskfile  disk-24    14000000     1400000
-                      disk none  diskfile  disk-25    14000000    14000000
-                      disk none  diskfile  disk-26    14000000    14000000
-                      disk none  diskfile  disk-27   140000000   140000000
-                      disk none  diskfile  disk-28   140000000   140000000
-                      disk none  diskfile  disk-29  1400000000  1400000000
-                      disk none  diskfile  disk-31      140000      140000
-                      disk none  diskfile  disk-32      140000      140000
-                      disk none  diskfile  disk-33     1400000     1400000
-                      disk none  diskfile  disk-34    14000000     1400000
-                      disk none  diskfile  disk-35    14000000    14000000
-                      disk none  diskfile  disk-36    14000000    14000000
-                      disk none  diskfile  disk-37   140000000   140000000
-                      disk none  diskfile  disk-38   140000000   140000000
-                      disk none  diskfile  disk-39  1400000000  1400000000
-                      disk none  diskfile  disk-41      140000      140000
-                      disk none  diskfile  disk-42      140000      140000
-                      disk none  diskfile  disk-43     1400000     1400000
-                      disk none  diskfile  disk-44    14000000     1400000
-                      disk none  diskfile  disk-45    14000000    14000000
-                      disk none  diskfile  disk-46    14000000    14000000
-                      disk none  diskfile  disk-47   140000000   140000000
-                      disk none  diskfile  disk-48   140000000   140000000
-                      disk none  diskfile  disk-49  1400000000  1400000000
-                      disk none  diskfile  disk-51      140000      140000
-                      disk none  diskfile  disk-52      140000      140000
-                      disk none  diskfile  disk-53     1400000     1400000
-                      disk none  diskfile  disk-54    14000000     1400000
-                      disk none  diskfile  disk-55    14000000    14000000
-                      disk none  diskfile  disk-56    14000000    14000000
-                      disk none  diskfile  disk-57   140000000   140000000
-                      disk none  diskfile  disk-58   140000000   140000000
-                      disk none  diskfile  disk-59  1400000000  1400000000
+                      null7-01 null7 none  nullfile  2147483648000 2147483648000
+                      null7-02 null7 none  nullfile  2147483648000 2147483648000
+                      null7-03 null7 none  nullfile  2147483648000 2147483648000
+                      null7-04 null7 none  nullfile  2147483648000 2147483648000
+                      null7-05 null7 none  nullfile  2147483648000 2147483648000
+                      null7-06 null7 none  nullfile  2147483648000 2147483648000
+                      null7-07 null7 none  nullfile  2147483648000 2147483648000
+                      null7-08 null7 none  nullfile  2147483648000 2147483648000
+                      null7-09 null7 none  nullfile  2147483648000 2147483648000
+                      null7-10 null7 none  nullfile  2147483648000 2147483648000
+                      null7-11 null7 none  nullfile  2147483648000 2147483648000
+                      null7-12 null7 none  nullfile  2147483648000 2147483648000
+                      null7-13 null7 none  nullfile  2147483648000 2147483648000
+                      null7-14 null7 none  nullfile  2147483648000 2147483648000
+                      null7-15 null7 none  nullfile  2147483648000 2147483648000
+                      null7-16 null7 none  nullfile  2147483648000 2147483648000
+                      null7-17 null7 none  nullfile  2147483648000 2147483648000
+                      null7-18 null7 none  nullfile  2147483648000 2147483648000
+                      null7-19 null7 none  nullfile  2147483648000 2147483648000
+                      null7-20 null7 none  nullfile  2147483648000 2147483648000
+                      null1-01 null1 none  nullfile  2147483648000 2147483648000
+                      null1-02 null1 none  nullfile  2147483648000 2147483648000
+                      null1-03 null1 none  nullfile  2147483648000 2147483648000
+                      null1-04 null1 none  nullfile  2147483648000 2147483648000
+                      null1-05 null1 none  nullfile  2147483648000 2147483648000
+                      null1-06 null1 none  nullfile  2147483648000 2147483648000
+                      null1-07 null1 none  nullfile  2147483648000 2147483648000
+                      null1-08 null1 none  nullfile  2147483648000 2147483648000
+                      null1-09 null1 none  nullfile  2147483648000 2147483648000
+                      null1-10 null1 none  nullfile  2147483648000 2147483648000
+                      null1-11 null1 none  nullfile  2147483648000 2147483648000
+                      null1-12 null1 none  nullfile  2147483648000 2147483648000
+                      null1-13 null1 none  nullfile  2147483648000 2147483648000
+                      null1-14 null1 none  nullfile  2147483648000 2147483648000
+                      null1-15 null1 none  nullfile  2147483648000 2147483648000
+                      null1-16 null1 none  nullfile  2147483648000 2147483648000
+                      null1-17 null1 none  nullfile  2147483648000 2147483648000
+                      null1-18 null1 none  nullfile  2147483648000 2147483648000
+                      null1-19 null1 none  nullfile  2147483648000 2147483648000
+                      null1-20 null1 none  nullfile  2147483648000 2147483648000
+                      nullI-01 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-02 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-03 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-04 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-05 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-06 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-07 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-08 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-09 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-10 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-11 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-12 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-13 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-14 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-15 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-16 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-17 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-18 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-19 nullI none  nullfile  2147483648000 2147483648000
+                      nullI-20 nullI none  nullfile  2147483648000 2147483648000
+                      disk-01 disk none  diskfile       140000      140000
+                      disk-02 disk none  diskfile       140000      140000
+                      disk-03 disk none  diskfile      1400000     1400000
+                      disk-04 disk none  diskfile     14000000     1400000
+                      disk-05 disk none  diskfile     14000000    14000000
+                      disk-06 disk none  diskfile     14000000    14000000
+                      disk-07 disk none  diskfile    140000000   140000000
+                      disk-08 disk none  diskfile    140000000   140000000
+                      disk-09 disk none  diskfile   1400000000  1400000000
+                      disk-11 disk none  diskfile       140000      140000
+                      disk-12 disk none  diskfile       140000      140000
+                      disk-13 disk none  diskfile      1400000     1400000
+                      disk-14 disk none  diskfile     14000000     1400000
+                      disk-15 disk none  diskfile     14000000    14000000
+                      disk-16 disk none  diskfile     14000000    14000000
+                      disk-17 disk none  diskfile    140000000   140000000
+                      disk-18 disk none  diskfile    140000000   140000000
+                      disk-19 disk none  diskfile   1400000000  1400000000
+                      disk-21 disk none  diskfile       140000      140000
+                      disk-22 disk none  diskfile       140000      140000
+                      disk-23 disk none  diskfile      1400000     1400000
+                      disk-24 disk none  diskfile     14000000     1400000
+                      disk-25 disk none  diskfile     14000000    14000000
+                      disk-26 disk none  diskfile     14000000    14000000
+                      disk-27 disk none  diskfile    140000000   140000000
+                      disk-28 disk none  diskfile    140000000   140000000
+                      disk-29 disk none  diskfile   1400000000  1400000000
+                      disk-31 disk none  diskfile       140000      140000
+                      disk-32 disk none  diskfile       140000      140000
+                      disk-33 disk none  diskfile      1400000     1400000
+                      disk-34 disk none  diskfile     14000000     1400000
+                      disk-35 disk none  diskfile     14000000    14000000
+                      disk-36 disk none  diskfile     14000000    14000000
+                      disk-37 disk none  diskfile    140000000   140000000
+                      disk-38 disk none  diskfile    140000000   140000000
+                      disk-39 disk none  diskfile   1400000000  1400000000
+                      disk-41 disk none  diskfile       140000      140000
+                      disk-42 disk none  diskfile       140000      140000
+                      disk-43 disk none  diskfile      1400000     1400000
+                      disk-44 disk none  diskfile     14000000     1400000
+                      disk-45 disk none  diskfile     14000000    14000000
+                      disk-46 disk none  diskfile     14000000    14000000
+                      disk-47 disk none  diskfile    140000000   140000000
+                      disk-48 disk none  diskfile    140000000   140000000
+                      disk-49 disk none  diskfile   1400000000  1400000000
+                      disk-51 disk none  diskfile       140000      140000
+                      disk-52 disk none  diskfile       140000      140000
+                      disk-53 disk none  diskfile      1400000     1400000
+                      disk-54 disk none  diskfile     14000000     1400000
+                      disk-55 disk none  diskfile     14000000    14000000
+                      disk-56 disk none  diskfile     14000000    14000000
+                      disk-57 disk none  diskfile    140000000   140000000
+                      disk-58 disk none  diskfile    140000000   140000000
+                      disk-59 disk none  diskfile   1400000000  1400000000
                      "
          ;;
   *)     echo "$USAGE"
@@ -653,8 +653,8 @@ for vol in ${volumes_del}; do
   IFS=$oldifs
   vol=`echo $vol`
   if [ "${vol}x" != "x" ] ; then
-    echo ecmd vcc --delvol $vol
-         ecmd vcc --delvol $vol
+    echo ecmd vcc --delete=$vol
+         ecmd vcc --delete=$vol
     if [ $? != 0 ] ; then echo \'ERROR\'; fi
   fi
   IFS=$newifs
@@ -665,8 +665,8 @@ for vol in $volumes; do
   IFS=$oldifs
   vol=`echo $vol`
   if [ "${vol}x" != "x" ] ; then
-    echo ecmd vcc --addvol $vol
-         ecmd vcc --addvol $vol
+    echo ecmd vcc --add=$vol
+         ecmd vcc --add=$vol
     if [ $? != 0 ] ; then echo \'ERROR\'; fi
   fi
   IFS=$newifs

@@ -26,24 +26,22 @@ fi
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
-  echo "TESTING ADMIN CLERK"
-  cmd="ecmd acc --help";echo "$cmd";$cmd
-  cmd="ecmd acc --alive";echo "$cmd";$cmd
-  cmd="ecmd acc --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd acc --alive --verbose=32";echo "$cmd";$cmd
+  echo "TESTING ALARM SERVER"
+  cmd="ecmd ac --help";echo "$cmd";$cmd
+  cmd="ecmd ac --alive";echo "$cmd";$cmd
+  cmd="ecmd ac --get_patrol_file";echo "$cmd";$cmd
+  cmd="ecmd ac --raise --root_error=\"TEST-OPTS\" --severity=2";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING CONFIG"
-  cmd="ecmd config --help";echo "$cmd";$cmd
-  cmd="ecmd config --alive";echo "$cmd";$cmd
-  cmd="ecmd config --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd config --alive --verbose=32";echo "$cmd";$cmd
-  cmd="ecmd config --alive --verbose=36";echo "$cmd";$cmd
-  cmd="ecmd config --get_keys";echo "$cmd";$cmd
-  cmd="ecmd config --dict";echo "$cmd";$cmd
+  cmd="ecmd cc --help";echo "$cmd";$cmd
+  cmd="ecmd cc --alive";echo "$cmd";$cmd
+  cmd="ecmd cc --summary";echo "$cmd";$cmd
+  cmd="ecmd cc --show";echo "$cmd";$cmd
+  cmd="ecmd cc --load --file=${ENSTORE_CONFIG_FILE}";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
@@ -52,43 +50,60 @@ then
   echo "TESTING FILE CLERK"
   cmd="ecmd fcc --help";echo "$cmd";$cmd
   cmd="ecmd fcc --alive";echo "$cmd";$cmd
-  cmd="ecmd fcc --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd fcc --alive --verbose=32";echo "$cmd";$cmd
   cmd="ecmd fcc --bfids";echo "$cmd";$cmd
   cmd="ecmd fcc --bfid=`a=\`ecmd fcc --bfids\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+  cmd="ecmd fcc --list=`a=\`ecmd vcc --vols\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING INQUISITOR"
-  cmd="ecmd inq --help";echo "$cmd";$cmd
-  cmd="ecmd inq --alive";echo "$cmd";$cmd
-  cmd="ecmd inq --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd inq --alive --verbose=32";echo "$cmd";$cmd
-  cmd="ecmd inq --get_timeout";echo "$cmd";$cmd
-  cmd="ecmd inq --get_timeout inquisitor";echo "$cmd";a=`$cmd`
-  let b=a+5
-  cmd="ecmd inq --timeout=$b inquisitor";echo "$cmd";$cmd
-  cmd="ecmd inq --get_timeout inquisitor";echo "$cmd";c=`$cmd`
-  if [ "$c" != "$b" ]
-  then
+  cmd="ecmd ic --help";echo "$cmd";$cmd
+  cmd="ecmd ic --alive";echo "$cmd";$cmd
+  cmd="ecmd ic --dump";echo "$cmd";$cmd
+  cmd="ecmd ic --get_inq_timeout";echo "$cmd";a=`$cmd`
+  let b=a+1
+  cmd="ecmd ic --inq_timeout=$b";echo "$cmd";$cmd
+  cmd="ecmd ic --get_inq_timeout";echo "$cmd";c=`$cmd`
+  if [ $c != $b ]
+  then 
     echo "ERROR: TIMEOUTS do not match ($b, $c)"
   fi
-  cmd="ecmd inq --timeout=$a inquisitor";echo "$cmd";$cmd
-  cmd="ecmd inq --get_max_ascii_size";echo "$cmd";a=`$cmd`
+  cmd="ecmd ic --reset_inq_timeout";echo "$cmd";c=`$cmd`
+  cmd="ecmd ic --get_interval=inquisitor";echo "$cmd";a=`$cmd`
+  let b=a+5
+  cmd="ecmd ic --interval=$b inquisitor";echo "$cmd";$cmd
+  cmd="ecmd ic --get_interval=inquisitor";echo "$cmd";c=`$cmd`
+  if [ "$c" != "$b" ]
+  then
+    echo "ERROR: INTERVALS do not match ($b, $c)"
+  fi
+  cmd="ecmd ic --interval=$a inquisitor";echo "$cmd";$cmd
+  cmd="ecmd ic --reset_interval=inquisitor";echo "$cmd";$cmd
+  cmd="ecmd ic --get_max_ascii_size";echo "$cmd";a=`$cmd`
   let b=a+20
-  cmd="ecmd inq --max_ascii_size=$b";echo "$cmd";$cmd
-  cmd="ecmd inq --get_max_ascii_size";echo "$cmd";c=`$cmd`
+  cmd="ecmd ic --max_ascii_size=$b";echo "$cmd";$cmd
+  cmd="ecmd ic --get_max_ascii_size";echo "$cmd";c=`$cmd`
   if [ "$c" != "$b" ]
   then
     echo "ERROR: MAX_ASCII_SIZE does not match ($b, $c)"
   fi
-  cmd="ecmd inq --max_ascii_size=$a";echo "$cmd";a=`$cmd`
-  cmd="ecmd inq --timestamp --verbose=2";echo "$cmd";$cmd
-  cmd="ecmd inq --update --verbose=2";echo "$cmd";$cmd
-  cmd="ecmd inq --update config_server";echo "$cmd";$cmd
-
+  cmd="ecmd ic --max_ascii_size=$a";echo "$cmd";a=`$cmd`
+  cmd="ecmd ic --get_refresh";echo "$cmd";a=`$cmd`
+  let b=a+2
+  cmd="ecmd ic --refresh=$b";echo "$cmd";$cmd
+  cmd="ecmd ic --get_refresh";echo "$cmd";c=`$cmd`
+  if [ "$c" != "$b" ]
+  then
+    echo "ERROR: REFRESH does not match ($b, $c)"
+  fi
+  cmd="ecmd ic --refresh=$a";echo "$cmd";$cmd
+  cmd="ecmd ic --timestamp";echo "$cmd";$cmd
+  cmd="ecmd ic --update=all";echo "$cmd";$cmd
+  cmd="ecmd ic --update=config_server";echo "$cmd";$cmd
+  cmd="ecmd ic --plot --keep --keep_dir=/tmp";echo "$cmd";$cmd
+  cmd="ecmd ic --plot";echo "$cmd";$cmd
 fi
 
 if [ "$libman" != "" ]
@@ -97,21 +112,32 @@ then
   echo "TESTING LIBRARY MANAGER"
   cmd="ecmd lmc --help";echo "$cmd";$cmd
   cmd="ecmd lmc --alive $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --alive --verbose=1 $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --alive --verbose=32 $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --getwork --verbose=2 $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --getmoverlist --verbose=2 $libman";echo "$cmd";$cmd
-  cmd="ecmd lmc --get_suspect_vols --verbose=2 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --get_work $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --get_mover_list $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --get_suspect_vols $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --get_delayed_dismount $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --load_movers $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --poll $libman";echo "$cmd";$cmd
+  echo ""
+  echo "ATTENTION: The next 2 commands will return a bad status, that is ok."
+  echo ""
+  cmd="ecmd lmc --delete_work=12345 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --priority=1 $libman 12345";echo "$cmd";$cmd
+  if [ "$mover" != "" ]
+  then
+    cmd="ecmd lmc --summon=$mover $libman";echo "$cmd";$cmd
+  fi
 fi
 
 if [ $dotest -eq 1 ]
 then
   echo "======================================================================"
   echo "TESTING LOGGER"
-  cmd="ecmd log --help";echo "$cmd";$cmd
-  cmd="ecmd log --alive";echo "$cmd";$cmd
-  cmd="ecmd log --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd log --alive --verbose=32";echo "$cmd";$cmd
+  cmd="ecmd lc --help";echo "$cmd";$cmd
+  cmd="ecmd lc --alive";echo "$cmd";$cmd
+  cmd="ecmd lc --get_logfile_name";echo "$cmd";$cmd
+  cmd="ecmd lc --get_last_logfile_name";echo "$cmd";$cmd
+  cmd="ecmd lc --message=\"This is a test-opts log message.\"";echo "$cmd";$cmd
 fi
 
 if [ "$medch" != "" ]
@@ -120,19 +146,21 @@ then
   echo "TESTING MEDIA CHANGER"
   cmd="ecmd mcc --help";echo "$cmd";$cmd
   cmd="ecmd mcc --alive $medch";echo "$cmd";$cmd
-  cmd="ecmd mcc --alive --verbose=1 $medch";echo "$cmd";$cmd
-  cmd="ecmd mcc --alive --verbose=32 $medch";echo "$cmd";$cmd
+  cmd="ecmd mcc --get_work $medch";echo "$cmd";$cmd
+  cmd="ecmd mcc --ejectvol $medch diskfile 1234";echo "$cmd";$cmd
+  cmd="ecmd mcc --insertvol $medch 1234";echo "$cmd";$cmd
+  cmd="ecmd mcc --view=1234 $medch";echo "$cmd";$cmd
 fi
 
 if [ "$mover" != "" ]
 then
   echo "======================================================================"
   echo "TESTING MOVER"
-  cmd="ecmd mov --help";echo "$cmd";$cmd
-  cmd="ecmd mov --alive $mover";echo "$cmd";$cmd
-  cmd="ecmd mov --alive --verbose=1 $mover";echo "$cmd";$cmd
-  cmd="ecmd mov --alive --verbose=32 $mover";echo "$cmd";$cmd
-  cmd="ecmd mov --status $mover";echo "$cmd";$cmd
+  cmd="ecmd mvc --help";echo "$cmd";$cmd
+  cmd="ecmd mvc --alive $mover";echo "$cmd";$cmd
+  cmd="ecmd mvc --status $mover";echo "$cmd";$cmd
+  cmd="ecmd mvc --local_mover=1 $mover";echo "$cmd";$cmd
+  cmd="ecmd mvc --local_mover=0 $mover";echo "$cmd";$cmd
 fi
 
 if [ $dotest -eq 1 ]
@@ -141,8 +169,22 @@ then
   echo "TESTING VOLUME CLERK"
   cmd="ecmd vcc --help";echo "$cmd";$cmd
   cmd="ecmd vcc --alive";echo "$cmd";$cmd
-  cmd="ecmd vcc --alive --verbose=1";echo "$cmd";$cmd
-  cmd="ecmd vcc --alive --verbose=32";echo "$cmd";$cmd
   cmd="ecmd vcc --vols";echo "$cmd";$cmd
-  cmd="ecmd vcc --vol=`ecmd vcc --vols|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+  vol=`ecmd vcc --vols|cut -f1 -d,|sed s/\'//g`
+  cmd="ecmd vcc --vol=$vol";echo "$cmd";$cmd
+  cmd="ecmd vcc --update=$vol";echo "$cmd";$cmd
+  if [ "$libman" != "" ]
+  then
+    lib=`echo $libman|cut -f1 -d.`
+    cmd="ecmd vcc --add=testvol $lib none diskfile 2000 2000";echo "$cmd";$cmd
+    cmd="ecmd vcc --check=testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --clear=testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --decr_file_count=1 testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --new_library=testlib testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --read_only=testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --no_access=testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --delete=testvol";echo "$cmd";$cmd
+    cmd="ecmd vcc --restore=testvol --all";echo "$cmd";$cmd
+  fi
+  
 fi
