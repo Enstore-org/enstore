@@ -5,3 +5,4 @@ all:
 
 clean:
 	@ $(ENSTORE_DIR)/bin/enstoreClean
+

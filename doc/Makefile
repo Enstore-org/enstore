@@ -9,5 +9,5 @@ other:
 	./class4module
 
 clean :
+	@ $(ENSTORE_DIR)/bin/enstoreClean
 	rm -f [1-9].out *.dot *.ps classes.known
-	rm *~ \#*\#
