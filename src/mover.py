@@ -1988,6 +1988,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        self.timer('transfer_time')
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
@@ -2004,7 +2005,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tr_failed = 0
             return
 
-        self.timer('transfer_time')
         if exc not in (e_errors.ENCP_GONE, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
@@ -2099,6 +2099,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def transfer_completed(self):
         self.consecutive_failures = 0
+        self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -2107,7 +2108,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
-        self.timer('transfer_time')
         self.net_driver.close()
         self.current_location = self.tape_driver.tell()
         now = time.time()
@@ -3630,6 +3630,7 @@ class DiskMover(Mover):
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        self.timer('transfer_time')
         self.tape_driver.close()
         if self.mode == WRITE:
             try:
@@ -3652,7 +3653,6 @@ class DiskMover(Mover):
             self.tr_failed = 0
             return
 
-        self.timer('transfer_time')
         if exc != e_errors.ENCP_GONE:
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
@@ -3724,6 +3724,7 @@ class DiskMover(Mover):
         
     def transfer_completed(self):
         self.consecutive_failures = 0
+        self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, 0))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -3732,7 +3733,6 @@ class DiskMover(Mover):
         else:
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
-        self.timer('transfer_time')
         self.net_driver.close()
         self.tape_driver.close()
         now = time.time()
