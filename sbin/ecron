@@ -42,7 +42,7 @@ quit() {
   exit $code
 }
 
-# Modified by huangch@fnal.gov to take arguments
+# May 12, 1999 Modified by huangch@fnal.gov to take arguments
 #
 # $0 [[-setup product] | [-D VARIABLE=value]]* cmd
 #
@@ -53,11 +53,20 @@ quit() {
 #
 # multiple -setup and -D are allowed
 
+# May 13, 1999 Modified again to add -p job_name option
+#
+# $0 [[-setup product] | [-D VARIABLE=value] | [-p job_name] ]* cmd
+#
+# job_name is used to identify the job. If ommitted, cmd is default
+# to ease the implementation, multiple -p are allowed, but only the
+# last one is effective
+
 # additional products
 
 products=
+job=
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ]
 do
 	case $1 in
 	-setup)
@@ -73,12 +82,20 @@ do
 		eval $2
 		export $var
 		;;
+	-p)
+		job=$2
+		;;
 	esac
 	shift
 	shift
 done
 
-procName=$1
+if [ -n "${job}" ]
+then
+	procName=${job}
+else
+	procName=$1
+fi
 
 procInfos=~/$procName
 activeFlag=${procInfos}ACTIVE
@@ -113,6 +130,10 @@ then
  	setup ${products}
 fi
 
+# make sure procName is set to $1 again
+
+procName=$1
+
 shift
 #echo  Executing: $procName $*
 
@@ -120,15 +141,15 @@ eval $procName $*  >$procOutput 2>&1
 problem=$?
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
-   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName !!! " >>$procMail 
+   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail 
    echo "  Date       :" `date`      >>$procMail 
-   echo "  Path       : $procName "  >>$procMail 
+   echo "  Path       : $procName $* "  >>$procMail 
    echo "  ReturnCode : $problem "   >>$procMail 
    echo "  Output and error messages ... " >>$procMail 
    echo "  -------------------- start of messages ---------------------- ">>$procMail 
    cat $procOutput >>$procMail 2>/dev/null
    echo "  -------------------- end of messages   ---------------------- ">>$procMail 
-   sendMail $procMail emegency "Enstore ecron Scheduler: $procName "
+   sendMail $procMail emegency "Enstore ecron Scheduler: $procName $* "
 fi
 
 quit "" 0
