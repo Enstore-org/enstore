@@ -14,7 +14,6 @@ GID = 'gid'
 MODE = 'mode'
 MOVERNODE = 'moverNode'
 PNFSFILENAME = 'pnfsFilename'
-RECORDLEN = 'recordLen'
 SIZEBYTES = 'sizeBytes'
 UID = 'uid'
 USERNAME = 'username'
@@ -27,7 +26,6 @@ FIXED = 0       # index in to RECORDFORMAT
 VARIABLE = 1    # index in to RECORDFORMAT
 SEGMENTED = 2   # index in to RECORDFORMAT
 HEADERLEN = 80
-TRAILERLEN = HEADERLEN
 FILENAMELEN1 = 17
 UHLNFILECHUNK = HEADERLEN - 4
 MAXFILENAMELEN = (26*UHLNFILECHUNK)+FILENAMELEN1
@@ -544,6 +542,9 @@ class EnstoreLargeFileWrapper:
 	self.segment_checksum = 10*ZERO           # CN
 	self.num_of_blocks = 10*ZERO              # CN
 
+	self.uhln_l = []
+	self.utln_l = []
+
     # assemble the extra uhlns
     def assemble_uhlns(self, uhln_l):
 	rtn = ""
@@ -629,30 +630,25 @@ class EnstoreLargeFileWrapper:
 
 	return self.assemble_trailers()
 
-    # update the trailers with the checksum value
-    def update_trailers(self, file_checksum):
-	self.file_checksum = file_checksum
-	self.file_checksum = add_l_padding(self.file_checksum, 10, ZERO)
-	self.utl2.update_checksum(self.file_checksum)
-	return self.assemble_trailers()
+    def header_size(self):
+	hdr_size = 6 * HEADERLEN      # HDR1, HDR2, UHL1, UHL2, UHL3, UHL4
+	return hdr_size + (len(self.uhln_l) * HEADERLEN)  # add in UHLns
 
 # here starts the routines accessed via the user interface
-min_header_size = 14 * 80
 
-# construct the headers and trailers
+# construct the headers
 def headers(ticket):
     global efile
     efile = EnstoreLargeFileWrapper(ticket)
-    return efile.headers(), efile.trailers()
+    return efile.headers()
+
+# construct the trailers
+def trailers(file_checksum):
+    global efile
+    efile.file_checksum = file_checksum
+    return efile.trailers()
 
 # return the size of the headers
 def header_size(hdr):
-    pass
+    return len(hdr)
 
-# add the new checksum to the trailers
-def update_trailers(checksum):
-    global efile
-    if efile:
-	return efile.update_trailers(checksum)
-    else:
-	return None
