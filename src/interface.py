@@ -359,8 +359,7 @@ class Interface:
             elif opt == "--get_last_logfile_name":
                 self.get_last_logfile_name = 1
             elif opt == "--data_access_layer":
-                # if data_access_layer has been requested, just add 4096 to verbose option
-                self.verbose = self.verbose | 0x1000 
+                self.data_access_layer = 1
 	    elif opt == "--use_IPC":
 		self.use_IPC = 1
             elif opt == "--logfile_dir":

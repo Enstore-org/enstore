@@ -63,24 +63,20 @@ data_access_layer_format = "INFILE=%s\n"+\
 
 def write_to_hsm(input_files, output, output_file_family='',
                  config_host=None, config_port=None,
-                 ilist=0, chk_crc=0, use_IPC=0,
+                 verbose=0, data_access_layer=0, chk_crc=0, use_IPC=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0, bytecount=None):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"write_to_hsm input_files="+repr(input_files)+\
-                " output="+repr(output)+" config_host="+\
-		repr(config_host)+\
-                " config_port="+repr(config_port)+" verbose="+\
-		repr(ilist)+\
+    Trace.trace(6,"write_to_hsm input_files="+repr(input_files)+
+                " output="+repr(output)+" config_host="+
+		repr(config_host)+
+                " config_port="+repr(config_port)+" verbose="+
+		repr(verbose)+" data_access_layer="+
+                repr(data_access_layer)+
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
-
-    # check if there special data_access_layer printing requested. This is 
-    # designated by having bit 2^12 set (4096)
-    data_access_layer = (ilist & 0x1000) !=0
-    verbose = ilist & 0x0fff
 
     if verbose>2:
         print "Getting clients, storing/checking local info   cumt=",\
@@ -791,22 +787,18 @@ def write_to_hsm(input_files, output, output_file_family='',
 #######################################################################
 def read_from_hsm(input_files, output,
                   config_host, config_port,
-                  ilist=0, chk_crc=0, use_IPC=0,
+                  verbose=0, data_access_layer=0, chk_crc=0, use_IPC=0,
                   pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"read_from_hsm input_files="+repr(input_files)+
                 " output="+repr(output)+" config_host="+repr(config_host)+
-                " config_port="+repr(config_port)+" verbose="+repr(ilist)+
+                " config_port="+repr(config_port)+" verbose="+repr(verbose)+
+                " data_access_layer="+repr(data_acccess_layer)+
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
     tinfo = {}
     tinfo["abs_start"] = t0
-
-    # check if there special data_access_layer printing requested. This is designated by
-    # the having bit 2^12 set (4096)
-    data_access_layer = (ilist & 0x1000) !=0
-    verbose = ilist & 0x0fff
 
     if verbose>2:
         print "Getting clients, storing/checking local info   cumt=",\
@@ -2020,6 +2012,7 @@ class encp(interface.Interface):
         self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # no output yet
+
 	self.delayed_dismount = 0  # delayed dismount time is set to 0
 	self.use_IPC = 0
 	self.output_file_family = '' # initial set for use with --ephemeral or
@@ -2129,13 +2122,17 @@ if __name__  ==  "__main__" :
         print "WARNING: running in test mode"
 
     if e.verbose>5 and Trace is Trace_lite:
-        def trace(*args): print args[1:]
+        def trace(*args):
+            for arg in args[1:]:
+                print arg,
+            print
         Trace.trace = trace
     ## have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
                      e.config_host, e.config_port,
-                     e.verbose, e.chk_crc, e.use_IPC,
+                     e.verbose, e.data_access_layer,
+                     e.chk_crc, e.use_IPC,
                      e.priority, e.delpri, e.age_time,
                      e.delayed_dismount, t0, e.bytes)
 
@@ -2143,7 +2140,8 @@ if __name__  ==  "__main__" :
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,
                       e.config_host, e.config_port,
-                      e.verbose, e.chk_crc, e.use_IPC,
+                      e.verbose, e.data_access_layer,
+                      e.chk_crc, e.use_IPC,
                       e.priority, e.delpri, e.age_time,
                       e.delayed_dismount, t0)
 
