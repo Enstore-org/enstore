@@ -124,6 +124,32 @@ GB=1L<<30
 
 SANITY_SIZE = 65536
 
+#used in the threshold calculation
+TRANSFER_THRESHOLD = 2*1024*1024
+
+def get_transfer_notify_threshold(bytes_to_transfer):
+    if TRANSFER_THRESHOLD * 5 > bytes_to_transfer:
+        threshold = bytes_to_transfer / 5
+    elif TRANSFER_THRESHOLD * 100 < bytes_to_transfer:
+        threshold = bytes_to_transfer / 100
+    else:
+        threshold = TRANSFER_THRESHOLD
+
+    return threshold
+
+def is_threshold_passed(bytes_transfered, bytes_notified, bytes_to_transfer):
+    #If transfer is complete, indicate notify message to be sent.
+    if bytes_transfered == bytes_to_transfer:
+        return 1
+    #If threshold passed, indicate notify message to be sent.
+    elif bytes_transfered - bytes_notified > \
+             get_transfer_notify_threshold(bytes_to_transfer):
+        return 1
+    #elif bytes_notified==0:
+    #    return 1
+    else:
+        return 0
+
 class Buffer:
     def __init__(self, blocksize, min_bytes = 0, max_bytes = 1*MB):
         self.blocksize = blocksize
@@ -1233,13 +1259,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             nbytes = self.buffer.header_size
             ##XXX this will fail if nbytes>block_size.
             bytes_read = self.buffer.stream_read(nbytes,self.header)
+
+        #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
-        threshold = self.notify_transfer_threshold
-        if threshold * 5 > self.bytes_to_read:
-            threshold = self.bytes_to_read/5
-        elif threshold * 100 < self.bytes_to_read:
-            threshold = self.bytes_to_read/100
-            
+        Trace.notify("transfer %s %s %s network %s %.3f" %
+                     (self.shortname, self.bytes_read,
+                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+        
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
                 break
@@ -1272,10 +1298,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.low():
                 self.buffer.write_ok.set()
 
-            if self.bytes_read - bytes_notified > threshold or \
-               bytes_notified==0 or self.bytes_read == self.bytes_to_read:
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_read, bytes_notified,
+                                   self.bytes_to_read):
                 bytes_notified = self.bytes_read
-                Trace.notify("transfer %s %s %s network" % (self.shortname, self.bytes_read, self.bytes_to_read))
+                Trace.notify("transfer %s %s %s network %s %.3f" %
+                             (self.shortname, self.bytes_read,
+                              self.bytes_to_read, self.buffer.nbytes(),
+                              time.time()))
                 
         if self.tr_failed:
             return
@@ -1332,7 +1362,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.tape_driver.writefm()
             self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-            
+
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s media %s %.3f" %
+                     (self.shortname, self.bytes_written,
+                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
@@ -1402,13 +1438,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_written, bytes_notified,
+                                   self.bytes_to_write):
+                bytes_notified = self.bytes_written
+                Trace.notify("transfer %s %s %s media %s %.3f" %
+                             (self.shortname, self.bytes_written,
+                              self.bytes_to_write, self.buffer.nbytes(),
+                              time.time()))
+
             if not self.buffer.full():
                 self.buffer.read_ok.set()
         if self.tr_failed:
             Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
             return
 
-        Trace.notify("transfer %s %s %s media" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if failed: return
@@ -1548,7 +1592,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         failed = 0
         self.media_transfer_time = 0.
-                              
+
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s media %s %.3f" %
+                     (self.shortname, -self.bytes_read,
+                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+            
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
@@ -1608,6 +1658,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
 
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_read, bytes_notified,
+                                   self.bytes_to_read):
+                bytes_notified = self.bytes_read
+                Trace.notify("transfer %s %s %s media %s %.3f" %
+                             (self.shortname, -self.bytes_read,
+                              self.bytes_to_read, self.buffer.nbytes(),
+                              time.time()))
+
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
         if self.tr_failed:
@@ -1633,8 +1692,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
-        Trace.notify("transfer %s %s %s media" %
-                     (self.shortname, -self.bytes_read, self.bytes_to_read))            
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
                 
@@ -1658,15 +1715,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             # start of data
             self.buffer.stream_write(self.buffer.header_size, None)
             Trace.trace(8, "write_client: discarded %s bytes of header info"%(self.buffer.header_size))
-        bytes_notified = 0L
-        threshold = self.notify_transfer_threshold
-        if threshold * 5 > self.bytes_to_write:
-            threshold = self.bytes_to_write/5
-        elif threshold * 100 < self.bytes_to_write:
-            threshold = self.bytes_to_write/100
-
         failed = 0
-           
+
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s network %s %.3f" %
+                     (self.shortname, -self.bytes_written,
+                      self.bytes_to_write, self.buffer.nbytes(),
+                      time.time()))
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if self.tr_failed:
                 break
@@ -1707,11 +1764,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.full():
                 self.buffer.read_ok.set()
 
-            if self.bytes_written - bytes_notified > threshold or \
-               bytes_notified==0 or self.bytes_written==self.bytes_to_write:
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_written, bytes_notified,
+                                   self.bytes_to_write):
                 bytes_notified = self.bytes_written
                 #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s network" % (self.shortname, -self.bytes_written, self.bytes_to_write))
+                Trace.notify("transfer %s %s %s network %s %.3f" %
+                             (self.shortname, -self.bytes_written,
+                              self.bytes_to_write, self.buffer.nbytes(),
+                              time.time()))
 
         if self.tr_failed:
             return
@@ -3371,6 +3432,13 @@ class DiskMover(Mover):
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
+
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s media %s %.3f" %
+                     (self.shortname, self.bytes_written,
+                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
@@ -3427,13 +3495,21 @@ class DiskMover(Mover):
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_written, bytes_notified,
+                                   self.bytes_to_write):
+                bytes_notified = self.bytes_written
+                Trace.notify("transfer %s %s %s media %s %.3f" %
+                             (self.shortname, self.bytes_written,
+                              self.bytes_to_write, self.buffer.nbytes(),
+                              time.time()))
+            
             if not self.buffer.full():
                 self.buffer.read_ok.set()
         if self.tr_failed:
             Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
             return
 
-        Trace.notify("transfer %s %s %s media" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if failed: return
@@ -3536,6 +3612,12 @@ class DiskMover(Mover):
         failed = 0
         self.media_transfer_time = 0.
 
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s media %s %.3f" %
+                     (self.shortname, -self.bytes_read,
+                      self.bytes_to_read, self.buffer.nbytes(), time.time()))
+
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
@@ -3595,6 +3677,15 @@ class DiskMover(Mover):
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
 
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_read, bytes_notified,
+                                   self.bytes_to_read):
+                bytes_notified = self.bytes_read
+                Trace.notify("transfer %s %s %s media %s %.3f" %
+                             (self.shortname, -self.bytes_read,
+                              self.bytes_to_read, self.buffer.nbytes(),
+                              time.time()))
+
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
         if self.tr_failed:
@@ -3620,8 +3711,6 @@ class DiskMover(Mover):
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
-        Trace.notify("transfer %s %s %s media" %
-                     (self.shortname, -self.bytes_read, self.bytes_to_read))            
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
                 
@@ -3645,14 +3734,13 @@ class DiskMover(Mover):
             # start of data
             self.buffer.stream_write(self.buffer.header_size, None)
             Trace.trace(8, "write_client: discarded %s bytes of header info"%(self.buffer.header_size))
-        bytes_notified = 0L
-        threshold = self.notify_transfer_threshold
-        if threshold * 5 > self.bytes_to_write:
-            threshold = self.bytes_to_write/5
-        elif threshold * 100 < self.bytes_to_write:
-            threshold = self.bytes_to_write/100
-
         failed = 0
+
+        #Initialize thresholded transfer notify messages.
+        bytes_notified = 0L
+        Trace.notify("transfer %s %s %s network %s %.3f" %
+                     (self.shortname, -self.bytes_written,
+                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
            
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if self.tr_failed:
@@ -3694,11 +3782,15 @@ class DiskMover(Mover):
             if not self.buffer.full():
                 self.buffer.read_ok.set()
 
-            if self.bytes_written - bytes_notified > threshold or \
-               bytes_notified==0 or self.bytes_written==self.bytes_to_write:
+            #If it is time to do so, send the notify message.
+            if is_threshold_passed(self.bytes_written, bytes_notified,
+                                   self.bytes_to_write):
                 bytes_notified = self.bytes_written
                 #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s network" % (self.shortname, -self.bytes_written, self.bytes_to_write))
+                Trace.notify("transfer %s %s %s network %s %.3f" %
+                             (self.shortname, -self.bytes_written,
+                              self.bytes_to_write, self.buffer.nbytes(),
+                              time.time()))
 
         if self.tr_failed:
             return
