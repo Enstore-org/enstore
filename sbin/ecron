@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 
 # sun nodes need an extended path in order to find all the regular unix commands
-if [ `uname` = SunOS ]; then 
+if [ `uname` = SunOS ]; then
   PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/lbin:/usr/ucb:/usr/ccs/bin
 fi
 
@@ -39,9 +39,12 @@ sendMail() {
   else
      mailaddress="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
   fi
+  if [ -r $noMail ]; then
+     mailaddress="hyp-enstore@hppc.fnal.gov"
+  fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
   if test -w /dev/console -a $quiet -ne 1; then
-    echo "`date`: $0 $@ has failed... sending mail to $mailaddress" >/dev/console
+     echo "`date`: $0 $@ has failed... sending mail to $mailaddress" >/dev/console
     echo < $filename >/dev/console
   fi
 }
@@ -133,6 +136,7 @@ activeFlag=${procInfos}ACTIVE
 histogram=${procInfos}HISTOGRAM
 procOutput=${procInfos}-output
 procMail=${procInfos}-mail
+noMail=${procInfos}NOMAIL
 
 rm -f $procOutput
 rm -f $procMail
@@ -172,17 +176,17 @@ eval $procName $*  >$procOutput 2>&1
 problem=$?
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
-   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail 
+   echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail
    echo "  Uname      :" `uname -a`  >>$procMail
-   echo "  Date       :" `date`      >>$procMail 
-   echo "  Path       : $procName $* "  >>$procMail 
-   echo "  ReturnCode : $problem "   >>$procMail 
-   echo "  Working dir: $cwd "   >>$procMail 
-   echo "  Output and error messages ... " >>$procMail 
-   echo "  -------------------- start of messages ---------------------- ">>$procMail 
+   echo "  Date       :" `date`      >>$procMail
+   echo "  Path       : $procName $* "  >>$procMail
+   echo "  ReturnCode : $problem "   >>$procMail
+   echo "  Working dir: $cwd "   >>$procMail
+   echo "  Output and error messages ... " >>$procMail
+   echo "  -------------------- start of messages ---------------------- ">>$procMail
    cat $procOutput >>$procMail 2>/dev/null
-   echo "  -------------------- end of messages   ---------------------- ">>$procMail 
+   echo "  -------------------- end of messages   ---------------------- ">>$procMail
    sendMail $procMail emergency "Enstore ecron Scheduler: $procName $* "
 fi
 
-quit "" 0
+quit "" $problem
