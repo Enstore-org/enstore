@@ -21,8 +21,6 @@ import hostaddr
 
 journal_backup = 'JOURNALS'     # for journal file backup
 
-pgdb = 1
-
 def logthis(code, message):
     #Trace.log(code,message)
     log_client.logthis(code,message)
@@ -41,42 +39,6 @@ def get_size(dbHome,dbFile):
             
     size = os.stat(os.path.join(dbHome,dbFile))[stat.ST_SIZE]
     return (nkeys, size)
-
-def backup_dbase(dbHome):
-
-    dbFiles=""
-    filelist = map(string.strip,os.popen("db_archive -s  -h"+dbHome).readlines())
-
-    # work around db_archive bug of ignoring > 2GB file
-    if not 'file' in filelist:
-        filelist = ['file']+filelist
-    
-    for name in filelist:
-        stmsg = ""
-        ## (nkeys, size) = get_size(dbHome,name)
-        ## stmsg = "%s :  Number of keys = %s  Database size = %s"%(name,nkeys,size)
-        ## logthis(e_errors.INFO, stmsg)
-        fp = open(name+".stat", "w")
-        fp.write(stmsg)
-	fp.close()
-    	dbFiles=dbFiles+" "+name
-    logfiles = string.join(glob.glob('log.*'),' ')
-    statfiles = string.join(glob.glob('*.stat'),' ')
-    STORAGE_GROUPS = string.join(glob.glob('STORAGE_GROUPS'),' ')
-    cmd="tar --ignore-failed-read -cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,STORAGE_GROUPS)
-    logthis(e_errors.INFO,cmd)
-    
-    ret=os.system(cmd)
-    if ret !=0 :
-	logthis(e_errors.INFO, "Failed: %s"%(cmd,))
-	sys.exit(1)
-    filelist = map(string.strip,os.popen("db_archive  -h"+dbHome).readlines())
-    for name in filelist:
-	os.unlink(name)
-    filelist=os.listdir('.')
-    for name in filelist:
-        if len(name)>5 and name[-5:]=='.stat':
-            os.unlink(name)
 
 def pgdb_backup(host, port, dbHome):
     path = os.path.join(dbHome, 'enstoredb.dmp')
@@ -243,22 +205,16 @@ def do_work(intf):
         hst_bck = backup_config['host']
     except:
 	hst_bck = hst_local
-    logthis(e_errors.INFO, "Start database backup")
-    backup_dbase(dbHome)
-    logthis(e_errors.INFO, "End database backup")
-    if pgdb:
-        logthis(e_errors.INFO, "Start postgresql database backup")
-        pgdb_backup(dbInfo['db_host'], dbInfo['db_port'], dbHome)
-        logthis(e_errors.INFO, "End postgresql database backup")
+    logthis(e_errors.INFO, "Start postgresql database backup")
+    pgdb_backup(dbInfo['db_host'], dbInfo['db_port'], dbHome)
+    logthis(e_errors.INFO, "End postgresql database backup")
     logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
     logthis(e_errors.INFO, "End  volume backup")
     logthis(e_errors.INFO, "Start file backup")
     os.system("enstore file --backup")
     logthis(e_errors.INFO, "End file backup")
-    # this is a hack
-    if pgdb:
-        os.system("mv %s/*.tar %s"%(jouHome, dbHome))
+    os.system("mv %s/*.tar %s"%(jouHome, dbHome))
     logthis(e_errors.INFO, "Start moving to archive")
     archive_backup(hst_bck,hst_local,dir_bck)
     logthis(e_errors.INFO, "Stop moving to archive")
