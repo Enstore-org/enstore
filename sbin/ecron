@@ -65,6 +65,10 @@ quit() {
   if test -w /dev/console -a $quiet -ne 1; then
     echo "$done: $0 $@ ...finished. code=$code" >/dev/console
   fi
+  if [ -f $genAlarm -a $code != 0 ] ; then 
+      echo enstore alarm --raise --severity "A" --root-error "$0 STAT=$code"
+           enstore alarm --raise --severity "A" --root-error "$0 STAT=$code"
+  fi   
   exit $code
 }
 
@@ -144,6 +148,7 @@ procOutput=${procInfos}-output
 procMail=${procInfos}-mail
 noMail=${procInfos}NOMAIL
 noNeg=${procInfos}NONEG
+genAlarm=${procInfos}GENALARM
 
 echo "$start 10" >> $histogram
 
