@@ -69,9 +69,10 @@ class UDPClient:
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
                 exec ("number,  out  = "  + reply)
                 if number != self.number :
-                    print "stale",number, self.number, message
+                    print "UDPClient.send: stale_number=",number, "number=", \
+                          self.number,"resending to ", address, message
             else :
-                print "resending", message
+                print "UDPClient.send: resending to ", address, message
         return out
 
 

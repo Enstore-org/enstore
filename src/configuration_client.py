@@ -27,17 +27,17 @@ class configuration_client :
         request = {'work' : 'lookup', 'lookup' : key }
         while 1 :
             try:
-                info = self.u.send(request, (ns_host, ns_port) )
+                self.cache[key] = self.u.send(request, (ns_host, ns_port) )
                 break
             except socket.error :
-                if sys.exc_value[0] == 111 :
-                    #  preceding line needs to be of form: if sys.exc_info()[1][0] == errno.ENOENT :
-                    time.sleep(3)
-                    print sys.exc_info()[1][0], "socket error - retrying now"
+                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+                    delay = 3
+                    print sys.exc_info()[1][0], "socket error. configuration "\
+                          +"server down?  retrying in ",delay," seconds"
+                    time.sleep(delay)
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
-        self.cache[key] = info
-        return info
+                return self.cache[key]
 
     # return cached (or get from server) value for requested item
     def get(self, key, ns_host = 'localhost', ns_port = 7500):
@@ -55,10 +55,11 @@ class configuration_client :
                 self.config_dump = self.u.send(request, (ns_host, ns_port) )
                 break
             except socket.error :
-                if sys.exc_value[0] == 111 :
-                    #  preceding line needs to be of form: if sys.exc_info()[1][0] == errno.ENOENT :
-                    time.sleep(3)
-                    print sys.exc_info()[1][0], "socket error - retrying now"
+                if sys.exc_info()[1][0] == errno.CONNREFUSED :
+                    delay = 3
+                    print sys.exc_info()[1][0], "socket error. configuration "\
+                          +"server down?  retrying in ",delay," seconds"
+                    time.sleep(delay)
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
         pprint.pprint(self.config_dump)
@@ -68,6 +69,6 @@ if __name__ == "__main__" :
     csc = configuration_client()
     csc.config()
     if csc.config_dump['status'] == 'ok' :
-	exit(0)
+        exit(0)
     else :
-	exit(1)
+        exit(1)
