@@ -255,6 +255,10 @@ static unsigned char ftt_cdb_m2_status[] =
 static unsigned char ftt_cdb_inquiry[] =
 	{0x12, 0x00, 0x00, 0x00, 106, 0x00};
 
+/* Serial through INQUIRY */
+static unsigned char ftt_cdb_serial[] =
+	{0x12, 0x01, 0x80, 0x00, 14, 0x00};
+
 /* REQUEST SENSE */
 static unsigned char ftt_cdb_request_sense[] =
 	{0x03, 0x00, 0x00, 0x00, 0x20, 0x00};
@@ -413,10 +417,10 @@ char *prefix;
 
 		/* get serial number */
 
-		res = ftt_do_scsi_command(d, "Inquiry", ftt_cdb_inquiry,
-			6, buf, 128, 10, 0);
+		res = ftt_do_scsi_command(d, "Inquiry", ftt_cdb_serial,
+			6, buf, 16, 10, 0);
 
-		strncpy(serial, buf+96, 10);
+		strncpy(serial, buf+4, 10);
 		serial[10] = '\0';
 
 		sprintf(of, "%s-%s-%02d%02d%02d-%02d%02d.dmp",
@@ -580,6 +584,7 @@ char *s;
 {
 	printf("\nusage:\n\n%s [-d] [-t] [-u] [-r] [-w] [-p prefix] [-o dump_file] [device]\n", s);
 	printf("	-h		print usage\n");
+	printf("	-i		ignore M2 check (useful for generic drive\n");
 	printf("	-d		make a dump\n");
 	printf("	-t		show tape history\n");
 	printf("	-u		show drive usage infromation\n");
@@ -610,6 +615,7 @@ char **argv;
 	struct dirent *dp;
 	int c;
 	int make_dump, list_tape_history, drive_info, read_error, write_error;
+	int check_m2 = 1;
 
 	device = NULL;
 	output_file = NULL;
@@ -619,7 +625,7 @@ char **argv;
 	if (argc > 1) device = argv[1];
 	if (argc > 2) output_file = argv[2];
 */
-	while ((c = getopt(argc, argv, "dhturwp:o:")) != -1)
+	while ((c = getopt(argc, argv, "dhiturwp:o:")) != -1)
 	{
 		switch(c)
 		{
@@ -628,6 +634,9 @@ char **argv;
 			break;
 		case 'u':
 			drive_info = 1;
+			break;
+		case 'i':
+			check_m2 = 0;
 			break;
 		case 't':
 			list_tape_history = 1;
@@ -693,7 +702,7 @@ char **argv;
 
 	d = ftt_open(device, FTT_RDONLY);
 
-	if (!is_m2(d))
+	if (check_m2 && !is_m2(d))
 	{
 		printf("%s is not a Mammoth-2 drive\n", device);
 		ftt_close(d);
@@ -732,11 +741,14 @@ char **argv;
 
 	ftt_close(d);
 	exit(0);
+
+	/* testing area */
+
+	try_scsi(d, ftt_cdb_inquiry, 6, 256);
 	try_scsi(d, ftt_cdb_request_sense, 6, 256);
 	try_scsi(d, ftt_cdb_read_buffer, 10, 256);
-	try_scsi(d, ftt_cdb_inquiry, 6, 256);
-	try_scsi(d, ftt_cdb_send_diagnostic, 6, 256);
 	try_scsi(d, ftt_cdb_log_sense, 10, 256);
+	try_scsi(d, ftt_cdb_send_diagnostic, 6, 256);
 
 	ftt_close(d);
 }
