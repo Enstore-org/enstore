@@ -5,9 +5,12 @@
 import os
 import sys
 import time
+import string
 
 # enstore imports
 import Trace
+import configuration_client	# to talk to configuration server
+import interface		# to get default host and port
 
 def backup_dbase():
 
@@ -110,8 +113,13 @@ if __name__=="__main__":
         Trace.trace(0,"backup Error - "+repr(cmd)+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
 	sys.exit(1)
+
+    backup_config = configuration_client.ConfigurationClient(\
+                        interface.default_host(),\
+                        string.atoi(interface.default_port()), 3).get('backup')
+
     try:
-	bckHome=os.environ['ENSTORE_DB_BACKUP']
+        bckHome = backup_config['dir']
     except:
 	bckHome="/tmp/backup"
         try:
@@ -127,7 +135,7 @@ if __name__=="__main__":
     dir_bck=bckHome+"/dbase."+repr(time.time())
     hst_local=socket.gethostname()
     try:
-	hst_bck=os.environ['ENSTORE_BCKP_HST']
+        hst_bck = backup_config['host']
     except:
 	hst_bck=hst_local
     print "Start database backup"

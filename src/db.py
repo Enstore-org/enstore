@@ -11,6 +11,7 @@ import log_client
 import journal
 import table
 import Trace
+import configuration_client
 
 import libtpshelve
 
@@ -219,14 +220,6 @@ def do_backup(name):
      except ImportError:
     	   import socket
 
-     try:
-	   dir_bck=os.environ['ENSTORE_DB_BACKUP']
-     except:
-	   dir_bck="/tmp/backup"
-     try:
-	   hst_bck=os.environ['ENSTORE_BCKP_HST']
-     except:
-	   hst_bck=socket.gethostname()
      cwd=os.getcwd()
      os.chdir(os.environ['ENSTORE_DB'])
      cmd="tar cvf "+name+".tar "+name+" "+name+".jou.*"
