@@ -58,6 +58,7 @@ def library_manager_callback_socket(ticket) :
 
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
+    print "in user_callback_socket"
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
     write_tcp_socket(sock,ticket,"callback user_callback_socket")
@@ -72,6 +73,7 @@ def send_to_user_callback(ticket) :
 
 # send a message on a tcp socket
 def write_tpc_socket(sock,buffer,errmsg=""):
+    print "in write_tpc_socket",errmsg
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
         print errmsg,"pre-send error:", errno.errorcode[badsock]
@@ -82,6 +84,7 @@ def write_tpc_socket(sock,buffer,errmsg=""):
 
 # read a complete message in a  tcp socket
 def read_tcp_socket(sock,errmsg="") :
+    print "in read_tpc_socket",errmsg
     workmsg = ""
     while 1:
         badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
@@ -98,6 +101,7 @@ def read_tcp_socket(sock,errmsg="") :
             worklist = dict_to_a.a_to_dict(workmsg)
             return worklist
         except SyntaxError:
+	    print "error on dict:",worklist
             continue
     try:
         worklist = dict_to_a.a_to_dict(workmsg)
