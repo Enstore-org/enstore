@@ -68,8 +68,8 @@ class DBChecker:
         self.dbHome = dbHome
         self.jouHome = jouHome
         self.vol_db = db.DbTable("volume", self.dbHome, self.jouHome, ['library', 'volume_family'])
-        self.file_dict = db.DbTable("file", self.dbHome, self.jouHome, ['external_label'])
-        self.bfiddb=bfid_db.BfidDb(self.dbHome)
+        self.file_dict = db.DbTable("file", self.dbHome, self.jouHome)
+        self.bfid_db=bfid_db.BfidDb(self.dbHome)
 
         #rec = self.vol_dict['null00']
         #print "VOL_DICT"
@@ -159,7 +159,7 @@ class DBChecker:
             self.interactive = 0
         return self.fix
 
-    def fix_bfiddb(self, external_label, missing_bfids):
+    def fix_bfid_db(self, external_label, missing_bfids):
         print "Fixing bfid DB for %s records" % (len(missing_bfids),)
         print "volume", external_label
         print "missing_bfids"
@@ -173,18 +173,18 @@ class DBChecker:
             if self.fix:
                 print "Fixing bfid DB: %s" % (bfid,)
                 try:
-                    self.bfiddb.add_bfid(external_label, bfid)
+                    self.bfid_db.add_bfid(external_label, bfid)
                 except (IOError,IndexError), detail:
                     print "Exception %s" % (str(detail),)
                     print "ERRNO",errno.errorcode[detail.errno]
                     if detail.errno == errno.ENOENT:
                         try:
                             print "trying to initialize dbfile for %s"%(external_label,)
-                            self.bfiddb.init_dbfile(external_label)
-                            self.bfiddb.add_bfid(external_label, bfid)
+                            self.bfid_db.init_dbfile(external_label)
+                            self.bfid_db.add_bfid(external_label, bfid)
                         except (IOError,IndexError), detail:
                             print "Exception %s" % (str(detail),)
-                            print "Give up on fixing bfiddb"
+                            print "Give up on fixing bfid_db"
                     else:
                         break
                 fixed_bfids.append(bfid)
@@ -433,8 +433,7 @@ class DBChecker:
         bad_files = {}
         print "+++++++++++++++++++++++++++++++++++++++++"
         print "VOLUME", external_label
-        c = self.file_dict.inx['external_label'].cursor()
-        key, pkey = c.set(external_label)
+        bfid_list = self.bfid_db.get_all_bfids(external_label)
         files=[]    # files belonging to the volume
         self.records_to_fix=[]
         vol_rec = self.vol_db[external_label]
@@ -444,11 +443,10 @@ class DBChecker:
         if nfiles != 0: nfiles = nfiles - 1
         tot_files = 0
         may_fix = 1  # if set volume and all related dbs can be fixed
-        while key:
-            #print "KEY %s PKEY %s" % (key, pkey)
-            record = self.file_dict[pkey]
+        for bfid in bfid_list:
+            record = self.file_dict[bfid]
             # check the consistensy of the file DB record
-            bad_record = self.check_file_db_record(self.file_dict[pkey])
+            bad_record = self.check_file_db_record(self.file_dict[bfid])
             if bad_record:
                 bad_file_db_records.append(bad_record)
             else:
@@ -456,8 +454,6 @@ class DBChecker:
                     # we are not interested in deleted files
                     files.append(record)
             tot_files = tot_files+1 # total files in file db for volume
-            key,pkey = c.nextDup()
-        c.close()
 
         # check if number of files in file db corresponds to eod_cookie
         if tot_files != nfiles:
@@ -501,7 +497,7 @@ class DBChecker:
 
         # check if all bfids exist in the volume bfid DB
         try:
-            bfids = self.bfiddb.get_all_bfids(external_label)
+            bfids = self.bfid_db.get_all_bfids(external_label)
         except (IOError,IndexError), detail:
             print "Exception %s" % (str(detail),)
 
@@ -549,7 +545,7 @@ class DBChecker:
         if ((('fix_bfid_db' in self.options) or ('fix_all' in self.options)) and
             missing_bfids):
             if may_fix:
-                missing_bfids = self.fix_bfiddb(external_label, missing_bfids)
+                missing_bfids = self.fix_bfid_db(external_label, missing_bfids)
             else:
                 print "Database for %s is severely damaged and cannot be fixed"%(external_label,)
 
