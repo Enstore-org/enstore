@@ -12,7 +12,7 @@
 #define ENTERING(name) 						\
     char *_name = name;						\
 								\
-    DEBUG1(stderr, "Entering %s\n", _name);	 		\
+    DEBUG3(stderr, "Entering %s\n", _name);	 		\
     ftt_eprintf("Ok\n"); 					\
     ftt_errno = FTT_SUCCESS;					\
 

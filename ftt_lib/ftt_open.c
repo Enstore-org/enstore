@@ -367,9 +367,9 @@ ftt_open_io_dev(ftt_descriptor d) {
 			ftt_eprintf("ftt_open_io_dev: called when the different device is open");
 		return -1;
     }
-
+	
 	d->which_is_open = d->which_is_default;
-    DEBUG1(stderr,"Actually opening\n");
+	DEBUG1(stderr,"Actually opening file \n");
 
 #ifndef WIN32
 
@@ -378,8 +378,8 @@ ftt_open_io_dev(ftt_descriptor d) {
 		(d->readonly?O_RDONLY:O_RDWR)|FNONBLOCK|O_EXCL,
 		0);
 	if ( d->file_descriptor < 0 ) { /* file wasn't open */
-			d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
-													 d->file_descriptor, "ftt_open_dev",1);
+	  d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
+						   d->file_descriptor, "ftt_open_dev",1);
 
 #else /* This is NT part */
 	{
@@ -395,8 +395,11 @@ ftt_open_io_dev(ftt_descriptor d) {
 #endif
 		
 	    d->which_is_open = -1;
-		return -1;
+	    return -1;
 	}
+	DEBUG1(stderr,"File %s is OPEN : id = %d : IO = %s \n",
+	       d->devinfo[d->which_is_default].device_name,d->file_descriptor,
+	       ( d->readonly?"READ":"READ-WRITE"));
 	return 0;
 }
 int
@@ -496,7 +499,12 @@ ftt_close_io_dev(ftt_descriptor d) {
 		res = (CloseHandle((HANDLE)d->file_descriptor)) ? 0 : -1;
 		DEBUG2(stderr,"close returns %d errno %d\n", res, (int)GetLastError());
 #endif
+		DEBUG1(stderr,"File %s is CLOSE : id = %d : IO = %s \n",
+		       d->devinfo[d->which_is_default].device_name,
+		       d->file_descriptor,
+		       d->readonly?"READ":"READ-WRITE");
 
+		
 		d->which_is_open = -1;
 		d->file_descriptor = -1;
     }

@@ -48,6 +48,8 @@ ftt_scsi_open(const char *pcDevice)
 	  n = (scsi_handle)open(pcDevice, O_RDONLY|O_NDELAY|O_NONBLOCK, 0);
 	}
         DEBUG2(stderr,"filehandle == %d\n",  (int)n );
+	DEBUG1(stderr,"SCSI %s is OPEN : id = %d  \n",pcDevice,(int)n);
+
 	return n;
 
 }
@@ -55,6 +57,7 @@ ftt_scsi_open(const char *pcDevice)
 int 
 ftt_scsi_close(scsi_handle n)
 {
+	DEBUG1(stderr,"SCSI is CLOSE : id = %d  \n",(int)n);
 	return close(n);
 }
 
