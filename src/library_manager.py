@@ -302,22 +302,25 @@ def idle_mover_next(self,external_label):
     j = mover_index
     for i in range(0, mover_cnt):
 	if movers[j]['state'] == 'idle_mover':
-	    # check if this mover is not in the list of suspect volumes
-	    vol_suspect = 0
-	    for vol in self.suspect_volumes:
-		if external_label == vol['external_label']:
-		    vol_suspect = 1
-		    break
 	    mv_suspect = 0
-	    if vol_suspect:
-		for mov in vol['movers']:
-		    if movers[j]['mover'] == mov:
-			mv_suspect = 1
+	    if external_label != None:
+		# check if this mover is not in the list of suspect volumes
+		vol_suspect = 0
+		for vol in self.suspect_volumes:
+		    if external_label == vol['external_label']:
+			vol_suspect = 1
 			break
+		mv_suspect = 0
+		if vol_suspect:
+		    for mov in vol['movers']:
+			if movers[j]['mover'] == mov:
+			    mv_suspect = 1
+			    break
 	    if not mv_suspect:
 		idle_mover_found = 1
 		self.summon_queue_index = i
 		break
+
 	j = j+1
 	if j == mover_cnt:
 	    j = 0
@@ -464,7 +467,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if verbose: pprint.pprint(movers)
 
 	# find the next idle mover
-	mv = idle_mover_next(self, ticket['fc']['external_label'])
+	try:
+	    label = ticket["fc"]["external_label"] # must be retry
+	except:
+	    label = None
+	mv = idle_mover_next(self, label)
 	if mv != None:
 	    # summon this mover
 	    summon_mover(self, mv)
