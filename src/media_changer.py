@@ -314,7 +314,7 @@ if __name__ == "__main__" :
 	      repr(intf.config_port)+")")
     while 1:
         try:
-            Trace.init(intf.name[0:5]+'.medc')
+            #Trace.init(intf.name[0:5]+'.medc')
             mc.logc.send(e_errors.INFO, 1, "Media Changer"+intf.name+"(re) starting")
             mc.serve_forever()
         except:
