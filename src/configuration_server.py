@@ -206,29 +206,31 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	if ticket.has_key('library'):
 	    # search for the appearance of this library manager
 	    # in all configured movers
-	    for key in self.configdict.keys():
-		if string.find (key, ".mover") != -1:
-		    item = self.configdict[key]
-		    if item.has_key('library'):
-			if type(item['library']) == types.ListType:
-			    for i in item['library']:
-				if i == ticket['library']:
-				    mv = {'mover' : key,
-					  'address' : (item['hostip'], 
-						      item['port'])
-					  }
-				    ret.append(mv)
-			else:
-			    if item['library'] == ticket['library']:
-				mv = {'mover' : key,
-				      'address' : (item['hostip'], 
-						   item['port'])
-				      }
-				ret.append(mv)
+	    for srv in self.configdict.keys():
+		if string.find (srv, ".mover") != -1:
+		    item = self.configdict[srv]
+                    for key in ('library', 'libraries'):
+                        if item.has_key(key):
+                            if type(item[key]) == types.ListType:
+                                for i in item[key]:
+                                    if i == ticket['library']:
+                                        mv = {'mover' : srv,
+                                              'address' : (item['hostip'], 
+                                                          item['port'])
+                                              }
+                                        ret.append(mv)
+                            else:
+                                if item[key] == ticket['library']:
+                                    mv = {'mover' : srv,
+                                          'address' : (item['hostip'], 
+                                                       item['port'])
+                                          }
+                                    ret.append(mv)
         return ret
 
     def get_media_changer(self, ticket):
         movers = self.get_movers_internal(ticket)
+        ##print "get_movers_internal %s returns %s" % (ticket, movers)
         ret = ''
         for m in movers:
             mv_name = m['mover']
