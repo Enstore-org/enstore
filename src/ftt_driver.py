@@ -91,7 +91,6 @@ class FTTDriver(driver.Driver):
                     ###XXX HACK!  Tape may have write-protect tab set.  But we really
                     ### ought to get readonly status of the tape from the volume database
                     Trace.log(e_errors.INFO, "ftt open dev: %s %s: reopening read-only" %(detail, detail.value))
-                    self.ftt.rewind() #XXX hack, clear error
                     self.ftt.close()
                     self.ftt = ftt.open(self.device, ftt.RDONLY)
                 elif detail.errno == ftt.SUCCESS: ###XXX hack - why are we getting this?
