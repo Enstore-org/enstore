@@ -191,7 +191,9 @@ case $cmd in
     ;;
 
   *)
-    echo "Getting help lines, one moment please....\n\n"
+    echo "Getting help lines, one moment please...."
+    echo
+    echo
     usage="
 $usage1
 ecmd encp `ecmd encp --usage_line`
