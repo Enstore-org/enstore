@@ -296,7 +296,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
         print "CLEANING", self.driveStatistics['dismount']['cleaning_bit'] ## REMOVE
-        if self.driveStatistics['dismount']['cleaning_bit'] == 1:
+        if self.driveStatistics['dismount']['cleaning_bit'] == '1':
             try:
                 rr = self.mcc.doCleaningCycle(self.mvr_config)
                 Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
