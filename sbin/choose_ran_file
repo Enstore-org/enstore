@@ -6,7 +6,17 @@ if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
 
 # script to return a random file name(s) for tapes in the current inventory
 
-HTTP=http://www-d0en.fnal.gov
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+HTTP=http://${gang}srv2.fnal.gov
 COUNT=${1:-1}
 FORGET=${2:-CLN}
 MUSTHAVE=${3:-""}
@@ -15,7 +25,7 @@ here=`pwd`
 # first go get the volumes that are defined in the inventory
 wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
 rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
-cat VOLUMES_DEFINED | egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS" | egrep "$MUSTHAVE" >V_D
+cat VOLUMES_DEFINED | egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" | egrep "$MUSTHAVE" >V_D
 rm -f VOLUMES_DEFINED
 N=`wc V_D| awk '{print $1}'`
 if [ $N -eq 0 ]; then
