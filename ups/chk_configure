@@ -1,0 +1,12 @@
+#!/bin/sh
+
+. $1/ups/Version
+
+if [ -r /usr/local/products/$PROD_NAME/$PROD_FLAVOR/$PROD_VERSION ]
+then
+	:
+else
+	echo "This product, $UPS_PROD_NAME, has not been configured on this"
+	echo "host.  Please have your system administrator perform a"
+	echo "'ups configure $UPS_PROD_NAME $UPS_PROD_VERSION' on this host"
+fi

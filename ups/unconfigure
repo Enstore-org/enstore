@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# generic unconfigure script
+# find $PROD_DIR
+eval PROD_DIR=\$`echo $UPS_PROD_NAME | tr '[a-z]' '[A-Z]'`_DIR
+
+. $PROD_DIR/ups/Version
+
+# dink the product link
+if cd /usr/local/products/$PROD_NAME/$PROD_FLAVOR 2>/dev/null
+then
+	rm -f $PROD_VERSION
+fi

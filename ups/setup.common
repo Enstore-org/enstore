@@ -1,0 +1,7 @@
+# common environment setup between csh and sh
+# set environment variables here with setenv, which is a shell function
+# now in /bin/sh
+
+setenv PATH $PROD_DIR/bin:$PATH
+
+$PROD_DIR/ups/chk_configure $PROD_DIR
