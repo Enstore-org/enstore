@@ -3,6 +3,19 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
+if [ `uname -n | grep -c -i willow` -ne 0 ] ; then
+  unset setup
+fi
+
+if [ -z "${PYTHON_DIR-}" ] ; then
+  echo "Setting up python"
+  setup python
+  if [ $? -ne 0 ] ; then
+    export PYTHON_DIR=/usr/local
+  fi
+fi
+
+
 if [ -z "${ENSTORE_DIR-}" ] ; then
   echo "Setting up enstore"
   place=`pwd`
@@ -14,15 +27,6 @@ if [ -z "${ENSTORE_DIR-}" ] ; then
   fi
   cd $place
 fi
-
-if [ -z "${PYTHON_DIR-}" ] ; then
-  echo "Setting up python"
-  setup python
-  if [ $? -ne 0 ] ; then
-    export PYTHON_DIR=/usr/local
-  fi
-fi
-
 
 export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
 export ENSTORE_CONFIG_PORT=7510

@@ -98,13 +98,13 @@ def read_tcp_socket(sock,errmsg="") :
             worklist = dict_to_a.a_to_dict(workmsg)
             return worklist
         except SyntaxError:
-            print "SyntaxError on translating:",repr(worklist),"\nretrying"
+            print "SyntaxError on translating:",repr(workmsg),"\nretrying"
             continue
     try:
         worklist = dict_to_a.a_to_dict(workmsg)
         return worklist
     except SyntaxError:
-        raise IOError,"Error handling message"+repr(worklist)
+        raise IOError,"Error handling message"+repr(workmsg)
 
 if __name__ == "__main__" :
     print get_callback()
