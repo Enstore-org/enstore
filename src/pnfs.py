@@ -2453,7 +2453,8 @@ class File:
 			f.write(self.pnfs_vid+'\n')
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
-			f.write(self.complete_crc+'\n')
+			if self.complete_crc:
+				f.write(self.complete_crc+'\n')
 			f.close()
 			# set file size
 			self.set_size()
