@@ -19,7 +19,11 @@ prototypes and necessary headers for the volume import package
 
 #define MAX_LABEL_LEN 70   /* maximum length of  volume label */
 
+#define EARLY_CHECKSUM_SIZE 65536
+
 #define DEFAULT_PERM 0775  /* default permissions for newly created dirs and files*/
+
+#define min(a,b)((a)<(b)?(a):(b))
 
 int do_add_file(char *pnfs_dir, char *filename);
 int verify_file(char *pnfs_dir, char *filename);
@@ -41,4 +45,19 @@ int write_eot1_header(int);
 int set_variable_blocksize();
 int write_eof(int);
 int close_tape();
+
+/* Global vars */
+
+extern char *tape_device;
+extern int tape_fd;
+extern char *tape_db;
+extern char *volume_label;
+extern char *progname;
+
+extern int blocksize;
+extern int verbose;
+
+
+extern unsigned int checksum, early_checksum;
+extern unsigned int early_checksum_size;
 

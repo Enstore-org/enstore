@@ -93,7 +93,7 @@ do_add_file(char *pnfs_dir, char *filename)
 	goto cleanup;
     if (write_db_s(path,"pnfs_dir", pnfs_dir))
 	goto cleanup;
-    early_checksum_size = size>65536 ? 65536: size;
+    early_checksum_size = min(size, EARLY_CHECKSUM_SIZE);
     if (write_db_i(path,"early_checksum_size", early_checksum_size)){
 	goto cleanup;
     }
@@ -102,7 +102,7 @@ do_add_file(char *pnfs_dir, char *filename)
 	goto cleanup;
 
     while (total_bytes<size){
-	nbytes = size-total_bytes > blocksize ? blocksize: size-total_bytes;
+	nbytes = min(size-total_bytes, blocksize);
 	bytes_read = fread(read_buffer, 1, nbytes, fp);
 	if (bytes_read < nbytes){
 	    fprintf(stderr, "%s: %s: short read\n", progname, filename);

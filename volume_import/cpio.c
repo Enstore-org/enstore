@@ -5,8 +5,6 @@
 /* Functions in this module:
    cpio_start(filename, buf, bufsize)
    cpio_next_block(buf, blocksize)
-   cpio_get_checksums(&checksums)
-        checksums is [sanity_size, sanity_checksum, full_size, full_checksum]
 */
 
 /* Note - this code is NOT reentrant/thread-safe.  There can
@@ -22,10 +20,10 @@ static char cpio_header[76+MAX_PATH_LEN+1];
 static int cpio_header_len;
 
 static char *cpio_filename=NULL;
-static int cpio_pos=0; /*Pos into the generated archive*/
-static unsigned int checksum, early_checksum, early_checksum_len;
+static int cpio_pos=0; /*Offset into the generated archive*/
+static int early_checksum_done;
 static unsigned int file_len;
-static unsigned int file_bytes_left;
+static unsigned int file_bytes_left, total_bytes;
 static int cpio_fd = -1;
 
 static char *cpio_trailer = "\
@@ -34,14 +32,11 @@ static char *cpio_trailer = "\
 
 static int cpio_trailer_len = 87; /*String above, +1 for terminator*/
 
-
-
 void
 bytecopy(char *to, char *from, int n){
     while (n-->0)*to++=*from++;
 }
 
-#define min(a,b)((a)<(b)?(a):(b))
 
 #ifdef TESTING
 char *progname;
@@ -89,15 +84,17 @@ cpio_start(char *filename){
     printf("%s\n",cpio_header);
 #endif
     cpio_header_len = strlen(cpio_header)+1;
-    checksum = early_checksum = early_checksum_len = 0;
+    checksum = early_checksum = early_checksum_size = 
+	early_checksum_done = 0;
     cpio_pos = 0;
+    total_bytes = 0;
     return 0;
 }
 
 /*Returns 0 on success, -1 on error*/
 static int
-cpio_read_file(char *buf, int nbytes){
-    int nread;
+cpio_read_file(char *read_buffer, int nbytes){
+    int bytes_read;
 
     if (nbytes<=0)
 	return 0;
@@ -107,56 +104,69 @@ cpio_read_file(char *buf, int nbytes){
 		progname, nbytes, cpio_filename, file_bytes_left);
 	nbytes=file_bytes_left;
     }
-    nread = read(cpio_fd, buf, nbytes);
-    if (nread<0){
+    bytes_read = read(cpio_fd, read_buffer, nbytes);
+    if (bytes_read<0){
 	fprintf(stderr, "%s: read:", progname);
 	perror(cpio_filename);
 	return -1;
-    } else if (nread != nbytes){
+    } else if (bytes_read != nbytes){
 	fprintf(stderr,
 		"%s: read: requested %d bytes from file %s, read %d bytes\n",
-		progname, nbytes, cpio_filename, nread);
+		progname, nbytes, cpio_filename, bytes_read);
     }
-    file_bytes_left -= nread;
+    
+    if (!early_checksum_done){
+	if (total_bytes+bytes_read >= early_checksum_size){
+	    /* finish early checksum */
+	    early_checksum = adler32(early_checksum, read_buffer,
+				     early_checksum_size - total_bytes);
+	    early_checksum_done = 1;
+	} else {
+	    early_checksum = adler32(early_checksum, read_buffer, nbytes);
+	}
+    }
+    checksum = adler32(checksum, read_buffer, nbytes);
+    total_bytes += bytes_read;
+    file_bytes_left -= bytes_read;
     return 0;
 }
-	
-    
+
 	
 
 int 
-cpio_next_block(char *buf, int buf_len){
+cpio_next_block(char *cpio_buffer, int cpio_buffer_len){
     
     int nbytes=0;
-    int buf_pos = 0;
+    int cpio_buffer_pos = 0;
     int trailer_pos = 0;
 
     if (cpio_pos<cpio_header_len){  
 	/* In the header */
-	nbytes = min(buf_len, cpio_header_len-cpio_pos);
-	bytecopy(buf+buf_pos, cpio_header+cpio_pos, nbytes);
+	nbytes = min(cpio_buffer_len, cpio_header_len-cpio_pos);
+	bytecopy(cpio_buffer+cpio_buffer_pos, cpio_header+cpio_pos, nbytes);
 	cpio_pos += nbytes;
-	buf_pos += nbytes;
+	cpio_buffer_pos += nbytes;
     }
     
-    if (file_bytes_left && buf_pos < buf_len){
+    if (file_bytes_left && cpio_buffer_pos < cpio_buffer_len){
 	/* Room for some file data */
-	nbytes = min(buf_len-buf_pos, file_bytes_left);
-	if (cpio_read_file(buf+buf_pos, nbytes))
+	nbytes = min(cpio_buffer_len-cpio_buffer_pos, file_bytes_left);
+	if (cpio_read_file(cpio_buffer+cpio_buffer_pos, nbytes))
 	    return -1;
-	buf_pos += nbytes;
+	cpio_buffer_pos += nbytes;
 	cpio_pos += nbytes;
     }
     
-    if (!file_bytes_left && buf_pos < buf_len){
+    if (!file_bytes_left && cpio_buffer_pos < cpio_buffer_len){
 	/* Room for some trailer data */
 	trailer_pos = cpio_pos-(cpio_header_len+file_len);
-	nbytes = min(buf_len-buf_pos,  cpio_trailer_len-trailer_pos);
-	bytecopy(buf+buf_pos, cpio_trailer+trailer_pos, nbytes);
-	buf_pos+=nbytes;
+	nbytes = min(cpio_buffer_len-cpio_buffer_pos,  
+		     cpio_trailer_len-trailer_pos);
+	bytecopy(cpio_buffer+cpio_buffer_pos, cpio_trailer+trailer_pos, nbytes);
+	cpio_buffer_pos+=nbytes;
 	cpio_pos += nbytes;
     }
-    return buf_pos;
+    return cpio_buffer_pos;
 }
 
 
@@ -192,15 +202,15 @@ cpio_next_block(char *buf, int buf_len){
 int
 main(int argc, char **argv){
     int n;
-    int buf_len;
-    char *buf;
+    int cpio_buffer_len;
+    char *cpio_buffer;
     
     progname=argv[0];
-    buf_len=atoi(argv[1]);
-    buf = (char*)malloc(buf_len);
+    cpio_buffer_len=atoi(argv[1]);
+    cpio_buffer = (char*)malloc(cpio_buffer_len);
     cpio_start(argv[2]);
-    while ((n=cpio_next_block(buf,buf_len))>0){
-	write(1,buf,n);
+    while ((n=cpio_next_block(cpio_buffer,cpio_buffer_len))>0){
+	write(1,cpio_buffer,n);
     }
     return 0;
 }
