@@ -657,6 +657,9 @@ class Pnfs:
             elif machtype=="SunOS":
                 k = "-k"
                 item = "6"
+            elif machtype=="OSF1":
+                k = ""
+                item = "6"
             elif machtype=="Linux":
                 k = ""
                 item = "6"
