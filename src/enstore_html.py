@@ -31,6 +31,8 @@ MEDIA_CHANGERS = "Media Changers"
 MEDIA_CHANGER = "media_changer"
 SERVERS = "Servers"
 ORPHAN_MOVERS = "Orphan Movers"
+THE_INQUISITOR = "The Inquisitor"
+THE_ALARM_SERVER = "The Alarm Server"
 
 GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
 		   "inquisitor", "log_server", "volume_clerk"]
@@ -138,6 +140,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.refresh = refresh
 	if not self.refresh == 0:
 	    self.set_meta()
+        self.source_server = "???"
 	self.contents = []
 
     # generate the three button navigation table for the top of each of the
@@ -188,6 +191,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
 	self.script_title(tr)
 	fl_table.append(tr)
+	tr = HTMLgen.TR(empty_data())
+	tr.append(HTMLgen.TD(HTMLgen.Font("Brought To You By : %s"%(self.source_server,), size=-1),
+			     align="RIGHT"))
+	fl_table.append(tr)
 	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
 				  cellspacing=0, cellpadding=0, align="LEFT",
 				  width="800")
@@ -214,7 +221,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE System Status"
 	self.script_title_gif = "ess.gif"
-	self.description = "%s%sCurrent status of the running Enstore system as listed in the %s. This page is created by the Inquisitor."%(NBSP, NBSP, 										     HTMLgen.Href("config_enstore_system.html",
+	self.source_server = THE_INQUISITOR
+	self.description = "%s%sCurrent status of the running Enstore system as listed in the %s."%(NBSP, NBSP, 										     HTMLgen.Href("config_enstore_system.html",
 							               "Configuration file"))
 
     # output the list of shortcuts on the top of the page
@@ -693,7 +701,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Encp History"
 	self.script_title_gif = "encph.gif"
-	self.description = "%s%sHistory of the most recent Encp commands. This page is created by the Inquisitor."%(NBSP, NBSP)
+	self.source_server = THE_INQUISITOR
+	self.description = "%s%sHistory of the most recent Encp commands."%(NBSP, NBSP)
 	self.error_keys = self.error_text.keys()
 
     # create the body of the page. the data is a list of lists.  each outer list element
@@ -761,7 +770,8 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Configuration"
 	self.script_title_gif = "en_cfg.gif"
-	self.description = "%s%sCurrent Enstore Configuration. This page is created by the Inquisitor."%(NBSP, NBSP)
+	self.source_server = THE_INQUISITOR
+	self.description = "%s%sCurrent Enstore Configuration."%(NBSP, NBSP)
 
     # create the body of the page. the incoming data is a python dictionary
     def body(self, data_dict):
@@ -818,7 +828,8 @@ class EnMiscPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Miscellany"
 	self.script_title_gif = "en_misc.gif"
-	self.description = "%s%sMiscellaneous Enstore information specified by the user (in the configuration file) for inclusion here. This page is created by the Inquisitor."%(NBSP, NBSP)
+	self.source_server = THE_INQUISITOR
+	self.description = "%s%sMiscellaneous Enstore information specified by the user (in the configuration file) for inclusion here."%(NBSP, NBSP)
 
     # create the body of the page, the incoming data is a list of strings
     def body(self, (data_list, html_dir)):
@@ -866,7 +877,8 @@ class EnLogPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Log Files"
 	self.script_title_gif = "en_log.gif"
-	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
+	self.source_server = THE_INQUISITOR
+	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top.Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
 
     def logfile_date(self, logfile):
 	(prefix, year, month, day) = string.split(logfile, '-')
@@ -969,7 +981,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Alarms"
 	self.script_title_gif = "en_act_alarms.gif"
-	self.description = "List of the currently raised alarms.  This page is created by the Alarm Server. %s may also be displayed."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))),)
+	self.source_server = THE_ALARM_SERVER
+	self.description = "List of the currently raised alarms. %s may also be displayed."%(str(HTMLgen.Bold(HTMLgen.Href('enstore_alarm_search.html', 'Previous alarms'))),)
 
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
@@ -1023,7 +1036,8 @@ class EnPatrolPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Patrol"
 	self.script_title_gif = "en_patrol.gif"
-	self.description = "Link to the Patrol web page. This page is created by the Inquisitor."
+	self.source_server = THE_INQUISITOR
+	self.description = "Link to the Patrol web page."
 
     def body(self, data):
 	table = self.table_top()
@@ -1043,6 +1057,7 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh=600, background=background)
 	self.title = "ENSTORE Alarm Search"
 	self.script_title_gif = "en_alarm_hist.gif"
+	self.source_server = THE_ALARM_SERVER
 	self.description = "Active and resolved alarms."
 
     def alarm_table(self, alarms):
@@ -1075,10 +1090,11 @@ class EnPlotPage(EnBaseHtmlDoc):
     bpd = "%s%s"
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif",
-		 description="Enstore system plots. This page is created by the Inquisitor but not automatically refreshed."):
+		 description="Enstore system plots.  This page is not automatically refreshed."):
 	EnBaseHtmlDoc.__init__(self, refresh=0)
 	self.title = title
 	self.script_title_gif = gif
+	self.source_server = THE_INQUISITOR
 	self.description = description
 
     def find_label(self, text):
@@ -1207,6 +1223,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         """
 	self.title = "ENSTORE Active Network Monitoring"
 	self.script_title_gif = "en_net_mon.gif"
+	self.source_server = "The Monitor Server"
 	self.description = "%s%sRecent network monitoring results."%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh)
         
