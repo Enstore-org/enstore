@@ -126,19 +126,23 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	** that we will ftt_dump_partitions() onto, and fork...
         */
         topipe = fdopen(pd[1],"w");
+
 	ftt_close_dev(d);
+
 	switch(ftt_fork(d)){
 	case -1:
 		return -1;
 
 	case 0:  /* child */
-		/*
-		** since stdin is already redirected, we need do nothing...
-                */
-                fseek(stdin,0L,SEEK_SET);
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+
+                fclose(stdin);
 		close(pd[1]);
-                close(0);
 		dup2(pd[0],0);
+                close(pd[0]);
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
 		} else {
@@ -147,15 +151,12 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 		break;
 
 	default: /* parent */
-		/*
-                ** Here in the parent, we need to put stdin back...
-                */
 		/* close the read end of the pipe... */
                 close(pd[0]);
 		/* send the child the partition data */
 		ftt_dump_partitions(p,topipe);
-		res = ftt_wait(d);
   		fclose(topipe);
+		res = ftt_wait(d);
 	}
 
     } else {
