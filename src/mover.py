@@ -717,7 +717,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.transfer_deficiency = 1.0
-        #self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        self.buffer = None
         self.udpc = udp_client.UDPClient()
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
@@ -1990,6 +1990,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         del(self.buffer)
+        self.buffer = None
         self.timer('transfer_time')
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
@@ -2101,6 +2102,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def transfer_completed(self):
         del(self.buffer)
+        self.buffer = None
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -2761,6 +2763,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
             status_info = self.last_error
+        if self.buffer:
+            bytes_buffered = self.buffer.nbytes()
+            buffer_min_bytes = self.buffer.min_bytes
+            buffer_max_bytes = buffer.max_bytes
+        else:
+            bytes_buffered = 0
+            buffer_min_bytes = 0
+            buffer_max_bytes = 0
+            
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
@@ -2771,7 +2782,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'transfers_failed': self.transfers_failed,
                  'bytes_read'     : self.bytes_read,
                  'bytes_written'     : self.bytes_written,
-                 'bytes_buffered' : self.buffer.nbytes(),
+                 'bytes_buffered' : bytes_buffered,
                  'successful_writes': self.files_written_cnt,
                  # from "work ticket"
                  'bytes_to_transfer': self.bytes_to_transfer,
@@ -2784,8 +2795,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'last_location': self.last_location,
                  'time_stamp'   : now,
                  'time_in_state': now - self.state_change_time,
-                 'buffer_min': self.buffer.min_bytes,
-                 'buffer_max': self.buffer.max_bytes,
+                 'buffer_min': buffer_min_bytes,
+                 'buffer_max': buffer_min_bytes,
                  'rate of network': self.net_driver.rates()[0],
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
@@ -2947,7 +2958,7 @@ class DiskMover(Mover):
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.transfer_deficiency = 1.0
-        #self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        self.buffer = None
         self.udpc = udp_client.UDPClient()
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
@@ -3614,6 +3625,7 @@ class DiskMover(Mover):
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         del(self.buffer)
+        self.buffer = None
         self.timer('transfer_time')
         self.tape_driver.close()
         if self.mode == WRITE:
@@ -3708,6 +3720,7 @@ class DiskMover(Mover):
         
     def transfer_completed(self):
         del(self.buffer)
+        self.buffer = None
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -3886,6 +3899,14 @@ class DiskMover(Mover):
         status_info = (e_errors.OK, None)
         if self.state == ERROR:
             status_info = self.last_error
+        if self.buffer:
+            bytes_buffered = self.buffer.nbytes()
+            buffer_min_bytes = self.buffer.min_bytes
+            buffer_max_bytes = buffer.max_bytes
+        else:
+            bytes_buffered = 0
+            buffer_min_bytes = 0
+            buffer_max_bytes = 0
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
@@ -3896,7 +3917,7 @@ class DiskMover(Mover):
                  'transfers_failed': self.transfers_failed,
                  'bytes_read'     : self.bytes_read,
                  'bytes_written'     : self.bytes_written,
-                 'bytes_buffered' : self.buffer.nbytes(),
+                 'bytes_buffered' : bytes_buffered,
                  'successful_writes': self.files_written_cnt,
                  # from "work ticket"
                  'bytes_to_transfer': self.bytes_to_transfer,
@@ -3909,8 +3930,8 @@ class DiskMover(Mover):
                  'last_location': 0,
                  'time_stamp'   : now,
                  'time_in_state': now - self.state_change_time,
-                 'buffer_min': self.buffer.min_bytes,
-                 'buffer_max': self.buffer.max_bytes,
+                 'buffer_min': buffer_min_bytes,
+                 'buffer_max': buffer_max_bytes,
                  'rate of network': self.net_driver.rates()[0],
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
