@@ -265,7 +265,7 @@ class FileDB(DbTable):
 		else:
 			crc = s['crc']
 
-		return {
+		record = {
 			'bfid': s['bfid'],
 			'complete_crc': crc,
 			'deleted': deleted,
@@ -275,10 +275,16 @@ class FileDB(DbTable):
 			'pnfs_name0': s['pnfs_path'],
 			'pnfsid': s['pnfs_id'],
 			'sanity_cookie': (sanity_size, sanity_crc),
-			'size': s['size'],
-			'uid': s['uid'],
-			'gid': s['gid']
+			'size': s['size']
 			}
+
+		# handle uid and gid
+		if s.has_key('uid'):
+			record['uid'] = s['uid']
+		if s.has_key('gid'):
+			record['gid'] = s['gid']
+
+		return record
 
 	def import_format(self, s):
 		if s['deleted'] == 'yes' or s['deleted'] == 'y':
