@@ -708,7 +708,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     #Check the last used non-default brand for performance reasons.
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(__csc)
-        volume_info = vcc.inquire_vol(volume, 5, 3)
+        volume_info = test_vcc.inquire_vol(volume, 5, 3)
         if e_errors.is_ok(volume_info):
             return __csc
         else:
@@ -3492,7 +3492,7 @@ def set_pnfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
         fc_ticket["fc"]["drive"] = drive
 
-        csc = get_csc()
+        csc = get_csc(ticket['volume']) #Always get the correct system.
         fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
