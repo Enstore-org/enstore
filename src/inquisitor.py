@@ -405,8 +405,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
 	    Trace.trace(enstore_constants.INQERRORDBG, "lm_state - ERROR, timed out")
 
-    # get the information from the library manager(s)
-    def update_library_manager(self, lib_man):
+    def update_lm_function(self, lib_man):
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, lib_man.name)
 	host = lib_man.host
@@ -416,6 +415,19 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.suspect_vols(lmc, (host, port), lib_man.name, now)
 	self.work_queue(lmc, (host, port), lib_man.name, now)
 	self.new_server_status = 1
+
+    # get the information from the library manager(s)
+    def update_library_manager(self, lib_man):
+	# need to get other infor from library manager
+	if lib_man.no_status_thread():
+	    # we must keep track of the fact that we created a thread for this 
+	    # server so the next time we do not create  another one.
+	    lib_man.status_thread = threading.Thread(group=None,
+						     target=self.update_lm_function,
+						     name="STATUS_%s"%(lib_man.name,),
+						     args=(lib_man,))
+	    lib_man.status_thread.setDaemon(1)
+	    lib_man.status_thread.start()
 
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):
