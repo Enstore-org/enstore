@@ -540,18 +540,21 @@ class AML2_MediaLoader(MediaLoaderMethods):
         first_found = 0
         libraryManagers = inTicket['moverConfig']['library']
         if type(libraryManagers) == types.StringType:
+            lm = libraryManagers
             library = string.split(libraryManagers,".")[0]
         elif type(libraryManagers) == types.ListType:
+            lm = libraryManagers[0]
             library = string.split(libraryManagers[0],".")[0]
         else:
             Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field not found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
-        if not inTicket['moverConfig'].has_key('CleanTapeVolumeFamily'):
+        lm_info = self.csc.get(lm)
+        if not lm_info.has_key('CleanTapeVolumeFamily'):
             Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
-        cleanTapeVolumeFamily = inTicket['moverConfig']['CleanTapeVolumeFamily']
+        cleanTapeVolumeFamily = lm_info['CleanTapeVolumeFamily']
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
@@ -725,7 +728,7 @@ class Manual_MediaLoader(MediaLoaderMethods):
              drive,             # drive id
              media_type):       # media type
         os.system("mc_popup 'Please load %s'"%(external_label,))
-        return (0, "ok","request successful")
+        return ("ok",0, "request successful")
     
     # unload volume from the drive
     def unload(self,
@@ -733,7 +736,7 @@ class Manual_MediaLoader(MediaLoaderMethods):
                drive,           # drive id
                media_type):     # media type
         os.system("mc_popup 'Please unload %s'"%(external_label),)
-        return (0, "ok","request successful")
+        return ("ok",0,"request successful")
     
 
     def cleanCycle(self, inTicket):
@@ -765,19 +768,22 @@ class Manual_MediaLoader(MediaLoaderMethods):
         first_found = 0
         libraryManagers = inTicket['moverConfig']['library']
         if type(libraryManagers) == types.StringType:
+            lm = libraryManagers
             library = string.split(libraryManagers,".")[0]
         elif type(libraryManagers) == types.ListType:
+            lm = libraryManagers[0]
             library = string.split(libraryManagers[0],".")[0]
         else:
             Trace.log(e_errors.ERROR, 'mc: library_manager field not found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
-        if not inTicket['moverConfig'].has_key('CleanTapeVolumeFamily'):
+        lm_info = self.csc.get(lm)
+        if not lm_info.has_key('CleanTapeVolumeFamily'):
             Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
             
-        cleanTapeVolumeFamily = inTicket['moverConfig']['CleanTapeVolumeFamily']
+        cleanTapeVolumeFamily = lm_info['CleanTapeVolumeFamily']
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
