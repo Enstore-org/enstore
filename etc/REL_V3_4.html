@@ -4,6 +4,12 @@
 Encp changes:
 =============
 
+Added the switch --check.  When this option is used, encp goes through all
+of the pre-transfer setup, but does not actually perform the transfer.  If an
+error is found, it is reported like a normal encp error.  If the user is
+returned success, it does not guarantee that re-running the encp without
+--check will also be without errors.
+
 A number of old metadata 'formats' were discovered that encp was not
 able to handle.  They are now accepted.  One format, was that all bfid 
 brands by convention should be 4 bytes but some were found to be 3 
