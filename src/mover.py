@@ -604,7 +604,14 @@ class Mover(dispatching_worker.DispatchingWorker,
 	cmd = 'enrsh -n %s cat %s/%s ' % (host, dir, file)
 	p = os.popen(cmd, 'r')
 	r = p.read()
-	s = p.close()
+        # when mover restarts by 'at' p.close generates IOerror no child process
+        # causing mover failure
+        # to avoid this use try .. except..
+        try:
+            s = p.close()
+        except IOError, detail:
+            Trace.log(e_errors.WARNING, "error closing pipe %s"%(detail,))
+            s = None
 	if s:
 	    Trace.log(e_errors.ERROR, "error getting outage file (%s)"%(self.name,))
 	lines = string.split(r,'\n')
@@ -1603,8 +1610,11 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.reset(sanity_cookie, client_crc_on)
         if ticket['encp'].has_key('delayed_dismount'):
-            delay = 60 * int(ticket['encp']['delayed_dismount'])
-                                                                
+            Trace.log(e_errors.INFO,"DD type %s"%(type(ticket['encp']['delayed_dismount']),))
+            if ((type(ticket['encp']['delayed_dismount']) is type(0)) or
+                (type(ticket['encp']['delayed_dismount']) is type(0.))):
+                delay = 60 * ticket['encp']['delayed_dismount']
+            Trace.log(e_errors.INFO,"d1 %s"%(delay,))                                                    
         if delay > 0:
             self.delay = max(delay, self.default_dismount_delay)
         elif delay < 0:
@@ -1612,6 +1622,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.delay = 0   
         self.delay = min(self.delay, self.max_dismount_delay)
+        Trace.log(e_errors.INFO,"d2 %s"%(delay,))                                                    
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
