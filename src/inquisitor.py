@@ -211,15 +211,16 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # if we raise an alarm we need to include the following info.
 	    alarm_info = {'server' : server.name}
 	    # first see if the server is supposed to be restarted.
-	    if (server.norestart or server.restart_failed) and not server.did_restart_alarm:
-		# do not restart, raise an alarm that the
-		# server is dead.
-		if not server.name == enstore_constants.ALARM_SERVER:
-		    Trace.alarm(e_errors.ERROR, e_errors.SERVERDIED, alarm_info)
-		else:
-		    Trace.log(e_errors.ERROR,
-			      "%s died and will not be restarted"%(server.name,))
-		server.did_restart_alarm = 1
+            if server.norestart:
+                if server.restart_failed and not server.did_restart_alarm:
+		    # do not restart, raise an alarm that the
+		    # server is dead.
+		    if not server.name == enstore_constants.ALARM_SERVER:
+			Trace.alarm(e_errors.ERROR, e_errors.SERVERDIED, alarm_info)
+		    else:
+			Trace.log(e_errors.ERROR,
+				  "%s died and will not be restarted"%(server.name,))
+		    server.did_restart_alarm = 1
 	    else:
 		# we must keep track of the fact that we created a thread for this 
 		# client so the next time we find the server dead we do not create 
@@ -497,6 +498,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 					 now, name)
 	    self.new_server_status = 1
 	    server.is_alive()
+            server.did_restart_alarm = 0
 	return server
 
     # this is the routine that is called when a message arrives from the event
