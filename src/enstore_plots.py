@@ -618,15 +618,32 @@ class BpdMoverDataFile(EnPlot):
 
     def __init__(self, dir, mover):
 	EnPlot.__init__(self, dir, "%s-%s"%(enstore_constants.BPD_FILE, mover))
+	self.do_delete_ps = NO
+
+    def cleanup(self, keep, pts_dir):
+        if not keep:
+            # delete the gnu command file
+            os.system("rm %s"%(self.gnufile,))
+	    if self.do_delete_ps == YES:
+		os.system("rm %s"%(self.psfile,))
+	else:
+            if pts_dir:
+                # move these files somewhere
+                os.system("mv %s %s"%(self.gnufile, pts_dir))
+		if self.do_delete_ps == YES:
+		    os.system("mv %s %s"%(self.psfile, pts_dir))
 
     def install(self, dir, use_subdir):
 	# see if there is a subdir to 'dir' that is bpd_per_mover.  if so, install
-	# our files there. only do this is told to.
+	# our files there. only do this if told to.
 	if use_subdir:
 	    new_dir = enstore_functions.get_bpd_subdir(dir)
 	else:
 	    new_dir = dir
 	EnPlot.install(self, new_dir)
+	if not dir == new_dir:
+	    # we moved the files to the sub dir so on cleanup, delete them from here
+	    self.do_delete_ps = YES
 
 class BpdDataFile(EnPlot):
 
@@ -634,6 +651,17 @@ class BpdDataFile(EnPlot):
 	EnPlot.__init__(self, dir, enstore_constants.BPD_FILE)
 	self.per_mover_files_d = {}
 	self.movers_d = {}
+
+    def cleanup(self, keep, pts_dir):
+        if not keep:
+            # delete the gnu command file
+            os.system("rm %s"%(self.gnufile,))
+        else:
+            if pts_dir:
+                # move these files somewhere
+                os.system("mv %s %s"%(self.gnufile, pts_dir))
+	for mover in self.per_mover_files_d.keys():
+	    mover.cleanup(keep, pts_dir)
 
     # write out the files for each movers' bytes/day
     def per_mover(self):

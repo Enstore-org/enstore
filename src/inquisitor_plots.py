@@ -144,6 +144,7 @@ class InquisitorPlots:
 
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
+	    bpdfile.cleanup(self.keep, self.keep_dir)
 	    mbpdfile.cleanup(self.keep, self.keep_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
 
