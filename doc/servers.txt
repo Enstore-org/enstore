@@ -44,10 +44,26 @@ python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_raw \
 If you use the standard servers, this has been done already so don't add any
 volumes.  This should be viewed as an administrator's job.
 
-There isn't any nice way to dump the volume information right now.  But all
-the information can be seen simply by listing volume_clerk.jou in the enstore
-etc directory.  That's the journal database file for the volume clerk.
+All the information can be seen simply by listing volume_clerk.jou in the
+enstore etc directory.  That's the journal database file for the volume clerk.
 
+There are also 2 options to the vcc command that provide information:
+
+IRIX-hppc[616] 11:36:31 src$ vcc --vols --list
+{'vols': "['flop4', 'flop22', 'flop3', 'flop2', 'flop1']", 'status': 'ok'}
+
+IRIX-hppc[617] 11:40:48 src$ vcc --vol=flop22 --list
+{'capacity_bytes': 1400000L,
+ 'eod_cookie': 'none',
+ 'error_inhibit': 'none',
+ 'external_label': 'flop22',
+ 'file_family': 'family_process',
+ 'library': 'activelibrary',
+ 'media_type': 'floppy',
+ 'remaining_bytes': 1400000L,
+ 'status': 'ok',
+ 'user_inhibit': 'none',
+ 'work': 'addvol'}
 
 --------------------------FILE CLERK------------------------------------------
 
@@ -56,15 +72,16 @@ have been written to the volumes.
 
 All the information can be seen simply by listing file_clerk.jou in the
 enstore etc directory.  That's the journal database file for the file clerk.
-There is also 2 options to the bfid command:
 
-IRIX-hppc[2513] 14:43:01 src$ bfid --list --bfids
+There are also 2 options to the fcc command that provide information:
+
+IRIX-hppc[2513] 14:43:01 src$ fcc --list --bfids
 {'bfids': "['88785533200000L', '88785532100000L', '88785533000000L', \
             '88785532500000L', '88785533400000L', '88785531900000L', \
             '88785532300000L', '88785532600000L']",
  'status': 'ok'}
 
-IRIX-hppc[2514] 14:43:05 src$ bfid --list --bfid=88785532500000L
+IRIX-hppc[2514] 14:43:05 src$ fcc --list --bfid=88785532500000L
 {'bfid': '88785532500000L',
  'bof_space_cookie': '(778239, 788479)',
  'capacity_bytes': 1400000L,
@@ -80,7 +97,7 @@ IRIX-hppc[2514] 14:43:05 src$ bfid --list --bfid=88785532500000L
  'status': 'ok',
  'user_inhibit': 'none',
  'work': 'bfid_info'}
-I
+
 
 
 --------------------------LIBRARY MANAGER-------------------------------------

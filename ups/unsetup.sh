@@ -12,8 +12,10 @@ fi
 unset encp
 unset pnfs
 unset econ
-unset bfid
+unset fcc
+unset vcc
 
 unset rddt
 unset clbk
 unset udpc
+unset ranf

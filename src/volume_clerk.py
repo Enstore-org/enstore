@@ -11,11 +11,9 @@ dict = JournalDict({},"volume_clerk.jou")
 
 class VolumeClerkMethods(DispatchingWorker) :
 
+    # add : some sort of hook to keep old versions of the s/w out
+    # since we should like to have some control over the format of the records.
     def addvol(self, ticket):
-        # add : except out to error if name exists
-        # add : some sort of hook to keep old versions of the s/w out
-        #        since we should like to have some control
-        #        over the format of the records.
         external_label = ticket["external_label"]
         if dict.has_key(external_label) :
             ticket["status"] = "volume already exists"
@@ -24,6 +22,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
         return
+
 
     def delvol(self, ticket):
         ticket["status"] = "ok"
@@ -34,15 +33,15 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(ticket)
         return
 
+
+    # I suppose, to use volumes in the order they were declared to us.
     def next_write_volume (self, ticket) :
-        #  this looks awful, but I tried a smaller test on 16000
-        #  entries, so we have time to fix it... It would be
-        #  better, I suppose, to use volumes in the order they
-        #  were declared to us.
         exec ("vol_veto_list = " + ticket["vol_veto_list"])
         min_remaining_bytes = ticket["min_remaining_bytes"]
         library = ticket["library"]
-	file_family = ticket["file_family"]
+        file_family = ticket["file_family"]
+
+        # go through the volumes and find one we can use for this request
         for k in dict.keys() :
             v = dict[k]
             if v["library"] != library :
@@ -60,15 +59,17 @@ class VolumeClerkMethods(DispatchingWorker) :
             for veto in vol_veto_list :
                 if extl == veto :
                     vetoed = 1
+                    break
             if vetoed :
                 continue
             v["status"] = "ok"
             self.reply_to_caller(v)
             return
-        # default case.
+
+        # nothing was available
         ticket["status"] = "no new volume"
         self.reply_to_caller(ticket)
-        return
+
 
     def set_remaining_bytes(self, ticket) :
         try:
@@ -82,7 +83,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             record["status"] = "no such volume"
         self.reply_to_caller(record)
-        return
+
 
     def inquire_vol(self, ticket) :
         try:
@@ -92,7 +93,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             ticket["status"] = "no such volume"
         self.reply_to_caller(ticket)
-        return
+
 
     def set_writing(self, ticket) :
         try:
@@ -106,6 +107,11 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(record)
         return record
 
+    # return all the volumes in our dictionary.  Not so useful!
+    def get_vols(self,ticket) :
+            self.reply_to_caller({"status" : "ok",\
+                                  "vols"  :repr(dict.keys()) })
+
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass
 
@@ -117,12 +123,10 @@ if __name__ == "__main__" :
     config_host = "localhost"
     #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
-    config_file = ""
     config_list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
-               ,"config_list","help"]
+    options = ["config_host=","config_port=","config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -150,3 +154,5 @@ if __name__ == "__main__" :
     vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
     vs.set_csc(csc)
     vs.serve_forever()
+
+

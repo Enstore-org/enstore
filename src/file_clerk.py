@@ -125,11 +125,10 @@ if __name__ == "__main__" :
     config_host = "localhost"
     #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
-    config_file = ""
     config_list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
+    options = ["config_host=","config_port="\
                ,"config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
