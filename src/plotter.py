@@ -55,7 +55,6 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             else:
                 self.html_dir = enstore_files.default_dir
                 plot_file = enstore_files.default_plot_html_file()
-		pfile = plot_f
 	else:
 	    self.html_dir = html_file
 	    pfile = enstore_files.plot_html_file_name()
