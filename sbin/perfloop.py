@@ -33,6 +33,9 @@ cuTime = "5"        # CLEAN UP TIME. A DELAY THAT ALLOWS THE SYSTEM TO FINISH UP
 defTstTime = "5"    # DEFAULT TIME FOR TEST TO RUN IF NO  OPTION GIVEN
 defNetPerfPath = "/opt/netperf/netperf"           # LOCATION OF NETWORK PERFORMANCE TEST
 defListPath = "/usr/local/etc/farmlets/d0en"      # LOCATION OF FILE CONTAINING LIST OF NODES TO BE TESTED
+ROUTE="/sbin/route"
+route_add=""
+route_del=""
 TRUE = 1
 FALSE = 0
 
@@ -43,9 +46,21 @@ FALSE = 0
 #              : RESULT IN 'TMPRESLTDICT'
 ####################################################################
 def testSeq(fromNode, toNode):
+    global route_add,route_del
     ppid = os.getpid()
     testdict["%s %s" % (fromNode, toNode)] = ""
-    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
+    if fromNode[0:4] == "d0en":
+	if fromNode[-1:] == "a":
+	    route_add = "%s add -host %s eth0" % (ROUTE,toNode,)
+	    route_del = "%s del %s" % (ROUTE,toNode,)
+	elif fromNode[-1:] == "b":
+	    route_add = "%s add -host %s eth1" % (ROUTE,toNode,)
+	    route_del = "%s del %s" % (ROUTE,toNode,)
+    else:
+        route_add = "pwd"
+        route_del = "pwd"
+    # print 'rsh %s "%s;%s -l %s -H %s;%s" ' % (fromNode, route_add, defNetPerfPath, paramdict['testtime'], toNode,route_del)
+    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s;%s -l %s -H %s;%s" 2>/dev/null' % (fromNode, route_add, defNetPerfPath, paramdict['testtime'], toNode,route_del))
     if testdict["%s %s" % (fromNode, toNode)] == "":
         testdict["%s %s" % (fromNode, toNode)] = findChild(ppid, fromNode, toNode)
     
@@ -61,14 +76,17 @@ def testSeq(fromNode, toNode):
 # POSTCONDITION: RETURNS THE CHILD PID THAT WAS JUST CREATED.
 ###########################################################################
 def findChild(ppid, fromNode, toNode):
+    global route_add,route_del
+    #print "in findChild",ppid, 'rsh %s "%s;%s' % (fromNode,route_add,defNetPerfPath,)
     cpid = ""
     a = os.popen("ps hjw")  # IF /OPT/NETPERF/NETPERF PATH CHANGES, YOU MAY HAVE TO ADD
     a = a.read()            # AN ADDITIONAL W IF THE PATH NAME GETS TO LONG.
+    #print "in findChild",a
     a = string.split(a, "\n")
     num = 0
     while num < len(a) - 1:
         b = string.split(a[num])
-        if b[0] == str(ppid) and string.find(a[num], 'rsh %s "%s -l %s -H %s"' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode)) >= 0:
+        if b[0] == str(ppid) and string.find(a[num], 'rsh %s "%s;%s' % (fromNode,route_add,defNetPerfPath,)) >= 0:
             cpid = str(b[1])
             break
         else:
@@ -87,8 +105,10 @@ def findChild(ppid, fromNode, toNode):
 ###############################################################################
 def tstHung():
     num = 0
+    #print "In tstHung. num=",num
     while num < len(testdict.keys()):
         name = testdict.keys()[num]
+        #print "In tstHung. name=",name,testdict[name]
         fromNode = name[0]
         toNode = name[1]
         
@@ -105,6 +125,7 @@ def tstHung():
                     resultdict[name] = "-1"
                 else:
                     tempresltdict[name] = tempresltdict[name].read()
+                    #print  tempresltdict[name]
                     tempresltdict[name] = string.split(tempresltdict[name], "\n")
                     if string.find(tempresltdict[name][0], "TCP STREAM TEST") < 0:   # SEE IF TEST WAS EVER DONE
                         resultdict[name] = "-2"
