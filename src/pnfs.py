@@ -741,6 +741,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.rmajor, self.rminor = (0, 0)
         self.major, self.minor = (0, 0)
 
+        #In case the stat hasn't been done already, do it now.
+        if not hasattr(self, "pstat"):
+            self.get_stat()
+        
         #Get the user id of the file's owner.
         try:
             self.uid = self.pstat[stat.ST_UID]
@@ -787,9 +791,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.mode = 0
             self.mode_octal = 0
 
+        #if os.path.exists(self.filepath):
+        if stat.S_ISREG(self.pstat[stat.ST_MODE]):
+            real_file = 1
+        else:
+            real_file = 0  #Should be the parent directory.
+
         #Get the file size.
         try:
-            if os.path.exists(self.filepath):
+            if real_file:    #os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
                 if self.file_size == 1L:
                     self.file_size = self.get_file_size()
@@ -805,7 +815,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Get the file inode.
         try:
-            if os.path.exists(self.filepath):
+            if real_file:   #os.path.exists(self.filepath):
                 self.inode = self.pstat[stat.ST_INO]
             else:
                 try:

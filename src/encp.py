@@ -433,7 +433,19 @@ def format_class_for_print(object, name):
     return formated_string
 
 def get_file_size(file):
-    if file[:6] == "/pnfs/":
+
+    try:
+        statinfo = os.stat(file)
+        filesize = statinfo[stat.ST_SIZE]
+    except (OSError, IOError):
+        filesize = None #0
+
+    #If the file has a size of one and is a pnfs file, we need to take
+    # extra steps to determine if it is a large file.
+    # The function is_pnfs_path() only checks the name of the file for
+    # performance reasons.  If it does not exist, then the stat() call
+    # above would have already failed and filesize would not equal 1.
+    if filesize == 1 and pnfs.is_pnfs_path(file, check_name_only = 1):
         #Get the remote pnfs filesize.
         try:
             pin = pnfs.Pnfs(file)
@@ -441,13 +453,7 @@ def get_file_size(file):
             filesize = pin.file_size
         except (OSError, IOError):
             filesize = None #0
-    else:
-        try:
-            statinfo = os.stat(file)
-            filesize = statinfo[stat.ST_SIZE]
-        except (OSError, IOError):
-            filesize = None #0
-
+    
     #Return None for failures.
     if filesize != None:
         #Always return the long version to avoid 32bit vs 64bit problems.    
@@ -2104,21 +2110,23 @@ def get_pinfo(p):
     try:
         # get some debugging info for the ticket
         pinf = {}
-        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',
-                   'major','minor','rmajor','rminor',
-                   'mode','pstat', 'inode' ] :
+        for k in [ 'pnfsFilename', 'gid', 'gname', 'uid', 'uname',
+                   'major', 'minor', 'rmajor', 'rminor',
+                   'mode', 'pstat', 'inode' ]:
+
             try:
                 pinf[k] = getattr(p, k)
             except AttributeError:
                 if default_pinf.has_key(k):
                     pinf[k] = default_pinf[k]
+
         return pinf
 
     except (OSError, IOError), msg:
         error = getattr(msg, "error", errno.EIO)
         raise EncpError(error, None, errno.errorcode[error])
     except (IndexError,):
-        raise EncpError(None, "Unable to obtain bfid.", e_errors.OSERROR)
+        raise EncpError(None, "Unable to obtain stat info.", e_errors.OSERROR)
 
 def get_uinfo():
     uinfo = {}
@@ -5190,6 +5198,21 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             raise EncpError(None, "Error obtaining tape listing.",
                             e_errors.BROKEN, rest)
 
+        try:
+            #When a volume is read, "encp --volume <volume>..." will set
+            # e.input[0] to none.  A read by "get" will set e.input[0] to
+            # the pnfs directory.
+            if e.input[0] == None:
+                
+                input_dir_list = []
+            else:
+                input_dir_list = os.listdir(e.input[0])
+        except OSError, msg:
+            rest = {'volume':e.volume}
+            raise EncpError(getattr(msg, "errno", None),
+                            "Error obtaining tape listing.",
+                            e_errors.OSERROR, rest)
+
         #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
@@ -5317,7 +5340,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
                 #Determine the inupt filename.
                 ifullname = os.path.join(e.input[0], filename)
-            elif os.path.exists(pnfs_name0):
+            #elif os.path.exists(pnfs_name0):
+            elif os.path.basename(pnfs_name0) in input_dir_list:
                 #If we get here, then we have the file's metadata and
                 # the file does exist.
                 
@@ -5384,75 +5408,67 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                             'size': None,
                             'status' : (e_errors.OK, None)
                             }
-            
-            try:
-                lc = fc_reply['location_cookie']
-            except KeyError:
-                raise EncpError(None, 'No location cookie found.',
-                                e_errors.CONFLICT)
 
+            #Check to make sure that this file is not marked
+            # as deleted.  If so, print error and exit.
+            if fc_reply.get('deleted', None) == "yes":
+                status = (e_errors.USERERROR,
+                          "Requesting file (%s) that has been deleted."
+                          % (generate_location_cookie(number),))
+                raise EncpError(None, status[1], status[0],
+                                {'volume' : e.volume})
+
+            #These lines should NEVER give an error.
+            bfid = fc_reply['bfid']
+            lc = fc_reply['location_cookie']
+            pnfs_name0 = fc_reply.get('pnfs_name0', None)
+            pnfsid = fc_reply.get('pnfsid', None)
+            
             Trace.message(TRANSFER_LEVEL,
                           "Preparing file number %s for transfer." %
                           (extract_file_number(lc),))
+
+            if pnfsid == None or pnfs_name0 == None:
+                #If we get here, then most likely, this is the first time
+                # the volume has been read.
+                sys.stdout.write("Location %s has no known metadata.\n" % lc)
+
+                #Determine the inupt filename.
+                ifullname = os.path.join(e.input[0], filename)
+            #elif os.path.exists(pnfs_name0):
+            elif os.path.basename(pnfs_name0) in input_dir_list:
+                #If we get here, then we have the file's metadata and
+                # the file does exist.
+                
+                #Determine the inupt filename.
+                ifullname = pnfs_name0
+            else:
+                try:
+                    #Using the original directory as a starting point, try
+                    # and determine the new file name/path/location.
+                    orignal_directory = os.path.dirname(pnfs_name0)
+                    #Try to obtain the file name and path that the
+                    # file currently has.
+                    p = pnfs.Pnfs(pnfsid, orignal_directory)
+                    ifullname = p.get_path() #pnfsid, orignal_directory)
+                except (OSError, KeyError, AttributeError):
+                    sys.stdout.write("Location %s is active, but the "
+                                     "file has been deleted.\n" % lc)
+
+                    #Determine the inupt filename.
+                    ifullname = os.path.join(e.input[0], filename)
+
+            #Get the pnfs interface class instance.
+            p = pnfs.Pnfs(ifullname)
             
-            #Attempt to get the pnfs ID.  If an encp failed in the
-            # right way it is possible for this entry to not exist.
-            try:
-                pnfsid = fc_reply['pnfsid']
-            except KeyError:
-                #If we get here, then a file does not have all
-                # the information in the file database, but does
-                # have the deleted field set to 'no'.
-                pnfsid = None
-                sys.stdout.write("Location %s is active, but the "
-                                 "pnfs id is unknown.\n" % lc)
-                #continue
+            #Determine the filesize.  None if non-existant.
+            file_size = get_file_size(ifullname)
 
-            try:
-                #Using the original directory, try and determine
-                # the new file name.
-                orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
-                #Try to obtain the file name and path that the
-                # file currently has.
-                p = pnfs.Pnfs(pnfsid, orignal_directory)
-                ifullname = p.get_path() #pnfsid, orignal_directory)
-                if e.output[0] == "/dev/null":
-                    ofullname = e.output[0]
-                elif getattr(e, "sequential_filenames", None):
-                    #The user overrode "get" to use numbered filenames.
-                    ofullname = os.path.join(e.output[0], lc)
-                else:
-                    ofullname = os.path.join(e.output[0],
-                                             os.path.basename(ifullname))
-
-                file_size = get_file_size(ifullname)
-
-            except (OSError, KeyError, AttributeError):
-                #If we get here then there was a problem determining
-                # the name and path of the file.  Most likely, there
-                # is an entry in pnfs but the metadata is not complete.
-                ifullname = os.path.join(e.input[0], lc)
-
-                p = pnfs.Pnfs(ifullname)
-
-                if e.output[0] == "/dev/null":
-                    ofullname = e.output[0]
-                else:
-                    ofullname = os.path.join(e.output[0], lc)
-
-                file_size = None #Not known.
-
-                sys.stdout.write("Location %s is active, but the "
-                                 "file has been deleted.\n" % lc)
-                #continue
-
-            try:
-                #bfid = bfids_list[i] #Set this alias...
-                bfid = fc_reply['bfid']
-            except IndexError:
-                #If we get here then there is no metadata for the volume
-                # for a tape read.  Set dummy values.
-                bfid = None
+            #Determine the output filename.
+            if e.output[0] == "/dev/null":
+                ofullname = e.output[0]
+            else:
+                ofullname = os.path.join(e.output[0], filename)
 
             read_work = 'read_from_hsm' #'read_tape'
 
