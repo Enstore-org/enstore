@@ -179,7 +179,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            Trace.log(e_errors.ERROR, "Unable to connect data socket: %s" %
+                      str(result_dict['status']))
             return work_ticket
 
         Trace.message(5, "Waiting for data")
@@ -203,7 +204,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            Trace.log(e_errors.ERROR, "Waiting for data from open data "
+                      "socket failed: %s" % str(result_dict['status']))
             return work_ticket
 
         Trace.message(5, "Reading data from tape.")
@@ -236,7 +238,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            Trace.log(e_errors.ERROR, "File transfer failed: %s" %
+                      str(result_dict['status']))
             return work_ticket
 
         #We should not need this process_request() call.  The mover shoule
@@ -292,7 +295,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
 
             #Log the error and return.
-            Trace.log(e_errors.INFO, str(mover_done_ticket['status']))
+            Trace.log(e_errors.INFO, "Dectected End Of Data: %s" %
+                      str(mover_done_ticket['status']))
             return work_ticket
         
         # Verify that everything went ok with the transfer.
@@ -308,7 +312,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(mover_done_ticket['status']))
+            Trace.log(e_errors.ERROR, "Final dialog error: %s" %
+                      str(mover_done_ticket['status']))
             return work_ticket
 
         ####################################################################
@@ -393,7 +398,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(work_ticket['status']))
+            Trace.log(e_errors.ERROR, "Filesize comparison error: %s" %
+                      str(work_ticket['status']))
             return work_ticket
         
         #Check the crc.
@@ -415,7 +421,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
 
             #Log the error and return.
-            Trace.log(e_errors.ERROR, str(work_ticket['status']))
+            Trace.log(e_errors.ERROR, "CRC comparison error: %s" %
+                      str(work_ticket['status']))
             return work_ticket
 
         tstring = '%s_overall_time' % work_ticket['unique_id']
