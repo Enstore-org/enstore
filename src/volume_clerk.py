@@ -179,10 +179,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              for bfid in bfid_list:
                  fcc.bfid = bfid
                  vm_ticket = fcc.get_volmap_name()
-                 vol_map_name = vm_ticket["pnfs_mapname"]
-                 (vm_dir,file) = os.path.split(vol_map_name)
-                 ret = fcc.del_bfid()
-                 os.remove(vol_map_name)
+                 if vm_ticket.has_key("pnfs_mapname"):
+                     vol_map_name = vm_ticket["pnfs_mapname"]
+                     (vm_dir,file) = os.path.split(vol_map_name)
+                     ret = fcc.del_bfid()
+                     os.remove(vol_map_name)
+                 else:
+                     Trace.log(e_errors.WARNING, "no pnfs_mapname entry for bfid %s"%
+                               (fcc.bfid,))
              if vm_dir:
                  os.rmdir(vm_dir)
              # remove current record from the database
