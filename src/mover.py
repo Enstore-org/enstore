@@ -761,8 +761,8 @@ def get_usr_driver( self, ticket ):
     ticket['mover']['local_mover'] = 0
     try:
 	if self.local_mover_enable and ticket['wrapper']['machine']==os.uname():
-	    if ticket['work'] == 'read_from_hsm': mode = 'r'
-	    else:                                 mode = 'w'
+	    if ticket['work'] == 'read_from_hsm': mode = 'w'
+	    else:                                 mode = 'r'
 	    try:
 		self.usr_driver = open( ticket['wrapper']['fullname'], mode )
 		ticket['mover']['local_mover'] = 1
