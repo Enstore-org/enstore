@@ -892,7 +892,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             sg_limits = self.keys['storage_group_limits']
         v = self.keys.get('legal_encp_version','')
         self.legal_encp_version = (v, convert_version(v))
-        self.min_file_size = self.keys.get('min_file_size',0)
+        # add this to file size when requesting
+        # a tape for writes to avoid FTT_ENOSPC at the end of the tape
+        # due to inaccurate REMAINING_BYTES
+        self.min_file_size = self.keys.get('min_file_size',0L)
+        
         LibraryManagerMethods.__init__(self, csc, sg_limits)
         self.set_udp_client()
 
