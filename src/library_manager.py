@@ -1049,11 +1049,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # all the volume info
             # so go get it
             vol_info = self.vcc.inquire_vol(mticket['external_label'])
-            mticket['volume_family'] = vol_info['volume_family']
-            mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
-                                        vol_info.get('user_inhibit',['none', 'none']))
+            if vol_info['status'][0] == e_errors.OK:
+                mticket['volume_family'] = vol_info['volume_family']
+                mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
+                                            vol_info.get('user_inhibit',['none', 'none']))
             
-            Trace.trace(11, "mover_bound_volume: updated mover ticket: %s"%(mticket,))
+                Trace.trace(11, "mover_bound_volume: updated mover ticket: %s"%(mticket,))
+            else:
+               Trace.trace(11, "mover_bound_volume: can't update volume info, status:%s"%
+                           (vol_info['status'],))
+               return
+                           
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
