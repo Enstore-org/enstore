@@ -5176,11 +5176,119 @@ The procedure for importing a volume is:
 <h2><a name="test_system">
 6 Test System
 </h2>
+
+The Enstore hardware test system was designed to be able to test
+data movement at rates comparable to requirements for Run II data
+logging, to evaluate gigabit networking technologies, and to 
+determine scaling for the larger support hardware required to 
+support all of Run II.  The ability to sustain data rates comparable
+to Run II data logging requirements allows the test system to double
+as the RIP (Reconstruction Input Pipeline) test platform.
+
+The RIP/Enstore hardware test system consists of the following:
+<ul>
+  <li> 10 x86 PC's with:
+       <ul>
+	 <li> dual 400 MHz Pentium II processors
+	 <li> 128 MB SDRAM memory
+	 <li> integrated fast ethernet
+	 <li> integrated ultra wide SCSI (1 bus)
+	 <li> integrated ultra SCSI (1 bus)
+	 <li> integrated video
+	 <li> 2 4-GB Seagate Barracuda SCSI disks
+	 <li> gigabit ethernet interface (Packet Engines)
+	 <li> two nodes with differential wide SCSI interface
+	 <li> four nodes with wide LVD SCSI interface
+	 <li> two nodes with Fibre Channel (for SCSI) interface
+       </ul>
+  <li> Disk chassis with 4 ultra wide SCSI buses, each with 2 18-GB disks
+       
+  <li> Disk chassis with dual FC-AL loop, FC controller, 4 9-GB FC disks.
+       
+  <li> Foundry fast ethernet switch with gigabit ethernet uplinks (2)
+       
+  <li> Foundry gigabit ethernet switch
+       
+  <li> Packet Engines gigabit ethernet full duplex repeater
+</ul>
+
+Two nodes are connected to tape drives on the EMASS robot.  One node,
+via a single wide differential SCSI bus, is connected to four Sony AIT
+tape drives.  The other is connected via a single bus to four Quantum
+DLT 7000 drives, and two Exabyte Mammoth drives.
+<p>
+The RIP cluster is located physically adjacent to the SAM cluster,
+which has similar PC's.  For testing throughput to/from clients, the
+SAM cluster can be connected to the RIP cluster via 10, 100, and 1000
+Mbps network uplinks (though each SAM node has only 10/100 Mbps
+capability).
 <p>
 <center><img src="test-network.gif"></center>
 <p>
 <div align=right><a href="test-network.ps">(also available in Postscript)</a><div align=left>
 <p>
+
+Enstore has been installed on the Test System and is fully operational.
+The administration of the system is flexible and can be changed by
+modifying a single configuration file.
+<p>
+Currently, the configuration is as follows:
+<center><TABLE BORDER COLS=2 WIDTH="50%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>NODE</B></TD>
+<TD NOSAVE><B>SERVERS</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip1</TD>
+<TD NOSAVE>4-AIT Media Changers<br>2-AIT Media Changers<br>4-DLT Movers</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip2</TD>
+<TD NOSAVE>4-AIT Movers</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip3</TD>
+<TD NOSAVE>cluster console</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip4</TD>
+<TD NOSAVE>General Use</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip5</TD>
+<TD NOSAVE>Disk Library Manager<br>AIT Library Manager<br>DLT Library
+Manager<br>Mammoth Library Manager<br>Redwood-50 Library
+Manager<br>Redwood-20 Library Manager</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip6</TD>
+<TD NOSAVE>Configuration Server<br>File Clerk<br>Volume Clerk<br>Admin
+Clerk<br>Log Server<br>Inquisitor<br>Alarm Server<br>Disk Mover<br>Disk
+Media Changer</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip7</TD>
+<TD NOSAVE>General Use</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip8</TD>
+<TD NOSAVE>General Use<br>Serves Home areas</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip9</TD>
+<TD NOSAVE>2-STK Movers</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>rip10</TD>
+<TD NOSAVE>4-DLT Media Changers<br>STK Media Changer</TD>
+</TR>
+</TABLE></center>
+<P>
+
+In the past, we have also tested exabytes on AIX machines. We have not
+continued with this effort, but rather have concentrated on drives and cpus
+that will most likely be used in conjunction with the EMASS robot.
+
 <center><img src="test-configuration.gif"></center>
 <p>
 <div align=right><a href="test-configuration.ps">(also available in Postscript)</a><div align=left>
