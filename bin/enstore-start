@@ -22,24 +22,22 @@ while opt=`expr "${1-}" : '--\(.*\)'`;do
     esac"
 done
 
-. $ENSTORE_DIR/etc/defaults          # also sourced in ecmd -- twice better than none???
-
 place=`pwd`
-cd $enstore_db
+cd $ENSTORE_DB
 
 local_host=`hostname`
 enstore_start_config=0     # new default
 eful=0 lful=0
-if expr "$enstore_config_host" : '.*\.' >/dev/null;then eful=1; fi
+if expr "$ENSTORE_CONFIG_HOST" : '.*\.' >/dev/null;then eful=1; fi
 if expr "$local_host" : '.*\.' >/dev/null;         then lful=1; fi
 
 if   [ $eful = 1 -a $lful = 0 ];then
     local_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
 elif [ $eful = 0 -a $lful = 1 ];then
-    enstore_config_host=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
+    ENSTORE_CONFIG_HOST=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
 fi
 
-if [ $local_host = $enstore_config_host ];then
+if [ $local_host = $ENSTORE_CONFIG_HOST ];then
     enstore_start_config=1
 fi
 
@@ -52,24 +50,24 @@ tries=10
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
     if [ "${opt_ping-}" != 1 -a $enstore_start_config -eq 1 ];then
       if   [ ! "${opt_nocheck-}" ]\
-        && udp_sendWaitReply-withTimeout.sh $enstore_config_host $enstore_config_port $timeout >/dev/null
+        && udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
         then
-        echo "Configuration Server on $enstore_config_host already started"
+        echo "Configuration Server on $ENSTORE_CONFIG_HOST already started"
       else
-        echo "Starting Configuration Server on $enstore_config_host, port $enstore_config_port, using file $enstore_config_file"
+        echo "Starting Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT, using file $enstore_config_file"
         cmd="python $ENSTORE_DIR/src/configuration_server.py \
-            --config_host=$enstore_config_host --config_port=$enstore_config_port --config_file=$enstore_config_file"
+            --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --config_file=$enstore_config_file"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|conf' >/dev/null; then
             title="Enstore Config Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
         fi
-        echo $! >> $enstore_db/`uname -n`-configuration_pids
+        echo $! >> $ENSTORE_DB/`uname -n`-configuration_pids
       fi
     fi
 
-    echo "Checking Configuration Server on $enstore_config_host, port $enstore_config_port"
+    echo "Checking Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT"
     ecmd config --alive --list
     if [ $? -ne 0 ] ; then
         echo "   ...Configuration Server not reachable..."
@@ -88,8 +86,8 @@ enstore_start_volumeclerk=0
 enstore_start_log=0
 enstore_start_admin=0
 enstore_start_inquisitor=0
-ENSTORE_CONFIG_HOST=$enstore_config_host;export ENSTORE_CONFIG_HOST
-ENSTORE_CONFIG_PORT=$enstore_config_port;export ENSTORE_CONFIG_PORT
+ENSTORE_CONFIG_HOST=$ENSTORE_CONFIG_HOST;export ENSTORE_CONFIG_HOST
+ENSTORE_CONFIG_PORT=$ENSTORE_CONFIG_PORT;export ENSTORE_CONFIG_PORT
 
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
 nodeplus_servers=`conf.sh $local_host`
@@ -143,14 +141,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
         echo "Log Server already started"
       else
         echo "Starting Log Server"
-        cmd="python $ENSTORE_DIR/src/log_server.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
+        cmd="python $ENSTORE_DIR/src/log_server.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|log' >/dev/null; then
             title="Enstore Log Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
         fi
-        echo $! >> $enstore_db/`uname -n`-log_server_pids
+        echo $! >> $ENSTORE_DB/`uname -n`-log_server_pids
       fi
     fi
 
@@ -175,14 +173,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         echo "Volume Clerk already started"
       else
         echo "Starting Volume Clerk"
-        cmd="python $ENSTORE_DIR/src/volume_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
+        cmd="python $ENSTORE_DIR/src/volume_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|vol' >/dev/null; then
             title="Enstore Volume Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
         fi
-        echo $! >> $enstore_db/`uname -n`-volume_clerk_pids
+        echo $! >> $ENSTORE_DB/`uname -n`-volume_clerk_pids
       fi
     fi
 
@@ -207,14 +205,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         echo "File Clerk already started"
       else
         echo "Starting File Clerk"
-        cmd="python $ENSTORE_DIR/src/file_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
+        cmd="python $ENSTORE_DIR/src/file_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil' >/dev/null; then
             title="Enstore File Clerk"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
         fi
-        echo $! >> $enstore_db/`uname -n`-file_clerk_pids
+        echo $! >> $ENSTORE_DB/`uname -n`-file_clerk_pids
       fi
     fi
 
@@ -240,14 +238,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
             else
                 echo "Starting $i Library Manager"
                 cmd="python $ENSTORE_DIR/src/library_manager.py \
-                    --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
+                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|lib' >/dev/null; then
                     title="Enstore Library Manager $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $enstore_db/`uname -n`-library_manager_pids
+                echo $! >> $ENSTORE_DB/`uname -n`-library_manager_pids
             fi
         fi
         echo "Checking $i Library Manager"
@@ -274,14 +272,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
             else
                 echo "Starting $i Media Changer"
                 cmd="python $ENSTORE_DIR/src/media_changer.py \
-                    --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
+                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|med' >/dev/null; then
                     title="Enstore Media Changer $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $enstore_db/`uname -n`-media_changer_pids
+                echo $! >> $ENSTORE_DB/`uname -n`-media_changer_pids
             fi
         fi
         echo "Checking $i Media Changer"
@@ -307,14 +305,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 echo "$i Mover already started"
             else
                 echo "Starting $i Mover"
-                cmd="python $ENSTORE_DIR/src/mover${opt_new+.new}.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
+                cmd="python $ENSTORE_DIR/src/mover${opt_new+.new}.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $enstore_db/`uname -n`-mover_pids
+                echo $! >> $ENSTORE_DB/`uname -n`-mover_pids
             fi
         else
             echo "   ...No ping test for $i Mover...(yet)"
@@ -333,14 +331,14 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         echo "Inquisitor already started"
       else
         echo "Starting Inquisitor"
-        cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$enstore_config_host --config_port=$enstore_config_port"
+        cmd="python $ENSTORE_DIR/src/inquisitor.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|fil' >/dev/null; then
             title="Enstore Inquisitor"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
         fi
-        echo $! >> $enstore_db/`uname -n`-inquisitor_pids
+        echo $! >> $ENSTORE_DB/`uname -n`-inquisitor_pids
       fi
     fi
 
@@ -365,15 +363,15 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
             else
                 echo "Starting database checkpoint daemon  on `hostname`"
                 db_checkpoint -h $ENSTORE_DB  -p 5 &
-                echo $! >> $enstore_db/`uname -n`-db_check_pids
+                echo $! >> $ENSTORE_DB/`uname -n`-db_check_pids
 
                 echo "Starting database deadlock daemon  on `hostname`"
                 db_deadlock -h $ENSTORE_DB  -t 1 &
-                echo $! >> $enstore_db/`uname -n`-db_dlck_pids
+                echo $! >> $ENSTORE_DB/`uname -n`-db_dlck_pids
 
                 echo "Starting DB Admin Server"
-                python $ENSTORE_DIR/src/admin_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
-                echo $! >> $enstore_db/`uname -n`-admin_pids
+                python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT &
+                echo $! >> $ENSTORE_DB/`uname -n`-admin_pids
             fi
         else
             echo "ERROR: file and volume database are not present - can't start db tools"

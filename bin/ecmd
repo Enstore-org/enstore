@@ -3,8 +3,6 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 #set -u  # force better programming and ability to use check for not set
 
-. $ENSTORE_DIR/etc/defaults
-
 usage="
 ecmd start   [--ping]
 ecmd ping    [timeout_seconds]
@@ -81,76 +79,76 @@ case $cmd in
     ;;
 
   encp)
-    python $ENSTORE_DIR/src/encp.py                   --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/encp.py                   --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
   config|econ)
-    python $ENSTORE_DIR/src/configuration_client.py   --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/configuration_client.py   --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
   fcc)
-    python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
   bfids)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --bfids $@
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --bfids $@
     stat=$?
     ;;
   bfid)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --bfid=$@
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --bfid=$@
     stat=$?
     ;;
 
   vcc)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
   addvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --addvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --addvol $@
     stat=$?
     ;;
   delvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --delvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --delvol $@
     stat=$?
     ;;
   clrvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --clrvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --clrvol $@
     stat=$?
     ;;
   vols)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --vols $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --vols $@
     stat=$?
     ;;
   vol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --vol=$@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --vol=$@
     stat=$?
     ;;
 
   lmc)
-    python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
   acc)
-    python $ENSTORE_DIR/src/admin_clerk_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/admin_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
   mcc)
-    python $ENSTORE_DIR/src/media_changer_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
   log)
-    python $ENSTORE_DIR/src/log_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/log_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
 
   inq)
-    python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
@@ -193,7 +191,7 @@ case $cmd in
 
   zero)
     ecmd stop
-    (cd $enstore_db; rm *.fake *.jou)
+    (cd $ENSTORE_DB; rm *.fake *.jou)
     stat=$?
     ;;
 

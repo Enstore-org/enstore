@@ -5,8 +5,7 @@
 2. You also need pnfs to be available and mounted on the machine you are
    trying to run on.  This requires adding your node to the pnfs export list
    on the pnfs server node.  See bakken if you want to add a node to pnfs
-   exporting. There will be a default pnfs server node specified in the etc
-   defaults 
+   exporting.
 
    To mount a minimal pnfs, create a mount point (/pnfs/enstore by default)
    and use the $ENSTORE/bin/pnfs-mount command, which does a mount -nfs
@@ -27,8 +26,7 @@
 	5. volume clerk, 
 	6. configuration server and
 	7. log server processes need to be running on nodes specified in the
-   "configuration." This configuration is, by default, stored in the enstore
-   etc/defaults files. 
+   "configuration."
 
    To see if these servers are running, (currently, you must have access to
    the nodes), on the nodes specified in the configuration, simply look for
@@ -77,9 +75,7 @@ The rest of the software is enstore.
    Enstore is configured via an enstore etc/???.conf file. The config file
    contains can contain the configuration for all the enstore servers.
 
-   Run "ecmd start" on the various nodes in the configuration.  Note that
-   currently, each node has to be specifically supported in the enstore
-   etc/defaults file.
+   Run "ecmd start" on the various nodes in the configuration. 
 
    There must be an enstore database directory.
 

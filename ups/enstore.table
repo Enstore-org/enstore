@@ -52,11 +52,7 @@ QUALIFIERS = ""
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/enstore.conf-default)
         envSet(ENSTORE_CONFIG_PORT, 7510)
         envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
+        envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
 
         # the next one controls where the trace file goes
         envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
-
-        # I don't think this is needed anymore ??
-        sourceRequired(${UPS_PROD_DIR}/etc/defaults, NO_UPS_ENV)
-
-
