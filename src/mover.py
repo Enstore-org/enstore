@@ -2092,7 +2092,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     Trace.trace(10, "ticket %s"%(self.current_work_ticket))
                     wrapper_dict = self.wrapper.create_wrapper_dict(self.current_work_ticket)
-                    vol1_label = self.wrapper.vol_labels(volume_label, self.current_work_ticket)
+                    vol1_label = self.wrapper.vol_labels(volume_label, wrapper_dict)
                     self.tape_driver.write(vol1_label, 0, len(vol1_label))
                     self.tape_driver.writefm()
 	            # WAYNE FOO
