@@ -168,7 +168,8 @@ dccp_test() {
 
 # readback the file from every door
     # first get a list of all the doors
-    for door in `cat "${door_list}"`; do
+    if [ ! "${door_list}" = "" ]; then
+      for door in `cat "${door_list}"`; do
 	transfer_setup $read_in_progress 5
 	do_transfer "dccp dcap://${door}${wd} $read_back" $read_back $read_in_progress
 
@@ -181,7 +182,8 @@ dccp_test() {
 	if [ $? -ne 0 ]; then
 	    raise_alarm "$dcache dcache dccp cmp failed for door $door" $dcache_saag 3
 	fi
-    done
+      done
+    fi
 }
 #######################################################################
 
