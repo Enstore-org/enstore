@@ -35,11 +35,6 @@ import string_driver
 
 import Trace
 
-def print_args(*args):
-    print args
-
-verbose=10
-    
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -84,18 +79,20 @@ class Buffer:
         self._buf = []
         self._buf_bytes = 0L
         self._freelist = []
-        self._work_block = None
-        self._readptr = 0
-        self._writeptr = 0
+        self._reading_block = None
+        self._writing_block = None
+        self._read_ptr = 0
+        self._write_ptr = 0
 
     def reset(self):
         self._lock.acquire()
         self._buf = []
         self._freelist = []
         self._buf_bytes = 0
-        self._work_block = None
-        self._readptr = 0
-        self._writeptr = 0
+        self._reading_block = None
+        self._writing_block = None
+        self._read_ptr = 0
+        self._write_ptr = 0
         self.complete_crc = 0L
         self.sanity_crc = 0L
         self.sanity_bytes = 0L
@@ -105,13 +102,12 @@ class Buffer:
 
         
     def nbytes(self):
-        if self._work_block:
-            if self._readptr:
-                return self._buf_bytes + self._readptr
-            else:
-                return self._buf_bytes + len(self._work_block) - self._writeptr
-        else:
-            return self._buf_bytes
+        n = self._buf_bytes
+        if self._reading_block:
+            n = n + self._read_ptr
+        if self._writing_block:
+            n = n + len(self._writing_block) - self.write_ptr
+        return n
         
     def full(self):
         return self.nbytes() > self.max_bytes
@@ -133,7 +129,7 @@ class Buffer:
         self._lock.release()
         
     def low(self):
-        return self.nbytes() <= self.min_bytes
+        return len(self._buf)==0 or self.nbytes() <= self.min_bytes
     
     def push(self, data):
         self._lock.acquire()
@@ -143,16 +139,6 @@ class Buffer:
         
     def pull(self):
         self._lock.acquire()
-        if not self._buf:
-            if self._work_block and self._readptr>0:
-                data = self._work_block[:self._readptr]
-                self._work_block = None
-                self._readptr = 0
-                self._lock.release()
-                return data
-            else:
-                self._lock.release()
-                raise ValueError, "buffer is empty"
         data = self._buf.pop(0)
         self._buf_bytes = self._buf_bytes - len(data)
         self._lock.release()
@@ -194,50 +180,50 @@ class Buffer:
         if type(driver) is type (""):
             driver = string_driver.StringDriver(driver)
             do_crc = 0
-        if not self._work_block:
-            self._work_block = self._getspace()
-            self._readptr = 0
-        bytes_to_read = min(self.blocksize - self._readptr, nbytes)
-        bytes_read = driver.read(self._work_block, self._readptr, bytes_to_read)
+        if not self._reading_block:
+            self._reading_block = self._getspace()
+            self._read_ptr = 0
+        bytes_to_read = min(self.blocksize - self._read_ptr, nbytes)
+        bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
         if do_crc:
-            self.complete_crc = checksum.adler32_o(self.complete_crc, self._work_block,
-                                                   self._readptr, bytes_read)
+            self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
+                                                   self._read_ptr, bytes_read)
             if self.sanity_bytes < SANITY_SIZE:
                 nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_read)
-                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._work_block,
-                                                     self._readptr, nbytes)
+                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._reading_block,
+                                                     self._read_ptr, nbytes)
                 self.sanity_bytes = self.sanity_bytes + nbytes
         self._readptr = self._readptr + bytes_read
         if self._readptr == self.blocksize: #we filled up  a block
-            self.push(self._work_block)
-            self._work_block = None
-            self._readptr = 0
+            self.push(self._reading_block)
+            self._reading_block = None
+            self._read_ptr = 0
         return bytes_read
 
     def stream_write(self, nbytes, driver):
         if self.empty():
-            if verbose: print "stream_write: buffer empty"
+            Trace.trace(10, "stream_write: buffer empty")
             return 0
-        if not self._work_block:
-            self._work_block = self.pull()
-            self._writeptr = 0
-        bytes_to_write = min(len(self._work_block)-self._writeptr, nbytes)
+        if not self._writing_block:
+            self._writing_block = self.pull()
+            self._write_ptr = 0
+        bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
         if driver:
-            bytes_written = driver.write(self._work_block, self._writeptr, bytes_to_write)
-            self.complete_crc = checksum.adler32_o(self.complete_crc, self._work_block,
-                                                   self._writeptr, bytes_written)
+            bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
+            self.complete_crc = checksum.adler32_o(self.complete_crc, self._writing_block,
+                                                   self._write_ptr, bytes_written)
             if self.sanity_bytes < SANITY_SIZE:
                 nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_written)
-                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._work_block,
-                                                            self._writeptr, nbytes)
+                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._writing_block,
+                                                            self._write_ptr, nbytes)
                 self.sanity_bytes = self.sanity_bytes + nbytes
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._writeptr = self._writeptr + bytes_written
-        if self._writeptr == len(self._work_block): #finished sending out this block
-            self._freespace(self._work_block)
-            self._work_block = None
-            self._writeptr = 0
+        if self._write_ptr == len(self._writing_block): #finished sending out this block
+            self._freespace(self._writing_block)
+            self._writing_block = None
+            self._write_ptr = 0
         return bytes_written
 
     def _getspace(self):
@@ -268,6 +254,14 @@ def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stu
     if file[-1]=='L':
         file = file[:-1]
     return long(file)
+
+def loc_to_cookie(loc):
+    if type(loc) is type(""):
+        loc = cookie_to_long(loc)
+    if loc is None:
+        loc = 0
+    return '%04d_%09d_%07d' % (0, 0, loc)
+        
     
 class Mover(dispatching_worker.DispatchingWorker,
             generic_server.GenericServer):
@@ -373,7 +367,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            self.tape_driver.verbose = verbose
             self.tape_driver.open(self.device, mode=0, retry_count=2)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
@@ -392,20 +385,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     volname=buf[4:]
                     self.current_volume = volname
                     self.state = HAVE_BOUND
-                    if verbose: print "have vol %s at startup" % (self.current_volume,)
+                    Trace.log(e_errors.INFO,  "have vol %s at startup" % (self.current_volume,))
             except (e_errors.READ_ERROR, ftt.FTTError), detail:
-                if verbose:
-                    print "checking for loaded tape:", detail
+                Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
                 try:
                     self.tape_driver.close()
                 except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.log(e_errors.ERROR, "while closing tape driver: %s"%(detail,))
                     pass
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
             
-        #pass our verbosity level to the driver object
-        self.tape_driver.verbose = verbose
         
 	dispatching_worker.DispatchingWorker.__init__( self, self.address)
                 
@@ -425,12 +417,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         
     def handle_mover_error(self, exc, msg, tb):
-        if verbose: print "handle mover error", exc, msg
-        print self.current_work_ticket, state_name(self.state)
+        Trace.log(e_errors.ERROR, "handle mover error %s %s"%(exc, msg))
+        Trace.trace(10, "%s %s" %(self.current_work_ticket, state_name(self.state)))
         if self.current_work_ticket:
             try:
-                if verbose: print "handle error: calling transfer failed",
-                if verbose: print "str(msg)=", str(msg)
+                Trace.trace(10, "handle error: calling transfer failed, str(msg)=%s"%(str(msg),))
                 self.transfer_failed((exc, msg))
             except:
                 pass
@@ -444,8 +435,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.update_thread.start()
         
     def update1(self, reset_timer=None):
-        if verbose > 2:
-            print "update"
+        Trace.trace(20,"update")
             
         if not hasattr(self,'_last_state'):
             self._last_state = None
@@ -457,7 +447,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## See if the delayed dismount timer has expired
         now = time.time()
         if self.state is HAVE_BOUND and self.dismount_time and now>self.dismount_time:
-            if verbose: print "Dismount time expired", self.current_volume
+            Trace.trace(10,"Dismount time expired %s"% (self.current_volume,))
             self.dismount_volume()
             self.dismount_time = None
             self.state = IDLE
@@ -467,8 +457,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.format_lm_ticket()
         
         for lib, addr in self.libraries:
-            if verbose and self.state != self._last_state:
-                print "Send", ticket, "to", addr
+            if self.state != self._last_state:
+                Trace.trace(10, "Send %s to %s" % (ticket, addr))
             self.udpc.send_no_wait(ticket, addr)
         self._last_state=self.state
         if reset_timer:
@@ -479,36 +469,28 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def enable_write_tape(self):
-        if verbose: print "enabling write tape"
         if self.write_tape_thread and self.write_tape_thread.isAlive():
-            if verbose: print "write tape thread already alive"
             return
         self.write_tape_thread = threading.Thread(group=None, target=self.write_tape,
                                                   name='write_tape',args=(self.tape_driver,), kwargs={})
         self.write_tape_thread.start()
 
     def enable_read_tape(self):
-        if verbose: print "enabling read tape"
         if self.read_tape_thread and self.read_tape_thread.isAlive():
-            if verbose: print "read tape thread already alive"
             return
         self.read_tape_thread = threading.Thread(group=None, target=self.read_tape,
                                                   name='read_tape',args=(self.tape_driver,), kwargs={})
         self.read_tape_thread.start()
 
     def enable_write_client(self):
-        if verbose: print "enabling write client"
         if self.write_client_thread and self.write_client_thread.isAlive():
-            if verbose: print  "write client thread already alive"
             return
         self.write_client_thread = threading.Thread(group=None, target=self.write_client,
                                                     name='write_client',args=(self.net_driver,), kwargs={})
         self.write_client_thread.start()
 
     def enable_read_client(self):
-        if verbose: print "enable read client"
         if self.read_client_thread and self.read_client_thread.isAlive():
-            if verbose: print "read client thread already alive"
             return
         self.read_client_thread = threading.Thread(group=None, target=self.read_client,
                                                   name='read_client',args=(self.net_driver,), kwargs={})
@@ -516,20 +498,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     #################################
     def read_client(self, driver):
-        if verbose>1:
-            print "read client, buffer=", self.buffer.nbytes()
-            print "bytes read:", self.bytes_read, "bytes to read", self.bytes_to_read
+        Trace.trace(10,"read client, buffer=%s bytes_read=%s bytes_to_read=%s"%(
+            self.buffer.nbytes(), self.bytes_read, self.bytes_to_read))
 
         if self.bytes_read == 0 and self.header:
             nbytes = self.buffer.header_size
             bytes_read = self.buffer.stream_read(nbytes,self.header)
-            if verbose > 1:
-                print "read", bytes_read, "of cpio header"
+            Trace.trace(10, "read %s bytes of header" % bytes_read)
+
 
         while self.bytes_read < self.bytes_to_read and not self.buffer.full():
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
             bytes_read = self.buffer.stream_read(nbytes, driver)
-            if verbose>1: print "read", bytes_read, "from client"
+            Trace.trace(15, "read %s from client"%( bytes_read,))
             if not bytes_read:  #  The client went away!
                 self.transfer_failed(None)
                 return
@@ -538,15 +519,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.bytes_read == self.bytes_to_read and self.trailer:
             nbytes = self.buffer.trailer_size
             bytes_read = self.buffer.stream_read(nbytes, self.trailer)
-            if verbose > 1:
-                print "read", bytes_read, "of cpio trailer"
+            Trace.trace(10, "read %s bytes of  trailer" % bytes_read)
+
 
         if self.bytes_written != self.bytes_to_write and (
             not self.buffer.low() or self.bytes_read==self.bytes_to_transfer):
             self.enable_write_tape()
                         
     def write_tape(self, driver):
-        if verbose>1: print "write tape, buffer =", self.buffer.nbytes()
+        Trace.trace(10,"write tape, buffer = %s"%(self.buffer.nbytes(),))
         ##Dynamic setting of low-water mark
         if self.bytes_read >= self.buffer.min_bytes:
             netrate, junk = self.net_driver.rates()
@@ -556,14 +537,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 optimal_buf = self.bytes_to_transfer * (1-ratio)
                 optimal_buf = min(optimal_buf, self.max_buffer)
                 optimal_buf = max(optimal_buf, 2*self.buffer.blocksize)
-                if verbose:
-                    print "netrate = %.3g, taperate=%.3g" % (netrate, taperate)
-                    print "Changing buffer size from", self.buffer.min_bytes, "to", optimal_buf
+                Trace.trace(15,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
+                Trace.trace(15,"Changing buffer size from %s to %s"%(self.buffer.min_bytes, optimal_buf))
                 self.buffer.set_min_bytes(optimal_buf)
 
         if self.buffer.low() and self.bytes_read != self.bytes_to_read:
             # turn off the select fd, read_client will turn it back on
-            if verbose>1: print "buffer low"
+            Trace.trace(10, "buffer low")
             return
         while self.bytes_written<self.bytes_to_write: #keep pumping data to tape
 
@@ -571,15 +551,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.enable_read_client()
 
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
-            if verbose>1: print "write tape", nbytes
+            Trace.trace(15, "write tape %s"%( nbytes,))
             if nbytes > self.buffer.nbytes():
-                if verbose>1: print "only have", self.buffer.nbytes()
+                Trace.trace(10,"only have %s"%( self.buffer.nbytes(),))
                 #not enough data in buffer to keep tape streaming
                 return
 
             bytes_written = self.buffer.block_write(nbytes, driver)
 
-            if verbose>1: print "wrote", nbytes, "to tape"
+            Trace.trace(15, "wrote %s to tape" % (nbytes,))
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR)
                 break
@@ -594,7 +574,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     ###################
 
     def read_tape(self, driver):
-        if verbose>1:  print "read tape, buf=", self.buffer.nbytes()
+        Trace.trace(15, "read tape, buf=%s"%(self.buffer.nbytes(),))
         while self.bytes_read < self.bytes_to_read and not self.buffer.full():
             ##keep reading as long as the device has data for us 
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
@@ -607,12 +587,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     header_size = self.wrapper.header_size(b0)
-                    if verbose > 1:
-                        print "header size", header_size
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
-            
-            if verbose>1: print "read", bytes_read, "from tape"
+            Trace.trace(15,"read %s from tape"%(bytes_read,))
             self.bytes_read = self.bytes_read + bytes_read
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a CPIO trailer or something
                 self.bytes_read = self.bytes_to_read
@@ -621,7 +598,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.enable_write_client()
 
     def write_client(self, driver):
-        if verbose>1: print "write client, buf=", self.buffer.nbytes()
+        Trace.trace(15,"write client, buf=%s" % self.buffer.nbytes())
         if self.buffer.low() and self.bytes_read != self.bytes_to_read:
             return
         if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
@@ -631,7 +608,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             ###keep pumping data out to the client
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
             bytes_written = self.buffer.stream_write(nbytes, driver)
-            if verbose>1: print "wrote", bytes_written, "to client"
+            Trace.trace(15, "wrote %s to client")
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
             if bytes_written == -1: #this on the other hand is an error
@@ -646,18 +623,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
-        if verbose: print "WRITE TO HSM"
+        Trace.log(e_errors.INFO, "WRITE_TO_HSM")
         self.setup_transfer(ticket, mode=WRITE)
         
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm( self, ticket ):
-        if verbose: print "READ FROM HSM"
+        Trace.log(e_errors.INFO,"READ FROM HSM")
         self.setup_transfer(ticket, mode=READ)
 
     def setup_transfer(self, ticket, mode):
         if self.state not in (IDLE, HAVE_BOUND):
-            if verbose: print "Not idle", state_name(self.state)
-            Trace.trace(e_errors.ERROR, "Mover not idle: %s" %(state_name(self.state)))
+            Trace.log(e_errors.ERROR, "Not idle %s" %( state_name(self.state),))
             self.return_work_to_lm(ticket)
             return 0
         if self.config['driver'] == "NullDriver": 
@@ -666,17 +642,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
                 self.send_client_done( ticket, e_errors.USERERROR, "NULL not in PNFS path" )
                 return 0
-        if verbose: print "waiting for setup lock"
+
 ##        self.setup_lock.acquire()
-        if verbose: print "got setup lock"
         self.setup_transfer_thread = threading.Thread(group=None, target=self.setup_transfer1,
                                                   name='setup_transfer',args=(ticket, mode), kwargs={})
         self.setup_transfer_thread.start()
         
     def setup_transfer1(self, ticket, mode):
-        if verbose: print "SETUP TRANSFER"
+        Trace.log(e_errors.INFO, "SETUP TRANSFER")
 
-        if verbose: pprint.pprint(ticket)
         self.reset()
 
         ticket['mover']={}
@@ -685,7 +659,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
         self.control_socket, self.client_socket = self.connect_client()
 
-        if verbose: print "client connect", self.control_socket, self.client_socket
+        Trace.trace(10,  "client connect %s %s" %( self.control_socket, self.client_socket))
         if not self.client_socket:
             ##XXX ENCP GONE
 ##            self.setup_lock.release()
@@ -697,8 +671,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         fc = ticket['fc']
         vc = ticket['vc']
         
-        if verbose: print "vc=", vc
-
         self.vol_info.update(vc)
         
         self.volume_family=vc['volume_family']
@@ -709,11 +681,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                   ##what does the flag really mean?
             
         self.delay = max(delay, self.default_dismount_delay)
-        if verbose: print "delay", self.delay
+
         self.fcc = file_clerk_client.FileClient( self.csc, bfid=0,
-                                                 servr_addr=fc['address'] )
+                                                 server_addr=fc['address'] )
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                         servr_addr=vc['address'])
+                                                         server_addr=vc['address'])
         label = fc['external_label']
 
         if mode is WRITE:
@@ -771,7 +743,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
         
     def transfer_failed(self, msg=None):
-        if verbose: print "transfer aborted", msg
+        Trace.log(e_errors.ERROR, "transfer aborted %s" %( msg,))
         ###XXX network errors should not count toward rd_err, wr_err
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
@@ -780,36 +752,47 @@ class Mover(dispatching_worker.DispatchingWorker,
         msgstr = str(msg) #XXX convert to appropriate Enstore error
         self.transfers_failed = self.transfers_failed + 1
         self.timer('transfer_time')
-        self.state = HAVE_BOUND
+
         if msg:
             self.send_client_done(self.current_work_ticket, msgstr)
         self.net_driver.close()
 
+        if self.state == DRAINING:
+            self.dismount_volume()
+            self.state = OFFLINE
+        else:
+            self.state = HAVE_BOUND
+        
         self.update(reset_timer=1)
         
     def transfer_completed(self):
-        if verbose: print "transfer complete"
+
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_access=1)
         else:
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.timer('transfer_time')
-        self.state = HAVE_BOUND
-
 
         self.net_driver.close()
 
         self.current_location = self.tape_driver.tell()
 
-        if verbose: print "CGW: current_location = ", self.current_location, "current volume=", self.current_volume
+        Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
+            current_volume, current_location))
+
         now = time.time()
 
-        if verbose: print "delay=", self.delay
         self.dismount_time = now + self.delay
 
         self.send_client_done(self.current_work_ticket, e_errors.OK)
 
+        if self.state == DRAINING:
+            self.dismount_volume()
+            self.state = OFFLINE
+        else:
+            self.state = HAVE_BOUND
+        
         self.update(reset_timer=1)
 
 
@@ -821,28 +804,23 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.driver_type == 'FTTDriver':
             import ftt
             stats = self.tape_driver.ftt.get_stats()
-            if verbose:
-                print 'stats[REMAIN_TAPE] = %s' % stats[ftt.REMAIN_TAPE]
+
             if stats[ftt.REMAIN_TAPE]:
                 rt = stats[ftt.REMAIN_TAPE]
                 if rt is not None:
                     rt = long(rt)
                     remaining = rt  * 1024L
 
-        if verbose: print "current location: %s type %s, remain_tape=%s" % (
-            self.current_location, type(self.current_location), remaining)
 
-        eod = '%012d'%self.current_location
+        eod = loc_to_cookie(self.current_location)
         self.vol_info['eod_cookie'] = eod
         self.vol_info['remaining_bytes']=remaining
 
 
-        if verbose: print "CGW: last seek = %s, current_location = %s, eod = %s"%(
-            self.last_seek,  self.current_location, eod)
 
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        fc_ticket = {'location_cookie':'%012d'%(self.last_seek),
+        fc_ticket = {'location_cookie': loc_to_cookie(self.last_seek),
                      'size': self.bytes_to_transfer,
                      'sanity_cookie': sanity_cookie,
                      'external_label': self.current_volume,
@@ -853,11 +831,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
 
-        if verbose: print "sending", fc_ticket, "to file clerk"
         fcc_reply = self.fcc.new_bit_file( {'work':"new_bit_file",
                                             'fc'  : fc_ticket
                                             } )
-        if verbose: print "file clerk reply", fcc_reply
 
         if fcc_reply['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
@@ -875,12 +851,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
 
-            
-        if verbose: print "set remaining: ", self.current_volume, remaining, eod
+        Trace.log(e_errors.INFO,"set remaining: %s %s %s" %( self.current_volume, remaining, eod))
+        
         reply = self.vcc.set_remaining_bytes( self.current_volume,
                                               remaining, eod,
                                               bfid )
-        if verbose: print "set remaining returns", reply
+
         self.vol_info.update(reply)
 
         vol_info = self.query_volume_clerk(self.current_volume)
@@ -907,7 +883,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def query_volume_clerk(self, label): ###XXX is this function needed or should we just use vcc.
-        if verbose: print "doing inquire_volume"
+
         vol_info=self.vcc.inquire_vol(label)
         ##XXX side-effect, yuk
         self.vol_info.update(vol_info)
@@ -922,17 +898,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info = {}
         
     def prepare_volume(self, volume_label, iomode, location=None):
-        if verbose: print "prepare", volume_label, iomode, location
         if iomode is READ and location is None:
-            if verbose: print "prepare_volume: no location"
+            Trace.log(e_errors.ERROR, "prepare_volume: no location given")
             return 0
         
         vol_info = self.query_volume_clerk(volume_label)
         if vol_info['status'][0] != 'ok': ###XXX I hate this kind of check
             return 0 #NOTAPE
         
-        if verbose: print "self.vol_info =", self.vol_info
-
         if self.current_volume != volume_label:
             self.dismount_volume()
 
@@ -952,7 +925,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.rewind()
                 vol1_label = 'VOL1'+ volume_label
                 vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
-                if verbose: print "labeling new tape", vol1_label
+                Trace.log(e_errors.INFO, "labeling new tape %s" % volume_label)
                 self.tape_driver.write(vol1_label, 0, 80)
                 self.tape_driver.writefm()
                 eod = 1
@@ -983,7 +956,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if expected_keys is not None:
             msg = "%s %s"(msg, expected_keys)
         msg = "%s %s"%(msg, ticket)
-        if verbose: print msg
+
         Trace.log(e_errrors.ERROR, msg)
 
     def send_client_done( self, ticket, status, error_info=None):
@@ -1018,7 +991,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "mover":  self.name,
             "address": self.address,
             "external_label":  self.current_volume,
-            "current_location": "%012d"%self.current_location,
+            "current_location": loc_to_cookie(self.current_location),
             "status": status, 
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
@@ -1037,20 +1010,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = DISMOUNT_WAIT
         vol_info = self.vol_info.copy()
         vcc = self.vcc
-        do_precautionary_dismount = 0 #CGW change this?
-        if verbose: print "dismounting", self.current_volume
+        do_precautionary_dismount = 0 #XXX CGW change this?
+        Trace.log(e_errors.INFO, "dismounting %s" %( self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
         if self.current_volume or do_precautionary_dismount:
             if not self.current_volume:
-                if verbose: print "Precautionary dismount"
+                ##precautionary dismount
                 vol_info['external_label'] = 'Unknown'
                 vcc = None
-            if verbose:
-                print "sending unloadvol request"
+
             mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device, vcc)
-            if verbose:
-                print "media changer reply", mcc_reply
+
             status = mcc_reply.get('status')
             if status and status[0]==e_errors.OK:
                 self.state = IDLE
@@ -1064,14 +1035,12 @@ class Mover(dispatching_worker.DispatchingWorker,
     def mount_volume(self, volume_label):
         self.dismount_time = None
         self.state = MOUNT_WAIT
-        if verbose: print "mounting", volume_label
+        Trace.log(e_errors.INFO, "mounting %s" %( volume_label,))
         self.timer('mount_time')
         if volume_label != self.current_volume:
-            if verbose:
-                print "sending loadvol request", self.vol_info
+
             mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device, self.vcc)
-            if verbose:
-                print "media changer reply", mcc_reply
+
             status = mcc_reply.get('status')
             if status and status[0]==e_errors.OK:
                 self.state = ACTIVE
@@ -1084,7 +1053,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return
     
     def seek_to_location(self, location, eot_ok=0):
-        if verbose: print "seek to", location
+        Trace.trace(10, "seeking to %s"%(location,))
         self.tape_driver.seek(location, eot_ok)
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
@@ -1092,7 +1061,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # data transfer takes place on tcp sockets, so get ports & call client
     # Info is added to ticket
     def connect_client(self):
-        if verbose: print "connect client"
+
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
@@ -1104,7 +1073,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             control_socket.connect(ticket['callback_addr'])
             callback.write_tcp_obj(control_socket, ticket)
-            if verbose: print "ctrl = ", control_socket
+
             # we expect a prompt call-back here
             
             read_fds,write_fds,exc_fds=select.select(
@@ -1115,7 +1084,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
             else:
-                if verbose: print "timeout on waiting for client connect"
+                Trace.log(e_errors.INFO, "timeout on waiting for client connect")
                 return None, None
             
         except:
@@ -1162,9 +1131,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         ticket['times'][key] = now - self.t0
         self.t0 = now
-        if verbose: print self.current_work_ticket['times']
-
-
     
     def lockfile_name(self):
         d=os.environ.get("ENSTORE_TMP","/tmp")
@@ -1190,7 +1156,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return os.path.exists(self.lockfile_name())
         
     def start_draining(self, ticket):	    # put itself into draining state
-        self.state = OFFLINE
+        self.state = DRAINING
         self.create_lockfile()
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
@@ -1209,9 +1175,13 @@ class Mover(dispatching_worker.DispatchingWorker,
     def clean_drive(self, ticket):
         save_state = self.state
         if self.state not in (IDLE, OFFLINE):
-            pass #ZZZ
-        ret = self.mcc.doCleaningCycle(self.config)
-        
+            ret = {'status':("EPROTO", "Cleaning not allowed in %s state" % (state_name(self.state)))}
+        else:
+            self.state = CLEANING
+            ret = self.mcc.doCleaningCycle(self.config)
+            self.state = save_state
+
+        self.reply_to_caller(ret)
         
         
 class MoverInterface(generic_server.GenericServerInterface):
