@@ -90,6 +90,7 @@ class SortedList:
         self.keys = []
         self.update_flag = by_pri
         self.current_index = 0
+        self.stop_rolling = 0
         
     # check if request with certain  id is in the list
     # and if its outputfile name is in the list flag this
@@ -165,6 +166,7 @@ class SortedList:
 
     # get a record from the list
     def get(self, pri=0):
+        self.stop_rolling = 0
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
@@ -189,10 +191,15 @@ class SortedList:
         self.start_index = self.current_index
         return ret
 
+    ##def trace(nm,fmt,msg=None):
+    ##    print msg
+        
     def get_next(self):
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
+        if self.stop_rolling:
+            return None
         old_current_index = self.current_index
         self.current_index = self.current_index + 1
         if self.current_index >= len(self.sorted_list):
@@ -200,19 +207,20 @@ class SortedList:
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
             Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-                  (old_current_index,self.current_index,self.start_index, None))  
+                        (old_current_index,self.current_index,self.start_index, None))  
             return None
         try:
             if self.current_index == self.start_index:
                 Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-                      (old_current_index,self.current_index,self.start_index, None))  
+                            (old_current_index,self.current_index,self.start_index, None))
+                self.stop_rolling = 1
                 return None  # came back to where it started
         except AttributeError: # how this happens
             self.start_index = self.current_index
-            Trace(33, "ATTR ERR")
+            Trace.trace(33, "ATTR ERR")
             return None
         Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-              (old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
+                    (old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
         
         return self.sorted_list[self.current_index]
     
