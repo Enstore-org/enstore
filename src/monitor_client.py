@@ -211,6 +211,10 @@ class Vetos:
         # this is a dictionary with keys as
         # possibly (non canonical) IP addresses. Ip or DNS names
         # and the value field being a reason why it is in the veto list
+
+        # don't send to yourself
+        vetos[socket.gethostname()] = 'thishost'
+
         self.veto_item_dict = {}
         for v in vetos.keys():
             canon = self._canonicalize(v)
@@ -253,7 +257,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             if vetos.is_vetoed_item(ip):
                 if not summary:
                     print "Skipping %s" % (vetos.veto_info(ip),)
-                break
+                continue
             if not summary:
                 print "Trying", host, 
             msc = MonitorServerClient(
