@@ -265,6 +265,8 @@ class MoverClient:
 	self.work_ticket = {}
 	self.hsm_drive_sn = ''
 	self.no_xfers = 0
+	
+	self.driveStatistics = {'mount':{},'dismount':{}}
 
 	self.pid = 0
 
@@ -357,17 +359,19 @@ class MoverClient:
 	self.vol_info['external_label'] = ''
 	
 	#get status information and write it to a file
-        if 0:
-	 WSstatus,WSdata = self.writeAll(driver_object.statisticsOpen, driver_object.statisticsClose, mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
-         Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
-	 if WSstatus == 0:
-	    if WSdata['cleaning_bit'] == 1:
-	        rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info, self.vol_vcc)
-                Trace.log(e_errors.INFO,"Media changer cleaningCycle status"+str(rr['status']))
-	 else:
-            Trace.log(e_errors.ERROR,"ERROR: Get-statistics status "+str(WSstatus))
+	WSstatus,WSdata = self.writeAll(mvr_config['device'], outParam=['cleaning_bit',], inParam={'work':'afterUnload'})
+        Trace.log(e_errors.INFO,"Writing statistics, status = "+str(WSstatus))
+	if WSstatus == 0:
+	    try:
+                if WSdata['cleaning_bit'] == 1:
+	            rr = self.mcc.doCleaningCycle(mvr_config, self.vol_info, self.vol_vcc)
+                    Trace.log(e_errors.INFO,"Media changer cleaningCycle return status = "+str(rr['status']))
+            except KeyError:
+                Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined in WSdata")
+	else:
+            Trace.log(e_errors.ERROR,"ERROR: writeAll-statistics, status = "+str(WSstatus))
      
-	return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.OK )
+        return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.OK )
 	pass
 
     # the library manager has asked us to write a file to the hsm
@@ -380,12 +384,39 @@ class MoverClient:
 	self.fc = ticket['fc']
 	return forked_read_from_hsm( self, ticket )
 	
-    def writeAll(self, statisticsOpen, statisticsClose, device, outParam=None, inParam={}):
-        path = mvr_config['statistics_path']
-        if outParam is None:
-	    outParam = []
+    def store_mount_statistics( self, driver_object ):
+        if driver_object is None:
+            Trace.log(e_errors.ERROR,"No mount statistics stored. driver_object is None.")
+	else:
+	    try:
+	        stat = driver_object.send_statistics()
+	        self.driveStatistics['mount'] = stat['mount']
+	    except KeyError:
+                Trace.log(e_errors.ERROR,"Mount statistics malformed.")
+        return
+
+    def store_dismount_statistics( self, driver_object ):
+        if driver_object is None:
+            Trace.log(e_errors.ERROR,"No dismount statistics stored. driver_object is None.")
+	else:
+	    try:
+	        stat = driver_object.send_statistics()
+	        self.driveStatistics['dismount'] = stat['dismount']
+	    except KeyError:
+                Trace.log(e_errors.ERROR,"Dismount statistics malformed.")
+        return
+
+    def writeAll(self, device, outParam=None, inParam={}):
         status = 0
 	data = {}
+        try:
+            path = mvr_config['statistics_path']
+	except KeyError:
+	    Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
+	    return status, data
+
+        if outParam is None:
+	    outParam = []
 	try:
 	    fd = open(path,'a')
 	except IOError, xx:
@@ -393,7 +424,7 @@ class MoverClient:
 	    Trace.log(e_errors.INFO, "IOError: %s"%xx)
 	    return status, data
 
-	ss = statisticsOpen
+	ss = self.driveStatistics['mount']
 	fd.write('action  mount\n')
         for skey in ss.keys():
 	    s1 = string.replace(repr(skey),"'","")
@@ -407,7 +438,7 @@ class MoverClient:
             fd.write(buf)
 	fd.write('\n')
 
-	ss = statisticsClose
+	ss = self.driveStatistics['dismount']
 	fd.write('action  dismount\n')
         for skey in ss.keys():
 	    for item in outParam:
@@ -502,6 +533,7 @@ def bind_volume( object, external_label ):
 				      external_label,
 				      tmp_vol_info['eod_cookie'] )
             Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
+            object.store_mount_statistics(object.hsm_driver)
 	except: return 'BADMOUNT' # generic, not read or write specific
 
         #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
@@ -745,6 +777,7 @@ def forked_write_to_hsm( self, ticket ):
 	    stats = driver_object.get_stats()
 	    ticket['times']['get_stats_time'] = time.time() - t0
 	    driver_object.close()			# b/c of fm above, this is purely sw.
+            self.store_dismount_statistics(driver_object)
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
@@ -967,6 +1000,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # close hsm file
             Trace.trace(11,'calling close')
             driver_object.close()
+            self.store_dismount_statistics(driver_object)
             Trace.trace(11,'closed')
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = 0,1
