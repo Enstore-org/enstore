@@ -1680,7 +1680,7 @@ class Tag:
         #        fname = ""
 
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(fname) == 0:
+        if is_pnfs_path(os.path.dirname(fname)) == 0:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
@@ -1717,7 +1717,7 @@ class Tag:
         #    fname = os.path.join(os.getcwd(), fname)
         
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(fname) == 0:
+        if is_pnfs_path(os.path.dirname(fname)) == 0:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
