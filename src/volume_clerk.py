@@ -406,7 +406,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # recycle_volume(vol) -- server version of __delete_volume(vol, 1)
 
-    def delete_volume(self, ticket):
+    def recycle_volume(self, ticket):
         try:
             vol = ticket['external_label']
         except KeyError, detail:
