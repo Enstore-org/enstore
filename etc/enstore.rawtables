@@ -36,7 +36,7 @@ create table rvolume (
 	user_inhibit_0		varchar(16),
 	user_inhibit_1		varchar(16),
 	storage_group		varchar(16),
-	file_family		varchar(32),
+	file_family		varchar(64),
 	wrapper			varchar(32),
 	comment			varchar(80)
 );
