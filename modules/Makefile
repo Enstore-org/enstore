@@ -3,7 +3,7 @@
 #  $Id$
 #
 
-all:	 Trace Makefile.modules Modules 
+all:	 Trace Makefile.modules Modules adler32.o
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -39,6 +39,9 @@ Trace:
 	ln -fs traceShow ../sbin/traceMode
 	ln -fs traceShow ../sbin/traceOn
 	ln -fs traceShow ../sbin/traceOff
+
+adler32.o:	adler32.c
+		@echo $(CC) $(CFLAGS) $(WARN) -o adler32.o -c adler32.c
 
 # Normally we don't install .py files:
 install: installpyc
