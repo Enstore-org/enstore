@@ -2,6 +2,7 @@
 
 ##  $Id$
         
+## Should re-do this using UserDict
 
 DictionaryLockedError = "DictionaryLockedError"
 
