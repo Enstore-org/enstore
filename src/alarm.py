@@ -39,13 +39,11 @@ class GenericAlarm:
 
     # output the alarm
     def __repr__(self):
-        # first format the dictionary containing the extra stuff
-
         # do not let the severity (which is actually a number), point outside
         # of the dictionary
         if self.severity >= len(e_errors.sevdict):
             self.severity = len(e_errors.sevdict)-1
-        if self.severity < 0:
+        elif self.severity < 0:
             self.severity = 0
 
         # format ourselves to be a straight ascii line of the same format as
@@ -69,11 +67,7 @@ class GenericAlarm:
 
         # look in the info dict.  if there is a key "short_text", use it to get
         # the text, else use default text just signaling a problem
-        if self.alarm_info.has_key(SHORT_TEXT):
-            str = str+self.alarm_info[SHORT_TEXT]
-        else:
-            str = str+self.root_error
-        return str
+        return str+self.alarm_info.get(SHORT_TEXT, self.root_error)
 
     # return the alarms unique id
     def get_id(self):
