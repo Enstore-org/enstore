@@ -431,7 +431,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the configuration server
     def update_config_server(self, key, time):
-	self.alive_and_restart(self.csc, self.csc.get_address(), 
+	self.alive_and_restart(self.csc, self.csc.server_address, 
                                time, key)
 
     # get the information from the library manager(s)
