@@ -167,9 +167,16 @@ def id_file(f):
     pn, fn = os.path.split(f)
     return os.path.join(pn, ".(id)(%s)" % (fn, ))
 
-def parent_file(f, id):
+def parent_file(f, pnfsid = None):
     pn, fn = os.path.split(f)
-    return os.path.join(pn, ".(parent)(%s)" % (id))
+    if pnfsid:
+        return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+    else:
+        fname = id_file(f)
+        f = open(fname)
+        pnfsid = f.readline()
+        f.close()
+        return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
 
 
 def check_link(l, f_stats):
@@ -187,6 +194,44 @@ def check_dir(d, f_stats):
 
     msg = []
     warn = []
+
+    #First check that the directory's parent id and the id of the parent
+    # directory match.
+    parent_id = parent_dir_id = None
+
+    #Get the parent id.
+    try:
+        dname = parent_file(d)
+        f = open(dname)
+        parent_id = f.readline()
+        f.close()
+    except(OSError, IOError), detail:
+        if detail.errno == errno.ENOENT:
+            if not os.path.ismount(d):
+                msg.append("unable to obtain directory's parent id")
+
+    
+    #Get the id of the parent directory.
+    try:
+        dname = id_file(os.path.dirname(d))
+        f = open(dname)
+        parent_dir_id = f.readline()
+        f.close()
+    except (OSError, IOError), detail:
+        if detail.errno == errno.ENOENT:
+            if not os.path.ismount(os.path.dirname(d)) and \
+                   not os.path.ismount(d):
+                msg.append("unable to obtain parent directory's id")
+
+    if msg or warn:
+        return msg, warn
+
+    if parent_id == None or parent_dir_id == None:
+        pass
+    elif parent_id != parent_dir_id:
+        print "parent_dir_id:", parent_dir_id, "parent_id:", parent_id
+        msg.append("parent id does not match parent directory's id")
+        return msg, warn
     
     # skip volmap and .bad and .removed directory
     lc = os.path.split(d)[1]
