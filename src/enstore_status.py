@@ -61,7 +61,7 @@ class EnstoreStatus:
     def close(self):
         Trace.trace(12,"{close "+self.file_name)
 	if self.file_type == html_file:
-	    self.file.write("</pre>\n")
+	    self.file.write("</pre></body>\n")
 	self.file.close()
         Trace.trace(12,"}close")
 
@@ -122,6 +122,8 @@ class EnstoreStatus:
     # parse the library manager queues returned from "getwork"
     def parse_lm_queues(self, work, spacing, prefix):
 	Trace.trace(13,"{parse_lm_queues")
+	string = prefix
+	first_line_spacing = ""
 	for mover in work:
 	    callback_addr = mover['callback_addr']
 	    encp = mover['encp']
@@ -135,7 +137,8 @@ class EnstoreStatus:
 	    wrapper = mover['wrapper']
 	    machine = wrapper['machine']
 
-	    string = prefix
+	    string = string+first_line_spacing
+
 	    # not found in pending work
 	    try:
 	        string = string+mover['mover']+", "
@@ -181,6 +184,10 @@ class EnstoreStatus:
 	                 self.format_time(wrapper['mtime'])
 	    except:
 	        pass
+	    string = string+"\n"
+
+	    # reset this to prepare for another queued element
+	    first_line_spacing = spacing
 	string = string+"\n"
 	Trace.trace(13,"}parse_lm_queues")
 	return string
@@ -200,7 +207,7 @@ class EnstoreStatus:
 	    string = string+"\n    Pending work: "
 	    string = self.parse_lm_queues(pending_work, spacing, string)
 	else:
-	    string = string+"    No pending work\n"
+	    string = string+"    No pending work\n\n"
 
         Trace.trace(12,"}format_lm_queues ")
 	return string
