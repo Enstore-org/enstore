@@ -127,9 +127,10 @@ tar -czf \$F \\
   /var/spool/cron/*
 rcp \$F $node:$SPECIAL
 "
-chmod +x $SF
-rgang -c $gang $SF /tmp/special_files
-rgang $gang /tmp/special_files
-ls -l $SPECIAL
+  chmod +x $SF
+  rgang -c $gang $SF /tmp/special_files
+  rgang $gang /tmp/special_files
+  ls -l $SPECIAL
+fi
 
 umount $BACKUP
