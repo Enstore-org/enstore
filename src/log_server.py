@@ -38,6 +38,7 @@ import pprint
 import socket
 
 list = 0
+test = 0
 # Log Methods Class
 class LogMethods(DispatchingWorker) :
 
@@ -80,8 +81,14 @@ class Logger(LogMethods, GenericServer, UDPServer) :
     def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
         day = current_day = tm[2];
+	if test :
+	    min = current_min = tm[4]
         # form the log file name
         fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+	if test:
+	    ft = '-%02d-%02d' % (tm[3], tm[4])
+	    fn = fn + ft
+
         self.logfile_name = logfile_dir_path + "/" + fn
         # open log file
         self.open_logfile(self.logfile_name)
@@ -92,15 +99,32 @@ class Logger(LogMethods, GenericServer, UDPServer) :
             # get local time
             tm = time.localtime(time.time())
             day = tm[2];
-            # check if day has been changed
-            if day != current_day :
-                # day changed: close the current log file
-                self.logfile.close()
-                current_day = day;
-                # and open the new one
-                fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
-                self.logfile_name = logfile_dir_path + "/" + fn
-                self.open_logfile(self.logfile_name)
+	    if test :
+		min = tm[4]
+            # if test flag is not set reopen log file at midnight
+	    if not test :
+		# check if day has been changed
+		if day != current_day :
+		    # day changed: close the current log file
+		    self.logfile.close()
+		    current_day = day;
+		    # and open the new one
+		    fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+		    self.logfile_name = logfile_dir_path + "/" + fn
+		    self.open_logfile(self.logfile_name)
+	    else :
+		# if test flag is set reopen log file every minute
+		if min != current_min :
+		    # minute changed: close the current log file
+		    self.logfile.close()
+		    current_min = min;
+		    # and open the new one
+		    fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+		    ft = '-%02d-%02d' % (tm[3], tm[4])
+		    fn = fn + ft
+		    self.logfile_name = logfile_dir_path + "/" + fn
+		    self.open_logfile(self.logfile_name)
+
 
 if __name__ == "__main__" :
     import getopt
@@ -114,8 +138,8 @@ if __name__ == "__main__" :
     config_list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
-               ,"config_list","list","verbose","help"]
+    options = ["config_host=","config_port=","config_file=" \
+               ,"config_list","list","verbose","help","test"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -126,6 +150,8 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--list" or opt == "--verbose":
             list = 1
+        elif opt == "--test":
+            test = 1
         elif opt == "--help" :
             print "python ", options
             print "   do not forget the '--' in front of each option"
@@ -157,4 +183,8 @@ if __name__ == "__main__" :
             print time.strftime("%c",time.localtime(time.time())),\
                   sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
+
+
+
+
 
