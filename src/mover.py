@@ -22,7 +22,8 @@ import setpath
 import generic_server
 import interface
 import dispatching_worker
-import volume_clerk_client              
+import volume_clerk_client
+import volume_family
 import file_clerk_client                
 import media_changer_client             
 import callback
@@ -791,21 +792,27 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
         self.vol_info.update(self.vcc.inquire_vol(volume_label))
         if self.vol_info['status'][0] != 'ok':
-            return 0 #XXX NOTAPE
+            msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
+                mode, e_errors.EPROTO), self.vol_info['status'][1])
+            Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
+            self.send_client_done(ticket, msg[0], msg[1])
+            return 0
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
-        
-        self.wrapper_type = self.vol_info.get('wrapper')
-        if self.wrapper_type is None:
-            ##XXX hack - why is wrapper not coming in on the vc ticket?
-            fam = (self.vol_info.get("volume_family") or
-                   self.vol_info.get("file_family"))
-            self.wrapper_type = string.split(fam,'.')[-1]
+        fam = self.vol_info.get("volume_family")
+        self.wrapper = None
+        self.wrapper_type = None
+        if fam:
+            self.wrapper_type = volume_family.extract_wrapper(volume_family)
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
         except ImportError, detail:
             Trace.log(e_errors.ERROR, "%s"%(detail,))
-            self.wrapper = None
+
+        if not self.wrapper:
+            msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
+            Trace.log(e_errors.ERROR,  "%s" %(msg,))
+            self.send_client_done(ticket, msg[0], msg[1])
             
         client_filename = ticket['wrapper'].get('fullname','?')
         pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
@@ -969,7 +976,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.dismount_time = now + self.delay
         self.update(state=ERROR, reset_timer=1)
-        
+        if self.state == HAVE_BOUND:
+            self.update(reset_timer=1)        
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -987,7 +995,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         self.update(reset_timer=1)
-        
         if self.state == DRAINING:
             self.dismount_volume()
             self.state = OFFLINE
@@ -995,7 +1002,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
             if self.maybe_clean():
                 self.state = IDLE
-        
+        if self.state == HAVE_BOUND:
+            self.update(reset_timer=1)
+            
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
         did_cleaning = 0
@@ -1142,7 +1151,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if error_info:
                 status = error_info
         elif state in (ERROR, OFFLINE):
-            work = "mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
+            work = "Mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
             if error_info is None:
                 status = self.last_error
             else:
