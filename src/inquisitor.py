@@ -126,76 +126,91 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # time we find the server dead we do not fork again.
                     Trace.trace(8,"Inquisitor forking to restart %s"%key)
                     self.forked[key] = 1
-                    if not self.fork():
-                        # we are the child ###################################
-                        Trace.init("INQ_CHILD")
-                        # we need to get new udp clients so we don't collide
-                        # with our parent.
-                        client.u = udp_client.UDPClient()
-                        if not key == CONFIG_S:
-                            self.csc.u = udp_client.UDPClient()
-                        if not key == LOG_S:
-                            self.logc.u = udp_client.UDPClient()
-                        if not key == ALARM_S:
-                            self.alarmc.u = udp_client.UDPClient()
-                        # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 60
-                        self.alive_retries = 3
-                        ret = self.alive_status(client, (t['host'], t['port']),
-                                                prefix, time, key)
-                        if ret == TIMED_OUT:
-                            # 3. if we raise an alarm we need to include the 
-                            #     following info.
-                            alarm_info = {'server' : key}
-                            if t.has_key("norestart"):
-                                # do not restart, raise an alarm that the
-                                # server is dead.
-                                if not key == ALARM_S:
-                                    Trace.alarm(e_errors.ERROR,
-                                                e_errors.SERVERDIED,
-                                                alarm_info)
-                                else:
-                                    Trace.log(e_errors.ERROR,
-                                              "%s died and will not be restarted"%key)
-                            else:
-                                # we should try to restart the server.  try 3X
-                                i = 0
-                                self.alive_retries = 1
-                                Trace.log(e_errors.INFO,
-                                          "Attempting restart of %s"%key)
-                                while i < 3:
-                                    Trace.trace(7, "Server restart: try %s"%i)
+		    pid = self.fork()
+                    if not pid:
+                        # we are the first child ############################
+			# fork a second time and then exit.  the 2nd child will
+			# actually do the work.  the 1st child (this one) exits
+			# immediately so that the 2nd child is inherited by the
+			# init process and does not become a zombie when it 
+			# exits.
+			if not self.fork():        # getting the second child
+			    # we are the second child
+			    Trace.init("INQ_CHILD")
+			    # we need to get new udp clients so we don't collide
+			    # with our parent.
+			    client.u = udp_client.UDPClient()
+			    if not key == CONFIG_S:
+				self.csc.u = udp_client.UDPClient()
+			    if not key == LOG_S:
+				self.logc.u = udp_client.UDPClient()
+			    if not key == ALARM_S:
+				self.alarmc.u = udp_client.UDPClient()
+			    # Check on server status but wait a long time
+			    self.alive_rcv_timeout = 60
+			    self.alive_retries = 3
+			    ret = self.alive_status(client, (t['host'], t['port']),
+						    prefix, time, key)
+			    if ret == TIMED_OUT:
+				# 3. if we raise an alarm we need to include the 
+				#     following info.
+				alarm_info = {'server' : key}
+				if t.has_key("norestart"):
+				    # do not restart, raise an alarm that the
+				    # server is dead.
+				    if not key == ALARM_S:
+					Trace.alarm(e_errors.ERROR,
+						    e_errors.SERVERDIED,
+						    alarm_info)
+				    else:
+					Trace.log(e_errors.ERROR,
+						  "%s died and will not be restarted"%key)
+				else:
+				    # we should try to restart the server.  try 3X
+				    i = 0
+				    self.alive_retries = 1
+				    pid = os.getpid()
+				    Trace.log(e_errors.INFO,
+					      "Attempting restart of %s (%s)"%(key, pid))
 				    # we need just the node name part of the host name
 				    node = string.split(host, ".", 1)
-                                    os.system('enstore Erestart %s "--just %s"'%(node[0], key))
-                                    # check if alive
-                                    ret = self.alive_status(client,
-                                                            (host, port),
-                                                            prefix, time, key)
-                                    if ret == DID_IT:
-                                        Trace.log(e_errors.INFO,
-                                                  "Restarted %s"%key)
-                                        break
-                                    else:
-                                        i = i + 1
-                                else:
-                                    # 4. we could not restart the server
-                                    if not key == ALARM_S:
-                                        Trace.alarm(e_errors.ERROR, 
-                                                    e_errors.CANTRESTART,
-                                                    alarm_info)
-                                    else:
-                                        Trace.log(e_errors.ERROR,
+				    while i < 3:
+					Trace.trace(7, "Server restart: try %s"%i)
+					os.system('enstore Erestart %s "--just %s"'%(node[0], key))
+					# check if alive
+					ret = self.alive_status(client,
+								(host, port),
+								prefix, time, key)
+					if ret == DID_IT:
+					    Trace.log(e_errors.INFO,
+						      "Restarted %s"%key)
+					    break
+					else:
+					    i = i + 1
+				    else:
+					# 4. we could not restart the server
+					if not key == ALARM_S:
+					    Trace.alarm(e_errors.ERROR, 
+							e_errors.CANTRESTART,
+							alarm_info)
+					else:
+					    Trace.log(e_errors.ERROR,
                                                   "Can't restart %s"%key)
-                        del client.u
-                        if not key == CONFIG_S:
-                            del self.csc.u
-                        if not key == LOG_S:
-                            del self.logc.u
-                        if not key == ALARM_S:
-                            del self.alarmc.u
-                        os._exit(0)
-                        # end of the child ##################################
+			    del client.u
+			    if not key == CONFIG_S:
+				del self.csc.u
+			    if not key == LOG_S:
+				del self.logc.u
+			    if not key == ALARM_S:
+				del self.alarmc.u
+			    os._exit(0)   # second child
+			    # end of the second child ##################################
+			else:
+			    os._exit(0)   # first child
+		    else:
+			# we are the original parent.  now we must wait for the first
+			# child to exit so it does not become a zombie
+			os.waitpid(pid, 0)
         else:
             # the server was alive, clear out any record that we forked to
             # restart it because apparently it worked.
