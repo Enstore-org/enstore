@@ -2,6 +2,8 @@
 
 output=/tmp/write_tab.output
 
+sun=fntt
+
 work=/diska/write_protect_work
 if [ ! -d $work ]; then
    echo `date` ERROR. $work does not exist
@@ -12,17 +14,19 @@ for i in $work/*; do
   . $i |tee $output 2>&1
   echo 
   echo
-#  echo "1. Open CAP door"
-#  echo "2. Remove all tapes from CAP"
-#  echo "3. Close CAP door"
-#  echo "4. Flip tabs to write-protect on all tapes"
-#  echo "5. Hit ENTER when you are finished"
-#  read ans
-  /usr/bin/rsh fntt -l acsss "echo enter 0,0,0 |/export/home/ACSSS/bin/cmd_proc " 
-#  echo "6. Open CAP door"
-#  echo "7. Insert tapes into CAP"
-#   echo "8. Close CAP door"
-#  echo "9. Hit ENTER when you are finished"
+# /usr/bin/rsh $sun -l acsss "echo enter 0,0,0 |/export/home/ACSSS/bin/cmd_proc" 
+  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic 0,0,0 |/export/home/ACSSS/bin/cmd_proc"
+  echo 
+  /bin/echo -n "Push Enter when all tapes have been loaded with tab in write-protect mode"
+  read ans
+  while /bin/true; do 
+    cap=`/usr/bin/rsh $sun -l acsss "echo q cap 0,0,0 |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
+    capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+    if [ "$capstate" = "available" ]; then break
+    echo `date` waiting for cap to be unloaded: $capstate
+    sleep 15
+  done
+  /usr/bin/rsh $sun -l acsss "echo set cap mode manual 0,0,0 |/export/home/ACSSS/bin/cmd_proc"
   echo 
   echo
   /bin/echo -n "Were all of these steps successful [y or n]? "
