@@ -10,6 +10,8 @@ import os
 import socket
 import traceback
 import pprint
+import time
+import enstore_functions
 
 # enstore imports
 import dispatching_worker
@@ -24,6 +26,7 @@ import enstore_files
 import configuration_client
 import timeofday
 import enstore_constants
+import udp_client
 
 """
 be an active monitor server.
@@ -69,8 +72,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.page = None
 
     def simulate_encp_transfer(self, ticket):
-        ticket['status'] = ('ok', None)
-        self.reply_to_caller(ticket)
+        
         pid=self.fork()
         if pid: #parent
             return
@@ -88,9 +90,26 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 
         xfer_sock, address = well_known_sock.accept()
         well_known_sock.close()
-        sendstr = "S"*ticket['block_size']
-        for x in xrange(ticket['block_count']):
-            xfer_sock.send(sendstr)
+        if ticket['transfer'] == "send_from_server":
+            sendstr = "S"*ticket['block_size']
+            for x in xrange(ticket['block_count']):
+                xfer_sock.send(sendstr)
+            ticket['elapsed'] = -1
+        elif ticket['transfer'] == "send_to_server":
+            data=xfer_sock.recv(1)
+            if not data:
+                raise "Server closed connection"
+            bytes_received=len(data)
+            t0=time.time()
+            while bytes_received < ticket['block_size']*ticket['block_count']:
+                data = xfer_sock.recv(ticket['block_size'])
+                if not data: #socket is closed
+                    raise "Server closed connection"
+                bytes_received=bytes_received+len(data)
+            ticket['elapsed']=time.time()-t0
+        
+        ticket['status'] = ('ok', None)
+        self.reply_to_caller(ticket)
         xfer_sock.close()
         os._exit(0)
 
@@ -100,11 +119,12 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         #self.page is None if we have not setup.
         if not self.page:
             self.page = enstore_html.EnActiveMonitorPage(
-            ["Time", "user IP", "Enstore IP", "Blocks", "Bytes/Block",
-		    "Time", "Rate (MB/S)"], self.html_refresh_time)
+                ["Time", "user IP", "Enstore IP", "Blocks", "Bytes/Block",
+                 "Read Time", "Read Rate (MB/S)", "Write Time",
+                 "Write Rate (MB/S)"], self.html_refresh_time)
         else:
             pass #have already set up
-        
+
     def recieve_measurement(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
         self._become_html_gen_host() #setup for making html
@@ -119,7 +139,6 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         file.write(str(self.page))
         file.close()
 
-        
 class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
