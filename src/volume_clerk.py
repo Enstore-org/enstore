@@ -12,7 +12,6 @@ import socket
 import select
 
 # enstore imports
-import setpath
 import hostaddr
 import callback
 import dispatching_worker
@@ -25,10 +24,8 @@ import volume_family
 import esgdb
 import enstore_constants
 import monitored_server
-import file_clerk_client
 import inquisitor_client
 import cPickle
-import event_relay_client
 import event_relay_messages
 
 def hack_match(a,b): #XXX clean this up
@@ -507,10 +504,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 sgc = self.sgdb.get_sg_counter(library, 'none')
                 if sgc < self.common_blank_low['alarm']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-                    Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW',  msg)
+                    Trace.alarm(e_errors.ERROR, 'COMMON BLANK POOL LOW',  msg)
                 elif sgc < self.common_blank_low['warning']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                    Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
+                    Trace.alarm(e_errors.WARNING, 'COMMON BLANK POOL LOW', msg)
 
         return status
 
@@ -702,10 +699,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         sgc = self.sgdb.get_sg_counter(library, 'none')
         if sgc < self.common_blank_low['alarm']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-            Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW', msg)
+            Trace.alarm(e_errors.ERROR, 'COMMON BLANK POOL LOW', msg)
         elif sgc < self.common_blank_low['warning']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-            Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
+            Trace.alarm(e_errors.WARNING, 'COMMON BLANK POOL LOW', msg)
         ticket['status'] = (e_errors.OK, None)
         Trace.log(e_errors.INFO, "volume %s is assigned to storage group %s"%(vol, storage_group))
         self.reply_to_caller(ticket)
@@ -1343,10 +1340,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     sgc = self.sgdb.get_sg_counter(library, osg)
                     if sgc < self.common_blank_low['alarm']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-                        Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW', msg)
+                        Trace.alarm(e_errors.ERROR, 'COMMON BLANK POOL LOW', msg)
                     elif sgc < self.common_blank_low['warning']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                        Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
+                        Trace.alarm(e_errors.WARNING, 'COMMON BLANK POOL LOW', msg)
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
