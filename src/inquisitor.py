@@ -862,11 +862,38 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	lines = self.extract_lines(ofn, ticket)
-	self.enprint(lines, generic_cs.PRETTY_PRINT, generic_cs.ALL, "")
+	# now pull out the info we are going to plot from the lines
+	data = []
+	for line in lines:
+	    einfo = enstore_status.parse_encp_line(line)
+	    if einfo[enstore_status.ESTATUS] == \
+	       log_client.sevdict[log_client.INFO]:
+	        data.append([string.replace(einfo[enstore_status.ETIME], \
+	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
+	self.make_plot_file(lfd+"/bpt.pts", data)
+	self.gnuplot(lfd, lfd+"/bpt.gnuplot")
 	ret_ticket = { 'plot_bpt' : len(lines), \
 	               'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
         Trace.trace(10,"}plot_bpt ")
+
+    # run gnuplot on the file to create a plot
+    def gnuplot(self, dir, cmds):
+	os.system("cd "+dir+"; gnuplot "+cmds)
+
+    # make the file with the plot points in them
+    def make_plot_file(self, filename, data):
+	Trace.trace(11,"{do_plot_bpt ")
+	# open the file and write out the data points
+	pfile = open(filename, 'w')
+	if len(data[0]) == 2:
+	    for [xpt, ypt] in data:
+	        pfile.write(xpt+" "+ypt+"\n")
+	elif len(data[0]) == 3:
+	    for [xpt, ypt, zpt] in data:
+	        pfile.write(xpt+" "+ypt+" "+zpt+"\n")
+	pfile.close()
+	Trace.trace(11,"}do_plot_bpt ")
 
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
