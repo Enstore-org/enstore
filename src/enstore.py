@@ -49,7 +49,8 @@ import backup
 try:
 	import quota
 except:
-	import fake_quota as quota
+	import fake_quota
+	quota = fake_quota
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
