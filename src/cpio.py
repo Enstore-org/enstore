@@ -81,19 +81,6 @@ To extract:   cpio -idmv < archive
 """
 class Cpio :
 
-    # read  object: needs a method read_block that will read the data, it
-    #               has no arguments
-    # write object: needs a method write_block that will write the data, it
-    #               has 1 argument - the data to be written
-    # crc_function: crc's the data, 2 arguments: 1=buffer, 2=initial_crc
-    # fast_write:   1 means use EXfer, 0 means use slower python writes
-    def __init__(self,read_object, write_object, crc_fun, fast_write=1) :
-        self.read_driver = read_object
-        self.write_driver = write_object
-        self.crc_fun = crc_fun
-        self.fast_write = fast_write
-	pass
-
     def sw_mount( self, driver, info ):
 	return
 
