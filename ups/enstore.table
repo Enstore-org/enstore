@@ -139,7 +139,9 @@ COMMON:
                 # we need to determine where the python include and library paths are
                 # note in the following line, the sort allows multiple python versions,
                 #      the highest is used because of the reverse sort
-                execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
+	        #      go through a file since otherwise multiple lines will give us trouble
+                execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r>/tmp/choosepy; head -n1 /tmp/choosepy; rm -f /tmp/choosepy", NO_UPS_ENV, ver)
+                ###execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
                 execute("basename $ver", NO_UPS_ENV, PVER)
                 envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
                 envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
