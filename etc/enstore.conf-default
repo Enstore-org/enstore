@@ -21,3 +21,16 @@ configdict['fd0.mover'] = { 'status'  : 'ok', \
                             'library' : 'activelibrary', \
                             'driver'  : 'RawDiskDriver', \
                             'library_device' : '1'}
+
+configdict['stk0.mover'] = { 'status'  : 'ok', \
+                            'device'  : 'specifyme', \
+                            'library' : 'red50library', \
+                            'driver'  : 'speciftyme', \
+                            'library_device' : '1', \
+			    'media_changer' : 'STK.media_changer' }
+
+configdict['STK.media_changer'] = { 'status'  : 'ok', \
+				    'host' : 'hppc.fnal.gov', \
+				    'port' : 7505, \
+				    'acls_host' : 'fntt', \
+				    'acls_uname' : 'acsss' }
