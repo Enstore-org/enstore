@@ -81,10 +81,10 @@ class AtMovers:
         mover = mover_info['mover']
         self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
-        Trace.trace(11,"AtMovers put: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        Trace.trace(13,"AtMovers put: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
 
     def delete(self, mover_info):
-        Trace.trace(11, "AtMovers delete. before: %s" % (self.at_movers,))
+        Trace.trace(13, "AtMovers delete. before: %s" % (self.at_movers,))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
             Trace.log(11, "MOVER %s" % (self.at_movers[mover],))
@@ -92,7 +92,7 @@ class AtMovers:
             vol_family = self.at_movers[mover]['volume_family']
             self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
             del(self.at_movers[mover])
-        Trace.trace(11,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
+        Trace.trace(13,"AtMovers delete: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
@@ -104,6 +104,8 @@ class AtMovers:
         # look in the list of work_at_movers
         for rec in self.sg_vf.vf[volume_family_name]:
             vols.append(rec[1])
+            if self.at_movers.has_key(rec[0]): ### DBG: REMOVE
+                Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
             if (self.at_movers.has_key(rec[0]) and self.at_movers[rec[0]]['volume_status'][0][1]) == 'none':  # system inhibit
                 # if volume can be potentially written increase number
                 # of write enabled volumes that are currently at work
@@ -367,7 +369,16 @@ class LibraryManagerMethods:
         # temprorarily store selected request to use it in case
         # when other request(s) based on fair share criteria
         # for some other reason(s) do not get selected
-        self.tmp_rq = rq
+
+        # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
+        # do not update temporarily store rq.
+        rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
+        sg_limit = self.get_sg_limit(rq_sg)
+        if self.tmp_rq:
+            tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
+            tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
+            if sg_limit != 0: self.tmp_rq = rq  # replace tmp_rq if rq SG limit is not 0
+        else: self.tmp_rq = rq
         key_to_check = self.fair_share(rq)
         if key_to_check:
             self.continue_scan = 1
@@ -419,7 +430,16 @@ class LibraryManagerMethods:
         # temprorarily store selected request to use it in case
         # when other request(s) based on fair share criteria
         # for some other reason(s) do not get selected
-        self.tmp_rq = rq
+
+        # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
+        # do not update temporarily store rq.
+        rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
+        sg_limit = self.get_sg_limit(rq_sg)
+        if self.tmp_rq:
+            tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
+            tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
+            if sg_limit != 0: self.tmp_rq = rq  # replace tmp_rq if rq SG limit is not 0
+        else: self.tmp_rq = rq
         
         key_to_check = self.fair_share(rq)
         if key_to_check:
@@ -1013,7 +1033,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['current_location'] = None
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['status'] =  (e_errors.OK, None)
-        mticket['volume_status'] = ((None,None),(None,None))
         #mticket['operation'] = work
 
         Trace.trace(11,"MT %s" % (mticket,))
@@ -1067,7 +1086,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     w["wrapper"]["uname"]))
 	    w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
-            Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
+            Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s"%
+                      (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'], mticket['address']))
             self.udpc.send_no_wait(w, mticket['address']) 
             self.pending_work.delete(rq)
             w['mover'] = mticket['mover']
@@ -1081,8 +1101,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             mticket['external_label'] = w["vc"]["external_label"]
             mticket['status'] = (e_errors.OK, None)
             mticket['volume_family'] = w['vc']['volume_family']
-            mticket['volume_status'] = ((None,None),(None,None))
-            Trace.trace(11,"MT %s" % (mticket,))
+            Trace.trace(11,"mover %s label %s vol_fam %s" % (mticket['mover'], mticket['external_label'],
+                                                                  mticket['volume_family']))
         
             self.volumes_at_movers.put(mticket)
             
