@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-CC=`grep '^CC=' $(PYTHON_DIR)/lib/python*/config/Makefile | sed -e 's/CC=[       ]*//'`
+CC=`grep '^CC=' $(PYTHONLIB)/config/Makefile | sed -e 's/CC=[       ]*//'`
 
 all:	 Trace adler32.a Makefile.modules Modules 
 
@@ -21,7 +21,7 @@ Makefile.modules: Setup
 	cp ../Setup . ; \
 	if  [ "$(ACI_DIR)"x = x ];  then grep -v ACI Setup > x; mv x Setup; fi ;\
 	if  [ "$(STK_DIR)"x = x ];  then grep -v STK Setup > x; mv x Setup; fi ;\
-	cp $(PYTHON_DIR)/Python*/Misc/Makefile.pre.in . ; \
+	cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
 	make -f Makefile.pre.in boot                    ; \
         cp Makefile ../Makefile.modules
 
