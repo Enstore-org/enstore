@@ -307,8 +307,8 @@ class MediaLoaderInterface(interface.Interface):
                self.help_options()
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" media_changer"
+    def parameters(self):
+        return "media_changer"
 
     # parse the options like normal but make sure we have a media changer
     def parse_options(self):

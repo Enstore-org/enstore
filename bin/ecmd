@@ -20,6 +20,7 @@ ecmd lmc     [--server_verbose= --getwork --verbose= --alive --help '] library
 ecmd mcc     [--server_verbose= --verbose= --alive --help ']  media_changer volume drive
 ecmd mov     [--server_verbose= --verbose= --status --alive --help'] mover
 ecmd log     [--server_verbose= --test --alive  --verbose= --logit --help]
+ecmd alarm   [--server_verbose= --alive, --verbose=, --dump --help]
 ecmd inq     [--server_verbose= --alive --refresh=secs --get_refresh --update --timeout=secs --get_timeout --reset_timeout --timestamp --max_ascii_size --get_max_ascii_size --dump --help]
 
 ecmd bfids   
@@ -159,6 +160,10 @@ case $cmd in
     stat=$?
     ;;
 
+  ala)
+    python $ENSTORE_DIR/src/alarm_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
+    stat=$?
+    ;;
 
   inq)
     python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@

@@ -1141,8 +1141,8 @@ class LibraryManagerInterface(interface.Interface):
                self.help_options()
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" library_manager"
+    def parameters(self):
+        return "library_manager"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):

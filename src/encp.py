@@ -1835,13 +1835,18 @@ class encp(interface.Interface):
     def help_line(self):
         Trace.trace(16,"{encp.help_line")
 
-        the_help = interface.Interface.help_line(self)+\
-                   " inputfilename outputfilename \n  or\n"+\
-                   interface.Interface.help_line(self)+\
-                   " inputfilename1 ... inputfilenameN outputdirectory"
+	the_help = self.help_prefix()+self.parameters1()+"\n or\n  "+ \
+                   self.help_prefix()+self.parameters2()+self.help_suffix()+ \
+                   self.format_options(self.options(), "\n\t\t")
 
         Trace.trace(16,"}encp.help_line help_line="+the_help)
         return the_help
+
+    def parameters1(self):
+        return "inputfilename outputfilename"
+
+    def parameters2(self):
+        return "inputfilename1 ... inputfilenameN outputdirectory"
 
     ##########################################################################
     # parse the options from the command line

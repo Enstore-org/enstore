@@ -65,8 +65,26 @@ class Interface:
     def alive_options(self):
 	return ["alive"]+self.alive_rcv_options()
 
+    def format_options(self, opts, prefix):
+	# put the options in alphabetical order and add a "--" to the front of
+	# each
+	opts.sort()
+	nopts = ""
+	for opt in opts:
+	    nopts = nopts+prefix+"--"+opt
+	return nopts
+
+    def parameters(self):
+	return " "
+
+    def help_prefix(self):
+	return "python "+repr(sys.argv[0])+" [opts] "
+
+    def help_suffix(self):
+	return "\n\n\t where 'opts' are:\n"
+
     def help_line(self):
-        return "python"+repr(sys.argv[0])+repr(self.options())
+        return self.help_prefix()+self.parameters()+self.help_suffix()+self.format_options(self.options(), "\n\t\t")
 
     def check_port(self, port):
 	# bomb out if port isn't numeric
@@ -80,8 +98,7 @@ class Interface:
 	self.ip = socket.gethostbyname(self.config_host)
 
     def print_help(self):
-        generic_cs.enprint("USAGE:\n"+self.help_line()+"\n")
-	generic_cs.enprint("     (do not forget the '--' in  front of each option)")
+        generic_cs.enprint("USAGE:\n  "+self.help_line()+"\n")
 
     def parse_config_host(self, value):
         try:

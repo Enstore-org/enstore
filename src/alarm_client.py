@@ -70,8 +70,8 @@ class AlarmClientInterface(interface.Interface):
         Trace.trace(10,'}alarmci.__init')
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" server"
+    def parameters(self):
+        return "server"
 
     # parse the options like normal but see if we have a server
     def parse_options(self):

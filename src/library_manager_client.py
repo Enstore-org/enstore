@@ -128,9 +128,9 @@ class LibraryManagerClientInterface(interface.Interface) :
 	       ["getwork", "getmoverlist", "get_suspect_vols"] +\
 	       self.alive_options()+self.help_options()
 
-    #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" library"
+    # tell help that we need a library manager specified on the command line
+    def parameters(self):
+	return "library"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):

@@ -922,8 +922,8 @@ class MoverInterface(interface.Interface):
                self.help_options()
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" mover_device"
+    def parameters(self):
+        return "mover_device"
 
     # parse the options like normal but make sure we have a mover
     def parse_options(self):

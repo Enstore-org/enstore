@@ -169,7 +169,7 @@ class LoggerClientInterface(interface.Interface):
     def __init__(self):
         self.config_file = ""
         self.test = 0
-        self.logit1 = 0
+        self.logit = 0
         self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0

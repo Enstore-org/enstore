@@ -80,8 +80,8 @@ class MediaChangerClientInterface(interface.Interface):
                self.alive_options()+self.help_options()
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" media_changer volume drive"
+    def parameters(self):
+        return "media_changer volume drive"
 
     # parse the options like normal but make sure we have other args
     def parse_options(self):

@@ -68,8 +68,8 @@ class MoverClientInterface(interface.Interface):
                self.alive_options()+self.help_options()
 
     #  define our specific help
-    def help_line(self):
-        return interface.Interface.help_line(self)+" mover"
+    def parameters(self):
+        return "mover"
 
     # parse the options like normal but make sure we have a mover name
     def parse_options(self):
