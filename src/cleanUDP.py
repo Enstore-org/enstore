@@ -16,13 +16,6 @@
 	implementation will return, then automatically clear ECONNREFUSED.
 	To handle this, we transparently retry self.retry_max times 
 
-
-	Notice that the python socket is a primitive type in the 
-	language, like file descriptors, and so is not available for 
-	inheritance. therefore we have to code all the "methods".
-	This implementation does nto handle all patterns of optional 
-	arguments.
-
 	cleanUDP.select() must be used instead of select.select()
 
 """
@@ -80,30 +73,9 @@ class cleanUDP :
 			return 1 # it's clean - there really is a read to do
 		return 0 # it went away - just the icmp message under A. Cox's linux implementation
 
-	def accept(self) : 
-		return self.socket.accept()
-	def bind(self, address) : 
-		return self.socket.bind(address)
-	def close(self) : 
-		retval =  self.socket.close()
-		self.socket = None
-		return retval
-	def connect(self, address) : 
-		return self.socket.bind(address)
-	def fileno(self) : 
-		return self.socket.fileno()
-	def getpeername(self) : 
-		return self.socket.getpeername()
-	def getsockname(self) : 
-		return self.socket.getsockname()
-	def getsockopt(self, level, optname) :
-		return self.socket.getsockopt(level, optname)
-	def listen(self, backlog) : 
-		return self.socket.listen(backlog)
-	def makefile(self) : 
-		return self.socket.makefile()
-	def recv(self, bufsize) : 
-		return self.socket.recv(bufsize)
+
+	def __getattr__(self, attr):
+		return getattr(self.socket, attr)
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
 	def recvfrom(self, bufsize, rcv_timeout=10) :
@@ -134,13 +106,6 @@ class cleanUDP :
 				self.logerror("sendto", n)
 		return self.socket.sendto(data, address)
 		
-	def setblocking(self, flag) :
-		return self.socket.setblocking(flag)
-	def setsockopt(self, level, optname, value) : 
-		return self.socket.setsockopt(level, optname, value)
-	def shutdown(self, how) :
-		return self.socket.shutdown(how)
-
 
 	def logerror(self, sendto_or_recvfrom, try_number) :
 		badsockerrno = self.socket.getsockopt(
