@@ -1800,7 +1800,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 save_location = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
-                    Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
+                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
+                                (self.current_volume,save_location))
 
                     self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=TAPE)
                     return
@@ -1811,7 +1812,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.seek(cookie_to_long(location), 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
-                    Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
+                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
+                                (self.current_volume,save_location))
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
                     return
                 self.buffer.save_settings()
@@ -1849,17 +1851,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
-                        {'outfile':self.current_work_ticket['outfile'],
-                         'infile':self.current_work_ticket['infile'],
-                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                         'external_label':self.current_work_ticket['vc']['external_label']})
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                     except:
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error")
+                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
