@@ -398,10 +398,55 @@ class FTTDriver(driver.Driver):
         Trace.trace(25, "set mode: new mode is %s" % (self.ftt.get_mode(),))
         return r
 
-    def check_addtl_hdrs(self, nbytes, buf):
+    # labels that are possible at each position in the vol header
+    VOL2 = "VOL2"
+    VOL3 = "VOL3"
+    VOL4 = "VOL4"
+    VOL5 = "VOL5"
+    VOL6 = "VOL6"
+    VOL7 = "VOL7"
+    VOL8 = "VOL8"
+    VOL9 = "VOL9"
+    UVL1 = "UVL1"
+    UVL2 = "UVL2"
+    UVL3 = "UVL3"
+    UVL4 = "UVL4"
+    UVL5 = "UVL5"
+    UVL6 = "UVL6"
+    UVL7 = "UVL7"
+    UVL8 = "UVL8"
+    UVL9 = "UVL9"
+    
+    labels = {80  : [VOL2, UVL1],
+              160 : [VOL3, UVL1, UVL2],
+              240 : [VOL4, UVL1, UVL2, UVL3],
+              320 : [VOL5, UVL1, UVL2, UVL3, UVL4],
+              400 : [VOL6, UVL1, UVL2, UVL3, UVL4, UVL5],
+              480 : [VOL7, UVL1, UVL2, UVL3, UVL4, UVL5, UVL6],
+              560 : [VOL8, UVL1, UVL2, UVL3, UVL4, UVL5, UVL6, UVL7],
+              640 : [VOL9, UVL1, UVL2, UVL3, UVL4, UVL5, UVL6, UVL7, UVL8],
+              720 : [UVL1, UVL2, UVL3, UVL4, UVL5, UVL6, UVL7, UVL8, UVL9],
+              800 : [UVL2, UVL3, UVL4, UVL5, UVL6, UVL7, UVL8, UVL9],
+              880 : [UVL3, UVL4, UVL5, UVL6, UVL7, UVL8, UVL9],
+              960 : [UVL4, UVL5, UVL6, UVL7, UVL8, UVL9],
+              1040 : [UVL5, UVL6, UVL7, UVL8, UVL9],
+              1120 : [UVL6, UVL7, UVL8, UVL9],
+              1200 : [UVL7, UVL8, UVL9],
+              1280 : [UVL8, UVL9],
+              1360 : [UVL9]
+              }
+
+    def check_addtl_hdrs(self, nbytes, buf, mode):
         # check for VOL2 - VOL9 and
         #           UVL1 - UVL9
-        return 1
+        bytes_l = self.labels.keys()
+        for bytes in bytes_l:
+            if nbytes > bytes:
+                if buf[bytes:bytes+4] not in self.labels[bytes]:
+                    # we found a label in a spot where it should not be
+                    return {0:"READ_ERR-at-%s"%(bytes,),
+                            1:"WRITE_ERR-at-%s"%(bytes,)}[mode]
+        return None
 
 
     # the expected length is set to the absolute maximum volume header length that
@@ -428,8 +473,9 @@ class FTTDriver(driver.Driver):
             Trace.trace(25, "verify_label: read %s" % (buf,))
             if buf[:4] != "VOL1":
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
-            if self.check_addtl_hdrs(nbytes, buf) != 1:
-                return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None # FIX
+            rtn = self.check_addtl_hdrs(nbytes, buf, mode)
+            if rtn:
+                return rtn, None
             s = string.split(buf[4:])
             if not s:
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
