@@ -57,7 +57,7 @@ def backup_dbase(dbHome):
     logfiles = string.join(glob.glob('log.*'),' ')
     statfiles = string.join(glob.glob('*.stat'),' ')
     STORAGE_GROUPS = string.join(glob.glob('STORAGE_GROUPS'),' ')
-    cmd="tar cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,STORAGE_GROUPS)
+    cmd="tar --ignore-failed-read -cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,STORAGE_GROUPS)
     logthis(e_errors.INFO,cmd)
     
     ret=os.system(cmd)
