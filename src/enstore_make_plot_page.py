@@ -118,18 +118,25 @@ def do_the_walk(input_dir, url):
 
 class PlotPage(enstore_html.EnPlotPage):
 
-    def __init__(self, title, gif, description, url):
+    def __init__(self, title, gif, description, url, outofdate=0):
         self.url = url
         enstore_html.EnPlotPage.__init__(self, title, gif, description)
 	self.source_server = "Enstore"
 	self.help_file = ""
+        self.outofdate = outofdate
+        if self.outofdate:
+            today = time.time()
+            day_secs = 26.*60.*60.
+            self.yesterday = today - day_secs
+        else:
+            self.yesterday = 0.0
         self.english_titles = {}
 
 
 class CronPlotPage(PlotPage):
 
-    def __init__(self, title, gif, description, url):
-        PlotPage.__init__(self, title, gif, description, url)
+    def __init__(self, title, gif, description, url, outofdate=0):
+        PlotPage.__init__(self, title, gif, description, url, outofdate)
 	self.help_file = "cronHelp.html"
         self.english_titles = ENGLISH_TITLES
 
@@ -146,8 +153,8 @@ class CronPlotPage(PlotPage):
 
 class QuotaPlotPage(PlotPage):
 
-    def __init__(self, title, gif, description, url):
-        PlotPage.__init__(self, title, gif, description, url)
+    def __init__(self, title, gif, description, url, outofdate=0):
+        PlotPage.__init__(self, title, gif, description, url, outofdate)
         self.english_titles = {}
 
     def find_label(self, text):
@@ -171,6 +178,7 @@ class PlotPageInterface(generic_client.GenericClientInterface):
 	self.html_file = "%s/cron_pics.html"%(self.dir,)
         self.url = "CRONS/"
         self.plot = ""
+        self.outofdate = 0
 	generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -216,7 +224,14 @@ class PlotPageInterface(generic_client.GenericClientInterface):
                     option.VALUE_USAGE:option.REQUIRED,
                     option.VALUE_LABEL:"type",
                     option.USER_LEVEL:option.ADMIN,
-                    }
+                    },
+       option.OUTOFDATE:{option.HELP_STRING:"if the plot is older than 26 hours, flag it",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_NAME:"outofdate",
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+                      }
        }
 
 
@@ -229,10 +244,10 @@ def do_work(intf):
     # get the list of stamps and jpg files
     if intf.plot == CRON:
         html_page = CronPlotPage(intf.title, intf.title_gif, intf.description,
-                                 intf.url)
+                                 intf.url, intf.outofdate)
     elif intf.plot == QUOTA:
         html_page = QuotaPlotPage(intf.title, intf.title_gif, intf.description,
-                                  intf.url)
+                                  intf.url, intf.outofdate)
     else:
         html_page = None
 
