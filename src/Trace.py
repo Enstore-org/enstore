@@ -39,7 +39,7 @@ def log( severity, msg, msg_type=MSG_DEFAULT ):
 def alarm( severity, root_error, rest={} ):
     rest['severity'] = severity
     rest['root_error'] = root_error
-    trace( e_errors.ALARM, "root_error:%s"%rest['root_error'], rest )
+    trace( e_errors.ALARM, "%s"%rest, rest )
     return None
 
 def set_alarm_func( func ):
