@@ -21,6 +21,18 @@ class PyGdb(Gdb):
         self.cont = 0
         self.filename = None
         self.line = None
+        self.help = ["Commands:",
+                     " b: set breakpoint at line or in function",
+                     " c: continue",
+                     " d: delete breakpoint (with no arg, delete all breakpoints)",
+                     " h|?: help",
+                     " i: info (lists breakpoints)",
+                     " q: quit",
+                     " s: single-step",
+                     " t: toggle tracing",
+                     " w: where (print backtrace)",
+                     " gdb <gdb-command>:  passes <command> to underlying gdb",
+                     ]
         
     def set_breakpoint(self,expr):
         usage = 'Usage: b[reak] file:line|function'
@@ -168,6 +180,8 @@ class PyGdb(Gdb):
             return self.list()
         elif cmd_chr in 'cC':
             return self.gdb_command(cmd)
+        elif cmd_chr in 'hH?':
+            return self.help
         elif cmd[:4]=='gdb ':
             return self.gdb_command(cmd[4:])
         else:
@@ -179,6 +193,10 @@ if __name__ == "__main__":
         pid = string.atoi(sys.argv[1])
     except:
         pid = None
+
+    if not pid:
+        print "Usage: %s pid" % argv[0]
+        sys.exit(-1)
         
     pygdb = PyGdb(sys.argv[1:])
     welcome = pygdb.get_response()
