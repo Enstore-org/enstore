@@ -410,12 +410,12 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 
               if [ $product = "encp" ]; then
 
-                mkdir $INSTALL_DIR/volume_import
+                mkdir $INSTALLDIR/volume_import
                 copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR/encp
                 copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR/enstore
                 copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR/enstore_tape
-		copyit $ENSTORE_DIR/volume_import/*.c           $INSTALLDIR/volume_import/
-		copyit $ENSTORE_DIR/volume_import/*.h           $INSTALLDIR/volume_import/
+		cp     $ENSTORE_DIR/volume_import/*.c           $INSTALLDIR/volume_import/
+		cp     $ENSTORE_DIR/volume_import/*.h           $INSTALLDIR/volume_import/
 		copyit $ENSTORE_DIR/volume_import/Makefile      $INSTALLDIR/volume_import/
                 copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
                 copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
