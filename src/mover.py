@@ -327,7 +327,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.add_select_fd( self.tape_fd, READ, self.read_tape)
         self.add_select_fd( self.client_socket, WRITE, self.write_client)
         self.state = ACTIVE
-        self.mode = WRITE
+        self.mode = READ
 
 
     def setup_transfer(self, ticket):
