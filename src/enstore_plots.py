@@ -142,7 +142,7 @@ class EnPlot(enstore_files.EnFile):
 class MphGnuFile(enstore_files.EnFile):
 
     def write(self, gnuinfo):
-	self.openfile.write("set terminal postscript color\n"+ \
+	self.openfile.write("set terminal postscript color solid\n"+ \
 	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
 	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
 	for info in gnuinfo:
@@ -228,7 +228,7 @@ class MphDataFile(EnPlot):
 class MpdGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile, total_mounts):
-	self.openfile.write("set terminal postscript color\n"+ \
+	self.openfile.write("set terminal postscript color solid\n"+ \
 			    "set xlabel 'Date'\n"+\
 			    "set timefmt \"%Y-%m-%d\"\n"+ \
 			    "set yrange [0 : ]\n"+ \
@@ -304,7 +304,7 @@ class MlatGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile):
 	self.openfile.write("set output '"+outfile+"\n"+ \
-                           "set terminal postscript color\n"+ \
+                           "set terminal postscript color solid\n"+ \
                            "set title 'Mount Latency in Seconds "+plot_time()+"'\n"+ \
                            "set xlabel 'Date'\n"+ \
                            "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
@@ -374,7 +374,7 @@ class XferGnuFile(enstore_files.EnFile):
 
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
 	self.openfile.write("set output '"+outfile2+"'\n"+ \
-	                   "set terminal postscript color\n"+ \
+	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Individual Transfer Activity "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
@@ -435,7 +435,7 @@ class BpdGnuFile(enstore_files.EnFile):
 	psfilew = string.replace(outfile, enstore_constants.BPD_FILE,
 				 enstore_constants.BPD_FILE_W)
 	self.openfile.write("set output '"+outfile+"'\n"+ \
-	                   "set terminal postscript color\n"+ \
+	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
