@@ -179,9 +179,18 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # mod the delete state
         record["deleted"] = deleted
 
+        # become a client of the volume clerk and decrement the non-del files on the volume
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        decr_count = 1
+        vticket = vcc.decr_file_count(record['external_label'],decr_count)
+        
         # record our changes
         dict[bfid] = copy.deepcopy(record)
+
+        # and return to the caller
         ticket["status"] = (e_errors.OK, None)
+        ticket["fc"] = record
+        ticket["vc"] = vticket
         self.reply_to_caller(ticket)
         Trace.trace(12,'}set_deleted '+repr(ticket))
         return
