@@ -9,6 +9,7 @@ import time
 import string
 import errno
 import stat
+import glob
 
 # enstore imports
 import Trace
@@ -26,34 +27,49 @@ def logthis(code, message):
     print "Logging", code, message
 
 def get_size(dbHome,dbFile):
-
-    cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep \"Number of keys in the tree\" | awk '{print $1}'"
-    nkeys = os.popen(cmd).readline()[:-1]
-    size = os.stat(dbFile)[stat.ST_SIZE]
-
+    nkeys="Unknown"
+    cmd = "db_stat -h " + dbHome + " -d " + dbFile
+    lines=os.popen(cmd).readlines()
+    for l in lines:
+        if string.find(l,"Number of keys in the tree")>=0:
+            w=string.split(l)
+            nkeys=w[0]
+            break
+            
+    size = os.stat(os.path.join(dbHome,dbFile))[stat.ST_SIZE]
     return (nkeys, size)
 
 def backup_dbase(dbHome):
 
-    dbFile=""
-    for name in os.popen("db_archive -s  -h"+dbHome).readlines():
-        (nkeys, size) = get_size(dbHome,name[:-1])
-        stmsg = name[:-1] + " : Number of keys = "+nkeys+"  Database size = " + repr(size)
+    dbFiles=""
+    filelist = map(string.strip,os.popen("db_archive -s  -h"+dbHome).readlines())
+    
+    for name in filelist:
+        (nkeys, size) = get_size(dbHome,name)
+        stmsg = "%s :  Number of keys = %s  Database size = %s"%(name,nkeys,size)
         logthis(e_errors.INFO, stmsg)
-        fp = open(name[:-1]+".stat", "w")
+        fp = open(name+".stat", "w")
         fp.write(stmsg)
 	fp.close()
-    	dbFile=dbFile+" "+name[:-1]
-    cmd="tar cvf dbase.tar "+dbFile+" log.* *.stat"
-    logthis(e_errors.INFO,repr(cmd))
+    	dbFiles=dbFiles+" "+name
+    logfiles = string.join(glob.glob('log.*'),' ')
+    statfiles = string.join(glob.glob('*.stat'),' ')
+    BFIDS = string.join(glob.glob('BFIDS'),' ')
+    cmd="tar cvf dbase.tar %s %s %s %s"%(dbFiles,logfiles,statfiles,BFIDS)
+    logthis(e_errors.INFO,cmd)
     
     ret=os.system(cmd)
     if ret !=0 :
-	logthis(e_errors.INFO, "Failed: %s"(cmd,))
-	sys.exit(1)	
-    for name in os.popen("db_archive  -h"+dbHome).readlines():
-	os.system("rm "+name[:-1])
-    os.system("rm *.stat")
+	logthis(e_errors.INFO, "Failed: %s"%(cmd,))
+	sys.exit(1)
+    filelist = map(string.strip,os.popen("db_archive  -h"+dbHome).readlines())
+    for name in filelist:
+	os.unlink(name)
+    filelist=os.listdir('.')
+    for name in filelist:
+        if len(name)>5 and name[-5:]=='.stat':
+            os.unlink(name)
+
 
 def archive_backup(hst_bck,hst_local,dir_bck):
 
@@ -64,19 +80,15 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	   logthis(e_errors.INFO,"Error: %s %s"%(dir_bck,msg))
 	   sys.exit(1)
 
-        # try to compress the tared file
+        # try to compress the tarred file
         # try gzip first, if it does not exist, try compress
         # never mind if the compression programs are missing
 
 	if os.system("gzip *.tar"):	# failed?
             os.system("compress *.tar")
-
-	cmd="mv *.tar* "+dir_bck
-	logthis(e_errors.INFO,cmd)
-	ret=os.system(cmd)	
-	if ret !=0 :
-	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
-	   sys.exit(1)
+        tarfiles=glob.glob("*.tar*")
+        for file in tarfiles:
+            os.rename(file, os.path.join(dir_bck, file))
     else :
 	cmd="rsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
 	logthis(e_errors.INFO,cmd)
@@ -85,7 +97,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
 	   sys.exit(1)
 
-        # try to compress the tared file
+        # try to compress the tarred file
         # try gzip first, if it does not exist, try compress
         # never mind if the compression programs are missing
 
@@ -98,10 +110,10 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	if ret !=0 :
            logthis(e_errors.INFO,"Failed: %s"%(cmd,))
 	   sys.exit(1)
-	ret=os.system("rm *.tar*")
-	if ret !=0 :
-	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
-	   sys.exit(1)		   
+        tarfiles=glob.glob("*.tar*")
+        for file in tarfiles:
+            os.unlink(file)
+
  
     
 def archive_clean(ago,hst_local,hst_bck,bckHome):
@@ -120,19 +132,18 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
 	   if ret !=0 :
 		 logthis(e_errors.INFO, "Failed: %s"%(cmd,))
     else :
-	remcmd="find "+bckHome+" -type d -mtime +"+repr(ago)
-	cmd="rsh "+hst_bck+" "+"'"+remcmd+"'"
+        remcmd="find %s -type d -mtime %s"%(bckHome,ago)
+	cmd="rsh %s '%s'"%(hst_bck,remcmd)
 	logthis(e_errors.INFO, repr(cmd))
-	for name in os.popen(cmd).readlines():
-		name=name[:-1]
-		logthis(e_errors.INFO, repr(name))
-		if name :
-		   if name != bckHome:
-		      cmd="rsh "+hst_bck+" 'rm -rf "+name+"'"
-		      logthis(e_errors.INFO, repr(cmd))
-		      ret=os.system(cmd)
-		      if ret != 0 :
-			logthis(e_errors.INFO, "Command %s failed"%(cmd,))
+        names= map(string.strip,os.popen(cmd).readlines())
+        for name in names:
+		logthis(e_errors.INFO, name)
+		if name and name != bckHome:
+                    cmd="rsh "+hst_bck+" 'rm -rf "+name+"'"
+                    logthis(e_errors.INFO, cmd)
+                    ret=os.system(cmd)
+                    if ret != 0 :
+                        logthis(e_errors.INFO, "Command %s failed"%(cmd,))
 		
 if __name__=="__main__":
     import string
