@@ -13,7 +13,7 @@ class Driver:
     def tell(self):
         raise NotImplementedError
 
-    def open(self, device, mode):
+    def open(self, device, mode,retry_count=10):
         raise NotImplementedError
 
     def flush(self, device):
