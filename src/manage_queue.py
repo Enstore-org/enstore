@@ -420,6 +420,19 @@ class Request_Queue:
         return self.tags.keys
 
     def put(self,ticket,t_time=0):
+        if ticket['work'] == 'write_to_hsm':
+            # combine volume family
+            if ticket['vc']['file_family'] != 'ephemeral':
+                key = string.join((ticket['vc']['storage_group'],
+                       ticket['vc']['file_family'],
+                       ticket['vc']['wrapper']),'.')
+            else: key = string.join((ticket['vc']['storage_group'],'ephemeral','none'), '.')
+            ticket['vc']['volume_family'] = key
+        elif ticket['work'] == 'read_from_hsm':
+            key = ticket['fc']['external_label']
+        else:
+            return None, e_errors.WRONGPARAMETER
+
         if ticket['encp']['adminpri'] > -1:
             # high priority request. Put into admin queue
             rq = Request(ticket['encp']['basepri'], 0, ticket, ticket['times']['t0'])
@@ -429,23 +442,12 @@ class Request_Queue:
             if res: return None, stat
             else: return rq, stat
         if ticket['work'] == 'write_to_hsm':
-            # combine volume family
-            if ticket['vc']['file_family'] != 'ephemeral':
-                key = string.join((ticket['vc']['storage_group'],
-                       ticket['vc']['file_family'],
-                       ticket['vc']['wrapper']),'.')
-            else: key = string.join((ticket['vc']['storage_group'],'ephemeral','none'), '.')
-            ticket['vc']['volume_family'] = key
             rq, stat = self.write_queue.put(ticket,t_time)
             if not rq: return rq, stat
-            queue = self.write_queue
         elif ticket['work'] == 'read_from_hsm':
-            key = ticket['fc']['external_label']
             rq, stat = self.read_queue.put(ticket,t_time)
             if not rq: return rq, stat
-            queue = self.read_queue
-        else:
-            return 0, e_errors.WRONGPARAMETER
+
 
         # now get the highest priority request from the queue
         # where request went
@@ -526,7 +528,9 @@ class Request_Queue:
         else:
             if use_admin_queue:
                 # check admin request queu first
-                rq = self.adm_queue.get()
+                if next: rq = self.adm_queue.get_next()
+                else: rq = self.adm_queue.get()
+                #rq = self.adm_queue.get()
                 if rq: return rq
             
             # label is not specified, get the highest priority from
