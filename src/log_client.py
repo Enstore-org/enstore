@@ -28,6 +28,21 @@ import e_errors
 MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
 
+# stand alone function to send a log message
+def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
+    import configuration_client
+    # get config port and host
+    port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
+    host = os.environ.get('ENSTORE_CONFIG_HOST', '')
+    # convert port to integer
+    if port: port = string.atoi(port)
+    if port and host:
+        # if port and host defined create config client
+        csc = configuration_client.ConfigurationClient((host,port))
+        # create log client
+        logc = LoggerClient(csc, logname, MY_SERVER)
+    Trace.log(sev_level, message)
+    
 # send a message to the logger
 def logit(logc, message="HELLO", logname="LOGIT"):
     # reset our log name
