@@ -485,7 +485,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #   exit if the host is not this machine
         self.keys = self.csc.get(libman)
 	try:
-	    self.print_id = keys['logname']
+	    self.print_id = self.keys['logname']
 	except:
 	    pass
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
@@ -1030,7 +1030,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # alas
         else:
-	    Tracse.trace(0,"}have_bound_volume: assertion error " \
+	    Trace.trace(0,"}have_bound_volume: assertion error " \
 			+ repr(w) + " " + repr(mticket))
             self.enprint("assertion error in have_bound_volume w=, mticket=", \
 	                 generic_cs.SERVER, self.verbose)
