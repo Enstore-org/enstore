@@ -46,7 +46,6 @@ do_read_write(int rd_fd, int wr_fd, long long no_bytes, int blk_size, int crc_fl
 	
 	buffer = (char *)alloca(blk_size);
 	
-	fflush(stdout);
 	while (no_bytes) {
 	    /* Do not worry about reading/writing an exact block as this is
 	       one the user end. But attempt blk_size reads. */
@@ -137,10 +136,13 @@ EXfd_xfer(PyObject *self, PyObject *args)
     else 
 	return(raise_exception("fd_xfer - invalid crc param"));
 
-    if (PyLong_Check(no_bytes_obj))
+    if (PyLong_Check(no_bytes_obj)){
 	no_bytes = PyLong_AsLongLong(no_bytes_obj);
-    else if (PyInt_Check(no_bytes_obj))
-	no_bytes = (unsigned)PyLong_AsLongLong(no_bytes_obj);
+    }
+    
+    else if (PyInt_Check(no_bytes_obj)){
+	no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
+    }
     else
 	return(raise_exception("fd_xfer - invalid no_bytes param"));
     
