@@ -973,7 +973,7 @@ class EnPatrolPage(EnBaseHtmlDoc):
 class EnAlarmSearchPage(EnBaseHtmlDoc):
 
     def __init__(self, background):
-	EnBaseHtmlDoc.__init__(self, refresh=600, background)
+	EnBaseHtmlDoc.__init__(self, refresh=600, background=background)
 	self.title = "ENSTORE Alarm Search"
 	self.script_title_gif = "en_alarm_hist.gif"
 	self.description = "Active and resolved alarms."
