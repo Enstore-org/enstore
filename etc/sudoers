@@ -16,7 +16,7 @@ root	ALL=(ALL) ALL
 #enstore ALL=NOPASSWD:/fnal/ups/prd/python/*/bin/python,NOPASSWD:/home/enstore/enstore/bin/pidkill,NOPASSWD:/home/enstore/enstore/bin/pidkill_s
 
 Cmnd_Alias	PYTHON = /usr/bin/python, /usr/local/bin/python, \
-		/local/ups/prd/python/*/bin/python
+		/local/ups/prd/python/*/bin/python, /fnal/ups/prd/python/*/bin/python
 Cmnd_Alias	PIDKILL = /home/enstore/enstore/bin/pidkill, \
 		/home/enstore/enstore/bin/pidkill_s
                 
