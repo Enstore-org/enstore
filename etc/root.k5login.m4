@@ -89,6 +89,10 @@ host/d0enmvr42a.fnal.gov@FNAL.GOV
 host/d0enmvr43a.fnal.gov@FNAL.GOV
 host/d0enmvr44a.fnal.gov@FNAL.GOV
 host/d0enmvr45a.fnal.gov@FNAL.GOV
+host/d0enmvr46a.fnal.gov@FNAL.GOV
+host/d0enmvr47a.fnal.gov@FNAL.GOV
+host/d0enmvr48a.fnal.gov@FNAL.GOV
+host/d0enmvr49a.fnal.gov@FNAL.GOV
 host/d0enout1a.fnal.gov@FNAL.GOV
 host/d0enout2a.fnal.gov@FNAL.GOV
 host/stkensrv0.fnal.gov@FNAL.GOV
@@ -127,6 +131,7 @@ host/cdfensrv1.fnal.gov@FNAL.GOV
 host/cdfensrv2.fnal.gov@FNAL.GOV
 host/cdfensrv3.fnal.gov@FNAL.GOV
 host/cdfensrv4.fnal.gov@FNAL.GOV
+host/cdfensrv5.fnal.gov@FNAL.GOV
 host/cdfensrv6.fnal.gov@FNAL.GOV
 host/cdfenmvr1a.fnal.gov@FNAL.GOV
 host/cdfenmvr2a.fnal.gov@FNAL.GOV
