@@ -605,7 +605,8 @@ class Shelf_MediaLoader(MediaLoaderMethods):
                     Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 		    return
 	else :
-            Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
+            ## XXX fnstatusR not defined at this point...
+            #Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
             Trace.log(e_errors.ERROR, "ERROR:Shelf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 	    return
         fnstatus = self.checkOCSalive()
