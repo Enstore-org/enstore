@@ -11,7 +11,6 @@ import pprint
 import pwd
 import grp
 import socket
-import binascii
 import regsub
 import copy
 import pdb
@@ -28,6 +27,7 @@ import EXfer
 import interface
 import e_errors
 import Trace
+import ECRC
 
 d0sam_format = "INFILE=%s\n"+\
                "OUTFILE=%s\n"+\
@@ -169,6 +169,22 @@ def write_to_hsm(input, output,
     if list>1:
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
+
+    if list>1:
+        print "Calling Config Server to find file clerk",\
+              "   cumt=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
+
+    # ask configuration server what port the file clerk is using
+    Trace.trace(10,"write_to_hsm calling config server to find file clerk")
+    fticket = csc.get("file_clerk")
+    Trace.trace(10,"read_from_hsm file clerk at host="+\
+                repr(fticket["hostip"])+" port="+repr(fticket["port"]))
+
+    tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
+    if list>1:
+        print " ",fticket["hostip"],fticket["port"]
+        print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
 
     if list>1:
         print "Calling Config Server to find",library[0]+".library_manager",\
@@ -324,14 +340,20 @@ def write_to_hsm(input, output,
 
             # Call back mover on mover's port and send file on that port
             in_file = open(inputlist[i], "r")
-            mycrc = 0
             fsize = file_size[i]
+            mycrc = 0
             bufsize = 65536*4
             Trace.trace(7,"write_to_hsm: sending data to EXfer file="+\
                         inputlist[i]+" socket="+repr(data_path_socket)+\
                         " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
+            statinfo = os.stat(inputlist[i])
+            if statinfo[stat.ST_SIZE] != fsize:
+                jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: TILT "\
+                       " file size has changed: was "+repr(fsize)+" and now is "+
+                       repr(statinfo[stat.ST_SIZE]))
+
             try:
-                mycrc = EXfer.usrTo_(in_file,data_path_socket,binascii.crc_hqx,
+                mycrc = EXfer.usrTo_(in_file,data_path_socket,ECRC.ECRC,
                                      bufsize, chk_crc )
                 retry = 0
             except:
@@ -406,6 +428,20 @@ def write_to_hsm(input, output,
         # create volume map and store cross reference data
         p.set_xreference(done_ticket["fc"]["external_label"],
                          done_ticket["fc"]["bof_space_cookie"])
+
+        # add the pnfs id to the file clerk ticket and store it
+        done_ticket["fc"]["pnfsid"] = p.id
+        done_ticket["work"] = "set_pnfsid"
+        binfo  = u.send(done_ticket, (fticket['hostip'], fticket['port']))
+        if list > 3:
+            print "ENCP: write_to_hsm FC returned"
+            pprint.pprint(done_ticket)
+        if done_ticket['status'][0] != "ok" :
+            jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
+                   "from u.send to FC at "\
+                   +fticket['hostip']+"/"+repr(fticket['port'])\
+                   +", ticket[\"status\"]="+repr(done_ticket["status"]))
+
         # store debugging info about transfer
         done_ticket["tinfo"] = tinfo1 # store as much as we can into pnfs
         done_formatted  = pprint.pformat(done_ticket)
@@ -682,40 +718,40 @@ def read_from_hsm(input, output,
                                "wrapper"           : wrapper,
                                "callback_addr"     : callback_addr,
                                "fc"                : finfo[i],
-			       "vc"                : vinfo[i],
+                               "vc"                : vinfo[i],
                                "encp"              : encp,
                                "times"             : times,
                                "unique_id"         : unique_id[i]
                                }
-		
-		
+
+
                 # send ticket to file clerk who sends it to right library manger
                 Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
 
 
 
 
-		# get the library manager
-		library = vinfo[i]['library']
-		# get LM info from Config Server only if it is different
-		if (current_library != library):
-		    current_library = library
-		    Trace.trace(10,"write_to_hsm calling config server\
-		    to find "+current_library+".library_manager")
-		    if list > 3:
-			print "calling Config. Server to get LM info for", \
-			      current_library
-		    lmticket = csc.get(current_library+".library_manager")
-		    Trace.trace(10,"read_from_hsm."+ current_library+\
-				".library_manager at host="+\
-				repr(lmticket["hostip"])+\
-				" port="+repr(lmticket["port"]))
-		    if lmticket["status"][0] != e_errors.OK:
-			pprint.pprint(lmticket)
-			Trace.trace(0,"read_from_hsm "+ \
-				    repr(lmticket["status"]))
+                # get the library manager
+                library = vinfo[i]['library']
+                # get LM info from Config Server only if it is different
+                if (current_library != library):
+                    current_library = library
+                    Trace.trace(10,"write_to_hsm calling config server\
+                    to find "+current_library+".library_manager")
+                    if list > 3:
+                        print "calling Config. Server to get LM info for", \
+                              current_library
+                    lmticket = csc.get(current_library+".library_manager")
+                    Trace.trace(10,"read_from_hsm."+ current_library+\
+                                ".library_manager at host="+\
+                                repr(lmticket["hostip"])+\
+                                " port="+repr(lmticket["port"]))
+                    if lmticket["status"][0] != e_errors.OK:
+                        pprint.pprint(lmticket)
+                        Trace.trace(0,"read_from_hsm "+ \
+                                    repr(lmticket["status"]))
 
-		# send to library manager and tell user
+                # send to library manager and tell user
                 ticket = u.send(work_ticket, (lmticket['hostip'], lmticket['port']))
                 if list > 3:
                     print "ENCP:read_from_hsm FC read_from_hsm returned"
@@ -831,7 +867,7 @@ def read_from_hsm(input, output,
                 l = l + len(buf)
                 if len(buf) == 0 : break
                 if chk_crc != 0 :
-                    mycrc = binascii.crc_hqx(buf,mycrc)
+                    mycrc = ECRC.ECRC(buf,mycrc)
                 f.write(buf)
             data_path_socket.close()
             f.close()
