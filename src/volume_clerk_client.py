@@ -112,14 +112,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 
     # get a list of all volumes
-    def get_vols(self, state=None):
+    def get_vols(self, key=None,state=None):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        ticket = {"work"         : "get_vols",
+        ticket = {"work"          : "get_vols",
                   "callback_addr" : (host, port),
-                  "in_state" : state,
-                  "unique_id"    : time.time() }
+                  "key"           : key,
+                  "in_state"      : state,
+                  "unique_id"     : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
@@ -500,9 +501,24 @@ def do_work(intf):
         ticket = vcc.stop_backup()
     elif intf.vols:
         # optional argument
-        if len(intf.args): in_state=intf.args[0]
-        else: in_state = None 
-        ticket = vcc.get_vols(in_state)
+        nargs = len(intf.args)
+        if nargs:
+            if nargs == 2:
+                key = intf.args[0]     
+                in_state=intf.args[1]
+            elif nargs == 1:
+                key = None
+                in_state=intf.args[0]
+            else:
+                print "Wrong number of arguments"
+                print "usage: --vols"
+                print "       --vols state (will match system_inhibit)"
+                print "       --vols key state"
+                return
+        else:
+            key = None
+            in_state = None 
+        ticket = vcc.get_vols(key, in_state)
         print ticket['volumes']
     elif intf.rmvol:
         # optional argument

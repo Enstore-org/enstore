@@ -1152,8 +1152,19 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key,value=dict.cursor("first")
             while key:
                 if ticket.has_key("in_state") and ticket["in_state"] != None:
-                    if value["system_inhibit"] == ticket["in_state"]:
-                        callback.write_tcp_raw(self.data_socket,repr(key))
+                    if ticket.has_key("key") and ticket["key"] != None:
+                        if value.has_key(ticket["key"]):
+                            if ticket["key"] == "at_mover":
+                                loc_val = value[ticket["key"]][0]
+                            else:
+                                loc_val = value[ticket["key"]]
+                            if loc_val == ticket["in_state"]:
+                                callback.write_tcp_raw(self.data_socket,repr(key))
+                            else:
+                                pass
+                    else:
+                        if value["system_inhibit"] == ticket["in_state"]:
+                            callback.write_tcp_raw(self.data_socket,repr(key))
                 else:
                     callback.write_tcp_raw(self.data_socket,repr(key))
                 key,value=dict.cursor("next")
