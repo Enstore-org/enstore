@@ -798,7 +798,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			case 0x2e:
 			    /* stk Tape Alert page */
 			    if (0 == strncmp(d->prod_id,"9840",4) ||
-                                0 == strncmp(d->prod_id,"T9940A",6)) {
+                                0 == strncmp(d->prod_id,"T9940A",6) ||
+                                0 == strncmp(d->prod_id,"T9940B",6)) {
 			    (void)decrypt_ls(b,buf,0x15,FTT_CLEANING_BIT,1.0);
                             }
 			    break;
@@ -806,7 +807,8 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			case 0x30:
 			    /* stk 9840 vendor unique */
 			    if (0 == strncmp(d->prod_id,"9840",4) ||
-                                0 == strncmp(d->prod_id,"T9940A",6)) {
+                                0 == strncmp(d->prod_id,"T9940A",6) ||
+                                0 == strncmp(d->prod_id,"T9940B",6)) {
 			    (void)decrypt_ls(b,buf,0x17,FTT_REMAIN_TAPE,0.25);
 			    (void)decrypt_ls(b,buf,0x0f,FTT_UNC_READ,1.0);
 			    (void)decrypt_ls(b,buf,0x11,FTT_UNC_WRITE,1.0);
