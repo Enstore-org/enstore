@@ -1,0 +1,192 @@
+<MA-config>
+   <ID>enstore_ping</ID>
+   <Update>180</Update>
+   <Ncs heartbeat="300" port="19997" host="ngop.fnal.gov"/>
+   <System>
+      <ID>Ping</ID>
+      <Cluster>D0EN</Cluster>
+      <Group name="d0Nodes">
+         <Host>d0ensrv1</Host>
+         <Host>d0ensrv2</Host>
+         <Host>d0ensrv3</Host>
+         <Host>d0ensrv4</Host>
+         <Host>d0ensrv5</Host>
+         <Host>d0enmvr1a</Host>
+         <Host>d0enmvr2a</Host>
+         <Host>d0enmvr3a</Host>
+         <Host>d0enmvr4a</Host>
+         <Host>d0enmvr5a</Host>
+         <Host>d0enmvr6a</Host>
+         <Host>d0enmvr7a</Host>
+         <Host>d0enmvr8a</Host>
+         <Host>d0enmvr9a</Host>
+         <Host>d0enmvr10a</Host>
+         <Host>d0enmvr11a</Host>
+         <Host>d0enmvr12a</Host>
+         <Host>d0enmvr13a</Host>
+         <Host>d0enmvr14a</Host>
+         <Host>d0enmvr15a</Host>
+         <Host>d0enmvr16a</Host>
+         <Host>d0enmvr17a</Host>
+         <Host>d0enmvr18a</Host>
+         <Host>d0enmvr19a</Host>
+         <Host>d0enmvr20a</Host>
+         <Host>d0enmvr21a</Host>
+         <Host>d0enmvr22a</Host>
+         <Host>d0ensrv0</Host>
+      </Group>
+      <Monitored-element>
+         <ID>ping</ID>
+         <Type>Hardware</Type>
+         <Group name="d0Nodes"/>
+         <ConditionSet>
+            <fn name="isUp" arg="%Host" retVal="int:x"/>
+            <Condition sevLevel="5" description="Host was rebooted">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>4</cn>
+                  </reln>
+               </apply>
+               <Action>
+               <ID>mail</ID>
+               <Exec name="email" argument="ngop@fnal.gov,%event"/>
+               </Action>
+            </Condition>
+
+            <Condition sevLevel="2" description="Host is unreachable">
+               <State>0</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>1</cn>
+                  </reln>
+               </apply>
+            </Condition>
+      
+            <Condition sevLevel="4" description="Packets lost">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>2</cn>
+                  </reln>
+               </apply>
+            </Condition>
+
+            <Condition sevLevel="4" description="ICMP Service is unavailable">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>3</cn>
+                  </reln>
+               </apply>
+            </Condition>
+
+            <Condition sevLevel="4" description="Ping timed out">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>5</cn>
+                  </reln>
+               </apply>
+            </Condition>
+         </ConditionSet>
+      </Monitored-element>
+   </System>
+
+   <System>
+      <ID>Ping2</ID>
+      <Cluster>STKEN</Cluster>
+      <Group name="stkNodes">
+         <Host>stkensrv0</Host>
+         <Host>stkensrv1</Host>
+         <Host>stkensrv2</Host>
+         <Host>stkensrv3</Host>
+         <Host>stkensrv4</Host>
+         <Host>stkenmvr1a</Host>
+         <Host>stkenmvr2a</Host>
+         <Host>stkenmvr3a</Host>
+         <Host>stkenmvr4a</Host>
+         <Host>stkenmvr5a</Host>
+         <Host>stkenmvr6a</Host>
+         <Host>rip9</Host>
+         <Host>rip10</Host>
+      </Group>
+      <Monitored-element>
+         <ID>ping</ID>
+         <Type>Hardware</Type>
+         <Group name="stkNodes"/>
+         <ConditionSet>
+            <fn name="isUp" arg="%Host" retVal="int:x"/>
+            <Condition sevLevel="5" description="Host was rebooted">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>4</cn>
+                  </reln>
+               </apply>
+               <Action>
+               <ID>mail</ID>
+               <Exec name="email" argument="ngop@fnal.gov,%event"/>
+               </Action>
+            </Condition>
+
+            <Condition sevLevel="2" description="Host is unreachable">
+               <State>0</State> 
+               <apply>
+                  <reln>   
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>1</cn>
+                  </reln>
+               </apply>
+            </Condition>
+
+            <Condition sevLevel="4" description="Packets lost">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>2</cn>
+                  </reln> 
+               </apply>
+            </Condition>
+
+            <Condition sevLevel="4" description="ICMP Service is unavailable">
+               <State>1</State>
+               <apply>
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>3</cn>
+                  </reln>
+               </apply>
+            </Condition>
+
+            <Condition sevLevel="4" description="Ping timed out">
+               <State>1</State>
+               <apply>  
+                  <reln>
+                     <eq/>
+                     <ci>x</ci>
+                     <cn>5</cn>
+                  </reln>
+               </apply>   
+            </Condition>
+         </ConditionSet>
+      </Monitored-element>
+   </System>
+</MA-config>
+
