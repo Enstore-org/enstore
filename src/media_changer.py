@@ -25,6 +25,7 @@ import generic_server
 import log_client
 import traceback
 import string
+import time				# sleep
 import Trace
 import e_errors
 
@@ -36,12 +37,20 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
     def load(self,
              external_label,    # volume external label
              drive) :           # drive id
+	if 'delay' in mc_config.keys() and mc_config['delay']:
+	    print "make sure tape",external_label,"is in drive",drive
+	    time.sleep( mc_config['delay'] )
+	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # unload volume from the drive
     def unload(self,
                external_label,  # volume external label
                drive) :         # drive id
+	if 'delay' in mc_config.keys() and mc_config['delay']:
+	    print "remove tape",external_label,"from drive",drive
+	    time.sleep( mc_config['delay'] )
+	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # wrapper method for client - server communication
@@ -228,7 +237,7 @@ if __name__ == "__main__" :
     csc = configuration_client.ConfigurationClient(config_host,config_port,\
                                                     config_list)
 
-    keys = csc.get(args[0])
+    mc_config = csc.get(args[0])
 
 
     # here we need to define what is the class of the media changer
@@ -237,18 +246,18 @@ if __name__ == "__main__" :
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if args[0] == 'STK.media_changer' :
-        mc =  STK_MediaLoader((keys['hostip'], keys['port']),
+        mc =  STK_MediaLoader((mc_config['hostip'], mc_config['port']),
                                STK_MediaLoaderMethods)
     elif args[0] == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader((keys['hostip'], keys['port']),
+        mc =  FTT_MediaLoader((mc_config['hostip'], mc_config['port']),
                                FTT_MediaLoaderMethods)
     else :
-        mc =  RDD_MediaLoader((keys['hostip'], keys['port']),
+        mc =  RDD_MediaLoader((mc_config['hostip'], mc_config['port']),
                                MediaLoaderMethods)
     mc.set_csc(csc)
 
     # create a log client
-    logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
+    logc = log_client.LoggerClient(csc, mc_config["logname"], 'logserver', 0)
     mc.set_logc(logc)
 
     while 1:
