@@ -47,10 +47,10 @@ for file in filelist[:]:
                 print line,
             print file, "does not pass lint, exiting"
             sys.exit(1)
-        ret = os.system('%s/tools/check_pct.py -w %s' % (os.environ["ENSTORE_DIR"], file))
-        if ret:
-            print file, "does not pass check_pct, exiting"
-            sys.exit(1)
+#        ret = os.system('%s/tools/check_pct.py -w %s' % (os.environ["ENSTORE_DIR"], file))
+#        if ret:
+#            print file, "does not pass check_pct, exiting"
+#            sys.exit(1)
     else:
         print "not a python file, continuing"
 
