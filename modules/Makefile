@@ -16,6 +16,7 @@ all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t
 POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
+LIBSOCKETNSL=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lsocket -lnsl"; else echo ""; fi`
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
