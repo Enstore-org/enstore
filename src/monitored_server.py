@@ -111,9 +111,6 @@ class MonitoredServer:
     def delete_me(self):
 	self.delete = 1
 
-    #def no_status_thread(self):
-	#return not (self.status_thread and self.status_thread.isAlive())
-
     def no_thread(self):
 	return not (self.restart_thread and self.restart_thread.isAlive())
 
