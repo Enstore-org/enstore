@@ -182,15 +182,15 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
             # if no ticket, then this is a not a retry
             except NameError:
-		file_clerk = {}
-		uinfo["callback_addr"] = (host, port)
-		uinfo["sanity_size"] = 5000
-		uinfo["size_bytes"] = file_size[i]
+                file_clerk = {}
+                uinfo["callback_addr"] = (host, port)
+                uinfo["sanity_size"] = 5000
+                uinfo["size_bytes"] = file_size[i]
                 work_ticket = {"work"               : "write_to_hsm",\
                                "delayed_dismount"   : delayed_dismount,\
                                "priority"           : 1,\
                                "library"            : library[i],\
-			       "fc"                 : file_clerk,\
+                               "fc"                 : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
                                "orig_filename"      : inputlist[i],\
@@ -420,8 +420,8 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     #u.send_no_wait({"work":"done_cleanup"}, (vticket['hostip'], vticket['port']))
 
     if list > 3:
-	print "DONE TICKET"
-	pprint.pprint(done_ticket)
+        print "DONE TICKET"
+        pprint.pprint(done_ticket)
 
     Trace.trace(6,"}write_to_hsm "+msg)
 
@@ -574,15 +574,15 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
                 uinfo["fullname"] = outputlist[i]
-		uinfo["callback_addr"] = (host, port)
-		uinfo["sanity_size"] = 5000
-		uinfo["size_bytes"] = file_size[i]
+                uinfo["callback_addr"] = (host, port)
+                uinfo["sanity_size"] = 5000
+                uinfo["size_bytes"] = file_size[i]
 
                 # generate the work ticket
                 file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"               : "read_from_hsm",\
                                "user_info"          : uinfo,\
-			       "fc"                 : file_clerk,\
+                               "fc"                 : file_clerk,\
                                "pnfs_info"          : pinfo[i],\
                                "unique_id"          : unique_id[i]
                                }
@@ -806,14 +806,15 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     if list or ninput>1:
         print msg
 
+    if list > 3:
+        print "DONE TICKET"
+        pprint.pprint(done_ticket)
+
     Trace.trace(6,"}read_from_hsm "+msg)
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (fticket['hostip'], fticket['port']))
-    if list > 3:
-	print "DONE TICKET"
-	pprint.pprint(done_ticket)
 
 ##############################################################################
 
