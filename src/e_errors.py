@@ -56,6 +56,7 @@ NOREAD="noread"
 NOWRITE="nowrite"
 OSERROR = "OS ERROR"
 PNFS_ERROR = "PNFS ERROR"
+DEVICE_ERROR = "DEVICE ERROR"
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -178,7 +179,9 @@ non_retriable_errors = ( NOACCESS, # set by enstore
 raise_alarm_errors = ( CRC_ERROR,
                        UNKNOWNMEDIA,
                        NOVOLUME,
-                       QUOTAEXCEEDED)
+                       QUOTAEXCEEDED,
+                       DEVICE_ERROR, #EXfer read/write call stuck in kernel
+                       )
 
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
