@@ -38,7 +38,7 @@ def read_config_file(filename):
         for token in tokens:
             eq = string.find(token,'=')
             if eq<=0:
-                sys.stderr.write("%s: syntax error, %s"%(filename, tok))
+                sys.stderr.write("%s: syntax error, %s"%(filename, token))
                 f.close()
                 return None
             key, value = token[:eq], token[eq+1:]
