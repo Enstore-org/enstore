@@ -233,7 +233,7 @@ while 1:
        ALL_9940B.write('%s\n' % (ol,))
        if l == 'CD-9940B':
            cd_9940b_v[v] = 1
-           CD-9940B.write('%s\n' % (ol,))
+           CD_9940B.write('%s\n' % (ol,))
          
     elif l in ['samlto'] or sg in ['cms']:
         pass
