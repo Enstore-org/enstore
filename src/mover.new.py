@@ -382,6 +382,7 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
 	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
+	print "FORKED PID ", self.pid
 	return {}			# forked with send 
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
@@ -490,9 +491,12 @@ def return_or_exit( self, origin_addr, status ):
 # Info is added to ticket
 def get_user_sockets( self, ticket ):
     try:
+	print "000000000"
 	host, port, listen_socket = callback.get_data_callback()
+	print "111111111"
 	self.callback_addr = (host,port)
 	listen_socket.listen(4)
+	print "222222222"
 	mover_ticket = {"callback_addr":self.callback_addr}
 	ticket["mover"] = mover_ticket
 	
@@ -511,9 +515,13 @@ def get_user_sockets( self, ticket ):
 	# home and am not able to find documentation on select...
 	
 	self.net_driver.data_socket, address = listen_socket.accept()
+	print "3333333333"
 	listen_socket.close()
+	print "44444444444"
 	return "ok"
     except:
+	#print "get_user_sockets error ",str(sys.exc_info()[0]),\
+        #             str(sys.exc_info()[1])
 	return "error"
 
 # create ticket that says we are idle
@@ -537,7 +545,7 @@ def unilateral_unbind_next( self, error_info ):
 		      'mover'          : self.config['name'],
 		      'address'        : (self.config['hostip'],self.config['port']),
 		      'external_label' : self.vol_info['external_label'],
-		      'error'         : error_info}
+		      'status'         : (error_info,None)}
     return next_req_to_lm
 
 def summon_self( self, origin_addr ):
@@ -642,13 +650,14 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
 def do_next_req_to_lm( self, next_req_to_lm, address ):
     while next_req_to_lm != {}:
+	print "next_req_to_lm",next_req_to_lm 
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
 	if next_req_to_lm['work'] == "unilateral_unbind":
 	    # FOR SOME ERRORS I FREEZE
-	    if next_req_to_lm['status'] in [ ]:
-		logc.send( log_client.ERROR, 0, "MOVER FREEZE - told busy mover to do work" )
-		while 1: time.sleep( 1 )# freeze
-		pass
+	    #if next_req_to_lm['status'] in [ ]:
+	 	#logc.send( log_client.ERROR, 0, "MOVER FREEZE - told busy mover to do work" )
+		#while 1: time.sleep( 1 )# freeze
+		#pass
 	    pass
 	if self.client_obj_inst.state == 'busy' and rsp_ticket['work'] != 'nowork':
 	    logc.send( log_client.ERROR, 0, "FATAL ENSTORE - libman told busy mover to do work" )
@@ -696,7 +705,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = have_bound_volume_next( client_obj_inst )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.ENCP_GONE:
-	next_req_to_lm = unilateral_unbind_next( cliennt_obj_inst, m_err[exit_status] )
+	next_req_to_lm = unilateral_unbind_next( client_obj_inst, m_err[exit_status] )
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
