@@ -293,6 +293,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(HTMLgen.Font(header, color=BRICKRED)))
 	table.append(tr)
 	kmovers = self.data_dict[lm][enstore_status.KNOWN_MOVERS]
+	kmovers.sort()
 	for kmover in kmovers:
 	    tr = HTMLgen.TR(HTMLgen.TD(kmover[0]))
 	    tr.append(HTMLgen.TD(kmover[1]))
