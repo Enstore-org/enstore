@@ -1362,7 +1362,6 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     if verbose > 1: traceback.print_exc()
 
                     if err_msg.args[0] == 'fd_xfer - write' and err_msg.args[1]==errno.ENOSPC:
-                        print "No space on device"
                         print_data_access_layer_format(
                             requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                             {'status':("ENOSPC", "No space left on device")})
