@@ -500,16 +500,20 @@ class Atomic_Request_Queue:
             queue = self.read_queue
         queue.delete(record)
         self.tags.delete(record, label)
-        if record == self.ref[label]:
-            # if record is in the reference list (and hence in the
-            # tags list) these enrires must be replaced by record
-            # with the same label if exists
-            del(self.ref[label])
-            # find the highest priority request for this
-            # label
-            hp_rq = queue.get(label)
-            if hp_rq: self.update(hp_rq,label)
-
+        try:
+            if record == self.ref[label]:
+                # if record is in the reference list (and hence in the
+                # tags list) these enrires must be replaced by record
+                # with the same label if exists
+                del(self.ref[label])
+                # find the highest priority request for this
+                # label
+                hp_rq = queue.get(label)
+                if hp_rq: self.update(hp_rq,label)
+        except KeyError, detail:
+            Trace.log(e_errors.ERROR, "error deleting reference %s. Label %s references %s"%
+                      (detail, label, self.ref))
+            
     # get returns a record from the queue
     # volume may be specified for read queue
     # volume family may be specified for write queue
