@@ -10,6 +10,7 @@ UNAME="/bin/uname"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
 XNTPDC="/usr/sbin/xntpdc"
+if [ ! -r $XNTPDC ]; then XNTPDC="/usr/sbin/ntpdc"; fi #only other choice.
 NTPDATE="/usr/sbin/ntpdate"
 XNTP="/etc/rc.d/init.d/xntpd restart"
 HWCLOCK="/sbin/hwclock"
