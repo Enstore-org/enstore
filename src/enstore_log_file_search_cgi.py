@@ -39,7 +39,7 @@ def go():
             raise SystemExit
 
 	# we need to find the location of enstore so we can import
-	(config_host, config_port) = enstore_cgi_utils.find_enstore()
+	(config_host, config_port) = enstore_utils_cgi.find_enstore()
 
 	# add the config port and host to the environment
 	os.environ['ENSTORE_CONFIG_HOST'] = config_host
@@ -48,8 +48,8 @@ def go():
 	# get a list of the log files we need
 	import log_client
 	logfile_names = log_client.get_logfile_name(logfile,
-		                                    enstore_cgi_utils.TIMEOUT,
-						    enstore_cgi_utils.RETRIES)
+		                                    enstore_utils_cgi.TIMEOUT,
+						    enstore_utils_cgi.RETRIES)
 	if logfile_names == []:
 	    # there were no matches
 	    print cmd
@@ -59,7 +59,7 @@ def go():
 	    # put the files in alphabetical order
 	    logfile_names.sort()
 	    # for each name, search the file using the  search string
-	    enstore_cgi_utils.pgrep_html(search_string, logfile_names)
+	    enstore_utils_cgi.pgrep_html(search_string, logfile_names)
     finally:
         print "</BODY></HTML>"
 
