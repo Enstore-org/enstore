@@ -740,7 +740,6 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                   "HARDWARE FAILURE, AML/2 robot failed"      : "BADMOUNT",
                   "HARDWARE FAILURE, Read Error"              : "READ_ERROR",
                   "HARDWARE FAILURE, Write Error"             : "WRITE_ERROR",
-                  "TAPE TROUBLE, IO error, retrying"          : "BROKENPIPE",
                   "USER ERROR, No Local Disk Space"           : "ENOSPC",
 		  "LIBRARY MANAGER LOCKED"                    : "locked for external access"
                   }
