@@ -294,7 +294,7 @@ class EnMountDataFile(EnDataFile):
     def parse_data(self, mcs):
 	for line in self.lines:
 	    minfo = self.parse_line(line)
-            if not mcs or mc_in_list(minfo[MDICTS], mcs):
+            if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
                 self.data.append([minfo[MDEV], string.replace(minfo[ETIME],
                                                               LOG_PREFIX, ""),
                                   minfo[MSTART]])
@@ -316,7 +316,7 @@ class EnEncpDataFile(EnDataFile):
     def parse_data(self, mcs):
 	for line in self.lines:
 	    einfo = self.parse_line(line)
-	    if einfo and (not mcs or mc_in_list(einfo[2], mcs)):
+	    if einfo and (not mcs or enstore_status.mc_in_list(einfo[2], mcs)):
 	        self.data.append([string.replace(einfo[0], LOG_PREFIX, ""), \
 	                         einfo[1]])
 
