@@ -46,7 +46,14 @@ def mycmp(cond, a, b):
 # require 5% more space on a tape than the file size,
 #    this accounts for the wrapper overhead and "some" tape rewrites
 
+KB=1024
+MB=KB*KB
+GB=MB*KB
+
 SAFETY_FACTOR=1.05
+#MIN_LEFT=long(300*MB)
+MIN_LEFT=long(0) # for now, this is disabled.
+
 
 MY_NAME = "volume_clerk"
 
@@ -56,7 +63,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
         ret = ""
-        if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
+        left = v["remaining_bytes"] 
+        if left < long(min_remaining_bytes*SAFETY_FACTOR) or left < MIN_LEFT:
             # if it __ever__ happens that we can't write a file on a
             # volume, then mark volume as full.  This prevents us from
             # putting 1 byte files on old "golden" volumes and potentially
