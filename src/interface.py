@@ -521,3 +521,5 @@ class Interface:
                 self.skip_pnfs = 1
             elif opt == "--dont-ask":  # for super_remove
                 self.dont_ask = 1
+            elif opt == "--recycle":   # for recycling a tape
+                self.recycle = value
