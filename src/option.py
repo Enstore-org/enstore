@@ -262,6 +262,7 @@ SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHOW = "show"                                #configuration, inquisitor, media
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
+SHOW_QUOTA = "show-quota"                    #volume
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
 SKIP_PNFS = "skip-pnfs"                      # super_remove
@@ -337,7 +338,7 @@ valid_option_list = [
     RESTORE, RESTORE_ALL, RETRIES,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
-    SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SIZE, SKIP_PNFS,
+    SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,

@@ -424,6 +424,11 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket)
 
+    # show_quota() -- show quota
+    def show_quota(self):
+        ticket = {'work': 'show_quota'}
+	return self.send(ticket)
+
     # move a volume to a new library
     def new_library(self, external_label,new_library):
         ticket= { 'work'           : 'new_library',
@@ -660,6 +665,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.assign_sg = None
         self.touch = None
 	self.trim_obsolete = None
+        self.show_quota = 0
         self.bypass_label_check = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
@@ -717,6 +723,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED}]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.SHOW_QUOTA:{option.HELP_STRING:
+                       "show quota information",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
@@ -942,6 +954,9 @@ def do_work(intf):
         ticket = vcc.touch(intf.touch)
     elif intf.trim_obsolete:
         ticket = vcc.check_record(intf.trim_obsolete)
+    elif intf.show_quota:
+        ticket = vcc.show_quota()
+	pprint.pprint(ticket['quota'])
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:

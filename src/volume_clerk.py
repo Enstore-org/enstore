@@ -566,6 +566,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    # show_quota() -- set comment to a volume record
+
+    def show_quota(self, ticket):
+	ticket['quota'] = self.quota_enabled(None, None)
+	ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
