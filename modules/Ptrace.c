@@ -111,12 +111,14 @@ trace_function(  PyObject	*self
     {   obj = PyTuple_GetItem( args, ii );
 	if (PyInt_Check(obj))
 	{   fmt[ii] = 'i';
-	    pp_arg[ii-2] = ((int *)pp)++;
+	    pp_arg[ii-2] = (int *)pp;
+	    pp = (int *)pp + 1;
 	}
 	else
 	{   fmt[ii] = 'd';
 	    /* floats are pushed as double -- must use double! */
-	    pp_arg[ii-2] = ((double *)pp)++;
+	    pp_arg[ii-2] = (double *)pp;
+	    pp = (double *)pp + 1;
 	}
     }
     fmt[ii] = '\0';
@@ -127,7 +129,7 @@ trace_function(  PyObject	*self
 			   , pp_arg[3], pp_arg[4], pp_arg[5] );
     if (!sts)
 	printf( "PyArg_ParseTuple error\n" );
-    trace(  lvl, msg
+    trace_(  lvl, msg
 	  , push[0], push[1], push[2], push[3], push[4], push[5] );
     return (Py_BuildValue(""));
 }   /* trace_function */
@@ -141,7 +143,7 @@ trace_function(  PyObject	*self
  *
  ******************************************************************************/
 
-static char mode_function_Doc[] = "change the trace mode";
+static char mode_function_Doc[] = "get (and optionally set) the trace mode";
 
 static PyObject *
 mode_function(  PyObject	*self
@@ -149,8 +151,9 @@ mode_function(  PyObject	*self
 {							/* @-Public-@ */
 	int		sts, mode;
 
-
-    sts = PyArg_ParseTuple(  args, "i", &mode );
+    /* initialize optional arg */
+    mode = trc_cntl_sp->mode;
+    sts = PyArg_ParseTuple(  args, "|i", &mode );
     if (!sts)
 	printf( "PyArg_ParseTuple error\n" );
 
