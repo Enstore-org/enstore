@@ -519,7 +519,7 @@ def outputfile_check(inputlist, output, dcache):
                 pin.get_file_size()
 
                 #get the maximum filesize the local filesystem allows.
-                bits = os.pathconf(outputlist[i],
+                bits = os.pathconf(os.path.split(outputlist[i])[0],
                                    os.pathconf_names['PC_FILESIZEBITS'])
                 bytes = 2L**(bits - 1) - 1
 
