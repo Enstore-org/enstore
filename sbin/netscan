@@ -269,10 +269,7 @@ fi
 right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
 right_file /home/enstore/enstore/sbin/routes /root/routes
 right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
-if [ `echo $node | grep -c ^rip[1-8]` -ne 0 ]; then
-  right_file /home/enstore/enstore/etc/d0en.hosts.allow /etc/hosts.allow
-else
-  right_file /home/enstore/enstore/etc/$gang.
+right_file /home/enstore/enstore/etc/$gang.
 fi
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
@@ -287,8 +284,6 @@ elif [ $node = "cdfenmvr3a" -o $node = "cdfenmvr4a" ]; then
   right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
 elif [ $node = "cdfenmvr5a" -o $node = "cdfenmvr6a" ]; then
   right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
-elif [ `echo $node | grep -c ^rip[1-8]` -ne 0 ]; then
-  right_file /home/enstore/enstore/etc/d0en.step-tickers /etc/ntp/step-tickers
 else
   right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 fi
