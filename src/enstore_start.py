@@ -13,12 +13,12 @@
 # system imports
 #
 import sys
-import re
+#import re
 import os
 import string
 import errno
 import socket
-import stat
+#import stat
 import grp
 import pwd
 import time
@@ -30,24 +30,28 @@ import e_errors
 import enstore_constants
 import enstore_functions
 import enstore_functions2
-import udp_client
+#import udp_client
 import generic_client
 import option
 import Trace
 
-import alarm_client
+#import alarm_client
 import configuration_client
-import configuration_server
-import file_clerk_client
-import inquisitor_client
-import library_manager_client
-import log_client
-import media_changer_client
-import mover_client
-import monitor_client
-import volume_clerk_client
-import ratekeeper_client
+#import configuration_server
+#import file_clerk_client
+#import inquisitor_client
+#import library_manager_client
+#import log_client
+#import media_changer_client
+#import mover_client
+#import monitor_client
+#import volume_clerk_client
+#import ratekeeper_client
 import event_relay_client
+
+#Less hidden side effects to call this?  Also, pychecker perfers it.
+### What does this give us?
+setpath.set_enstore_paths()
 
 MY_NAME = "ENSTORE_START"
 SEND_TO = 3
@@ -65,7 +69,7 @@ def get_csc():
     return csc
 
 def this_host():
-    rtn = socket.gethostbyaddr(socket.getfqdn())
+    rtn = socket.gethostbyname_ex(socket.getfqdn())
 
     return [rtn[0]] + rtn[1] + rtn[2]
 
@@ -99,6 +103,8 @@ def output(server_name):
                 raise OSError, msg
     except OSError:
         output_dir = None
+        sys.stderr.write("Unable to create tmp directory %s: %s" %
+                         (output_dir, str(msg)))
     try:
         output_file = os.path.join(output_dir, "%s.out" % server_name)
     except TypeError:
@@ -112,9 +118,9 @@ def output(server_name):
 
 def save(server_name):
     inf = output(server_name)
-    (dir,of) = os.path.split(inf)
+    (directory,of) = os.path.split(inf)
     of="%s.sav"%(of,)
-    of=os.path.join(dir,of)
+    of=os.path.join(directory,of)
     #Determine where to redirect the output.
     try:
         os.system("cp -p %s %s"%(inf,of)) 
@@ -237,24 +243,24 @@ def check_user():
 
 ##########################################################################
             
-def check_db(csc, name, intf, cmd):
-
-    info = csc.get("volume_clerk", 5, 3)
-    if not info.get('host', None) in this_host() and \
-           not info.get('hostip', None) in this_host():
-        return
-
-    # ignore nocheck
-    # if intf.nocheck:
-    #    rtn = 0
-    # else:
-    print "Checking %s." % name
-
-    rtn = os.popen("ps -elf | grep %s | grep -v grep" % name).readlines()
-    
-    if not rtn:
-        print "Starting %s." % name
-        os.system(cmd)
+#def check_db(csc, name, intf, cmd):
+#
+#    info = csc.get("volume_clerk", 5, 3)
+#    if not info.get('host', None) in this_host() and \
+#           not info.get('hostip', None) in this_host():
+#        return
+#
+#    # ignore nocheck
+#    # if intf.nocheck:
+#    #    rtn = 0
+#    # else:
+#    print "Checking %s." % name
+#
+#    rtn = os.popen("ps -elf | grep %s | grep -v grep" % name).readlines()
+#    
+#    if not rtn:
+#        print "Starting %s." % name
+#        os.system(cmd)
 
 #If the event relay responded to alive messages, this would not be necessary.
 def check_event_relay(csc, intf, cmd):
@@ -286,7 +292,7 @@ def check_event_relay(csc, intf, cmd):
         # this complicated, but there were situations were TIMEDOUT still
         # occured when there was no good reason for it to occur.  Putting
         # a loop here fixed it.
-        for i in (0, 1, 2):
+        for unused in (0, 1, 2):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
@@ -305,25 +311,33 @@ def check_event_relay(csc, intf, cmd):
 
 # lets start fixing thisngs at least from configuration server
 def check_config_server(intf, name='configuration_server', start_cmd=None):
-    host = socket.gethostname()
+    #host = socket.gethostname()
     config_host = os.environ.get('ENSTORE_CONFIG_HOST')
     if not config_host:
         print "ENSTORE_CONFIG_HOST is not set. Exiting"
         sys.exit(1)
     
-    host_ip = socket.gethostbyname(host)
+    #host_ips = socket.gethostbyname_ex(host)[2]
     config_host_ip = socket.gethostbyname(config_host)
-    
-    chip = config_host_ip.split('.')
-    hip = host_ip.split('.')
-    matched = 0
-    for i in range(0, len(chip)):
-        if hip[i] != chip[i]:
-            break
-    else:
-        matched = 1
-    if not matched:
+
+    #Compare the the ip values.  If a match is found continue with starting
+    # the config server.  Otherwise return.
+    if not is_on_host(config_host_ip):
         return
+               
+    #chip = config_host_ip.split('.')
+    #for host_ip in host_ips:
+    #    hip = host_ip.split('.')
+    #    matched = 0
+    #    for i in range(0, len(chip)):
+    #        if hip[i] != chip[i]:
+    #            break
+    #    else:
+    #        matched = 1
+    #    if matched:
+    #        break
+    #if not matched:
+    #    return
 
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
@@ -333,7 +347,8 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
         pipeObj = popen2.Popen3(cmd, 0, 0)
         if pipeObj:
-            stat = pipeObj.wait()
+            #stat = pipeObj.wait()
+            pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
             if len(result) >= 1:
                 # running, don't start
@@ -350,12 +365,13 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         #Check the restarted server.  It sould not be this complicated, but
         # there were situations where TIMEDOUT still occured when there was
         # no good reason for it to occur.  Putting a loop here fixed it.
-        for i in (0, 1, 2, 3, 4, 5):
+        for unused in (0, 1, 2, 3, 4, 5):
             time.sleep(2)
             cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
             pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj:
-                stat = pipeObj.wait()
+                #stat = pipeObj.wait()
+                pipeObj.wait()
                 result = pipeObj.fromchild.readlines()  # result has returned string
                 if len(result) >= 1:
                     rtn = {'status':(e_errors.OK,"running")}
@@ -408,7 +424,7 @@ def check_server(csc, name, intf, cmd):
         #Check the restarted server.  It sould not be this complicated, but
         # there were situations where TIMEDOUT still occured when there was
         # no good reason for it to occur.  Putting a loop here fixed it.
-        for i in (0, 1, 2):
+        for unused in (0, 1, 2):
             rtn = csc.alive(name, SEND_TO, SEND_TM)
 
             if e_errors.is_ok(rtn):
@@ -545,9 +561,9 @@ def do_work(intf):
 
     #The movers need to run as root, check for sudo.
     if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
-        sudo = ""
+        sudo = str("")
     else:
-        sudo = "sudo"  #found
+        sudo = str("sudo")  #found
 
     #Start the event relay.
     if intf.should_start(enstore_constants.EVENT_RELAY):

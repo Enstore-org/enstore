@@ -11,12 +11,12 @@
 # system imports
 #
 import sys
-import re
+#import re
 import os
 import string
-import errno
-import socket
-import pwd
+#import errno
+#import socket
+#import pwd
 
 import generic_client
 import option

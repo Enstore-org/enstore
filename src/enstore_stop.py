@@ -13,7 +13,7 @@
 # system imports
 #
 import sys
-import re
+#import re
 import os
 import string
 import errno
@@ -34,19 +34,23 @@ import Trace
 import generic_client
 import option
 
-import alarm_client
+#import alarm_client
 import configuration_client
-import configuration_server
-import file_clerk_client
-import inquisitor_client
-import library_manager_client
+#import configuration_server
+#import file_clerk_client
+#import inquisitor_client
+#import library_manager_client
 import log_client
-import media_changer_client
-import mover_client
-import monitor_client
-import volume_clerk_client
-import ratekeeper_client
+#import media_changer_client
+#import mover_client
+#import monitor_client
+#import volume_clerk_client
+#import ratekeeper_client
 import event_relay_client
+
+#Less hidden side effects to call this?  Also, pychecker perfers it.
+### What does this give us?
+setpath.set_enstore_paths()
 
 MY_NAME = "ENSTORE_STOP"
 SEND_TO = 3
@@ -66,7 +70,7 @@ def get_csc():
     return None
 
 def this_host():
-    rtn = socket.gethostbyaddr(socket.getfqdn())
+    rtn = socket.gethostbyname_ex(socket.getfqdn())
 
     return [rtn[0]] + rtn[1] + rtn[2]
 
@@ -158,9 +162,9 @@ def detect_process(pid):
 def kill_root_process(pid):
     # check for sudo.
     if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
-        sudo = ""
+        sudo = str("")
     else:
-        sudo = "sudo"  #found
+        sudo = str("sudo")  #found
     if sudo:
         return (os.system("%s %s %s"%(sudo, "/bin/kill", pid)) >> 8)
     return 1
@@ -249,11 +253,11 @@ def stop_server(gc, servername):
 def stop_server_from_pid_file(servername):
     #If there is no responce from the server, determine if it is hung.
     try:
-        file = open(get_temp_file(servername), "r")
-        data = file.readlines()
-        file.close()
+        fp = open(get_temp_file(servername), "r")
+        data = fp.readlines()
+        fp.close()
     except (OSError, IOError), msg:
-        print "Unable to read pid file for %s." % (servername,)
+        print "Unable to read pid file for %s: %s" % (servername, msg)
         return
 
     #Make sure there is something in the file.
@@ -271,9 +275,9 @@ def stop_server_from_pid_file(servername):
                 #If we get here it is becuase the process is still there and
                 # we are on a linux node.  Proceed with checking the /proc
                 # filesystem for confirmation.
-                file = open("/proc/%s/cmdline" % pid, "r")
-                data = file.readline()
-                file.close()
+                fp = open("/proc/%s/cmdline" % pid, "r")
+                data = fp.readline()
+                fp.close()
                 if(data.find(servername) > 0):
                     #If we get here, then we know that the process is the
                     # enstore server in question.
@@ -309,35 +313,35 @@ def stop_server_from_pid_file(servername):
 
 ############################################################################
 
-def check_db(csc, name):
-
-    use_name = "volume_clerk" #Use this servers name for host/ip finding.
-
-    # Get the address and port of the server.
-    if csc != None:
-        info = csc.get(use_name, SEND_TO, SEND_TM)
-    if csc == None or not e_errors.is_ok(info):
-        info = enstore_functions.get_dict_from_config_file(use_name,None)
-
-    #If we still do not have the necessary info, skip it.
-    if info == None or not e_errors.is_ok(info):
-        return
-    # If the process is running on this host continue, if not running on
-    # this host return.
-    if not is_on_host(info.get('host', None)) and \
-       not is_on_host(info.get('hostip', None)):
-        return
-
-    print "Checking %s." % name
-    
-    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
-
-    if rtn:
-        pid = int(re.sub("\s+", " ", rtn[0]).split(" ")[3])
-        print "Stopping %s: %d" % (name, pid)
-        if(kill_process(pid)):
-            #If we get here the process remains.
-            print "Database server %s remains." % name
+#def check_db(csc, name):
+#
+#    use_name = "volume_clerk" #Use this servers name for host/ip finding.
+#
+#    # Get the address and port of the server.
+#    if csc != None:
+#        info = csc.get(use_name, SEND_TO, SEND_TM)
+#    if csc == None or not e_errors.is_ok(info):
+#        info = enstore_functions.get_dict_from_config_file(use_name,None)
+#
+#    #If we still do not have the necessary info, skip it.
+#    if info == None or not e_errors.is_ok(info):
+#        return
+#    # If the process is running on this host continue, if not running on
+#    # this host return.
+#    if not is_on_host(info.get('host', None)) and \
+#       not is_on_host(info.get('hostip', None)):
+#        return
+#
+#    print "Checking %s." % name
+#    
+#    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
+#
+#    if rtn:
+#        pid = int(re.sub("\s+", " ", rtn[0]).split(" ")[3])
+#        print "Stopping %s: %d" % (name, pid)
+#        if(kill_process(pid)):
+#            #If we get here the process remains.
+#            print "Database server %s remains." % name
 
 #If the event relay responded to alive messages, this would not be necessary.
 def check_event_relay(csc):
@@ -376,7 +380,7 @@ def check_event_relay(csc):
         # this complicated, but there were situations were TIMEDOUT still
         # occured when there was no good reason for it to occur.  Putting
         # a loop here fixed it.
-        for i in (0, 1, 2):
+        for unused in (0, 1, 2):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
