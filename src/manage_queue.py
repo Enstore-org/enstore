@@ -126,13 +126,13 @@ class SortedList:
             if rescan_list:
                 # temporarily remove records that have changed priorities
                 for record in rescan_list:
-                    Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
-                                (record.pri, record.ticket))
+                    #Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
+                    #            (record.pri, record.ticket))
                     self.delete(record)
                 # put them pack according to new priority
                 for record in rescan_list:
-                    Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
-                                (record.pri, record.ticket))
+                    #Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
+                    #            (record.pri, record.ticket))
                     self.put(record)
             self.last_aging_time = time_now
 
@@ -329,10 +329,10 @@ class Queue:
         key = self.what_key(request)
         if not key: return
         if not self.queue.has_key(key):
-            Trace.log(e_errors.INFO,"manage_queue.delete: no such key %s" %(key,))
+            #Trace.log(e_errors.INFO,"manage_queue.delete: no such key %s" %(key,))
             return
         # remove opt entry
-        Trace.trace(23,"Queue.delete: opt %s %s"%(key, request.ticket))
+        #Trace.trace(23,"Queue.delete: opt %s %s"%(key, request.ticket))
         
         self.queue[key]['opt'].delete(request)
         self.queue[key]['by_priority'].delete(request)
@@ -479,7 +479,6 @@ class Request_Queue:
         # where request went
         #hp_rq = queue.get(key)
         #if hp_rq and rq != hp_rq:
-        Trace.trace(24,"put: calling update %s"%(rq,)) ## REMOVE THIS
         self.update(rq,key)
         rc = rq, e_errors.OK
         #else: rc = None, e_errors.UNKNOWN

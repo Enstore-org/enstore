@@ -514,14 +514,14 @@ class LibraryManagerMethods:
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
         if len(active_volumes) >= self.get_sg_limit(storage_group):
             rq.ticket["reject_reason"] = ("PURSUING",None)
-            Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
+            #Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
             if rq.adminpri > -1:
                 self.continue_scan = 1
                 return None
             # we have saturated system with requests from the same storage group
             # see if there are pending requests for different storage group
             tags = self.pending_work.get_tags()
-            Trace.trace(16,"tags: %s"%(tags,))
+            #Trace.trace(16,"tags: %s"%(tags,))
             if len(tags) > 1:
                 for key in tags:
                     if not key in self.checked_keys:
@@ -748,10 +748,10 @@ class LibraryManagerMethods:
                         continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
-                if rq:
-                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
-                else:
-                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
+                #if rq:
+                #    Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
+                #else:
+                #    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
                     
                 if self.continue_scan:
                     if key:
@@ -762,10 +762,10 @@ class LibraryManagerMethods:
                 break
             elif rq.work == "write_to_hsm":
                 rq, key = self.process_write_request(rq, requestor)
-                if rq:
-                    Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
-                else:
-                    Trace.trace(16,"process_write_request returned %s %s %s" % (rq, key,self.continue_scan))
+                #if rq:
+                #    Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
+                #else:
+                #    Trace.trace(16,"process_write_request returned %s %s %s" % (rq, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
