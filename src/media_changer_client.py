@@ -43,7 +43,16 @@ class MediaChangerClient(generic_client.GenericClient):
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
     def loadvol(self, vol_ticket, mover, drive, vcc):
-        ticket = {'work'           : 'loadvol',
+        # do a check for cleaning the drive here and issue a doCleaningCycle work ticket
+        if cleaning_bit_set:
+	    ticket = {'work'   : 'doCleaningCycle',
+                  'drive_id'   : drive,
+                  'media_type' : vol_ticket['media_type'],
+		  'vcc'        : vcc
+                  }
+	    rt = self.send(ticket)
+        # once that is done, issue the loadvol work ticket
+	ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
@@ -64,7 +73,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket)
-	if rt['status'][0] == e_errors.OK:
+	if rt['status'][0] == e_errors.OK and vcc != None:
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'unmounted', 
 				mover)
 	    if v['status'][0] != e_errors.OK:
@@ -76,7 +85,20 @@ class MediaChangerClient(generic_client.GenericClient):
 		return rt
         return rt
 
-    def viewvol(self, ticket):
+    def viewvol(self, volume, m_type):
+        ticket = {'work' : 'viewvol',
+                  'external_label' : volume,
+                  'media_type' : m_type
+                     }
+	rt = self.send(ticket)
+        return rt
+
+    def doCleaningCycle(self, drive, m_type, vcc):
+        ticket = {'work'       : 'doCleaningCycle',
+                  'drive_id'   : drive,
+                  'media_type' : m_type,
+		  'vcc'        : vcc
+                  }
 	rt = self.send(ticket)
         return rt
 
