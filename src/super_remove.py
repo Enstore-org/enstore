@@ -146,7 +146,7 @@ if __name__ == '__main__':
 			skip = '--skip-pnfs '
 		else:
 			skip = ''
-		print '"use %s %s--delete %s to really delete it"'%(sys.argv[0], skip, vol)
+		print 'use "%s %s--delete %s" to really delete it'%(sys.argv[0], skip, vol)
 		sys.exit(0)
 
 	# let's get serious
