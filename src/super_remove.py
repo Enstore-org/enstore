@@ -78,13 +78,13 @@ if __name__ == '__main__':
 			try:
 				volmap = fileInfo['pnfs_mapname']
 			except KeyError, detail:
-				print (Warning), i, 'does not have key', detail
+				print '(Warning)', i, 'does not have key', detail
 				volmap = None
 			external_label = fileInfo['external_label']
 			try:
 				pnfsname = fileInfo['pnfs_name0']
 			except KeyError, detail:
-				print (Warning), i, 'does not have key', detail
+				print '(Warning)', i, 'does not have key', detail
 				pnfsname = None
 			if pnfsname:
 				pnfsdir, pnfsfile = os.path.split(pnfsname)
