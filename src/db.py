@@ -17,7 +17,22 @@ import libtpshelve
 JOURNAL_LIMIT=1000
 backup_flag=1
 
-# Jcursor -- join cursor
+# Jcursor(primary_db, curlist) -- join cursor
+#
+# 	Join cursor looks like a db cursor but has different
+#	implementation. Upon initialization, primary_db is the primary
+#	db which is an instance of db.DbTable. curlist is a list of
+#	(index) cursors which have been preset through set() method.
+#	That is, each cursor will iterate through the duplicate keys of
+#	a certian value, and its value is a primary key in the primary
+#	db. Jcursor walks through all common values, which are some
+#	indexed primary keys, in all index cursors. The common value is
+#	used as key to the primary db. The key, value pair in primary db
+#	is thus returned by Jcursor.current() & Jcursor.next() methods.
+#	When there is no more common indexed key, Jcursor.next() returns
+#	None, None and sets the current() to None, None, too. When
+#	initialized, Jcursor.current() points to the first common index
+#	keyed value.
 
 class Jcursor:
 	def __init__(self, primary, curlist):
@@ -35,21 +50,27 @@ class Jcursor:
 		self.crnt = max
 
 	def current(self):
-		return self.crnt
+		if self.crnt:
+			return self.crnt, self.primary[self.crnt]
+		else:
+			return None, None
 
 	def next(self):
 		key, value = self.curlist[0].nextDup()
 		self.crnt = value
 		if self.crnt == None:
-			return None
+			return None, None
 		max = advance_all(self.crnt, self.curlist)
 		while max > self.crnt:
-			self.crn = max
+			self.crnt = max
 			max = advance_all(self.crnt, self.curlist)
 			if max == None:
 				break
 		self.crnt = max
-		return self.crnt
+		if self.crnt == None:
+			return None, None
+		else:
+			return self.crnt, self.primary[self.crnt]
 
 	# need to close all related cursors
 	def close(self):
@@ -60,8 +81,8 @@ class Jcursor:
 		self.close()
 
 # advance_all(max, curlist) -- advance all cursor such that no current
-# value is less than max. When all current equal to max, that is a
-# common element that we want. Otherwise, if after advancing, any
+# value is less than max. When all current values equal to max, there is
+# a common element that we want. Otherwise, if after advancing, any
 # current becomes larger than max, the current max is useless
 
 def advance_all(max, curlist):
@@ -82,6 +103,11 @@ def join(primary, curlist):
 	return c
 
 # Index
+#	Index is a special database
+#	Its (key, value) is unique but the keys may have duplicated
+#	values. (the value portion is unique :-) Its keys come from the
+#	values of the indexed field in the primary database and its
+#	values are the corrosponding keys.
 
 class Index:
 	def __init__(self, db, dbHome, dbName, field):
