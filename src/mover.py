@@ -305,11 +305,11 @@ class Buffer:
     def block_read(self, nbytes, driver, fill_buffer=1):
 
 	# SEVA FOO
-	pad = (-nbytes % 512)
-	nbytes = nbytes + pad
+	#pad = (-nbytes % 512)
+	#nbytes = nbytes + pad
 
-	if (pad):
-	    Trace.trace(42, "SEVA DEBUG: padded bytes to read: %s" % nbytes)
+	#if (pad):
+	#    Trace.trace(42, "SEVA DEBUG: padded bytes to read: %s" % nbytes)
 
         if self.client_crc_on:
             # calculate checksum when reading from
@@ -321,8 +321,9 @@ class Buffer:
         partial = None
         space = self._getspace()
         #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
-        bytes_read = driver.read(space, 0, nbytes)
-	bytes_read = bytes_read - pad # SEVA FOO
+        #bytes_read = driver.read(space, 0, nbytes)
+        bytes_read = driver.read(space, 0, self.buffer.blocksize)
+	#bytes_read = bytes_read - pad # SEVA FOO
         #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
             data = space
@@ -330,6 +331,8 @@ class Buffer:
             Trace.trace(25, "block_read: read %s" % (bytes_read,))
             pass #XXX or raise an exception?
         else: #partial block read
+            if bytes_read > nbytes:
+                bytes_read = nbytes
             Trace.trace(25, "partial block (%s/%s) read" % (bytes_read,nbytes))
             data = space[:bytes_read]
             partial = 1
