@@ -15,27 +15,24 @@ except ImportError:
     import socket
 import generic_cs
 
+def getenv(var, default=None):
+    val = os.environ.get(var)
+    if val is None:
+        generic_cs.enprint("%s not set in environment - reverting to %s" %
+                           (var, default))
+        val = default
+    return val
+
 def default_host():
-    try:
-	return os.environ['ENSTORE_CONFIG_HOST']
-    except:
-	generic_cs.enprint("can not get default host - reverting to localhost: "+\
-	      str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
-	return("localhost")
+    return getenv('ENSTORE_CONFIG_HOST', default='localhost')
 
 def default_port():
-    try:
-	return os.environ['ENSTORE_CONFIG_PORT']
-    except:
-	generic_cs.enprint("can not get default port - reverting to 7500: "+\
-	      str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
-	return("7500")
+    return getenv('ENSTORE_CONFIG_PORT', default='7500')
 
 def default_file():
     return "/pnfs/enstore/.(config)(flags)/enstore.conf"
 
 class Interface:
-
     def __init__(self, host=default_host(), port=default_port()):
         if host == "localhost" :
             (self.config_hostname, self.ca, self.ci) = \
@@ -94,7 +91,7 @@ class Interface:
 
     def help_prefix(self):
         if 0: print self # lint fix
-	return "python "+repr(sys.argv[0])+" [opts] "
+	return sys.argv[0]+" [opts] "
 
     def help_suffix(self):
         if 0: print self # lint fix
