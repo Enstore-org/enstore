@@ -11,9 +11,13 @@ print "Checking files..."
 for file in filelist[:]:
 
     working_revision = repository_revision = production_revision = '(none)'
+
+    if string.find(file, 'CVS/') >= 0:
+        print file, "in in /CVS/ directory. Can not possibly check it"
+        continue
+    
     if os.path.isdir(file):
-        print file, file,"is a directory, ignoring"
-        filelist.remove(file)
+        print file, "is a directory, ignoring"
         continue
     
     cvsinfo = os.popen('cvs status -v %s 2>/dev/null' % (file,)).readlines()
@@ -24,7 +28,6 @@ for file in filelist[:]:
 
     if string.find(cvsinfo[4], "No revision control file\n") > 0:
         print file, "\t not in CVS, skipping"
-        filelist.remove(file)
         continue
 
     if L<10:
