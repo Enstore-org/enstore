@@ -2832,12 +2832,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.update_stat()
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
             import drivestat
-		ret=drivestat.ds_send_stats(self.drive_stats,
-                                            10,
-                                            drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
-		ret=drivestat.ds_send_stats(self.drive_stats,
-                                            10, drivestat.ABSOLUTE);
-		drivestat.ds_free(self.drive_stats)
+            ret=drivestat.ds_send_stats(self.drive_stats,
+                                        10,
+                                        drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
+            ret=drivestat.ds_send_stats(self.drive_stats,
+                                        10, drivestat.ABSOLUTE);
+            drivestat.ds_free(self.drive_stats)
 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
