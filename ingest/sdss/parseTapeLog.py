@@ -47,13 +47,13 @@ def parseFile(filename):   #, tapeLabel):
     f = open(filename)
     line = f.readline()
     while line:
-        if not line.find("tapelog"):
+        if not line.lower().find("tapelog"):
             #Split tapelog lines contain tuples of the following:
             # (tape, filemark, run, frame, ccd)
             (unused, filemark, run, frame, ccd) = line.split()
             filelist.append((filemark,
                              makeTapelogFilename(run, frame, ccd)))
-        elif not line.find("tarfile"):
+        elif not line.lower().find("tarfile"):
             #Split TARFILE lines contain tuples of the following:
             # (tape, filemark, contents, tar_id)
             (unused, filemark, contents, tar_id) = line.split()
