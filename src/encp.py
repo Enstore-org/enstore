@@ -856,6 +856,8 @@ def outputfile_check(inputlist, output, dcache):
 
     if outputlist[0] == "/dev/null":
         return outputlist
+    elif dcache:
+        return outputlist
     else:
         #now try to atomically create each file
         for f in outputlist:
