@@ -18,13 +18,14 @@ class Interface(generic_client.GenericClientInterface):
 		self.force = 0
 		self.skip_pnfs = 0
 		self.dont_ask = 0
+		self.bfids = None
 		generic_client.GenericClientInterface.__init__(self)
 
 	def options(self):
-		return(['delete=', 'force', 'skip-pnfs', 'dont-ask'])
+		return(['delete', 'force', 'skip-pnfs', 'dont-ask', 'bfids'])
 
 def usage():
-	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] --delete] vol"%(sys.argv[0])
+	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] [--bfids] --delete] vol]"%(sys.argv[0])
 
 if __name__ == '__main__':
 	# use GenericClientInterface to get basic environment
@@ -41,9 +42,15 @@ if __name__ == '__main__':
 	dbHome = dbInfo['db_dir']
 	bfiddb = bfid_db.BfidDb(dbHome)
 
-	if intf.delete:
-		vol = intf.delete
-	elif len(intf.args) == 1:
+	#if intf.delete:
+	#	vol = intf.delete
+	#elif len(intf.args) == 1:
+	#	vol = intf.args[0]
+	#else:
+	#	usage()
+	#	sys.exit(0)
+
+	if len(intf.args) == 1:
 		vol = intf.args[0]
 	else:
 		usage()
@@ -51,13 +58,24 @@ if __name__ == '__main__':
 
 	print 'checking', vol, '...'
 
-	try:	
-		files = bfiddb.get_all_bfids(vol)
-	except:
-		print 'can not find files for', vol
-		if not intf.force:
+	if intf.bfids:	# read from the file
+		try:
+			bf = open(vol)
+		except:
+			printf 'can not find bfids file "%s"'%(vol)
 			sys.exit(1)
 		files = []
+		for i in bf.readlines():
+			files.append(string.strip(i))
+		bf.close()
+	else:		# get it from bfid_db
+		try:	
+			files = bfiddb.get_all_bfids(vol)
+		except:
+			print 'can not find files for', vol
+			if not intf.force:
+				sys.exit(1)
+			files = []
 
 	# get info for every file
 	file_list = {}
@@ -72,9 +90,10 @@ if __name__ == '__main__':
 	error = 0
 	for i in file_list.keys():
 		fileInfo = file_list[i]
-		if fileInfo['external_label'] != vol:
-			print i, 'is not in', vol, `fileInfo`
-			error = error + 1
+		if not intf.bfids:
+			if fileInfo['external_label'] != vol:
+				print i, 'is not in', vol, `fileInfo`
+				error = error + 1
 		if not intf.skip_pnfs:
 			try:
 				volmap = fileInfo['pnfs_mapname']
@@ -265,10 +284,11 @@ if __name__ == '__main__':
 
 	# delete from volume database
 
-	print 'removing', vol, 'from volume database ...',
-	ticket = vcc.rmvolent(vol)
-	if ticket['status'][0] == e_errors.OK:
-		print 'done'
-		print vol, 'is removed forever'
-	else:
-		print 'failed'
+	if not intf.bfids:
+		print 'removing', vol, 'from volume database ...',
+		ticket = vcc.rmvolent(vol)
+		if ticket['status'][0] == e_errors.OK:
+			print 'done'
+			print vol, 'is removed forever'
+		else:
+			print 'failed'
