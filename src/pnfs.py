@@ -612,7 +612,7 @@ class pnfs:
                 dir_elements = string.split(self.voldir,'/')
                 for element in dir_elements:
                     dir=dir+'/'+element
-		    print dir
+                    #print dir
                     if posixpath.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
