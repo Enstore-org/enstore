@@ -1250,7 +1250,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_in_state = int(now - self.state_change_time)
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
-            Trace.trace(8, "time in state %s %s %s"%(time_in_state,self.time_in_state,self.state_change_time))
+            Trace.trace(88, "time in state %s %s %s"%(time_in_state,self.time_in_state,self.state_change_time))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 if self.state == ACTIVE:
