@@ -2218,7 +2218,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.media_transfer_time
+        if self.mode == READ:
+            t = self.tape_driver.tape_transfer_time()
+        else:
+            t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -2349,7 +2352,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.media_transfer_time
+        if self.mode == READ:
+            t = self.tape_driver.tape_transfer_time()
+        else:
+            t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -4023,7 +4029,10 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.media_transfer_time
+        if self.mode == READ:
+            t = self.tape_driver.tape_transfer_time()
+        else:
+            t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
@@ -4125,7 +4134,10 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        t = self.media_transfer_time
+        if self.mode == READ:
+            t = self.tape_driver.tape_transfer_time()
+        else:
+            t = self.media_transfer_time
         if t == 0.:
             t = ticket['times']['transfer_time']
         ticket['times']['drive_transfer_time'] = t
