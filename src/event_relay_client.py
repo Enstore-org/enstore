@@ -1,20 +1,24 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+# This class supports messages from the event relay process.  Methods are
+# provided to read the message.
+###############################################################################
 
 import socket
 import os
 import sys
 import select
-import string
+#import string
 
 import enstore_erc_functions
 import event_relay_messages
 import enstore_constants
 import e_errors
 import host_config
-
-"""
-This class supports messages from the event relay process.  Methods are 
-provided to read the message.
-"""
 
 DEFAULT_PORT = 55510
 
@@ -29,6 +33,26 @@ def get_event_relay_host(csc):
     else:
         host = ""
     return host
+
+def get_event_relay_port(csc):
+    ticket = csc.get(enstore_constants.EVENT_RELAY, DEFAULT_TIMEOUT,
+                     DEFAULT_TRIES)
+    if ticket['status'][0] == e_errors.OK:
+        port = ticket.get('port', 0)
+    else:
+        port = 0
+    return port
+
+def get_event_relay_addr(csc):
+    ticket = csc.get(enstore_constants.EVENT_RELAY, DEFAULT_TIMEOUT,
+                     DEFAULT_TRIES)
+    if ticket['status'][0] == e_errors.OK:
+        host = ticket.get('host', "")
+        port = ticket.get('port', 0)
+    else:
+        host = ""
+        port = 0
+    return (host, port)
 
 def set_max_recv_buffersize(sock):
 
