@@ -50,7 +50,12 @@ UNAME="/bin/uname"
 PS="/bin/ps"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
-LSOF="/usr/local/bin/lsof"
+if [ -e "/usr/local/bin/lsof" ]
+then
+    LSOF="/usr/local/bin/lsof"
+else
+    LSOF="/usr/sbin/lsof"
+fi
 EGREP="/bin/egrep"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
