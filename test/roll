@@ -19,7 +19,8 @@ if [ "${1:-}" = "-q" ] ; then
 fi
 
 if [ -z "${1-}" ] ; then
-  place=fndapr
+  echo "No output directory specified"
+  exit 1
 else
   place=$1
 fi
