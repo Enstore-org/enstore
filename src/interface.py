@@ -468,6 +468,8 @@ class Interface:
                 self.set_crcs=value
             elif opt == "--severity":
                 self.severity = value
+            elif opt == "--shortcut":
+                self.shortcut = 1
             elif opt == "--show":
                 self.show = 1
             elif opt == "--storage-info":

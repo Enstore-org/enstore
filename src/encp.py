@@ -4165,6 +4165,7 @@ class encp(interface.Interface):
         self.put_cache = self.get_cache = 0
         self.get_bfid = None
         self.pnfs_mount_point = ""
+        self.shortcut = 0 #If true, don't extrapolate full file path.
 
         self.storage_info = None # Ditto
         self.test_mode = 0
@@ -4183,6 +4184,7 @@ class encp(interface.Interface):
             "get-bfid", "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
+            "shortcut",
             "data-access-layer", "max-retry=", "max-resubmit=",
             "pnfs-is-automounted", "threaded", "direct-io", "mmap-io",
             "buffer-size=", "array-size=", "mmap-size="] + \
@@ -4237,7 +4239,24 @@ class encp(interface.Interface):
             self.intype = "hsmfile"
             self.outtype = "unixfile"
             return #Don't continue.
-        if self.get_cache:
+        if self.get_cache and self.shortcut:
+            pnfs_id = sys.argv[-2]
+            local_file = sys.argv[-1]
+            if local_file[:6] == "/pnfs/":
+                print_data_access_layer_format(
+                    local_file, remote_file, 0,
+                    {'status':(e_errors.USERERROR,
+                               "Local file cannot begin with '/pnfs/'.")})
+                quit()
+            remote_file = os.path.join(self.pnfs_mount_point,
+                                       ".(access)(%s)" % pnfs_id)
+            self.args[0:2] = [remote_file, local_file]
+            self.input = [self.args[0]]
+            self.output = [self.args[self.arglen-1]]
+            self.intype = "hsmfile"
+            self.outtype = "unixfile"
+            return #Don't continue.
+        elif self.get_cache:
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
