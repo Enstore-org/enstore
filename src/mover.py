@@ -305,6 +305,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
+        self.media_type = self.config.get('media_type', '8MM') #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
@@ -332,6 +333,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info = {}
         self.dismount_time = None
         self.delay = 0
+        self.fcc = None
+        self.vcc = None
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
         self.config['device'] = os.path.expandvars(self.config['device'])
@@ -346,6 +349,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.config['vendor_id']='Unknown'
         self.config['local_mover'] = 0 #XXX who still looks at this?
         self.driver_type = self.config['driver']
+
+        self.default_dismount_delay = self.config.get('dismount_delay', 60)
+        if self.default_dismount_delay < 0:
+            self.default_dismount_delay = 31536000 #1 year
+            
         if self.driver_type == 'NullDriver':
             self.device = None
             import null_driver
@@ -355,28 +363,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
-            ##XXX this should use the new "verify_label" method in the driver
-            Trace.trace(10, "checking for loaded tape, open returns %s" % (have_tape,))
+            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=10)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
             if have_tape == 1:
-                self.tape_driver.set_mode(compression = 0, blocksize = 0)
-                self.tape_driver.rewind()
-                buf=80*' '
-                try:
-                    self.tape_driver.read(buf, 0, 80)
-                    Trace.trace(10, "checking for label: read %s" % (buf,))
-                except (e_errors.READ_ERROR, ftt.FTTError), detail:
-                    Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
-                tok = string.split(buf)
-                if tok:
-                    buf = tok[0]
-                if buf[:4]=='VOL1':
-                    volname=buf[4:]
-                    self.current_volume = volname
+                status = self.tape_driver.verify_label(None)
+                if status[0]==e_errors.OK:
+                    self.current_volume = status[1]
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                     self.dismount_time = time.time() + self.default_dismount_delay
@@ -386,12 +381,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
 
-
-        self.default_dismount_delay = self.config.get('dismount_delay', 60)
-        if self.default_dismount_delay < 0:
-            self.default_dismount_delay = 31536000 #1 year
-            
-            
         self.mount_delay = self.config.get('mount_delay',
                                            self.tape_driver.mount_delay)
         
@@ -719,7 +708,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                   ##what does the flag really mean?
         self.delay = max(delay, self.default_dismount_delay)
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
-                                                 server_address=fc['address'])
+                                                server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
         volume_label = fc['external_label']
@@ -797,9 +786,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = SEEK
 
         eod = self.vol_info['eod_cookie']
+        if eod=='none':
+            eod = None
         volume_label = self.current_volume
 
-        if self.mode is WRITE and eod in (None, "none"):
+        if self.mode is WRITE and eod is None:
             verify_label = 0
             label_tape = 1
         
@@ -813,7 +804,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if label_tape:
                 ## new tape, label it
-                ## XXX need to safeguard against relabeling here
+                ##  need to safeguard against relabeling here
+                status = self.tape_driver.verify_label(None)
+                if status[0] == e_errors.OK:
+                    Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
+                              (volume_label, status[1]))
+                    self.transfer_failed(status[0], status[1])
+                    ##XXX set volume noaccess? Eject it?
+                    self.state = ERROR
+                    return 0
+                
                 self.tape_driver.rewind()
                 vol1_label = 'VOL1'+ volume_label
                 vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
@@ -821,6 +821,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.write(vol1_label, 0, 80)
                 self.tape_driver.writefm()
                 eod = 1
+                self.target_location = eod
                 self.vol_info['eod_cookie'] = eod
                 if self.driver_type == 'FTTDriver':
                     import ftt
@@ -836,7 +837,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if verify_label:
             status = self.tape_driver.verify_label(volume_label, self.mode)
             if status[0] != e_errors.OK:
-                self.transfer_failed(str(status[0]),str(status[1]))
+                self.transfer_failed(status[0], status[1])
+                self.state = ERROR
                 return 0
         location = cookie_to_long(self.target_location)
         self.run_in_thread('seek_thread', self.seek_to_location,
@@ -860,12 +862,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
         else:
             self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
-        msgstr = str(msg) #XXX convert to appropriate Enstore error
+
         self.transfers_failed = self.transfers_failed + 1
         self.timer('transfer_time')
 
-        if msg:
-            self.send_client_done(self.current_work_ticket, msgstr)
+        self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
 
         if self.state == DRAINING:
@@ -1082,15 +1083,29 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.ERROR, "Oops, cannot eject tape, state=ERROR")
                     self.state = ERROR
             self.tape_driver.close()
-        vol_info = self.vol_info.copy()
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
-        if not vol_info.get('external_label'):
-            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+        if not self.vol_info.get('external_label'):
+            if self.vcc:
+                try:
+                    v = self.vcc.inquire_vol(self.current_volume)
+                    if type(v) is type({}):
+                        self.vol_info.update(v)
+                except exceptions.Exception, detail:
+                    Trace.log(e_errors.ERROR, "inquire volume for dismount: %s" % str(detail))
+        if not self.vol_info.get('external_label'):
+            if self.current_volume:
+                self.vol_info['external_label'] = self.current_volume
+            else:
+                self.vol_info['external_label'] = "Unknown"
 
-        mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
+        if not self.vol_info.get('media_type'):
+            self.vol_info['media_type'] = self.media_type #kludge
+
+        mcc_reply = self.mcc.unloadvol(self.vol_info, self.name, self.mc_device)
+
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
             self.current_volume = None
