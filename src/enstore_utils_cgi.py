@@ -15,26 +15,6 @@ TMP_DIR = "/tmp/enstore"
 TIMEOUT = 3
 RETRIES = 2
 
-def add_dir_to_ppath(setups):
-    for item in setups:
-	# look for the setup for the product as we must add something
-	# here to sys.path too
-        pdir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR %s"%(item,)).readlines()
-        pdir = string.strip(pdir[0])
-        pdir = string.replace(pdir, "\"", "")
-        return pdir
-    return None
-
-def find_libtppy(enstore_setups):
-    dir = add_dir_to_ppath(enstore_setups)
-    if not dir is None:
-	sys.path.append("%s/lib"%(dir,))
-
-def find_htmlgen(enstore_setups):
-    dir = add_dir_to_ppath(enstore_setups)
-    if not dir is None:
-	sys.path.append("%s"%(dir,))
-
 def set_trace_key():
     # get who we are
     us = getpass.getuser()
@@ -57,12 +37,12 @@ def find_enstore():
     enstore_dir = string.replace(enstore_dir, "\"", "")
     enstore_src = "%s/src"%(enstore_dir,)
     enstore_modules = "%s/modules"%(enstore_dir,)
+    htmlgen_dir = "%s/HTMLgen"%(enstore_dir,)
+    libtppy_dir = "%s/BerkeleyDB"%(enstore_dir,)
     sys.path.append(enstore_src)
     sys.path.append(enstore_modules)
-    es_htmlgen = string.split(string.strip(enstore_info[3]), "\"")
-    es_libtppy = string.split(string.strip(enstore_info[4]), "\"")
-    find_libtppy(es_libtppy)
-    find_htmlgen(es_htmlgen)
+    sys.path.append(htmlgen_dir)
+    sys.path.append(libtppy_dir)
 
     # fix up the config host and port to give to the command
     config_host = string.strip(enstore_info[2])
