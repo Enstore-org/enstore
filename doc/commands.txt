@@ -36,3 +36,9 @@ rddt [--size= --device= --eod_cookie= --list --help]
 
 clbk <no options>
         just checks to see if you call allocate callback ports on your node
+
+udpc ['msg=', 'host=', 'port=', 'list', 'help']
+	checks if messages come back from udp client
+	--msg    message to be sent
+	--host   where the message gets sent
+	--port   which port (echo is port 7)

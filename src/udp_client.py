@@ -2,6 +2,8 @@ import socket
 import time
 import select
 import os
+import errno
+import exceptions
 from errno import *
 
 TRANSFER_MAX=1024
@@ -60,14 +62,17 @@ class UDPClient:
 
             # exception mean trouble
             if x :
-                raise errorcode[ESHUTDOWN],"UDPClient.send: exception on select "\
-                      +"after send to "+repr(address)+" peer exitted"
+                raise errorcode[ESHUTDOWN],"UDPClient.send: exception on "\
+                      +"select after send to "+repr(address)+" peer exitted"
 
-            # something there - read it and see if we have response that matches
-            # the number we sent out
+            # something there - read it and see if we have response that
+            # matches the number we sent out
             if r :
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
-                exec ("number,  out  = "  + reply)
+                try :
+                    exec ("number,  out  = "  + reply)
+                except exceptions.ValueError :
+                    exec ("ident, number,  out  = "  + reply)
                 if number != self.number :
                     print "UDPClient.send: stale_number=",number, "number=", \
                           self.number,"resending to ", address, message
@@ -77,6 +82,49 @@ class UDPClient:
 
 
 if __name__ == "__main__" :
+    import sys
+    import getopt
+    import socket
+    import string
+    import pprint
+
+    status = 0
+
+    # defaults
+    msg = "All dogs have fleas, but cats make you sick!"
+    host = "localhost"
+    port = 7
+    list = 0
+
+    # see what the user has specified. bomb out if wrong options specified
+    options = ["msg=","host=","port=","list","help"]
+    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    for (opt,value) in optlist :
+        if opt == "--msg" :
+            msg = value
+        elif opt == "--host" :
+            host = value
+        elif opt == "--port" :
+            port = string.atoi(value)
+        elif opt == "--list" :
+            list = 1
+        elif opt == "--help" :
+            print "python ",sys.argv[0], options
+            print "   do not forget the '--' in front of each option"
+            sys.exit(0)
+
     u = UDPClient()
-    print u.send("all dogs have fleas", ('localhost', 7550))
-    print u.send("all dogs have fleas", ('localhost', 7550))
+    #pprint.pprint(u.__dict__)
+
+    if list:
+	print "Sending:\n",msg,"\nto",host,port,"with calback on",u.port
+    back = u.send(msg, (host, port))
+
+    if back != msg :
+	print "Error: sent:\n",msg,"\nbut read:\n",back
+	status = status|1
+
+    elif list:
+	print "Read back:\n",back
+
+    sys.exit(status)
