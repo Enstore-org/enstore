@@ -19,7 +19,7 @@
 #define FTT_TAPE_FSF MTFSF
 #define FTT_TAPE_FSR MTFSR
 #define FTT_TAPE_WEOF MTWEOF
-#define FTT_TAPE_UNLOAD MTOFFL
+#define FTT_TAPE_UNLOAD MTUNLOAD
 #define FTT_TAPE_OP MTIOCTOP
 #define tape_op mt_op
 #define tape_count mt_count

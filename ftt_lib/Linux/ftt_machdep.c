@@ -46,8 +46,8 @@ ftt_status(ftt_descriptor d, int time_out) {
     }
     res = 0;
     /* ZZZ should figure out which of these two it is somehow... */
-    if (GMT_EOT(buf.mt_gstat))     res |= FTT_AEOT;
-    if (GMT_EOT(buf.mt_gstat))     res |= FTT_AEW;
+    if( GMT_EOT(buf.mt_gstat))     res |= FTT_AEOT;
+    if( GMT_EOT(buf.mt_gstat))     res |= FTT_AEW;
 
     if (GMT_BOT(buf.mt_gstat))     res |= FTT_ABOT;
     if (GMT_WR_PROT(buf.mt_gstat)) res |= FTT_PROT;
@@ -63,12 +63,7 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 
 int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-   static struct mtop buf;
-   int res;
-
-   buf.mt_op = MTSETDENSITY;
-   buf.mt_count = hwdens;
-   res = ioctl(d->file_descriptor,MTIOCTOP,&buf);
+   /* ignore hwdens, 'cause we opened the right device node */
    return 0;
 }
 
@@ -78,7 +73,20 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     static int recursing = 0;
     int res;
 
+    if (recursing) {
+	/* 
+	** we need the device open before we do this, so we call
+	** ftt_open_dev. of course, it is going to call *us* again.
+	** so we have this recursive call bail-out. 
+	*/
+	return 0;
+    }
     DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
+    recursing = 1;
+    if (0 > (res = ftt_open_dev(d))) { 
+	return res;
+    }
+    recursing = 0;
     if (blocksize != 0) {
 	/* 
 	** the silly program won't let us set the blocksize to zero,
@@ -89,7 +97,7 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 	buf.mt_count = blocksize;
 	res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
 	res = ftt_translate_error(d,FTT_OPN_STATUS,
-				"an MTIOCTOP/MTSETBLK ioctl()", res,
+				"an MTSPECOP/MTSCSI_SETFIXED ioctl()", res,
 				"an ftt_open_dev",1);
     }
     return res;
@@ -98,15 +106,7 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 int
 ftt_get_hwdens(ftt_descriptor d, char *devname) {
     int res;
-    static struct mtget buf;
 
-    res = ioctl(d->file_descriptor,MTIOCGET,&buf);
-    if (res < 0) {
-        res = ftt_translate_error(d,FTT_OPN_OPEN,
-				"an MTIOCGET ioctl()", res,
-				"an ftt_open_dev",1);
-   } else {
-        res = (buf.mt_dsreg & MT_ST_DENSITY_MASK)>> MT_ST_DENSITY_SHIFT;
-   }
-   return res;
+    res = d->devinfo[d->which_is_default].hwdens;
+    return res;
 }

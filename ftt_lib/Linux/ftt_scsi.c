@@ -20,7 +20,7 @@ static char rcsid[] = "@(#)$Id$";
  */
 #include <stdio.h>
 #include <fcntl.h>
-#include <scsi/sg.h>
+#include <sg.h>
 #include <string.h>
 #include "ftt_private.h"
 
@@ -46,7 +46,7 @@ ftt_scsi_open(const char *pc)
 {
 	register int fd;
 
-	fd = open(pc, O_RDWR); 
+	fd = open(pc, O_RDWR);
 	return fd;
 }
 
@@ -75,7 +75,6 @@ ftt_scsi_close(scsi_handle n) {
  *\subnam
  *	ftt_scsi_command
  *\subcall
- *	ftt_scsi_command(n, buf, len)
  *\subcallend
  *\subtxt
  *	use dslib to send a scsi command and put the result in a buffer
@@ -91,55 +90,91 @@ ftt_scsi_close(scsi_handle n) {
  *\arglend
 -*/
 int
-ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag)
+ftt_scsi_command(
+   scsi_handle 	n, 			/* result of scsi open */
+   char*	pcOp,			/* ascii namne of cmd for disgs */
+   unsigned char* pcCmd, 		/* scsi cmd */
+   int 		nCmd, 			/* length of command */
+   unsigned char* pcRdWr, 		/* write (if writeflag set) & read buf */
+   int 		nRdWr, 			/* write&read len */
+   int 		delay, 			/* time out */
+   int 		writeflag)		/* the pcRdWr buf should be added to cmd */
 {
 	int scsistat, res;
-	static char buffer[1024];
-	struct sg_header *sg_hd = &buffer;
 	static int gotstatus, len;
+
+          /* sg_header is the first SCSI_OFF bytes of buffer */
+#	define SCSI_OFF		sizeof(struct sg_header)
+	static char buffer[1024];
+	struct sg_header *sg_hd = (struct sg_header*) &buffer;
 	
+/* 	
+        Linux returns the request sense data in the read packet, we save it each time 
+	and return the data from the previous command if we get a request sense
+ */
 	if (gotstatus && pcCmd[0] == 0x03) {
-		/* we already have mode sense data, so fake it */
-		memcpy(pcRdWr, 
-		      sg_hd->sense_buffer , nRdWr);
+		/* we already have log sense data, so fake it */
+		memcpy(  pcRdWr, sg_hd->sense_buffer, nRdWr );
 		gotstatus = 0;
 		return ftt_scsi_check(n,pcOp, 0, nRdWr);
 	}
-	sg_hd->reply_len = sizeof(struct sg_header) + writeflag ? nRdWr : 0;
-	sg_hd->twelve_byte = nCmd;
-	sg_hd->result = 0;
-	len = sizeof(struct sg_header) + nCmd;
-	memcpy( pcCmd, buffer+sizeof(struct sg_header), nCmd );
+            /* delay is in secs, ioctl sets it to arg*10 millisecs */
+        delay=delay*100;
+        res = ioctl(n, SG_SET_TIMEOUT, &delay );
+        if (res < 0) {
+             perror("ftt_scsi_command - setting delay");
+             return -1;
+        }
+
+          /* fill the sg_header */
+	sg_hd->reply_len = sizeof(buffer)-SCSI_OFF;
+	sg_hd->twelve_byte = (nCmd==12);
+
+          /* copy the cmd to buffer following sg_head */        
+	len = SCSI_OFF + nCmd;
+
+          /* if we have data for the command, stuff it after the command */
+	memcpy(buffer+SCSI_OFF, pcCmd, nCmd );
 	if (writeflag) {
-	    memcpy(pcRdWr, buffer+sizeof(struct sg_header)+nCmd, nRdWr);
+	    memcpy(buffer+SCSI_OFF+nCmd, pcRdWr, nRdWr);
 	    len += nRdWr;
 	}
+          /* finally, write the buffer */
 	res = write(n, buffer, len);
 	if (res < 0) {
 	    scsistat = 255;
 	} else {
-		len = sizeof(struct sg_header) + writeflag ? 0 : nRdWr;
-		res = read(n, buffer, len);
-		if (res < 0) {
+          /* and if it is successful, read the result */
+		res = read(n, buffer, sizeof(buffer));
+		if (res < 0 || sg_hd->result) {
+                    fprintf(stderr, "scsi passthru read result = 0x%x cmd=0x%x\n",
+                             sg_hd->result, buffer[SCSI_OFF]);
+                    fprintf(stderr, "scsi passtru sense "
+                     "%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x \n",
+                       sg_hd->sense_buffer[0], sg_hd->sense_buffer[1],
+                       sg_hd->sense_buffer[2], sg_hd->sense_buffer[3],
+                       sg_hd->sense_buffer[4], sg_hd->sense_buffer[5],
+                       sg_hd->sense_buffer[6], sg_hd->sense_buffer[7],
+                       sg_hd->sense_buffer[8], sg_hd->sense_buffer[9],
+                       sg_hd->sense_buffer[10], sg_hd->sense_buffer[11],
+                       sg_hd->sense_buffer[12], sg_hd->sense_buffer[13],
+                       sg_hd->sense_buffer[14], sg_hd->sense_buffer[15]);
 		    scsistat = 255;
 		} else {
-
-			if ( !writeflag ) {
-			    memcpy(buffer+sizeof(struct sg_header), pcRdWr, nRdWr);
-			}
+                        res = res-SCSI_OFF;
+                        if (res > nRdWr) res = nRdWr;
+			memcpy(pcRdWr, buffer+SCSI_OFF, res);
 
 			scsistat = sg_hd->result;
-			if (0 != scsistat) {
-				gotstatus = 1;
-			}
 		}
 	}
 
-	res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
+	gotstatus = 1;
+	/* res = ftt_scsi_check(n,pcOp,scsistat,nRdWr); */
 
 	if (pcRdWr != 0 && nRdWr != 0){
 		DEBUG4(stderr,"Read/Write buffer:\n");
-		DEBUGDUMP4(pcRdWr,nRdWr);
+		DEBUGDUMP4(pcRdWr,res);
 	}
 	return res;
 }
