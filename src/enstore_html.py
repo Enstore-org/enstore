@@ -1219,7 +1219,7 @@ class EnPlotPage(EnBaseHtmlDoc):
         # compare the passed text with the files listed in PLOT_INFO. if there
         # is a match, return the associated text. else return a default string.
         for file_label in PLOT_INFO:
-            if string.find(text, file_label[0]) == 0:
+            if not string.find(text, file_label[0]) == -1:
 		# this is a match
 		if file_label[0] == enstore_constants.UTIL_FILE:
 		    # fix up the label
