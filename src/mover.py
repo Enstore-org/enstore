@@ -696,7 +696,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 result = pipeObj.fromchild.readlines()  # result has returned string
                 if result:
                     for l in result:
-                        Trace.log(e_errors.INFO,"SYSLOG Entry:[%s]"%(l[:-1],))
+                        Trace.log(e_errors.INFO,"SYSLOG Entry:[%s] %s"%(l[:-1],self.current_volume))
             except: # do not know what kind of exception it may be
                 Trace.handle_error()
 
@@ -3324,6 +3324,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # error out and do not allow dismount as nothing has
                 # been mounted yet
                 self.transfer_failed(exc=e_errors.MOUNTFAILED, msg=broken,error_source=ROBOT, dismount_allowed=0)
+                self.broken(broken) # this is to address AML2 mount failures
             
             #self.current_volume = None
             
