@@ -136,7 +136,8 @@ create table encp_error(
 	error		varchar not null,
 	src		varchar,
 	dst		varchar,
-	size		bigint);
+	size		bigint
+);
 
 
 create table migration (
@@ -146,4 +147,13 @@ create table migration (
 	swapped timestamp without time zone,
 	checked timestamp without time zone
 );
+
+create table migration_history (
+	src	varchar not null,
+	dst	varchar not null,
+	time	timestamp without time zone default now(),
+	primary key (src, dst)
+);
+create index migration_history_src_idx on migration_history(src);
+create index migration_history_dst_idx on migration_history(dst);
 
