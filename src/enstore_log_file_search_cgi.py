@@ -54,7 +54,7 @@ def go():
 	logfile_names = ticket['logfiles']
 	if logfile_names == []:
 	    # there were no matches
-	    print cmd
+	    ## print cmd # - Eileen: mylint.py says there is no "cmd"...  cgw
 	    print "<BR><P>"
 	    print "There were no log files that matched the entered description."
 	else:
