@@ -2926,7 +2926,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
-                 'client': self.client_hostname,
+                 'client': self.client_ip,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
@@ -4075,7 +4075,7 @@ class DiskMover(Mover):
                  'rate of tape': self.tape_driver.rates()[0],
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
-                 'client': self.client_hostname,
+                 'client': self.client_ip,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
