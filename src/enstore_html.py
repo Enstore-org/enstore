@@ -133,10 +133,14 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.meta = HTMLgen.Meta(equiv="Refresh", content=self.refresh)
 
     # this is the base class for all of the html generated enstore documents
-    def __init__(self, refresh=0):
+    def __init__(self, refresh=0, background="enstore.gif"):
 	self.textcolor = DARKBLUE
-	self.background = "enstore.gif"
-	HTMLgen.SimpleDocument.__init__(self, background=self.background, textcolor=self.textcolor)
+	self.background = background
+	if self.background:
+	    HTMLgen.SimpleDocument.__init__(self, background=self.background, 
+					    textcolor=self.textcolor)
+	else:
+	    HTMLgen.SimpleDocument.__init__(self, textcolor=self.textcolor)
 	self.refresh = refresh
 	if not self.refresh == 0:
 	    self.set_meta()
