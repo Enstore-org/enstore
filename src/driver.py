@@ -190,10 +190,6 @@ class GenericDriver:
     def close( self ):
         return os.close(self.fd)
 
-    def flush(self):
-        raise "NotImplemetedError"
-
-    #-----------------
     pass
 
 
@@ -346,9 +342,6 @@ class  FTTDriver(GenericDriver) :
 	    pass
 	return FTT.close()
 
-    def flush( self ):
-	return FTT.flush()
-
     pass
 
 
@@ -404,6 +397,38 @@ class  DelayDriver(RawDiskDriver) :
 
     pass
 
+
+class NullDriver( GenericDriver):
+
+    def fd_xfer( self, fd, siz_bytes, crc_fun=None, crc=0 ):
+	# returns (crc); throws exception if wrong no_bytes xferred
+	# no crc if crc_fun is 0
+	# For disk, blocksize is used, but there are no partial blocks
+	# recreating the sem and msg insures that they are cleared
+	self.sem = IPC.semget( IPC.IPC_PRIVATE, 1, IPC.IPC_CREAT|0x1ff )
+	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
+	self.shm.offset( 2, self.sem.id )
+	self.shm.offset( 3, self.msg.id )
+
+	try:
+	    if self.mode == 'r':		# relative to this driver = "from hsm"
+		__fd__ = os.open( '/dev/zero', mode_string_to_int(self.mode) )
+		crc = EXfer.fd_xfer( __fd__, fd, siz_bytes, 
+				     self.blocksize, None, 0, self.shm )
+	    else:
+                __fd__ = os.open( '/dev/null', mode_string_to_int(self.mode) )
+		crc = EXfer.fd_xfer( fd, __fd__, siz_bytes,
+				     self.blocksize, None, 0, self.shm )
+		self.remaining_bytes = self.remaining_bytes - siz_bytes
+                pass
+            pass
+        finally:
+	    os.close( __fd__ )
+	    del self.sem,self.msg		# sys.exit??? forking???
+	    pass
+	return crc
+
+    pass
 
 
 class safeDict:
