@@ -45,7 +45,7 @@ import hostaddr
 import string_driver
 import disk_driver
 import accounting_client
-
+import drivestat_client
 import Trace
 
 
@@ -753,27 +753,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.stat_file: return
         if not self.driver_type == 'FTTDriver':
             return
-        import ftt
-        import drivestat
-        fd = ftt.open(drive, ftt.RDWR)
-        if fd:
-            ds = drivestat.ds_alloc()
-            if ds:
-                stats = fd.get_stats()
-                drivestat.ds_translate_ftt_drive_id(ds, stats.b)
-                drivestat.ds_set_character_field(ds, drive_name, drivestat.LOGICAL_DRIVE_NAME)
-                drivestat.ds_set_character_field(ds, self.current_volume, drivestat.TAPE_VOLSER)
-                drivestat.ds_set_character_field(ds, self.config['host'],drivestat.HOST)
-                st = drivestat.ds_translate_ftt_stats(ds, stats.b, drivestat.INIT)
-                Trace.trace(15, "init_stat %s"%(st,))
-                if st != -1:
-                    try:
-                        drivestat.ds_print(ds,self.stat_file)  
-                    except:
-                        Trace.handle_error()
-                        pass
-                    self.stats_on = 1
-                    self.drive_stats = ds
+        # create drivestat client
+        try:
+            self.dsc = drivestat_client.dsClient(self.csc, drive_name)
+            self.stats_on = 1
+        except:
+            Trace.handle_error()
+            pass
 
 
     def set_volume_noaccess(self, volume):
@@ -784,17 +770,52 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
-            import drivestat
+            import ftt
             stats = self.tape_driver.ftt.get_stats()
-            drivestat.ds_set_character_field(self.drive_stats, self.current_volume, drivestat.TAPE_VOLSER)
-            st = drivestat.ds_translate_ftt_stats(self.drive_stats, stats.b, drivestat.RECENT)
-            st = drivestat.ds_compute_delta(self.drive_stats)
-            if st != -1:
-                try:
-                    drivestat.ds_print(self.drive_stats, self.stat_file)
-                except:
-                    pass
-
+            if self.stat_file:
+                fd = open(self.stat_file, "w")
+                fd.write("FORMAT VERSION:         %d\n"%(22,))
+                fd.write("INIT FLAG:              %d\n"%(1,))
+                fd.write("DRIVE SERNO:            %s\n"%(stats[ftt.SERIAL_NUM],))
+                fd.write("VENDOR:                 %s\n"%(stats[ftt.VENDOR_ID],))
+                fd.write("PROD TYPE:              %s\n"%(stats[ftt.PRODUCT_ID],))
+                fd.write("LOGICAL NAME:           %s\n"%(self.logname,))
+                fd.write("HOST:                   %s\n"%(self.config['host'],))
+                fd.write("VOLSER:                 %s\n"%(self.current_volume,))
+                fd.write("OPERATION               %s\n"%(self.mode,))
+                fd.write("CLEANING BIT:           %s\n"%(stats[ftt.CLEANING_BIT],))
+                fd.write("PWR HRS:                %s\n"%(stats[ftt.POWER_HOURS],))
+                fd.write("MOT HRS:                %s\n"%(stats[ftt.MOTION_HOURS],))
+                fd.write("RD ERR:                 %s\n"%(stats[ftt.READ_ERRORS],))
+                fd.write("WR ERR:                 %s\n"%(stats[ftt.WRITE_ERRORS],))
+                fd.write("MB UREAD:               %s\n"%(long(stats[ftt.USER_READ])/1024.,))
+                fd.write("MB UWRITE:              %s\n"%(long(stats[ftt.USER_WRITE])/1024.,))
+                fd.write("MB DREAD:                  %s\n"%(long(stats[ftt.READ_COUNT])/1024.,))
+                fd.write("MB DWRITE:                 %s\n"%(long(stats[ftt.WRITE_COUNT])/1024.,))
+                fd.write("RETRIES:                %s\n"%(stats[ftt.TRACK_RETRY],))
+                fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
+            if self.send_stats:
+                self.dsc.log_stat(stats[ftt.SERIAL_NUM],
+                                  stats[ftt.VENDOR_ID],
+                                  stats[ftt.PRODUCT_ID],
+                                  self.config['host'],
+                                  self.logname,
+                                  "ABSOLUTE",
+                                  time.time(),
+                                  self.current_volume,
+                                  stats[ftt.POWER_HOURS],
+                                  stats[ftt.MOTION_HOURS],
+                                  stats[ftt.CLEANING_BIT],
+                                  long(stats[ftt.USER_READ])/1024.,
+                                  long(stats[ftt.USER_WRITE])/1024.,
+                                  long(stats[ftt.READ_COUNT])/1024.,
+                                  long(stats[ftt.WRITE_COUNT])/1024.,
+                                  stats[ftt.READ_ERRORS],
+                                  stats[ftt.WRITE_ERRORS],
+                                  stats[ftt.TRACK_RETRY],
+                                  stats[ftt.UNDERRUN],
+                                  0)
+                
     def start(self):
         name = self.name
         self.t0 = time.time()
@@ -965,9 +986,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.driver_type == 'FTTDriver':
             self.stat_file = self.config.get('statistics_path', None)
             Trace.log(e_errors.INFO,"statsitics path %s"%(self.stat_file,))
-	    if self.stat_file:
-                os.putenv('DS_SERVER_HOST', 'fncdug1.fnal.gov')
-                os.putenv('DS_SERVER_PORT', '5001')
             self.compression = self.config.get('compression', None)
             if self.compression > 1: self.compression = None
             self.device = self.config['device']
@@ -1420,6 +1438,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
                 return
+            Trace.trace(34, "read_client: bytes read %s"%(bytes_read,))
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
                 #if self.state is not DRAINING: self.state = HAVE_BOUND
@@ -1534,16 +1553,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.write_ok.wait(1)
                 now = time.time()
                 if int(now - buffer_empty_t) > self.max_time_in_state:
-                    buffer_empty_cnt = buffer_empty_cnt + 1
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
-                        Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state)) 
+                        Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
                         self.too_long_in_state_sent = 0 # send alarm just once
+                    buffer_empty_t = now
+                    Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
                     if buffer_empty_cnt >= self.max_in_state_cnt:
-                        msg = "data transfer to client stuck. Breaking connection"
+                        msg = "data transfer from client stuck. Breaking connection"
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                         return
+                    buffer_empty_cnt = buffer_empty_cnt + 1
                 
                 if (defer_write and (self.bytes_read==self.bytes_to_read or not self.buffer.low())):
                     defer_write = 0
@@ -1793,15 +1814,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.read_ok.wait(1)
                 now = time.time()
                 if int(now - buffer_full_t) > self.max_time_in_state:
-                    buffer_full_cnt = buffer_full_cnt + 1
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
                         self.too_long_in_state_sent = 0 # send alarm just once
+                    buffer_full_t = now
                     if buffer_full_cnt >= self.max_in_state_cnt:
                         msg = "data transfer to client stuck. Breaking connection"
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                         return
+                    buffer_full_cnt = buffer_full_cnt + 1
                 continue
             else:
                 buffer_full_t = 0
@@ -3119,14 +3141,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         self.update_stat()
-        if self.stats_on and self.tape_driver and self.tape_driver.ftt and self.send_stats:
-            import drivestat
-            ret=drivestat.ds_send_stats(self.drive_stats,
-                                        10,
-                                        drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
-            ret=drivestat.ds_send_stats(self.drive_stats,
-                                        10, drivestat.ABSOLUTE);
-            drivestat.ds_free(self.drive_stats)
 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
