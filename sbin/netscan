@@ -272,6 +272,8 @@ right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
 right_file /home/enstore/enstore/etc/$gang.hosts.allow /etc/hosts.allow
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
+right_file /home/enstore/enstore/etc/sudoers /etc/sudoers
+chmod 440 /etc/sudoers # just force this
 right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
 right_file /home/enstore/enstore/etc/enstore.bashrc /home/enstore/.bashrc
 right_file /home/enstore/enstore/etc/enstore.bash_profile /home/enstore/.bash_profile
