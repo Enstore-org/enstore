@@ -8,7 +8,7 @@ import sys
 
 # enstore imports
 import callback
-import dict_to_a
+#import dict_to_a
 import configuration_client
 import udp_client
 import Trace
@@ -125,6 +125,7 @@ class AdminClerkClientInterface(generic_client.GenericClientInterface) :
 
     # define the single character options
     def charopts(self):
+        if 0: print self # quiet the linter
         return "v:f:l:m:w:u:s:"
 
     def check(self, value):
@@ -137,6 +138,7 @@ class AdminClerkClientInterface(generic_client.GenericClientInterface) :
         sys.exit(1)
 
     def strip(self, value):
+        if 0: print self # quiet the linter
         newVal=""
         for c in value:
             if c !=' ':

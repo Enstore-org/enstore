@@ -88,6 +88,7 @@ class TimeOper(NumOper):
     Trace.trace(16,'}secs')
 
   def zstrip(self,value):
+    if 0: print self #quiet the linter
     Trace.trace(16,'{zstrip value='+repr(value))
     if value[0]=='0':
         return value[1:]

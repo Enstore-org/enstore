@@ -2,13 +2,15 @@
 # restore.py
 #
 
-import copy
+#import copy
 import db
 import regsub
 import os
-import generic_cs
+#import generic_cs
+import sys
 
 cursor_open = 0
+if 0: print cursor_open #quiet the linter
 
 # similar to db.DbTable, without automatic journaling and backup up.
 
