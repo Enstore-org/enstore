@@ -83,7 +83,8 @@ EOF
   for i in `cat $farmlet`; do
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
-      data_item="<td align=center bgcolor=\"RED\"></td>"
+      data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
+      echo enstore alarm --raise --root-error=\"DOESNOTEXIST - $des ($i)\"
     else
       data_item="<td align=center>$val</td>"
     fi
