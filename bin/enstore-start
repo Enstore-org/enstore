@@ -81,8 +81,7 @@ start_db_daemons()
      fi
 }
 
-me=`whoami`
-PID_DIR=/tmp/enstore/$me
+PID_DIR=`$ENSTORE_DIR/bin/en_get_pid_dir`
 
 opts_wo_args='ping|nocheck|async'
 opts_w_args='xterm|just'
