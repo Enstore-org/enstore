@@ -39,7 +39,12 @@ def inventory_usage(message = None):
           " for defaults."
 
 #Take in a long int or int and format it into human readable form.
-def format_storage_size(size_in_bytes):
+def format_storage_size(size_in_bytes,mode="GB"):
+
+    if mode == "GB":
+        z = size_in_bytes/1024./1024./1024. # GB
+        return "%7.2fGB"%(z,)
+  
     #suffix list
     suffix = ("B", "KB", "MB", "GB", "TB", "PB")
     
@@ -49,6 +54,7 @@ def format_storage_size(size_in_bytes):
     while long(abs(volume_size) / 1024) > 0:
         volume_size = volume_size / 1024
         count = count + 1
+
 
     return volume_size, suffix[count]
 
