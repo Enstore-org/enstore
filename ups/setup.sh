@@ -14,7 +14,3 @@ PYTHONINC=$PYTHON_DIR/include/$PVER
 export PYTHONINC
 PYTHONLIB=$PYTHON_DIR/lib/$PVER
 export PYTHONLIB
-
-ver=`/bin/ls -d $PYTHON_DIR/Python*`
-PVER=`basename $ver`
-PYTHONMOD=$PYTHON_DIR/$PVER/Modules;     export PYTHONMOD

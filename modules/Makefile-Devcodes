@@ -50,6 +50,7 @@ EXTRALD=$(YOURLIBS)
 PYMODULES=
 
 build:
+	./Devcodes.config
 	if [ "$(MODULE)" != your-module ]; then \
 	  $(PYMAKE) INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
 		ASHAREDMODULE=$(MODULE) \

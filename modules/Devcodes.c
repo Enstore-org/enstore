@@ -1,5 +1,7 @@
 #include <Python.h>
 
+#include "Devcodes.h"
+
 #ifdef STDC_HEADERS
 #include <stdlib.h>
 #endif
@@ -8,7 +10,6 @@
 #include <unistd.h>
 #endif
 
-/* Since major is a function on SVR4, we can't use `ifndef major'.  */
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
 #define HAVE_MAJOR
@@ -19,7 +20,7 @@
 #define HAVE_MAJOR
 #endif
 
-#ifdef major                    /* Might be defined in sys/types.h.  */
+#ifdef major
 #define HAVE_MAJOR
 #endif
 
@@ -33,15 +34,10 @@
 
 
 static char Devcodes_Doc[] =  "Get major and  minor device codes";
+static char MajMin_Doc[] = "Get major and minor device codes";
 
-/*
-   Method implementations
-*/
 
-static char GetCodes_Doc[] = "Get major and minor device codes";
-
-static PyObject*
-GetCodes(PyObject *self, PyObject *args)
+static PyObject* MajMin(PyObject *self, PyObject *args)
 {
   char *filename;
   int istatus;
@@ -57,13 +53,17 @@ GetCodes(PyObject *self, PyObject *args)
         Get the tape stats from FTT
 */
   istatus = stat(filename, &statbuf);
-  dmajor = major(statbuf.st_dev);
-  dminor = minor(statbuf.st_dev);
+  if (istatus==0) {
+    dmajor = major(statbuf.st_dev);
+    dminor = minor(statbuf.st_dev);
+  } else {
+    dmajor = 0;
+    dminor = 0;
+  }
 
-  return( Py_BuildValue ("{s:i,s:i}",
-                         "Major", dmajor,
-                         "Minor", dminor
-                         ) );
+  return(Py_BuildValue("{s:i,s:i}",
+                       "Major", dmajor,
+                       "Minor", dminor));
 }
 
 /*
@@ -76,8 +76,9 @@ GetCodes(PyObject *self, PyObject *args)
          3 - flags
          4 - method documentation string
 */
+
 static PyMethodDef Devcodes_Methods[] = {
-  { "GetCodes", GetCodes, 1, GetCodes_Doc},
+  { "MajMin", MajMin, 1, MajMin_Doc},
   {0,     0}        /* Sentinel */
 };
 
@@ -99,9 +100,9 @@ static PyMethodDef Devcodes_Methods[] = {
    Fourth & Fifth - see Python/modsupport.c
 
 */
+
 void initDevcodes()
 {
   (void) Py_InitModule4("Devcodes", Devcodes_Methods, Devcodes_Doc,
-                               (PyObject*)NULL,PYTHON_API_VERSION);
-
+                        (PyObject*)NULL,PYTHON_API_VERSION);
 }
