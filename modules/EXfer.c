@@ -290,8 +290,9 @@ EXfd_xfer(  PyObject	*self
 {							/* @-Public-@ */
 	int		 fr_fd;
 	int		 to_fd;
-	int		 no_bytes;
+	unsigned long	 no_bytes;  /* XXX:  for large filesystem support we may make this a long long */
 	int		 blk_size;
+	PyObject        *no_bytes_obj;
 	PyObject	*crc_obj_tp;
 	PyObject	*crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
 	PyObject	*shm_obj_tp=0;  /* optional, ref. FTT.fd_xfer */
@@ -307,13 +308,17 @@ EXfd_xfer(  PyObject	*self
 	int		 dummy=0;
 	int		*read_bytes_ip=&dummy, *write_bytes_ip=&dummy;
 
-    sts = PyArg_ParseTuple(  args, "iiiiO|OO", &fr_fd, &to_fd, &no_bytes
+    sts = PyArg_ParseTuple(  args, "iiOiO|OO", &fr_fd, &to_fd, &no_bytes_obj
 			   , &blk_size, &crc_obj_tp, &crc_tp, &shm_obj_tp );
     if (!sts) return (NULL);
     if      (crc_tp == Py_None)   crc_i = 0;
     else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsUnsignedLong(crc_tp);
     else if (PyInt_Check(crc_tp)) crc_i = (unsigned)PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
+
+    if (PyLong_Check(no_bytes_obj)) no_bytes = PyLong_AsUnsignedLong(no_bytes_obj);
+    else if (PyInt_Check(no_bytes_obj)) no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
+    else return(raise_exception("fd_xfer - invalid no_bytes param"));
 
     /* see if we are crc-ing */
     if (crc_obj_tp==Py_None) crc_flag=0;
