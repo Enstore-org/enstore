@@ -123,7 +123,9 @@ $stats
 
 EOF
 else
+  echo ""
   echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n`
+  echo ""
 fi
 
 cleaning_needed=`echo "$stats" | grep FTT_CLEANING_BIT | cut -f3 -d' '`
@@ -142,7 +144,9 @@ $stats
 
 EOF
 else
+  echo ""
   echo $TAPE on `uname -n` not reporting dirty
+  echo ""
 fi
 
 echo "$stats"
