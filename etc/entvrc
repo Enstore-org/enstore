@@ -36,9 +36,9 @@
 #stkensrv2.fnal.gov        371x800+0+0          #ff9999    animate
 
 #Fall colors.
-cdfensrv2.fnal.gov        354x800+792+0        #ffff00    animate
-d0ensrv2.fnal.gov         413x800+375+0        #ff9900    animate
-stkensrv2.fnal.gov        371x800+0+0          #ff3333    animate
+#cdfensrv2.fnal.gov        354x800+792+0        #ffff00    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ff9900    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ff3333    animate
 
 # Red, Green Blue display.
 #cdfensrv2.fnal.gov        354x800+792+0        #00dd00
@@ -83,6 +83,8 @@ client_color stkendm1a     #ff9900
 client_color stkendm2a     #ff9900
 client_color stkendm3a     #ff9900
 client_color stkendm4a     #ff9900
+client_color d0enout2a     #ff9900
+client_color fcdfcaf324    #ff9900
 
 #miniboone online data taking
 client_color hal9004       #dd0000
