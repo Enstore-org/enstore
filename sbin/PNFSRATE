@@ -5,24 +5,49 @@
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $gang in
-  stken) mountpoint="/pnfs/eagle"
-          ndb=45 
-	  lssizecmd="stkensrv1 /diska/pnfs/db"
+  stken) mountpoint="/pnfs/eagle /pnfs/cms"
+          ndb="45 5"
+	  #lssizecmd needs each line to seperate the contents for each
+	  # item in the list to search.  Thus, no \ at the end of the 
+	  # line that the others get.  This is all because these lines
+	  # contains spaces that the others do not.
+	  lssizecmd="stkensrv1 /diska/pnfs/db
+		     cmspnfs /diska/pnfs/db"
+	  outputpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.html  \
+		     /fnal/ups/prd/www_pages/enstore/CMSpnfsRate.html"
+	  errorpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.errors \
+		    /fnal/ups/prd/www_pages/enstore/CMSpnfsRate.errors"
           ;;
    d0en) mountpoint="/pnfs/sam/dzero"
           ndb=16
 	  lssizecmd="d0ensrv1 /diska/pnfs/db"
+	  outputpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.html"
+	  errorpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.errors"
           ;;
   cdfen) mountpoint="/pnfs/cdfen"
           ndb=12 
 	  lssizecmd="cdfensrv1 /diska/pnfs/db"
+	  outputpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.html"
+	  errorpage="/fnal/ups/prd/www_pages/enstore/pnfsRate.errors"
           ;;
        *) echo BUSTED
           exit 1
           ;;
 esac
 
+i=1
+echo "$lssizecmd" |
+while read line
+do
+    # "cur" stands for current.
 
-python $ENSTORE_DIR/sbin/pnfsRate.py --mountpoint $mountpoint --database $ndb --sleeptime=5  --genhtml --all --lssizecmd="$lssizecmd" > /fnal/ups/prd/www_pages/enstore/pnfsRate.html 2>/fnal/ups/prd/www_pages/enstore/pnfsRate.errors
+    cur_mountpoint=`echo $mountpoint | tr -s " " " " | cut -f $i -d " "`
+    cur_ndb=`echo $ndb | tr -s " " " " | cut -f $i -d " "`
+    cur_lssizecmd=`echo $line`
+    cur_outputpage=`echo $outputpage | tr -s " " " " | cut -f $i -d " "`
+    cur_errorpage=`echo $errorpage | tr -s " " " " | cut -f $i -d " "`
 
+    python $ENSTORE_DIR/sbin/pnfsRate.py --mountpoint $cur_mountpoint --database $cur_ndb --sleeptime=5  --genhtml --all --lssizecmd="$cur_lssizecmd" > $cur_outputpage 2> $cur_errorpage
 
+    i=`expr $i + 1`
+done
