@@ -145,16 +145,15 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 	}
 	if (0 == strcmp(d->devinfo[i].device_name, dev)) {
 	    if (d->devinfo[i].passthru) {
-	        fprintf(pf, "%s SCSI pass-thru", starter);
-	    } else {
-	        fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
-			starter,
-			dname,
-			d->devinfo[i].density, 
-			d->devinfo[i].mode? "compressed":"uncompressed",
-			d->devinfo[i].hwdens,
-			d->devinfo[i].fixed? "fixed block":"variable block");
-	   }
+	        fprintf(pf, "%s SCSI pass-thru ", starter);
+	    } 
+	    fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
+		    starter,
+		    dname,
+		    d->devinfo[i].density, 
+		    d->devinfo[i].mode? "compressed":"uncompressed",
+		    d->devinfo[i].hwdens,
+		    d->devinfo[i].fixed? "fixed block":"variable block");
 	    for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
 		if (d->devinfo[i].rewind & (1<<j)) {
 		    fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);

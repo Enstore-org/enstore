@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <ftt_private.h>
 
 extern int errno;

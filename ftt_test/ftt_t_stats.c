@@ -293,6 +293,10 @@ if (partial)				/* display only counters */
       if (ftt_numeric_tab[i])
          {
          stat_value = ftt_extract_stats (delstat[0],i); 
+	 if (stat_value == 0) 
+	     {
+	     stat_value = "(null)";
+	     }
          fprintf (stderr,"%s is %s\n",ftt_stat_names[i],stat_value);
          }
       }

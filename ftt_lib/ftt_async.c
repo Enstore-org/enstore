@@ -32,7 +32,6 @@ ftt_fork(ftt_descriptor d) {
 		   /* grandchild, send our pid up the pipe */
 	        close(fds[0]);
 	        d->async_pf_parent = fdopen(fds[1],"w");
-		setlinebuf(d->async_pf_parent);
 		fprintf(d->async_pf_parent,"%d\n", (int)getpid());
 		fflush(d->async_pf_parent);
 	    } else {
@@ -44,7 +43,6 @@ ftt_fork(ftt_descriptor d) {
 	    close(fds[1]);
 	    waitpid(res,0,0);
 	    d->async_pf_child = fdopen(fds[0],"r");
-	    setlinebuf(d->async_pf_child);
 	    res = fscanf(d->async_pf_child, "%d", &d->async_pid);
 	    if (res == 0) {
 		DEBUG3(stderr, "retrying read of pid from pipe\n");
@@ -138,6 +136,7 @@ ftt_report(ftt_descriptor d) {
 	ftt_close_dev(d);
 	DEBUG3(stderr,"Writing ftt_errno %d  message %s to pipe\n", e, p);
 	fprintf(d->async_pf_parent, "%d\n%s", e, p);
+	fflush(d->async_pf_parent);
 	exit(0);
     } else {
 	ftt_eprintf("ftt_report: there is no connection to a parent process, ftt_errno FTT_ENXIO");

@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-LIBS=-L. -L../lib -lftt_test -lftt `cat ../ftt_lib/local/libs`
+LIBS=-L. -L../ftt_lib -lftt_test -lftt `cat ../ftt_lib/local/libs`
 
 SRC= ftt_t_cmdline.c ftt_t_cmdloop.c ftt_t_cmdproc.c ftt_t_parse.c \
  ftt_t_stats.c ftt_t_rdwr.c ftt_t_open.c ftt_t_position.c ftt_t_misc.c \
@@ -11,9 +11,13 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
  ftt_t_error.o ftt_t_block.o ftt_t_name.o ftt_t_label.o
 
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
-CFLAGS=-I. -I../ftt_lib -g 
+CFLAGS=-I. -I../ftt_lib -g $(WARN)
+
 
 all: ftt_test ftt_random
+
+clean:
+	rm $(OBJ) ftt_test ftt_random
 
 install: all
 	cp libftt_test.a $(FTT_DIR)/lib

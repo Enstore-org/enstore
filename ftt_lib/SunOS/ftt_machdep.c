@@ -11,7 +11,37 @@ ftt_status(ftt_descriptor d, int time_out) {
     int res;
     char *p;
 
-    return -1;
+    res = ftt_get_stats(d,&block);
+    if (res < 0) {
+	if (ftt_errno == FTT_EBUSY) {
+	    return FTT_BUSY;
+	} else {
+	    return res;
+	}
+    }
+    res = 0;
+    p = ftt_extract_stats(&block, FTT_BOT);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting ABOT flag\n");
+	res |= FTT_ABOT;
+    }
+    p = ftt_extract_stats(&block, FTT_EOM);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting AEOT flag\n");
+	res |= FTT_AEOT;
+	res |= FTT_AEW;
+    }
+    p = ftt_extract_stats(&block, FTT_WRITE_PROT);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting PROT flag\n");
+	res |= FTT_PROT;
+    }
+    p = ftt_extract_stats(&block, FTT_READY);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting ONLINE flag\n");
+	res |= FTT_ONLINE;
+    }
+    return res;
 }
 
 int
@@ -22,17 +52,17 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 
 int
 ftt_set_compression(ftt_descriptor d, int compression) {
+    /* ignore compression, 'cause we opened the right device node */
    return 0;
 }
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
-    static struct mtop buf;
-    static int recursing = 0;
     int res;
 
-    /* ZZZ */
+    /* ignore blocksize, 'cause we opened the right device node */
     return 0;
 }
+
 int
 ftt_get_hwdens(ftt_descriptor d) {
     int res;

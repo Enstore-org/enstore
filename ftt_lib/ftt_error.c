@@ -175,7 +175,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
 	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY))) {
 	    if (8 == atoi(p)){
-		save2 = res = -1;
+		res = -1;
 		save1 = ftt_errno = FTT_EBLANK;
 	    } else {
 		ftt_errno = save1;
@@ -188,6 +188,8 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	    if (d->last_pos > 0 && atoi(p) == d->last_pos) {
 		ftt_errno = FTT_EBLANK;
 		res = -1;
+	    } else {
+		ftt_errno = save1;
 	    }
 	    d->last_pos = atoi(p);
 	} else {
@@ -195,7 +197,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	}
     }
 
-    if (res >= 0) {
+    if (0 <= res) {
 	ftt_errno = FTT_SUCCESS;
 	return res;
     }

@@ -32,15 +32,22 @@ ftt_open_scsi_dev(ftt_descriptor d) {
     char *devname;
 
     /* can't have regular device and passthru open at same time */
-    ftt_close_dev(d);
+    /* UNLESS the device we have default is also passthru... */
 
-    if (d->scsi_descriptor < 0) {
-        devname = ftt_get_scsi_devname(d);
-	d->scsi_descriptor = ftt_scsi_open(devname);
+    if (!d->devinfo[d->which_is_default].passthru) {
+	ftt_close_dev(d);
+
 	if (d->scsi_descriptor < 0) {
-	    return ftt_translate_error(d,FTT_OPN_OPEN,"a SCSI open",
-				d->scsi_descriptor,"ftt_scsi_open",1);
+	    devname = ftt_get_scsi_devname(d);
+	    d->scsi_descriptor = ftt_scsi_open(devname);
+	    if (d->scsi_descriptor < 0) {
+		return ftt_translate_error(d,FTT_OPN_OPEN,"a SCSI open",
+				    d->scsi_descriptor,"ftt_scsi_open",1);
+	    }
 	}
+    } else {
+       ftt_open_dev(d);
+       d->scsi_descriptor = d->file_descriptor;
     }
     return d->scsi_descriptor;
 }
@@ -50,7 +57,11 @@ ftt_close_scsi_dev(ftt_descriptor d) {
     int res;
 
     DEBUG3(stderr,"Entering close_scsi_dev\n");
-    if(d->scsi_descriptor > 0) {
+    /* check if we're using the regular device */
+    if(d->scsi_descriptor == d->file_descriptor) {
+	d->scsi_descriptor = -1;
+    }
+    if(d->scsi_descriptor > 0 ) {
         res = ftt_scsi_close(d->scsi_descriptor);
 	d->scsi_descriptor = -1;
 	return res;

@@ -231,6 +231,7 @@ ftt_get_stat_ops(char *name) {
 int
 ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     int res;
+    int failures = 0;
     int i;
     unsigned char buf[512];
     int tape_size, remain_tape, error_count;
@@ -294,8 +295,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	/* request sense data */
 	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 30, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    static char *sense_key_trans[] = {
 		"NO_SENSE", "NOT_USED", "NOT_READY", "MEDIUM_ERROR",
@@ -374,8 +374,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	/* basic scsi inquiry */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    set_stat(b,FTT_VENDOR_ID,  (char *)buf+8,  (char *)buf+16);
 	    set_stat(b,FTT_PRODUCT_ID, (char *)buf+16, (char *)buf+32);
@@ -409,8 +408,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	/* scsi inquiry w/ serial number */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inq_w_sn, 6, buf, 14, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    set_stat(b,FTT_SERIAL_NUM, (char *)buf+4, (char *)buf+14);
 	}
@@ -425,8 +423,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
 	}
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 
 	    set_stat(b,FTT_DENSITY,     itoa((long)buf[4]), 0);
@@ -483,7 +480,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 				  6, buf, 20, 10, 0);
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
 	} else {
 	    set_stat(b,FTT_TRANS_COMPRESS,     itoa((long)buf[18]), 0);
 	}
@@ -498,8 +494,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_senser, 10, 
 				  buf, 128, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    decrypt_ls(b,buf,3,FTT_READ_ERRORS,1);
 	    decrypt_ls(b,buf,5,FTT_READ_COUNT,1024);
@@ -509,8 +504,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sensew, 10, 
 				  buf, 128, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    decrypt_ls(b,buf,3,FTT_WRITE_ERRORS,1);
 	    decrypt_ls(b,buf,5,FTT_WRITE_COUNT,1024);
@@ -525,8 +519,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sensec, 10, 
 				  buf, 128, 10, 0);
 	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
+	    failures++;
 	} else {
 	    decrypt_ls(b,buf,0,FTT_READ_COMP,1);
 	    decrypt_ls(b,buf,1,FTT_WRITE_COMP,1);
@@ -542,7 +535,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	if (res < 0) {
 	    if (!(stat_ops & FTT_DO_RP_SOMETIMES)) {
 		ftt_errno = FTT_EPARTIALSTAT;
-		return res;
 	    }
 	} else {
 	    set_stat(b,FTT_BOT,     itoa(bit(7,buf[0])), 0);
@@ -550,7 +542,13 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_BLOC_LOC,itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
 	}
     }
-    return 0;
+    if (failures > 0) {
+	ftt_eprintf("ftt_get_stats, %d scsi requests failed\n", failures);
+	ftt_errno = FTT_EPARTIALSTAT;
+	return -1;
+    } else {
+        return 0;
+    }
 }
 
 int
