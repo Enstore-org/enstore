@@ -93,9 +93,9 @@ class GenericDriver:
 		'wr_access':self.wr_access,
 		'rd_access':self.rd_access}
 
-    def fd_xfer( self, fd, siz_bytes, crc_fun=None, crc=0 ):
+    def fd_xfer( self, fd, siz_bytes, crc_flag=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
-	# no crc if crc_fun is 0
+	# no crc if crc_flag is 0
 	# For disk, blocksize is used, but there are no partial blocks
 	# recreating the sem and msg insures that they are cleared
 	self.sem = IPC.semget( IPC.IPC_PRIVATE, 1, IPC.IPC_CREAT|0x1ff )
@@ -106,11 +106,11 @@ class GenericDriver:
 	try:
 	    if self.mode == 'r':		# relative to this driver = "from hsm"
 		crc = EXfer.fd_xfer( self.fd, fd, siz_bytes, 
-				     self.blocksize, crc_fun, crc, self.shm )
+				     self.blocksize, crc_flag, crc, self.shm )
 	    else:
                 
 		crc = EXfer.fd_xfer( fd, self.fd, siz_bytes,
-				     self.blocksize, crc_fun, crc, self.shm )
+				     self.blocksize, crc_flag, crc, self.shm )
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
                 pass
             pass
@@ -254,9 +254,9 @@ class  FTTDriver(GenericDriver) :
 		 'wr_access'      :self.wr_access,
 		 'rd_access'      :self.rd_access }
 
-    def fd_xfer( self, fd, siz_bytes, crc_fun=None, crc=0 ):
+    def fd_xfer( self, fd, siz_bytes, crc_flag=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
-	# no crc if crc_fun is 0
+	# no crc if crc_flag is 0
 	# FTT knows direction and handles partial blocks
 	# recreating the sem and msg insures that they are cleared
 	self.sem = IPC.semget( IPC.IPC_PRIVATE, 1, IPC.IPC_CREAT|0x1ff )
@@ -264,7 +264,7 @@ class  FTTDriver(GenericDriver) :
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
 	try:
-	    crc = FTT.fd_xfer( fd, siz_bytes, crc_fun, crc, self.shm )
+	    crc = FTT.fd_xfer( fd, siz_bytes, crc_flag, crc, self.shm )
 	    if self.mode != 'r':
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
 		pass
@@ -417,7 +417,6 @@ if __name__ == "__main__" :
     import getopt			# getopt
     import os				# unlink, stat
     import stat				# stat.ST_SIZE
-    import checksum			# checksum.adler32 (to do crc)
 
     Usage = "Usage: %s [--in=file] [--disk_out=file] [--tape_out=dev]" % sys.argv[0]
 
@@ -491,7 +490,7 @@ if __name__ == "__main__" :
 		do.write( buf_str[buf])
 
 		fd = os.open( opt['in'], os.O_RDONLY )
-		crc = do.fd_xfer( fd, fsize, checksum.adler32 )
+		crc = do.fd_xfer( fd, fsize, 1)
 		os.close(fd)
 		print '     the crc is',crc
 		print "     stats - %s"%do.get_stats()
@@ -524,7 +523,7 @@ if __name__ == "__main__" :
 
 		statinfo = os.stat( opt['in'] )
 		fd = os.open( opt['in']+str(buf), os.O_WRONLY )
-		crc = do.fd_xfer( fd, fsize, checksum.adler32 )
+		crc = do.fd_xfer( fd, fsize, 1 )
 		os.close(fd)
 		print '     the crc is',crc
 	    

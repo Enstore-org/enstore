@@ -65,7 +65,6 @@ import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
 import callback				# used in send_user_done, get_usr_driver
 import wrapper_selector
-import checksum				# for crc
 import Trace
 import driver
 import FTT				# needed for FTT.error
@@ -241,7 +240,7 @@ class MoverClient:
 	# dismount -- labels must be unique
 
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
-	self.crc_func = checksum.adler32
+	self.crc_flag = 1
 	self.local_mover_enable =1
 
 	if config['device'][0] == '$':
@@ -514,12 +513,12 @@ def forked_write_to_hsm( self, ticket ):
 	    if file_bytes < san_bytes: san_bytes = file_bytes
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
 	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
-				  san_bytes, self.crc_func, 0 )
+				  san_bytes, self.crc_flag, 0 )
 	    Trace.trace( 11, 'done with sanity' )
 	    sanity_cookie = (san_bytes, san_crc)
 	    if file_bytes > san_bytes:
 		file_crc = do.fd_xfer( self.usr_driver.fileno(),
-				       file_bytes-san_bytes, self.crc_func,
+				       file_bytes-san_bytes, self.crc_flag,
 				       san_crc )
 	    else: file_crc = san_crc
 
@@ -668,8 +667,8 @@ def forked_read_from_hsm( self, ticket ):
 
             Trace.log(e_errors.INFO,"WRAPPER.READ")
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...
-		crc_func = None
-	    else: crc_func = self.crc_func
+		crc_flag = None
+	    else: crc_flag = self.crc_flag
 	    t0 = time.time()
             Trace.trace(11,'calling read_pre_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
@@ -678,10 +677,10 @@ def forked_read_from_hsm( self, ticket ):
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
-				  self.crc_func,
+				  self.crc_flag,
 				  0 )
 	    # check the san_crc!!!
-	    if     self.crc_func != None \
+	    if     self.crc_flag != None \
 	       and ticket['fc']['sanity_cookie'][1] != None \
 	       and san_crc != ticket['fc']['sanity_cookie'][1]:
 		pass
@@ -689,7 +688,7 @@ def forked_read_from_hsm( self, ticket ):
                 Trace.trace(11,'calling fd_xfer -rest size='+str(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
 		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
-					    self.crc_func, san_crc )
+					    self.crc_flag, san_crc )
 	    else:
 		user_file_crc = san_crc
 		pass
@@ -702,7 +701,7 @@ def forked_read_from_hsm( self, ticket ):
 			     ticket['wrapper']['uid'],ticket['wrapper']['gid'] )
 		pass
 
-	    if     self.crc_func != None \
+	    if     self.crc_flag != None \
 	       and ticket['fc']['complete_crc'] != None \
 	       and user_file_crc != ticket['fc']['complete_crc']:
 		pass
@@ -962,7 +961,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	rb  = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	tick = { 'status'       : (e_errors.OK,None),
 		 #
-		 'crc_func'     : str(self.client_obj_inst.crc_func),
+		 'crc_flag'     : str(self.client_obj_inst.crc_flag),
 		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
 		 'state'        : self.client_obj_inst.state,
 		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
@@ -1009,13 +1008,13 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def crc_on( self, ticket ):
-	self.client_obj_inst.crc_func = checksum.adler32
+	self.client_obj_inst.crc_flag = 1
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
 	return
 	
     def crc_off( self, ticket ):
-	self.client_obj_inst.crc_func = None
+	self.client_obj_inst.crc_flag = None
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
 	return
