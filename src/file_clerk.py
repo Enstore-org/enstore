@@ -664,7 +664,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         for ff in res:
             value = self.dict.export_format(ff)
             if not value.has_key('deleted') or value['deleted'] != "yes":
-                if value.has_key('pnfs_name0'):
+                if value.has_key('pnfs_name0') and value['pnfs_name0']:
                     alist.append(value['pnfs_name0'])
 
         # finishing up
