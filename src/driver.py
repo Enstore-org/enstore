@@ -34,7 +34,7 @@ class Driver:
     def get_status(self):
         raise NotImplementedError
 
-    def set_mode(self, density, compression, blocksize):
+    def set_mode(self, density=None, compression=None, blocksize=None):
         raise NotImplementedError
     
     def ready_to_read(self):
