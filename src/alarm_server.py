@@ -113,7 +113,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             self.write_alarm_file()
 	    # write it to the web page
 	    self.write_html_file()
-	    
+
+        Trace.trace(20, repr(theAlarm.list_alarm()))
         return theAlarm
 
     def find_alarm(self, host, severity, root_error, source, alarm_info):
@@ -136,8 +137,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             del self.alarms[id]
             self.write_alarm_file()
 	    self.write_html_file()
-            Trace.log(e_errors.INFO,
-                      "Alarm with id = "+repr(id)+" has been resolved")
+            t = "Alarm with id = "+repr(id)+" has been resolved"
+            Trace.log(e_errors.INFO, t)
+            Trace.trace(20, t)
             return (e_errors.OK, None)
         else:
             # don't know anything about this alarm
