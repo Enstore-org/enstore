@@ -64,7 +64,7 @@ class UDPClient:
         pid = self._os.getpid()
         tsd = Container()
         self.tsd[pid] = tsd
-        tsd.host, tsd.port, tsd.socket = udp_common.get_callback()
+        tsd.host, tsd.port, tsd.socket = udp_common.get_default_callback()
         tsd.txn_counter = 0L
         tsd.reply_queue = {}
         tsd.ident = self._mkident(tsd.host, tsd.port, pid)

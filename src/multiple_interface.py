@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import re
 import string
 import time
@@ -137,6 +138,8 @@ def stats(interfaces):
             for interface in interfaces:
                 if tok and tok[0] == interface:
                     ret[interface] = _parse(tok)
+                elif tok and tok[0][-1] == "*" and tok[0][:-1] == interface:
+                    sys.stderr.write("Interface %s is down\n" % tok[0][:-1])
     return ret
     
 def rates(interfaces):
@@ -146,11 +149,14 @@ def rates(interfaces):
     tdiff = t1-t0
     ret = {}
     for interface in interfaces:
-        r0, s0 = st0.get(interface, (0, 0))
-        r1, s1 = st1.get(interface, (0, 0)) 
-        rrate = (r1-r0)/tdiff
-        srate = (s1-s0)/tdiff
-        ret[interface] = (rrate, srate)
+        try:
+            r0, s0 = st0[interface]
+            r1, s1 = st1[interface] 
+            rrate = (r1-r0)/tdiff
+            srate = (s1-s0)/tdiff
+            ret[interface] = (rrate, srate)
+        except KeyError:
+            pass
     return ret
 
 if __name__ == '__main__':

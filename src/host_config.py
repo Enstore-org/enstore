@@ -360,14 +360,17 @@ def check_load_balance(mode = None):
     interfaces = interface_dict.keys()
     if not interfaces:
         return get_default_interface()
-    
+
     #Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
     #Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
     choose = []
     for interface in interfaces:
         weight = interface_dict[interface].get('weight', 1.0)
-        recv_rate, send_rate = rate_dict[interface]
+        try: 
+            recv_rate, send_rate = rate_dict[interface]
+        except KeyError:
+            continue
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
 	total_rate = (recv_rate + send_rate)/weight
