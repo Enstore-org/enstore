@@ -1373,11 +1373,13 @@ class Display(Tkinter.Canvas):
         #geometry=None, x_position=None, y_position=None,
         #**attributes):
         
+        geometry = entvrc_info.get('geometry', None)
         title = entvrc_info.get('title', "")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
 
+        self.unframed_geometry = geometry
         Tkinter.Canvas.__init__(self, master=master)
                                 #height=window_height,
                                 #width=window_width)
@@ -1558,15 +1560,15 @@ class Display(Tkinter.Canvas):
     def window_killed(self, event):
         self.stopped = 1
 
-        #new_position = self.unframed_geometry.split("+", 1)[1]
-        #new_size = self.unframed_geometry.split("+")[0]
+        new_position = self.unframed_geometry.split("+", 1)[1]
+        new_size = self.unframed_geometry.split("+")[0]
 
-        #geometry = self.winfo_toplevel().geometry()
-        #size = geometry.split("+")[0]
-        #position = geometry.split("+", 1)[1]
+        geometry = self.winfo_toplevel().geometry()
+        size = geometry.split("+")[0]
+        position = geometry.split("+", 1)[1]
 
-        #initial_framed_size= self.framed_geometry.split("+")[0]
-        #initial_framed_position= self.framed_geometry.split("+", 1)[1]
+        initial_framed_size= self.framed_geometry.split("+")[0]
+        initial_framed_position= self.framed_geometry.split("+", 1)[1]
         
         ###If the user never repositioned the window then the value returned
         ### from self.winfo_toplevel().geometry() points to the top left of the
@@ -1577,19 +1579,18 @@ class Display(Tkinter.Canvas):
         ### geometry.  If this is different than the initial framed geometry
         ### then we know the user moved the window and to set self.geometry
         ### to tell the calling code (aka entv.py) to save the geometry.
-        #if position != initial_framed_position:
-        #    new_position = position
+        if position != initial_framed_position:
+            new_position = position
 
         ###The size doesn't seem to change with respect to the window being
         ### framed or unframed...
-        #if size != initial_framed_size:
-        #    new_size = size
+        if size != initial_framed_size:
+            new_size = size
 
         #By setting this everytime, this will force entv to rewrite the
         # .entvrc file everytime.  This will also help correct errors in
         # the .entvrc file.
-        #self.geometry = "%s+%s" % (new_size, new_position)
-        
+        self.geometry = "%s+%s" % (new_size, new_position)
 
     def visibility (self, event):
         #The current framed geometry.
@@ -2067,6 +2068,7 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = None
         Tkinter.Tk.mainloop(self)
         self.undraw()
+        self.clear_display()
         self.stopped = 1
 
 #########################################################################

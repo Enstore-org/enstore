@@ -339,7 +339,7 @@ def set_entvrc(display, intf):
     #If there isn't geometry don't do anything.
     if not hasattr(display, "geometry") or display.geometry == None:
         return
-    
+
     try:
         if intf.movers_file:
             address = "localhost"
@@ -664,15 +664,10 @@ def set_geometry(tk, entvrc_info):
     geometry = "%sx%s+%s+%s" % (window_width, window_height,
                                 x_position, y_position)
 
-    #Remember the unframed geometry.  This is used when determining the
-    # correct geometry to write to the .entvrc file.
-    #self.unframed_geometry = geometry
-
-    #Set the geometry of the cavas and its toplevel window.
-    #Tkinter.Canvas.__init__(self, master=tk, height=window_height,
-    #                        width=window_width)
-    #tk.winfo_toplevel().winfo_toplevel().geometry(geometry)
     tk.geometry(geometry)
+    tk.update()
+    tk.deiconify()
+    tk.update()
 
 #########################################################################
 #  Interface class
@@ -743,7 +738,7 @@ def main(intf):
     #geometry, background, animate = get_entvrc(intf)
     entvrc_dict = get_entvrc(intf)
     entvrc_dict['title'] = system_name #For simplicity put this here.
-
+    
     #Get the main window and set it size.
     master = Tkinter.Tk()
     set_geometry(master, entvrc_dict)
@@ -773,7 +768,7 @@ def main(intf):
         
         #On average collecting the status of all the movers takes 10-15
         # seconds.  We don't want to wait that long.  This can be done
-        # sychronously to displaying live data.
+        # in parallel to displaying live data.
         status_thread = threading.Thread(group=None,
                                          target=request_mover_status,
                                          name='', args=(display,intf),
