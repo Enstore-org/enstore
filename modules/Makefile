@@ -100,7 +100,7 @@ t_read: t_read.c
 	$(CC) t_read.c -o $@
 
 ecrc: ecrc.c
-	$(CC) -I. -o $@ ecrc.c adler32.a
+	$(CC) -I. -o $@ ecrc.c adler32.a $(LIBGEN)
 	cp $@ ../sbin
 
 ddencp: EXfer.c
