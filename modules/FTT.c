@@ -197,6 +197,7 @@ FTT_open(  PyObject *self
 	char	*dev_s;
 	char	*mode_s;
 	int	sts;		/* general status */
+	int retry_count;
 
     sts = PyArg_ParseTuple( args, "ss", &dev_s, &mode_s );
     if (!sts) return (NULL);
@@ -211,9 +212,15 @@ FTT_open(  PyObject *self
     {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDWR );
 	g_mode_c = 'w';
     }
-
-    sts = ftt_open_dev( g_ftt_desc_tp );
-    if (sts == -1) return (raise_ftt_exception("FTT_Open"));
+    retry_count = 0;
+    sts=-1;
+    /* somebody else may be doing an "ftt_status" or some other messing around with the drive... */
+    while (retry_count<10 && sts<0){
+	sts = ftt_open_dev( g_ftt_desc_tp );
+	++retry_count;
+	if (sts<0) sleep(1);
+    }
+    if (sts < 0) return (raise_ftt_exception("FTT_Open"));
 
     return (Py_BuildValue(""));	/* return None */
 }
@@ -948,6 +955,10 @@ FTT_writefm(  PyObject *self
     /* just like close */
     if (g_buf_bytes && (g_mode_c=='w'))
     {   /* write out partial block */
+	fprintf(stderr,"debug: ftt_writefm, partial_block %d %d %d %c %c %c\n",
+		g_ftt_desc_tp,  g_buf_p, g_buf_bytes,
+		g_buf_p[0], g_buf_p[1], g_buf_p[2]  );
+	fflush(stderr);
 	sts = ftt_write( g_ftt_desc_tp,  g_buf_p, g_buf_bytes );
 	if (sts != g_buf_bytes) return (raise_ftt_exception("FTT_writefm - partial block write"));
     }
@@ -1250,33 +1261,6 @@ FTT_status(  PyObject *self
 
 /*****************************************************************************
  */
-static char FTT_format_label_doc[] = "invokes ftt_format_label";
-
-static PyObject*
-FTT_format_label(  PyObject *self
-	   , PyObject *args )
-{
-	int		sts;	/* general status */
-	char		*in_label_cp;
-	char		out_label_ca[100];
-	PyObject	*rr;
-
-    sts = PyArg_ParseTuple(args, "s", &in_label_cp );
-    if (!sts) return (NULL);
-
-    sts = ftt_format_label(  out_label_ca, sizeof(out_label_ca)
-			   , in_label_cp, strlen(in_label_cp)
-			   , FTT_ANSI_HEADER );
-    if (sts == -1) return raise_ftt_exception( "FTT_format_label" );
-
-    rr = Py_BuildValue( "s", out_label_ca );
-    return (rr);
-}
-
-
-
-/*****************************************************************************
- */
 static char FTT_unload_doc[] = "invokes ftt_unload";
 
 static PyObject*
@@ -1438,7 +1422,6 @@ static PyMethodDef FTT_Methods[] = {
     { "get_statsAll", FTT_get_statsAll, 1, FTT_get_statsAll_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
-    { "format_label", FTT_format_label, 1, FTT_format_label_doc },
     { "unload", FTT_unload, 1, FTT_unload_doc },
     { "get_mode", FTT_get_mode, 1, FTT_get_mode_doc },
     { "set_mode", FTT_set_mode, 1, FTT_set_mode_doc },
