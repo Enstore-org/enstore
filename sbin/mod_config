@@ -1,0 +1,121 @@
+#!/bin/sh
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+export place=`pwd`
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+case $node in
+   stkensrv2|d0ensrv2)
+          loadit=1
+          ;;
+   *)     loadit=0
+          ;;
+esac
+
+
+usage() { echo "USAGE: $0 config_file  <optional editor>  where config_file is stk or sam"; }
+
+abort() { cd $place
+          echo ${1-""}
+          if [ -z ${3-} ]; then usage; fi
+          exit ${2:-1}
+        }
+
+# we need enstore to be setup
+if [ -z "${ENSTORE_DIR-}"  ]; then abort "do a setup enstore before calling $0"; fi
+
+# all the action is here
+cd $ENSTORE_DIR/etc
+
+# we need a config file to change
+if [ -z "${1-}"  ]; then abort  "you need to specify a config file"; fi
+config=$1.conf
+config2=/tmp/$1.conf-check.py
+if [ ! -r $config ]; then abort "can not read $config"; fi
+
+# if the user wants a specific editor, use it
+# otherwise use vi since it is always there
+if [ -z "${2-}"  ]; then
+     edcmd=${EDITOR:-vi}
+else
+     edcmd=$2
+fi
+
+# make sure we are using the latest config from the repository
+echo "doing cvs update on $config"
+cvs update -A $config
+if [ $? -ne 0 ]; then abort "Something wrong with cvs update. Investigate"; fi
+echo "success"
+echo
+cvs status $config
+echo
+
+# edit the file allowing the user to make changes
+echo "DISPLAY=$DISPLAY, about to edit with command $edcmd $config"
+$edcmd $config
+if [ $? -ne 0 ]; then abort "Something wrong with editting. Investigate"; fi
+echo "success"
+echo
+
+# see if python finds any errors
+echo "Checking $config by running python $config"
+python $config
+if [ $? -ne 0 ]; then abort "Running python found errors."; fi
+echo "success"
+echo
+
+# overkill - run through lint too
+echo "Checking $config by running python linter"
+rm -f $config2
+cp $config $config2
+python $ENSTORE_DIR/tools/mylint.py $config2
+if [ $? -ne 0 ]; then abort "Running lint found errors"; fi
+rm -f $config2
+echo "success"
+echo
+
+# ok, time to commit - confirm
+echo -n 'About to commit changes, is this what you want [Y/n] '
+read ans
+answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+if [ "$answer" != "Y" ]; then
+   abort 'ok, aborting' 1 0
+fi
+cvs commit $config
+if [ $? -ne 0 ]; then abort "Something wrong with commit. Investigate"; fi
+echo "success"
+echo
+
+# bless the changes - make production status
+echo "Setting production tag"
+$ENSTORE_DIR/tools/bless.py $config
+if [ $? -ne 0 ]; then abort "Something wrong with setting production tag.. Investigate"; fi
+echo "success"
+echo
+
+cvs status $config
+echo
+
+if [ $loadit -ne 1 ]; then
+  abort "Not on stkensrv2 or d0ensrv2. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
+fi
+
+# ok, time to load new config file
+echo -n 'About to load new config file into server, is this what you want [Y/n] '
+read ans
+answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+if [ "$answer" != "Y" ]; then
+   abort 'ok, done' 1 0
+fi
+enstore config --load --config_file=$ENSTORE_DIR/etc/$config
