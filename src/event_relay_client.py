@@ -106,6 +106,14 @@ class EventRelayClient:
 	self.name = name
         self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
                                                                     self.port)
-        self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+	self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
+
+    def send_one_heartbeat(self, name, function=None):
+        # send one heartbeat to the event relay
+	self.function = function
+	self.name = name
+        self.heartbeat_msg = event_relay_messages.EventRelayAliveMsg(self.host, 
+                                                                    self.port)
+	self.heartbeat()
 
 
