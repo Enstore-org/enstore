@@ -773,21 +773,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    # it must be added there
 		    mv_found = 1
 		    break
-	    """
-	    if mv_found:
-		self.enprint("found mover:state= "+repr(mv['state']), generic_cs.DEBUG, self.verbose)
-		if mv['state'] == 'idle_mover':
-		     self.enprint("found mounted vol= "+repr(ticket['fc']['external_label'])+ " at mover=" + repr(mv), generic_cs.DEBUG, self.verbose)
-		     ticket["status"] = (e_errors.CONFLICT, 
-					 "volume mounted on the idle mover")
-		     format = "volume %s mounted on the idle mover %s"
-		     logticket = self.logc.send(e_errors.ERROR, 1, format,
-						repr(ticket['fc']['external_label']),
-						repr(mv['mover']))
-		     self.reply_to_caller(ticket)
-		     return
-	    """
-
 
 	"""
 	call handle_timeout to avoid the situation when due to
@@ -1319,7 +1304,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    Trace.trace(3,"}schedule: Error detected " + repr(w))
             #callback.send_to_user_callback(w)
 
-    # load mover list form the configurarion server
+    # load mover list form the configuration server
     def load_mover_list(self, ticket):
 	Trace.trace(3, "{load_mover_list for " + repr(self.name))
 	get_movers(self.csc, self.name, self.verbose)
