@@ -67,7 +67,6 @@ class Logger(  dispatching_worker.DispatchingWorker
         #   exit if the host is not this machine
         keys = self.csc.get(MY_NAME)
         Trace.init(self.log_name)
-        Trace.trace(12, repr(keys))
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
 	                                              keys['port']))
         if keys["log_file_path"][0] == '$':
@@ -87,14 +86,13 @@ class Logger(  dispatching_worker.DispatchingWorker
         # try to open log file for append
         try:
             self.logfile = open(logfile_name, 'a')
-            Trace.trace(13, "opened for append")
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
 	    except:
-	        Trace.trace(12, "Can not open log %s"%(logfile_name,))
+                print  "cannot open log %s"%(logfile_name,)
+                sys.stderr.write("cannot open log %s\n"%(logfile_name,))
 		os._exit(1)
-            Trace.trace(13, "opened for write")
 
     # return the current log file name
     def get_logfile_name(self, ticket):
@@ -145,7 +143,6 @@ class Logger(  dispatching_worker.DispatchingWorker
         tm = time.localtime(time.time()) # get the local time
         if message == self.last_message:
             self.repeat_count=self.repeat_count+1
-            Trace.trace(12, "last message repeated %d times"%(self.repeat_count,))
             return
         elif self.repeat_count:
             self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
@@ -159,10 +156,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         # format log message
         message = "%.2d:%.2d:%.2d %s\n" %  (tm[3], tm[4], tm[5], message)
         
-        Trace.trace(12, message)
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        Trace.trace(12, "%s"%(res,))
 
     def serve_forever(self):                      # overrides UDPServer method
         self.repeat_count=0
@@ -234,7 +229,6 @@ class LoggerInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__" :
     Trace.init(string.upper(MY_NAME))
-    Trace.trace(6,"log server called with args "+repr(sys.argv))
 
     # get the interface
     intf = LoggerInterface()
@@ -243,12 +237,9 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            Trace.trace(6,'Log Server (re)starting')
             logserver.serve_forever()
 	except SystemExit, exit_code:
 	    sys.exit(exit_code)
         except:
 	    logserver.serve_forever_error(logserver.log_name)
-            Trace.trace(6,"log_server main loop exception")
             continue
-    Trace.trace(6,"Log Server finished (impossible)")
