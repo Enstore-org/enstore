@@ -204,8 +204,8 @@ class Interface:
             elif opt == "--file" :
 	        self.info = 1
                 self.file = value
-            elif opt == "--nocrc":
-                self.chk_crc = 0
+            elif opt == "--crc":
+                self.chk_crc = 1
             elif opt == "--pri" :
                 self.pri = string.atoi(value)
             elif opt == "--delpri" :

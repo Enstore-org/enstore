@@ -1775,7 +1775,7 @@ class encp(interface.Interface):
     def __init__(self):
         Trace.trace(16,"{encp.__init__")
 
-        self.chk_crc = 1 # we will check the crc unless told not to
+        self.chk_crc = 0 # we will not check the crc unless told to
         self.pri = 1     # lowest priority
         self.delpri = 0  # priority doesn't change
         self.agetime = 0 # priority doesn't age
@@ -1796,7 +1796,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      ["verbose=","nocrc","pri=","delpri=","agetime=","d0sam", "queue"]+\
+                      ["verbose=","crc","pri=","delpri=","agetime=","d0sam", "queue"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
