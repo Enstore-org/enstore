@@ -20,13 +20,13 @@ encp:
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYTHON_DIR)/Python-*/Modules -o ENCPBIN_TEMP encp.py
 	(cd ENCPBIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp      ENCPBIN
 	rm -rf ENCPBIN_TEMP
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -o ENSTORE_USER_BIN_TEMP enstore_user.py
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYTHON_DIR)/Python-*/Modules -o ENSTORE_USER_BIN_TEMP enstore_user.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP

@@ -453,7 +453,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if v["library"] != library:
                 Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
                 continue
-            if v["file_family"] != file_family+"."+wrapper_type:
+            if v["file_family"] != file_family+"."+wrapper_type and \
+               (v["file_family"] != "none" or len(vol)):
                 Trace.trace(17,label+" rejected file_family "+v["file_family"]+' '+file_family+"."+wrapper_type)
                 continue
             #if v["wrapper"] != wrapper_type:
@@ -506,7 +507,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 
             # supposed to return first volume found?
-            if first_found:
+            if first_found and v[file_family] != "none":
                 v["status"] = (e_errors.OK, None)
                 Trace.trace(16,'next_write_vol label = '+ v['external_label'])
                 self.reply_to_caller(v)
@@ -525,92 +526,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # return what we found
         if len(vol) != 0:
-            vol["status"] = (e_errors.OK, None)
-            Trace.trace(16,'next_write_vol label = '+ vol['external_label'])
-            self.reply_to_caller(vol)
-            return
-
-        #========================================FIXME--- why go thru the list twice, this is slow ====================
-        # nothing was available - see if we can assign a blank one.
-        Trace.trace(16,'next_write_vol no vols available, checking for blanks')
-        vol = {}
-        self.dict.cursor("open")
-        while 1:
-            label,v = self.dict.cursor("next")
-            if label:
-                Trace.trace(17,'nwv '+label)
-                pass
-            else:
-                break
-
-            if v["library"] != library:
-               Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
-               continue
-            if v["file_family"] != "none":
-                Trace.trace(17,label+" rejected file_family "+v["file_family"])
-                continue
-            if v["user_inhibit"][0] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][0])
-                continue
-            if v["user_inhibit"][1] != "none":
-                Trace.trace(17,label+" rejected user_inhibit "+v["user_inhibit"][1])
-                continue
-            if v["system_inhibit"][0] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][0])
-                continue
-            if v["system_inhibit"][1] != "none":
-                Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"][1])
-                continue
-            at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
-            if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
-                Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
-                continue
-            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                Trace.trace(17,label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
-                continue
-            vetoed = 0
-            for veto in vol_veto_list:
-                if label == veto:
-                    vetoed = 1
-                    break
-            if vetoed:
-                Trace.trace(17,label+"rejected - in veto list")
-                continue
-
-            # supposed to return first blank volume found?
-            if first_found:
+            if vol["file_family"] == "none":
+                label = vol['external_label']
                 if file_family == "ephemeral":
                     file_family = label
-                v["file_family"] = file_family+"."+wrapper_type
-                v["wrapper"] = wrapper_type
-                Trace.log(e_errors.INFO, "Assigning blank volume "+label+" to "+library+" "+file_family)
-                self.dict[label] = v  ## was deepcopy
-                v["status"] = (e_errors.OK, None)
-                self.reply_to_caller(v)
-                self.dict.cursor("close")
-                return
-            # if not, is this an "earlier" volume that one we already found?
-            if len(vol) == 0:
-                Trace.trace(17,label+" ok")
-                vol = v  ## was deepcopy
-            elif v['declared'] < vol['declared']:
-                Trace.trace(17,label+" ok")
-                vol = v  ## was deepcopy
-            else:
-                Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
-        self.dict.cursor("close")
-
-        # return blank volume we found
-        if len(vol) != 0:
-            label = vol['external_label']
-            if file_family == "ephemeral":
-                file_family = label
-            vol["file_family"] = file_family+"."+wrapper_type
-            vol["wrapper"] = wrapper_type
-            Trace.log(e_errors.INFO,
-                      "Assigning blank volume "+label+" to "+library+" "+file_family)
-            self.dict[label] = vol  ## was deepcopy
+                vol["file_family"] = file_family+"."+wrapper_type
+                vol["wrapper"] = wrapper_type
+                Trace.log(e_errors.INFO, "Assigning blank volume "+
+                    label+" to "+library+" "+file_family)
+                self.dict[label] = vol
             vol["status"] = (e_errors.OK, None)
+            Trace.trace(16,'next_write_vol label = '+ vol['external_label'])
             self.reply_to_caller(vol)
             return
 
