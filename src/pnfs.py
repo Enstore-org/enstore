@@ -1891,16 +1891,15 @@ class File:
 				self.drive = map(string.strip, f.readlines())
 				f.close()
 			else:
-				self.volume = None
-				self.location_cookie = None
-				self.size = None
-				self.file_family = None
-				self.volmap = None
-				self.pnfs_id = None
-				self.pnfs_vid = None
-				self.bfid = None
-				self.drive = None
-				self.pnfsid_consistent = 0
+				self.volume = ""
+				self.location_cookie = ""
+				self.size = 0
+				self.file_family = ""
+				self.volmap = ""
+				self.pnfs_id = ""
+				self.pnfs_vid = ""
+				self.bfid = ""
+				self.drive = ""
 		return
 
 	# layer_file(i) -- compose the layer file name
@@ -1910,6 +1909,10 @@ class File:
 	# id_file() -- compose the id file name
 	def id_file(self):
 		return os.path.join(self.dir(), '.(id)(%s)'%(self.file()))
+
+	# size_file -- compose the size file, except for the actual size
+	def size_file(self):
+		return os.path.join(self.dir(), '.(fset)(%s)(size)'%(self.file()))
 
 	# dir() -- get the directory of this file
 	def dir(self):
@@ -1939,6 +1942,16 @@ class File:
 		print "          drive =", self.drive
 		return
 
+	# set_size() -- set size in pnfs
+	def set_size(self):
+		size = str(self.size)
+		if size[-1] == 'L':
+			size = size[:-2]
+		fname = self.size_file()+'('+size+')'
+		f = open(fname, "w")
+		f.close()
+		return
+
 	# update() -- write out to pnfs files
 	def update(self):
 		if not self.bfid:
@@ -1962,6 +1975,8 @@ class File:
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
 			f.close()
+			# set file size
+			self.set_size()
 		return
 
 	# exists() -- to see if the file exists in /pnfs area
@@ -1970,6 +1985,9 @@ class File:
 
 	# create() -- create the file
 	def create(self):
+		# do not create if there is no BFID
+		if not self.bfid:
+			return
 		if not self.exists():
 			f = open(self.path, 'w')
 			f.close()
