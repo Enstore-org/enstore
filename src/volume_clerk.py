@@ -1396,6 +1396,37 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+    # check_record(self, ticket) -- trim obsolete fileds
+    def check_record(self, ticket):
+        try:
+            external_label = ticket["external_label"]
+        except KeyError, detail:
+            msg="check_record(): key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]
+            changed = 0
+            for i in ['at_mover', 'status', 'file_family']:
+                if record.has_key(i):
+                    del record[i]
+                    changed = 1
+            if changed:
+                self.dict[external_label] = record
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            return
+        except KeyError, detail:
+            msg="check_record(): no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
         try:
