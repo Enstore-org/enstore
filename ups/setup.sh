@@ -8,8 +8,13 @@ else
 fi
 export PYTHONPATH
 
-PVER=`cd $PYTHON_DIR/lib;ls -d python*`
-PYTHONINC=$PYTHON_DIR/include/$PVER; export PYTHONINC
-PYTHONLIB=$PYTHON_DIR/lib/$PVER;     export PYTHONLIB
-PVER=`cd $PYTHON_DIR;ls -d Python*`
+ver=`/bin/ls -d $PYTHON_DIR/lib/python*`
+PVER=`/bin/basename $ver`
+PYTHONINC=$PYTHON_DIR/include/$PVER
+export PYTHONINC
+PYTHONLIB=$PYTHON_DIR/lib/$PVER
+export PYTHONLIB
+
+ver=`/bin/ls -d $PYTHON_DIR/Python*`
+PVER=`/bin/basename $ver`
 PYTHONMOD=$PYTHON_DIR/$PVER/Modules;     export PYTHONMOD
