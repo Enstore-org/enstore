@@ -123,34 +123,62 @@ print 'FTT modules was compiled with ftt version:',FTT.version()
 
 ###############################################################################
 def initial_check( tape_dev ):
+    print 'Initial check'
+
+    print '    open'
     FTT.open( tape_dev, 'r' )
+
+    print '    status'
     ret = FTT.status( 3 )
+
+    print '    get_statsAll'
+    sts = FTT.get_statsAll()
+    print 'vendor_id:',sts['vendor_id']
+    print 'product_id:',sts['product_id']
+    print 'serial_num:',sts['serial_num']
+    #print 'get_stats returned:'
+    #pprint.pprint( sts )
+
+    print '    close'
     FTT.close()
     return ret
 
 
 ###############################################################################
 def online_test( tape_dev ):
+    # Can I do a non-destructive test? I.e. put the tape back the way
+    # it was found.
+
+    print '    open'
     FTT.open( tape_dev, 'r' )
     #sts = FTT.get_statsAll()
     #print 'get_stats returned:'
     #pprint.pprint( sts )
+
     # test locate to invalid block
     # test locate to valid block
+    print '    locate'
     FTT.locate( 0 )
     # check locate
+    print '    get_stats'
     sts = FTT.get_stats()
     if sts['bloc_loc'] != '0': raise 'unexpected bloc_loc'
+
+    print '    get_mode'
     mode = FTT.get_mode()
     print 'FTT.get_mode() returned:',mode
     if mode['blocksize'] != 0: raise 'unexpected blocksize'
-    dev_name = FTT.set_mode( mode['density'],
-			     mode['compression'],
-			     mode['blocksize'] )
-    print 'FTT.set_mode(%s,%s,%s) returned: %s'%(mode['density'],
-						mode['compression'],
-						mode['blocksize'],
-						dev_name)
+##     # jon thinks this may have clear the "blocksize/hang problem"
+##     # on rip1.
+##     dev_name = FTT.set_mode( mode['density'],
+## 			     mode['compression'],
+## 			     mode['blocksize'] )
+##     print 'FTT.set_mode(%s,%s,%s) returned: %s'%(mode['density'],
+## 						mode['compression'],
+## 						mode['blocksize'],
+## 						dev_name)
+
+    print '    close'
     FTT.close()
 
     if uname[0] == 'Linux':
@@ -207,14 +235,16 @@ def online_test( tape_dev ):
 
 ###############################################################################
 def offline_test( tape_dev ):
+    print '    open'
     FTT.open( tape_dev, 'r' )
-    sts = FTT.status( 3 )
-    print 'status returned:'
-    pprint.pprint( sts )
 
+    print '    status'
+    sts = FTT.status( 3 )
+    #print 'status returned:'
+    #pprint.pprint( sts )
 
     try:
-	print 'offline unload'
+	print '    unload'
 	sts = FTT.unload()
 	print '*UNANTICIPATED*: no exception occurred on this particular platform'
     except FTT.error, value:
@@ -229,9 +259,10 @@ def offline_test( tape_dev ):
 	print
 	pass
 
-    print 'offline get_stats'
+    print '    get_stats'
     sts = FTT.get_stats()
     
+    print '    close'
     FTT.close()
     print 'Offline tests complete.'
     return				# from offline_test
@@ -254,9 +285,16 @@ def off_to_online_test( tape_dev ):
 ###############################################################################
 def on_to_offline_test( tape_dev ):
     print 'Transition to offline tests (unloading tape).'
+
+    print '    open'
     FTT.open( tape_dev, 'r' )
+
+    print '    unload'
     FTT.unload()
+
+    print '    close'
     FTT.close()
+
     print 'It is a known problem that FTT.status will not change unless the'
     print 'device is closed and re-opened.'
     sts = {'ONLINE':1}
@@ -272,8 +310,13 @@ def on_to_offline_test( tape_dev ):
 
 ###############################################################################
 # main
-print 'This procedure...'
-print 'You will be asked to insert a tape into the drive (maybe twice).'
+print '\
+This procedure will check if a tape is in the tape drive and if so\n\
+it will proceed with "online" tests, which will write the 1st 80 bytes\n\
+of the tape. The program should eventually eject the tape and ask that\n\
+it be reinserted.\n\
+If there is no tape in the drive initially, you will be asked to insert\n\
+one. The program will then write the 1st 80 bytes of the tape.'
 print 'Press enter to continue...'
 sys.stdin.readline()
 
