@@ -17,6 +17,12 @@ import Trace
 import e_errors
 import configuration_client
 
+# conditional comparison
+def mycmp(cond, a, b):
+    # condition may be None or some other
+    if not cond: return a==b        # if cond is not None use ==
+    else: return a!=b               # else use !=
+
 # require 5% more space on a tape than the file size,
 #    this accounts for the wrapper overhead and "some" tape rewrites
 SAFETY_FACTOR=1.05
@@ -1155,6 +1161,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             dict.cursor("open")
             key,value=dict.cursor("first")
             while key:
+                if ticket.has_key("not"): cond = ticket["not"]
                 if ticket.has_key("in_state") and ticket["in_state"] != None:
                     if ticket.has_key("key") and ticket["key"] != None:
                         if value.has_key(ticket["key"]):
@@ -1162,7 +1169,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                 loc_val = value[ticket["key"]][0]
                             else:
                                 loc_val = value[ticket["key"]]
-                            if loc_val == ticket["in_state"]:
+                            if mycmp(cond,loc_val,ticket["in_state"]):
                                 callback.write_tcp_raw(self.data_socket,repr(key))
                             else:
                                 pass

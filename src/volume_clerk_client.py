@@ -112,7 +112,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 
     # get a list of all volumes
-    def get_vols(self, key=None,state=None):
+    def get_vols(self, key=None,state=None, not_cond=None):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -120,6 +120,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   "callback_addr" : (host, port),
                   "key"           : key,
                   "in_state"      : state,
+                  "not"           : not_cond,
                   "unique_id"     : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
@@ -502,8 +503,13 @@ def do_work(intf):
     elif intf.vols:
         # optional argument
         nargs = len(intf.args)
+        not_cond = None
         if nargs:
-            if nargs == 2:
+            if nargs == 3:
+                key = intf.args[0]     
+                in_state=intf.args[1]
+                not_cond = intf.args[2]
+            elif nargs == 2:
                 key = intf.args[0]     
                 in_state=intf.args[1]
             elif nargs == 1:
@@ -514,11 +520,12 @@ def do_work(intf):
                 print "usage: --vols"
                 print "       --vols state (will match system_inhibit)"
                 print "       --vols key state"
+                print "       --vols key state not (not in state)"
                 return
         else:
             key = None
             in_state = None 
-        ticket = vcc.get_vols(key, in_state)
+        ticket = vcc.get_vols(key, in_state, not_cond)
         print ticket['volumes']
     elif intf.rmvol:
         # optional argument
