@@ -2,8 +2,8 @@
 <!DOCTYPE NGOPConfig SYSTEM "system.dtd">
 <NGOPConfig>
 <ClusterList Name="FERMI">
-<Cluster Name="ENSTK"/>
-<Cluster Name="END0"/>
+<Cluster Name="STKEN"/>
+<Cluster Name="D0EN"/>
 </ClusterList>
 <For Each="Cluster" Var="{%F}" In="ClusterList" Name="FERMI">
 <System Name="Ping" Cluster="{%F}">

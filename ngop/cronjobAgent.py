@@ -5,6 +5,7 @@ import MA_API
 import ngop_global
 
 flag = 0
+CRON_DIR = "/var/spool/cron"
 
 class CJFunc(Worker):
     def __init__(self):
@@ -140,36 +141,14 @@ class CJFunc(Worker):
            return 60*24*31*(calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
 
     def convertMonth(self, mon):
-        if mon == 'Jan':
-           return 1
-        elif mon == 'Feb':
-           return 2
-        elif mon == 'Mar':
-           return 3
-        elif mon == 'Apr':
-           return 4
-        elif mon == 'May':
-           return 5
-        elif mon == 'Jun':
-           return 6
-        elif mon == 'Jul':
-           return 7
-        elif mon == 'Aug':
-           return 8
-        elif mon == 'Sep':
-           return 9
-        elif mon == 'Oct':
-           return 10
-        elif mon == 'Nov':
-           return 11
-        elif mon == 'Dec':
-           return 12
+        if mon in calendar.month_abbr:
+            return calendar.month_abbr.index(mon)
         else:
-           return 0     
+            return 0     
   
     def checkcron(self,name):
         try:                       # test file in my dir
-            dirNames = os.popen("ls /home/yanfen/cronjobs",'r').readlines()
+            dirNames = os.popen("ls %s"%(CRON_DIR,),'r').readlines()
             self.checkprint(flag, dirNames)
 	except:
 	    return -1
@@ -188,7 +167,7 @@ class CJFunc(Worker):
             except:
                 return -1
 
-            filePat2 = "/home/yanfen/cronjobs/%s"%(name,) #test file in my dir
+            filePat2 = "%s/%s"%(CRON_DIR, name) #test file in my dir
             self.checkprint(flag, filePat2)
             try:
                 lines = os.popen("less %s"%(filePat2,), 'r').readlines()
@@ -277,7 +256,7 @@ if __name__ == '__main__':
 
       
        if not cfg :
-	   print "You have to provides the name of xml file"
+	   print "You have to provide the name of the xml file"
 	   sys.exit(1)
 
        if len(args) > 1:

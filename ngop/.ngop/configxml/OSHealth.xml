@@ -6,7 +6,7 @@
   <Item Name="D0"/>
 </ItemList>
 <For Each="Item" In="ItemList" Name="ENSTORE" Var="{%S}">
-<For Each="Host" In="Cluster" Name="EN{%S}" Var="{%H}" Filename="fermi_hosts.xml">
+<For Each="Host" In="Cluster" Name="{%S}EN" Var="{%H}" Filename="fermi_hosts.xml">
   <System Name="OSHealth" Cluster="{%H}">
      <MonitoredElement Name="inetd"   Type="Daemon"     Host="{%H}"/>
      <MonitoredElement Name="crond"   Type="Daemon"     Host="{%H}"/>

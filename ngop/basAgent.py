@@ -907,7 +907,7 @@ if __name__=="__main__":
     checkTime=60                	# monitoring interval
     maName="SiscoSwitchAgent"           	# name of the monitoring agent
     sysName="SiscoSwitch" 		# system name
-    clusterName="END0" 			# cluster name
+    clusterName="D0EN" 			# cluster name
     nodeName="d0ensrv1"     		# node name, it is hostname exactly.
                                         # To register monitoring agent with
                                         # NGOP Central Server, this name 

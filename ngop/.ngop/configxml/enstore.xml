@@ -3,14 +3,14 @@
 <NGOPConfig>
    <SystemView ID="Enstore">
    <SystemView ID="Enstore.D0">
-      <System Name="SiscoSwitch" Cluster="END0"/>
-      <System Name="Ping" Cluster="END0"/>
+      <System Name="SiscoSwitch" Cluster="D0EN"/>
+      <System Name="Ping" Cluster="D0EN"/>
       <SystemView ID="OSHealth.D0"/>
       <SystemView ID="Hardware.D0"/>
       <SystemView ID="Cronjob.D0"/>
    </SystemView>
    <SystemView ID="Enstore.STK">
-      <System Name="Ping" Cluster="ENSTK"/>
+      <System Name="Ping" Cluster="STKEN"/>
       <SystemView ID="OSHealth.STK"/>
       <SystemView ID="Hardware.STK"/>
       <SystemView ID="Cronjob.STK"/>

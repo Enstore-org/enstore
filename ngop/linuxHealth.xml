@@ -221,51 +221,51 @@
        </MonitoredElement>
        <MonitoredElement Name="baseTemp" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="/usr/local/bin/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $1}'" RetVal="float:temp1,float:temp2"/>
-         <Condition State="0" SevLevel="0" Description="Temperature exceeded 60 C">
+         <fn Name="plug_ins" Arg="/usr/local/bin/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'" RetVal="int:mask1,int::mask2"/>
+         <Condition State="0" SevLevel="0" Description="Temperature is too high">
             <apply>
             <or/>
             <apply>
-            <gt/>
-            <ci>temp1</ci>
-            <cn>60</cn>
+            <ge/>
+             <ci>mask1</ci>
+             <cn>5</cn>
             </apply>
             <apply>
-            <gt/>
-            <ci>temp2</ci>
-            <cn>60</cn>
+            <ge/>
+            <ci>mask2</ci>
+            <cn>5</cn>
             </apply>
             </apply>
 	</Condition>
-          <Condition State="1" SevLevel="6" Description="Temperature is between50 C and 60 C">
+          <Condition State="1" SevLevel="6" Description="Temperature is nearingwarning level">
             <apply>
              <or/>
              <apply>
                <and/>
                <apply>
                  <gt/>
-                 <ci>temp1</ci>
-                 <cn>50</cn>
+                 <ci>mask1</ci>
+                 <cn>0</cn>
                </apply>
                <apply>
                 <leq/>
-                 <ci>temp1</ci>
-                 <cn>60</cn>
+                 <ci>mask1</ci>
+                 <cn>4</cn>
                 </apply>
               </apply>
             <apply>
             <and/>
-            <apply>
-            <gt/>
-            <ci>temp2</ci>
-            <cn>50</cn>
-            </apply>
-            <apply>
-            <leq/>
-            <ci>temp2</ci>
-            <cn>60</cn>
-            </apply>
-            </apply>
+             <apply>
+              <gt/>
+               <ci>mask2</ci>
+               <cn>0</cn>
+              </apply>
+              <apply>
+               <leq/>
+               <ci>mask2</ci>
+               <cn>4</cn>
+              </apply>
+             </apply>
             </apply>
 	</Condition>       
         

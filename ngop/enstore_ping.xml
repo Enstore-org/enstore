@@ -1,7 +1,7 @@
 <MA-config Update="600" Name="AgentPingEnstore">
 <ItemList Name="Enstore">
-	<Item Name="ENSTK"/>
-	<Item Name="END0"/>
+	<Item Name="STKEN"/>
+	<Item Name="D0EN"/>
 </ItemList>
    <NCS Heartbeat="1200" Port="19997" Host="ngop" Type="Daemon"/>
    <For Each="Item" In="ItemList" Name="Enstore" Var="{%C}">

@@ -8,242 +8,35 @@
         <ServiceType Name="9x7"/>
 </ServiceClass>
   <HostsInClusters>
-  <Cluster Name="FNALU_INT">
-   <Cluster Name="FNALU_INT24x7">
-	<Host Name="fdei01"/>
-	<Host Name="fsgi01"/>
-	<Host Name="fsgi03"/>
-	<Host Name="fsui02"/>
-	<Host Name="fsui03"/>
-   </Cluster>
-   <Cluster Name="FNALU_INT9x5">
-	<Host Name="flxi02"/>
-	<Host Name="flxi03"/>
-   </Cluster>
-  </Cluster>
-  <Cluster Name="FNALU_BATCH">
-   <Cluster Name="FNALU_BATCH9x5">
-	<Host Name="fsgb02"/>
-	<Host Name="fsgb03"/>
-	<Host Name="fsub01"/>
-   </Cluster>
-  </Cluster>
-  <Cluster Name="FNALU_SUP">
-   <Cluster Name="FNALU_SUP9x5">
-	<Host Name="flxi01"/>
-   </Cluster>
-   <Cluster Name="FNALU_SUP24x7">
-	<Host Name="fsun01"/>
-	<Host Name="fsun02"/>
-	<Host Name="devnull"/>
-   </Cluster>
-  </Cluster>
-  <Cluster Name="FNALU_AFS">
-   <Cluster Name="FNALU_AFS24x7">
-	<Host Name="fsudoh"/>
-	<Host Name="fsun02"/>
-	<Host Name="fsus01"/>
-	<Host Name="fsus03"/>
-	<Host Name="fsus04"/>
-	<Host Name="fsus05"/>
-	<Host Name="fsus06"/>
-	<Host Name="fsus07"/>
-	<Host Name="fsus08"/>
-	<Host Name="fsut01"/>
-   </Cluster>
-</Cluster>
-
-  <Cluster Name="ACPMAPS">
-   <Cluster Name="ACPMAPS9x7">
-	<Host Name="fncrdm"/>
-   </Cluster>
-  </Cluster>
-  <Cluster Name="QCD">
-   <Cluster Name="QCD9x7">
-	<Host Name="qcdhome"/>
-   </Cluster>
-  </Cluster>
-
-<Cluster Name="KTEV">
-   <Cluster Name="KTEV24x7">	
-	<Host Name="klak"/>
-	<Host Name="klik"/>
-	<Host Name="kpasa"/>
-	<Host Name="kbella"/>
-	<Host Name="ksera"/>
-   </Cluster>
-</Cluster>
-
-
-<Cluster Name="SDSS">
-   <Cluster Name="SDSS24x7">
-	<Host Name="sdss"/>
-	<Host Name="sdssdp2"/>
-	<Host Name="sdssdp3"/>
-	<Host Name="sdssdp4"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="PPD">
-   <Cluster Name="PPD24x7">
-	<Host Name="fnppd"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="ODS">
-   <Cluster Name="ODS9x7">
-	<Host Name="fndaut"/>
-	<Host Name="fndauk"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="MSS">
-   <Cluster Name="MSS24x7">
-	<Host Name="msservb"/>
-   </Cluster>
-   <Cluster Name="MSS9x5">
-	<Host Name="msstp1"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="MINOS">
-   <Cluster Name="MINOS24x7">
-	<Host Name="minos1"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="CDF">
-   <Cluster Name="CDF9x5">
-	<Host Name="fcdfora2"/>
-   </Cluster>
-   <Cluster Name="CDF24x7">
-	<Host Name="fcdfora1"/>
-	<Host Name="fcdfcons"/>
-	<Host Name="fcdfhome"/>
-	<Host Name="fcdfspool"/>
-	<Host Name="fcdfstk"/>
-	<Host Name="fcdfadic"/>
-	<Host Name="fcdfsgi1"/>
-	<Host Name="fcdfsgi2"/>
-	<Host Name="cdfsga"/>
-   </Cluster>
-  <Cluster Name="CDF9x7">
-	<Host Name="fcdfsun1"/>
-  </Cluster>
-</Cluster>
-
-<Cluster Name="BSS">
-   <Cluster Name="BSS24x7">
-	<Host Name="bssalpha"/>
-	<Host Name="bssepsilon"/>
-	<Host Name="bssgama"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="CNTRL_SRV">
-   <Cluster Name="CNTRL_SRV24x7">
-	<Host Name="fncops1"/>
-	<Host Name="cdcvs"/>
-	<Host Name="davoid"/>
-	<Host Name="fnprt"/>
-   </Cluster>
-   <Cluster Name="CNTRL_SRV9x7">
-	<Host Name="fncops2"/>
-   </Cluster>
-   <Cluster Name="CNTRL_SRV9x5">
-	<Host Name="fnkits"/>
-	<Host Name="cadwhs05"/>
-	<Host Name="fncops2"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="DVSN_SRV">
-   <Cluster Name="DVSN_SRV9x7">
-	<Host Name="munin"/>
-	<Host Name="hugin"/>
-	<Host Name="cdnfs1"/>
-	<Host Name="cdnfs2"/>
-	<Host Name="cdusrv1"/>
-	<Host Name="cdusrv2"/>
-	<Host Name="fncmms2"/>
-   </Cluster>
-</Cluster>
-
-<Cluster Name="KERBEROS">
-   <Cluster Name="KERBEROS24x7">
-	<Host Name="i-krb-2"/>
-	<Host Name="i-krb-3"/>
-   </Cluster>
-   <Cluster Name="KERBEROS9x7">
-	<Host Name="i-krb-4"/>
-	<Host Name="i-krb-5"/>
-	<Host Name="i-krb-6"/>
-	<Host Name="i-krb-7"/>
-   </Cluster>
-   <Cluster Name="KERBEROS9x7">
-	<Host Name="fnkerb"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="LICENSE_SRV">
-   <Cluster Name="LICENSE_SRV24x7">
-	<Host Name="flm1"/>
-	<Host Name="flm2"/>
-	<Host Name="flm3"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="MAIL">
-   <Cluster Name="MAIL24x7">
-	<Host Name="heffalump"/>
-	<Host Name="imapserver1"/>
-	<Host Name="imapserver2"/>
-	<Host Name="imapserver3"/>
-	<Host Name="popgtw"/>
-	<Host Name="ldap1"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="MISCOMP">
-   <Cluster Name="MISCOMP24x7">
-	<Host Name="fncdug1"/>
-	<Host Name="fncdug"/>
-   </Cluster>
-   <Cluster Name="MISCOMP9x5">
-	<Host Name="fncduh1"/>
-	<Host Name="fncduh"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="WWW">
-   <Cluster Name="WWW24x7">
-	<Host Name="expwww0"/>
-	<Host Name="www0"/>
-	<Host Name="www"/>
-	<Host Name="fnalpubs"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="NEWS">
-   <Cluster Name="NEWS24x7">
-	<Host Name="info1"/>
-  </Cluster>
-</Cluster>
-<Cluster Name="ENSTK">
-   <Cluster Name="ENSTK24x7">
+<Cluster Name="STKEN">
+   <Cluster Name="STKEN24x7">
+	<Host Name="stkensrv0"/>
 	<Host Name="stkensrv1"/>
 	<Host Name="stkensrv2"/>
 	<Host Name="stkensrv3"/>
 	<Host Name="stkensrv4"/>
    </Cluster>
-   <Cluster Name="ENSTK9x5">
+   <Cluster Name="STKEN9x5">
 	<Host Name="stkenmvr1a"/>
 	<Host Name="stkenmvr2a"/>
 	<Host Name="stkenmvr3a"/>
 	<Host Name="stkenmvr4a"/>
 	<Host Name="stkenmvr5a"/>
 	<Host Name="stkenmvr6a"/>
+	<Host Name="stkenmvr7a"/>
+	<Host Name="stkenmvr8a"/>
+	<Host Name="stkenmvr9a"/>
+	<Host Name="stkendca3a"/>
+	<Host Name="stkendca4a"/>
+	<Host Name="stkendca5a"/>
 	<Host Name="rip9"/>
 	<Host Name="rip10"/>	
    </Cluster>
 </Cluster>
-<Cluster Name="END0">
-   <Cluster Name="END09x5">
-	<Host Name="d0ensrv5"/>
-	<Host Name="d0enmvr1a"/>
+<Cluster Name="D0EN">
+   <Cluster Name="D0EN9x5">
+         <Host Name="d0ensrv5"/>
+         <Host Name="d0enmvr1a"/>
          <Host Name="d0enmvr2a"/>
          <Host Name="d0enmvr3a"/>
          <Host Name="d0enmvr4a"/>
@@ -266,34 +59,12 @@
          <Host Name="d0enmvr21a"/>
          <Host Name="d0enmvr22a"/>
    </Cluster>
-   <Cluster Name="END024x7">
+   <Cluster Name="D0EN24x7">
+	<Host Name="d0ensrv0"/>
 	<Host Name="d0ensrv1"/>
 	<Host Name="d0ensrv2"/>
 	<Host Name="d0ensrv3"/>
 	<Host Name="d0ensrv4"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="D0">
-   <Cluster Name="D024x7">
-	<Host Name="d02ka"/>
-	<Host Name="d0mino"/>
-	<Host Name="d0ora1"/>
-	<Host Name="d0ola"/>
-	<Host Name="d0olb"/>
-	<Host Name="d0olc"/>
-	<Host Name="d0world"/>
-   </Cluster>
-   <Cluster Name="D09x5">
-	<Host Name="d0cha"/>
-	<Host Name="d0sgisrv1"/>
-	<Host Name="d0lxac1"/>
-	<Host Name="d0lxbld4"/>
-   </Cluster>
-</Cluster>
-<Cluster Name="BPHYSICS">
-   <Cluster Name="BPHYSICS24x7">
-	<Host Name="fnsimu1"/>
-	<Host Name="fnsimu2"/>
    </Cluster>
 </Cluster>
 </HostsInClusters>

@@ -7,7 +7,7 @@
 </ItemList>
 <For Each="Item" In="ItemList" Name="ENSTORE" Var="{%S}">
    <SystemView ID="Hardware.{%S}">
-     <For Each="Host" In="Cluster" Name="EN{%S}" Var="{%H}" Filename="fermi_hosts.xml">
+     <For Each="Host" In="Cluster" Name="{%S}EN" Var="{%H}" Filename="fermi_hosts.xml">
       <System Name="Hardware" Cluster="{%H}"/>
      </For>
    </SystemView>
