@@ -2530,7 +2530,7 @@ class File:
 		f = open(fname, "w")
 		f.close()
 		real_size = os.stat(self.path)[stat.ST_SIZE]
-		if long(real_size) != long(self.size):
+		if long(real_size) != long(size2):
 			# oops, have to reset it again
 			f = open(fname, "w")
 			f.close()
