@@ -294,7 +294,7 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       /* If xfs extension supported use direct i/o to avoid kernel
 	 buffering. */
       fcntl(wr_fd, F_SETFL, O_SYNC | O_DIRECT);
-#elif
+#else
       fcntl(wr_fd, F_SETFL, O_SYNC);
 #endif
 #ifdef F_DIOINFO
@@ -317,7 +317,7 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       /* If xfs extension supported use direct i/o to avoid kernel
 	 buffering. */
       fcntl(rd_fd, F_SETFL, O_SYNC | O_DIRECT);
-#elif
+#else
       fcntl(rd_fd, F_SETFL, O_SYNC);
 #endif
 #ifdef F_DIOINFO
