@@ -2032,6 +2032,7 @@ class File:
 					p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
+					self.drive = "missing"
 					
 				if p_path != self.path:
 					raise 'DIFFERENT_PATH'
