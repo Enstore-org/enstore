@@ -8,6 +8,7 @@ import sys
 import time
 import string
 import errno
+import stat
 
 # enstore imports
 import Trace
@@ -21,22 +22,27 @@ bckHome=""   # quiet lint
 hst_bck=""   # quiet lint
 hst_local="" # quiet lint
 
+# get_size(dbFile) -- get the number of records and size of a dbFile
+
+def get_size(dbFile):
+
+    cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep keys | awk '{print $1}'"
+    print "<"+cmd+">"
+    nkeys = os.popen(cmd).readline()[:-1]
+    size = os.stat(dbFile)[stat.ST_SIZE]
+
+    return (nkeys, size)
+
 def backup_dbase():
 
     dbFile=""
     for name in os.popen("db_archive -s  -h"+dbHome).readlines():
-        cmd = "ls -l " + name[:-1] + " | tee " + name[:-1] + ".stat"
-        Trace.log(e_errors.INFO,repr(cmd))
-        ret = os.system(cmd)
-        if ret !=0 :
-            Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
-            sys.exit(1)	
-        cmd = "db_stat -h " + dbHome + " -d " + name[:-1] + " | tee -a " + name[:-1] + ".stat"
-        Trace.log(e_errors.INFO,repr(cmd))
-        ret = os.system(cmd)
-        if ret !=0 :
-            Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
-            sys.exit(1)	
+        (nkeys, size) = get_size(name[:-1])
+        stmsg = name[:-1] + " : Number of keys = "+nkeys+"  Database size = " + repr(size)
+        Trace.log(e_errors.INFO, stmsg) 
+        fp = open(name[:-1]+".stat", "w")
+        fp.write(stmsg)
+	fp.close()
     	dbFile=dbFile+" "+name[:-1]
     cmd="tar cvf dbase.tar "+dbFile+" log.* *.stat"
     Trace.log(e_errors.INFO,repr(cmd))
@@ -45,7 +51,9 @@ def backup_dbase():
 	Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
 	sys.exit(1)	
     for name in os.popen("db_archive  -h"+dbHome).readlines():
-	os.system("rm "+name[:-1]+ " " + name[:-1] + ".stat")
+	os.system("rm "+name[:-1])
+    os.system("rm *.stat")
+
 def archive_backup():
 
     if hst_bck == hst_local:
