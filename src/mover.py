@@ -1136,7 +1136,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
+        elif state in (ACTIVE, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
             if error_info:
                 status = error_info
