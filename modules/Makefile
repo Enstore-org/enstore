@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddcp
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -67,9 +67,9 @@ ecrc: ecrc.c
 	$(CC) -I. -o ecrc ecrc.c adler32.a
 	cp ecrc ../sbin
 
-ddcp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -o $@ EXfer.c adler32.a -lpthread
-	cp $@ ../bin
+ddencp: EXfer.c
+	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread
+	cp $(@) ../bin
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
