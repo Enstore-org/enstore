@@ -2387,7 +2387,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
                 self.del_udp_client(u)
                 #del u
-            sys.exit(-1)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
 		control_socket.connect(ticket['callback_addr'])
