@@ -154,7 +154,6 @@ main(  int	argc
 		exit( 1 );
 	    }
 	}
-	printf( "argc=%d arg=%d\n", argc, arg );
 	if (   ((argc-arg)!=3)
 	    || (sscanf(argv[2+arg-1],"%d",&lvl1)!=1)
 	    || (sscanf(argv[3+arg-1],"%d",&lvl2)!=1))
@@ -162,7 +161,6 @@ main(  int	argc
 		    , trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
-	printf( "atoi(modes)=%d\n", atoi(modes) );
 	trace_init_trc( trc_key_file );
 	exit_sts = traceOnOff(  (strcmp(trc_basename(argv[0],'/'),"traceOn")==0)?1:0
 			      , atoi(modes), argv[1+arg-1], lvl1, lvl2 );
