@@ -279,7 +279,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	# so check for a piece of it first
 	if lm.has_key(enstore_constants.LMSTATE):
 	    wam_q = lm.get(enstore_constants.WORK, None)
-	    if not wam_q is enstore_constants.NO_WORK:
+	    if wam_q and not wam_q is enstore_constants.NO_WORK:
 		for wam_elem in wam_q:
 		    if wam_elem[enstore_constants.WORK] == enstore_constants.READ:
 			self.filelist.append([wam_elem[enstore_constants.NODE], 
