@@ -1,0 +1,1 @@
+30 7,19 * * * $ENSTORE_SBIN/ecron -p backup2Tape backup2Tape  > /dev/null 2> /dev/null
