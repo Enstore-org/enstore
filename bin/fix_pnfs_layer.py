@@ -204,11 +204,11 @@ if __name__ == "__main__":
                                      bfinfo['size'],
                                      ff,
                                      bfinfo['pnfs_name0'],
-                                     bfinfo['pnfs_mapname'],
+                                     bfinfo.get('pnfs_mapname','unknown)),
                                      bfinfo['pnfsid'],
-                                     bfinfo['pnfsvid'],
+                                     bfinfo.get('pnfsvid','unknown'),
                                      bfinfo['bfid'],
-                                     bfinfo['drive'])
+                                     bfinfo.get('drive','unknown'))
                 print "NEW REC",value
                 write_layer(file, 4,value)
                 print "Layer 4 fixed"
