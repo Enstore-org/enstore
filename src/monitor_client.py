@@ -65,7 +65,7 @@ class MonitorServerClient(generic_client.GenericClient):
                   timeout,
                   block_size,
                   block_count,
-                  summary ):
+                  summary):
         
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
@@ -120,7 +120,7 @@ class MonitorServerClient(generic_client.GenericClient):
         sendstr = "S"*block_size
         bytes_to_transfer = block_size * block_count
 
-         #Set args outside of the loop for performance reasons.
+        #Set args outside of the loop for performance reasons.
         if function == "send":
             args = (sendstr,) # socket.MSG_DONTWAIT)
             sock_read_list = []
@@ -132,8 +132,10 @@ class MonitorServerClient(generic_client.GenericClient):
 
         t0 = time.time() #Grab the current time.
         t1 = t0 #Reset counter to current time (aka zero).
-
+        cnt = 0
         while bytes_transfered < bytes_to_transfer:
+            print cnt
+            cnt = cnt +1
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
             # of self.timeout.  However, it has been observed that a
@@ -516,6 +518,7 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 10
         self.alive_retries = 3
         self.hostip = ""
+        self.port = 0
         self.verbose = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -550,6 +553,11 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_TYPE:option.INTEGER,
                         option.USER_LEVEL:option.USER,},
+        option.PORT:{option.HELP_STRING:"selects a port",
+		     option.VALUE_NAME:"port",
+		     option.VALUE_USAGE:option.REQUIRED,
+		     option.USER_LEVEL:option.USER,
+		     },
         }
                    
                    
@@ -662,10 +670,13 @@ def get_host_list(csc, config_host, config_port, hostip=None):
 
 # this is called by the enstore saag interface
 def do_real_work(summary, config_host, config_port, html_gen_host,
-                 hostip=None):
-    
+                 hostip=None, port=0):
+
+    print "config_host %s config_port %s"%(config_host, config_port)
+    print "hostip %s port %s"%(hostip, port)
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get(enstore_constants.MONITOR_SERVER)
+    print "CONFIG",config
 
     if not e_errors.is_ok(config['status']):   #[0] != 'ok':
 
@@ -691,7 +702,10 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         os.uname()[1])
     summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
     summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
-    
+    if not port:
+        port = enstore_constants.MONITOR_PORT
+    else:
+        port = int(port)
     for host, ip in host_list:
         hostname = enstore_functions2.strip_node(host)
         if vetos.is_vetoed_item(ip):
@@ -703,8 +717,8 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         try:
             msc = MonitorServerClient(
                 (config_host, config_port),
-                (ip,                      enstore_constants.MONITOR_PORT),
-                (config['html_gen_host'], enstore_constants.MONITOR_PORT),
+                (ip,                      port),
+                (config['html_gen_host'], port),
                 config['html_dir'],
                 config['refresh'],
                 config['default_timeout'],
@@ -721,8 +735,10 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         
         #Test rate sending from the server.  The rate info for read time
         # information is stored in msc.measurement.
+        #read_measurement = msc.monitor_one_interface(
+        #    (ip, enstore_constants.MONITOR_PORT), SEND_FROM_SERVER)
         read_measurement = msc.monitor_one_interface(
-            (ip, enstore_constants.MONITOR_PORT), SEND_FROM_SERVER)
+            (ip, port), SEND_FROM_SERVER)
         if read_measurement['status'] == ('ok', None):
             read_rate = msc.calculate_rate(read_measurement)
         else:
@@ -733,8 +749,10 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         #Test rate sending to the server.  Since, the time is recorded on
         # the other end use the value returned, and not the one stored
         # in msc.measurement (which is for read info).
+        #write_measurement = msc.monitor_one_interface(
+        #    (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
         write_measurement = msc.monitor_one_interface(
-            (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
+            (ip, port), SEND_TO_SERVER)
         if write_measurement['status'] == ('ok', None):
             write_rate = msc.calculate_rate(write_measurement)
         else:
@@ -784,7 +802,7 @@ def do_work(intf):
     else:
         try:
             do_real_work(intf.summary, intf.config_host, intf.config_port,
-                         intf.html_gen_host, hostip=intf.hostip)
+                         intf.html_gen_host, hostip=intf.hostip, port = intf.port)
         except KeyboardInterrupt:
             print "Caught user interrupt.  Exiting."
             sys.exit(1)
