@@ -174,6 +174,7 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 		w["fc"]["external_label"] != external_label):
 		# if external label specified and it does not match
 		# work (w) external label skip it over
+                w = self.pending_work.get_next()
 		continue
 	if jobtype:
 	    # try to match the jobtype with work
@@ -188,11 +189,11 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 	    send_regret(self, w)
             # append work to remove list
             rm_list.append(w)
-	    w = self.pending_work.get_next()
-    Trace.trace(12,"flush_pending_jobs:remove list %s"%(repr(rm_list),))
+        w = self.pending_work.get_next()
     # now delete all works in the remove list
     for work in rm_list:
-       self.pending_work.delete_job(work)
+        Trace.trace(12,"flush_pending_jobs:remove work %s"%(work,))
+        self.pending_work.delete_job(work)
        
 ##############################################################
 
@@ -1722,6 +1723,6 @@ if __name__ == "__main__":
 	    sys.exit(exit_code)
         except:
 	    traceback.print_exc()
-	    lm.serve_forever_error("library manager", lm.logc)
+	    lm.serve_forever_error("library manager")
 	    continue
     Trace.trace(1,"Library Manager finished (impossible)")
