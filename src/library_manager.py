@@ -1647,6 +1647,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # check if this volume is OK
         v = self.vcc.inquire_vol(ticket['fc']['external_label'])
+        if v['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, "read_from_hsm: can't update vloume info %s"%
+                      (v['status'][0],))
+            return
+            
         if (v['system_inhibit'][0] == e_errors.NOACCESS or
             v['system_inhibit'][0] == e_errors.NOTALLOWED):
             # tape cannot be accessed, report back to caller and do not
@@ -1885,7 +1890,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
                     Trace.trace(11, "mover_bound_volume: updated mover ticket: %s"%(mticket,))
                 else:
-                   Trace.trace(11, "mover_bound_volume: can't update volume info, status:%s"%
+                   Trace.log(e_errors.ERROR, "mover_bound_volume: can't update volume info, status:%s"%
                                (vol_info['status'],))
                    self.reply_to_caller({'work': 'no_work'})
                    return
@@ -1969,6 +1974,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
                     vol_info = self.vcc.inquire_vol(mticket['external_label'])
+                    if vol_info['status'][0] != e_errors.OK:
+                       Trace.log(e_errors.ERROR, "mover_bound_volume 2: can't update volume info, status:%s"%
+                                   (vol_info['status'],))
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                                 vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             # create new mover_info
