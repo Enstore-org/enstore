@@ -34,6 +34,18 @@ class PyGdb(Gdb):
                      " w: where (print backtrace)",
                      " gdb <gdb-command>:  passes <command> to underlying gdb",
                      ]
+
+    def set_breakpoint_at_file_line(self,file,line):
+        if file[-3:] != '.py':
+            file=file+'.py'
+        if (file,line) not in self.breakpoints.keys():
+            self.breakpoint_number = self.breakpoint_number+1
+            self.breakpoints[(file,line)]=self.breakpoint_number
+            return ['Breakpoint %d at %s:%d' % (
+                self.breakpoint_number,file,line)]
+        else:
+            return ['Already have a breakpoint at %s:%d' % (
+                file,line)]
         
     def set_breakpoint(self,expr):
         usage = 'Usage: b[reak] file:line|function'
@@ -47,26 +59,24 @@ class PyGdb(Gdb):
             except ValueError:
                 return [usage]
 
-            if file[-3:] != '.py':
-                file=file+'.py'
-            if (file,line) not in self.breakpoints.keys():
-                self.breakpoint_number = self.breakpoint_number+1
-                self.breakpoints[(file,line)]=self.breakpoint_number
-                return ['Breakpoint %d at %s:%d' % (
-                    self.breakpoint_number,file,line)]
-            else:
-                return ['Already have a breakpoint at %s:%d' % (
-                    file,line)]
+            return self.set_breakpoint_at_file_line(file,line)
             
         else:
-            func = expr
-            if func not in self.breakpoints.keys():
-                self.breakpoint_number = self.breakpoint_number+1
-                self.breakpoints[func] = self.breakpoint_number
-                return ['Breakpoint %d in %s' % (self.breakpoint_number,
-                                                 func)]
-            else:
-                return ['Already have a breakpoint in %s' % func]
+            try:
+                line = string.atoi(expr)
+                if not self.filename:
+                    return ["No default filename"]
+                file = self.filename
+                return self.set_breakpoint_at_file_line(file,line)
+            except ValueError:
+                func = expr
+                if func not in self.breakpoints.keys():
+                    self.breakpoint_number = self.breakpoint_number+1
+                    self.breakpoints[func] = self.breakpoint_number
+                    return ['Breakpoint %d in %s' % (self.breakpoint_number,
+                                                     func)]
+                else:
+                    return ['Already have a breakpoint in %s' % func]
             
             
     def delete_breakpoint(self,number):
