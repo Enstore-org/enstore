@@ -78,14 +78,14 @@ class MonitorServerClient(generic_client.GenericClient):
             #The need for threading this section stems from needing to
             # wait for a udp responce to the udp request, while at the same
             # time participating in the request via another connection.
-            sim_thread = threading.Thread(target=self._simulate_encp_transfer,
+            ##sim_thread = threading.Thread(target=self._simulate_encp_transfer,
                                           args=(ticket,))
-            sim_thread.start()
+            ##sim_thread.start()
 
             #Send the message to start to the simulation.  Since, this
             # function does not return until a response is recieved
             reply=self._send_probe(ticket) #raises exeption on timeout
-            sim_thread.join() #wait for the read times to exist.
+            ##sim_thread.join() #wait for the read times to exist.
         except errno.errorcode[errno.ETIMEDOUT]:
             reply = {}
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
