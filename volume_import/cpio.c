@@ -128,7 +128,7 @@ cpio_read_file(char *read_buffer, int nbytes){
     file_bytes_read += bytes_read;
     file_bytes_left -= bytes_read;
 
-    verbage("handled %d bytes, %d bytes left\nchecksums: %d, %d\n", file_bytes_read, 
+    verbage("handled %d bytes, %d bytes left\nchecksums: %u, %u\n", file_bytes_read, 
 	       file_bytes_left, early_checksum, checksum);
 
     return 0;

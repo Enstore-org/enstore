@@ -54,6 +54,7 @@ check_tape_ioctl(int op, int count, char *msg){
     if (ioctl(tape_fd, MTIOCTOP, &mtop)){
 	fprintf(stderr,"%s: %s", progname, msg);
 	perror(tape_device);
+	return -1;
     }
     return 0;
 }
@@ -82,7 +83,11 @@ int
 skip_eof_marks(int n){
     verbage("%s: skipping %d eof markers on %s\n", progname,
 			n, tape_device);
-    return check_tape_ioctl(MTFSF, n, "skip file mark");
+    if (n==0) return 0;
+    if (n>0)
+	return check_tape_ioctl(MTFSF, n, "skip file mark");
+    else
+	return check_tape_ioctl(MTBSF, -n, "skip file mark backward");
 } 
 
 int
@@ -183,22 +188,64 @@ write_eot1_header(int fileno)
 {
     char buf[81];
     int i,n;
-
-    sprintf(buf, "EOT1%07d", fileno);
-    strcpy(buf+11, volume_label); /*volume label should already have been checked
-				  * for proper length */
+    
+    sprintf(buf, "EOT%07d", fileno);
+    strcpy(buf+10, volume_label); /*volume label should already have been checked
+				   * for proper length */
     n = strlen(volume_label);
-    for (i=11+n; i<81; ++i)
+    for (i=10+n; i<81; ++i)
 	buf[i]=' ';
     buf[79]='0';
     buf[80]=0;
-
-    verbage("writing EOT header %s\n", buf);
     
+    
+    verbage("writing EOT1 header %s\n", buf);
+    verbage("writing an extra file mark\n");
+    if (write_eof_marks(1))
+	return -1;
     if (write_tape(buf,80) != 80){
 	fprintf(stderr, "%s: can't write tape label\n", progname);
 	return -1;
     }
-    return 0;   
+    verbage("positioning tape\n");
+    return backward_record(1);
 }
 
+int 
+read_tape_label(char *label, int *type, int *fileno)
+{
+    char buf[80];
+    char *cp;
+
+    if (read_tape(buf,80)!=80)
+	return -1;
+
+    buf[79]=0;
+    verbage("read_tape_label: %s\n", buf);
+
+    if (!strncmp(buf,"VOL1",4)){
+	*type=0;
+	for (cp=buf+4; *cp && *cp!=' '; ++cp)
+	    ;
+	*cp = 0;
+	strcpy(label,buf+4);
+	return 0;
+    } else if (!strncmp(buf,"EOT",3)){
+	*type=1;
+	if (sscanf(buf+3," %7d", fileno) != 1){
+	    verbage("Can't parse filenumber\n");
+	    return -1;
+	} else {
+	    for (cp=buf+10; *cp && *cp!=' '; ++cp)
+		;
+	    *cp = 0;
+	    strcpy(label,buf+10);
+	    return 0;
+	}
+    } else {
+	buf[4]=0;
+	fprintf(stderr,"%s: unknown label type %s\n",
+		progname, buf);
+	return -1;
+    }
+}

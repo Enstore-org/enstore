@@ -50,14 +50,20 @@ read_db_fmt(char *db_path, char *fmt, char *key, void *value)
     char path[MAX_PATH_LEN];
     
     sprintf(path, "%s/%s", db_path, key);
-    if (!(fp=fopen(path,"w"))){
+    if (!(fp=fopen(path,"r"))){
 	fprintf(stderr,"%s: cannot open ",progname);
 	perror(path);
 	return -1;
     }
-    if (fscanf(fp, fmt, value)<=0
-	||fclose(fp)
-	) return -1;
+    if (fscanf(fp, fmt, value)<=0){
+	fprintf(stderr,"%s: cannot read database file %s\n", progname, path);
+	return -1;
+    }
+    if (fclose(fp)){
+	fprintf(stderr,"%s: close: ",progname);
+	perror(path);
+	return -1;
+    }
     return 0;
 }
 

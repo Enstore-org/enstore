@@ -9,6 +9,7 @@ static void
 rm_rf(char *path){
     char cmd[MAX_PATH_LEN + 8];
     sprintf(cmd, "/bin/rm -rf %s", path);
+    verbage("running %s\n", cmd);
     system(cmd); /* XXX I was lazy when I wrote this, there must be a nicer way */
 }
 
@@ -34,8 +35,6 @@ do_add_file(char *pnfs_dir, char *filename)
     
     sprintf(path,"%s/volumes/%s", tape_db, volume_label);
     if (read_db_i(path, "next_file", &file_number)){
-	fprintf(stderr,"%s: %s/next_file exists but cannot read contents\n", progname,
-		path);
 	return -1;
     }
     

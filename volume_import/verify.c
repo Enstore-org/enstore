@@ -157,42 +157,81 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 	return -1;
     } else { /* it exists */
 	if (!new) 
-	    return 1;
+	    return 0;
 	fprintf(stderr,"%s: directory %s already exists.\n%s",
 		progname, path,
-		"Use '-E' (erase) option to delete it\n");
+		"Use '-e' (erase) option to delete it\n");
 	return -1;
     }
     return 0;
 }
 
 /* check that the volume label given matches what's on the tape */
+/* NB tape device must be open! */
 int verify_tape_volume()
 {
     char path[MAX_PATH_LEN];
     char label[80];
+    int label_type;
+    int fno;
+
     /* verify_tape_db should already have been called, so we don't need to check that
        tape_db and volume_label are non-NULL */
     sprintf(path,"%s/volumes/%s", tape_db, volume_label);
     
-    if (read_db_i(path, "next_file", &file_number)
-	||open_tape())
+    if (read_db_i(path, "next_file", &file_number))
 	return -1;
     
     /* try to read a volume label, either VOL1 or EOT1 */
-    if (read_tape(label,80) != 80){
-	
+    verbage("Looking for tape label\n");
+    if (read_tape_label(label,&label_type, &fno)==0){
+	if (strcmp(label, volume_label)){
+	    fprintf(stderr,"%s: wrong tape %s, should be %s\n",
+		    progname, label, volume_label);
+	    return -1;
+	} else { /*Label matches*/
+	    if (label_type==0){ 
+		/*VOL1, we are at beginning of tape, skip to correct position */
+		return skip_eof_marks(file_number);
+	    } else { /*EOT1*/
+		if (fno==file_number){ /*we're at the correct position*/
+		    verbage("tape is at %d\n", file_number);
+		    return skip_eof_marks(-1);
+		} else {
+		    verbage("tape position error, database has %d, tape has %d\n", 
+			    file_number, fno);
+		    /*XXX should this be a fatal error, or just reposition the tape?*/
+		}
+	    }
+	}
+    }	
+    verbage("Rewinding tape to look for label\n");
+    if (rewind_tape())
+	return -1;
+    if (read_tape_label(label,&label_type, &fno)==0){
+	if (strcmp(label, volume_label)){
+	    fprintf(stderr,"%s: wrong tape %s, should be %s\n",
+		    progname, label, volume_label);
+	    return -1;
+	} else { /* Label matches */
+	    if (label_type==0){ 
+		/*VOL1, we are at beginning of tape, skip to correct position */
+		return skip_eof_marks(file_number);
+	    } else {
+		fprintf(stderr, "%s: Tape not properly labelled\n", progname);
+		return -1;
+	    }
+	}
     }
-    
-    close_tape(); /*XXX we open it again later...*/
-    return 0;
+    return -1; /*Shouldn't get here*/
 }
 
 int 
 verify_volume_label()
 {
-    return 
- 	verify_db_volume(0)
-	|| verify_tape_volume();
+    int x,y;
+    x = verify_db_volume(0);
+    y = verify_tape_volume();
+    return x||y;
 }
     

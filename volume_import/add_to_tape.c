@@ -88,6 +88,7 @@ main(int argc, char **argv)
 			    progname, argv[i]);
 		}
 		break;
+	    case 't':
 	    case 'f':
 		if (++i >= argc) {
 		    fprintf(stderr, "%s: -f option requres an argument\n", 
@@ -144,6 +145,7 @@ main(int argc, char **argv)
     
     if (verify_tape_device()
 	||verify_tape_db(0)
+	||open_tape()
 	||verify_volume_label())
 	{
 	    fprintf(stderr,"%s: failed\n",progname);
@@ -175,9 +177,6 @@ main(int argc, char **argv)
 	append_to_file_list(pnfs_dir, filename);
     }
     
-    if (open_tape()) /* || rewind_tape()) */
-	exit(-2);
-    
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
 	verbage("adding file %s to volume %s, pnfs_dir = %s\n",
 		   node->filename, volume_label, node->pnfs_dir);
@@ -190,8 +189,9 @@ main(int argc, char **argv)
     }
     verbage("handled %d file%c\n", nfiles, nfiles==1?' ':'s');
     
-    if (close_tape())
-	exit(-2);
+    if (write_eot1_header(file_number+1)
+	||close_tape()
+	) exit(-2);
     
     return 0;
 }
