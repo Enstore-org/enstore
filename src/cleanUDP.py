@@ -102,7 +102,10 @@ class cleanUDP :
 	def logerror(self, sendto_or_recvfrom, try_number) :
 		badsockerrno = self.socket.getsockopt(
 				socket.SOL_SOCKET,socket.SO_ERROR)
-		badsocktext = repr(errno.errorcode[badsockerrno])
+		try :
+			badsocktext = repr(errno.errorcode[badsockerrno])
+		except:
+			badsocktext = repr(badsockerrno)
 		etext = "cleanUDP %s try %d %s failed on %s last %s" % (
 			  sendto_or_recvfrom, try_number,
 			  badsocktext, self.this_sendto_address,
