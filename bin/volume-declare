@@ -127,11 +127,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samait   none 8MM     CA2945 10737418240 10737418240
-                      samait   none 8MM     CA2946 10737418240 10737418240
-                      samait   none 8MM     CA2947 10737418240 10737418240
-                      samait   none 8MM     CA2948 10737418240 10737418240
-                      samait   none 8MM     CA2949 10737418240 10737418240
+                      samait   none 8MM     CA2945 16106127360 16106127360
+                      samait   none 8MM     CA2946 16106127360 16106127360
+                      samait   none 8MM     CA2947 16106127360 16106127360
+                      samait   none 8MM     CA2948 16106127360 16106127360
+                      samait   none 8MM     CA2949 16106127360 16106127360
                      "
          ;;
   mam)   rm -fr /pnfs/grau/mammoth/*
@@ -183,11 +183,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samman   none 8MM     CA2270 10737418240 10737418240
-                      samman   none 8MM     CA2271 10737418240 10737418240
-                      samman   none 8MM     CA2272 10737418240 10737418240
-                      samman   none 8MM     CA2273 10737418240 10737418240
-                      samman   none 8MM     CA2274 10737418240 10737418240
+                      samman   none 8MM     CA2270 16106127360 16106127360
+                      samman   none 8MM     CA2271 16106127360 16106127360
+                      samman   none 8MM     CA2272 16106127360 16106127360
+                      samman   none 8MM     CA2273 16106127360 16106127360
+                      samman   none 8MM     CA2274 16106127360 16106127360
                      "
          ;;
   dlt)   rm -fr /pnfs/grau/dlt/*
@@ -239,11 +239,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samdlt   none DECDLT  CA2545 10737418240 10737418240
-                      samdlt   none DECDLT  CA2546 10737418240 10737418240
-                      samdlt   none DECDLT  CA2547 10737418240 10737418240
-                      samdlt   none DECDLT  CA2548 10737418240 10737418240
-                      samdlt   none DECDLT  CA2549 10737418240 10737418240
+                      samdlt   none DECDLT  CA2545 16106127360 16106127360
+                      samdlt   none DECDLT  CA2546 16106127360 16106127360
+                      samdlt   none DECDLT  CA2547 16106127360 16106127360
+                      samdlt   none DECDLT  CA2548 16106127360 16106127360
+                      samdlt   none DECDLT  CA2549 16106127360 16106127360
                      "
          ;;
   rip6)  rm -fr /pnfs/rip6/*
