@@ -151,9 +151,9 @@ Enstore uses pnfs for three different kinds of access and information:
     After a file is written to tape, the file clerk generates a bfid and
      <em>encp</em>     stores this information 
      in one of the pnfs file layers.
-    <em>Encp</em> can access this bit file id, giving it to the servers
+    <em>Encp</em> then reads this bit file id and gives it to the servers
     when fetching data from tape.
-     Other file transfer details, such as time of last access or location of
+     Other encp file transfer details, such as time of last access or location of
      where the file was copied to or transfer rates, are stored in a different
      layer of the same pnfs file.
 </ol>
@@ -161,12 +161,14 @@ Enstore uses pnfs for three different kinds of access and information:
 1.2 ENCP
 </h2>
 Reading and writing files means interacting with media.
-This is done with an enstore-provided utility, <em>encp</em>.
+This is done with an enstore provided utility, <em>encp</em>.
 <em>encp</em> is very similar to the <em>cp</em> command in UNIX.
 The syntax is:
 <pre>
 % encp [options] src_file dst_file
 </pre>
+Currently there is no wildcarding allwoed, but this is a straight forward
+extension to encp.
 
 <h3><a name="encp_throttle">
 1.2.1 Throttling in <em>encp</em>
