@@ -135,9 +135,9 @@ class EncpLine:
                 # split out the message type from the rest of the message text
                 [self.msg_type, self.text] = string.splitfields(self.text, None, 1)
                 # make sure the msg_type really is one, else this might be a line with
-                # the wrong format.
-                if string.find(self.msg_type, Trace.MSG_TYPE) == -1:
-                    # this is the wrong format
+                # the wrong format. - make sure it is an encp message
+                if string.find(self.msg_type, Trace.MSG_ENCP_XFER[:-1]) == -1:
+                    # this is not the message we are looking for
                     return
                 [tmp1, tmp2] = string.splitfields(self.text, ": ", 1)
                 # get the file names (tmp_list[2] = "->" so ignore it)
