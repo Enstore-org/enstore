@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -310,6 +312,56 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # modify:
+    def modifyvol(self, ticket):
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
+        record={}
+
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            msg= "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        external_label=ticket['external_label']
+        # make sure it exists
+        if not self.dict.has_key(external_label):
+            msg="Volume Clerk: volume "+external_label+" does not exist"
+            ticket["status"] = (errno.errorcode[errno.EEXIST], msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        record = self.dict[external_label]
+        
+        for key in  ['external_label','media_type', 'file_family', 'library',
+                     'eod_cookie', 'remaining_bytes', 'capacity_bytes' ]:
+            if ticket.has_key(key):
+                record[key]=ticket[key]
+
+        sizes = self.csc.get("blocksizes")
+        try:
+            msize = sizes[record['media_type']]
+        except:
+            msg= "Volume Clerk:  unknown media type = unknown blocksize"
+            ticket['status'] = (e_errors.UNKNOWNMEDIA,msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        record['blocksize'] = msize
+
+        # write the ticket out to the database
+        self.dict[external_label] = record
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+        
     # delete a volume from the database
     def delvol(self, ticket):
         # everything is based on external label - make sure we have this
