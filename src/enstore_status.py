@@ -303,7 +303,6 @@ class EnStatus:
 	# state of the mover.  save the status which is in there first.
 	status = self.text[key][STATUS]
 	self.text[key] = {}
-	self.text[key][FILES] = []
 	self.text[key][STATUS] = status
 	self.text[key][COMPLETED] = repr(ticket["no_xfers"])
        	if ticket["state"] == "busy":
@@ -314,6 +313,7 @@ class EnStatus:
 					(ticket["state"], 
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_location_cookie(ticket, key)
+		self.text[key][FILES] = []
 		self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
 		self.text[key][FILES][1] = ticket['files'][0]
 		self.text[key][VOLUME] = ticket['tape']
@@ -322,6 +322,7 @@ class EnStatus:
 					(ticket["state"], 
 				     add_commas(str(ticket["bytes_to_xfer"])))
                 self.get_eod_cookie(ticket, key)
+		self.text[key][FILES] = []
 		self.text[key][FILES][0] = "%s -->"%(ticket['files'][0],)
 		self.text[key][FILES][1] = ticket['files'][1]
 		self.text[key][VOLUME] = ticket['tape']
@@ -343,11 +344,13 @@ class EnStatus:
                 if string.find(work, "read") != -1:
                     self.get_location_cookie(ticket, key)
 		    self.text[key][VOLUME] = ticket['tape']
+		    self.text[key][FILES] = []
 		    self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
 		    self.text[key][FILES][1] = ticket['files'][0]
                 elif string.find(work, "write") != -1:
                     self.get_eod_cookie(ticket, key)
 		    self.text[key][VOLUME] = ticket['tape']
+		    self.text[key][FILES] = []
 		    self.text[key][FILES][1] = ticket['files'][0]
 		    self.text[key][FILES][0] = "%s -->"%(ticket['files'][1],)
         else:
