@@ -1,38 +1,90 @@
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>SCOPE</FONT></FONT></U></I></B></CENTER>
 
+<p>
+
+Enstore is a system to provide mass storage for large Run II data sets.  As
+such it is not a general purpose mass storage system, but optimized to
+allow access to large datasets made of many files.  The system supports
+random access of files, but also streaming, the sequential access of
+successive files on tape. The system treats robot's shelves as a scarce
+commodity.
 
 <p>
 
-Enstore is a simple system to provide mass storage for large Run II data sets.
-
-As such it is not a general purpose mass storage system, but optimized to
-allow access to large datasets made of many files.
-
-The special to HEP requirements supported are:
-
-1) The system supports random access of files, but also streaming, the
-sequential access of successive files on tape. The system treats robot's
-shelves as a scarce commodity.
-
-
-It has been designed by a mixture of people with expertise in writing DA
-systems, and thus, the writing and reading tapes is done in a reliable and
-efficient manner.  Recommended software engineering practices are being used
-during it's design and development.
+Enstore has been designed to provide logging of data directly from the
+experiment data acquisition systems. The writing and reading of tapes must
+therefore be reliable and efficient, and the system must be robust enough
+to support this critical application without compromising data taking.
+Enstore's goal is to provide a system that can be extended as needed for
+the experiments actual data taking needs, as well as be easily maintainable
+for the duration of several data taking runs.
 
 <p>
 
-The Enstore system provides a generic interface for end users to efficiently
-use mass storage systems as easily as if they were native file systems.
+Enstore provides the following features:
 
-It is based on a true client-server model that allows hot swapping components
-and dynamic configuration, is platform independent, runs on heterogeneous
-environments and is easily extendable.  Most of the operations are transparent
-to the user.  System performance is monitored and fine tunable.  A great deal
-of care has been taken to ensure that it is able to prevent or to recover from
-a worst case scenario.  The system has layers around it to customize and
-address problems as they occur.  When possible, these layers are expected to
-use already existing components (e.g. ftt, pnfs).
+<menu>
+
+  <li>Support for several types of serial media accessed through Automated
+       Tape Libraries or locally mounted on the client or host computers.
+
+  <li>Support for distributed access to data on these tapes.
+
+  <li>Reliable, efficient and prioritized write access from the experiment
+       data acquisition systems for the logging of raw data.
+
+  <li>Optimzed access to large (Petabyte) datasets made up of many (100s of
+       millions) of files of 1-5 Gbytes in size.
+
+  <li>Efficient and flexible support for "write streaming" of data to tape,
+       where data is physically clustered on tapes according to a simple
+       classification scheme - typically the trigger number associated with
+       the event data written.
+
+  <li>Management of hardware and software resources, e.g., a limited number
+       of available tape drives to allow prioritized access to the data.
+
+  <li>Swapping of hardware components - tapes, tape drives, and computers -
+       without bringing down the complete system.
+
+  <li>Complete error reporting and configurable response to error
+       conditions.
+
+  <li>The use of already tested components as far as possible.
+
+  <li>Easy mechanisms for testing of the system.
+
+  <li>Import and export of tapes between the Automated Tape Library(ies)
+       and shelf storage without bringing down the complete system.
+
+  <li>Support for distributed clients to access data through standard
+       network protocols, and to a great extent transparently.
+
+  <li>Sequential access of data in files, for event reconstruction and
+       other large data processing requirements.
+
+  <li>Random access to files on tapes, to support general event analysis.
+
+  <li>Functionality in layers such that the primitive tape read/write
+       software can be used in situations where the full functionality of
+       resource management, name translation and access optimization is
+       not needed.
+
+</menu>
+
+<p>
+
+The Enstore system provides a generic interface for end users to
+efficiently use mass storage systems as easily as if they were native file
+systems.  It is based on a client-server model that allows hot swapping of
+hardware components and dynamic software configuration, is platform
+independent, runs on heterogeneous environments and is easily extendable.
+Most of the operations are transparent to the user.  System performance is
+monitored and fine tunable.  A great deal of care has been taken to ensure
+that it is able to prevent or to recover from a worst case scenario.  The
+system has layers around it to customize and address problems as they
+occur.  When possible, these layers are expected to use already existing
+components (e.g. ftt, pnfs).
 
 
 </BODY>
