@@ -294,8 +294,8 @@ class	Link:
 		if self.Peer != ():
 			pkt = RelUdpPack('ACKN', seq)
 			self.Sock.sendto(pkt, self.Peer)
-			print 'Link %s: <ACKN,%d> sent' % \
-				(self.Peer, seq)
+			#print 'Link %s: <ACKN,%d> sent' % \
+			#	(self.Peer, seq)
 		
 	def	sendNak(self, seq = -1):
 		if seq == -1:	seq = self.InNext
