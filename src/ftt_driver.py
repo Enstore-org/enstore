@@ -290,7 +290,7 @@ class FTTDriver(driver.Driver):
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "open_dev %s %s" % (detail, detail.value))
             return -1
-
+        Trace.trace(25, "set mode: new mode is %s" % (self.ftt.get_mode(),))
         return r
 
     def verify_label(self, volume_label=None, mode=0):
