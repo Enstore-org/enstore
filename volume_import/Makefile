@@ -1,22 +1,22 @@
 # $Id$
 
-PROGS=add_to_tape init_tape
+PROGS=enstore_write_tape enstore_init_tape
 
-ADD_OBJS=add_to_tape.o do_add_file.o verify.o dbfuncs.o tape.o \
-	cpio.o ECRC.o global_data.o	
+WRITE_OBJS=add_to_tape.o do_add_file.o verify.o dbfuncs.o tape.o \
+	cpio.o pathutil.o ECRC.o global_data.o	
 
-INIT_OBJS=init_tape.o verify.o tape.o dbfuncs.o global_data.o 
+INIT_OBJS=init_tape.o verify.o tape.o dbfuncs.o pathutil.o global_data.o 
 
 HDRS=volume_import.h
 
 
 all: $(PROGS)
 
-add_to_tape: $(ADD_OBJS)
-	gcc -g -o add_to_tape $(ADD_OBJS)
+enstore_write_tape: $(WRITE_OBJS)
+	gcc -g -o enstore_write_tape $(WRITE_OBJS)
 
-init_tape: $(INIT_OBJS)
-	gcc -g -o init_tape $(INIT_OBJS)
+enstore_init_tape: $(INIT_OBJS)
+	gcc -g -o enstore_init_tape $(INIT_OBJS)
 
 add_to_tape.o: add_to_tape.c $(HDRS)
 	gcc -c -g -Wall add_to_tape.c
@@ -41,6 +41,9 @@ ECRC.o: ECRC.c $(HDRS)
 
 cpio.o: cpio.c $(HDRS)
 	gcc -c -g -Wall cpio.c
+
+pathutil.o: pathutil.c $(HDRS)
+	gcc -c -g -Wall pathutil.c
 
 clean:
 	rm -f *.o $(PROGS)

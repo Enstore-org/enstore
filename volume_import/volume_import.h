@@ -5,6 +5,8 @@ prototypes and necessary headers for the volume import package
 #include <stdio.h>
 #include <fcntl.h> 
 
+#include <errno.h>
+
 #include <unistd.h> /*Portability?*/
 #include <stdlib.h>
 #include <string.h>
@@ -12,19 +14,24 @@ prototypes and necessary headers for the volume import package
 #include <sys/stat.h>
 #include <sys/mtio.h>
 
-#define MB 1024U*1024U
-#define GB 1024U*1024U*1024U
-
 #define MAX_PATH_LEN 4096  /* get this (portably) from system headers */
 #define MAX_LABEL_LEN 70   /* maximum length of  volume label */
 
+#define DEFAULT_BLOCKSIZE 32768
 #define EARLY_CHECKSUM_SIZE 65536
 #define DEFAULT_PERM 0775  /* default permissions for newly created dirs and files*/
+
+
+#define MB 1024U*1024U
+#define GB 1024U*1024U*1024U
+
+
+
 #define verbage if (verbose)printf
 #define min(a,b)((a)<(b)?(a):(b))
 
-int do_add_file(char *pnfs_dir, char *filename);
-int verify_file(char *pnfs_dir, char *filename);
+int do_add_file(char *destination, char *source);
+int verify_file(char *pnfs_dir, char *strip, char *filename);
 int verify_tape_db(int);
 int verify_tape_device(void);
 int verify_volume_label(void);
@@ -50,7 +57,8 @@ int close_tape(void);
 int read_tape_label(char *, int*, int*);
 int cpio_start(char *);
 int cpio_next_block(char *, int);
-
+int join_path(char *, char *, char *);
+int strip_path(char *, char *, char *);
 
 /* Global vars */
 
@@ -62,7 +70,6 @@ extern char *progname;
 int file_number;
 extern int blocksize;
 extern int verbose;
-
 
 extern unsigned int checksum, early_checksum;
 extern unsigned int early_checksum_size;

@@ -16,7 +16,7 @@ chkdir(char *path, int makeit){
     
     /* does path exist ?*/
     status = stat(path, &sbuf);
-    if (status){	/* no */
+    if (status){/* no */
 	if (makeit){       /* try to make it */
 	    if (mkdir(path, DEFAULT_PERM)){
 		fprintf(stderr, "%s: cannot create directory: ", progname);
@@ -29,8 +29,9 @@ chkdir(char *path, int makeit){
 	} else {           /* fatal error */
 	    fprintf(stderr, "%s: ", progname);
 	    perror(tape_db);
+	    return -1;
 	}
-    } else {            /*yes*/
+    } else {/*yes*/
 	if (!S_ISDIR(sbuf.st_mode)){  /* is it a dir ? */
 	    fprintf(stderr,"%s: %s is not a directory\n", progname, path);
 	    return -1;
@@ -56,20 +57,25 @@ verify_tape_db(int makeit){ /* if arg is nonzero, create tape db if needed */
 
 
 int 
-verify_file(char *pnfs_dir, char *filename){
+verify_file(char *pnfs_dir, char *strip, char *filename){
     
     struct stat sbuf;
     int status;
+    char path[MAX_PATH_LEN];
 
     if (!pnfs_dir){
-	fprintf(stderr,"%s: no pnfs directory given\n", progname);
+	fprintf(stderr,"%s: %s: no pnfs directory given\n", progname, filename);
 	return -1;
     }
     if (strlen(pnfs_dir)<5 || strncmp(pnfs_dir,"/pnfs",5)){
 	fprintf(stderr,"%s: pnfs_dir must start with /pnfs\n", progname);
 	return -1;
     }
-
+    
+    if (strip && strip_path(path, strip, filename)){
+	    return -1;
+    }
+    
     status = stat(filename, &sbuf);
     if (status){
 	fprintf(stderr,"%s: ", progname);
@@ -117,7 +123,7 @@ check_volume_label_legal(){
 	case '_':
 	case '-':
 	case '#':
-	case '$':
+/*	case '$':    can cause trouble with shell-scripts! */
 	case '.':
 	    continue;
 	    break;
@@ -136,7 +142,7 @@ int
 verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 {
     struct stat sbuf;
-    int status;
+    int status, x;
     char path[MAX_PATH_LEN];  
 
     check_volume_label_legal(); /* need to make sure '/' is not in label! */
@@ -156,11 +162,17 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 		"Has this volume been initialized?\n");
 	return -1;
     } else { /* it exists */
-	if (!new) 
+	if (!new) {
+	    if (read_db_i(path,"tape_full", &x)){
+		fprintf(stderr, "%s: tape %s is full\n",
+			progname, volume_label);
+		return -1;
+	    }
 	    return 0;
+	}
 	fprintf(stderr,"%s: directory %s already exists.\n%s",
 		progname, path,
-		"Use '-e' (erase) option to delete it\n");
+		"Use '--erase' option to delete it\n");
 	return -1;
     }
     return 0;
@@ -193,7 +205,7 @@ int verify_tape_volume()
 	    if (label_type==0){ 
 		/*VOL1, we are at beginning of tape, skip to correct position */
 		return skip_eof_marks(file_number);
-	    } else { /*EOT1*/
+	    } else if (label_type==1) { /*EOT1*/
 		if (fno==file_number){ /*we're at the correct position*/
 		    verbage("tape is at %d\n", file_number);
 		    return skip_eof_marks(-1);
@@ -202,7 +214,7 @@ int verify_tape_volume()
 			    file_number, fno);
 		    /*XXX should this be a fatal error, or just reposition the tape?*/
 		}
-	    }
+	    } 
 	}
     }	
     verbage("Rewinding tape to look for label\n");

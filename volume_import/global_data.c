@@ -1,13 +1,15 @@
 /* $Id$
- Globals.  The other modules all include globals.h which declares these extern 
+ Globals.  The other modules all include volume_import.h which declares these extern 
 */
-#define NULL (char*)0
+
+#include "volume_import.h"
+
 char *tape_device = NULL;
 int tape_fd = -1;
 char *tape_db = NULL;
 char *volume_label = NULL;
 char *progname;
-int blocksize = 4096;
+int blocksize = DEFAULT_BLOCKSIZE;
 int verbose = 0;
 int file_number = 0;
 unsigned int checksum=0, early_checksum=0;

@@ -8,8 +8,9 @@ Labels tape and  creates database branch for new volume
 void Usage()
 {
     fprintf(stderr,
-   "Usage: %s [-v] [-e] [-f tape-device] [-d tape-db] vol_label\n\
-    tape-device can be set using environment variable $TAPE\n\
+   "Usage: %s [--verbose] [--erase] [--tape-device=device] 
+  [--tape-db=db_dir] --volume_label=label\n\
+    tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
 	    progname);
     
@@ -18,61 +19,62 @@ void Usage()
 
 int clear_db_volume();
     
+static char * 
+match_opt(char *optname, char *arg)
+{
+    int n;
+    char *cp;
+
+    /* be friendly about _ vs - */
+    for (cp=arg; *cp; ++cp)
+	if (*cp=='_')
+	    *cp = '-';
+
+    n = strlen(optname);
+    if (strlen(arg)<n){
+	return (char *)0;
+    }
+    if (!strncmp(optname, arg, n)){
+	return arg+n;
+    }
+    return (char *)0;
+}
+	
+
 int
 main(int argc, char **argv)
 {
     int i;
     int erase=0;
-
+    char *cp;
     char label[80];
     int label_type;
     int fno;
 
-    tape_device = getenv("TAPE");
+    tape_device = getenv("TAPE_DEVICE");
     tape_db = getenv("TAPE_DB");
 
     progname = argv[0];
 
     for (i=1; i<argc; ++i) {
 	if (argv[i][0] == '-') {
-	    switch (argv[i][1]) {
-
-	    case 'e':
-		erase = 1;
-		break;
-	    case 'f':
-	    case 't':
-		if (++i >= argc) {
-		    fprintf(stderr, "%s: -f option requres an argument\n", 
-			    progname);
-		    Usage();
-		} else 
-		    tape_device = argv[i];
-		break;
-	    case 'd':
-		if (++i >= argc) {
-		    fprintf(stderr, "%s: -d option requres an argument\n", 
-			    progname);
-		    Usage();
-		} else 
-		    tape_db = argv[i];
-		break;
-	    case 'v':
+	    /*it's an option*/
+	    if (match_opt("--verbose", argv[i])) {
 		verbose = 1;
-		break;
-	    default:
+	    } else if ((cp=match_opt("--tape-device=", argv[i]))) {
+		tape_device = cp;
+	    } else if ((cp=match_opt("--tape-db=",argv[i]))) {
+		tape_db = cp;
+            } else if ((cp=match_opt("--volume-label=", argv[i]))){
+		volume_label = cp;
+	    } else {
 		fprintf(stderr,"%s: unknown option %s\n", progname, argv[i]);
 		Usage();
 	    }
-	} else
-	    break;
-    }
-    
-    if (i==argc) {
-	fprintf(stderr,"%s: no volume label specified\n", progname);
-	Usage();
-    } else {
-	volume_label = argv[i++];
+	}
+	else {
+	    Usage();
+	}
     }
 
     if (!tape_device) {
@@ -82,6 +84,11 @@ main(int argc, char **argv)
 
     if (!tape_db) {
 	fprintf(stderr, "%s: no tape db specified\n", progname);
+	Usage();
+    }
+
+    if (!volume_label){
+	fprintf(stderr, "%s: no volume label given\n", progname);
 	Usage();
     }
 
@@ -109,7 +116,7 @@ main(int argc, char **argv)
 		verbage("Got %s\n", label);
 		fprintf(stderr,"This tape is already labeled\nLabel=%s\n", 
 			label);
-		fprintf(stderr,"Use the -e (erase) option to relabel it\n");
+		fprintf(stderr,"Use the --erase option to relabel it\n");
 		goto cleanup;
 	    } else {
 		verbage("Invalid label type\n");

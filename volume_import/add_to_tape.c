@@ -8,9 +8,9 @@
 void Usage()
 {
     fprintf(stderr,"\
-Usage: %s [-v] [-f tape-device] [-d tape-db] vol_label filelist [...]\n\
-    each filelist is:  [-p pnfs-dir] file [...]\n\
-    tape-device can be set using environment variable $TAPE\n\
+Usage: %s [--verbose] [--tape-device=dev] [--tape-db=dir] \n  --volume-label=label filelist [...]\n\
+    each filelist is:  [--pnfs-dir=dir] [--strip-path=path] file [...]\n\
+    tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
 	    progname);
     
@@ -20,9 +20,8 @@ Usage: %s [-v] [-f tape-device] [-d tape-db] vol_label filelist [...]\n\
 
 /* Linked list implementation */
 typedef struct _list_node{
-    char *pnfs_dir;
-    char *base_path;
-    char *filename;
+    char destination[MAX_PATH_LEN];
+    char source[MAX_PATH_LEN];
     struct _list_node *next;
 } list_node;
 
@@ -34,9 +33,6 @@ list_node
 	fprintf(stderr,"%s: fatal error: cannot allocate memory\n", progname);
 	exit(-1);
     }   
-    new_node->pnfs_dir = NULL;
-    new_node->base_path = NULL;
-    new_node->filename = NULL;
     new_node->next = (list_node*)0;
     return new_node;
 }
@@ -44,7 +40,8 @@ list_node
 list_node *file_list = NULL;
 list_node *last_node = NULL;
 
-void append_to_file_list(char *pnfs_dir, char *filename)
+void 
+append_to_file_list(char *destination, char *source)
 {
     list_node *new_node = make_list_node();
     
@@ -54,84 +51,96 @@ void append_to_file_list(char *pnfs_dir, char *filename)
 	last_node->next = new_node;
     }
     last_node = new_node;
-    new_node->pnfs_dir = pnfs_dir;
-    new_node->filename = filename;
+    strcpy(new_node->destination, destination);
+    strcpy(new_node->source, source);
 }
 
 
+static char * 
+match_opt(char *optname, char *arg)
+{
+    int n;
+    char *cp;
+
+    /* be friendly about _ vs - */
+    for (cp=arg; *cp; ++cp)
+	if (*cp=='_')
+	    *cp = '-';
+
+    n = strlen(optname);
+    if (strlen(arg)<n){
+	return (char *)0;
+    }
+    if (!strncmp(optname, arg, n)){
+	return arg+n;
+    }
+    return (char *)0;
+}
 	
 int    
 main(int argc, char **argv)
 {
     int i;
     char *pnfs_dir = NULL;
-    char *filename;
+    char destination[MAX_PATH_LEN];
+    char path[MAX_PATH_LEN];
+    char *strip = NULL;
+    char *source, *cp;
     list_node *node;
     int nfiles;
+    int err_occurred = 0;
 
-    tape_device = getenv("TAPE");
+    tape_device = getenv("TAPE_DEVICE");
     tape_db = getenv("TAPE_DB");
 
     progname = argv[0];
 
     for (i=1; i<argc; ++i) {
-	if (argv[i][0] == '-') {
-	    switch (argv[i][1]) {
-		
-	    case 'b':
-		if (++i >= argc) {
-		    fprintf(stderr, "%s: -b option requires an argument\n", 
-			    progname);
-		    Usage();
-		} else if (sscanf(argv[i], "%d", &blocksize) != 1) {
-		    fprintf(stderr, "%s: bad blocksize %s\n", 
-			    progname, argv[i]);
-		}
-		break;
-	    case 't':
-	    case 'f':
-		if (++i >= argc) {
-		    fprintf(stderr, "%s: -f option requres an argument\n", 
-			    progname);
-		    Usage();
-		} else 
-		    tape_device = argv[i];
-		break;
-	    case 'd':
-		if (++i >= argc) {
-		    fprintf(stderr, "%s: -d option requres an argument\n", 
-			    progname);
-		    Usage();
-		} else 
-		    tape_db = argv[i];
-		break;
-	    case 'v':
+	if (argv[i][0] == '-') { 
+	    /* it's an option */
+	    if (match_opt("--verbose", argv[i])) {
 		verbose = 1;
-		break;
-	    case 'p':
-		fprintf(stderr, "%s: -p option must come after volume label\n", 
-			progname);
-		Usage();
-		break;
-	    default:
+	    } else if ((cp=match_opt("--tape-device=", argv[i]))) {
+		tape_device = cp;
+	    } else if ((cp=match_opt("--tape-db=",argv[i]))) {
+		tape_db = cp;
+            } else if ((cp=match_opt("--pnfs-dir=",argv[i]))){
+		pnfs_dir = cp;
+	    } else if ((cp=match_opt("--strip-path=", argv[i]))){
+		strip = cp;
+	    } else if ((cp=match_opt("--volume-label=", argv[i]))){
+		if (volume_label){
+		    fprintf(stderr,"%s: volume-label may be set only once\n",progname);
+		    Usage();
+		} 
+		volume_label = cp;
+	    } else {
 		fprintf(stderr,"%s: unknown option %s\n", progname, argv[i]);
 		Usage();
 	    }
-	} else
-	    break;
-    }
-    
-    if (i==argc) {
-	fprintf(stderr,"%s: no volume label specified\n", progname);
-	Usage();
-    } else {
-	volume_label = argv[i++];
+	} else {
+	    /* it's a filename */
+	    source = argv[i];
+	    if (verify_file(pnfs_dir, strip, source))
+		exit(-1);
+	    if (strip){
+		if(strip_path(path, strip, source))
+		    exit(-1); /*this shouldn't happen, since we just did a verify */
+	    } else {
+		strcpy(path, source);
+	    }
+	    /* PNFS path must be non-NULL; this has already been checked in verify_file */
+	    if (join_path(destination, pnfs_dir, path)){
+		exit(-1);/*this shouldn't happen, since we just did a verify */
+	    }
+	    append_to_file_list(destination, source);
+	}
     }
 
-    if (i==argc) {
-	fprintf(stderr,"%s: no files specified\n", progname);
+    if (!volume_label) {
+	fprintf(stderr,"%s: no volume label specified\n", progname);
 	Usage();
-    }
+    } 
 
     if (!tape_device) {
 	fprintf(stderr, "%s: no tape device specified\n", progname);
@@ -152,47 +161,27 @@ main(int argc, char **argv)
 	    exit(-1);
 	}
 
-    
-    for (; i<argc; ++i) {
-	if (argv[i][0] == '-') {
-	    if (argv[i][1] != 'p') {
-		fprintf(stderr,"%s: unknown option %s\n", progname, argv[i]);
-		Usage();
-	    } else {
-		if (i+1 >= argc) {
-		    fprintf(stderr,"%s: -p option requires an argument\n", 
-			    progname);
-		    Usage();
-		} 
-		pnfs_dir = argv[++i];
-		if (++i >= argc) {
-		    fprintf(stderr,"%s: empty filelist\n", progname);
-		    Usage();
-		}
-	    }
-	}
-	filename = argv[i];
-	if (verify_file(pnfs_dir, filename))
-	    exit(-1);
-	append_to_file_list(pnfs_dir, filename);
-    }
-    
+    fprintf(stderr,"Writing files\n");
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
-	verbage("adding file %s to volume %s, pnfs_dir = %s\n",
-		   node->filename, volume_label, node->pnfs_dir);
-	if (do_add_file(node->pnfs_dir, node->filename)){
+	fprintf(stderr,"Writing %s ...",node->source);
+	fflush(stderr);
+	if (do_add_file(node->destination, node->source)){
+	    fprintf(stderr,"error\n");
+	    ++err_occurred;
 	    break;  /* XXX clean up this whole batch of additions ? */
 	}
+	fprintf(stderr,"ok\n");
 	if (write_eof_marks(1)){
 	    break;
 	}
     }
-    verbage("handled %d file%c\n", nfiles, nfiles==1?' ':'s');
+    printf("Wrote %d file%c\n", nfiles, nfiles==1?' ':'s');
     
-    if (write_eot1_header(file_number+1)
-	||close_tape()
-	) exit(-2);
-    
+    if (!err_occurred){
+	if (write_eot1_header(file_number+1)
+	    ||close_tape()
+	    ) exit(-2);
+    }
     return 0;
 }
 

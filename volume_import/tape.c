@@ -190,6 +190,7 @@ write_vol1_header()
 }
 
 
+
 int 
 write_eot1_header(int fileno)
 {

@@ -10,7 +10,9 @@ write_db_fmt(char *db_path, char *fmt, char *key, int value)
     FILE *fp;
     char path[MAX_PATH_LEN];
     
-    sprintf(path, "%s/%s", db_path, key);
+    if (join_path(path, db_path, key))
+	return -1;
+
     if (!(fp=fopen(path,"w"))){
 	fprintf(stderr,"%s: cannot open ",progname);
 	perror(path);
@@ -18,7 +20,7 @@ write_db_fmt(char *db_path, char *fmt, char *key, int value)
     }
     if (fprintf(fp, fmt, value)<=0
 	||fclose(fp)
-	) return 1;
+	) return -1;
     return 0;
 }
 
@@ -49,7 +51,9 @@ read_db_fmt(char *db_path, char *fmt, char *key, void *value)
     FILE *fp;
     char path[MAX_PATH_LEN];
     
-    sprintf(path, "%s/%s", db_path, key);
+    if (join_path(path, db_path, key))
+	return -1;
+
     if (!(fp=fopen(path,"r"))){
 	fprintf(stderr,"%s: cannot open ",progname);
 	perror(path);

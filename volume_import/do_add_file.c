@@ -16,14 +16,16 @@ rm_rf(char *path){
 
 
 int
-do_add_file(char *pnfs_dir, char *filename)
+do_add_file(char *destination, char *source)
 {
-    char path[MAX_PATH_LEN];
-    char buf[10];
+    char dbpath[MAX_PATH_LEN];
+    char buf[80];
     int size;
     struct stat sbuf;
     char *read_buffer;
     int nbytes;
+
+
 
     read_buffer = (char*)malloc(blocksize);
     if (read_buffer == (char*)0){
@@ -32,26 +34,25 @@ do_add_file(char *pnfs_dir, char *filename)
 	return -1;
     }
 
-    
-    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
-    if (read_db_i(path, "next_file", &file_number)){
+    sprintf(dbpath,"%s/volumes/%s", tape_db, volume_label);
+    if (read_db_i(dbpath, "next_file", &file_number)){
 	return -1;
     }
     
     sprintf(buf,"%07d", file_number+1);
     
-    if (write_db_s(path, "next_file", buf)){
-	perror(path);
+    if (write_db_s(dbpath, "next_file", buf)){
+	perror(dbpath);
 	return -1;
     }
     
     
     /*use some verify function to do this XXX */
-    sprintf(path,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
+    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
     
-    if (mkdir(path, 0775)){
+    if (mkdir(dbpath, 0775)){
 	fprintf(stderr, "%s: cannot create directory ", progname);
-	perror(path);
+	perror(dbpath);
 	return -1;
     }
     
@@ -60,9 +61,9 @@ do_add_file(char *pnfs_dir, char *filename)
      * always the possibility that a file was removed or otherwise changed between 
      * then and now */
     
-    if (stat(filename,&sbuf)){
+    if (stat(source,&sbuf)){
 	fprintf(stderr, "%s: ", progname);
-	perror(filename);
+	perror(source);
 	return -1;
     }
 
@@ -71,13 +72,13 @@ do_add_file(char *pnfs_dir, char *filename)
     /* Once we start writing into the database we need to make sure that if any 
      * error occurred, we completely undo the partial addition */
 
-    if (write_db_i(path,"blocksize",blocksize)
-	||write_db_i(path,"size", size) 
-	||write_db_s(path,"source", filename)
-	||write_db_s(path,"pnfs_dir", pnfs_dir)
-	||write_db_i(path,"early_checksum_size", 
+    if (write_db_i(dbpath,"blocksize",blocksize)
+	||write_db_i(dbpath,"size", size) 
+	||write_db_s(dbpath,"source", source)
+	||write_db_s(dbpath,"destination", destination)
+	||write_db_i(dbpath,"early_checksum_size", 
 		     early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
-	||cpio_start(filename)
+	||cpio_start(source)
 	) goto cleanup;
     
     /* terminate when nbytes=0, i.e. we've handled the last block */
@@ -88,23 +89,28 @@ do_add_file(char *pnfs_dir, char *filename)
 	else {
 	    if (write_tape(read_buffer, nbytes) != nbytes){
 		nbytes=-1;
+		if (errno==ENOSPC){
+		    fprintf(stderr,"%s: tape full\n", progname);
+		    sprintf(buf,"volumes/%s/tape_full",volume_label);
+		    write_db_i(tape_db,buf,1);
+		}
 		break;
 	    }
 	}
     }
     
     if (nbytes<0
-	||write_db_u(path,"early_checksum", early_checksum)
-	||write_db_u(path,"checksum", checksum)
+	||write_db_u(dbpath,"early_checksum", early_checksum)
+	||write_db_u(dbpath,"checksum", checksum)
 	) goto cleanup;
     
     return 0;
     
  cleanup:
-    rm_rf(path);
-    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
+    rm_rf(dbpath);
+    sprintf(dbpath,"%s/volumes/%s", tape_db, volume_label);
     sprintf(buf,"%07d",file_number);
-    write_db_s(path, "next_file", buf);
+    write_db_s(dbpath, "next_file", buf);
     return -1;
 }
     
