@@ -28,6 +28,19 @@
 # define PRINTF dummy = 0 && printf
 #endif
 
+
+/* POSIXly correct systems don't define union semun in their system headers */
+#ifdef _SEM_SEMUN_UNDEFINED
+union semun
+{
+    int val;	               /* value for SETVAL */
+    struct semid_ds *buf;      /* buffer for IPC_STAT & IPC_SET */
+    unsigned short int *array; /* array for GETALL & SETALL */
+    struct seminfo *__buf;     /* buffer for IPC_INFO */
+};
+#endif
+
+
 enum e_mtype
 {   WrtSiz = 1			/* mtype must be non-zero */
   , SanCrc
