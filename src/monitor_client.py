@@ -48,6 +48,9 @@ class MonitorServerClient(generic_client.GenericClient):
                   block_size,
                   block_count,
                   summary ):
+        
+        generic_client.GenericClient.__init__(self, csc, MY_NAME)
+
         self.u = udp_client.UDPClient()
         self.monitor_server_addr = monitor_server_addr
         self.html_server_addr = html_server_addr
@@ -75,9 +78,6 @@ class MonitorServerClient(generic_client.GenericClient):
                 socket.MSG_DONTWAIT = 64
             elif host_type[:4]=='IRIX':
                 socket.MSG_DONTWAIT = 128
-
-        
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
     # send Active Monitor probe request
     def _send_probe (self, ticket):
