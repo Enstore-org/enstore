@@ -772,8 +772,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if verbose: print "self.vol_info =", self.vol_info
 
         if self.current_volume != volume_label:
-	    self.last_volume = self.current_volume
-	    self.last_location = self.current_location
             if self.current_volume:
                 self.dismount_volume()
             self.mount_volume(volume_label)
@@ -878,6 +876,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not self.current_volume:
             if verbose: print "Precautionary dismount"
         if verbose: print "dismounting", self.current_volume
+        self.last_volume = self.current_volume
+        self.last_position = self.current_position
         self.current_volume = None
         self.tape_driver.close() 
         return
