@@ -21,7 +21,7 @@ class LockingDict:
         return self.dict[key]
 
     def __setitem__(self,key,value):
-        if self.locked:
+        if self._locked:
             raise DictionaryLockedError, (key,value)
 
         self.dict[key]=value
