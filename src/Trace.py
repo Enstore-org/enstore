@@ -130,7 +130,7 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
 def alarm(severity, root_error, rest={}):
     rest['severity'] = severity
     rest['root_error'] = root_error
-    log(severity, root_error, MSG_ALARM)
+    #log(severity, root_error, MSG_ALARM)
     if alarm_func:
         alarm_func(
             time.time, os.getpid(), logname, ("root_error:%s"%(rest['root_error'],), rest ))
