@@ -102,6 +102,7 @@ entv:
 	cp $(ENSTORE_DIR)/modules/autologinenstore ENTV_BIN
 	cp $(ENSTORE_DIR)/modules/mouse_move ENTV_BIN
 	cp $(ENSTORE_DIR)/etc/entvrc ENTV_BIN
+	cp ../modules/enroute2 ENTV_BIN
 	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTV_BIN/entv.table
 	- rm -rf ENTV_TEMP
 
