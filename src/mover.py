@@ -958,7 +958,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def setup_transfer(self, ticket, mode):
         self.lock_state()
         save_state = self.state
-        self.state = SETUP
+
         self.unique_id = ticket['unique_id']
         Trace.trace(10, "setup transfer")
         ## pprint.pprint(ticket)
@@ -968,6 +968,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.unlock_state()
             return 0
 
+        self.state = SETUP
+        
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
