@@ -654,7 +654,7 @@ class EnEncpDataFile(EnDataFile):
     # this case and not worry about duplicating code at the moment.
 
     # pull out the plottable data from each line
-    def parse_data(self, mcs, prefix):
+    def parse_data(self, line, mcs, prefix):
         encp_line = enstore_status.EncpLine(line)
         if encp_line.valid:
             if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
@@ -666,7 +666,7 @@ class EnEncpDataFile(EnDataFile):
                                   encp_line.mover, encp_line.drive_id])
         del encp_line
 
-    def read_and_parse(start_time, stop_time, prefix, media_changer):
+    def read_and_parse(self, start_time, stop_time, prefix, media_changer):
         do_all = FALSE
         if stop_time is None and start_time is None:
             do_all = TRUE
@@ -680,7 +680,7 @@ class EnEncpDataFile(EnDataFile):
                     else:
                         if do_all or \
                            self.check_line(line, start_time, stop_time, prefix):
-                            self.parse_data(media_changer, prefix)
+                            self.parse_data(line, media_changer, prefix)
                         del line
             except:
                 pass

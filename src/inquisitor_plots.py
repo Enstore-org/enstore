@@ -119,9 +119,7 @@ class InquisitorPlots:
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	encpfile.open('r')
-	encpfile.timed_read(self.start_time, self.stop_time, prefix)
-	# now pull out the info we are going to plot from the lines
-	encpfile.parse_data(self.media_changer, prefix)
+        encpfile.read_and_parse(self.start_time, self.stop_time, prefix, self.media_changer)
         encpfile.close()
         encpfile.cleanup(self.keep, self.keep_dir)
 
