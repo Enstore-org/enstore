@@ -1,2 +1,0 @@
-#! /bin/sh
-exec X -nolisten tcp -logfile /dev/null -logverbose 0
