@@ -48,8 +48,8 @@ def call_function(executable, argv):
     return os.system(str)
 
 def get_farmlet(default):
-    if len(sys.argv) > 1:
-        return sys.argv[1]
+    if len(sys.argv) > 2:
+        return sys.argv[2]
     else:
         return default
 
@@ -60,6 +60,11 @@ def do_rgang(fdefault, path1, path2):
     else:
         path = path2
     return os.system('/usr/local/bin/rgang %s "%s"'%(farmlet, path))
+
+def do_rgang_command(fdefault, command):
+    farmlet = get_farmlet(fdefault)
+    print (          '/usr/local/bin/rgang %s \"%s\"'%(farmlet, command))
+    return os.system('/usr/local/bin/rgang %s \"%s\"'%(farmlet, command))
 
 # keep a list of the commands (specific and generic) accessible when in user
 # mode.
@@ -272,32 +277,30 @@ class Enstore(EnstoreInterface):
             rtn = call_function("python $ENSTORE_DIR/src/backup.py",
                                 sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            # the special check for /export/home/bakken if a kludge for node fntt
-            bakken = os.path.expanduser("~bakken")
-            rtn = do_rgang("enstore", "%s/enstore/sbin/estart"%bakken,
-                           "$ENSTORE_DIR/sbin/estart")
+            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
+            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            rtn = do_rgang_command("enstore",command)
+        elif not self.user_mode and arg1 == "Estart1":
+            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
+            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start --nocheck>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
-            # the special check for /export/home/bakken if a kludge for node fntt
-            bakken = os.path.expanduser("~bakken")
-            rtn = do_rgang("enstore-down",
-                           "%s/enstore/sbin/estop"%bakken,
-                           "$ENSTORE_DIR/sbin/estop")
+            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
+            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-stop>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            rtn = do_rgang_command("enstore-down",command)
         elif not self.user_mode and arg1 == "Erestart":
-            # the special check for /export/home/bakken if a kludge for node fntt
-            bakken = os.path.expanduser("~bakken")
-            rtn = do_rgang("enstore", "%s/enstore/sbin/erestart"%bakken,
-                           "$ENSTORE_DIR/sbin/erestart")
+            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
+            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-stop>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            rtn1 = do_rgang_command("enstore-down",command)
+            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            rtn2 = do_rgang_command("enstore",command)
+            rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "emass":
-            rtn = os.system('rsh rip1 "$ENSTORE_DIR/sbin/egrau"')
+            rtn = os.system('rsh rip10 "$ENSTORE_DIR/sbin/egrau"')
         elif not self.user_mode and arg1 == "Esys":
-            farmlet = get_farmlet("enstore")
-            # get the operating system type (same as shell 'uname' command)
-            os_type = os.uname()[0]
-            if os_type == "Linux":
-                str = "ps auxww"
-            else:
-                str = "ps -ef"
-            rtn = os.system('/usr/local/bin/rgang %s %s| egrep "python|enstore|encp|reader|writer|dasadmin|mt |db_"'%(farmlet, str))
+            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
+            command=". /usr/local/etc/setups.sh; setup enstore; EPS"
+            rtn = do_rgang_command("enstore",command)
         else:
             if arg1 == "help" or arg1 == "--help" or arg1 == '': 
                 rtn = 0
