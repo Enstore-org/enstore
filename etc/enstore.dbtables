@@ -249,7 +249,7 @@ select *,
 				from
 					tape_consumption(\'1 day\', \'r\') as daily
 					full outer join
-					tape_consumption(\'1 week\', \'y\') as weekly
+					tape_consumption(\'1 week\', \'r\') as weekly
 					on (daily.media_type = weekly.media_type and daily.storage_group = weekly.storage_group)) as dw
 				on (monthly.media_type = dw.media_type and monthly.storage_group = dw.storage_group)
 			order by media_type, storage_group) as u
