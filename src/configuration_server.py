@@ -219,7 +219,11 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # get list of the Library manager movers
     def get_movers(self, ticket):
-	ret = []
+	ret = self.get_movers_internal(ticket)
+	self.reply_to_caller(ret)
+
+    def get_movers_internal(self, ticket):
+        ret = []
 	if ticket.has_key('library'):
 	    # search for the appearance of this library manager
 	    # in all configured movers
@@ -242,10 +246,18 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 						   item['port'])
 				      }
 				ret.append(mv)
+        return ret
 
-	self.reply_to_caller(ret)
-	Trace.trace(6,"get_movers"+repr(ret))
-
+    def get_media_changer(self, ticket):
+        movers = self.get_movers_internal(ticket)
+        ret = ''
+        for m in movers:
+            mv_name = m['mover']
+            ret =  self.configdict[mv_name].get('media_changer','')
+            if ret:
+                break
+        self.reply_to_caller(ret)
+        
     #get list of library managers
     def get_library_managers(self, ticket):
         ret = {}

@@ -133,6 +133,17 @@ class ConfigurationClient(generic_client.GenericClient):
                 return x
             except socket.error:
 	        self.output_socket_error("get_movers")
+
+    # get media changer associated with a library manager
+    def get_media_changer(self, library_manager, timeout=0, retry=0):
+        request = {'work' : 'get_media_changer' ,
+                   'library' : library_manager }
+        while 1:
+            try:
+                x = self.u.send(request, self.config_address, timeout, retry)
+                return x
+            except socket.error:
+	        self.output_socket_error("get_media_changer")
 	
     #get list of library managers
     def get_library_managers(self, ticket, timeout=0, retry=0):
@@ -175,8 +186,8 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+\
-	       ["config_file=","get_keys","dict","load"]
+        return self.client_options()+[
+            "config_file=","get_keys","dict","load"]
 
 if __name__ == "__main__":
     import sys
