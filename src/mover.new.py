@@ -234,6 +234,8 @@ def bind_volume( self, ticket ):
 	    # SHULD I RETRY????????
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
+	sts = self.hsm_driver.load( self.vol_info['eod_cookie'] )# SOFTWARE "MOUNT"
+	if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],ticket['fc']['external_label']) )
@@ -245,8 +247,6 @@ def bind_volume( self, ticket ):
 
     self.hsm_driver.remaining_bytes = self.vol_info['remaining_bytes']
     self.hsm_driver.set_blocksize( self.vol_info['blocksize'] )
-    sts = self.hsm_driver.load( self.vol_info['eod_cookie'] )# SOFTWARE "MOUNT"
-    if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
 	
     return e_errors.OK
 
@@ -574,6 +574,9 @@ class Mover:
                   errno.errorcode[badsock]
 	    pass
         return count
+
+    def fileno( self ):
+	return self.data_socket.fileno()
 
     pass
 
