@@ -6,6 +6,7 @@
 import os				# temporary - .system for mt commands
 import types				# see if eod_str is string
 import string				# atoi use on loc_cookie
+import time
 
 import FTT
 import EXfer
@@ -13,6 +14,7 @@ import IPC
 import time				# sleep used in FTT sw_mount
 import e_errors
 import Trace
+import hostaddr
 
 SEEK_SET =       0   
 SEEK_CUR =       1   
@@ -260,6 +262,11 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
+    def __init__( self ):
+        GenericDriver.__init__(self)
+        self.statisticsOpen = {}
+        self.statisticsClose = {}
+
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
 		  eod_cookie ):
 	# Get the position from the drive.
@@ -294,6 +301,9 @@ class  FTTDriver(GenericDriver) :
 
 	part, block_loc, filenum = loc2int( self, eod_cookie )
 
+        self.statisticsOpen = self.get_allStats(device)
+        Trace.log(e_errors.INFO,"Gathering statistics: sw_mount")
+
 	# make cur_loc_cookie such that an ordered list can be produced
 	# (for pnfs) i.e. partition, blk offset, filemarks
 	ss =  FTT.get_stats()
@@ -314,6 +324,25 @@ class  FTTDriver(GenericDriver) :
 	    pass
 	FTT.close()
 	return None
+
+    def get_allStats( self, device="" ):
+        statistics = FTT.get_statsAll()
+	if statistics['remain_tape'] == None:
+	    rb = self.remaining_bytes
+	else:   
+	    rb = string.atoi(statistics['remain_tape'])*1024L
+        statistics['remaining_bytes'] = rb
+	statistics['wr_err'] = self.wr_err,
+	statistics['rd_err'] = self.rd_err,
+	statistics['wr_access'] = self.wr_access,
+	statistics['rd_access'] = self.rd_access,
+	timeStamp = time.asctime(time.localtime(time.time()))
+	statistics['timeStamp'] = timeStamp
+	result = hostaddr.gethostinfo()
+	statistics['hostname'] = result[0]
+	statistics['device'] = device
+	
+	return statistics
 
     def offline( self, device ):
 	x = 2;
@@ -487,6 +516,8 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def close( self ):
+        self.statisticsClose = self.get_allStats()
+        Trace.log(e_errors.INFO,"Gathering statistics: close")
 	if self.mode == 'r':
 	    FTT.skip_fm( 1 )
 	    # this is making an assumption and should be changed to use
