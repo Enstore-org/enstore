@@ -34,6 +34,7 @@ import lm_list
 import volume_family
 import priority_selector
 import mover_constants
+import charset
 
 ## Trace.trace for additional debugging info uses bits >= 11
 
@@ -970,10 +971,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket["status"] = (e_errors.OK, None)
 
         for item in ('storage_group', 'file_family', 'wrapper'):
-            if ticket['vc'].has_key(item) and '.' in ticket['vc'][item]:
-                ticket['status'] = (e_errors.USERERROR,"No '.' allowed in %s"%(item,))
-                self.reply_to_caller(ticket)
-                return
+            if ticket['vc'].has_key(item):
+                if not charset.is_in_charset(ticket['vc'][item]):
+                    ticket['status'] = (e_errors.USERERROR,
+                                        "%s contains illegal character"%(item,))
+                    self.reply_to_caller(ticket)
+                    return
 
         # check if work is in the at mover list before inserting it
 ##        for wt in self.work_at_movers.list:
