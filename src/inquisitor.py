@@ -32,6 +32,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     #   mover(s)
     # then we write the status to the specified file
 
+    # update the enstore system status information
+    def update(self, ticket):
+        Trace.trace(10,"{update "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+        try:
+           self.reply_to_caller(ticket)
+        # even if there is an error - respond to caller so he can process it
+        except:
+           ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+           self.reply_to_caller(ticket)
+           Trace.trace(0,"}set_timeout "+repr(ticket["status"]))
+           return
+        Trace.trace(10,"}update")
+        return
+
     # set the timeout value
     def set_timeouts(self, timeout):
         self.timeout = timeout
