@@ -54,7 +54,7 @@ class BfidDb:
             raise BfidDbError, "invalid summary %s for vol %s"%(summary,vol)
         try:
             n_entries=string.atol(w[1])
-            file_checksum=string.atol(w[3])
+            file_checksum=eval(w[3])
         except:
             raise BfidDbError, "invalid summary %s for vol %s"%(summary,vol)
         return n_entries, file_checksum
