@@ -36,7 +36,9 @@ add*)
 
     e=`/sbin/ifconfig eth1`
     eth1=eth1
-    if [ `echo $e | grep -c UP` -eq 0 ]; then
+    # if there isn't a 2nd interface, default back to eth0
+    # HACK: the 2nd interface on stkensrv4 is the private network to fntt
+    if [ `echo $e | grep -c UP` -eq 0 -o $node = 'stkensrv4' ]; then
       eth1=eth0
     fi
 
