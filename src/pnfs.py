@@ -31,6 +31,8 @@ EXISTS = "file exists"
 DIREXISTS = "directory exists"
 ERROR = -1
 
+do_log = 0 #If this is set, PNFS errors will be logged
+
 ##############################################################################
 
 class Pnfs:
@@ -754,6 +756,8 @@ class Pnfs:
             return e_errors.ERROR, (str(exc), str(val))
 
     def log_err(self,func_name):
+        if not do_log:
+            return
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
                 func_name, self.file, exc,msg))
