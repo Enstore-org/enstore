@@ -438,7 +438,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
-            
 
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
@@ -951,7 +950,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         have_tape = 0
         for retry_open in range(3):
             Trace.trace(10, "position media")
-            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
+            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
             self.tape_driver.set_mode(blocksize = 0)
             if have_tape == 1:
                 break
