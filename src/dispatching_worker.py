@@ -277,9 +277,6 @@ class DispatchingWorker:
 
         # call the user function
         Trace.trace(6,"process_request function="+repr(function_name))
-        
-        ##exec ("self." + function + "(ticket)")
-            
         apply(function, (ticket,))
         
         # check for any zombie children and get rid of them
