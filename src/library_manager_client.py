@@ -115,9 +115,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def priority(self, id, pri):
 	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
-    def load_mover_list(self):
-	return self.send({"work":"load_mover_list"})
-
     def poll(self):
 	 return self.send({"work":"poll"})
 
@@ -211,7 +208,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.get_susp_vols = 0
         self.delete_work = 0
 	self.priority = -1
-	self.load_mover_list = 0
 	self.poll = 0
         self.get_queue = None
         self.host = 0
@@ -231,7 +227,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.client_options()+\
                    ["get_work", "get_suspect_vols",
                     "delete_work=","priority=",
-                    "load_movers", "poll", "get_queue=","host=",
+                    "poll", "get_queue=","host=",
                     "start_draining=", "stop_draining", "status", "vols",
                     "storage_groups", "rm_suspect_vol="]
 
@@ -281,9 +277,6 @@ def do_work(intf):
         ticket = lmc.remove_suspect_volume(intf.suspect_volume)
     elif not intf.priority == -1:
 	ticket = lmc.priority(intf.args[1], intf.priority)
-	print repr(ticket)
-    elif intf.load_mover_list:
-	ticket = lmc.load_mover_list()
 	print repr(ticket)
     elif intf.poll:
 	ticket = lmc.poll()
