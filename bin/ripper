@@ -46,11 +46,11 @@ case `uname -n` in
     stopit; starttrc
    #cmd="python /home/bakken/sam/src/mover.py DE14DLT.mover &"; doit
     cmd="python /home/bakken/sam/src/mover.py DC15MAM.mover &"; doit
-   #cmd="python /home/bakken/sam/src/mover.py DC16MAM.mover &"; doit
+    cmd="python /home/bakken/sam/src/mover.py DC16MAM.mover &"; doit
     cmd="python /home/bakken/sam/src/mover.py DC17MAM.mover &"; doit
    #(sleep 2;ecmd mvc --alive DE14DLT.mover; if [ $? -ne 0 ]; then echo DE14DLT.MOVER DEAD; else echo de14dlt.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC15MAM.mover; if [ $? -ne 0 ]; then echo DC15MAM.MOVER DEAD; else echo dc15mam.mover alive; fi) &
-   #(sleep 2;ecmd mvc --alive DC16MAM.mover; if [ $? -ne 0 ]; then echo DC16MAM.MOVER DEAD; else echo dc16mam.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC16MAM.mover; if [ $? -ne 0 ]; then echo DC16MAM.MOVER DEAD; else echo dc16mam.mover alive; fi) &
     (sleep 2;ecmd mvc --alive DC17MAM.mover; if [ $? -ne 0 ]; then echo DC17MAM.MOVER DEAD; else echo dc17mam.mover alive; fi) &
     ;;
 
