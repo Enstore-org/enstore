@@ -23,8 +23,9 @@ MUSTHAVE=${3:-""}
 here=`pwd`
 
 # first go get the volumes that are defined in the inventory
+echo `date` wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 1>&2
 wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
-rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
+rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it 1>&2 ; fi
 cat VOLUMES_DEFINED | egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" | egrep "$MUSTHAVE" >V_D
 rm -f VOLUMES_DEFINED
 N=`wc V_D| awk '{print $1}'`
@@ -46,8 +47,9 @@ while [ $done -gt 0 ]; do
   # choose a random volume from the list
   ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
   tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
+  echo `date` wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null 1>&2
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
-  rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;fi
+  rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;else echo `date` got it 1>&2 ; fi
   if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then rm -f $tape; continue; fi
   grep /pnfs $tape | grep -v deleted > ${tape}_
   rm -f $tape
@@ -82,7 +84,7 @@ while [ $done -gt 0 ]; do
   if [ $copyit -eq 0 ]; then
     echo $file
   else
-    cmd="encp --verbose=1 --crc $F /dev/null"
+    cmd="encp --verbose=1 $F /dev/null"
     echo $cmd
     eval $cmd
     rc=$?
