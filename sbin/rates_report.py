@@ -48,7 +48,7 @@ class Rtester:
         print "check mover %s average rate %s" % (mover,avg_rate)
 
         # get the mover
-        mv = self.csc.get_uncached(mover)
+        mv = self.csc.get(mover)
     
         if mv and mv.has_key('test_me'):
             # get rate
@@ -58,6 +58,7 @@ class Rtester:
             if not mv.has_key('test_script'):
                 enstore_dir = os.environ['ENSTORE_DIR']
                 test_script=os.path.join(enstore_dir, 'sbin','tape_test')
+                print "TEST SCRIPT", test_script
             else: test_script = mv['test_script']
             
             # send command
@@ -112,7 +113,7 @@ if __name__ == "__main__":
     #print "MVRS",tst.movers
     if not log_file:
         # get log_server entry
-        log_server_info = tst.csc.get_uncached("log_server")
+        log_server_info = tst.csc.get("log_server")
         if not date:
             date=time.strftime("%Y-%m-%d",time.localtime(time.time()))
         log_file=log_server_info['log_file_path']+"LOG-"+date
@@ -150,7 +151,7 @@ if __name__ == "__main__":
                             'vendor':string.split(words[24],'=')[1],
                             }
                     print "STAT",stat
-                    #print "SIZE",stat['size']/1024./1024.
+                    print "SIZE",stat['size']/1024./1024.
                     if stat['size']/1024./1024. >= MIN_FSIZE:
                         # add to mover list entry
                         if not movers.has_key(stat['mover']):

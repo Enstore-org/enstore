@@ -20,7 +20,7 @@ def check_mover(config_client, mover, f_size=250):
     import random
     
     # get the media changer
-    mv = config_client.get_uncached(mover)
+    mv = config_client.get(mover)
     
     if mv:
         print "MV",mv
