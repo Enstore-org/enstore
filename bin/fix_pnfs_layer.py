@@ -59,6 +59,9 @@ def change_file_name(file):
         if next in ('mammoth', 'm2', 'lto'):
             orig.remove(next)
             orig[sam_ind] = 'sam-%s'%(next,)
+        elif next in ('beagle','dzero'):
+            orig.remove(next)
+            orig[sam_ind] = next
             
     new=['/pnfs','fs','usr'] # this is not always true, depends on the name of the mount point
     for i in range(2,len(orig)):
