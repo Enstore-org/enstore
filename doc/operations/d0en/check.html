@@ -78,7 +78,9 @@ of Enstore.
 <p>
 <li> The most detailed source of what is going on in the system is the
 <a href="http://www-d0en.fnal.gov/enstore/enstore_logs.html"> Log
-Pages </a>.  It requires some effort to read and understand.<p> <li>
+Pages </a>.  It requires some effort to read and understand. 
+<ul>
+<li>
 One nice feature about the web interface is that you can <a
 href="http://www-d0en.fnal.gov/enstore/enstore_log_file_search.html">
 search </a> a subset of log files.
@@ -93,7 +95,7 @@ search </a> a subset of log files.
   /diska/enstore-log.
 
  </ul>
-
+</ul>
 
 <p>
 <li> You can get a good idea of how the system is performing by
@@ -127,6 +129,15 @@ Status Page.</a>. The plots are updated once an hour.
   values.
  </ul>
 
+<p>
+<li> You can see every <a
+href="http://www-d0en.fnal.gov/enstore/enstore_ps.txt"> Enstore Tasks
+</a> that is running on all the d0en nodes. This page is located
+within the miscellaneous status page and is updated every 10
+minutes. You can log into the console server, d0ensrv3, for example,
+as enstore and issue the comand "enstore EPS" to get an up to date
+display. This output is simply that of the "ps" command with
+non-enstore commands filtered out.
 
 
 <p>
@@ -199,6 +210,7 @@ the tcp rate.  If the both eepro100 NIC card is idle, then the rate
 should be 94 x 10^6 bits/S.  If the cards are busy (for example, if
 they are transferring data), then the rate will be lower.  Look for
 obvious low rates, values like 1 or 2.
+<p>
 
 <li> You can see the state of the PCs by looking at the <a
 href="http://www-d0en.fnal.gov/enstore/enstore_node_uptimes.txt">Enstore
