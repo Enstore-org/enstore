@@ -98,7 +98,9 @@ MAX_FILE_SIZE = long(ONE_G) * 2 - 1    # don't get overflow
 # 2: Print non-fatal error messages.
 # 4: Print (short) info about the read/write status.
 # 6: Print (short) information on the number of files left to transfer.
+# 7: Print additional information about the current state of the transfer.
 # 8: Print info about system config.
+# 9: Print timing information.
 # 10: Print (long) info about everthing.
 #############################################################################
 DONE_LEVEL     = 1
@@ -107,6 +109,7 @@ TRANSFER_LEVEL = 4
 TO_GO_LEVEL    = 6
 INFO_LEVEL     = 7
 CONFIG_LEVEL   = 8
+TIME_LEVEL     = 9
 TICKET_LEVEL   = 10
 
 #This is the global used by print_data_access_layer_format().  It uses it to
@@ -2051,6 +2054,8 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
     encp_crc = 0
 
+    transfer_start_time = time.time() # Start time of file transfer.
+
     #Read/Write in/out the data to/from the mover and write/read it out to
     # file.  Also, total up the crc value for comparison with what was
     # sent from the mover.
@@ -2125,9 +2130,15 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
                       % (msg.args[1], msg.args[2], msg.args[0],
                          time.time() - tinfo['encp_start_time'],))
 
+    transfer_stop_time = time.time()
+
+    # Print an additional timming value.
+    Trace.message(TIME_LEVEL, "Time to transfer file: %s sec." %
+                  (transfer_stop_time - transfer_start_time,))
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
-                  % (time.time() - tinfo['encp_start_time'],))
+                  % (transfer_stop_time - tinfo['encp_start_time'],))
+    
     #Even though the functionality is there for this to be done in
     # handle requests, this should be received outside since there must
     # be one... not only receiving one on error.
@@ -2136,7 +2147,13 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     elif EXfer_ticket['status'][0] == e_errors.DEVICE_ERROR:
         done_ticket = {'status':(e_errors.OK, None)}
     else:
+        final_dialog_start_time = time.time() # Start time of file transfer.
+        
         done_ticket = receive_final_dialog(control_socket)
+
+        # Print an additional timming value.
+        Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
+                      (time.time() - final_dialog_start_time,))
 
     if not e_errors.is_retriable(done_ticket) and \
        not e_errors.is_ok(done_ticket):
@@ -2951,7 +2968,9 @@ def verify_write_request_consistancy(request_list):
 def set_pnfs_settings(ticket, intf_encp):
 
     # create a new pnfs object pointing to current output file
-    Trace.trace(20,"write_to_hsm adding to pnfs "+ ticket['outfile'])
+    Trace.message(INFO_LEVEL, "Updating %s file metadata." % ticket['outfile'])
+
+    layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
     #The first piece of metadata to set is the bit file id which is placed
     # into layer 1.
@@ -2969,6 +2988,11 @@ def set_pnfs_settings(ticket, intf_encp):
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
         return
+
+    Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
+                  (time.time() - layer1_start_time,))
+
+    layer4_start_time = time.time() # Start time of setting pnfs layer 4.
         
     #Store the cross reference data into layer 4.
     mover_ticket = ticket.get('mover', {})
@@ -2998,6 +3022,11 @@ def set_pnfs_settings(ticket, intf_encp):
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
         return
+
+    Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
+                  (time.time() - layer4_start_time,))
+
+    filedb_start_time = time.time() # Start time of updating file database.
 
     #Update the file database with the transfer info.
     try:
@@ -3030,6 +3059,11 @@ def set_pnfs_settings(ticket, intf_encp):
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
 
+    Trace.message(TIME_LEVEL, "Time to set file database: %s sec." %
+                  (time.time() - filedb_start_time,))
+
+    filesize_start_time = time.time() # Start time of setting the filesize.
+
     # file size needs to be the LAST metadata to be recorded
     try:
         #The dcache sets the file size.  If encp tries to set it again, pnfs
@@ -3051,6 +3085,9 @@ def set_pnfs_settings(ticket, intf_encp):
     except:
         exc, msg, tb = sys.exc_info()
 	ticket['status'] = (str(exc), str(msg))
+
+    Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
+                  (time.time() - filesize_start_time,))
 
     #This functions write errors/warnings to the log file and put an
     # error status in the ticket.
