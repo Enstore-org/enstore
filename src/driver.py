@@ -25,19 +25,13 @@ class Driver:
     def rewind(self):
         raise NotImplementedError
     
-    def seek(self, where):
+    def seek(self, where, eot_ok=0):
         raise NotImplementedError
 
     def get_status(self):
         raise NotImplementedError
 
     def set_mode(self, density=None, compression=None, blocksize=None):
-        raise NotImplementedError
-    
-    def ready_to_read(self):
-        raise NotImplementedError
-
-    def ready_to_write(self):
         raise NotImplementedError
     
     def rates(self):
