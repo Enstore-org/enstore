@@ -350,7 +350,7 @@ for try in list doit; do
            if [ "$try" = "doit" ] ; then
              find $ENSTORE_DIR -name "*\.pyc" | xargs -r rm
              check_status $? "rm of old pyc files"
-             compileall_output=/tmp/$productCut.compileall_output`
+             compileall_output=/tmp/$productCut.compileall_output
              python -c '
 import os,compileall
 compileall.compile_dir(os.environ["ENSTORE_DIR"])
