@@ -35,7 +35,7 @@ DEFAULTPORT = 60126 #same as enstore_display.py
     
 def main():
     global s, dst
-
+    print "ARGV", sys.argv, len(sys.argv)
     if len(sys.argv) == 1:
         host = os.uname()[1]
         port = DEFAULTPORT
