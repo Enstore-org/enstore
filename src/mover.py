@@ -72,7 +72,6 @@ class Mover :
 			self.unilateral_unbind_next()
 			return
 		self.vticket = vticket
-		#print vticket
 		self.driver = eval(self.driver_name + "('" + 
 				  self.device + "','" + 
 				  vticket["eod_cookie"] + "'," + 
@@ -260,15 +259,12 @@ class Mover :
 		user_recieve_error = 0
 		bytes_sent = 0
 		self.driver.open_file_read(ticket["bof_space_cookie"])
-		print ticket["bof_space_cookie"]
 		while 1:
 			buff = self.driver.read_block()
 			l = len(buff)
-			print l
 			if l == 0 : break
 			self.data_socket.send(buff)
 			bytes_sent = bytes_sent + l
-			print bytes_sent
 			anything_sent = 1
 		self.data_socket.close()
 
