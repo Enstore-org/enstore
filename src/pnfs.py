@@ -25,8 +25,6 @@ except ImportError:
     Trace.log(e_errors.INFO, "Devcodes unavailable")
 #import interface
 import option
-import pnfs_common
-import pnfs_admin
 import enstore_constants
 
 ENABLED = "enabled"
