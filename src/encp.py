@@ -52,7 +52,7 @@ import enstore_constants
 # that fits in signed integer variables.
 ONE_G = 1024 * 1024 * 1024
 TWO_G = long(ONE_G) - 1     #Used in int32()
-MAX_FILE_SIZE = long(ONE_G) * 8 - 1    # don't get overflow
+MAX_FILE_SIZE = long(ONE_G) * 2 - 1    # don't get overflow
 
 #############################################################################
 # verbose: Roughly, five verbose levels are used.
@@ -402,10 +402,10 @@ def inputfile_check(input_files, bytecount=None):
             quit()
 
         # input files can't be larger than 8G
-        if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
-            quit()
+        #if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
+        #    print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+        #        'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
+        #    quit()
 
         # get the file size
 	p = pnfs.Pnfs(inputlist[i])
@@ -448,6 +448,12 @@ def outputfile_check(inputlist, output, dcache):
 
     nfiles = len(inputlist)
     outputlist = []
+
+    # get a configuration server
+    config_host = interface.default_host()
+    config_port = interface.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
+    wrappersizes = csc.get('wrappersizes', {})
     
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
@@ -504,6 +510,52 @@ def outputfile_check(inputlist, output, dcache):
                 else:
                     raise e_errors.UNKNOWN, e_errors.UNKNOWN
 
+            #Make sure the output file system can handle a file as big as
+            # the input file.  Also, make sure that the maximum size that
+            # the wrapper uses is greater than the filesize.
+            if "/pnfs/" == inputlist[i][:6]: #READS
+                #Get the remote pnfs filesize.
+                pin = pnfs.Pnfs(inputlist[i])
+                pin.get_file_size()
+
+                #get the maximum filesize the local filesystem allows.
+                bits = os.pathconf(outputlist[i],
+                                   os.pathconf_names['PC_FILESIZEBITS'])
+                bytes = 2L**(bits - 1) - 1
+
+                #Compare the max sizes.
+                if pin.file_size > bytes:
+                    raise e_errors.USERERROR, \
+                          "Filesize (%s) larger than filesystem allows (%s)." \
+                          % (pin.file_size, bytes)
+
+            else: #WRITES
+                #get the maximum filesize the remote filesystem allows.
+                bits = os.pathconf(outputlist[i],
+                                   os.pathconf_names['PC_FILESIZEBITS'])
+                bytes = 2L**(bits - 1) - 1
+
+                #Get the local filesize.
+                statinfo = os.stat(inputlist[i])
+                size = statinfo[stat.ST_SIZE]
+
+                #Get the remote pnfs wrapper.  If the maximum size of the
+                # wrapper isn't in the configuration file, assume 2GB-1.
+                pout = pnfs.Pnfs(outputlist[i])
+                pout.get_file_family_wrapper()
+                wrapper_max = wrappersizes.get(pout.file_family_wrapper,
+                                               MAX_FILE_SIZE)
+
+                #Compare the max sizes.
+                if size> bytes:
+                    raise e_errors.USERERROR, \
+                          "Filesize (%s) larger than filesystem allows (%s)." \
+                          % (size, bytes)
+                elif size > wrapper_max:
+                    raise e_errors.USERERROR, \
+                          "Filesize (%s) larger than wrapper (%s) allows " \
+                          "(%s)." % (size, pout.file_family_wrapper, bytes)
+                
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
             # In principle, this is already taken care of in the
