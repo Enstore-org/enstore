@@ -205,7 +205,7 @@ class EncpError(Exception):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_1  CVS $Revision$ "
+    version_string = "v3_3  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + encp_file
     return version_string
@@ -517,7 +517,8 @@ def is_read(ticket_or_interface):
             return 0
         else:
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
-                            e_errors.BROKEN)
+                            e_errors.BROKEN,
+                            {'infile' : infile, 'outfile' : outfile})
     #If the type is an interface class...
     elif type(ticket_or_interface) == types.InstanceType:
         intype = getattr(ticket_or_interface, 'intype', "")
@@ -528,11 +529,13 @@ def is_read(ticket_or_interface):
             return 0
         else:
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
-                            e_errors.BROKEN)
+                            e_errors.BROKEN,
+                            {'infile' : infile, 'outfile' : outfile})
     #Have no idea what was passed in.
     else:
         raise EncpError(errno.EINVAL, "Expected ticket or interface.",
-                        e_errors.WRONGPARAMETER)
+                        e_errors.WRONGPARAMETER,
+                        {'infile' : infile, 'outfile' : outfile})
 
 #Take as parameter the interface class instance or a request ticket.  Determine
 # if the transfer(s) is/are a write or not.
@@ -1663,7 +1666,8 @@ def inputfile_check(input_files, e):
 
                 if not pnfs.is_pnfs_path(inputlist[i]): #Excludes writes first.
                     raise EncpError(errno.ENOENT, inputlist[i],
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'infile' : inputlist[i]})
                 elif access_check(get_enstore_pnfs_path(inputlist[i]),
                                   os.F_OK):
                     inputlist[i] = get_enstore_pnfs_path(inputlist[i])
@@ -1689,7 +1693,8 @@ def inputfile_check(input_files, e):
 
             # input files can't be directories
             if not stat.S_ISREG(statinfo[stat.ST_MODE]):
-                raise EncpError(errno.EISDIR, inputlist[i], e_errors.USERERROR)
+                raise EncpError(errno.EISDIR, inputlist[i], e_errors.USERERROR,
+                                {'infile' : inputlist[i]})
 
             #For Reads make sure the filesystem size and the pnfs size match.
             if e.intype == "hsmfile":  #inputlist[i][:6] == "/pnfs/":
@@ -1777,22 +1782,27 @@ def outputfile_check(inputlist, outputlist, e):
                 #Check for existance and write permissions to the directory.
                 if not access_check(directory, os.F_OK):
                     raise EncpError(errno.ENOENT, directory,
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'outfile' : outputlist[i]})
 
                 if not os.path.isdir(directory):
                     raise EncpError(errno.ENOTDIR, directory,
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'outfile' : outputlist[i]})
                                         
                 if not access_check(directory, os.W_OK):
                     raise EncpError(errno.EACCES, directory,
-                                    e_errors.USERERROR)
+                                    e_errors.USERERROR,
+                                    {'outfile' : outputlist[i]})
 
                 #Looks like the file is good.
                 outputlist.append(outputlist[i])
                 
             #File exists when run by a normal user.
             elif access_check(outputlist[i], os.F_OK) and not dcache:
-                raise EncpError(errno.EEXIST, outputlist[i],e_errors.USERERROR)
+                raise EncpError(errno.EEXIST, outputlist[i],
+                                e_errors.USERERROR,
+                                {'outfile' : outputlist[i]})
 
             #The file does not already exits and it is a dcache transfer.
             elif not access_check(outputlist[i], os.F_OK) and dcache:
@@ -2104,28 +2114,52 @@ def get_clerks(bfid_or_volume=None):
     # the bfid's brand.
     csc = get_csc(bfid_or_volume)
 
+    if is_volume(bfid_or_volume):
+        volume = bfid_or_volume
+        bfid = None
+    elif is_bfid(bfid_or_volume):
+        volume = None
+        bfid = bfid_or_volume
+    else:
+        volume = None
+        bfid = None
+        
     #If a bfid was passed in, we must obtain the fcc first.  This will
     # find the correct __csc.  The same is true with the vcc if a volume
     # name is passed in.
     if is_volume(bfid_or_volume):
-        vcc = get_vcc(bfid_or_volume)  #Make sure vcc is done before fcc.
+        #Set the volume.
+        volume = bfid_or_volume
+        bfid = None
+        #Get the clerk clients.
+        vcc = get_vcc(volume)  #Make sure vcc is done before fcc.
         fcc = get_fcc(None)
     elif is_bfid(bfid_or_volume):
-        fcc = get_fcc(bfid_or_volume)  #Make sure fcc is done before vcc.
+        #Set the bfid.
+        volume = None
+        bfid = bfid_or_volume
+        #Get the clerk clients.
+        fcc = get_fcc(bfid)  #Make sure fcc is done before vcc.
         vcc = get_vcc(None)
-    else:
+    else: #Go with the defaults.
+        volume = None
+        bfid = None
         fcc = get_fcc(None)
         vcc = get_vcc(None)
-        
+
+    e_ticket = {}
+    if volume:
+        e_ticket = {'volume' : volume}
+
     if not fcc or fcc.server_address == None:
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
-                        e_errors.NET_ERROR)
+                        e_errors.NET_ERROR, e_ticket)
     
     if not vcc or vcc.server_address == None:
         raise EncpError(errno.ENOPROTOOPT,
                         "Volume clerk not available",
-                        e_errors.NET_ERROR)
+                        e_errors.NET_ERROR, e_ticket)
 
     # we only have the correct crc now (reads)
     acc = accounting_client.accClient(csc, logname = 'ENCP')
@@ -2964,7 +2998,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #If this is the longer form, add these values to the ticket.
         if len(msg.args) >= 7:
             EXfer_ticket['bytes_transfered'] = request['file_size'] - \
-                                               EXfer_rtn[4]
+                                               msg.args[4]
             EXfer_ticket['bytes_not_transfered'] = msg.args[4]
             EXfer_ticket['read_time'] = msg.args[5]
             EXfer_ticket['write_time'] = msg.args[6]
@@ -4783,13 +4817,17 @@ def write_to_hsm(e, tinfo):
         request_list = create_write_requests(callback_addr, routing_addr,
                                              e, tinfo)
     except (OSError, IOError, EncpError), msg:
-        if hasattr(msg, "type"):
-            error = msg.type
-        else:
+        if isinstance(msg, EncpError):
+            e_ticket = msg.ticket
+            if not e_ticket.get('status', None):
+                e_ticket['status'] = (msg.type, str(msg))
+        else:  #OSError or IOError
             error = errno.errorcode.get(getattr(msg, "errno", None),
                                         errno.errorcode[errno.ENODATA])
-        print_data_access_layer_format(
-            "", "", 0, {'status':(error, str(msg))})
+            e_ticket = {'status' : (e_errors.OSERROR, error)}
+
+        #Print the error and exit.
+        print_data_access_layer_format("", "", 0, e_ticket)
         quit()
 
     #If this is the case, don't worry about anything.
@@ -5859,7 +5897,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if not pnfsid:
                 raise EncpError(None,
                                 "Unable to obtain pnfsid from file clerk.",
-                                e_errors.CONFLICT)
+                                e_errors.CONFLICT,
+                                {'fc' : fc_reply, 'vc' : vc_reply})
                 #print_data_access_layer_format(
                 #    e.get_bfid, e.output[0], 0,
                 #    {'status':(e_errors.KEYERROR,
