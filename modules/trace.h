@@ -33,13 +33,17 @@ traceOnOff( int on, int mask, char *id, unsigned lvl1, unsigned lvl2 );
 char *
 trc_basename(  char	*name, char	cc );
 
-extern int			trc_sem_id;
-extern pid_t			trc_pid;
-extern int			trc_tid;
-extern int			*trc_lvl_ip;
-extern struct s_trc_cntl	*trc_cntl_sp;
-extern struct s_trc_ent		*trc_ent_sp;
-extern struct sembuf		trc_sem_get_s, trc_sem_put_s;
+extern	int			trc_sem_id;
+extern	pid_t			trc_pid;
+extern	int			trc_tid;
+extern	int			*trc_lvl_ip;
+extern	struct s_trc_cntl	*trc_cntl_sp;
+extern	struct s_trc_ent	*trc_ent_sp;
+extern	struct sembuf		trc_sem_get_s, trc_sem_put_s;
+extern	int			trc_super;
+#define TRC_NUM_OPERATIONS	4 /* circQPut, usrOp1, usrOp2, prnt */
+extern	int			trc_lvl_non_maskable[TRC_NUM_OPERATIONS];
+extern	int			trc_mode_non_maskable;
 
 
 /*
@@ -93,8 +97,6 @@ struct s_trc_ent
     int			params[TRC_MAX_PARAMS];
     struct timeval	time;	/* ref gettimeofday(2), ctime(3) */
 };
-
-#define TRC_NUM_OPERATIONS	4 /* circQPut, prnt, usrOp1, usrOp2 */
 
 struct s_trc_cntl
 {

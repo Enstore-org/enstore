@@ -51,7 +51,9 @@ void			trc_init_entry(int,const char*); /* fwd decl */
 oper_func_t		trc_print; /* forward declaration */
 oper_func_t		*trc_op1_fp=trc_print; /* default */
 oper_func_t		*trc_op2_fp=trc_print; /* default */
-
+int			trc_super=0;/* "super user" - for no "non-maskable" */
+int			trc_lvl_non_maskable[TRC_NUM_OPERATIONS] = {0,1,0x3f};
+int			trc_mode_non_maskable = 6;
 
 /******************************************************************************
  *  Main init file called by user code.  Inits the pre-process globals
@@ -440,7 +442,11 @@ traceOnOff( int on, int mask, char *id_s, unsigned lvl1, unsigned lvl2 )
 		{   if (!(mask&(1<<ii))) continue;
 		    old_lvl = trc_cntl_sp->lvl_a[id_i][ii];
 		    if (on)  trc_cntl_sp->lvl_a[id_i][ii] |=  new_msk;
-		    else     trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+		    else     
+		    {        trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+			 if (!trc_super)
+			     trc_cntl_sp->lvl_a[id_i][ii] |= trc_lvl_non_maskable[ii];
+		    }
 		}
 	    }
 	    return (1);
@@ -453,7 +459,11 @@ traceOnOff( int on, int mask, char *id_s, unsigned lvl1, unsigned lvl2 )
 	    {   if (!(mask&(1<<ii))) continue;
 		old_lvl = trc_cntl_sp->intl_lvl[ii];
 		if (on)  trc_cntl_sp->intl_lvl[ii] |=  new_msk;
-		else     trc_cntl_sp->intl_lvl[ii] &= ~new_msk;
+		else     
+		{        trc_cntl_sp->intl_lvl[ii] &= ~new_msk;
+		     if (!trc_super)
+			 trc_cntl_sp->intl_lvl[ii] |= trc_lvl_non_maskable[ii];
+		}
 	    }
 	    return (1);
 	}
@@ -480,7 +490,11 @@ traceOnOff( int on, int mask, char *id_s, unsigned lvl1, unsigned lvl2 )
     {   if (!(mask&(1<<ii))) continue;
 	old_lvl = trc_cntl_sp->lvl_a[id_i][ii];
 	if (on)  trc_cntl_sp->lvl_a[id_i][ii] |=  new_msk;
-	else     trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+	else     
+	{        trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+	     if (!trc_super)
+		 trc_cntl_sp->lvl_a[id_i][ii] |= trc_lvl_non_maskable[ii];
+	}
     }
 
     return (old_lvl);

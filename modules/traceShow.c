@@ -119,25 +119,36 @@ main(  int	argc
 	exit_sts = traceReset();
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceMode") == 0)
-    {   int	arg, mode;
+    {   int	arg, mode, optVerbose=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
-	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
+	    else if (strcmp(argv[arg],"-v")   == 0)   optVerbose=1;
+	    else if (strcmp(argv[arg],"-key") == 0)   OPT_ARG(trc_key_file);
+	    else if (strcmp(argv[arg],"-super") == 0)    trc_super = 1;
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] <0-15>\n"
 			, trc_basename(argv[0],'/') );
-		fprintf(  stderr, "valid option: --version\n" );
+		fprintf(  stderr, "valid option: -v, --version, -key\n" );
 		exit( 1 );
 	    }
 	}
-	if (   (argc-arg<1)
-	    || (sscanf(argv[1],"%d",&mode)!=1)
+	if ((argc-arg) == 0)
+	{   trace_init_trc( trc_key_file );
+	    printf( "%d\n", trc_cntl_sp->mode );
+	    exit (0);
+	}
+	if (   (argc-arg>1)
+	    || (sscanf(argv[arg],"%d",&mode)!=1)
 	    || ((mode<0)||(mode>15)))
-	{   fprintf( stderr, "usage: %s <0-15>\n", trc_basename(argv[0],'/') );
+	{   fprintf( stderr, "usage: %s [-v] <0-15>\n", trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
 	trace_init_trc( trc_key_file );
 	exit_sts = traceMode( mode );
+	if (optVerbose)  printf( "old val: %d new val: %d\n", exit_sts, mode );
+	else             printf( "%d\n", exit_sts );
+	exit_sts = 0;
+	trc_super = 0;
     }
     else if (strncmp(trc_basename(argv[0],'/'),"traceO",6) == 0)
     {   unsigned	arg, lvl1, lvl2;
@@ -147,6 +158,7 @@ main(  int	argc
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"-modes") == 0)    OPT_ARG(modes);
+	    else if (strcmp(argv[arg],"-super") == 0)    trc_super = 1;
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] " O_USAGE "\n"
 			, trc_basename(argv[0],'/') );
@@ -165,6 +177,7 @@ main(  int	argc
 	exit_sts = traceOnOff(  (strcmp(trc_basename(argv[0],'/'),"traceOn")==0)?1:0
 			      , atoi(modes), argv[1+arg-1], lvl1, lvl2 );
 	printf( "old lvl: 0x%08x\n", exit_sts );
+	trc_super = 0;
     }
 
     exit( exit_sts );
@@ -463,8 +476,8 @@ traceMode( int mode )
 
     _r_ = trc_cntl_sp->mode;
 
+    if (!trc_super) mode |= trc_mode_non_maskable;
     trc_cntl_sp->mode = mode;
-    printf( "old val: %d new val: %d\n", _r_, mode );
 
     return (_r_);
 }   /* traceMode */
