@@ -2,7 +2,20 @@
 
 BASEPATH=/fnal/ups/prd/www_pages/enstore
 
-if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          robot="AML/J"
+          ;;
+   d0en*) gang=d0en
+          robot="AML/2"
+          ;;
+       *) gang=UNKNOWN
+          robot=UNKNOWN
+          ;;
+esac
+
+if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
   BASE=/diska/aml2Shadow/AMU/LOGS-TRC
   DECODED=/diska/aml2-log
   REPORTED=/diska/aml2-report
@@ -20,25 +33,25 @@ if [ -z "${1-}" ]; then
    fi
 
   #mirror $ENSTORE_DIR/sbin/aml2.mirror
-   mirror $ENSTORE_DIR/sbin/aml2.log.mirror
-   find $BASE -type f -name "log*" -maxdepth 1 -exec $0 {} \;
+   mirror /home/enstore/CRON/aml2.log.mirror
+   find $BASE -type f -name "lo*" -maxdepth 1 -exec $0 {} \;
 
   # make the nice calendar display of log files
-  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
       set -xv
       python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
-             --title="AML/2 Log Files" \
-             --web_host="http://www-d0en.fnal.gov/enstore/aml2log" \
+             --title="$robot Log Files" \
+             --web_host="http://${gang}srv2.fnal.gov/enstore/aml2log" \
              --logfile_dir="$DECODED" \
              --output="$DECODED/aml2_log_file.html" \
-             --caption="AML/2 Log Files"
+             --caption="$robot Log Files"
 
       python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
-             --title="AML/2 Report Files" \
-             --web_host="http://www-d0en.fnal.gov/enstore/aml2rpt" \
+             --title="$robot Report Files" \
+             --web_host="http://${gang}srv2.fnal.gov/enstore/aml2rpt" \
              --logfile_dir="$REPORTED" \
              --output="$REPORTED/aml2_report_file.html" \
-             --caption="AML/2 Summary Report Files"
+             --caption="$robot Summary Report Files"
   fi
 
 
@@ -53,19 +66,38 @@ else
        REPORTED=$BASEPATH/aml2rpt
     fi
 
-    asc=$DECODED/`basename $1`.ascii
-    arpt=$REPORTED/`basename $1`.rpt
+    fname=`basename $1`
     thisYear=`date +%Y`
     year=$thisYear  # THIS IS A PROBLEM WHEN THE YEAR ROLLS OVER!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    month=`basename $1 | cut -b6-7`
+    if [ `echo $fname | grep -c log` -ne 0 ]; then
+      binary=1
+      month=`echo $fname | cut -b6-7`
+      day=`echo $fname | cut -b8-9`
+      asc=$DECODED/$fname.ascii
+      arpt=$REPORTED/$fname.rpt
+    elif [ `echo $fname | grep -c lo` -ne 0 ]; then
+      binary=0
+      month=`echo $fname | cut -b5-6`
+      day=`echo $fname | cut -b7-8`
+      asc=$DECODED/log$day$month.ascii #force old format for now (until AML/2 upgraded)
+      arpt=$REPORTED/log$day$month.rpt #force old format for now (until AML/2 upgraded)
+    else
+      return
+    fi
     HISTORY=history
-    zipped=$DECODED/$HISTORY/$year/$month/`basename $1`.ascii.gz
+    zipped=$DECODED/$HISTORY/$year/$month/$fname.ascii.gz
     stash=0
     if [ ! -r $zipped ]; then
       if [ ! -r $asc -o $asc -ot $1 ]; then
          echo $asc
-         nice -n 20 $ENSTORE_DIR/sbin/dump_aml2_log.py $1 > $asc
+         if [ $binary -eq 1 ]; then
+           nice -n 20 $ENSTORE_DIR/sbin/dump_aml2_log.py $1 > $asc
+         else
+           cp $1 $asc
+         fi
+         chmod 644 $asc
          nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
+         chmod 644 $arpt
       fi
     fi
 fi

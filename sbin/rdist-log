@@ -3,8 +3,17 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # information specific to Fermilab
-thisNode='d0ensrv2'
-rdistNode='d0ensrv3.fnal.gov'
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+thisNode=${gang}srv2
+rdistNode=${gang}srv3.fnal.gov
 filePath='/diska'
 
 # bin/$RCSfile$  $Revision$
@@ -22,7 +31,6 @@ doit() { echo "$1"
 
 if [ `uname -n | grep -c ${thisNode}` -ne 0 ]; then
 
- # cmd="rdist -c /diska/enstore-log/ enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
  cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force ${filePath}/enstore-log/*LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
  doit "$cmd"
 

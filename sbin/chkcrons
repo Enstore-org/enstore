@@ -2,6 +2,16 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
 # the first parameter is the base.  if not entered, use the default
 if [ $# -ge 1 ] ; 
 then
@@ -13,7 +23,7 @@ fi
 
 convert=/usr/bin/X11/convert
 
-if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
   base=/diska/CRONS
 fi
 

@@ -126,7 +126,19 @@ fi
 cd $ENSTORE_DIR
 check_status $? "cd $ENSTORE_DIR"
 #FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
-FLAVOR=`$UPS_DIR/bin/ups flavor -2`
+#FLAVOR=`$UPS_DIR/bin/ups flavor -2`
+
+# Take care of IRIX+6.5 and Linux+2.2
+
+FLAVOR=`$UPS_DIR/bin/ups flavor -3`
+
+case ${FLAVOR} in
+        IRIX+6.5)
+                ;;
+        *)
+                FLAVOR=`$UPS_DIR/bin/ups flavor -2`
+esac
+
 if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
 fi
@@ -207,7 +219,8 @@ if [ -z "${REV-}" ] ; then
    check_status $? "determining next rev from $last"
    echo "Revision not specified - Defaulting to revison $REV"
 fi
-TAG=${REV}_${product}_`uname`
+TAG=${REV}_${product}_${FLAVOR}
+TAG=`echo ${TAG} | tr "." "_"`
 
 ##############################################################################
 # we need a place to install the cut product
@@ -221,7 +234,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
       pcfarm9*)  INSTALLDIR=/products/$product;;
       hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
-      rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
+      rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/${FLAVOR}
                  setrev=0;;
       d0ola*)    INSTALLDIR=$ENSTORE_DIR/$product #this stinks! but I don't know what else to do
                  puntUPS=1;;
@@ -413,6 +426,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 mkdir $INSTALLDIR/volume_import
                 copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR/encp
                 copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR/enstore
+                copyit $ENSTORE_DIR/src/ENCPBIN/enroute2        $INSTALLDIR/enroute2
+# So far, make setuid installation manual
+#		chmod u+s $INSTALLDIR/enroute2
 #               copyit $ENSTORE_DIR/src/ENCPBIN/enmonitor       $INSTALLDIR/enmonitor
                 copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR/enstore_tape
 		cp     $ENSTORE_DIR/volume_import/*.c           $INSTALLDIR/volume_import/
@@ -422,12 +438,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
                 copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
                 copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
-                copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR/rip.table
-                copyit $ENSTORE_DIR/ups/sam.table               $INSTALLDIR/sam.table
-                cd $INSTALLDIR
-                check_status $? "cd $INSTALLDIR"
-                ln -s sam.table enstore_variables.table
-                check_status $? "ln -s sam.table enstore_variables.table"
+                copyit $ENSTORE_DIR/ups/chooseConfig            $INSTALLDIR/chooseConfig
                 manifest=$INSTALLDIR/.encpCut.manifest
 
               elif [ $product = "enstore" ]; then

@@ -4,6 +4,16 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
 here=`pwd`
 thisYear=`date +%Y`
 thisMonth=`date +%m`
@@ -12,7 +22,7 @@ thisDay=`date +%d`
 
 # let's start with the logs that enstore creates
 if [ -z "${1-}" ] ; then
-  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
     LOGS=/diska/enstore-log
   else
     LOGS=/fnal/ups/prd/www_pages/enstore/log
@@ -47,7 +57,7 @@ find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
 
 # now do it again, but this time for the aml2 robot logs
 if [ -z "${2-}" ] ; then
-  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
     LOGS=/diska/aml2-log
     RPTS=/diska/aml2-report
   else
