@@ -5,35 +5,47 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile udp_send.sh $  $Revision$
 # returns servers configured for a node
 
-USAGE="\
-usage: `basename $0` <host> <port> [work=alive] [additional_ticket]
-    example: `basename $0` work 7528 set_timeout '\"timeout\":1'"
+opts_wo_args='none' # cant be empty
+opts_w_args='work|additional_ticket|tries'
+USAGE="`basename $0` <host> <port>  <timeout> [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 if [ $# -lt 3 ];then 
     echo "$USAGE"
     exit 1
-fi
-
-host=$1
-port=$2
-timeout=$3
-
-if [ "${4-}" ];then
-    work=$4
 else
-    work=alive
+    host=$1
+    port=$2
+    timeout=$3
+    shift 3
 fi
-if [ "${4-}" ];then
-    additional=,$4
+while opt=`expr "${1-}" : '--\(.*\)'`;do
+    shift
+    eval "case \$opt in
+    \\?) echo \"$USAGE\"; exit 0;;
+    $opts_wo_args)
+        eval opt_\$opt=1;;
+    $opts_w_args)
+        if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
+        eval opt_\$opt=\"'\$1'\";shift ;;
+    *)  echo \"invalid option: \$opt\"; exit 1;;
+    esac"
+done
+
+
+# if additional items in the ticket - add the comma
+# maybe the user should be required to specify this since if she were adding
+# more than 1 item, commas would be needed to be added explicitly
+if [ "${opt_additional_ticket-}" ];then
+    additional=,$opt_additional_ticket
 else
     additional=
 fi
-
+echo
 python -c '
 import udp_client
 import sys
 u = udp_client.UDPClient()
 try:
-    t = u.send( {"work":"'$work'"'$additional'}, ("'$host'",'$port'), '$timeout' )
+    t = u.send( {"work":"'${opt_work:-alive}'"'$additional'}, ("'$host'",'$port'), '$timeout', '${opt_tries:-0}' )
     print "t=",t
     sts=0
 except:
