@@ -149,6 +149,10 @@ class Interface:
                 self.logmsg = value
             elif opt == "--alive" :
                 self.alive = 1
+            elif opt == "--alive_rcv_timeout" :
+                self.alive_rcv_timeout = string.atoi(value)
+            elif opt == "--alive_retries" :
+                self.alive_retries = string.atoi(value)
             elif opt == "--timeout" :
                 self.timeout = string.atoi(value)
             elif opt == "--get_timeout" :

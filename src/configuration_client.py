@@ -160,9 +160,9 @@ class ConfigurationClient(generic_client.GenericClient) :
         Trace.trace(16,'}load')
 
     # check on alive status
-    def alive(self):
+    def alive(self, rcv_timeout=0, tries=0):
         Trace.trace(10,'{alive config_address='+repr(self.config_address))
-        x = self.u.send({'work':'alive'},self.config_address )
+        x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,tries)
         Trace.trace(10,'}alive '+repr(x))
         return x
 
@@ -199,7 +199,9 @@ class ConfigurationClientInterface(interface.Interface):
         self.dict = 0
         self.load = 0
         self.alive = 0
-	self.get_keys = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
+       	self.get_keys = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -208,7 +210,7 @@ class ConfigurationClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.list_options()+\
-	       ["config_file=","config_list","get_keys","dict","load","alive"] + \
+	       ["config_file=","config_list","get_keys","dict","load","alive","alive_rcv_timeout=","alive_retries="] + \
 	       self.help_options()
 
 if __name__ == "__main__":
@@ -226,7 +228,7 @@ if __name__ == "__main__":
     stat = (e_errors.OK, None)
 
     if intf.alive:
-        stati = csc.alive()
+        stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
         if intf.list:
             pprint.pprint(stati)
     elif intf.dict:

@@ -23,13 +23,13 @@ class Inquisitor(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
         Trace.trace(10,'}__init')
 
-    def send (self, ticket):
+    def send (self, ticket, rcv_timeout=0, tries=0):
         Trace.trace(12,"{send"+repr(ticket))
         # who's our inquisitor server that we should send the ticket to?
         vticket = self.csc.get("inquisitor")
         # send user ticket and return answer back
         Trace.trace(12,"send addr="+repr((vticket['hostip'], vticket['port'])))
-        s = self.u.send(ticket, (vticket['hostip'], vticket['port']) )
+        s = self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries )
         Trace.trace(12,"}send"+repr(s))
         return s
 
@@ -65,6 +65,8 @@ class InquisitorClientInterface(interface.Interface):
 	self.timeout = 0
 	self.get_timeout = 0
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -75,7 +77,7 @@ class InquisitorClientInterface(interface.Interface):
     def options(self):
         Trace.trace(16,"{}options")
         return self.config_options()+self.list_options()  +\
-               ["config_list","timeout=","get_timeout", "update","alive",""] +\
+               ["config_list","timeout=","get_timeout", "update","alive","alive_rcv_timeout=","alive_retries=",""] +\
                self.help_options()
 
 
@@ -94,7 +96,7 @@ if __name__ == "__main__" :
                           intf.config_port)
 
     if intf.alive:
-        ticket = iqc.alive()
+        ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.update:
         ticket = iqc.update()

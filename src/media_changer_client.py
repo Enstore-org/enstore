@@ -27,9 +27,9 @@ class MediaChangerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
 
     # send the request to the Media Changer server and then send answer to user
-    def send (self, ticket) :
+    def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.media_changer)
-        return  self.u.send(ticket, (vticket['hostip'], vticket['port']))
+        return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
     def loadvol(self, external_label, drive):
         ticket = {'work'           : 'loadvol',
@@ -50,6 +50,8 @@ class MediaChangerClientInterface(interface.Interface):
         self.config_list = 0
         self.config_file = ""
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         self.media_changer = ""
         self.volume = 0
         self.drive = 0
@@ -61,7 +63,7 @@ class MediaChangerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.list_options() +\
-               ["config_list", "config_file=", "alive"] +\
+               ["config_list", "config_file=", "alive","alive_rcv_timeout=","alive_retries="] +\
                self.help_options()
 
     #  define our specific help
@@ -101,7 +103,7 @@ if __name__ == "__main__" :
                             intf.config_host, intf.config_port)
 
     if intf.alive:
-        ticket = mcc.alive()
+        ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     else:
         ticket = mcc.unloadvol(intf.volume, intf.drive)
         print 'unload returned:' + ticket['status']

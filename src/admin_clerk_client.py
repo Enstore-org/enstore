@@ -22,9 +22,9 @@ class AdminClerkClient(generic_client.GenericClient) :
         self.u = udp_client.UDPClient()
 
     # send the request to the volume clerk server and then send answer to user
-    def send (self, ticket) :
+    def send (self, ticket, rcv_timeout=0, tries=0) :
         aticket = self.csc.get("admin_clerk")
-        return  self.u.send(ticket, (aticket['hostip'], aticket['port']))
+        return  self.u.send(ticket, (aticket['hostip'], aticket['port']), rcv_timeout, tries)
 
     def select(self,criteria,dbname):
         # get a port to talk on and listen for connections
@@ -100,6 +100,8 @@ class AdminClerkClientInterface(interface.Interface) :
     def __init__(self):
         self.config_list = 0
         self.alive=0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         self.set_dbname()
         self.criteria={}
 
@@ -112,7 +114,7 @@ class AdminClerkClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options()+self.list_options() +\
-               ["config_list", "alive", "dbname=", "faccess=",
+               ["config_list", "alive","alive_rcv_timeout=","alive_retries=","dbname=", "faccess=",
                 "laccess=","declared=","capacity=","rem_bytes=",] +\
                self.help_options()
 
@@ -177,7 +179,7 @@ if __name__ == "__main__" :
                            intf.config_port)
 
     if intf.alive:
-        ticket = acc.alive()
+        ticket = acc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     else :
 	if intf.dbname=="file" and len(acc.criteria)>0:
 	   for key in acc.criteria.keys():

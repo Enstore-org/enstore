@@ -22,11 +22,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
 
-    def send (self, ticket) :
+    def send (self, ticket, rcv_timeout=0, tries=0) :
         # who's our library manager that we should send the ticket to?
         lticket = self.csc.get(self.name)
         # send user ticket and return answer back
-        return self.u.send(ticket, (lticket['hostip'], lticket['port']) )
+        return self.u.send(ticket, (lticket['hostip'], lticket['port']), rcv_timeout, tries )
 
 
     def write_to_hsm(self, ticket) :
@@ -95,6 +95,8 @@ class LibraryManagerClientInterface(interface.Interface) :
         self.config_list = 0
         self.getwork = 0
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         interface.Interface.__init__(self)
 
 	# parse the options
@@ -103,7 +105,7 @@ class LibraryManagerClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options()+self.list_options() +\
-	       ["config_list", "getwork", "alive"] +\
+	       ["config_list", "getwork", "alive","alive_rcv_timeout=","alive_retries="] +\
 	       self.help_options()
 
     #  define our specific help
@@ -134,7 +136,7 @@ if __name__ == "__main__" :
                                intf.config_host, intf.config_port)
 
     if intf.alive:
-        ticket = lmc.alive()
+        ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     elif  intf.getwork:
         ticket = lmc.getwork(intf.list)
 

@@ -33,12 +33,12 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(10,'}__init__ u='+repr(self.u))
 
     # send the request to the volume clerk server and then send answer to user
-    def send (self, ticket):
+    def send (self, ticket,  rcv_timeout=0, tries=0):
         Trace.trace(16,'{send')
         vticket = self.csc.get("volume_clerk")
         Trace.trace(16,'send to volume clerk '+\
                     repr((vticket['hostip'], vticket['port'])))
-        x = self.u.send(ticket, (vticket['hostip'], vticket['port']))
+        x = self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
         Trace.trace(16,'}send '+repr(x))
         return x
 
@@ -283,6 +283,8 @@ class VolumeClerkClientInterface(interface.Interface):
         Trace.trace(10,'{__init__ vcci')
         self.config_list = 0
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         self.clrvol = 0
         self.backup = 0
         self.vols = 0
@@ -300,7 +302,7 @@ class VolumeClerkClientInterface(interface.Interface):
     def options(self):
         Trace.trace(20,'{}options')
         return self.config_options() + self.list_options()  +\
-               ["config_list", "alive","clrvol", "backup" ] +\
+               ["config_list", "alive","alive_rcv_timeout=","alive_retries=","clrvol", "backup" ] +\
                ["vols","nextvol","vol=","addvol","delvol" ] +\
                self.help_options()
 
@@ -365,7 +367,7 @@ if __name__ == "__main__":
                             intf.config_port)
 
     if intf.alive:
-        ticket = vcc.alive()
+        ticket = vcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     elif intf.backup:
         ticket = vcc.start_backup()
         db.do_backup("volume")

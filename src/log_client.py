@@ -125,10 +125,10 @@ class LoggerClient(generic_client.GenericClient):
 
 
     # check on alive status
-    def alive(self):
+    def alive(self, rcv_timeout=0, tries=0):
         lticket = self.csc.get("logserver")
         return  self.u.send({'work':'alive'},
-                            (lticket['hostip'], lticket['port']))
+                            (lticket['hostip'], lticket['port']), rcv_timeout, tries)
 
 class LoggerClientInterface(interface.Interface):
 
@@ -138,6 +138,8 @@ class LoggerClientInterface(interface.Interface):
         self.test = 0
         self.logit1 = 0
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         interface.Interface.__init__(self)
 
         # fill in the options
@@ -146,7 +148,7 @@ class LoggerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.list_options() +\
-               ["config_list", "config_file=", "test", "logit=", "alive"] +\
+               ["config_list", "config_file=", "test", "logit=", "alive","alive_rcv_timeout=","alive_retries="] +\
                self.help_options()
 
     # our help stuff
@@ -184,7 +186,7 @@ if __name__ == "__main__" :
                         intf.config_list, intf.config_host, intf.config_port)
 
     if intf.alive:
-        ticket = logc.alive()
+        ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.test:
         ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
