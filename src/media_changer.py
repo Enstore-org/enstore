@@ -154,19 +154,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             print 'continuing with reply'
         return (e_errors.OK, 0, None)
 
-    # load volume into the drive;  default, overridden for other media changers
-    def load(self,
-             external_label,    # volume external label
-             drive,             # drive id
-             media_type):       # media type
-        if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-            # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
-            # OUTPUT OF THE PRINTS GO TO THE TERMINAL
-            print "make sure tape %s in in drive %s"%(external_label,drive)
-            time.sleep( self.mc_config['delay'] )
-            print 'continuing with reply'
-        return (e_errors.OK, 0, None)
-
     # unload volume from the drive;  default overridden for other media changers
     def unload(self,
                external_label,  # volume external label
@@ -722,23 +709,6 @@ class Manual_MediaLoader(MediaLoaderMethods):
             os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
         return MediaLoaderMethods.unloadvol(self,ticket)
 
-    # load volume into the drive;
-    def load(self,
-             external_label,    # volume external label
-             drive,             # drive id
-             media_type):       # media type
-        os.system("mc_popup 'Please load %s'"%(external_label,))
-        return ("ok",0, "request successful")
-    
-    # unload volume from the drive
-    def unload(self,
-               external_label,  # volume external label
-               drive,           # drive id
-               media_type):     # media type
-        os.system("mc_popup 'Please unload %s'"%(external_label),)
-        return ("ok",0,"request successful")
-    
-
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
         Trace.log(e_errors.INFO, 'mc: ticket='+repr(inTicket))
@@ -795,9 +765,10 @@ class Manual_MediaLoader(MediaLoaderMethods):
 
         for i in range(driveCleanCycles):
             Trace.log(e_errors.INFO, "clean drive %s, vol. %s"%(drive,v['external_label']))
-            rt = self.load(v['external_label'], drive, v['media_type']) 
+            t = {'vol_ticket':v,'drive_id':drive}
+            rt = self.loadvol(t) 
             time.sleep(cleanTime)  # wait cleanTime seconds
-            rt = self.unload(v['external_label'], drive, v['media_type'])
+            rt = self.unloadvol(t)
         retTicket = vcc.get_remaining_bytes(v['external_label'])
         remaining_bytes = retTicket['remaining_bytes']-1
         vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
