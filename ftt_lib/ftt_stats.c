@@ -510,7 +510,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		free(tmp);
 /***********************************************************************
 *         different drives has different length of a Product Revision Number
-*
+*         for STK T9940A/B it takes bytes 32-39
 */
                 if ((d->prod_id[1] == '9') && (d->prod_id[3] == '4')) {
                     set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
