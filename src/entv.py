@@ -1192,10 +1192,12 @@ def main(intf):
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
         for i in range(len(status_threads)):
-            status_threads[i].join()
+            status_threads[0].join()
+            del status_threads[0]
         Trace.trace(1, "status thread finished")
         for i in range(len(messages_threads)):
-            messages_threads[i].join()
+            messages_threads[0].join()
+            del messages_threads[0]
         Trace.trace(1, "message thread finished")
 
         #Determin if this is a reinitialization (True) or not (False).
