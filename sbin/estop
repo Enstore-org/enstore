@@ -2,4 +2,4 @@ source /usr/local/etc/setups.sh
 setup enstore
 ecmd stop
 /usr/local/bin/zapit mover
-ps auxww | egrep 'python|ecmd|encp|reader|writer|dasadmin|mt '
+ps auxww | egrep 'python|ecmd|encp|reader|writer|dasadmin|mt |db_'
