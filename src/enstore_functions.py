@@ -2,7 +2,6 @@ import time
 import string
 import os
 import exceptions
-import socket
 import tempfile
 import types
 import pwd
@@ -17,6 +16,20 @@ import www_server
 import option
 
 DEFAULTHTMLDIR = "."
+
+# REMOVE THIS FUNCTION AFTER UPDATE ALL SERVERS
+# this is done here to have central exception handling.  it cannot be
+# done in the erc read routine, because we cannot import Trace in that
+# module as Trace imports the erc module
+import socket
+def read_erc(erc, fd=None):
+    try:
+    	msg = erc.read()
+    except socket.error, detail:
+	Trace.log (e_errors.ERROR, 
+		   "socket error - could not read from erc (%s)"%(detail,))
+	return None
+    return msg
 
 # return both the user associated with the uid and the euid.
 def get_user():
@@ -48,18 +61,6 @@ def send_mail(server, message, subject):
     os.system('echo "\t%s" >> %s' % (message, mail_file))
     os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, mail_file,))
     os.system("rm %s"%(mail_file,))
-
-# this is done here to have central exception handling.  it cannot be
-# done in the erc read routine, because we cannot import Trace in that
-# module as Trace imports the erc module
-def read_erc(erc, fd=None):
-    try:
-    	msg = erc.read()
-    except socket.error, detail:
-	Trace.log (e_errors.ERROR, 
-		   "socket error - could not read from erc (%s)"%(detail,))
-	return None
-    return msg
 
 def get_config_dict():
     name = os.environ.get("ENSTORE_CONFIG_FILE", "")

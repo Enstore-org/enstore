@@ -34,6 +34,8 @@ class ConfigurationClient(generic_client.GenericClient):
 	flags = enstore_constants.NO_CSC | enstore_constants.NO_ALARM | \
 		enstore_constants.NO_LOG
 	generic_client.GenericClient.__init__(self, (), MY_NAME, address, flags=flags)
+	self.new_config_obj = None
+	self.saved_dict = {}
 
     #Retrun these values when requested.
     def get_address(self):
@@ -43,6 +45,18 @@ class ConfigurationClient(generic_client.GenericClient):
     def get_retry(self):
         return self.retry
 
+    def do_lookup(self, key, timeout, retry):
+	request = {'work' : 'lookup', 'lookup' : key }
+	while 1:
+	    try:
+		ret = self.send(request, timeout, retry)
+		break
+	    except socket.error:
+		self.output_socket_error("get")
+	self.saved_dict[key] = ret
+	Trace.trace(3, "Get %s config info from server"%(key,))
+	return ret
+
     # return value for requested item
     def get(self, key, timeout=0, retry=0):
         self.timeout = timeout #Remember this.
@@ -50,13 +64,25 @@ class ConfigurationClient(generic_client.GenericClient):
         if key=='configuration_server':
             ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
         else:
-            request = {'work' : 'lookup', 'lookup' : key }
-            while 1:
-                try:
-                    ret = self.send(request, timeout, retry)
-                    break
-                except socket.error:
-                    self.output_socket_error("get")
+	    # if we have a new_config_obj, then only go to the config server if we
+	    # have received a message saying a new one was loaded.
+	    if self.new_config_obj: 
+		print "new config - %s"%(self.new_config_obj.have_new_config(),)
+	    if not self.new_config_obj or self.new_config_obj.have_new_config():
+		# clear out the cached copies
+		self.saved_dict = {}
+		ret = self.do_lookup(key, timeout, retry)
+		if self.new_config_obj:
+		    self.new_config_obj.reset_new_config()
+	    else:
+		# there was no new config loaded, just return what we have.  if we
+		# do not have a stashed copy, go get it.
+		if self.saved_dict.has_key(key):
+		    Trace.trace(3, "Returning %s config info from saved_dict"%(key,))
+		    Trace.trace(3, "saved_dict - %s"%(self.saved_dict,))
+		    ret = self.saved_dict[key]
+		else:
+		    ret = self.do_lookup(key, timeout, retry)
         return ret
 
     # dump the configuration dictionary

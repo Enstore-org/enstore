@@ -24,6 +24,7 @@ import hostaddr
 import dispatching_worker
 import generic_server
 import event_relay_client
+import event_relay_messages
 import monitored_server
 import enstore_constants
 import option
@@ -1162,7 +1163,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def __init__(self, libman, csc):
         self.name_ext = "LM"
         self.csc = csc
-        generic_server.GenericServer.__init__(self, self.csc, libman)
+        generic_server.GenericServer.__init__(self, self.csc, libman,
+					      self.handle_er_msg)
         self.name = libman
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -1195,6 +1197,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
+        # setup the communications with the event relay task
+        self.resubscribe_rate = 300
+        self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, 
                                  self.return_state)
