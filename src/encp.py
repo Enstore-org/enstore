@@ -558,7 +558,7 @@ def is_read(ticket_or_interface):
     else:
         raise EncpError(errno.EINVAL, "Expected ticket or interface.",
                         e_errors.WRONGPARAMETER,
-                        {'infile' : infile, 'outfile' : outfile})
+                        {'is_read() argument' : ticket_or_interface})
 
 #Take as parameter the interface class instance or a request ticket.  Determine
 # if the transfer(s) is/are a write or not.
@@ -2998,7 +2998,7 @@ def submit_one_request(ticket):
 #mode should only contain two values, "read", "write".
 #def open_local_file(filename, e):
 def open_local_file(work_ticket, e):
-    if e.outtype == "hsmfile": #writes
+    if is_write(e):  #.outtype == "hsmfile": #writes
         flags = os.O_RDONLY
     else: #reads
         #Setting the local fd to read/write access on reads from enstore
@@ -7125,7 +7125,7 @@ class EncpInterface(option.Interface):
                           option.DEFAULT_VALUE:option.DEFAULT,
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.VALUE_USAGE:option.REQUIRED,
-                          #option.VALUE_TYPE:option.INTEGER,
+                          #option.VALUE_TYPE:option.INTEGER, #Int or None.
                           option.USER_LEVEL:option.ADMIN,
                           option.FORCE_SET_DEFAULT:option.FORCE},
         option.MAX_RESUBMIT:{option.HELP_STRING:
@@ -7136,7 +7136,7 @@ class EncpInterface(option.Interface):
                              option.DEFAULT_VALUE:option.DEFAULT,
                              option.DEFAULT_TYPE:option.INTEGER,
                              option.VALUE_USAGE:option.REQUIRED,
-                             #option.VALUE_TYPE:option.INTEGER,
+                             #option.VALUE_TYPE:option.INTEGER, #Int or None.
                              option.USER_LEVEL:option.ADMIN,
                              option.FORCE_SET_DEFAULT:option.FORCE},
         option.MMAP_IO:{option.HELP_STRING:
