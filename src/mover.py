@@ -470,7 +470,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
-            except Exceptions.exception, detail:
+            except exceptions.Exception, detail:
                 self.transfer_failed(e_errors.READ_ERROR, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
