@@ -216,6 +216,7 @@ class LibraryManagerMethods:
     # remove all pending works
     def flush_pending_jobs(self, status, external_label=None, jobtype=None):
         Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
+        if not external_label: return
         w = self.pending_work.get(external_label)
         rm_list = []
         while w:
@@ -231,6 +232,7 @@ class LibraryManagerMethods:
     # to identify the work
     def get_work_at_movers(self, external_label):
         rc = {}
+        if not external_label: return rc
         for w in self.work_at_movers.list:
             if w["fc"]["external_label"] == external_label:
                 rc = w
@@ -712,6 +714,7 @@ class LibraryManagerMethods:
     def update_suspect_vol_list(self, external_label, mover):
 	# update list of suspected volumes
 	Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
+        if not external_label: return None
 	vol_found = 0
 	for vol in self.suspect_volumes.list:
 	    if external_label == vol['external_label']:
@@ -1162,10 +1165,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             Trace.trace(13,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
-        if mticket['status'][0] == mover_constants.OFFLINE: # mover finished request and went offline
+        if mticket['state'] == mover_constants.OFFLINE: # mover finished request and went offline
             return
-        if mticket['status'][0] == e_errors.MOVER_BUSY: # mover can not satisfy submitted request
-            if mticket.has_key('returned_work'):
+        if mticket['state'] == e_errors.MOVER_BUSY: # mover can not satisfy submitted request
+            if mticket.has_key('returned_work') and mticket['returned_work']:
                 # put this ticket back into the pending queue
                 rq, status = self.pending_work.put(mticket['returned_work'])
             return
@@ -1173,15 +1176,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # update suspected volume list
 	vol = self.update_suspect_vol_list(mticket['external_label'], 
 				mticket['mover'])
-        Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(repr(w),))
-	if len(vol['movers']) >= self.max_suspect_movers:
-	    w['status'] = (e_errors.NOACCESS, None)
+        Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
+	if vol and len(vol['movers']) >= self.max_suspect_movers:
+            if w:
+                w['status'] = (e_errors.NOACCESS, None)
 
 	    # set volume as noaccess
-	    v = self.vcc.set_system_noaccess(w['fc']['external_label'])
+	    v = self.vcc.set_system_noaccess(mticket['external_label'])
 	    # set volume as read only
 	    #v = self.vcc.set_system_readonly(w['fc']['external_label'])
-	    label = w['fc']['external_label']
+	    label = mticket['external_label']
 
 	    #remove entry from suspect volume list
 	    self.suspect_volumes.remove(vol)
