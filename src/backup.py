@@ -55,7 +55,7 @@ def backup_dbase(dbHome):
 	os.system("rm "+name[:-1])
     os.system("rm *.stat")
 
-def archive_backup(hst_back,hst_local):
+def archive_backup(hst_bck,hst_local,dir_bck):
 
     if hst_bck == hst_local:
 	try:
@@ -104,7 +104,7 @@ def archive_backup(hst_back,hst_local):
 	   sys.exit(1)		   
  
     
-def archive_clean(ago):
+def archive_clean(ago,hst_local,hst_bck,bckHome):
     import stat
     today=time.time()
     day=ago*24*60*60
@@ -138,7 +138,7 @@ if __name__=="__main__":
     import string
     import hostaddr
     Trace.init("BACKUP")
-    Trace.trace(6,"backup called with args "+repr(sys.argv))
+    Trace.trace(6,"backup called with args %s"%(sys.argv,))
 
     if len(sys.argv) > 1 :
 	ago=string.atoi(sys.argv[1])
@@ -146,11 +146,8 @@ if __name__=="__main__":
 	ago=100
 
     try:
-	#dbHome = configuration_client.ConfigurationClient(\
-	#		(interface.default_host(),\
-	#		interface.default_port()), 3).get('database')['db_dir']
-	dbInfo = configuration_client.ConfigurationClient(\
-			(interface.default_host(),\
+	dbInfo = configuration_client.ConfigurationClient(
+			(interface.default_host(),
 			interface.default_port())).get('database')
         dbHome = dbInfo['db_dir']
 	jouHome = dbInfo['jou_dir']
@@ -165,11 +162,8 @@ if __name__=="__main__":
                 "Backup Error: os.chdir(%s): %s"%(dbHome,msg))
 	sys.exit(1)
 
-    #backup_config = configuration_client.ConfigurationClient(\
-    #                    (interface.default_host(),\
-    #                    interface.default_port()), 3).get('backup')
-    backup_config = configuration_client.ConfigurationClient(\
-                        (interface.default_host(),\
+    backup_config = configuration_client.ConfigurationClient(
+                        (interface.default_host(),
                         interface.default_port())).get('backup')
 
     try:
@@ -190,7 +184,7 @@ if __name__=="__main__":
     try:
         hst_bck = backup_config['host']
     except:
-	hst_bck=hst_local
+	hst_bck = hst_local
     logthis(e_errors.INFO, "Start database backup")
     backup_dbase(dbHome)
     logthis(e_errors.INFO, "End database backup")
@@ -201,10 +195,10 @@ if __name__=="__main__":
     os.system("enstore file --backup")
     logthis(e_errors.INFO, "End file backup")
     logthis(e_errors.INFO, "Start moving to archive")
-    archive_backup(hst_bck,hst_local)
+    archive_backup(hst_bck,hst_local,dir_bck)
     logthis(e_errors.INFO, "Stop moving to archive")
     # logthis(e_errors.INFO, "Start cleanup archive")
-    # archive_clean(ago)
+    # archive_clean(ago,hst_local,hst_back,bckHome)
     # logthis(e_errors.INFO, "End  cleanup archive")
     Trace.trace(6,"backup exit ok")
     sys.exit(0)
