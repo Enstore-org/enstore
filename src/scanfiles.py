@@ -23,7 +23,7 @@ from encp import e_access  #for e_access().
 os.access = e_access   #Hack for effective ids instead of real ids.
 
 infc = None
-ff = {}
+ff = {} #File Family cache.
 ONE_DAY = 24*60*60
 
 def usage():
@@ -275,23 +275,44 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if len(sys.argv) == 3 and sys.argv[1] == '--infile':
-        f = open(sys.argv[2])
-        f_list = map(string.strip, f.readlines())
-        f.close()
+        file_object = open(sys.argv[2])
+        file_list = None
+        #f = open(sys.argv[2])
+        #f_list = map(string.strip, f.readlines())
+        #f.close()
     elif len(sys.argv) == 1:
-        f_list = map(string.strip, sys.stdin.readlines())
+        file_object = sys.stdin
+        file_list = None
+        #f_list = map(string.strip, sys.stdin.readlines())
     else:
-        f_list = sys.argv[1:]
+        file_object = None
+        file_list = sys.argv[1:]
+        #f_list = sys.argv[1:]
 
     intf = option.Interface()
     infc = info_client.infoClient((intf.config_host, intf.config_port))
 
-    ff = {}
+    #When the entire list of files/directories is listed on the command line
+    # we need to loop over them.
+    if file_list:
+        for line in file_list:
+            line = line.strip()
+            if line[:2] != '--':
+                try:
+                    check_file(line)
+                except (KeyboardInterrupt, SystemExit):
+                    #If the user does Control-C don't traceback.
+                    break
 
-    for i in f_list:
-        if i[:2] != '--':
+    #When the list of files/directories is of an unknown size from a file
+    # object; read the filenames in one at a time for resource efficiency.
+    elif file_object:
+        line = file_object.readline()
+        while line:
+            line = line.strip()
             try:
-                check_file(i)
+                check_file(line)
             except (KeyboardInterrupt, SystemExit):
                 #If the user does Control-C don't traceback.
                 break
+            line = file_object.readline()
