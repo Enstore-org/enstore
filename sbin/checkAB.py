@@ -6,6 +6,7 @@ import sys
 import os
 import option
 import file_clerk_client
+import volume_clerk_client
 import e_errors
 import pprint
 
@@ -14,6 +15,7 @@ f_p = string.split(f_prefix, '/')
 f_n = len(f_p)
 
 fcc = None
+vcc = None
 e_count = 0
 
 _mtab = None
@@ -177,6 +179,13 @@ def check(f):
 		print 'ERROR'
 		return
 
+	# check A file. It should have no A-file
+	fa = a_path(f)
+	if os.access(fa, os.F_OK):
+		error(fb+' already exist')
+		print 'ERROR'
+		return
+
 	f_o = pnfs.File(f)
 	if len(f_o.__dict__) < 11:
 		error(' missing layer 4')
@@ -254,6 +263,7 @@ if __name__ == '__main__':
 	# initialize file clerk client
 	intf = Interface()
 	fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
+	vcc = volume_clerk_client.VolumeClerkClient(fcc.csc)
 
 	te_count = 0
 	if sys.argv[1] == '-f':
@@ -273,6 +283,13 @@ if __name__ == '__main__':
 	elif sys.argv[1] == '-v':
 		for v2 in sys.argv[2:]:
 			print 'checking', v2, '...'
+			vol = vcc.inquire_vol(v2)
+			if vol['staus'] != e_errors.OK:
+				print 'DOES NOT EXIST ... ERROR'
+				continue
+			if vol['system_inhibit'][1] == 'migrated':
+				print 'already migrated ... ERROR'
+				continue
 			result = fcc.list_active(v2)
 			if result['status'][0] == e_errors.OK:
 				for i in result['active_list']:
