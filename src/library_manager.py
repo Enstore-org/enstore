@@ -189,7 +189,7 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 	    w = self.pending_work.get_next()
     # now delete all works in the remove list
     for work in rm_list:
-       self.pending_work.delete_job(w)
+       self.pending_work.delete_job(work)
        
 ##############################################################
 
