@@ -29,10 +29,16 @@ class FTTDriver(driver.Driver):
         if mode not in (0,1):
             raise ValueError, ("illegal mode", mode)
         self.device = device
-        self.mode = mode
-        self.ftt = ftt.open(
-            self.device,
-            {0:ftt.RDONLY, 1:ftt.RDWR}[mode])
+
+        if self.ftt and mode != self.mode:
+            self.ftt.close()
+            self.ftt = None
+            
+        if not self.ftt:
+            self.ftt = ftt.open(
+                self.device,
+                {0:ftt.RDONLY, 1:ftt.RDWR}[mode])
+        
         self._last_rate = 0
         self._rate = 0
         self._bytes_transferred = 0
@@ -49,51 +55,18 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
-##        for retry in xrange(10):
-##            if retry:
-##                if self.verbose: print "retrying status"
-##            status = self.ftt.status(10)
-##            if status & ftt.ONLINE:
-##                break
-##        else:
-##            ftt.raise_ftt()  #this is BADSWMOUNT
-            
-        self._rate = self._last_rate = self._bytes_transferred = 0
-        if self.verbose: print "ftt_open_dev returns", self.fd
-        return self.fd
-
-    def reopen(self, device, mode):
-        if self.verbose: print "ftt reopen"
-        if not self.ftt:
-            raise "XXX reopen, not open"
-        if mode != self.mode:
-            self.ftt.close_dev()
-            return self.open(device, mode)
-
-        else:
-            for retry in xrange(10):
-                if retry:
-                    if self.verbose: print "retrying open"
-                try:
-                    self.fd = self.ftt.open_dev()
-                    break
-                except ftt.FTTError, detail:
-                    print detail, detail.errno
-                    if detail.errno == ftt.EBUSY:
-                        time.sleep(5)
-                    else:
-                        break
         for retry in xrange(10):
+            if retry:
+                if self.verbose: print "retrying status"
             status = self.ftt.status(10)
             if status & ftt.ONLINE:
                 break
         else:
-            ftt.raise_ftt() #BADSWMOUNT
-
+            ftt.raise_ftt()  #this is BADSWMOUNT
+            
         self._rate = self._last_rate = self._bytes_transferred = 0
-        if self.verbose: print "reopen: ftt_open_dev returns", self.fd
+        if self.verbose: print "ftt_open_dev returns", self.fd
         return self.fd
-
     
     def rewind(self):
         r = self.ftt.rewind()
