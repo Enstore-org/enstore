@@ -43,6 +43,7 @@ import generic_server
 import event_relay_client
 import monitored_server
 import enstore_constants
+import event_relay_messages
 import e_errors
 import hostaddr
 import Trace
@@ -152,6 +153,14 @@ class Logger(  dispatching_worker.DispatchingWorker
 	ticket["logfiles"] = lfiles
         self.send_reply(ticket)
 
+    def is_encp_xfer_msg(self, msg):
+	if string.find(msg, Trace.MSG_ENCP_XFER) == -1:
+	    # sub-string not found
+	    rtn = 0
+	else:
+	    rtn = 1
+	return rtn
+
     # log the message recieved from the log client
     def log_message(self, ticket) :
         if not ticket.has_key('message'):
@@ -175,6 +184,10 @@ class Logger(  dispatching_worker.DispatchingWorker
             self.debug_logfile.flush()
             self.repeat_count=0
         self.last_message=message
+
+	# alert the event relay if we got an encp transfer message.
+	if self.is_encp_xfer_msg(message):
+	    Trace.notify(event_relay_messages.ENCPXFER)
 
         # format log message
         message = "%.2d:%.2d:%.2d %s\n" %  (tm[3], tm[4], tm[5], message)
