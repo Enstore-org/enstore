@@ -376,8 +376,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.default_dismount_delay = self.config.get('dismount_delay', 60)
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
-        self.max_dismount_delay = self.config.get('max_dismount_delay', 600)
-        
+        self.max_dismount_delay = max(
+            self.config.get('max_dismount_delay', 600),
+            self.default_dismount_delay)
+
         self.libraries = []
         lib_list = self.config['library']
         if type(lib_list) != type([]):
@@ -1329,6 +1331,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'buffer_max': self.buffer.max_bytes,
                  'rate of network': self.net_driver.rates()[0],
                  'rate of tape': self.tape_driver.rates()[0],
+                 'default_dismount_delay': self.default_dismount_delay,
+                 'max_dismount_delay': self.max_dismount_delay,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
