@@ -24,7 +24,8 @@ last_access = 0
 capacity = 0
 remaining_bytes = 0
 system_inhibit = ""
-   
+
+la_time = '(unknown)'   
 form = cgi.FieldStorage()
 volume = form.getvalue("volume", "unknown")
 
