@@ -137,3 +137,7 @@ INQWORKDBG = 9
 
 # other Trace.trace levels
 DISPWORKDBG = 7
+
+#List of well known ports (other than the config server).
+EVENT_RELAY_PORT = 55510
+MONITOR_PORT = 7499
