@@ -65,7 +65,7 @@ def archive_clean(ago):
        for name in os.listdir(bckHome):
 	statinfo=os.stat(bckHome+"/"+name)
 	if statinfo[stat.ST_MTIME] < lastday :
-	   cmd="rm -r "+bckHome+"/"+name
+	   cmd="rm -rf "+bckHome+"/"+name
 	   print cmd
 	   ret=os.system(cmd)
 	   if ret !=0 :
@@ -79,7 +79,7 @@ def archive_clean(ago):
 		print name
 		if name :
 		   if name != bckHome:
-		      cmd="rsh "+hst_bck+" 'rm -r "+name+"'"
+		      cmd="rsh "+hst_bck+" 'rm -rf "+name+"'"
 		      print cmd
 		      ret=os.system(cmd)
 		      if ret != 0 :
