@@ -395,16 +395,35 @@ class EnStatus:
         Trace.trace(12,"}format_moverstatus ")
 	return string
 
-class EnStatusFile:
+class EnFile:
+
+    def __init__(self, file):
+        Trace.trace(10,'{__init__ enfile '+file)
+        self.file_name = file 
+        Trace.trace(10,'}__init__')
+
+
+class EnPlotFile(EnFile):
+
+    # open the file
+    def open(self, verbose=0):
+        Trace.trace(12,"{open "+self.file_name)
+	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
+	                    verbose)
+        self.file = open(self.file_name, 'w')
+        generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
+        Trace.trace(12,"}open")
+
+class EnStatusFile(EnFile):
 
     def __init__(self, file):
         Trace.trace(10,'{__init__ essfile '+file)
-        self.file_name = file 
+	EnFile.__init__(self, file)
 	self.text = {}
         Trace.trace(10,'}__init__')
 
     # open the file
-    def open(self, verbose=0):
+    def open(self, mode='a', verbose=0):
         Trace.trace(12,"{open "+self.file_name)
 	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
 	                    verbose)
@@ -436,7 +455,10 @@ class HTMLStatusFile(EnStatusFile, EnStatus):
 
     def __init__(self, file, refresh, verbose=0):
         Trace.trace(10,'{__init__ htmlstatusfile ')
-	self.refresh = refresh
+	if refresh == -1:
+	    self.refresh = 120
+	else:
+	    self.refresh = refresh
 	self.set_header()
 	EnStatusFile.__init__(self, file)
         Trace.trace(10,'}__init__')
@@ -562,3 +584,37 @@ class AsciiStatusFile(EnStatusFile, EnStatus):
     # get the timestamp value
     def get_max_ascii_size(self):
 	return self.max_ascii_size
+
+class EncpStatusFile(HTMLStatusFile):
+
+    def __init__(self, file, refresh, verbose=0):
+        Trace.trace(10,'{__init__ encpstatusfile ')
+	HTMLStatusFile.__init__(self, file, refresh, verbose)
+        Trace.trace(10,'}__init__')
+
+class EncpDataFile(EnFile):
+
+    def __init__(self, file, inFile):
+        Trace.trace(10,'{__init__ encpdatafile '+file)
+	EnFile.__init__(self, file)
+	self.lines = []
+	try:
+	    os.system("fgrep ENCP "+inFile+"|sort -r> "+file)
+	except:
+	    self.file_name = ""
+	Trace.trace(10,'}__init__')
+
+    def read(self, max_lines):
+	# Now open this file and read in at most numitems lines
+	if not self.file_name == "":
+	    encpfile = open(self.file_name, 'r')
+	    i = 0
+	    while i < max_lines:
+	        l = encpfile.readline()
+	        if l:
+	            self.lines.append(l)
+	            i = i + 1
+	        else:
+	            break
+	    encpfile.close()
+	return self.lines

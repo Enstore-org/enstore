@@ -36,9 +36,6 @@ import Trace
 import e_errors
 import enstore_status
 
-def default_refresh():
-    return 120
-
 def default_timeout():
     return 5
 
@@ -79,7 +76,6 @@ def inq_file_name():
 
 TRUE = 1
 FALSE = 0
-MAX_ENCP_LINES = 50
 LOGFILE_DIR = "logfile_dir"
 LOG_PREFIX = "LOG-"
 START_TIME = "start_time"
@@ -360,11 +356,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_encp(self, key, time):
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
-	lkeys = self.csc.get('logserver')
 	t = self.logc.get_logfile_name()
 	logfile = t['logfile_name']
-	encplines = self.read_encp_file(logfile, lkeys['hostip'], ".encp", \
-	                                self.max_encp_lines, [])
+	encpfile = enstore_status.EncpDataFile(self.parsed_file+".encp",
+	                                       logfile)
+	encplines = encpfile.read(self.max_encp_lines)
 	i = len(encplines)
 	if i < self.max_encp_lines:
 	    # we read in all the encps from the most recent log file. we
@@ -373,40 +369,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.logc.get_last_logfile_name()
 	    logfile2 = t['last_logfile_name']
 	    if (logfile2 != logfile) and (logfile2 != ""):
-	        encplines = self.read_encp_file(logfile2, lkeys['hostip'], \
-	                                        ".encp2", \
-	                                        (self.max_encp_lines - i), \
-	                                        encplines)
+	        encpfile2 = enstore_status.EncpDataFile(self.parsed_file+\
+	                                                ".encp2", logfile2)
+	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	# now we have some info, output it
 	self.essfile.output_encp(encplines, key, self.verbose)
 	self.encpfile.output_encp(encplines, key, self.verbose)
-
-    # generate the file with the encp info in it and read it in
-    def read_encp_file(self, fname, logip, suffix, numitems, encplist=[]):
-	encp_access = TRUE
-	# see if the inq has access to the log dir (perhaps via nfs)
-	try:
-	    os.stat(fname)
-	except:
-	    encp_access = FALSE
-	if encp_access == TRUE:
-	    # first pull out all of the encp info and store it in another file
-	    try:
-	        os.system("fgrep ENCP "+fname+"|sort -r> "+self.parsed_file+\
-	                  suffix)
-	        # Now open this file and read in at most numitems lines
-	        encpfile = open(self.parsed_file+suffix, 'r')
-	        i = 0
-	        while i < numitems:
-	            l = encpfile.readline()
-	            if l:
-	                encplist.append(l)
-	                i = i + 1
-	            else:
-	                break
-	    except:
-	        pass
-	return encplist
 
     # get the default server timeout, either from the inquisitor config dict
     # or from the routine
@@ -736,7 +704,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    else:
 	        ticket["status"] = (e_errors.DOESNOTEXIST, None)
 	else:
-	    t = self.csc.get("inquisitor", self.alive_rcv_timeout, \
+	    t = self.csc.get(self.name, self.alive_rcv_timeout, \
 	                     self.alive_retries)
             self.rcv_timeout = t["timeout"]
 	self.send_reply(ticket)
@@ -771,7 +739,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def set_max_encp_lines(self, ticket):
         Trace.trace(10,"{set_max_encp_lines "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-        self.max_encp_lines = ticket['max_encp_lines']
+	self.max_encp_lines = ticket['max_encp_lines']
 	self.send_reply(ticket)
         Trace.trace(10,"}set_max_encp_lines")
 
@@ -1174,6 +1142,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	Trace.trace(10, '{__init__')
 	self.print_id = "INQS"
 	self.verbose = verbose
+	self.name = "inquisitor"
 	# set a timeout and retry that we will use the first time to get the
 	# inquisitor information from the config server.  we do not use the
 	# passed values because they might have been defaulted and we need to
@@ -1187,13 +1156,12 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	#   remember, in a system, there is only one bfs
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
-	keys = self.csc.get("inquisitor", use_once_timeout, use_once_retry)
-	self.hostip = keys['hostip']
-        Trace.init(keys["logname"])
+	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
 	try:
 	    self.print_id = keys['logname']
 	except:
 	    pass
+        Trace.init(self.print_id)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
 
@@ -1247,7 +1215,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    try:
 	        self.max_encp_lines = keys['max_encp_lines']
 	    except:
-	        self.max_encp_lines = MAX_ENCP_LINES
+	        self.max_encp_lines = 50
 	else:
 	    self.max_encp_lines = max_encp_lines
 
@@ -1280,7 +1248,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             try:
 	        refresh = keys['refresh']
             except:
-	        refresh = default_refresh()
+	        pass
 
 	# get an ascii system status file, and open it
 	self.parsed_file = ascii_file
@@ -1294,7 +1262,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	self.htmlfile = enstore_status.HTMLStatusFile(html_file+self.suffix,\
 	                                              refresh, verbose)
 	self.htmlfile_orig = html_file
-	self.encpfile = enstore_status.HTMLStatusFile(encp_file+self.suffix,\
+	self.encpfile = enstore_status.EncpStatusFile(encp_file+self.suffix,\
 	                                              refresh, verbose)
 	self.encpfile_orig = encp_file
 
@@ -1361,6 +1329,6 @@ if __name__ == "__main__":
             inq.logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
             inq.serve_forever()
         except:
-	    inq.serve_forever_error("inquisitor", inq.logc)
+	    inq.serve_forever_error(inq.name, inq.logc)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
