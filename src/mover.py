@@ -180,7 +180,9 @@ class MoverClient:
     def unbind_volume( self, ticket ):
 	# do any driver level rewind, unload, eject operations on the device
 	if mvr_config['do_eject'] == 'yes':
+            logc.send(log_client.INFO,2,"Performing offline/eject of device"+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
+            logc.send(log_client.INFO,2,"Completed  offline/eject of device"+str(mvr_config['device']))
 
 	# now ask the media changer to unload the volume
 	logc.send(log_client.INFO,2,"Requesting media changer unload")
@@ -250,10 +252,12 @@ def bind_volume( self, external_label ):
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
 	try:
+            logc.send(log_client.INFO,2,"Requesting software mount "+str(external_label)+" "+str(mvr_config['device']))
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
 				      external_label )
+            logc.send(log_client.INFO,2,"Software mount complete "+str(external_label)+" "+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
 	self.vol_info.update( tmp_vol_info )
 	pass
