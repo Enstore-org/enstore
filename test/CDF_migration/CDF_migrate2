@@ -36,7 +36,7 @@ while [ ! -r $copy ]; do
     if [ -r $done ]; then 
        echo `date` $tape already finished
        #exit 0
-       break
+       continue
     fi
     if [ $sp -eq 0 ]; then 
       echo `date` Waiting for $tape to be ready to copy.
@@ -47,7 +47,7 @@ done
 if [ -r $done ]; then 
     echo `date` $tape already finished
     #exit 0
-    break 
+    continue 
 fi
 
 echo `date` Starting copy to B tape for $tape
