@@ -1,8 +1,0 @@
-#!/bin/sh
-
-# we need one parameter which is the alarm msg
-if [ ${#} -ne 1 ]; then exit;fi
-
-. ~enstore/setup-enstore
-
-enstore alarm --raise --root_error="${1}"
