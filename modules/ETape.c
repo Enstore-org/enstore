@@ -22,21 +22,20 @@ raise_ftt_exception(location, ET_desc, va_alist)
 {
   char errbuf[500];
   int sts;
-/*  dealloc and raise exception  */
-  sprintf(errbuf,"Error at %s - FTT reports: %s\n", location, ftt_get_error(ET_desc->ftt_desc));
-  printf("%s\n",errbuf);
+  int errnum;
+  /*  dealloc and raise exception  */
+  sprintf(errbuf,"Error at %s - FTT reports: %s\n", location, ftt_get_error(&errnum));
+  printf("%s errno=%d\n",errbuf,errnum);
   PyErr_SetString(ETErrObject,errbuf);
-/*
-    Clean up
-*/
-  sts=ftt_rewind(ET_desc->ftt_desc);
-  sts=ftt_unload(ET_desc->ftt_desc);
+  /*
+    Could be "freezing tape in drive," so do not rewind or unload
+  */
   sts=ftt_close(ET_desc->ftt_desc);
   if (sts <0)
      printf("error in ftt exceptio\n");
-/*
-        Free the memory we allocated   N.B. WE MUST ALWAYS HAVE OPENED A FTT
-*/
+  /*
+    Free the memory we allocated   N.B. WE MUST ALWAYS HAVE OPENED A FTT
+  */
   free(ET_desc->buffer);
   free(ET_desc);
 
@@ -204,7 +203,8 @@ static char ET_OpenWrite_Doc[] = "Open a tape drive for writing";
    p2 - # of file marks to move before opening
    p3 - block size - writes are accumualted in buffer.
  */
-static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
+static PyObject*
+ET_OpenWrite(PyObject *self, PyObject *args)
 {
   char *fname;
   ET_descriptor *ET_desc; 
@@ -326,6 +326,7 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
       return raise_ftt_exception("ET_CloseWrite_MB", ET_desc);
 
   stbuff = ftt_alloc_stat();
+  /*printf( "ronDBG - setting ftt_debug=4\n" );ftt_debug = 4;*/
   sts=ftt_get_stats(ET_desc->ftt_desc, stbuff);
   if (sts < 0)
     return raise_ftt_exception("ET_ClosePartial", ET_desc);
