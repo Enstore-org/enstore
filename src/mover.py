@@ -174,6 +174,7 @@ class Buffer:
         elif bytes_read<=0: #error
             pass #XXX or raise an exception?
         else: #partial block read
+            Trace.trace(e_errors.INFO, 25, "partial block (%s/%s) read" % (bytes_read,nbytes))
             partial=space[:bytes_read]
             self.push(partial)
             self._freespace(space)
