@@ -1,1 +1,1 @@
-* * * * * $ENSTORE_SBIN/ecron -p delfile -D TRASH_CAN=/rip6a/pnfs/trash/4 delfile -x > /dev/null 2> /dev/null
+* * * * * $ENSTORE_SBIN/ecron -q -p delfile -D TRASH_CAN=/rip6a/pnfs/trash/4 delfile -x > /dev/null 2> /dev/null

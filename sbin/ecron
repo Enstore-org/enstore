@@ -1,6 +1,7 @@
 #!/bin/sh -xv
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 
 # sun nodes need an extended path in order to find all the regular unix commands
 if [ `uname` = SunOS ]; then 
@@ -26,6 +27,10 @@ basename=`basename $0`
 # of the programs is strictly prohibited unless otherwise provided
 # in the license agreement.
 
+if test -w /dev/ttyS0 -a quiet -ne 1; then
+  echo "$start: $0 $@ ...starting" >/dev/ttyS0
+fi
+
 sendMail() {
   filename=$1
   mode=$2
@@ -35,6 +40,10 @@ sendMail() {
      mailaddress="bakken@fnal.gov huangch@fnal.gov"
   fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
+  if test -w /dev/ttyS0 -a quiet -ne 1; then
+    echo "`date`: $0 $@ has failed... sending mail to $mailaddress" >/dev/ttyS0
+    echo < $filename >/dev/ttyS0
+  fi
 }
 
 quit() {
@@ -44,6 +53,9 @@ quit() {
   rmdir $activeFlag   >/dev/null 2>&1
   done=`date +"%Y-%m-%d:%H:%M:%S"`
   echo "$done $code" >> $histogram
+  if test -w /dev/ttyS0 -a quiet -ne 1; then
+    echo "$done: $0 $@ ...finished. code=$code" >/dev/ttyS0
+  fi
   exit $code
 }
 
