@@ -363,11 +363,11 @@ class DispatchingWorker:
                     sent = 1
             except socket.error:
                 Trace.trace(0,"reply_with_list socket error "+\
-                            "add="+repr(address)+\
+                            "add="+repr(self.reply_address)+\
                             str(sys.exc_info()[0])+str(sys.exc_info()[1]))
                 self.enprint(repr(timeofday.tod())+\
                           " reply_with_list socket error\n"+\
-                          repr(address)+"\n"+str(sys.exc_info()[0])+"\n"+\
+                          repr(self.reply_address)+"\n"+str(sys.exc_info()[0])+"\n"+\
 	                  str(sys.exc_info()[1]))
                 time.sleep(3)
 
