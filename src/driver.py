@@ -28,6 +28,11 @@ def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
 
 
 
+
+#setting this to 1 turns on printouts related to "paranoid" checking of VOL1 headers.
+#once this is all working, the printout code should be stripped out
+debug_paranoia=0
+
 class GenericDriver:
 
     # the file location should be a string that will produce an ordered
@@ -186,10 +191,36 @@ class GenericDriver:
         elif type(loc_cookie)==type(0):  loc = loc_cookie
 	if loc == 0: return 1
 	else:        return 0
-	
-    def format_label( self, label ):
-	return ''
 
+    def format_vol1_header( self, label ):
+        if debug_paranoia:  print "driver.format_vol1_header",label
+        r = "VOL1"+label
+        r = r+ (79-len(r))*' ' + '0'
+        if debug_paranoia:  print "return",r,"len", len(r)
+        return r
+
+    def format_eov1_header( self, label, cookie=None ):
+        if debug_paranoia:  print "driver.format_vol1_header",label
+        r = "EOV1"+label
+        if cookie: r=r+' '+cookie
+        r = r+ (79-len(r))*' ' + '0'
+        if debug_paranoia:  print "return",r,"len", len(r)
+        return r
+
+    
+        
+    def check_header( self ):
+        if debug_paranoia:  print "check_header"
+        try:
+            label=self.read(80)
+            if debug_paranoia:  print "label=",label,"len(label)=", len(label)
+            label=string.split(label)[0]
+            typ,val=label[:4],label[4:]
+        except:
+            typ,val=None, None
+        if debug_paranoia:  print "check_header: return",typ,val
+        return typ, val
+        
     def read( self, size_bytes ):
 	return os.read( self.fd, size_bytes )
 
@@ -267,8 +298,7 @@ class  FTTDriver(GenericDriver) :
 		self.cur_loc_cookie = int2loc( self, (0,0,0) )
 		pass
 	else:
-	    self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
-	    FTT.rewind()
+            self.rewind()
 	    pass
 	FTT.close()
 	return None
@@ -290,6 +320,16 @@ class  FTTDriver(GenericDriver) :
 	    raise "driver_ERROR"
 	return None
 
+    def rewind(self):
+        self.cur_loc_cookie=int2loc( self, (0,0,0) )# partition, blk offset, filemarks
+        if debug_paranoia:   print "Calling ftt.rewind"
+        r=FTT.rewind()
+        if debug_paranoia:   print "ftt.rewind returned",r
+        return r
+
+    def skip_fm(self, skip):
+        return FTT.skip_fm(skip)
+        
     def get_stats( self ) :
 	# Note: remaining_bytes is updated in write and
 	# fd_xfer (when opened for write)
@@ -407,15 +447,19 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def tell( self ):
+	pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+	ss = FTT.get_stats()  # update block_loc if we can
+	r = ss['bloc_loc']
+        if r!= None: bb = string.atoi(ss['bloc_loc'])
+        else: Trace.log( e_errors.ERROR, "FTT.get_stats - returned None")
+	# NOTE: I know this makes several times that FTT.get_stats is called!!!
+	self.cur_loc_cookie = int2loc( self, (pp,bb,ff) )
 	return self.cur_loc_cookie
-
+        
     def is_bot( self, loc_cookie ):
         part, block_loc, filenum = loc2int( self, loc_cookie )
 	if filenum == 0: return 1
 	return 0
-
-    def format_label( self, label ):
-	return FTT.format_label( label )
 
     def read( self, size_bytes ):
 	return FTT.read( size_bytes )
