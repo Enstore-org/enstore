@@ -36,6 +36,14 @@ esave
 
 ################################################################################################################################################
 
+# the log server
+
+msg="Logger Server"
+alive=`eping $timeout "python $ENSTORE_DIR/src/log_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list"`
+esave
+
+################################################################################################################################################
+
 # volume clerk
 
 msg="Volume Clerk"

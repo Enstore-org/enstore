@@ -272,7 +272,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         callback.write_tcp_socket(self.control_socket,ticket,
                                   "library_manager getwork, controlsocket")
         self.control_socket.close()
-        sys.exit(0)
+        os._exit(0)
 
 
     # get a port for the data transfer

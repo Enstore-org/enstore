@@ -27,8 +27,8 @@
 
 import sys
 import os
-from SocketServer import *
-from configuration_client import *
+from SocketServer import UDPServer, TCPServer
+from configuration_client import configuration_client
 from callback import send_to_user_callback
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
@@ -42,34 +42,34 @@ list = 0
 class LogMethods(DispatchingWorker) :
 
     def open_logfile(self, logfile_name) :
-	# try to open log file for append
-	if list :
-	    print "opening " + logfile_name
-	try :
-	    self.logfile = open(logfile_name, 'a')
-	    if list :
-		print "opened for append"
-	except :
-	    self.logfile = open(logfile_name, 'w')
-	    if list :
-		print "opened for write"
+        # try to open log file for append
+        if list :
+            print "opening " + logfile_name
+        try :
+            self.logfile = open(logfile_name, 'a')
+            if list :
+                print "opened for append"
+        except :
+            self.logfile = open(logfile_name, 'w')
+            if list :
+                print "opened for write"
 
     # log the message recieved from the log client
     def log_message(self, ticket) :
-	tm = time.localtime(time.time()) # get the local time
-	# format log message
-	message = "%.2d:%.2d:%.2d %-8s %s\n" % \
-		  (tm[3], tm[4], tm[5], 
-		   socket.gethostbyaddr(self.reply_address[0])[0],
-		   ticket['message']) 
-	
-	if list:
-	    print message          # for test
-	res = self.logfile.write(message)    # write log message to the file
-	self.logfile.flush()
-	if list :
-	    pprint.pprint(res)
-	
+        tm = time.localtime(time.time()) # get the local time
+        # format log message
+        message = "%.2d:%.2d:%.2d %-8s %s\n" % \
+                  (tm[3], tm[4], tm[5],
+                   socket.gethostbyaddr(self.reply_address[0])[0],
+                   ticket['message'])
+
+        if list:
+            print message          # for test
+        res = self.logfile.write(message)    # write log message to the file
+        self.logfile.flush()
+        if list :
+            pprint.pprint(res)
+
 """Logger Class. Instance of this class is a log server. Multiple instances
    of this class can run using unique port numbers. But it actually is not
    recommended. It is assumed that the only one Log Server will serve the
@@ -78,29 +78,29 @@ class LogMethods(DispatchingWorker) :
 class Logger(LogMethods, GenericServer, UDPServer) :
 
     def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
-	tm = time.localtime(time.time())          # get the local time
-	day = current_day = tm[2];
-	# form the log file name
-	fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
-	self.logfile_name = logfile_dir_path + "/" + fn
-	# open log file
-	self.open_logfile(self.logfile_name)
-	while 1:
-	    self.handle_request() # this method will eventually call 
-	                          # log_message()
+        tm = time.localtime(time.time())          # get the local time
+        day = current_day = tm[2];
+        # form the log file name
+        fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+        self.logfile_name = logfile_dir_path + "/" + fn
+        # open log file
+        self.open_logfile(self.logfile_name)
+        while 1:
+            self.handle_request() # this method will eventually call
+                                  # log_message()
 
-	    # get local time
-	    tm = time.localtime(time.time())
-	    day = tm[2];
-	    # check if day has been changed
-	    if day != current_day :
-		# day changed: close the current log file
-		self.logfile.close()
-		current_day = day;
-		# and open the new one
-		fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
-		self.logfile_name = logfile_dir_path + "/" + fn
-		self.open_logfile(self.logfile_name)
+            # get local time
+            tm = time.localtime(time.time())
+            day = tm[2];
+            # check if day has been changed
+            if day != current_day :
+                # day changed: close the current log file
+                self.logfile.close()
+                current_day = day;
+                # and open the new one
+                fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+                self.logfile_name = logfile_dir_path + "/" + fn
+                self.open_logfile(self.logfile_name)
 
 if __name__ == "__main__" :
     import getopt
@@ -127,7 +127,7 @@ if __name__ == "__main__" :
         elif opt == "--list" or opt == "--verbose":
             list = 1
         elif opt == "--help" :
-            print "python ", options 
+            print "python ", options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
@@ -144,15 +144,15 @@ if __name__ == "__main__" :
 
     keys = csc.get("logserver")
     if list :
-	pprint.pprint(keys)
-	pprint.pprint(args)
-    logserver =  Logger((keys['host'], keys['port']), LogMethods)    
+        pprint.pprint(keys)
+        pprint.pprint(args)
+    logserver =  Logger((keys['host'], keys['port']), LogMethods)
 
     logserver.set_csc(csc)
-    logserver.serve_forever(keys["log_file_path"])
 
-
-
-
-
-
+    while 1:
+        try:
+            logserver.serve_forever(keys["log_file_path"])
+        except:
+            print sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            continue

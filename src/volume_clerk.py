@@ -602,7 +602,7 @@ class VolumeClerkMethods(DispatchingWorker) :
         callback.write_tcp_socket(self.control_socket,ticket,
                                   "volume_clerk get_vols, controlsocket")
         self.control_socket.close()
-        sys.exit(0)
+        os._exit(0)
 
 
     # get a port for the data transfer
