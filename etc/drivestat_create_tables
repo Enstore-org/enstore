@@ -2,6 +2,7 @@ create table status (
 	drive_sn varchar(32),
 	drive_vendor varchar(32),
 	product_type varchar(32),
+        firmware_version varchar(32),
 	host varchar(32),
 	logical_drive_name varchar(32),
 	stat_type varchar(32),
