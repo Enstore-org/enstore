@@ -36,7 +36,7 @@ EOD = "EOD"  #Don't stop until EOD is reached.
 def get_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v1_18  CVS $Revision$ "
+    version_string = "v1_19  CVS $Revision$ "
     get_file = globals().get('__file__', "")
     if get_file: version_string = version_string + get_file
     return version_string
