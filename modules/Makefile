@@ -3,7 +3,7 @@
 #  $Id$
 #
 
-all:	 Trace Makefile.modules Modules 
+all:	 Trace adler32.a Makefile.modules Modules 
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -50,6 +50,10 @@ installpy: install
 	    cp $$m.py $(installdir)/lib/python$(VERSION)/; \
 	  fi; \
 	done
+
+adler32.a: adler32.c
+	$(CC) -c adler32.c
+	ar cr adler32.a adler32.o
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
