@@ -746,23 +746,6 @@ class HtmlSaagNetworkFile(EnFile):
 	    self.do_write(str(doc))
 
 
-class HtmlStatusOnlyFile(EnFile):
-
-    # we need to save both the file name passed to us and the one we will
-    # write to.  we will create the temp one and then move it to the real
-    # one.
-    def __init__(self, name):
-        EnFile.__init__(self, name+TMP)
-        self.real_file_name = name
-	self.enstore_ball = ""
-
-    def write(self, status, nodes_d):
-        if self.openfile:
-            doc = enstore_html.EnStatusOnlyPage()
-            doc.body(status, nodes_d)
-	    self.do_write(str(doc))
-
-
 class ScheduleFile(EnFile):
 
     def __init__(self, dir, name):

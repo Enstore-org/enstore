@@ -11,7 +11,7 @@ import types
 import os
 import stat
 
-import enstore_functions
+import enstore_functions2
 import e_errors
 import enstore_constants
 import mover_constants
@@ -244,7 +244,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ", 
 						      size=-1)), 
 			align="RIGHT")
-	td.append(HTMLgen.Font("%s"%(enstore_functions.format_time(time.time()),), 
+	td.append(HTMLgen.Font("%s"%(enstore_functions2.format_time(time.time()),), 
 			       html_escape='OFF', size=-1))
 	return td
 
@@ -588,7 +588,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 	skeys = sort_keys(self.data_dict)
         for server in skeys:
             # look for movers
-            if enstore_functions.is_mover(server):
+            if enstore_functions2.is_mover(server):
                 # this is a mover. output its info
                 self.mv_row(server, table)
 	return table
@@ -695,7 +695,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	    tr.append(empty_data())
 	if elem[3] is not enstore_constants.NOMOVER:
 	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
-					     HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+					     HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 								   elem[3],), elem[3])), 
 				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
@@ -731,7 +731,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	    tr.append(empty_data())
 	if elem[3] is not enstore_constants.NOMOVER:
 	    tr.append(HTMLgen.TD("[at%s%s]"%(NBSP, 
-					     HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+					     HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 								   elem[3],), elem[3])), 
 				 html_escape='OFF'))
 	    # keep track of the busy movers so when we create the addtl movers table we do
@@ -918,7 +918,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 				 NBSP, NBSP)
 		td = HTMLgen.TD(txt, colspan=4, html_escape='OFF')
 		for mv in vol[1]:
-		    td.append(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+		    td.append(HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 						    mv), mv))
 		    td.append(" ")
 
@@ -991,7 +991,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 			vol_str = "%s,  "%(vol_str,)
 		ctr = ctr + 1
 		vol_str = "%s %s - %s"%(vol_str, vol[0],
-					enstore_functions.print_list(vol[1]))
+					enstore_functions2.print_list(vol[1]))
 	    else:
 		tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4, 
 				     html_escape='OFF'))
@@ -1083,13 +1083,13 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 						html_escape='OFF')))
 	if qelem.has_key(enstore_constants.MOVER) and \
 	   not qelem[enstore_constants.MOVER] == enstore_constants.NOMOVER:
-	    tr.append(HTMLgen.TD(HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+	    tr.append(HTMLgen.TD(HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 						       qelem[enstore_constants.MOVER],),
 					      qelem[enstore_constants.MOVER])))
 	else:
 	    tr.append(empty_data())
 	tr.append(HTMLgen.TD(HTMLgen.Font("Node", color=BRICKRED)))
-	tr.append(HTMLgen.TD(enstore_functions.strip_node(qelem[enstore_constants.NODE])))
+	tr.append(HTMLgen.TD(enstore_functions2.strip_node(qelem[enstore_constants.NODE])))
 	tr.append(HTMLgen.TD(HTMLgen.Font("Port", color=BRICKRED)))
 	tr.append(HTMLgen.TD(qelem[enstore_constants.PORT]))
 	return tr
@@ -1323,9 +1323,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    if not got_unmonitored_server and self.not_being_monitored(server):
 		got_unmonitored_server = 1
 		first_unmonitored_server = server
-	    if enstore_functions.is_library_manager(server):
+	    if enstore_functions2.is_library_manager(server):
 		shortcut_lm.append(server)
-	    elif not got_movers and enstore_functions.is_mover(server):
+	    elif not got_movers and enstore_functions2.is_mover(server):
                 first_mover = server
 		got_movers = 1
 	# now we have the list of table data elements.  now create the table.
@@ -1379,7 +1379,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def media_changer_rows(self, table, skeys):
 	# now output the media changer information
 	for server in skeys:
-	    if enstore_functions.is_media_changer(server):
+	    if enstore_functions2.is_media_changer(server):
 		if self.not_being_monitored(server):
 		    self.unmonitored_servers.append(self.server_row(server))
 		else:
@@ -1408,12 +1408,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    type = "Reading%s"%(NBSP,)
 	vol = HTMLgen.Href("tape_inventory/%s"%(qelem[enstore_constants.DEVICE]),
 			   qelem[enstore_constants.DEVICE])
-	mover = HTMLgen.Href("%s#%s"%(enstore_functions.get_mover_status_filename(),
+	mover = HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 				      qelem[enstore_constants.MOVER]),
 			     qelem[enstore_constants.MOVER])
 	txt = "%s%s%susing%s%s%sfrom%s%s%sby%s%s"%(type, str(vol), NBSP, NBSP, 
 						   str(mover), NBSP, NBSP,
-		       enstore_functions.strip_node(qelem[enstore_constants.NODE]),
+		       enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 						   NBSP, NBSP, 
 						   qelem[enstore_constants.USERNAME])
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
@@ -1459,7 +1459,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	vol = HTMLgen.Href("tape_inventory/%s"%(qelem[enstore_constants.DEVICE]),
 			   qelem[enstore_constants.DEVICE])
 	txt = "%s%s%sfrom%s%s%sby%s%s%s[%s]"%(type, str(vol), NBSP, NBSP,
-				 enstore_functions.strip_node(qelem[enstore_constants.NODE]),
+				 enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
 				 qelem.get(enstore_constants.REJECT_REASON, ""))
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
@@ -1468,7 +1468,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP, 
 					  qelem[enstore_constants.FILE_FAMILY])
 	txt = "%s%sfrom%s%s%sby%s%s%s[%s]"%(type, NBSP, NBSP,
-				 enstore_functions.strip_node(qelem[enstore_constants.NODE]),
+				 enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
 				 qelem.get(enstore_constants.REJECT_REASON, ""))
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
@@ -1585,7 +1585,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # output all of the library manager rows and their associated movers
     def library_manager_rows(self, table, skeys):
 	for server in skeys:
-	    if enstore_functions.is_library_manager(server):
+	    if enstore_functions2.is_library_manager(server):
 		# this is a library manager. output all of its info
 		rows = self.lm_rows(server)
 		if self.not_being_monitored(server):
@@ -1598,7 +1598,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def mover_row(self, server):
 	# this is a mover. output its info
 	mover_d = self.data_dict.get(server, {})
-	name = self.server_url(server, enstore_functions.get_mover_status_filename(),
+	name = self.server_url(server, enstore_functions2.get_mover_status_filename(),
 			       server)
 	if mover_d.has_key(enstore_constants.STATE) and \
 	   mover_d[enstore_constants.STATE]:
@@ -1630,7 +1630,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # output all of the mover rows 
     def mover_rows(self, table, skeys):
 	for server in skeys:
-	    if enstore_functions.is_mover(server):
+	    if enstore_functions2.is_mover(server):
 		if self.not_being_monitored(server):
 		    self.unmonitored_servers.append(self.mover_row(server))
 		else:
@@ -1739,7 +1739,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
-	    row[1] = enstore_functions.strip_node(row[1])
+	    row[1] = enstore_functions2.strip_node(row[1])
 	    if  len(row) != 4:
 		num_successes = num_successes + 1
 		# this is a normal encp data transfer row
@@ -2027,8 +2027,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	    td.append("%s%s"%(NBSP*3, alarm[0]))
 	    tr = HTMLgen.TR(td)
 	    # remove .fnal.gov
-	    alarm[1] = enstore_functions.strip_node(alarm[1])
-	    tr.append(HTMLgen.TD(enstore_functions.format_time(float(alarm[0]))))
+	    alarm[1] = enstore_functions2.strip_node(alarm[1])
+	    tr.append(HTMLgen.TD(enstore_functions2.format_time(float(alarm[0]))))
 	    for item in alarm[1:]:
 		tr.append(HTMLgen.TD(item))
 	    table.append(tr)
@@ -2080,9 +2080,9 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	akeys = sort_keys(alarms)
 	for akey in akeys:
 	    alarm = alarms[akey].list_alarm()
-	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions.format_time(time.mktime(eval(alarm[0]))))))
+	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions2.format_time(time.mktime(eval(alarm[0]))))))
 	    # remove .fnal.gov
-	    alarm[1] = enstore_functions.strip_node(alarm[1])
+	    alarm[1] = enstore_functions2.strip_node(alarm[1])
 	    for item in alarm[1:]:
 		tr.append(HTMLgen.TD(item))
 	    table.append(tr)
@@ -2185,7 +2185,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		td = HTMLgen.TD(HTMLgen.Image(stamp[0]))
 	    trs.append(td)
 	    trps.append(HTMLgen.TD("%s (%s)%s"%(self.find_label(stamp[0]),
-					    enstore_functions.format_time(stamp[1]), 
+					    enstore_functions2.format_time(stamp[1]), 
 						NBSP*2) , html_escape='OFF'))
 	    if ps:
 		# we have a corresponding ps file
@@ -2509,11 +2509,11 @@ class EnSaagPage(EnBaseHtmlDoc):
 	gs = {}
 	for key in keys:
 	    if not key in ignore:
-		if enstore_functions.is_library_manager(key):
+		if enstore_functions2.is_library_manager(key):
 		    lm[key] = dict[key]
-		elif enstore_functions.is_mover(key):
+		elif enstore_functions2.is_mover(key):
 		    mv[key] = dict[key]
-		elif enstore_functions.is_media_changer(key):
+		elif enstore_functions2.is_media_changer(key):
 		    mc[key] = dict[key]
 		else:
 		    gs[key] = dict[key]
@@ -2695,100 +2695,4 @@ class EnSaagNetworkPage(EnSaagPage):
 	self.trailer(table)
 	self.append(table)
 
-
-class EnStatusOnlyPage(EnSaagPage):
-
-    def __init__(self, title="ENSTORE Production System's Status", 
-		 gif="en_all.gif"):
-	EnBaseHtmlDoc.__init__(self, refresh=370)
-	self.title = title
-	self.script_title_gif = gif
-	self.source_server = "SPAM"
-	self.description = ""
-
-    def table_top(self, cols=1):
-	# create the outer table and its rows	
-	table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
-				  align="LEFT", width="800")
-	tr = empty_row(3)
-	self.script_title(tr)
-	table.append(tr)
-	# only add this info if we know it
-	if self.source_server:
-	    table.append(self.add_source_server(3))
-	tr = HTMLgen.TR(empty_data(3))
-	tr.append(self.add_last_updated())
-	table.append(tr)
-	table.append(empty_row(4))
-	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(size=2, noshade=1), colspan=4)))
-	table.append(empty_row(4))
-	return table
-
-    def add_to_row(self, tr, val, dict, outage_d, offline_d, alt_txt=None):
-	tr.append(self.get_color_ball(dict, val, "RIGHT"))
-	if not alt_txt:
-	    txt = HTMLgen.Font(val, size="+2")
-	else:
-	    txt = HTMLgen.Font(alt_txt, size="+2")
-	if dict.has_key(enstore_constants.URL):
-	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
-	td = self.get_element(dict, val, outage_d, offline_d, txt)
-	td.colspan = 2
-	tr.append(td)
-
-    def add_status_row(self, estatus, txt, table):
-	# this list has the following elements -
-	#     enstore status
-	#     time status obtained
-	#     txt if known down, otherwise a -1
-	#     txt if scheduled outage, otherwise a -1
-	#     value overridden to, otherwise a -1
-	#     web server address
-	status, eftime, offline, outage, override, web_address = estatus
-	# first check the time.  if it is 10 minutes different than ours, enstore is
-	# assumed to be down
-	etime = enstore_functions.unformat_time(eftime)
-	if time.time() - etime > 600 and override == enstore_constants.NONE:
-	    # the time is too far off, make the enstore ball red
-	    status = enstore_constants.DOWN
-	# use the functions already provided so, need to format things a little
-	if offline == enstore_constants.NONE:
-	    offline_d = {}
-	else:
-	    offline_d = {enstore_constants.ENSTORE : offline}
-	if outage == enstore_constants.NONE:
-	    outage_d = {}
-	else:
-	    outage_d = {enstore_constants.ENSTORE : outage}
-	enstat_d = {enstore_constants.ENSTORE : status}
-	if not web_address == enstore_constants.NONE:
-	    enstat_d[enstore_constants.URL] = "%s/enstore/%s"%(web_address,
-							       enstore_constants.SAAGHTMLFILE)
-	if not self.check_for_red(enstat_d, table, 0):
-	    tr = HTMLgen.TR(empty_data())
-	    self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d,
-			    txt)
-	    table.append(tr)
-	else:
-	    # enstore ball is red need to identify it better on the page as to which one
-	    txt = HTMLgen.Font(txt, size="+2", color=BRICKRED)
-	    if enstat_d.has_key(enstore_constants.URL):
-		txt = HTMLgen.Href(enstat_d[enstore_constants.URL], txt)
-	    table.append(HTMLgen.TR(HTMLgen.TD(txt, colspan=4, align="center")))
-
-    def body(self, status_d, txt_d):
-	# create the outer table and its rows
-	table = self.table_top()
-	keys = status_d.keys()
-	keys.sort()
-	for key in keys:
-	    self.add_status_row(status_d[key], " %s (%s)"%(txt_d[key],
-							   status_d[key][1]), table)
-	    table.append(empty_row(4))
-	else:
-	    # add the legend table
-	    table_spacer(table, 4)
-	    table.append(HTMLgen.TR(HTMLgen.TD(self.make_legend_table(), colspan=4)))
-	    self.trailer(table, 4)
-	    self.append(table)
 

@@ -6,12 +6,14 @@ import time
 
 import enstore_functions2
 import enstore_constants
-import enstore_files
+import enstore_html
+import HTMLgen
 
 nodes = {'d0ensrv2' : ' enstore on d0en',
 	 'stkensrv2' : ' enstore on stken',
 	 'cdfensrv2' : ' enstore on cdfen',
 	 }
+TMP = ".tmp"
 DESTDIR = "/tmp/enstore_overall_status"
 MYNAME = "EN_OVERALL_STAT"
 LAST_STATUS_FILE = "last_status"
@@ -19,11 +21,46 @@ LAST_STATUS = "%s/%s.py"%(DESTDIR, LAST_STATUS_FILE)
 LCL_HTML_DIR = "/export/hppc_home/www_enstore/"
 
 DOWN_L = [enstore_constants.DOWN,
-	  enstore_functions.format_time(time.time()),
+	  enstore_functions2.format_time(time.time()),
 	  enstore_constants.NONE,
 	  enstore_constants.NONE,
 	  enstore_constants.NONE,
 	  enstore_constants.NONE]
+
+class HtmlStatusOnlyFile:
+
+    # we need to save both the file name passed to us and the one we will
+    # write to.  we will create the temp one and then move it to the real
+    # one.
+    def __init__(self, name):
+        self.file_name = name+TMP
+        self.openfile = 0
+	self.opened = 0
+        self.real_file_name = name
+
+    def open(self, mode='w'):
+        try:
+            self.openfile = open(self.file_name, mode)
+	    self.opened = 1
+        except IOError:
+            self.openfile = 0
+	    self.opened = 0
+
+    def install(self):
+	# move the file we created to the real file name
+        if (not self.real_file_name == self.file_name) and os.path.exists(self.file_name):
+	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
+
+    def close(self):
+	if self.openfile:
+	    self.openfile.close()
+	    self.openfile = 0
+
+    def write(self, status, nodes_d):
+        if self.openfile:
+            doc = enstore_html.EnStatusOnlyPage()
+            doc.body(status, nodes_d)
+	    self.do_write(str(doc))
 
 def setup_for_files():
     if not os.path.isdir(DESTDIR):
@@ -52,7 +89,7 @@ def mark_enstore_down(status_d, node, last_status_d):
 	# only send mail every approx two hours the node is seen down continuously
 	send_mail = 1
     if send_mail == 1:
-	enstore_functions.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
+	enstore_functions2.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
 				    "Overall status page has Enstore ball for %s as red"%(node,))
     
 def get_last_status():
@@ -67,7 +104,7 @@ def set_last_status(status_d):
 
 def do_work():
     # where are we running, don't have to rcp to there
-    thisNode = enstore_functions.strip_node(os.uname()[1])
+    thisNode = enstore_functions2.strip_node(os.uname()[1])
 
     # fetch the files from the other nodes.  we will put them
     # in /tmp/enstore_status and import them from there
@@ -81,16 +118,16 @@ def do_work():
     # get the last status of the enstore balls
     last_status_d = get_last_status()
     for node in keys:
-	node = enstore_functions.strip_node(node)
+	node = enstore_functions2.strip_node(node)
         # make sure node is up before rcping
-        if enstore_functions.ping(node) == enstore_constants.ALIVE:
+        if enstore_functions2.ping(node) == enstore_constants.ALIVE:
             # this must match with the import below
             NEWFILE = "enstore_status_only_%s"%(node,)
             new_file = "%s/%s.py"%(DESTDIR, NEWFILE)
             if node == thisNode:
                 rtn = os.system("cp %s %s"%(file, new_file))
             else:
-                rtn = enstore_functions.get_remote_file(node, file, new_file)
+                rtn = enstore_functions2.get_remote_file(node, file, new_file)
             if rtn == 0:
                 exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
             else:
@@ -108,7 +145,7 @@ def do_work():
             
     # now create the web page
     filename = "%s/%s"%(LCL_HTML_DIR, enstore_constants.STATUSONLYHTMLFILE)
-    only_file = enstore_files.HtmlStatusOnlyFile(filename)
+    only_file = HtmlStatusOnlyFile(filename)
     only_file.open()
     only_file.write(status_d, nodes)
     only_file.close()
