@@ -73,7 +73,8 @@ SEND_FROM_SERVER = "send_from_server"
 SERVER_CONNECTION_ERROR = "Server connection error"
 CLIENT_CONNECTION_ERROR = "Client connection error"
 
-class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
+class MonitorServer(dispatching_worker.DispatchingWorker,
+                    generic_server.GenericServer):
 
     def __init__(self, csc):
         self.timeout = 10
@@ -84,6 +85,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         Trace.trace(10,
             "Monitor Server at %s %s" %(csc[0], csc[1]))
         dispatching_worker.DispatchingWorker.__init__(self, csc)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME)
 
 	self.running = 1
 
@@ -363,8 +365,6 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def valid_dictionaries(self):
         return (self.help_options,)
-
-config = None
 
 if __name__ == "__main__":
     intf = MonitorServerInterface()

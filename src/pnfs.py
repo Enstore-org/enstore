@@ -571,10 +571,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Get the file system size.
         for i in range(ATTEMPTS):
             try:  
-                file_size = os.stat(file)[stat.ST_SIZE]
+                file_size = long(os.stat(file)[stat.ST_SIZE])
                 break
             except OSError, detail:
                 time.sleep(1)
+            except ValueError:
+                raise OSError(errno.EINVAL,
+                              os.strerror(errno.EINVAL) + ": invalid filesize")
         else:
             raise detail
 
@@ -852,7 +855,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     
     #Snag the cross reference of the file inside self.file.
     #***LAYER 4***
-    def pxref(self, intf):
+    def pxref(self):  #, intf):
         names = ["volume", "location_cookie", "size", "file_family",
                  "original_name", "map_file", "pnfsid_file", "pnfsid_map",
                  "bfid", "origdrive"]
@@ -873,7 +876,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     #Prints out the bfid value for the specified file.
     #***LAYER 1***
-    def pbfid(self, intf):
+    def pbfid(self):  #, intf):
         try:
             self.verify_existance()
             self.get_bit_file_id()
@@ -890,7 +893,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # be here as long as pnfs does not support NFS ver 3 and the filesize
     # is longer than 2GB.
     #***LAYER 4***
-    def pfilesize(self, intf):
+    def pfilesize(self):  #, intf):
         try:
             self.get_file_size()
             print self.file_size
@@ -925,7 +928,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.__init__(intf.filepath)
                 self.pduplicate(intf)
 
-    def penstore_state(self, intf):
+    def penstore_state(self):  #, intf):
         fname = os.path.join(self.dir, ".(config)(flags)/disabled")
         print fname
         if os.access(fname, os.F_OK):# | os.R_OK):
@@ -936,7 +939,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             print "Enstore enabled"
             
-    def ppnfs_state(self, intf):
+    def ppnfs_state(self):  #, intf):
         fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
         if os.access(fname, os.F_OK | os.R_OK):
             f=open(fname,'r')
@@ -996,13 +999,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
     
-    def pio(self, intf):
+    def pio(self):  #, intf):
         print "Feature not yet implemented."
 
         #fname = "%s/.(fset)(%s)(io)(on)" % (self.dir, self.file)
         #os.system("touch" + fname)
     
-    def pid(self, intf):
+    def pid(self):  #, intf):
         try:
             self.get_id()
             print_results(self.id)
@@ -1011,7 +1014,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    def pshowid(self, intf):
+    def pshowid(self):  #, intf):
         try:
             self.get_showid()
             print_results(self.showid)
@@ -1023,7 +1026,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print "A valid pnfs id was not entered."
             return 1
     
-    def pconst(self, intf):
+    def pconst(self):  #, intf):
         try:
             self.get_const()
             print_results(self.const)
@@ -1032,7 +1035,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    def pnameof(self, intf):
+    def pnameof(self):  #, intf):
         try:
             self.get_nameof()
             print_results(self.nameof)
@@ -1044,7 +1047,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print "A valid pnfs id was not entered."
             return 1
         
-    def ppath(self, intf):
+    def ppath(self):  #, intf):
         try:
             self.get_path()
             print_results(self.path)
@@ -1056,7 +1059,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print "A valid pnfs id was not entered."
             return 1
         
-    def pparent(self, intf):
+    def pparent(self):  #, intf):
         try:
             self.get_parent()
             print_results(self.parent)
@@ -1068,7 +1071,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print "A valid pnfs id was not entered."
             return 1
     
-    def pcounters(self, intf):
+    def pcounters(self):  #, intf):
         try:
             self.get_counters()
             print_results(self.counters)
@@ -1077,7 +1080,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    def pcursor(self, intf):
+    def pcursor(self):  #, intf):
         try:
             self.get_cursor()
             print_results(self.cursor)
@@ -1086,7 +1089,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
             
-    def pposition(self, intf):
+    def pposition(self):  #, intf):
         try:
             self.get_position()
             print_results(self.position)
@@ -1095,7 +1098,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    def pdatabase(self, intf):
+    def pdatabase(self):  #, intf):
         try:
             self.get_database()
             print_results(self.database)
@@ -1122,7 +1125,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         os.system("touch .(fset)(disabled)(io)(on)")
         
-    def pup(self, intf):
+    def pup(self):  #, intf):
         if os.environ['USER'] != "root":
             print "must be root to create enstore system-down wormhole"
             return
@@ -1134,7 +1137,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         os.remove("/pnfs/fs/admin/etc/config/flags/disabled")
 
-    def pdump(self, intf):
+    def pdump(self):  #, intf):
         self.dump()
 
 ##############################################################################
@@ -1765,7 +1768,7 @@ class Tag:
             print str(detail)
             return 1
         
-    def ptagrm(self, intf):
+    def ptagrm(self):  #, intf):
         print "Feature not yet implemented."
 
     ##########################################################################
@@ -1951,18 +1954,25 @@ class Tag:
 class N:
     def __init__(self, dbnum):
         self.dir = os.getcwd()
+        self.dbnum = dbnum
 
     # get the cursor information
-    def get_countersN(self, dbnum):
-        fname = os.path.join(self.dir, ".(get)(counters)(%s)"%(dbnum,))
+    def get_countersN(self, dbnum=None):
+        if dbnum != None:
+            fname = os.path.join(self.dir,".(get)(counters)(%s)"%(dbnum,))
+        else:
+            fname = os.path.join(self.dir,".(get)(counters)(%s)"%(self.dbnum,))
         f=open(fname,'r')
         self.countersN = f.readlines()
         f.close()
         return self.countersN
 
     # get the database information
-    def get_databaseN(self, dbnum):
-        fname = os.path.join(".(get)(database)(%s)"%(dbnum,))
+    def get_databaseN(self, dbnum=None):
+        if dbnum != None:
+            fname = os.path.join(self.dir,".(get)(database)(%s)"%(dbnum,))
+        else:
+            fname = os.path.join(self.dir,".(get)(database)(%s)"%(self.dbnum,))
         f=open(fname,'r')
         self.databaseN = f.readlines()
         f.close()
@@ -2246,7 +2256,11 @@ def do_work(intf):
             arg = string.replace(arg, "-", "_")
             for instance in [t, p, n]:
                 if getattr(instance, "p"+arg, None):
-                    rtn = apply(getattr(instance, "p" + arg), (intf,))
+                    try:
+                        #Not all functions use/need intf passed in.
+                        rtn = apply(getattr(instance, "p" + arg), ())
+                    except TypeError:
+                        rtn = apply(getattr(instance, "p" + arg), (intf,))
                     break
             else:
                 print "p%s not found" % arg 

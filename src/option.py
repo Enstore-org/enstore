@@ -664,7 +664,7 @@ class Interface:
                 print line
         sys.exit(0)
 
-    def get_usage_line(self, opts=None): #The opts is legacy from interface.py.
+    def get_usage_line(self): #, opts=None): #The opts is legacy from interface.py.
 
         short_opts = self.getopt_short_options()
         if short_opts:
@@ -988,7 +988,6 @@ class Interface:
     #some_args is used to avoid problems with duplicate arguments on the
     # command line.
     def next_argument(self, argument):
-
         if len(self.some_args) > 1:
             rtn = self.some_args[1]
         else:
@@ -1181,35 +1180,35 @@ class Interface:
             else:
                 return value
     
-    def get_value_type(self, opt_dict, value):
+    def get_value_type(self, opt_dict):  #, value):
         try:
             if opt_dict.get(VALUE_TYPE, STRING) == INTEGER:
-                return int(value)
+                return int   #int(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == FLOAT:
-                return float(value)
+                return float  #float(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
-                return self.parse_range(value)
+                return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
-                return str(value)
+                return str  #str(value)
             else:
-                return value
+                return None  #value
         except ValueError, detail:
             msg = "option %s requires type %s" % \
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
             self.print_usage(msg)
 
-    def get_default_type(self, opt_dict, value):
+    def get_default_type(self, opt_dict):  #, value):
         try:
             if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
-                return int(value)
+                return int  #int(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == FLOAT:
-                return float(value)
+                return float  #float(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
-                return self.parse_range(value)
+                return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
-                return str(value)
+                return str  #str(value)
             else:
-                return value
+                return None  #value
         except ValueError, detail:
             msg = "option %s requires type %s" % \
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
@@ -1236,7 +1235,6 @@ class Interface:
         self.set_extra_values(long_opt, value)
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
-
         #place this inside for some error reporting...
         opt_dict['option'] = "--" + long_opt
 
@@ -1244,13 +1242,18 @@ class Interface:
         if value == None and opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,):
             msg = "option %s requires a value" % (long_opt,)
             self.print_usage(msg)
+
         if value != None and \
            opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,OPTIONAL):
             try:
                 #Get the name to set.
                 opt_name = self.get_value_name(opt_dict, long_opt)
                 #Get the value in the correct type to set.
-                opt_typed_value = self.get_value_type(opt_dict, value)
+                opt_type = self.get_value_type(opt_dict)  #, value)
+                if opt_type != None:
+                    opt_typed_value = apply(opt_type, (value,))
+                else:
+                    opt_typed_value = value
             except SystemExit, msg:
                 raise msg
             except:
@@ -1279,7 +1282,11 @@ class Interface:
                 #Get the value to set.
                 value = self.get_default_value(opt_dict, value)
                 #Get the value in the correct type to set.
-                opt_typed_value = self.get_default_type(opt_dict, value)
+                opt_type = self.get_default_type(opt_dict)  #, value)
+                if opt_type != None:
+                    opt_typed_value = apply(opt_type, (value,))
+                else:
+                    opt_typed_value = value
             except SystemExit, msg:
                 raise msg
             except:
@@ -1302,7 +1309,11 @@ class Interface:
                 #Get the value in the correct type to set.
                 opt_value = self.get_default_value(opt_dict, value)
                 #Get the value in the correct type to set.
-                opt_typed_value = self.get_default_type(opt_dict, opt_value)
+                opt_type = self.get_default_type(opt_dict)  #, opt_value)
+                if opt_type != None:
+                    opt_typed_value = apply(opt_type, (opt_value,))
+                else:
+                    opt_typed_value = opt_value
             except SystemExit, msg:
                 raise msg
             except:
@@ -1312,7 +1323,8 @@ class Interface:
             setattr(self, opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
-            self.some_args = self.some_args[1:]
+            if opt_dict.get(EXTRA_VALUES, None) == None:
+                self.some_args = self.some_args[1:]
 
         #For the cases where this needs to be set also.
         if opt_dict.get(FORCE_SET_DEFAULT, None):
@@ -1322,7 +1334,11 @@ class Interface:
                 #Get the value in the correct type to set.
                 opt_value = self.get_default_value(opt_dict, value)
                 #Get the value in the correct type to set.
-                opt_typed_value = self.get_default_type(opt_dict, opt_value)
+                opt_type = self.get_default_type(opt_dict)  #, opt_value)
+                if opt_type != None:
+                    opt_typed_value = apply(opt_type, (opt_value,))
+                else:
+                    opt_typed_value = opt_value
             except SystemExit, msg:
                 raise msg
             except:
@@ -1352,7 +1368,6 @@ class Interface:
                 next = self.next_argument(opt)
 
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
-
             self.set_from_dictionary(extra_option, long_opt, next)
             try:
                 if next:
