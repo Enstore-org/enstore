@@ -1,0 +1,34 @@
+This is a small, stand alone test of enstore. I imagine that
+it us useful for testing the servers in a stand-alone fashion.
+
+It works with the default data in the file 
+
+$(ENSTORE_DIR)/src/configuration_server.py
+
+
+1) Starting from scratch: 
+
+cd .... enstore
+make clean
+make
+cd $MY_OWN_AREA
+newbds
+beg_loadtest
+
+(let run for a while)
+(error  about long1.dat is acknowledged, and needs fixing...)
+
+stopall
+
+
+2) Re-use -- must have done 1) above and not done a make clean.
+
+cd $MY_OWN_AREA
+olddbs
+beg_loadtest
+
+(let run for a while)
+(error  about long1.dat is acknowledged, and needs fixing...)
+
+stopall
+

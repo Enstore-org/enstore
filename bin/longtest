@@ -1,0 +1,8 @@
+#!/bin/sh
+
+while /bin/true; do
+    cat ../files.in | while read f; do
+        python ../../encp.py $f out.out 0;
+        diff out.out ../data/`basename $f` ;
+    done ;
+done

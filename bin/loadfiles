@@ -1,0 +1,17 @@
+#!/bin/sh
+
+#set -x
+
+pnfs=/pnfs/enstore/test1
+
+rm -f files.in
+rm $pnfs/*
+
+if [ ! -d data ] ; then mkdir data ; fi
+cd data
+for f in * ; do 
+    f2=$pnfs/`basename $f`
+    python ../../encp.py $f $f2
+    echo $f2 >> ../files.in
+done 
+
