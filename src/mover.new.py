@@ -539,7 +539,8 @@ def return_or_update_and_exit( self, origin_addr, status ):
 			    'hsm_driver':{'blocksize':self.hsm_driver.blocksize,
 					  'remaining_bytes':self.hsm_driver.remaining_bytes,
 					  'vol_label':self.hsm_driver.vol_label,
-					  'cur_loc_cookie':self.hsm_driver.cur_loc_cookie},
+					  'cur_loc_cookie':self.hsm_driver.cur_loc_cookie,
+					  'no_xfers':self.hsm_driver.no_xfers},
 			    'vol_info':self.vol_info},
 			   (self.config['hostip'],self.config['port']) )
 	sys.exit( m_err.index(status) )
@@ -689,6 +690,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 					ticket['hsm_driver']['vol_label']
 	self.client_obj_inst.hsm_driver.cur_loc_cookie = \
 					ticket['hsm_driver']['cur_loc_cookie']
+	self.client_obj_inst.hsm_driver.no_xfers = \
+					ticket['hsm_driver']['no_xfers']
 	wait = 0
 	next_req_to_lm = get_state_build_next_lm_req( self, wait )
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )

@@ -590,8 +590,9 @@ FTT_fd_xfer(  PyObject *self
 	    {
 	    case WrtSiz:
 		sts = 0;
-		do
-		{   msg_s.md.data -= sts;
+		do  /* I know a read (i.e from net) can return less than */
+		{   /* requested, but when would a write??? */
+		    msg_s.md.data -= sts;
 		    if (g_mode_c == 'w')
 		    {
 			if (msg_s.md.data != g_blocksize)
@@ -606,6 +607,14 @@ FTT_fd_xfer(  PyObject *self
 			else
 			{   sts = ftt_write( g_ftt_desc_tp, msg_s.md.c_p, msg_s.md.data );
 			    if (sts == -1) return (raise_ftt_exception("fd_xfer - write"));
+			}
+			if (no_bytes < sts)
+			{   *write_bytes_ip += no_bytes;
+			    no_bytes = 0;
+			}
+			else
+			{   *write_bytes_ip += sts;	/* count up */
+			    no_bytes -= sts; /* count down */
 			}
 		    }
 		    else
