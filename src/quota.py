@@ -399,10 +399,7 @@ class Interface(option.Interface):
 			
 	}
 
-if __name__ == '__main__':
-	Trace.init(string.upper(MY_NAME))
-	
-	intf = Interface(user_mode=0)
+def do_work(intf):
 	q = Quota((intf.config_host, intf.config_port))
 
 	if intf.show:
@@ -439,3 +436,8 @@ if __name__ == '__main__':
 		q.disable()
 	elif intf.enable:
 		q.enable()
+
+if __name__ == '__main__':
+	Trace.init(string.upper(MY_NAME))
+	intf = Interface(user_mode=0)
+	do_work(intf)
