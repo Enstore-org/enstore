@@ -566,7 +566,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 													  wam_num),
 					    txt), "Write Queue Stall")
 	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
-				       "get new work queue from %s"%(lib_man.name,))
+				       "get new work queue from %s"%(server.name,))
 
     def check_for_stalled_queue(self, lib_man):
 	# get the number of writes that are being done now
