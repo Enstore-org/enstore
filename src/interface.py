@@ -85,6 +85,15 @@ def dash_to_underscore(s):
         t=t+c
     return t
 
+def parse_range(s):
+    if '-' in s:
+        lo, hi = string.split(s)
+        lo, hi = int(lo), int(hi)
+        return range(lo, hi+1)
+    else:
+        return [int(s)]
+    
+
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
         if self.__dict__.get("do_parse", 1):
@@ -115,6 +124,9 @@ class Interface:
     def alive_options(self):
 	return ["alive"]+self.alive_rcv_options()
 
+    def trace_options(self):
+        return ["do_print=", "dont_print=", "do_log=", "dont_log=", "do_alarm=", "dont_alarm="]
+    
     def format_options(self, opts, prefix):
 	# put the options in alphabetical order and add a "--" to the front of
 	# each
@@ -285,6 +297,18 @@ class Interface:
                 self.clear = value
             elif opt == "--decr_file_count" :
                 self.decr_file_count = value
+            elif opt == "--do_print":
+                self.do_print = parse_range(value)
+            elif opt == "--dont_print":
+                self.dont_print = parse_range(value)
+            elif opt == "--do_log":
+                self.do_log = parse_range(value)
+            elif opt == "--dont_log":
+                self.dont_log = parse_range(value)
+            elif opt == "--do_alarm":
+                self.do_alarm = parse_range(value)
+            elif opt == "--dont_alarm":
+                self.dont_alarm = parse_range(value)
             elif opt == "--message" :
                 self.message = value
             elif opt == "--alive" :
