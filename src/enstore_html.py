@@ -302,7 +302,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     # make the row with the servers alive information
     def alive_row(self, server, data, color=None, link=None):
-	if link:
+	if link and not data[0] == enstore_constants.NOT_MONITORING:
 	    srvr = link
 	else:
 	    srvr = self.server_heading(server)

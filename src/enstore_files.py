@@ -260,10 +260,10 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	self.filelist = []
 	self.docs_to_install = []
 
-    def dont_monitor(self, key, host, port):
+    def dont_monitor(self, key, host):
         self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [enstore_constants.NOT_MONITORING,
-					 self.format_host(host), repr(port), 
+					 self.format_host(host), 
                                          enstore_functions.format_time(time.time())]
 
     def set_alive_error_status(self, key):

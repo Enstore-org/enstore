@@ -390,7 +390,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.server_d[key].hung_interval = \
                                     self.inquisitor.get_hung_interval(self.server_d[key].name)
         else:
-            self.serverfile.dont_monitor(key, cdict.get("host", ""), cdict.get("port", ""))
+            self.serverfile.dont_monitor(key, cdict.get("host", ""))
 
     def update_config_page(self, config):
         self.configfile.open()
@@ -403,7 +403,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def stop_monitoring(self, server, skey):
         # set this so if there is a thread attempting to restart this
         # server, it will notice and abort the attempt.
-        self.serverfile.dont_monitor(server.name, server.host, server.port)
+        self.serverfile.dont_monitor(server.name, server.host)
         server.delete_me()
         del self.server_d[skey]
 
@@ -1341,8 +1341,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
         else:
             self.serverfile.dont_monitor(enstore_constants.ALARM_SERVER,
-                                         self.alarm_server.host,
-                                         self.alarm_server.port)
+                                         self.alarm_server.host)
 
         cdict = self.config_d.get(enstore_constants.LOG_SERVER, {})
         self.log_server = monitored_server.MonitoredLogServer(cdict)
@@ -1350,8 +1349,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
         else:
             self.serverfile.dont_monitor(enstore_constants.LOG_SERVER,
-                                         self.log_server.host,
-                                         self.log_server.port)
+                                         self.log_server.host)
 
         cdict = self.config_d.get(enstore_constants.FILE_CLERK, {})
         self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
@@ -1359,8 +1357,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
         else:
             self.serverfile.dont_monitor(enstore_constants.FILE_CLERK,
-                                         self.file_clerk.host,
-                                         self.file_clerk.port)
+                                         self.file_clerk.host)
 
         cdict = self.config_d.get(enstore_constants.VOLUME_CLERK, {})
         self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
@@ -1368,8 +1365,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
         else:
             self.serverfile.dont_monitor(enstore_constants.VOLUME_CLERK,
-                                         self.volume_clerk.host,
-                                         self.volume_clerk.port)
+                                         self.volume_clerk.host)
 
         cdict = self.config_d.get(enstore_constants.CONFIG_SERVER, {})
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
@@ -1377,8 +1373,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
         else:
             self.serverfile.dont_monitor(enstore_constants.CONFIG_SERVER,
-                                         self.config_server.host,
-                                         self.config_server.port)
+                                         self.config_server.host)
 
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
