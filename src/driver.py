@@ -69,15 +69,17 @@ class  FTTDriver(GenericDriver) :
         move = loc - self.position
         if move < 0 :
            move = move-1
-        print "loc",loc,self.position,move
         self.ETdesc = ETape.ET_OpenRead(self.device, move, self.blocksize)
         self.position = loc
 
     def close_file_read(self) :
         self.position = self.position + 1
         stats = ETape.ET_CloseRead(self.ETdesc)
-        self.rd_access = stats[1]
-        self.rd_err = stats[2]
+        
+        if stats[1] != "Invalid":
+          self.rd_access = stats[1]
+        if stats[2] != "Invalid":
+          self.rd_err = stats[2]
 
     def read_block(self):
         x = ETape.ET_ReadBlock (self.ETdesc)
@@ -85,7 +87,6 @@ class  FTTDriver(GenericDriver) :
 
     def open_file_write(self):
         self.bod = self.eod
-        print  self.eod,self.position
         self.ETdesc = ETape.ET_OpenWrite(self.device, self.eod-self.position, self.blocksize)
         self.position = self.eod
 
@@ -94,9 +95,15 @@ class  FTTDriver(GenericDriver) :
             # stats[0] is KBytes - mover wants bytes-1MB  , drop the L
         self.eod = self.eod + 1
         self.position = self.eod
-        self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
+        if stats[0] != "Invalid" :
+          self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
+        else :
+          self.remaining_bytes = 44000000000L
         self.wr_access = stats[1]
-        self.wr_err = stats[2]
+        if stats[2] != "Invalid" :
+          self.wr_err = stats[2]
+        else :
+          self.wr_err = 0;
         return (repr(self.bod), repr(stats[3]))
 
     def write_block(self, data):
