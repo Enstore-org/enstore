@@ -25,10 +25,13 @@ def file_info(path):
 	if not os.access(path, os.R_OK):
 		return None
 	# try to get bfid
-	l4 = map(string.strip, open(layer_file(path, 4)).readlines())
-	if len(l4) < 9:
+	try:
+		bfid = string.strip(open(layer_file(path, 1)).readline())
+	except:
 		return None
-	bfid = l4[8]
+
+	if len(bfid) < 10:
+		return None
 
 	fi = fcc.bfid_info(bfid)
 	if fi['status'][0] != e_errors.OK:
