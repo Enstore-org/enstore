@@ -390,7 +390,7 @@ ftt_set_mount_partition(ftt_descriptor d, int partno) {
 	/* -1 means highest supported partition */
 	if ( partno < 0 || partno > max ) partno = max;
 
-	res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_modsense, 6, buf, 10, 10, 0);
+	res = ftt_do_scsi_command(d,"Mode Sense, 0x21", cdb_modsense, 6, buf, BD_SIZE+6, 10, 0);
 	if (res < 0) return res;
 
 	buf[0] = 0;
