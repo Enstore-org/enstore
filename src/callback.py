@@ -8,6 +8,7 @@ import string
 import random
 import select
 import errno
+import socket
 
 # enstore imports
 import lockfile
@@ -17,16 +18,6 @@ import checksum
 import hostaddr
 import socket_ext
 
-# Import SOCKS module if it exists, else standard socket module socket
-# This is a python module that works just like the socket module, but uses the
-# SOCKS protocol to make connections through a firewall machine.
-# See http://www.w3.org/People/Connolly/support/socksForPython.html or
-# goto www.python.org and search for "import SOCKS"
-try:
-    import SOCKS
-    socket = SOCKS
-except ImportError:
-    import socket
 
 
 
@@ -43,7 +34,7 @@ def try_a_port(host, port, reuseaddr=1) :
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if 0: #XXX CGW
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE,1)
-        sock.bind(host, port)
+        sock.bind((host, port))
         sock.listen(4)  ## Got to listen right away, to prevent another bind
                         ## with REUSEADDR from succeeding
         interface=hostaddr.interface_name(host)
@@ -226,7 +217,7 @@ def read_tcp_raw(sock):
 def read_tcp_obj(sock) :
     s=read_tcp_raw(sock)
     if not s:
-        raise "TCP connection closed"
+        raise "TCP connection closed"  #XXX This is not caught anywhere!!! cgw
     return eval(s)
 
     
@@ -250,7 +241,7 @@ def mover_callback_socket(ticket, use_multiple=1, verbose=0) :
                                                        verbose=verbose)
         
     Trace.trace(16, "mover_callback_socket: using %s %s" % (localhost, localport))
-    sock.connect(host, port)
+    sock.connect((host, port))
     Trace.trace(16, "mover_callback_socket: connected,  local=%s peer=%s" % (sock.getsockname(),
                                                                              sock.getpeername()))
     return sock
@@ -302,7 +293,7 @@ def user_callback_socket(ticket) :
                 repr(host)+" port="+\
                 repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(host, port)
+    sock.connect((host, port))
     write_tcp_obj(sock,ticket)
     return sock
 
@@ -313,7 +304,7 @@ def send_to_user_callback(ticket) :
                 repr(host)+" port="+\
                 repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(host, port)
+    sock.connect((host, port))
     write_tcp_obj(sock,ticket)
     sock.close()
 
