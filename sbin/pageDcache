@@ -13,7 +13,7 @@ raise_alarm() {
     echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail enstore-admin@fnal.gov
     enstore sched --override $item_to_override --saagstatus red --time="$msg"
     # do not turn the ball red any more ...
-    enstore sched --override enstore    --saagstatus red --time="$msg"
+    #enstore sched --override enstore    --saagstatus red --time="$msg"
     exit $error_code
 }
 
