@@ -52,7 +52,7 @@ YOURLIBS=$(OLIB)/libftt.a
 # can get installed.
 PYMODULES=
 
-all:	EXfer ETape Devcodes Trace
+all:	EXfer ETape Devcodes Trace ECRC
 
 ETape:
 	MODULE=ETape; \
@@ -95,6 +95,12 @@ Devcodes:
 	MODULE=Devcodes; \
 	YOURLIBS=;\
 	OBS=Devcodes.o; \
+	$(MAKEIT)
+
+ECRC:
+	MODULE=ECRC; \
+	YOURLIBS=;\
+	OBS=ECRC.o; \
 	$(MAKEIT)
 
 # Normally we don't install .py files:
