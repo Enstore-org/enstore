@@ -15,7 +15,7 @@ import dict_to_a
 import configuration_client
 import dispatching_worker
 import generic_server
-import dBTable
+import db
 import dbutil
 import Trace
 

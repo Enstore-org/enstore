@@ -1,21 +1,27 @@
+# system imports
 import time
+
+# enstore imports
 import callback
 import dict_to_a
-from configuration_client import configuration_client, set_csc
-from udp_client import UDPClient
-from base_defaults import default_host, default_port, BaseDefaults
-from client_defaults import ClientDefaults
+import configuration_client
+import udp_client
+import base_defaults 
+import client_defaults
 import Trace
 
-class AdminClerkClient(BaseDefaults, ClientDefaults) :
+class AdminClerkClient(base_defaults.BaseDefaults,
+                       client_defaults.ClientDefaults) :
 
-    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+    def __init__(self, csc=[],
+                 host=base_defaults.default_host(),
+                 base_defaults.port=default_port()) :
         self.config_list = 0
         self.criteria={}
         self.dbname="volume"
         self.doalive=0
-        set_csc(self, csc, host, port)
-        self.u = UDPClient()
+        configuration_client.set_csc(self, csc, host, port)
+        self.u = udp_client.UDPClient()
 
     # define the command line options that are valid
     def options(self):
@@ -171,14 +177,3 @@ if __name__ == "__main__" :
         sys.exit(1)
     else :
         pprint.pprint(ticket)
-
-
-
-
-
-
-
-
-
-
-
