@@ -112,7 +112,6 @@ class SG_FF:
 
     def delete_mover(self, mover):
         m,v = None, None
-        found = 0
         # delete from sg
         for key in self.sg.keys():
             for tpl in self.sg[key]:
@@ -131,6 +130,7 @@ class SG_FF:
             Trace.log(e_errors.INFO, 'delete_mover SG: %s' % (self.sg,))
             
         # now delete from vf
+        m,v = None, None
         for key in self.vf.keys():
             for tpl in self.vf[key]:
                 if tpl[0] == mover:
