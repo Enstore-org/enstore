@@ -426,8 +426,10 @@ def write_to_hsm(input, output,
         # save the bfid and set the file size
         p.set_bit_file_id(done_ticket["fc"]["bfid"],file_size[i])
         # create volume map and store cross reference data
+        pprint.pprint(done_ticket)
         p.set_xreference(done_ticket["fc"]["external_label"],
-                         done_ticket["fc"]["bof_space_cookie"])
+                         done_ticket["fc"]["location_cookie"],
+                         done_ticket["fc"]["size"])
 
         # add the pnfs id to the file clerk ticket and store it
         done_ticket["fc"]["pnfsid"] = p.id
@@ -771,14 +773,14 @@ def read_from_hsm(input, output,
                         Qd = format %\
                              (inputlist[i],bfid[i],file_size[i],\
                               finfo[i]["external_label"],\
-                              finfo[i]["bof_space_cookie"],\
+                              finfo[i]["location_cookie"],\
                               tinfo["send_ticket"+repr(i)],time.time()-t0)
                     else:
                         Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
                              "dt: %f   cumt=%f" %\
                              (Qd,inputlist[i],bfid[i],file_size[i],\
                               finfo[i]["external_label"],\
-                              finfo[i]["bof_space_cookie"],\
+                              finfo[i]["location_cookie"],\
                               tinfo["send_ticket"+repr(i)],time.time()-t0)
 
 

@@ -410,11 +410,12 @@ class Pnfs:
             self.get_info()
 
     # store the cross-referencing data
-    def set_xreference(self,volume,cookie):
-        self.volmap_filename(volume,cookie)
+    def set_xreference(self,volume,location_cookie,size):
+        self.volmap_filename(volume,location_cookie)
         self.make_volmap_file()
         value=volume+'\012' + \
-               cookie+'\012'+ \
+               repr(location_cookie)+'\012'+ \
+               repr(size)+'\012' + \
                self.file_family+'\012' + \
                self.pnfsFilename+'\012' + \
                self.volume_file+'\012' + \
@@ -459,23 +460,26 @@ class Pnfs:
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
-                self.volume   = regsub.sub("\012","",xinfo[0])
-                self.cookie   = regsub.sub("\012","",xinfo[1])
-                self.origff   = regsub.sub("\012","",xinfo[2])
-                self.origname = regsub.sub("\012","",xinfo[3])
-                self.mapfile  = regsub.sub("\012","",xinfo[3])
+                self.volume          = regsub.sub("\012","",xinfo[0])
+                self.location_cookie = regsub.sub("\012","",xinfo[1])
+                self.size            = regsub.sub("\012","",xinfo[2])
+                self.origff          = regsub.sub("\012","",xinfo[3])
+                self.origname        = regsub.sub("\012","",xinfo[4])
+                self.mapfile         = regsub.sub("\012","",xinfo[5])
             except:
-                self.volume   = UNKNOWN
-                self.cookie   = UNKNOWN
-                self.origff   = UNKNOWN
-                self.origname = UNKNOWN
-                self.mapfile  = UNKNOWN
+                self.volume          = UNKNOWN
+                self.location_cookie = UNKNOWN
+                self.size            = UNKNOWN
+                self.origff          = UNKNOWN
+                self.origname        = UNKNOWN
+                self.mapfile         = UNKNOWN
         else:
-            self.volume   = UNKNOWN
-            self.cookie   = UNKNOWN
-            self.origff   = UNKNOWN
-            self.origname = UNKNOWN
-            self.mapfile  = UNKNOWN
+            self.volume          = UNKNOWN
+            self.location_cookie = UNKNOWN
+            self.size            = UNKNOWN
+            self.origff          = UNKNOWN
+            self.origname        = UNKNOWN
+            self.mapfile         = UNKNOWN
 
     ##########################################################################
 
@@ -623,8 +627,8 @@ class Pnfs:
             else:
                 volume = vol
             # cookie  not set until xref layer is filled in, has to be specified
-            if self.cookie!=UNKNOWN:
-                cookie = self.cookie
+            if self.location_cookie!=UNKNOWN:
+                cookie = self.location_cookie
             else:
                 cookie = kookie
 

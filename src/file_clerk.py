@@ -33,7 +33,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # do not pass ticket, for example to the database!
         record = {}
         record["external_label"]   = ticket["fc"]["external_label"]
-        record["bof_space_cookie"] = ticket["fc"]["bof_space_cookie"]
+        ###########################################################################TEMPORARY##########
+        record["bof_space_cookie"] = ticket["fc"]["bof_space_cookie"] #delete this line
+        try:
+            record["location_cookie"] = ticket["fc"]["location_cookie"]
+            record["size"] = ticket["fc"]["size"]
+        except:
+            record["location_cookie"], record["size"] = eval(ticket["fc"]["bof_space_cookie"])
+
+        #######################################################################END#TEMPORARY##########
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
 
@@ -44,6 +52,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         dict[bfid] = copy.deepcopy(record)
 
         ticket["fc"]["bfid"] = bfid
+        ###########################################################################TEMPORARY##########
+        if not ticket["fc"].has_key("location_cookie"):
+            ticket["fc"]["location_cookie"], ticket["fc"]["size"] = eval(record["bof_space_cookie"])
+        #######################################################################END#TEMPORARY##########
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,'}new_bit_file bfid='+repr(bfid))
@@ -90,6 +102,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # look up in our dictionary the request bit field id
         try:
             record = copy.deepcopy(dict[bfid])
+            ###########################################################################TEMPORARY##########
+            if not record.has_key("location_cookie"):
+                record["location_cookie"], record["size"] = eval(record["bof_space_cookie"])
+            #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
@@ -187,6 +203,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # look up in our dictionary the request bit field id
         try:
             finfo = copy.deepcopy(dict[bfid])
+            ###########################################################################TEMPORARY##########
+            if not finfo.has_key("location_cookie"):
+                finfo["location_cookie"], finfo["size"] = eval(record["bof_space_cookie"])
+            #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: bfid "+repr(bfid)+" not found")
