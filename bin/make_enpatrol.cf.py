@@ -10,11 +10,13 @@ import configuration_server
 import enstore_status
 import e_errors
 
-prefix = "       host             filesystem              Threshold       Action\n#---   ----             ----------              ----------      ----------------------\nO      mailfrom         '\"Patrol\" <patrol@"
+HOST_DEFAULT = ""
 
-prefix2 = ">'\n"
+PREFIX = "       host             filesystem              Threshold       Action\n#---   ----             ----------              ----------      ----------------------\nO      mailfrom         '\"Patrol\" <patrol@"
 
-suffix1 = "\n" +\
+PREFIX2 = ">'\n"
+
+SUFFIX1 = "\n" +\
           "P envars <<EOF\n" +\
           "$ensname = \"$cmdline\";\n" +\
           "$ensname =~ s/\s*\S+\s+(\S+)/$1/;\n" +\
@@ -45,7 +47,7 @@ suffix1 = "\n" +\
           "#  assign hosts to managers\n" +\
           "@hosts=("
 
-suffix2 = "       );\n" +\
+SUFFIX2 = "       );\n" +\
           "\n" +\
           "#  specify URL for all status images\n" +\
           "@status_images=(\"patrol_0.gif\",\n" +\
@@ -74,9 +76,10 @@ suffix2 = "       );\n" +\
           " \n" +\
           "EOF\n"
 
-enline_prefix = "CC     hppc             ./enpatrol_alive~"
+ENLINE_PREFIX = "CC     "
+ENLINE_PREFIX1 = "             ./enpatrol_alive~"
 
-enline_suffix = "       =1        envars()\n"+ \
+ENLINE_SUFFIX = "       =1        envars()\n"+ \
                 "                                                      =2        envars(),write($ensstartfail)\n"
 
 server_start_order = ("config_server", \
@@ -93,26 +96,38 @@ DOMAIN = ".fnal.gov"
 
 class EnpatrolFile(enstore_status.EnFile):
 
-    def __init__(self, name, mnode):
-	# add on the default domain name if not included with the mail_node
-	if string.count(mnode, ".") == 0:
-	    self.mail_node = mnode+DOMAIN
-	else:
-	    self.mail_node = mnode
+    def __init__(self, name, mnode, config_host):
+        # add on the default domain name if not included with the mail_node
+        if string.count(mnode, ".") == 0:
+            self.mail_node = mnode+DOMAIN
+        else:
+            self.mail_node = mnode
+	self.config_host = config_host
 
-	enstore_status.EnFile.__init__(self, name)
+        enstore_status.EnFile.__init__(self, name)
+ 
+    def write_prefix(self):
+        self.filedes.write(PREFIX)
+        self.filedes.write(self.mail_node)
+        self.filedes.write(PREFIX2)
 
     def write(self, cdict):
 	self.write_prefix()
         self.write_enlines(cdict)
-        self.filedes.write(suffix1)
+        self.filedes.write(SUFFIX1)
 	self.write_hosts(cdict)
-        self.filedes.write(suffix2)
+        self.filedes.write(SUFFIX2)
 
-    def write_prefix(self):
-	self.filedes.write(prefix)
-	self.filedes.write(self.mail_node)
-	self.filedes.write(prefix2)
+    def dowrite(self, srvr, node):
+	self.filedes.write(ENLINE_PREFIX+node+ENLINE_PREFIX1+srvr+\
+	                   ENLINE_SUFFIX)
+
+    def write_enline(self, srvr):
+	try:
+	    node = cdict.configdict[srvr]['host']
+	    self.dowrite(srvr, node)
+	except:
+	    pass
 
     def write_enlines(self, cdict):
 	ckeys = cdict.configdict.keys()
@@ -123,13 +138,17 @@ class EnpatrolFile(enstore_status.EnFile):
 	        # get the name of each one that fits this type.
 	        for k in ckeys:
 	            if string.find(k, srvr[1:]) != -1:
-	                self.filedes.write(enline_prefix+k+enline_suffix)
+	                self.write_enline(k)
 	    else:
 	        # only tell patrol to monitor the server if it is in the config
 	        # file too. or if it is for the config server which does not
 	        # explicitly have an entry in the config server
-	        if cdict.configdict.has_key(srvr) or srvr == "config_server":
-	            self.filedes.write(enline_prefix+srvr+enline_suffix)
+	        if cdict.configdict.has_key(srvr):
+	            self.write_enline(srvr)
+	        elif srvr == "config_server" and not self.config_host == \
+	                                             HOST_DEFAULT:
+	            self.dowrite(srvr, self.config_host)
+	            
 
     def write_hosts(self, cdict):
 	whost = []
@@ -143,6 +162,12 @@ class EnpatrolFile(enstore_status.EnFile):
 	            whost.append(enhost[0])
 	            self.filedes.write(enhost[0]+" ")
 	else:
+	    # don't forget the configuration server host too
+	    if not self.config_host == HOST_DEFAULT:
+	        # first remove the domain name
+	        chost = re.split("\.", self.config_host)
+	        if chost[0] not in whost:
+	            self.filedes.write(chost[0])
 	    self.filedes.write("\"\n")
 
 class EnpatrolFileInterface(interface.Interface):
@@ -152,9 +177,15 @@ class EnpatrolFileInterface(interface.Interface):
     def __init__(self):
 	# fill in the defaults
 	self.config_file = self.NAME_DEFAULT
+	self.config_host = HOST_DEFAULT
 	self.mail_node = "????"
 	self.verbose = 0
-	interface.Interface.__init__(self)
+	# catch any errors that might occur when translating the config_host
+	# name.  we do not need to deal with this now.
+	try:
+	    interface.Interface.__init__(self)
+	except:
+	    pass
 
         if self.config_file == self.NAME_DEFAULT:
 	    try:
@@ -166,7 +197,8 @@ class EnpatrolFileInterface(interface.Interface):
 
     # define the valid command line options
     def options(self):
-	return self.help_options()+["verbose=", "config_file=", "mail_node="]
+	return self.help_options()+["verbose=", "config_file=", \
+	                           "config_host=", "mail_node="]
 
 
 if __name__ == "__main__" :
@@ -184,7 +216,7 @@ if __name__ == "__main__" :
         name = regsub.sub(".conf", "", intf.config_file)
     
         # Get an enpatrol file object
-        cffile = EnpatrolFile(name+"_enpatrol.cf", intf.mail_node)
+        cffile = EnpatrolFile(name+"_enpatrol.cf", intf.mail_node, intf.config_host)
         cffile.open()
         cffile.write(cdict)
         cffile.close()
