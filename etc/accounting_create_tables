@@ -87,6 +87,12 @@ create table encp_error(
 	src		varchar,
 	dst		varchar,
 	storage_group	varchar,
-	size		bigint
+	size		bigint,
+	file_family	varchar,
+	wrapper		varchar,
+	mover		varchar,
+	drive_id	varchar,
+	drive_sn	varchar,
+	rw		char
 );
 
