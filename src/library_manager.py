@@ -493,7 +493,12 @@ def next_work_this_volume(self, v):
 		# return read work ticket
 		return w
         else:
-            w['reject_reason'] = (ret['status'][0], ret['status'][0])
+            w['reject_reason'] = (ret['status'][0], ret['status'][1])
+            # if work is write_to_hsm and volume has just been set to full
+            # return this status for the immediate dismount
+            if (w["work"] == "write_to_hsm" and
+                ret['status'][0] == e_errors.VOL_SET_TO_FULL):
+                return {"status":ret['status']}
 	w=self.pending_work.get_next()
     return {"status" : (e_errors.NOWORK, None)}
 
@@ -1183,52 +1188,57 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
 
         # if the pending work queue is empty, then we're done
-        elif  w["status"][0] == e_errors.NOWORK:
+        elif  (w["status"][0] == e_errors.NOWORK or
+               w["status"][0] == e_errors.VOL_SET_TO_FULL):
 	    mv = find_mover(mticket, movers)
-	    # check if delayed_dismount is set
-	    mvr_found = 0
-	    dismount_vol = 0
-	    if len(self.del_dismount_list.list) != 0:
-		# find mover in the delayed dismount list
-		mvr = find_mover(mticket,self.del_dismount_list.list)
-		if mvr:
-		    mvr_found = 1
-	    try:
-		if delayed_dismount:
-		    if not mvr_found:
-			# add mover to delayed dismount list
-			mv["del_dism"] = 1
-			self.del_dismount_list.append(mv)
-		    else:
-			# it was already there, cancel timer func. for
-			# the previous ticket
-			timer_task.msg_cancel_tr(summon_mover_d, 
-						 self, mvr['mover'])
-		    # add timer func. for this ticket
-		    mv["delay"] = delayed_dismount
-		    timer_task.msg_add(delayed_dismount*60, 
-				       summon_mover_d, self, mv, w)
-
-		    # do not dismount, rather send no work
-		    self.reply_to_caller({'work': 'nowork'})
-		    Trace.trace(16,"have_bound_volume delayed dismount %s"%(w,))
-		    return
-		else:
-		    # check if dismount delay had expired
-                    if mvr_found:
-                        if not mvr.has_key("del_dism"):
-                            # no delayed dismount: flag dismount
-                            dismount_vol = 1
+            if w["status"][0] == e_errors.VOL_SET_TO_FULL:
+                # dismount unconditionally
+                dismount_vol = 1
+            else:
+                # check if delayed_dismount is set
+                mvr_found = 0
+                dismount_vol = 0
+                if len(self.del_dismount_list.list) != 0:
+                    # find mover in the delayed dismount list
+                    mvr = find_mover(mticket,self.del_dismount_list.list)
+                    if mvr:
+                        mvr_found = 1
+                try:
+                    if delayed_dismount:
+                        if not mvr_found:
+                            # add mover to delayed dismount list
+                            mv["del_dism"] = 1
+                            self.del_dismount_list.append(mv)
                         else:
-                            # do not dismount, rather send no work
-                            self.reply_to_caller({'work': 'nowork'})
-                            Trace.trace(16,"have_bound_volume delayed dismount %s"%(w,))
-                            return
-                    else: dismount_vol = 1
-	    except:
-                e_errors.handle_error()
-		# no delayed dismount: flag dismount
-		dismount_vol = 1 
+                            # it was already there, cancel timer func. for
+                            # the previous ticket
+                            timer_task.msg_cancel_tr(summon_mover_d, 
+                                                     self, mvr['mover'])
+                        # add timer func. for this ticket
+                        mv["delay"] = delayed_dismount
+                        timer_task.msg_add(delayed_dismount*60, 
+                                           summon_mover_d, self, mv, w)
+
+                        # do not dismount, rather send no work
+                        self.reply_to_caller({'work': 'nowork'})
+                        Trace.trace(16,"have_bound_volume delayed dismount %s"%(w,))
+                        return
+                    else:
+                        # check if dismount delay had expired
+                        if mvr_found:
+                            if not mvr.has_key("del_dism"):
+                                # no delayed dismount: flag dismount
+                                dismount_vol = 1
+                            else:
+                                # do not dismount, rather send no work
+                                self.reply_to_caller({'work': 'nowork'})
+                                Trace.trace(16,"have_bound_volume delayed dismount %s"%(w,))
+                                return
+                        else: dismount_vol = 1
+                except:
+                    e_errors.handle_error()
+                    # no delayed dismount: flag dismount
+                    dismount_vol = 1 
 
 	    if dismount_vol:
 		# unbind volume

@@ -47,6 +47,50 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if has_bfids:
             ticket["bfids"]=bfids
             
+    # check if volume is full and if is set it to full
+    # this is made up as method because is used in several places
+    # and has to be universal
+    def is_volume_full(self, v, min_remaining_bytes):
+        external_label = v['external_label']
+        ret = ""
+        if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
+            # if it __ever__ happens that we can't write a file on a
+            # volume, then mark volume as full.  This prevents us from
+            # putting 1 byte files on old "golden" volumes and potentially
+            # losing the entire tape. One could argue that a very large
+            # file write could prematurely flag a volume as full, but lets
+            # worry about if it is really a problem - I propose that an
+            # administrator reset the system_inhibit back to none in these
+            # special, and hopefully rare cases.
+            Trace.trace(17,external_label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
+
+            if v["system_inhibit"][1] != "full":
+                # detect a transition
+                ret = e_errors.VOL_SET_TO_FULL
+                v["system_inhibit"][1] = "full"
+                left = v["remaining_bytes"]/1.
+                totb = v["capacity_bytes"]/1.
+                if totb != 0:
+                    waste = left/totb*100.
+                else:
+                    waste = 0.
+                Trace.log(e_errors.INFO,
+                          "%s is now full, bytes remaining = %d, %.2f %%" %
+                          (external_label,
+                           v["remaining_bytes"],waste))
+                
+                if self.dict.cursor_open:
+                    print "WILL UPDATE"
+                    t = self.dict.db.txn()
+                    self.dict.db[(label,t)] = v
+                    t.commit()
+                else:
+                    print "WILL ASSIGN"
+                    self.dict[external_label] = v  ## was deepcopy
+                print "DONE"
+            else: ret = e_errors.NOSPACE
+        return ret
+
     # rename deleted volume
     def rename_volume(self, old_label, new_label, restore="no"):
      try:
@@ -417,14 +461,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                       record['user_inhibit'][1] == 'full'):
 		    ret_stat = (record['user_inhibit'][1], None)
 		else:
-		    if (ticket['file_family'] == record['file_family'] and
-			ticket['file_size'] <= record['remaining_bytes']):
-			ret_stat = (e_errors.OK,None)
-		    elif (ticket['file_family'] == 'ephemeral' and
-			ticket['file_size'] <= record['remaining_bytes']):
-			ret_stat = (e_errors.OK,None)
-		    else:
-			ret_stat = (e_errors.NOACCESS,None)
+		    if (ticket['file_family'] == record['file_family'] or
+                        ticket['file_family'] == 'ephemeral'):
+                        ret = self.is_volume_full(record,ticket['file_size'])
+                        if not ret:
+                            ret_stat = (e_errors.OK,None)
+                        else:
+                            ret_stat = (ret, None)
 	    else:
 		ret_stat = (e_errors.UNKNOWN,None)
 	ticket['status'] = ret_stat
@@ -432,7 +475,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # Get the next volume that satisfy criteria
 
-    def next_write_volume1 (self, ticket):
+    def next_write_volume (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -447,6 +490,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         vol = {}
         lc1 = self.dict.inx['library'].cursor()		# read only
         fc1 = self.dict.inx['file_family'].cursor()
+        
         label, v = lc1.set(library)
         label, v = fc1.set(cfile_family)
         c = db.join(self.dict, [lc1, fc1])
@@ -458,19 +502,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 break
 
-            if v["library"] != library:
-                Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
-                continue
+            # the following is commented out for redundancy
+            # if v["library"] != library:
+            #     Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
+            #     continue
 
             # checking the matched file family and blank volume at the
             # same time. If vol is assigned, meaning there is at least
             # one, normal or blank, that is good enough, then don't
             # bother checking the blank volume.
 
-            if v["file_family"] != file_family+"."+wrapper_type and \
-               (len(vol) or v["file_family"] != "none"):
-                Trace.trace(17,label+" rejected file_family "+v["file_family"]+' '+file_family+"."+wrapper_type)
-                continue
+            # The following is commented out for redundancy
+            # if v["file_family"] != file_family+"."+wrapper_type and \
+            #    (len(vol) or v["file_family"] != "none"):
+            #    Trace.trace(17,label+" rejected file_family "+v["file_family"]+' '+file_family+"."+wrapper_type)
+            #    continue
             #if v["wrapper"] != wrapper_type:
             #    Trace.trace(17,label+" rejected wrapper "+v["wrapper"]+' '+wrapper_type)
             #    continue
@@ -492,30 +538,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 
             # equal treatment for blank volume
-
-            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                # if it __ever__ happens that we can't write a file on a
-                # volume, then mark volume as full.  This prevents us from
-                # putting 1 byte files on old "golden" volumes and potentially
-                # losing the entire tape. One could argue that a very large
-                # file write could prematurely flag a volume as full, but lets
-                # worry about if it is really a problem - I propose that an
-                # administrator reset the system_inhibit back to none in these
-                # special, and hopefully rare cases.
-                Trace.trace(17,label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
-                v["system_inhibit"][1] = "full"
-                left = v["remaining_bytes"]/1.
-                totb = v["capacity_bytes"]/1.
-                if totb != 0:
-                    waste = left/totb*100.
-                else:
-                    waste = 0.
-                Trace.log(e_errors.INFO,
-                          "%s is now full, bytes remaining = %d, %.2f %%" % (label, v["remaining_bytes"],waste))
-                t = self.dict.db.txn()
-                self.dict.db[(label,t)] = v
-                t.commit()
-		# self.dict[label] = v
+            ret_st = self.is_volume_full(v,min_remaining_bytes)
+            if ret_st:
                 continue
             vetoed = 0
             for veto in vol_veto_list:
@@ -619,7 +643,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
         c.close()
-
+        
         # return blank volume we found
         if len(vol) != 0:
             label = vol['external_label']
@@ -646,7 +670,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # A quick fix is applied
     # There should be a permenat fix in the future
 
-    def next_write_volume (self, ticket):
+    def next_write_volume2 (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -702,27 +726,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 
             # equal treatment for blank volume
-
-            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                # if it __ever__ happens that we can't write a file on a
-                # volume, then mark volume as full.  This prevents us from
-                # putting 1 byte files on old "golden" volumes and potentially
-                # losing the entire tape. One could argue that a very large
-                # file write could prematurely flag a volume as full, but lets
-                # worry about if it is really a problem - I propose that an
-                # administrator reset the system_inhibit back to none in these
-                # special, and hopefully rare cases.
-                Trace.trace(17,label+" rejected remaining_bytes"+str(v["remaining_bytes"]))
-                v["system_inhibit"][1] = "full"
-                left = v["remaining_bytes"]/1.
-                totb = v["capacity_bytes"]/1.
-                if totb != 0:
-                    waste = left/totb*100.
-                else:
-                    waste = 0.
-                Trace.log(e_errors.INFO,
-                          "%s is now full, bytes remaining = %d, %.2f %%" % (label, v["remaining_bytes"],waste))
-                #self.dict.cursor("update",v)
+            ret_st = self.is_volume_full(v,min_remaining_bytes)
+            if ret_st:
                 continue
             vetoed = 0
             for veto in vol_veto_list:
@@ -823,26 +828,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              v["system_inhibit"][0] == "none" and
              v["system_inhibit"][1] == "none" and
              v['at_mover'][0] == "mounted"):
+             ##
+             ##ret_st = self.is_volume_full(v,min_remaining_bytes)
+             ##if ret_st:
+             ##    ticket["status"] = (ret_st,None)
+             ##
+
              if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
-                 # if it __ever__ happens that we can't write a file on a
-                 # volume, then mark volume as full.  This prevents us from
-                 # putting 1 byte files on old "golden" volumes and potentially
-                 # losing the entire tape. One could argue that a very large
-                 # file write could prematurely flag a volume as full, but lets
-                 # worry about if it is really a problem - I propose that an
-                 # administrator reset the system_inhibit back to none in these
-                 # special, and hopefully rare cases.
-                 v["system_inhibit"][1] = "full"
-                 left = v["remaining_bytes"]/1.
-                 totb = v["capacity_bytes"]/1.
-                 if totb != 0:
-                     waste = left/totb*100.
-                 Trace.log(e_errors.INFO,
-                           "%s is now full, bytes remaining = %d, %.2f %%" %
-                           (external_label, v["remaining_bytes"],waste))
-                 self.dict[external_label] = v  ## was deepcopy
-                 ticket["status"] = (e_errors.WRITE_EOT, \
-                                     "Volume Clerk: "+key+" is missing")
+                 ticket["status"] = (e_errors.WRITE_EOT,"file too big")
              self.reply_to_caller(ticket)
              Trace.trace(8,"can_write_volume "+repr(ticket["status"]))
              return
