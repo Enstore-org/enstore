@@ -451,15 +451,19 @@ class HTMLConfigFile(EnFile):
 
 class HTMLPlotFile(EnFile):
 
-    def __init__(self, file, system_tag=""):
+    def __init__(self, file, system_tag="", nav_link=""):
         EnFile.__init__(self, file, system_tag)
         self.file_name = "%s.new"%(file,)
+	self.nav_link = nav_link
 
     # format the config entry and write it to the file
-    def write(self, jpgs, stamps, pss, mount_label):
+    def write(self, jpgs, stamps, pss, mount_label, link=None,
+	      txt=None):
         if self.openfile:
             doc = enstore_html.EnPlotPage(system_tag=self.system_tag,
-					  mount_label=mount_label)
+					  mount_label=mount_label, 
+					  link=link, txt=txt,
+					  nav_link=self.nav_link)
             doc.body(jpgs, stamps, pss)
 	    self.do_write(str(doc))
 

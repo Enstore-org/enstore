@@ -20,12 +20,21 @@ class InquisitorPlots:
 
     # create the html file with the inquisitor plot information
     def	make_plot_html_page(self):
-	self.plotfile.open()
-	# get the list of stamps and jpg files
-	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
-	self.plotfile.write(jpgs, stamps, pss, self.mount_label)
-	self.plotfile.close()
-	self.plotfile.install()
+	for plotfile_t  in self.plotfile_l:
+	    if len(plotfile_t) == 4:
+		(plotfile, html_dir, link, txt) = plotfile_t
+	    else:
+		(plotfile, html_dir) = plotfile_t
+		link = None
+		txt = None
+		nav_link = ""
+	    plotfile.open()
+	    # get the list of stamps and jpg files
+	    (jpgs, stamps, pss) = enstore_plots.find_jpg_files(html_dir)
+	    plotfile.write(jpgs, stamps, pss, self.mount_label, link,
+			   txt)
+	    plotfile.close()
+	    plotfile.install()
 
     # make the mount plots (mounts per hour and mount latency
     def mount_plot(self, prefix):

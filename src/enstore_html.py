@@ -181,19 +181,21 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
     def nav_table(self):
 	tr = HTMLgen.TR()
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-	          HTMLgen.Href('enstore_system.html', 'Home'), size="+2")), 
+	          HTMLgen.Href("%senstore_system.html"%(self.nav_link,), 'Home'), 
+		  size="+2")), 
 			     bgcolor=NAV_TABLE_COLOR))
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-	          HTMLgen.Href(enstore_constants.SAAGHTMLFILE, 'System'), 
+	          HTMLgen.Href("%s%s"%(self.nav_link, enstore_constants.SAAGHTMLFILE),
+			       'System'), 
 		  size="+2")), bgcolor=NAV_TABLE_COLOR))
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-	          HTMLgen.Href('status_enstore_system.html', SERVERS),
+	          HTMLgen.Href("%sstatus_enstore_system.html"%(self.nav_link,), SERVERS),
 		  size="+2")), bgcolor=NAV_TABLE_COLOR))
 	tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-	          HTMLgen.Href('encp_enstore_system.html', 'Encp'),
+	          HTMLgen.Href("%sencp_enstore_system.html"%(self.nav_link,), 'Encp'),
 		  size="+2")), bgcolor=NAV_TABLE_COLOR))
 	if self.help_file:
-	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href(self.help_file, 
+	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href("%s%s"%(self.nav_link, self.help_file), 
 									'Help'), size="+2")),
 				 bgcolor=NAV_TABLE_COLOR))
 	table = HTMLgen.TableLite(tr, border=1, cellspacing=5, 
@@ -2079,7 +2081,8 @@ class EnPlotPage(EnBaseHtmlDoc):
     bpd = "%s%s"
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
-		 system_tag="", description="", mount_label=None):
+		 system_tag="", description="", mount_label=None,
+		 link=None, txt=None, nav_link=None):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
 			       system_tag=system_tag)
 	self.title = title
@@ -2087,6 +2090,9 @@ class EnPlotPage(EnBaseHtmlDoc):
 	self.source_server = THE_INQUISITOR
 	self.description = description
 	self.mount_label = mount_label
+	self.link = link
+	self.txt = txt
+	self.nav_link = nav_link
 
     def find_label(self, text):
         # compare the passed text with the files listed in PLOT_INFO. if there
@@ -2200,6 +2206,15 @@ class EnPlotPage(EnBaseHtmlDoc):
 	# the associated postscript file too
 	plot_table = HTMLgen.TableLite(width="100%", cols="3", align="CENTER",
                                        cellspacing=0, cellpadding=0)
+	# add any links to other plot pages
+	if self.link and self.txt:
+	    tr = HTMLgen.TR()
+	    tr.append(HTMLgen.TD(HTMLgen.Href(self.link, 
+					      HTMLgen.Font(self.txt, size="+2")),
+				 colspan=3, align="LEFT"))
+	    plot_table.append(tr)
+	    plot_table.append(empty_row(3))
+	    plot_table.append(empty_row(3))
 	while stamps:
 	    trs = HTMLgen.TR()
 	    trps = HTMLgen.TR()

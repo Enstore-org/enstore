@@ -55,17 +55,38 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             else:
                 self.html_dir = enstore_files.default_dir
                 plot_file = enstore_files.default_plot_html_file()
+		pfile = plot_f
 	else:
 	    self.html_dir = html_file
-	    plot_file = "%s/%s"%(self.html_dir,
-				 enstore_files.plot_html_file_name())
+	    pfile = enstore_files.plot_html_file_name()
+	    plot_file = "%s/%s"%(self.html_dir, pfile)
+
+	bpd_dir = enstore_functions.get_bpd_subdir(self.html_dir)
 
         self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
                                               www_server.SYSTEM_TAG_DEFAULT)
 
         # these are the files to which we will write, they are html files
-        self.plotfile = enstore_files.HTMLPlotFile(plot_file, 
-                                                   self.system_tag)
+	self.plotfile_l = []
+        plotfile1 = enstore_files.HTMLPlotFile(plot_file, self.system_tag)
+	if not bpd_dir == self.html_dir:
+	    # if the bpd_dir is the same as self.html_dir, then the page above
+	    # already contains these plots, so skip this in that case
+	    plot_file = "%s/%s"%(bpd_dir, enstore_files.plot_html_file_name())
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+						   self.system_tag, "../")
+	    self.plotfile_l.append((plotfile2, bpd_dir))
+	# the first plotfile needs to have a link to the second one on it, if 
+	# the second one exists
+	if not self.plotfile_l:
+	    # no link is required
+	    self.plotfile_l.append((plotfile1, self.html_dir))
+	else:
+	    # we made the plotfile2 page, add a link to it on the 1st page
+	    self.plotfile_l.append((plotfile1, self.html_dir, 
+				    "%s/%s"%(enstore_constants.BPD_SUBDIR, 
+					     enstore_files.plot_html_file_name()),
+				    "Bytes per Day per Mover Plots"))
 
 class PlotterInterface(generic_client.GenericClientInterface):
 
