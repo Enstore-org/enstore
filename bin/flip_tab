@@ -9,7 +9,8 @@ if [ ! -d $work ]; then
 fi
 
 for i in $work/*; do
-  . $i >>$output 2>&1
+  cat $i
+  . $i |tee $output 2>&1
   echo 
   echo
   echo "1. Open CAP door"
@@ -18,7 +19,7 @@ for i in $work/*; do
   echo "4. Flip tabs to write-protect on all tapes"
   echo "5. Hit ENTER when you are finished"
   read ans
-  /usr/bin/rsh fntt -l acsss "echo 'enter 0,0,0' |/export/home/ACSSS/bin/cmd_proc " >/dev/null 2>/dev/null
+  /usr/bin/rsh fntt -l acsss "echo 'enter 0,0,0' |/export/home/ACSSS/bin/cmd_proc " 
   echo "6. Open CAP door"
   echo "7. Insert tapes into CAP"
   echo "8. Close CAP door"
