@@ -9,7 +9,7 @@ OK = 0
 FAIL = 1
 
 #tdir="/home/aik/tape_inventory_010723/"
-tdir=/diska/tape_inventory/"
+tdir="/diska/tape_inventory/"
 
 def generate_volume_list(volume_file):
     f=open(volume_file, 'r')
