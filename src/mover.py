@@ -1215,6 +1215,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.lm_address = self.lm_address_saved
             self.udp_control_address = None
             self.udp_ext_control_address = None
+        self.method = None
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -1388,6 +1389,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                         if not msg:
                                             msg = "%s sending to %s"%(e_errors.TIMEDOUT, addr)
                                         self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
+                                        if self.method and self.method == 'read_next':
+                                            self.nowork()
+                                            return
                                 else:
                                     x = {'status' : (str(exc), str(msg))}
                                 Trace.trace(10, "update_lm: got %s" %(x,))
@@ -3382,9 +3386,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.client_ip = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
                 self.net_driver.fdopen(self.client_socket)
-                Trace.trace(10, "listen socket %s control socket %s data_socket %s"%
-                            (self.listen_socket.getsockname(),
-                             self.control_socket.getsockname(),
+                Trace.trace(10, "control socket %s data_socket %s"%
+                            (self.control_socket.getsockname(),
                              self.client_socket.getsockname()))
                 
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
