@@ -209,6 +209,7 @@ GET_UPDATE_INTERVAL = "get-update-interval"  #inquisitor
 GET_WORK = "get-work"                        #library, media
 GET_WORK_SORTED = "get-work-sorted"          #library
 HELP = "help"
+HISTORY = "history"                          #history
 HOST = "host"                                #monitor
 HTML_DIR = "html-dir"                        #monitor(server)
 HTML_FILE = "html-file"                      #inquisitor(server)
@@ -378,7 +379,7 @@ valid_option_list = [
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
     GET_WORK_SORTED, GET_SG_COUNT,
     GVOL, 
-    HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
+    HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL,
