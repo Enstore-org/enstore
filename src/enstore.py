@@ -60,7 +60,7 @@ def call_function(executable, argv):
     # check to see if we need to setup the environment a little
     if not os.environ.has_key("ENSTORE_DIR"):
         str = ". /usr/local/etc/setups.sh; setup enstore; %s"%(str,)
-    return os.system(str)
+    return os.system(str)>>8
 
 def get_farmlet(default):
     if len(sys.argv) > 2:
