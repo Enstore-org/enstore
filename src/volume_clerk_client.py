@@ -1660,16 +1660,16 @@ def do_work(intf):
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            format = "%%-%ds %%-16s %%10s %%-22s %%-7s %%s"%(len(intf.list))
+            format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
             # print "%-8s %-16s %10s %-22s %-7s %s\n"%(
             #    "label", "bfid", "size", "location_cookie", "delflag", "original_name")
             print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
             print
             tape = ticket['tape_list']
             for record in tape:
-                if record['deleted'] == 'y':
+                if record['deleted'] == 'yes':
                     deleted = 'deleted'
-                elif record['deleted'] == 'n':
+                elif record['deleted'] == 'no':
                     deleted = 'active'
                 else:
                     deleted = 'unknown'
@@ -1677,7 +1677,7 @@ def do_work(intf):
                 print format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
-                    record['pnfs_path'])
+                    record['pnfs_name0'])
     elif intf.ls_active:
         ticket = ifc.list_active(intf.ls_active)
         active_list = ticket['active_list']
