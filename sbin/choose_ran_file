@@ -15,10 +15,17 @@ USE_WGET=1 #or 0 to do things with database values
 COUNT=${1:-1}
 FORGET=${2:-CLN}
 MUSTHAVE=${3:-""}
+EXTRA=${5:-""}
 WHICH_FILE=${4:-"onlyran"} # valid values are "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" or "onlyfirstlast" or "alsofirstlast" or "onlyran"
-
+echo "count=${COUNT} forget=${FORGET} musthave=${MUSTHAVE} which=$WHICH_FILE extra=$EXTRA"
 here=`pwd`
-
+override_ro=""
+echo $EXTRA | egrep "full|readonly|migrated"
+echo $?
+if [ $? -eq 0 ] ; then
+    override_ro="--override-ro-mount"
+fi
+exit
 # Get the volumes that are defined in the inventory
 if [ $USE_WGET -eq 1 ] ; then
    echo `date` wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED
@@ -33,7 +40,7 @@ fi
 # get rid of all the entries that won't work (deleted, noaccess, notallowed, headers, trailers, null...)
 # get rid of all the entries that the user explicitly told us to forget ($FORGET)
 # look for all the entries that the user explicitly told us we must have
-egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" VOLUMES_DEFINED | egrep "$MUSTHAVE" >V_D
+egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" VOLUMES_DEFINED | egrep "$MUSTHAVE" egrep "$EXTRA" >V_D
 N=`wc V_D| awk '{print $1}'`
 if [ $N -eq 0 ]; then
    echo "NO files found after excluding \"$FORGET\"  and then searching for \"$MUSTHAVE\""
@@ -178,7 +185,7 @@ while [ $done -gt 0 ]; do
     fi
 
     for f in $thefiles; do
-      cmd="encp --verbose=10 --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
+      cmd="encp --verbose=10 --max-resubmit=7 --delayed-dismount=1 $override_ro $f /dev/null"
       echo $cmd
       eval $cmd
       rc=$?
