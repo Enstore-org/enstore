@@ -22,11 +22,11 @@ QUALIFIERS = ""
 	setupOptional("ximagetools")
 	setupOptional("imagemagick")
 
-	# setup the lint tool if it is present, any version will do
-	setupOptional("gadfly")
+	# we use the pylint tool in the gadfly product
+	setupRequired("gadfly v1_0")
 
 	# ftt is Fermi tape tools
-        setupRequired("ftt v2_5")
+        setupRequired("ftt v2_6")
 
 	# aci is the EMASS tape library and admin tool product
 	# the media changer is the only server that interfaces to it
