@@ -825,26 +825,20 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			return
 		callback.write_tcp_obj(self.data_socket,ticket)
 
-		q = "select bfid, crc, deleted, drive, volume.label, \
-					location_cookie, pnfs_path, pnfs_id, \
-					sanity_size, sanity_crc, size \
-			 from file, volume \
-			 where \
+		q = "select pnfs_path from \
+			(select pnfs_path, location_cookie \
+			from file, volume \
+			where \
 				file.volume = volume.id and volume.label = '%s' and\
 				deleted = 'n' and not pnfs_path is null and \
-				pnfs_path != '' order by location_cookie;"%(
+				pnfs_path != '' order by location_cookie) a1;"%(
 			 external_label)
 
-		res = self.db.query(q).dictresult()
-
-		alist = []
-
-		for ff in res:
-			alist.append(ff['pnfs_path'])
+		res = self.db.query(q).getresult()
 
 		# finishing up
 
-		callback.write_tcp_obj_new(self.data_socket, alist)
+		callback.write_tcp_obj_new(self.data_socket, res)
 		self.data_socket.close()
 		callback.write_tcp_obj(self.control_socket,ticket)
 		self.control_socket.close()

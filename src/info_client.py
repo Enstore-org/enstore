@@ -396,7 +396,7 @@ class infoClient(generic_client.GenericClient):
 	def list_active(self,external_label):
 		host, port, listen_socket = callback.get_callback()
 		listen_socket.listen(4)
-		ticket = {"work"		  : "list_active",
+		ticket = {"work"		  : "list_active2",
 				  "callback_addr" : (host, port),
 				  "external_label": external_label}
 		# send the work ticket to the file clerk
@@ -425,14 +425,16 @@ class infoClient(generic_client.GenericClient):
   
 		ticket= callback.read_tcp_obj(data_path_socket)
 		list = callback.read_tcp_obj_new(data_path_socket)
-		ticket['active_list'] = list
-		data_path_socket.close()
-
 		# Work has been read - wait for final dialog with file clerk
 		done_ticket = callback.read_tcp_obj(control_socket)
 		control_socket.close()
 		if done_ticket["status"][0] != e_errors.OK:
 			return done_ticket
+
+		ticket['active_list'] = []
+		for i in list:
+			ticket['active_list'].append(i[0])
+		data_path_socket.close()
 
 		return ticket
 
