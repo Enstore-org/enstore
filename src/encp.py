@@ -2227,11 +2227,16 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         if result_dict['status'][0]== e_errors.RETRY or \
            result_dict['status'][0]== e_errors.RESUBMITTING:
             continue
-        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+        elif result_dict['status'][0]== e_errors.TOO_MANY_RESUBMITS:
             for n in range(files_left):
                 failed_requests.append(request)
-            files_left = result_dict['queue_size'] #submitted - len(failed_requests)
+            files_left = 0
             continue
+        elif not e_errors.is_retriable(result_dict['status'][0]):
+            files_left = result_dict['queue_size']
+            failed_requests.append(request)
+            continue
+            
 
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
@@ -2262,7 +2267,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             done_ticket = {'status':(e_errors.USERERROR, detail)}
             result_dict = handle_retries(requests, requests[j],
                                         done_ticket, None, e)
-            if result_dict['status'][0] in e_errors.non_retriable_errors:
+            if not e_errors.is_retriable(result_dict['status'][0]):
                 files_left = result_dict['queue_size']
                 failed_requests.append(request)
 
@@ -2282,8 +2287,6 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
                                                   [data_path_socket], 15 * 60)
 
         
-            
-            
         lap_start = time.time() #----------------------------------------Start
 
         #Read in the data from the mover and write it out to file.  Also,
@@ -2334,25 +2337,22 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         print "DONE_TICKET:"
         pprint.pprint(done_ticket)
 
-        #For simplicity combine everything together.
-        done_ticket = combine_dict(done_ticket, requests[j])
-
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries(requests, requests[j],
                                      done_ticket, None, e)
 
-        #Combine the request and done_ticket into one ticket for simplicity.
-        done_ticket = combine_dict(result_dict, done_ticket, requests[j])
-
         if result_dict['status'][0] == e_errors.RETRY:
+            print "1111111111"
             continue
-        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+        elif not e_errors.is_retriable(result_dict['status'][0]):
+            print "222222222"
             files_left = result_dict['queue_size']
             failed_requests.append(request)
             continue
+        print "3333333333333"
 
-        #For simplicity combine everything together.
-        EXfer_ticket = combine_dict(EXfer_ticket, result_dict, requests[j])
+        #Combine the request and done_ticket into one ticket for simplicity.
+        done_ticket = combine_dict(result_dict, done_ticket, requests[j])
 
         #Verify that everything is ok on the encp side of the transfer.
         result_dict = handle_retries(requests, requests[j],
@@ -2360,11 +2360,14 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         
         if result_dict['status'][0] == e_errors.RETRY:
             continue
-        elif result_dict['status'][0] in e_errors.non_retriable_errors:
-            #return EXfer_ticket
+        elif not e_errors.is_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request)
             continue
+
+        #For simplicity combine everything together.
+        done_ticket = combine_dict(result_dict, done_ticket)
+        #EXfer_ticket = combine_dict(EXfer_ticket, result_dict, requests[j])
         
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
@@ -2383,7 +2386,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
                                      done_ticket, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
-        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+        elif not e_errors.is_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request)
             continue
