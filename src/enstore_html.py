@@ -140,7 +140,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.refresh = refresh
 	if not self.refresh == 0:
 	    self.set_meta()
-        self.source_server = "???"
+        self.source_server = ""
 	self.contents = []
 
     # generate the three button navigation table for the top of each of the
@@ -189,12 +189,14 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
 	self.script_title(tr)
 	fl_table.append(tr)
-	tr = HTMLgen.TR(empty_data())
-	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", size=-1)),
-			align="RIGHT")
-	td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
-	tr.append(td)
-	fl_table.append(tr)
+	# only add this info if we know it
+	if self.source_server:
+	    tr = HTMLgen.TR(empty_data())
+	    td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", size=-1)),
+			    align="RIGHT")
+	    td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
+	    tr.append(td)
+	    fl_table.append(tr)
 	# only add update information if asked to
 	if add_update:
 	    tr = HTMLgen.TR(empty_data())
