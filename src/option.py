@@ -109,7 +109,6 @@ VALUE_NAME = "value name"
 VALUE_TYPE = "value type"
 VALUE_USAGE = "value usage"
 VALUE_LABEL = "value label"
-USAGE_LEVEL = "user level"
 SHORT_OPTION = "short option"
 FORCE_SET_DEFAULT = "force set default"
 USER_LEVEL = "user level"
@@ -378,11 +377,13 @@ class Interface:
                  VALUE_NAME:"alive_rcv_timeout",
                  VALUE_USAGE:REQUIRED,
                  VALUE_TYPE:INTEGER,
-                 VALUE_LABEL:"seconds"},
+                 VALUE_LABEL:"seconds",
+                 FORCE_SET_DEFAULT:NORMAL},
         RETRIES:{HELP_STRING:"number of attempts to resend alive requests",
                  VALUE_NAME:"alive_retries",
                  VALUE_USAGE:REQUIRED,
-                 VALUE_TYPE:INTEGER},
+                 VALUE_TYPE:INTEGER,
+                 FORCE_SET_DEFAULT:NORMAL}
         }
 
     alive_options = alive_rcv_options.copy()
@@ -392,35 +393,44 @@ class Interface:
                             VALUE_TYPE:INTEGER,
                             VALUE_NAME:"alive",
                             VALUE_USAGE:IGNORED,
-                            SHORT_OPTION:"a"
+                            SHORT_OPTION:"a",
+                            FORCE_SET_DEFAULT:NORMAL
                             }
     help_options = {
         HELP:{DEFAULT_VALUE:1,
-                HELP_STRING:"prints this messge",
-                SHORT_OPTION:"h"},
+              HELP_STRING:"prints this messge",
+              SHORT_OPTION:"h",
+              FORCE_SET_DEFAULT:NORMAL},
         USAGE:{DEFAULT_VALUE:1,
-                 VALUE_USAGE:IGNORED}
+               VALUE_USAGE:IGNORED,
+               FORCE_SET_DEFAULT:NORMAL}
         }
 
     trace_options = {
         DO_PRINT:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
-                  HELP_STRING:"turns on more verbose output"},
+                  HELP_STRING:"turns on more verbose output",
+                  FORCE_SET_DEFAULT:NORMAL},
         DONT_PRINT:{VALUE_USAGE:REQUIRED,
                     VALUE_TYPE:RANGE,
-                    HELP_STRING:"turns off more verbose output"},
+                    HELP_STRING:"turns off more verbose output",
+                    FORCE_SET_DEFAULT:NORMAL},
         DO_LOG:{VALUE_USAGE:REQUIRED,
                 VALUE_TYPE:RANGE,
-                HELP_STRING:"turns on more verbose logging"},
+                HELP_STRING:"turns on more verbose logging",
+                FORCE_SET_DEFAULT:NORMAL},
         DONT_LOG:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
-                  HELP_STRING:"turns off more verbose logging"},
+                  HELP_STRING:"turns off more verbose logging",
+                  FORCE_SET_DEFAULT:NORMAL},
         DO_ALARM:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
-                  HELP_STRING:"turns on more alarms"},
+                  HELP_STRING:"turns on more alarms",
+                  FORCE_SET_DEFAULT:NORMAL},
         DONT_ALARM:{VALUE_USAGE:REQUIRED,
                     VALUE_TYPE:RANGE,
-                    HELP_STRING:"turns off more alarms"}
+                    HELP_STRING:"turns off more alarms",
+                    FORCE_SET_DEFAULT:NORMAL}
         }
 
     test_options = {
@@ -927,9 +937,9 @@ class Interface:
                 compare_opt = "-" + argument
             else:
                 compare_opt = argument
-                
-            #Look for the current argument in the list. 
-            if string.find(compare_opt, compare_arg) == 0:
+
+            #Look for the current argument in the list.
+            if string.find(compare_opt, compare_arg) >= 0:
                 #Now that the current item in the argument list is found,
                 # make sure it isn't the last and return the next.
                 index = self.some_args.index(arg)
@@ -1124,8 +1134,13 @@ class Interface:
         self.set_extra_values(long_opt, value)
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
+
         #Set value for required situations.
-        if value and opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,OPTIONAL):
+        if value == None and opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,):
+            msg = "option %s requires a value" % (long_opt,)
+            self.print_usage(msg)
+        if value != None and \
+           opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED,OPTIONAL):
             try:
                 #Get the name to set.
                 opt_name = self.get_value_name(opt_dict, long_opt)
@@ -1134,14 +1149,14 @@ class Interface:
                 opt_typed_value = self.get_value_type(opt_dict, value)
             except ValueError, detail:
                 msg = "option %s requires type %s" % \
-                      (long_opt,
-                       opt_dict.get(VALUE_TYPE, STRING))
+                      (long_opt, opt_dict.get(VALUE_TYPE, STRING))
                 self.print_usage(msg)
 
             setattr(self, opt_name, opt_typed_value)
-            
+
         #Set value for non-existant optional value.
-        elif not value and opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
+        elif value == None \
+             and opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
             try:
                 #Get the name to set.
                 opt_name = self.get_value_name(opt_dict, long_opt)
@@ -1158,7 +1173,8 @@ class Interface:
             setattr(self, opt_name, opt_typed_value)
 
         #There is no value or the default  should be forced set anyway.
-        elif not value and opt_dict.get(VALUE_USAGE, IGNORED) in (IGNORED,) \
+        elif value == None \
+             and opt_dict.get(VALUE_USAGE, IGNORED) in (IGNORED,) \
              or opt_dict.get(FORCE_SET_DEFAULT, None):
             #Get the name to set.
             opt_name = self.get_default_name(opt_dict, long_opt)
