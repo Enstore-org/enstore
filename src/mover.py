@@ -814,7 +814,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
                 
             if self.send_stats:
-                print 
                 self.dsc.log_stat(stats[ftt.SERIAL_NUM],
                                   stats[ftt.VENDOR_ID],
                                   stats[ftt.PRODUCT_ID],
@@ -2413,7 +2412,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
             self.need_lm_update = (1, self.state, 1, None)
-            self.send_error_msg(error_info=(e_errors.ENCP_GONE, None), error_source = None) 
+            self.send_error_msg(error_info=(e_errors.ENCP_GONE, "no client socket"), error_source error_source=NETWORK) 
             #self.update_lm(reset_timer=1)
             return 0
 
