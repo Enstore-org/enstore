@@ -13,6 +13,7 @@ import errno
 import copy
 import string
 import types
+import stat
 
 import encp
 import pnfs
@@ -616,40 +617,49 @@ def requests_outstanding(request_list):
 #Update the ticket so that next file can be read.
 def next_request_update(work_ticket, file_number):
 
-    #Update the fields with the new location cookie.
+    #Update the location cookie with the new file mark posistion.
     lc = "0000_000000000_%07d" % file_number
-    work_ticket['fc']['location_cookie'] = lc
-
+    
     #Clear this file information.
     work_ticket['fc']['bfid'] = None
     work_ticket['fc']['complete_crc'] = None
     work_ticket['fc']['deleted'] = None
     work_ticket['fc']['drive'] = None
+    work_ticket['fc']['location_cookie'] = lc
     work_ticket['fc']['pnfs_mapname'] = None
     work_ticket['fc']['pnfs_name0'] = None
     work_ticket['fc']['pnfsid'] = None
     work_ticket['fc']['pnfsvid'] = None
     work_ticket['fc']['sanity_cookie'] = None
     work_ticket['fc']['size'] = None
+
     #Clear this information too.
     work_ticket['file_size'] = None
     work_ticket['bfid'] = None
     work_ticket['completion_status'] = None
+
     #If 'exfer' not deleted; it clobbers new data when returned from the mover.
     del work_ticket['exfer']
 
-    #Only update these fields if a filename is not known already.
-    #This could be a problem if a file is the same name as its location cookie.
-    if encp.is_location_cookie(os.path.basename(work_ticket['infile'])):
-        # Update the tickets fields for the next file.
-        work_ticket['infile'] = \
-                    os.path.join(os.path.dirname(work_ticket['infile']), lc)
-        work_ticket['wrapper']['pnfsFilename'] = work_ticket['infile']
-        if work_ticket['outfile'] != "/dev/null":
-            #If the outfile is /dev/null, don't change these.
-            work_ticket['outfile'] = \
+    # Update the tickets filename fields for the next file.
+    work_ticket['infile'] = \
+                     os.path.join(os.path.dirname(work_ticket['infile']), lc)
+    work_ticket['wrapper']['pnfsFilename'] = work_ticket['infile']
+    if work_ticket['outfile'] != "/dev/null":
+        #If the outfile is /dev/null, don't change these.
+        work_ticket['outfile'] = \
                      os.path.join(os.path.dirname(work_ticket['outfile']), lc)
-            work_ticket['wrapper']['fullname'] = work_ticket['outfile']
+        work_ticket['wrapper']['fullname'] = work_ticket['outfile']
+
+    #Get the stat of the parent directory where the pnfs file will be placed.
+    stats = os.stat(os.path.dirname(work_ticket['infile']))
+
+    #Clear this wrapper information.
+    work_ticket['wrapper']['inode'] = 0
+    # Note: The math for fixing mode comes from pnfs.py in pstat_decode().
+    work_ticket['wrapper']['mode'] = (stats[stat.ST_MODE] % 0777) | 0100000
+    work_ticket['wrapper']['pstat'] = stats
+    work_ticket['wrapper']['size_bytes'] = None
 
     #Update the unique id for the LM.
     #work_ticket['unique_id'] = encp.generate_unique_id()
