@@ -598,7 +598,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.write_protect_status = None
 		self.show_bad = 0
 		self.query = ''
-		self.find_sam_file = None
+		self.find_same_file = None
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
