@@ -595,6 +595,64 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          return
 
 
+    # move a volume to a new library
+    def new_library(self, ticket):
+     Trace.trace(16,'{new_library '+repr(ticket))
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}new_library "+repr(ticket["status"]))
+            return
+
+        # make sure the user has specified a new library
+        try:
+            key="new_library"
+            new_library = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}new_library "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}new_library "+repr(ticket["status"]))
+            return
+
+        # update the library field with the new library
+        record ["library"] = new_library
+        dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+        record["status"] = (e_errors.OK, None)
+        self.reply_to_caller(record)
+        Trace.trace(16,'}new_library '+repr(record))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}new_library "+repr(ticket["status"]))
+         return
+
+
+    # set system_inhibit flag
     # flag the database that we are now writing the system
     def set_writing(self, ticket):
      Trace.trace(16,'{set_writing '+repr(ticket))

@@ -147,6 +147,8 @@ class Interface:
                 self.nextvol = 1
             elif opt == "--vol" :
                 self.vol = value
+            elif opt == "--new_library" :
+                self.new_library = 1
             elif opt == "--addvol" :
                 self.addvol = 1
             elif opt == "--delvol" :

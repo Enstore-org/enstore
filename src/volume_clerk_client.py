@@ -195,6 +195,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(10,'}inquire_vol '+repr(x))
         return x
 
+    # move a volume to a new library
+    def new_library(self, external_label,new_library):
+        Trace.trace(10,'new_library label='+repr(external_label),' new_library='+repr(new_library))
+        ticket= { 'work'           : 'new_library',
+                  'external_label' : external_label,
+                  'new_library'    : new_library}
+        x = self.send(ticket)
+        Trace.trace(10,'}new_library '+repr(x))
+        return x
+
     # we are using the volume
     def set_writing(self, external_label):
         Trace.trace(10,'set_writing label='+repr(external_label))
@@ -307,6 +317,7 @@ class VolumeClerkClientInterface(interface.Interface):
         self.vol = ""
         self.addvol = 0
         self.delvol = 0
+        self.new_library = 0
 	self.verbose = 0
 	self.got_server_verbose = 0
         interface.Interface.__init__(self)
@@ -320,7 +331,7 @@ class VolumeClerkClientInterface(interface.Interface):
         Trace.trace(20,'{}options')
         return self.config_options() + self.verbose_options()+\
                ["clrvol", "backup"] +\
-	       ["vols","nextvol","vol=","addvol","delvol" ] +\
+	       ["vols","nextvol","vol=","addvol","delvol","new_library" ] +\
                self.alive_options()+self.help_options()
 
     # parse the options like normal but make sure we have necessary params
@@ -343,12 +354,21 @@ class VolumeClerkClientInterface(interface.Interface):
             if len(self.args) < 1:
                 self.print_clr_inhibit_args()
                 sys.exit(1)
+        elif self.new_library:
+            if len(self.args) < 2:
+                self.print_new_library_args()
+                sys.exit(1)
         Trace.trace(16,'}parse_options')
 
     # print clr_inhibit arguments
     def print_clr_inhibit_args(self):
         Trace.trace(20,'{}print_clr_inhibit_args')
         generic_cs.enprint("   clr_inhibit arguments: volume_name")
+
+    # print new library arguments
+    def print_new_library_args(self):
+        Trace.trace(20,'{}print_new_library_args')
+        generic_cs.enprint("   new_library arguments: volume_name new_library_name")
 
     # print addvol arguments
     def print_addvol_args(self):
@@ -367,6 +387,8 @@ class VolumeClerkClientInterface(interface.Interface):
         interface.Interface.print_help(self)
         self.print_addvol_args()
         self.print_delvol_args()
+        self.print_clr_inhibit_args()
+        self.print_new_library_args()
         Trace.trace(16,'}print_help')
 
 
@@ -415,6 +437,10 @@ if __name__ == "__main__":
                             intf.args[3],              # name of this volume
                             string.atol(intf.args[4]), # cap'y of vol (bytes)
                             string.atol(intf.args[5])) # rem cap'y of volume
+	msg_id = generic_cs.CLIENT
+    elif intf.new_library:
+        ticket = vcc.new_library(intf.args[0],         # volume name
+                                 intf.args[1])         # new library name
 	msg_id = generic_cs.CLIENT
     elif intf.delvol:
         ticket = vcc.delvol(intf.args[0])              # name of this volume
