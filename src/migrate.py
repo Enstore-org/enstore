@@ -670,6 +670,8 @@ def migrate_volume(vol):
 			log(MY_TASK, "set %s to migrated"%(vol))
 		else:
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
+	else:
+		error_log(MY_TASK, "do not set %s to migrated due to previous error"%(vol))
 	return res
 
 # restore(bfids) -- restore pnfs entries using file records
@@ -716,10 +718,10 @@ def restore_volume(vol):
 		bfids.append(i[0])
 	restore(bfids)
 
-# nulify_pnfs() -- nulify the pnfs entry so that when the entry is
+# nullify_pnfs() -- nullify the pnfs entry so that when the entry is
 #			removed, its layer4 won't be put in trashcan
 #			hence won't be picked up by delfile
-def nulify_pnfs(p):
+def nullify_pnfs(p):
 	p1 = pnfs.File(p)
 	for i in [1,2,4]:
 		f = open(p1.layer_file(i), 'w')
