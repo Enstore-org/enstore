@@ -566,16 +566,28 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq):
-        external_label = rq.ticket['fc'].get('external_label', external_label)
-        Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(rq.ticket['vc']['volume_family'])
-        if wr_en >= rq.ticket["vc"]["file_family_width"]:
-            if not external_label in vol_veto_list:
+        label = rq.ticket['fc'].get('external_label', external_label)
+        if label != external_label:
+            # this is a case with admin pri
+            # process it carefuly
+            # check if tape is already mounted somewhere
+            if label in vol_veto_list:
                 rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-                Trace.trace(12, "check_write_request: request for volume %s rejected %s"%
+                Trace.trace(12, "check_write_request: request for volume %s rejected %s Mounted somwhere else"%
                                 (external_label, rq.ticket["reject_reason"]))
                 rq.ticket['status'] = ("VOLS_IN_WORK",None)
-                return rq, rq.ticket['status'] 
+                return rq, rq.ticket['status']
+        external_label = label
+        Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
+        if wr_en >= rq.ticket["vc"]["file_family_width"]:
+            if not external_label in vol_veto_list:
+                if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its linmit
+                    rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+                    Trace.trace(12, "check_write_request: request for volume %s rejected %s"%
+                                (external_label, rq.ticket["reject_reason"]))
+                    rq.ticket['status'] = ("VOLS_IN_WORK",None)
+                    return rq, rq.ticket['status'] 
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
