@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="Author" CONTENT="Victoria White">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.06 [en] (X11; I; Linux 2.0.35 i686) [Netscape]">
+   <TITLE>SamEnstoreInterface</TITLE>
+</HEAD>
+
+<H1>Sam/Enstore Interface Notes.</h1>
+
+Below are note on the SAM/Enstore interface provided by D0.
+For the most part, Ensrote complies in software features. Exceptions
+are noted.
+
+<H2>
+SAM/Enstore Interface</H2>
+The SAM data access layer will use the command/executable provided by Enstore
+to issue file commands.
+<P>The basic format of this command is one of the following:
+<P><em>encp</em>&nbsp; &lt;input file>&nbsp; &lt;destination directory
+in pnfs space>
+<BR><em>encp</em>&nbsp; &lt;file in pnfs file space>&nbsp; &lt;output
+file>
+<P>The exact syntax of the above may be changing somewhat, but is immaterial.
+<P>The following enhancements have been requested and (we think) agreed
+to by Enstore.
+<BR>&nbsp;
+<BR>&nbsp;
+<TABLE BORDER COLS=3 WIDTH="100%"  NOSAVE >
+<TR  NOSAVE>
+<TD NOSAVE>Request to Enstore</TD>
+
+<TD>&nbsp;Implementation proposed</TD>
+
+<TD>Rationale</TD>
+</TR>
+
+<p><em>The notational issues in the first two items have not been addressed.
+Enstore provides CP-like list features. The user can launch many encps.</em></p>
+
+<TR NOSAVE>
+<TD NOSAVE>Allow wild cards in input or output file spec. As each file
+arrives some notification should be provided.&nbsp;</TD>
+
+<TD>Enstore will implement notification by writing a message to stdout.&nbsp;</TD>
+
+<TD>Permits a number of files to be supplied or dispatched serially with
+one encmd.&nbsp;</TD>
+</TR>
+
+
+<TR>
+<TD>Allow list of comma delimited files in input or output file spec</TD>
+
+<TD>Notification of each file arrival (or dispatch) as for wild cards.</TD>
+
+<TD>Permits a number of files to be supplied or dispatched serially with
+one encmd.&nbsp;</TD>
+</TR>
+
+<TR>
+<TD>At the end of each file transaction provide information about the physical
+location of the file, its position on the tape, error/retries, which tape
+drive it was written on.&nbsp;</TD>
+
+<TD>This was originally discussed as being written to stdout along with
+informational messages about the state of the copy job.&nbsp; Latest thoughts
+appear to be to write all metadata related to the physical location of
+the file and how it got there into a separate, but parallel pnfs file system,
+into a file of the same name (we think?)</TD>
+
+<TD>It is very convenient when doing queries in order to gather information
+on files to optimize access patterns and when making reports,&nbsp; to
+have all of the physical information on the files in the SAM Oracle file
+and event catalog. Multiple pnfs query calls would be awkward and unsymmetric
+with respect to files managed by SAM, but not stored in the Enstore Robot
+space.</TD>
+</TR>
+
+<TR>
+<TD>Allow additional parameters on the enstore 'copy' command to control
+the positioning of the job in the enstore job queue.&nbsp; Initial priority,
+Aging Delta Time and Priority Increment would be sufficient.&nbsp;</TD>
+
+<TD>Exact implementation of the desired effect left to Enstore. Whether
+at a certain priority a job becomes pre-emptive of a job already in progress
+left for later stages of the project, after some experience with resource
+allocation.&nbsp;</TD>
+
+<TD>Need some degree of control over the ordering and priority of jobs
+already submitted to the enstore queue, in order to balance the flows of
+data and minimize job latency where necessary, but without rigid allocation
+of resources to particular access modes or projects</TD>
+</TR>
+
+<TR>
+<TD>At the end of each file transaction provide information about the job
+which copied the file - dwell time in queue, final priority, robot arm
+wait time, file seek time, file transfer time and MBs, etc.&nbsp;</TD>
+
+<TD>This is now going to be available in the parallel pnfs file metatdata
+file system</TD>
+
+<TD>This information is needed by the Global Resource Manager in order
+to feed into the algorithm which adjusts the rate of flow of jobs by access
+mode.</TD>
+</TR>
+
+<TR>
+<TD>When an enstore job fails because of a tape error or failure of the
+receiving encmd (or network or whatever) the job queue of enstore should
+be cleaned up appropriately.&nbsp;</TD>
+
+<TD>Could live without this in 1st implementation, but would be nice to
+determine what is appropriate behavior in each of the possible failure
+modes. We are expecting automatic retries when tape cannot be read or written
+in a particular drive and the tape only marked as unreadable if tried in
+n drives.</TD>
+
+<TD>SAM does not wish to handle tape errors, tape statistics or retries
+- merely to note relevant information on state of media and record drive
+used in the File and Event Catalog</TD>
+</TR>
+
+<TR>
+<TD>If the STK robot and a couple of drives cannot be hooked up with an
+enstore test system by October 1, then Enstore needs to emulate the delays
+of a robot for Tape mount, File seek time, and File transfer time, in order
+to test the Global Resource Manager.&nbsp;</TD>
+
+<TD>Part of this is already implemented as a 'simple' model.&nbsp; Is this
+adequate - it is not installed yet, SAM have not tried it.&nbsp;</TD>
+
+<TD>Essential to simulate queing for scarce resources - the tape drive,
+and the network bandwidth.&nbsp;</TD>
+</TR>
+</TABLE>
+
+<BR>&nbsp;
+<P><A HREF="enstore-return-format.txt">Latest specification of data returned
+on call to encp</A>
+</BODY>
+</HTML>
