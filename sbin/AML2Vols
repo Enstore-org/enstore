@@ -21,11 +21,10 @@ set -u
 volfile=/tmp/ROBOT-VOLUMES-$gang
 
 output=${1:-/dev/tty}
+shift
 if [ `echo $output | grep -c /dev/` -eq 0 ] ; then 
   rm -f $output
 fi
-
-remote_copy=${2:-/dev/null}
 
 cat << EOF >>$output
 <html> <head> <title>$robot Volume Status Page</title> </head>
@@ -75,7 +74,10 @@ cat << EOF >>$output
 </body>
 EOF
 
-if [ `echo $output | grep -c /dev/` -eq 0 -a `echo $remote_copy | grep -c /dev/` -eq 0 ] ; then 
-  echo enrcp $output $remote_copy
-       enrcp $output $remote_copy
-fi
+for remote_copy in $*
+do
+  if [ `echo $output | grep -c /dev/` -eq 0 -a `echo $remote_copy | grep -c /dev/` -eq 0 ] ; then 
+    echo enrcp $output $remote_copy
+         enrcp $output $remote_copy
+  fi
+done
