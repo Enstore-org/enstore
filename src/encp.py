@@ -51,7 +51,7 @@ def signal_handler(sig, frame):
     quit(1)
 
 for sig in range(signal.NSIG):
-    if sig not in (signal.SIGTSTP, signal.SIGCONT, signal.SIGCHLD):
+    if sig not in (signal.SIGTSTP, signal.SIGCONT, signal.SIGCHLD, signal.SIGWINCH):
         try:
             signal.signal(sig, signal_handler)
         except:
