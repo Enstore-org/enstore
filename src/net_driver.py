@@ -11,8 +11,8 @@ import setpath
 import driver
 import e_errors
 import strbuffer
+import Trace
 
-verbose=1
 
 class NetDriver(driver.Driver):
 
