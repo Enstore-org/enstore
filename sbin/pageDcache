@@ -287,6 +287,14 @@ if [ -z "${DCAP_DIR:-}" ]; then
     fi
 fi
 
+# always setup python to make sure we get the correct version.
+setup python
+if [ $? -gt 0 ]; then
+    echo `date` ERROR: unable to setup python.
+    exit 8
+fi
+
+
 case $gang in
     cdfen)	
 	if [ "$testToDo" != "" ];
