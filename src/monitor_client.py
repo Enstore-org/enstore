@@ -178,7 +178,7 @@ class MonitorServerClient(generic_client.GenericClient):
                 time.sleep(1) #Wait a sec, so each pass is a second of timeout.
                 
         else: #If we did not break out of the for loop, flag the error.
-            raise SERVER_CLOSED_CONNECTION, os.srterror(errno.ETIMEDOUT)
+            raise SERVER_CONNECTION_ERROR, os.srterror(errno.ETIMEDOUT)
 
         #Success on the connection!  Restore flag values.
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
