@@ -67,7 +67,7 @@ def collect_children():
             Trace.trace(0,"collect_children "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
             raise sys.exc_info()[0],sys.exc_info()[1]
-    Trace.trace(20,"}collect_children count=%d",count+' '+repr(status))
+    Trace.trace(20,"}collect_children count=%d",count)
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
