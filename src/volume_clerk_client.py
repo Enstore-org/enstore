@@ -64,9 +64,9 @@ class VolumeClerkClient(generic_client.GenericClient,
     def __init__( self, csc, server_address=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
-	if server_address != None:
+        if server_address != None:
             self.server_address = server_address
-	else:
+        else:
             self.server_address = self.get_server_address(MY_SERVER)
 
     # add a volume to the stockpile
@@ -152,11 +152,11 @@ class VolumeClerkClient(generic_client.GenericClient,
 
     # delete a volume from the stockpile
     def restore(self, external_label, restore=0):
-	if restore: restore_vm = "yes"
-	else: restore_vm = "no"
+        if restore: restore_vm = "yes"
+        else: restore_vm = "no"
         ticket= { 'work'           : 'restorevol',
                   'external_label' : external_label,
-		  "restore"         : restore_vm}
+                  "restore"         : restore_vm}
         x = self.send(ticket)
         return x
 
@@ -177,7 +177,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
-		       'vcc.get_vols: sending ticket: %s'%(ticket,) )
+                       'vcc.get_vols: sending ticket: %s'%(ticket,) )
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
@@ -395,7 +395,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
-		  'bfid'            : bfid }
+                  'bfid'            : bfid }
         x = self.send(ticket)
         return x
 
@@ -414,15 +414,15 @@ class VolumeClerkClient(generic_client.GenericClient,
     # Check if volume is available
     def is_vol_available(self, work, external_label, family=None, size=0):
         ticket = { 'work'                : 'is_vol_available',
-		   'action'              : work,
-		   'volume_family'         : family,
-		   'file_size'           : size,
-		   'external_label'      : external_label
-		   }
+                   'action'              : work,
+                   'volume_family'       : family,
+                   'file_size'           : size,
+                   'external_label'      : external_label
+                   }
         x = self.send(ticket)
         return x
-	
-	
+        
+        
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            volume_family, vol_veto_list,first_found, exact_match=0):
@@ -575,7 +575,7 @@ def do_work(intf):
                                              1) #first_found
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
-	pprint.pprint(ticket)
+        pprint.pprint(ticket)
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
@@ -652,7 +652,7 @@ def do_work(intf):
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
     else:
-	intf.print_help()
+        intf.print_help()
         sys.exit(0)
 
     vcc.check_ticket(ticket)
