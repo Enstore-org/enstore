@@ -198,7 +198,7 @@ void set_done_flag(int* done)
 
 static struct return_values
 do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
-	      struct timeval timeout, int crc_flag, unsigned long *crc_p)
+	      struct timeval timeout, int crc_flag, unsigned int *crc_p)
 {
   /*setup local variables*/
   struct transfer reads;
@@ -326,12 +326,12 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   {
     rtn_val = malloc(sizeof(struct return_values));
     rtn_val->exit_status = THREAD_ERROR;
-    rtn_val->crc_ul = 0;
+    rtn_val->crc_ui = 0;
     rtn_val->errno_val = EILSEQ;
     rtn_val->size = 0;
   }
   /* Get the pointer to the checksum. */
-  *crc_p = rtn_val->crc_ul;
+  *crc_p = rtn_val->crc_ui;
 
   /* Print out an error message.  This information currently is not returned
      to encp.py. */
