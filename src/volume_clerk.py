@@ -79,6 +79,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.ignored_sg_file = None
         return
 
+    # change_state(type, value) -- change a state
+    def change_state(self, volume, type, value):
+        q = "insert into state (volume, type, value) values (\
+             lookup_vol('%s'), lookup_stype('%s'), '%s');" % \
+             (volume, type, value)
+	res = self.dict.db.query(q)
+
     # check if volume is full #### DONE
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
@@ -116,6 +123,122 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             else: ret = e_errors.NOSPACE
         return ret
 
+    # __history(vol) -- show state change history of vol
+    def __history(self, vol):
+        q = "select time, label, state_type.name as type, state.value \
+             from state, state_type, volume \
+             where \
+                label = '%s' and \
+                state.volume = volume.id and \
+                state.type = state_type.id \
+             order by time desc;"%(vol)
+        try:
+            res = self.dict.db.query(q).dictresult()
+        except:
+            msg = `sys.exc_type`+' '+`sys.exc_value`+' query: '+q
+            Trace.log(e_errors.ERROR, msg)
+            res = []
+        return res
+
+    # history(ticket) -- server version of __history()
+    def history(self, ticket):
+        try:
+            vol = ticket['external_label']
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # get a user callback
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket,ticket)
+        res = self.__history(vol)
+        callback.write_tcp_obj_new(self.data_socket, res)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close() 
+        return
+
+    # set_write_protect
+    def write_protect_on(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            res = self.change_state(vol, 'write_protect', 'ON')
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            msg = `sys.exc_type`+' '+`sys.exc_value`
+            Trace.log(e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.ERROR, msg)
+        self.reply_to_caller(ticket)
+        return
+
+    # set_write_protect
+    def write_protect_off(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            res = self.change_state(vol, 'write_protect', 'OFF')
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            msg = `sys.exc_type`+' '+`sys.exc_value`
+            Trace.log(e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.ERROR, msg)
+        self.reply_to_caller(ticket)
+        return
+
+    # write_protect_status(self, ticket):
+    def write_protect_status(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        q = "select time, value from state, state_type, volume \
+             where \
+                 state.type = state_type.id and \
+                 state_type.name = 'write_protect' and \
+                 state.volume = volume.id and \
+                 volume.label = '%s' \
+             order by time desc limit 1;"%(vol)
+
+        try:
+            res = self.dict.db.query(q).dictresult()
+            if not res:
+                status = "UNKNOWN"
+            else:
+                status = res[0]['value']
+            ticket['status'] = (e_errors.OK, status)
+        except:
+            msg = `sys.exc_type`+' '+`sys.exc_value`
+            Trace.log(e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.ERROR, msg)
+        self.reply_to_caller(ticket)
+        return
+        
     #### DONE
     # __rename_volume(old, new): rename a volume from old to new
     #
@@ -288,6 +411,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 record = self.dict[vol+'.deleted']
                 record['system_inhibit'][0] = e_errors.DELETED
                 self.dict[vol+'.deleted'] = record
+		self.change_state(vol+'.deleted', 'system_inhibit_0', e_errors.DELETED)
                 Trace.log(e_errors.INFO, 'volume "%s" has been deleted'%(vol))
             else: # don't do anything further
                 return status
@@ -320,6 +444,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if record.has_key(ek):
                     del record[ek]
             self.dict[vol] = record
+            self.change_state(vol, 'system_inhibit_0', "none");
+            self.change_state(vol, 'system_inhibit_1', "none");
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
         else:
 
@@ -429,6 +555,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record = self.dict[vol]
             record['system_inhibit'][0] = 'none'
             self.dict[vol] = record
+            self.change_state(vol, 'system_inhibit_0', 'none')
             Trace.log(e_errors.INFO, 'volume "%s" has been restored'%(vol))
         return status
 
@@ -1239,6 +1366,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if record["remaining_bytes"] == 0 and \
             record["system_inhibit"][1] == "none":
             record["system_inhibit"][1] = "full"
+            self.change_state(external_label, 'system_inhibit_1', "full")
             record["si_time"][1] = time.time()
 
         record["last_access"] = time.time()
@@ -1482,6 +1610,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
         if record["status"][0] == e_errors.OK:
+            type = inhibit+'_'+`position`
+            self.change_state(external_label, type, "none")
             Trace.log(e_errors.INFO, "system inhibit %d cleared for %s" % (position, external_label))
         self.reply_to_caller(record)
         return
@@ -1564,6 +1694,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # record time
         record["si_time"][index] = time.time()
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
+        self.change_state(external_label, 'system_inhibit_'+`index`, flag)
         record["status"] = (e_errors.OK, None)
         Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
         self.reply_to_caller(record)

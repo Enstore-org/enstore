@@ -495,6 +495,66 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout, retry)
 
+    # show_history
+    def show_history(self, vol):
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"           : "history",
+                  "external_label" : vol,
+                  "callback_addr"  : (host, port)}
+
+        # send the work ticket to volume clerk
+        ticket = self.send(ticket, 10, 1)
+        if ticket['status'][0] != e_errors.OK:
+            return ticket
+
+        r, w, x = select.select([listen_socket], [], [], 15)
+        if not r:
+            listen_socket.close()
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
+
+        control_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            listen_socket.close()
+            control_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+        ticket = callback.read_tcp_obj(control_socket)
+        listen_socket.close()
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
+        ticket= callback.read_tcp_obj(data_path_socket)
+        res = callback.read_tcp_obj_new(data_path_socket)
+        ticket['history'] = res
+
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with volume clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            return done_ticket
+
+        return ticket
+
+    def write_protect_on(self, vol):
+        ticket = {"work"            : "write_protect_on",
+                  "external_label"  : vol}
+        return self.send(ticket)
+
+    def write_protect_off(self, vol):
+        ticket = {"work"            : "write_protect_off",
+                  "external_label"  : vol}
+        return self.send(ticket)
+
+    def write_protect_status(self, vol):
+        ticket = {"work"            : "write_protect_status",
+                  "external_label"  : vol}
+        return self.send(ticket)
+
     # show_quota() -- show quota
     def show_quota(self, timeout=60, retry=1):
         ticket = {'work': 'show_quota'}
@@ -716,6 +776,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol = ""
         self.gvol = ""
         self.check = ""
+        self.history = None
         self.add = ""
         self.erase = None
         self.modify = ""
@@ -752,6 +813,9 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.rebuild_sg_count = 0
         self.set_sg_count = None
         self.get_sg_count = None
+        self.write_protect_on = None
+        self.write_protect_off = None
+        self.write_protect_status = None
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -853,6 +917,26 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
         option.CHECK:{option.HELP_STRING:"check a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.HISTORY:{option.HELP_STRING:"show state change history of volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_ON:{option.HELP_STRING:"set write protect on",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_OFF:{option.HELP_STRING:"set write protect off",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_STATUS:{option.HELP_STRING:"show write protect status",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
@@ -1190,6 +1274,28 @@ def do_work(intf):
                                    capacity_str(ticket['remaining_bytes']),
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
+    elif intf.history:
+        ticket = vcc.show_history(intf.history)
+        if ticket['status'][0] == e_errors.OK and len(ticket['history']):
+            for state in ticket['history']:
+                type = state['type']
+                if state['type'] == 'system_inhibit_0':
+                    type = 'system_inhibit[0]'
+                elif state['type'] == 'system_inhibit_1':
+                    type = 'system_inhibit[1]'
+                elif state['type'] == 'user_inhibit_0':
+                    type = 'user_inhibit[0]'
+                elif state['type'] == 'user_inhibit_1':
+                    type = 'user_inhibit[1]'
+                print "%-28s %-20s %s"%(state['time'], type, state['value'])
+    elif intf.write_protect_on:
+        ticket = vcc.write_protect_on(intf.write_protect_on)
+    elif intf.write_protect_off:
+        ticket = vcc.write_protect_off(intf.write_protect_off)
+    elif intf.write_protect_status:
+        ticket = vcc.write_protect_status(intf.write_protect_status)
+        if ticket['status'][0] == e_errors.OK:
+            print intf.write_protect_status, "write-protect", ticket['status'][1]
     elif intf.set_comment: # set comment of vol
         if len(intf.argv) != 4:
             print "Error! usage: enstore %s --set-comment=<comment> <vol>"%(sys.argv[0])

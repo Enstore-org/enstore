@@ -347,6 +347,9 @@ VOLUME = "volume"                            #pnfs, encp
 VOL1OK = "VOL1OK"                            #volume
 WARM_RESTART = "warm-restart"                #mover
 WEB_HOST = "web-host"                        #enstore_make_log_plot
+WRITE_PROTECT_STATUS = "write-protect-status" #volume
+WRITE_PROTECT_ON = "write-protect-on"        #volume
+WRITE_PROTECT_OFF = "write-protect-off"      #volume
 XREF = "xref"                                #pnfs
 
 #these are this files test options
@@ -412,8 +415,8 @@ valid_option_list = [
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
-    WARM_RESTART, WEB_HOST,
-    XREF,
+    WARM_RESTART, WEB_HOST, WRITE_PROTECT_STATUS, WRITE_PROTECT_ON,
+    WRITE_PROTECT_OFF, XREF,
     ]
 
 ############################################################################
