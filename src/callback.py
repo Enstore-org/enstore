@@ -64,7 +64,6 @@ def get_callback_port(start,end,use_multiple=0):
     Trace.trace(20,"get_callback_port - got the lock - hunting for port")
 
     tot_bw = 0
-    print interface_tab
     for (ip, bw) in interface_tab:
         tot_bw = tot_bw+bw
     n_tries = (end - start)*tot_bw
