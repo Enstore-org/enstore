@@ -7130,25 +7130,44 @@ def read_from_hsm(e, tinfo):
 
                 #handle_retries() is not required here since write_hsm_file()
                 # handles its own retrying when an error occurs.
-                if e_errors.is_ok(done_ticket) and index != None:
-                    #Combine the dictionaries.
-                    work_ticket = combine_dict(done_ticket,
-                                               request_list[index])
-                    #Set completion status to successful.
-                    work_ticket['completion_status'] = SUCCESS
-                    #Store these changes back into the master list.
-                    request_list[index] = work_ticket
+                if e_errors.is_ok(done_ticket):
+                    if index == None:
+                        #How can we succed at a transfer, that is not in the
+                        # request list?
+                        message = "Successfully transfered a file that " \
+                                  "is not in the file transfer list."
+                        sys.stderr.write(message + "\n")
+                        Trace.log(e_errors.ERROR,
+                                  message + "  " + str(done_ticket))
+                        
+                    else:
+                        #Combine the dictionaries.
+                        work_ticket = combine_dict(done_ticket,
+                                                   request_list[index])
+                        #Set completion status to successful.
+                        work_ticket['completion_status'] = SUCCESS
+                        #Store these changes back into the master list.
+                        request_list[index] = work_ticket
 
-                elif e_errors.is_non_retriable(done_ticket) and index != None:
-                    #Combine the dictionaries.
-                    work_ticket = combine_dict(done_ticket,
-                                               request_list[index])
-                    #Set completion status to successful.
-                    work_ticket['completion_status'] = FAILURE
-                    #Store these changes back into the master list.
-                    request_list[index] = work_ticket
-
+                elif e_errors.is_non_retriable(done_ticket):
+                    #Regardless if index is None or not, make sure that
+                    # exit_status gets set to failure.
                     exit_status = 1
+
+                    if index == None:
+                        message = "Unknown transfer failed."
+                        sys.stderr.write(message + "\n")
+                        Trace.log(e_errors.ERROR,
+                                  message + "  " + str(done_ticket))
+                        
+                    else:
+                        #Combine the dictionaries.
+                        work_ticket = combine_dict(done_ticket,
+                                                   request_list[index])
+                        #Set completion status to successful.
+                        work_ticket['completion_status'] = FAILURE
+                        #Store these changes back into the master list.
+                        request_list[index] = work_ticket
 
                 if not e_errors.is_ok(done_ticket):
                     continue
