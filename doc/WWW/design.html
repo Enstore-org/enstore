@@ -2543,7 +2543,11 @@ When the Mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
 subprocess which handles the transfer utilizing a shared memory buffer for
 both data transfer and communication with parent process. The
 main Mover process can read shared memory locations to get the status of
-the transfer.
+the transfer.  This design will allow for easy implementation of DESY's
+"slow user network abort" feature.  The parent process can watch the
+transfer processes and determine (at some point early in the transfer) if
+the tape drive is being starved or throttled such that the tape drive
+resource is being abused.
 
 The first thing the transfer process does is check to see if the waiting
 <em>encp</em> is responsive. This involves contacting <em>encp</em> on the designated TCP
