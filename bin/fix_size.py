@@ -109,33 +109,36 @@ while 1:
         if fsize == 0:
             l4 = get_l4(fn)
             if l4:
-                #print fn
-                # check if L$ is consistent with file db info
-                bfinfo = fcc.bfid_info(l4['bfid'])
-                if compare(bfinfo, l4):
-                    fsize_str = "%s"%(l4['size'])
-                    if ask:
-                        try:
-                            reply = raw_input("fix %s? [y/n/i]"%(fn,))
-                        except:
-                            sys.exit()
-                        if reply == 'y':
-                            fix = 1
-                        elif reply == 'n':
-                            pass
+                if l4['size'] != 0:
+                    #print fn
+                    # check if L$ is consistent with file db info
+                    bfinfo = fcc.bfid_info(l4['bfid'])
+                    if compare(bfinfo, l4):
+                        fsize_str = "%s"%(l4['size'])
+                        if ask:
+                            try:
+                                reply = raw_input("fix %s? [y/n/i]"%(fn,))
+                            except:
+                                sys.exit()
+                            if reply == 'y':
+                                fix = 1
+                            elif reply == 'n':
+                                pass
+                            else:
+                               ask=0
+                               fix = 1
                         else:
-                           ask=0
-                           fix = 1
-                    else:
-                        fix = 1
-                    if fix:
-                        try:
-                            touch_file(fn, fsize_str)
-                            fixed_files=fixed_files+1
-                            print "fixed",fixed_files
-                        except:
-                            exc, msg, tb = sys.exc_info()
-                            print "exception: %s %s" % (str(exc), str(msg))
-                            continue
+                            fix = 1
+                        if fix:
+                            try:
+                                touch_file(fn, fsize_str)
+                                fixed_files=fixed_files+1
+                                print "fixed",fixed_files
+                            except:
+                                exc, msg, tb = sys.exc_info()
+                                print "exception: %s %s" % (str(exc), str(msg))
+                                continue
+                else:
+                    print "L4 0 size for %s"%(fn,)
 
     else: break
