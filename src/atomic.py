@@ -39,7 +39,7 @@ def _open2(pathname,mode=0666):
     tmpname = os.path.join(os.path.dirname(pathname), tmpname)
     
     delete_at_exit.register(tmpname)
-    fd_tmp = os.open(tmpname, os.O_CREAT|os.O_RDWR, mode)
+    fd_tmp = os.open(tmpname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
 
     ok = 0
     s = None #initalize
@@ -63,7 +63,7 @@ def _open2(pathname,mode=0666):
             raise OSError, detail
 
     if ok:
-        fd=os.open(pathname, os.O_CREAT|os.O_RDWR, mode)
+        fd=os.open(pathname, os.O_RDWR, mode)
         os.unlink(tmpname)
         os.close(fd_tmp)
         delete_at_exit.unregister(tmpname)
