@@ -86,6 +86,7 @@ class AtMovers:
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
         vol_family = mover_info['volume_family']
         mover = mover_info['mover']
+        mover_info['updated'] = time.time()
         self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
         Trace.trace(13,"AtMovers put: at_movers: %s sg_vf: %s" % (self.at_movers, self.sg_vf))
@@ -1307,7 +1308,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      'volume_family'  : mover['volume_family'],
                                      'operation'      : mover['operation'],
                                      'volume_status'  : mover['volume_status'],
-                                     'state'   : mover['state']
+                                     'state'   : mover['state'],
+                                     'updated' : mover['updated']
                                      })
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
