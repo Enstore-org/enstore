@@ -125,7 +125,7 @@ def busy_vols_in_family (family_name):
     vols = []
     for w in work_at_movers + work_awaiting_bind:
      try:
-        if w["fc"]["file_family"] == family_name:
+        if w["vc"]["file_family"] == family_name:
             vols.append(w["fc"]["external_label"])
      except:
         pprint.pprint(w)
@@ -177,18 +177,18 @@ def next_work_any_volume(csc):
         # find volumes we _dont_ want to hear about -- that is volumes in the
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
-            vol_veto_list = busy_vols_in_family(w["fc"]["file_family"])
+            vol_veto_list = busy_vols_in_family(w["vc"]["file_family"])
             # only so many volumes can be written to at one time
-            if len(vol_veto_list) >= w["fc"]["file_family_width"]:
+            if len(vol_veto_list) >= w["vc"]["file_family_width"]:
                 w=pending_work.get_next()
                 continue
             # width not exceeded, ask volume clerk for a new volume.
             vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
-            v = vc.next_write_volume (w["fc"]["library"], w["uinfo"]\
+            v = vc.next_write_volume (w["vc"]["library"], w["uinfo"]\
                                       ["size_bytes"],\
-                                      w["fc"]["file_family"], vol_veto_list,\
+                                      w["vc"]["file_family"], vol_veto_list,\
                                       first_found)
             t2 = time.time()-t1
             #print "  next_write_volume dt=",t2
@@ -199,6 +199,7 @@ def next_work_any_volume(csc):
                 w["status"] = v["status"]
                 return w
             # found a volume that has write work pending - return it
+            w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v["external_label"]
             return w
 
@@ -222,10 +223,11 @@ def next_work_this_volume(v):
 
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
-            w["fc"]["file_family"]   == v["file_family"] and
+            w["vc"]["file_family"]   == v["file_family"] and
             v["user_inhibit"]        == "none"           and
             v["system_inhibit"]      == "none"           and
             w["uinfo"]["size_bytes"] <= v["remaining_bytes"]):
+            w["fc"] = {} # clear old info or create new subticket
             w["fc"]["external_label"] = v["external_label"]
             # ok passed criteria, return write work ticket
             return w
@@ -358,8 +360,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["uinfo"]["fullname"]),
                                    ticket["pinfo"]["pnfsFilename"],
-                                   ticket["fc"]["library"],
-                                   ticket["fc"]["file_family"],
+                                   ticket["vc"]["library"],
+                                   ticket["vc"]["file_family"],
                                    ticket["uinfo"]["uname"])
 	if not ticket.has_key('lm'):
 	    lm = {}
@@ -438,7 +440,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         elif w["status"] == "ok":
 	    # check if the volume for this work had failed on this mover
 	    for item in self.suspect_volumes:
-		if (w['fc']['external_label'] == item['external_label']):
+		if (w["fc"]['external_label'] == item['external_label']):
 		    if list: print "FOUND volume ", item['external_label']
 		    for i in item['movers']:
 			if i == mticket['mover']:
@@ -593,7 +595,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pprint.pprint(self.suspect_volumes)
 	vol_found = 0
 	for item in self.suspect_volumes:
-	    if ticket['fc']['external_label'] == item['external_label']:
+	    if ticket["fc"]['external_label'] == item['external_label']:
 		vol_found = 1
 		break
 	if not vol_found:

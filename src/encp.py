@@ -215,9 +215,9 @@ def write_to_hsm(input, output,
 
             # if no ticket, then this is a not a retry
             except NameError:
-                file_clerk = {"library"            : library[i],\
-                              "file_family"        : file_family[i],\
-                              "file_family_width"  : width[i]}
+                volume_clerk = {"library"            : library[i],\
+                                "file_family"        : file_family[i],\
+                                "file_family_width"  : width[i]} # technically width does not belong here, but it associated with the volume
 
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
@@ -227,7 +227,7 @@ def write_to_hsm(input, output,
                 work_ticket = {"work"               : "write_to_hsm",
                                "priority"           : 1,
                                "callback_addr"      : callback_addr,
-                               "fc"                 : file_clerk,
+                               "vc"                 : volume_clerk,
                                "pinfo"              : pinfo[i],
                                "uinfo"              : uinfo,
                                "encp"               : encp,
