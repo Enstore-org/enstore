@@ -140,7 +140,10 @@ allow() { tt=$1
             if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
                  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-                 if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
+		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
+		    logit "Swapped out$node $tt $command $pid $rest -> $psline"
+		    return 0
+                 elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
                     logit "$msg1"
                     logit "$psline" "ps"
@@ -508,10 +511,19 @@ $KEYTAB_CHECK -a
 # get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
 # this is a small hole
-N1=`$LSOF -i TCP -i UDP`
+# also need to go through a file - because argument to echo is too large!!!
+netscan_n1=/tmp/netscan_n1
+netscan_n2=/tmp/netscan_n2
+rm -f $netscan_n1
+rm -f $netscan_n2
+#N1=`$LSOF -i TCP -i UDP`
+$LSOF -i TCP -i UDP> $netscan_n1
 PSfirst=`$PS wwwwfaxu`
-N2=`$LSOF -i TCP -i UDP`
-N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
+#N2=`$LSOF -i TCP -i UDP`
+$LSOF -i TCP -i UDP > $netscan_n2
+#N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
+N=`$CAT $netscan_n1 $netscan_n2|$SORT|$UNIQ -d`
+
 
 # scan open files and check if allowed
 $ECHO "$N" | while read command pid rest; do
