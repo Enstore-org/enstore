@@ -64,11 +64,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
 
-	# uid and gid
-	if ticket["fc"].has_key("uid"):
-		record["uid"] = ticket["fc"]["uid"]
-	if ticket["fc"].has_key("gid"):
-		record["gid"] = ticket["fc"]["gid"]
+        # uid and gid
+        if ticket["fc"].has_key("uid"):
+            record["uid"] = ticket["fc"]["uid"]
+        if ticket["fc"].has_key("gid"):
+            record["gid"] = ticket["fc"]["gid"]
         
         # get a new bit file id
         bfid = self.unique_bit_file_id()
