@@ -54,7 +54,7 @@ def show_query_result(res):
 		for i in range(w):
 			print format[i]%(r[i]),
 		# mark if the numbers are not quite right
-		if r[-1] > r[-2] or r[-2] > r[-3]:
+		if (r[-2] and r[-1] > r[-2]) or r[-2] > r[-3] or r[-3] > r[-4]:
 			print "*"
 		else:
 			print
@@ -88,11 +88,6 @@ class Quota:
 	def log(self, m):
 		Trace.log(e_errors.INFO, self.uname+' '+m)
 
-	# this is not used any more but it's handy to be kept around
-	def show_all(self):
-		res = self.db.query("select * from quota order by library;")
-		show_query_result(res)
-
 	# show summary by the libraries
 	def show_by_library(self):
 		q = "select library, sum(requested) as requested, \
@@ -110,24 +105,41 @@ class Quota:
 			# with specific library
 			if sg:
 				# with specific storage group
-				q = "select library, storage_group, \
-					requested, authorized, quota \
-					from quota where \
-					library = '%s' and \
-					storage_group = '%s';"%(
+				q = "select sg_count.library, \
+					sg_count.storage_group, \
+					requested, authorized, quota, \
+					count as allocated \
+					from sg_count \
+					left outer join quota on\
+					quota.library = sg_count.library and \
+					quota.storage_group = sg_count.storage_group \
+					where \
+					sg_count.library = '%s' and \
+					sg_count.storage_group = '%s';"%(
 					library, sg)
 			else:
 				# without specific storage group
-				q = "select library, storage_group, \
-					requested, authorized, quota \
-					from quota where \
-					library = '%s' \
+				q = "select sg_count.library, \
+					sg_count.storage_group, \
+					requested, authorized, quota, \
+					count as allocated \
+					from sg_count \
+					left outer join quota on \
+					quota.library = sg_count.library and \
+					quota.storage_group = sg_count.storage_group \
+					where \
+					sg_count.library = '%s' \
 					order by storage_group;"%(
 					library)
 		else:
 			# without specific library -- show all
-			q = "select library, storage_group, requested,\
-				authorized, quota from quota \
+			q = "select sg_count.library, \
+				sg_count.storage_group, requested,\
+				authorized, quota, \
+				count as allocated \
+				from sg_count left outer join quota on\
+				quota.library = sg_count.library  and \
+				quota.storage_group = sg_count.storage_group \
 				order by library, storage_group;"
 
 		show_query_result(self.db.query(q))
