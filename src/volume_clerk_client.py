@@ -197,7 +197,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # move a volume to a new library
     def new_library(self, external_label,new_library):
-        Trace.trace(10,'new_library label='+repr(external_label),' new_library='+repr(new_library))
+        Trace.trace(10,'new_library label='+repr(external_label)+' new_library='+repr(new_library))
         ticket= { 'work'           : 'new_library',
                   'external_label' : external_label,
                   'new_library'    : new_library}
