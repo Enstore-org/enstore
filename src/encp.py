@@ -1101,31 +1101,46 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                        'queue_size':queue_size} #one less than before
         return result_dict
 
-    #Log the intermidiate error as a warning instead as a full error.
-    Trace.log(e_errors.WARNING, status)
-
     #Change the unique id so the library manager won't remove the retry
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by
     # one.
-    if status != (e_errors.RESUBMITTING, None):
+    if status[0] != e_errors.RESUBMITTING:
         request_dictionary['unique_id'] = generate_unique_id()
         #Keep retrying this file.
         try:
             request_dictionary['retry'] = retry + 1
+
+            #Since a retriable error occured, resubmit the ticket.
+            submit_one_request(request_dictionary, verbose)
         except KeyError:
+            #If we get here, then the error occured while waiting for any
+            # (valid) mover to call back.  Since, there was no information
+            # then the submitting operation failed and we should go back
+            # to the top and wait for the other transfers to commence.
+            # The key error is generated trying to get
+            # request_dictionary['vc']['library']
             pass
 
-    try:
-        #Since a retriable error occured, resubmit the ticket.
-        submit_one_request(request_dictionary, verbose)
-    except KeyError:
-        #If we get here, then the error occured while waiting for any (valid)
-        # mover to call back.  Since, there was no information then the
-        # submitting operation failed and we should go back to the top and
-        # wait for the other transfers to commence.  The key error is
-        # generated trying to get request_dictionary['vc']['library']
-        pass
+        #Log the intermidiate error as a warning instead as a full error.
+        Trace.log(e_errors.WARNING, status)
+        
+    #When nothing was recieved from the mover and the 15min has passed,
+    # resubmit all entries in the queue.  Leave the unique id the same.
+    # Even though for writes there is only one entry in the active request
+    # list at a time, submitting like this will still work.
+    else:
+        for req in request_list:
+            try:
+                #Since a retriable error occured, resubmit the ticket.
+                submit_one_request(req, verbose)
+            except KeyError:
+                pass
+            
+            #Log the intermidiate error as a warning instead as a full error.
+            status = (status[0], req.get('unique_id', None))
+            Trace.log(e_errors.WARNING, status)
+
 
     result_dict = {'status':(e_errors.RETRY, None),
                    'retry':request_dictionary.get('retry', 0),
