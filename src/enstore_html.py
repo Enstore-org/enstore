@@ -3,11 +3,18 @@
 import string
 import calendar
 import time
-import HTMLgen
 import types
 import os
 import stat
 
+have_htmlgen=0
+try:
+    import HTMLgen
+    have_htmlgen=1
+except ImportError:
+    print "HTMLgen not available"
+
+    
 import enstore_functions
 import enstore_constants
 import safe_dict
@@ -122,6 +129,7 @@ def fill_out_row(num_tds_so_far, tr):
 	td.bgcolor = YELLOW
 	tr.append(td)
 	num_tds_so_far = num_tds_so_far + 1
+
 
 class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
