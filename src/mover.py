@@ -2519,7 +2519,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
             self.transfers_failed = self.transfers_failed + 1
-        encp_gone = exc == e_errors.ENCP_GONE or e_errors.ENCP_STUCK
+        encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK)
         self.net_driver.close()
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
