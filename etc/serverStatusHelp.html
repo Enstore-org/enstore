@@ -54,11 +54,8 @@ name of an element (first column), represents a visual cue to the status of the 
 	      <UL>
 		  <LI>BROKEN</LI>
 	      </UL></TD></TR>
-<TR><TD bgcolor="#FF9966">
-	    <UL>
-		<LI>The element does not appear to be alive</LI>
-	        <LI>The element is not being monitored</LI>
-	    </UL></TD></TR>
+<TR><TD bgcolor="#FF9966">The element does not appear to be alive</TD></TR>
+<TR><TD bgcolor="#B9B9B9">The element is not being monitored</TD></TR>
 <TR><TD bgcolor="#FFFF00">An error occurred while getting the elements status</TD></TR>
 </TABLE></CENTER>
 <BR><BR>
@@ -73,7 +70,7 @@ manager and mover will add on additional information to the Status (e.g. unlocke
 	    <UL>
 	      <LI><B>alive</B> - the server is alive
 	      <LI><B>dead</B> - the server is presumed dead
-	      <LI><B>timed out</B> - the server has sent a heartbeat for awhile
+	      <LI><B>timed out</B> - the server has not sent a heartbeat for awhile
 	      <LI><B>no info yet</B> - the inquisitor has recently been restarted and is still collecting the state of the server
 	      <LI><B>not monitoring</B> - this server is not being monitored.
 	    </UL></TD>
@@ -104,12 +101,20 @@ total number of queue elements is larger than this value, the rest of the elemen
 will be displayed on a separate page and a link to this page will be included at the
 end of the queue, <I>Extra Queue Rows (n)</I>, where n is the
 number of elements on the additional page).
+<BR><BR>
+<h2>Mover Additional Information</h2>
+The additional Library Manager information includes the following -
+<BR>
+<TABLE NOBORDER>
+<TR><TD><B>State</B></TD><TD>Internal state of the mover (added to the above mentioned state</TD></TR>
+</TABLE>
+<BR>
 
 <HR><a href="http://www.fnal.gov/pub/disclaim.html">Legal Notices</a>
     <hr>
 <!-- Created: Tue Jul 11 15:54:31 CDT 2000 -->
 <!-- hhmts start -->
-Last modified: Mon Mar 18 15:59:29 CST 2002
+Last modified: Wed Mar 20 16:02:25 CST 2002
 <!-- hhmts end -->
   </body>
 </html>
