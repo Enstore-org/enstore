@@ -78,7 +78,6 @@ pid = os.getpid()
 usr = pwd.getpwuid(os.getuid())[0]
 
 def default_log_func( time, pid, name, args ):
-    print "Log", time, pid, name, args
     severity = args[0]
     msg = args[1]
     if severity > e_errors.MISC: severity = e_errors.MISC
