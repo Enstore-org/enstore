@@ -1,0 +1,27 @@
+#!/bin/sh
+
+echo "Count of Strictly comment lines"
+for i in *.py
+do
+echo -n $i
+egrep "[ 	]*#" $i | wc -l
+done
+
+echo -n TOTAL
+egrep "[ 	]*#" *.py | wc -l
+
+
+echo
+echo
+echo "count of lines that are no comment and non blank"
+for i in *.py
+do
+echo -n $i
+#eliminate blank and comment lines
+sed -e "s/[ 	]*//"  -e "s/#.*//"  -e "/^$/d" $i | wc -l
+done
+#Total
+echo -n TOTAL
+sed -e "s/[     ]*//"  -e "s/#.*//"  -e "/^$/d" *.py | wc -l
+
+
