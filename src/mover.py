@@ -63,6 +63,7 @@ import time				# .sleep
 import traceback			# print_exc == stack dump
 import string				# find
 import select
+import types				
 
 # enstore modules
 import generic_server
@@ -79,6 +80,7 @@ import FTT				# needed for FTT.error
 import EXfer				# needed for EXfer.error
 import e_errors
 import write_stats
+import udp_client
 
 MoverError = "Mover error"
 
@@ -530,8 +532,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                     self.mvr_config['mc_device'], self.vcc )
             except errno.errorcode[errno.ETIMEDOUT]:
                 rsp = { 'status':('ETIMEDOUT',None) }
-            Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status %s %s'%(
-                (rsp['status'], tmp_mc)))
+            Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status %s %s'%
+                      (rsp['status'], tmp_mc))
             if rsp['status'][0] != 'ok':
                 # it is possible, under normal conditions, for the system to be
                 # in the following race condition:
@@ -1649,8 +1651,8 @@ def sigstop( sig, stack ):
 import sys				# sys.argv[1:]
 import socket                           # gethostname (local host)
 import string				# atoi
-import types				# see if library config is list
-import udp_client
+
+
 
 # get an interface, and parse the user input
 intf = MoverInterface()
