@@ -1106,7 +1106,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 							       vol_fam)
         ticket["status"] = (e_errors.NOVOLUME, msg)
         # ignore NULL
-        if library[:4] != 'null' and library[-4:] != 'null':
+        if volume_family.extract_wrapper(vol_fam) != 'null' and \
+           library[:4] != 'null' and library[-4:] != 'null':
             Trace.alarm(e_errors.ERROR,msg)
             # this is important so turn the enstore ball red
             if not library+'.'+sg in self.ignored_sg:
