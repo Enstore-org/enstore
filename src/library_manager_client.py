@@ -53,46 +53,72 @@ class LibraryManagerClient(generic_client.GenericClient) :
                lst = self.getwork()
                pw_list = lst["pending_work"]
                at_list = lst["at movers"]
-               for i in range(0, len(pw_list)):
-                   host = pw_list[i]["wrapper"]["machine"][1]
-                   user = pw_list[i]["wrapper"]["uname"]
-                   pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
-                   fn = pw_list[i]["wrapper"]["fullname"]
-                   at_top = pw_list[i]["at_the_top"]
-                   reject_reason = ("","")
-                   if pw_list[i].has_key('reject_reason'):
-                       reject_reason = pw_list[i]['reject_reason']
-                   vol = ''
-                   if pw_list[i]['vc'].has_key('external_label'):
-                       vol = pw_list[i]['vc']['external_label']
-                   vol_msg = ''
-                   if vol:
-                       vol_msg='VOL %s' % (vol,)
-                   if (host == node) or (not node):
-                       print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
-                       if pw_list[i]["work"] == "read_from_hsm":
-                          pending_read_cnt = pending_read_cnt + 1
-                       elif pw_list[i]["work"] == "write_to_hsm":
-                           pending_write_cnt = pending_write_cnt + 1
+               pend_writes = []
+               pend_reads = []
+               for work in pw_list:
+                   if work["work"] == "read_from_hsm":
+                       pending_read_cnt = pending_read_cnt + 1
+                       pend_reads.append(work)
+                   elif work["work"] == "write_to_hsm":
+                       pending_write_cnt = pending_write_cnt + 1
+                       pend_writes.append(work)
+               if pending_read_cnt:
+                   print "Pending read requests"
+                   for work in pend_reads:
+                       host = work["wrapper"]["machine"][1]
+                       user = work["wrapper"]["uname"]
+                       pnfsfn = work["wrapper"]["pnfsFilename"]
+                       fn = work["wrapper"]["fullname"]
+                       at_top = work["at_the_top"]
+                       reject_reason = ("","")
+                       if work.has_key('reject_reason'):
+                           reject_reason = work['reject_reason']
+                       vol = ''
+                       if work['fc'].has_key('external_label'):
+                           vol = work['vc']['external_label']
+                       vol_msg = ''
+                       if vol:
+                           vol_msg='VOL %s' % (vol,)
+                       if (host == node) or (not node):
+                           print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
+               if pending_write_cnt:
+                   print "Pending write requests"
+                   for work in pend_writes:
+                       host = work["wrapper"]["machine"][1]
+                       user = work["wrapper"]["uname"]
+                       pnfsfn = work["wrapper"]["pnfsFilename"]
+                       fn = work["wrapper"]["fullname"]
+                       at_top = work["at_the_top"]
+                       reject_reason = ("","")
+                       if work.has_key('reject_reason'):
+                           reject_reason = work['reject_reason']
+                       vol = ''
+                       if work['vc'].has_key('external_label'):
+                           vol = work['vc']['external_label']
+                       vol_msg = ''
+                       if vol:
+                           vol_msg='VOL %s' % (vol,)
+                       if (host == node) or (not node):
+                           print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
                            
-               for i in range(0, len(at_list)):
-                   host = at_list[i]["wrapper"]["machine"][1]
-                   user = at_list[i]["wrapper"]["uname"]
-                   pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
-                   fn = at_list[i]["wrapper"]["fullname"]
-                   if at_list[i]["vc"].has_key("external_label"):
-                       vol = at_list[i]["vc"]["external_label"]
+               for work in at_list:
+                   host = work["wrapper"]["machine"][1]
+                   user = work["wrapper"]["uname"]
+                   pnfsfn = work["wrapper"]["pnfsFilename"]
+                   fn = work["wrapper"]["fullname"]
+                   if work["vc"].has_key("external_label"):
+                       vol = work["vc"]["external_label"]
                    else:
-                       vol = at_list[i]["fc"]["external_label"]
-                   if at_list[i].has_key("mover"):
-                       mover = at_list[i]["mover"]
+                       vol = work["fc"]["external_label"]
+                   if work.has_key("mover"):
+                       mover = work["mover"]
                    else:
                        mover = ''
                    if (host == node) or (not node):
                        print "%s %s %s %s %s M %s %s" % (host,self.name, user,pnfsfn,fn, mover, vol)
-                       if at_list[i]["work"] == "read_from_hsm":
+                       if work["work"] == "read_from_hsm":
                           active_read_cnt = active_read_cnt + 1
-                       elif at_list[i]["work"] == "write_to_hsm":
+                       elif work["work"] == "write_to_hsm":
                            active_write_cnt = active_write_cnt + 1
         print "Pending read requests: ", pending_read_cnt
         print "Pending write requests: ", pending_write_cnt
