@@ -56,6 +56,18 @@ encp:
 	cp ENCPBIN_TEMP/encp	ENCPBIN/encp_t
 	rm -rf ENCPBIN_TEMP
 
+fileinfo:
+	- rm -rf FILEINFO_TEMP
+	mkdir FILEINFO_TEMP
+	- rm -rf FILEINFOBIN
+	mkdir FILEINFOBIN
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o FILEINFO_TEMP fileinfo.py
+	(cd FILEINFO_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp FILEINFO_TEMP/fileinfo FILEINFOBIN
+	cp $(ENSTORE_DIR)/ups/fileinfo.table FILEINFOBIN
+	- rm -rf FILEINFO_TEMP
+
+
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
 #	mkdir MONITOR_CLIENT_BIN_TEMP
 #	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o MONITOR_CLIENT_BIN_TEMP monitor_client.py
