@@ -42,16 +42,16 @@ class MediaChangerClient(generic_client.GenericClient):
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
-    def loadvol(self, external_label, drive):
+    def loadvol(self, vol_ticket, drive):
         ticket = {'work'           : 'loadvol',
-                  'external_label' : external_label,
+                  'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
         return self.send(ticket)
 
-    def unloadvol(self, volume, drive):
+    def unloadvol(self, vol_ticket, drive):
         ticket = {'work'           : 'unloadvol',
-                  'external_label' : volume,
+                  'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
         return self.send(ticket)

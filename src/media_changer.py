@@ -65,7 +65,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # load volume into the drive
     def load(self,
              external_label,    # volume external label
-             drive) :           # drive id
+             drive,             # drive id
+             media_type) :	# media type
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    self.enprint("make sure tape "+external_label+" is in drive "+\
 	                 drive)
@@ -88,11 +89,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def loadvol(self,
                 ticket):        # associative array containing volume and\
                                 # drive id
-        return self.load(ticket['external_label'], ticket['drive_id'])
+        import pprint
+        return self.load(ticket['vol_ticket']['external_label'], ticket['drive_id'],ticket['vol_ticket']['media_type'])
 
     # wrapper method for client - server communication
     def unloadvol(self, ticket):
-        return self.unload(ticket['external_label'], ticket['drive_id'])
+        return self.unload(ticket['vol_ticket']['external_label'], ticket['drive_id'])
 
 # IBM3494 robot class
 class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
@@ -109,7 +111,7 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
     # assumes volume is in drive
-    def load(self, external_label, drive) :
+    def load(self, external_label, drive, media_type) :
 	self.enprint("media changer rewind")
         #os.system("mt -t " + drive + " rewind")
         self.reply_to_caller({'status' : (e_errors.OK, None)})
@@ -123,23 +125,26 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume is in drive
-    def load(self, external_label, drive) :
-      command = "dasadmin mount" + external_label + " " + tape_drive
+    def load(self, external_label, tape_drive, media_type) :
+      command = "dasadmin mount -t " + media_type + " " + external_label + " " + tape_drive \
+             + " 2>&1"
       out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
       count=2
       while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
         count = count - 1
         self.logc.send(log_client.INFO, 2, "Mnt cmd:"+command)
         #    try the mount
-        result = os.system(command)
+        result = os.popen(command, "r").readlines()
+
         #    analyze the results
-	for line in result.readlines():
-           if string.find(line, "completed successfully") != -1 :
+	for line in result:
+           if string.find(line, " successful") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 self.logc.send(log_client.INFO, 4, "Mnt returned ok")
                 for line in result:
                     self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
-                break
+                self.reply_to_caller(out_ticket)
+                return
         
         # log the error
         self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
@@ -151,7 +156,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
     # unload volume from the drive;   ron said the tape will be ejected.
     def unload(self, external_label, tape_drive) :
       # form dismount command to be executed
-      command = "dasadmin unload " + tape_drive
+      command = "dasadmin dismount -d " + tape_drive + " 2>&1"
 
       # retry dismount once if it fails
       count=2
@@ -164,12 +169,13 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
 
         # analyze the return message
         for line in result:
-            if string.find(line, "dismount") != -1 :
+            if string.find(line, " successful") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
                 self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
                 for line in result:
                     self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
-                break
+                self.reply_to_caller(out_ticket)
+                return
         # log the error
         self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
         for line in result:
@@ -181,7 +187,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
-    def load(self, external_label, tape_drive) :
+    def load(self, external_label, tape_drive, media_type) :
       # form mount command to be executed
       command = "rsh " + self.mc_config['acls_host'] + " -l " + \
                             self.mc_config['acls_uname'] + " 'echo mount " + \
@@ -207,7 +213,8 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 self.logc.send(log_client.INFO, 4, "Mnt returned ok")
                 for line in result:
                     self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
-                break
+                self.reply_to_caller(out_ticket)
+                return
 
         # log the error
         self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
@@ -248,7 +255,8 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
                 for line in result:
                     self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
-                break
+                self.reply_to_caller(out_ticket)
+                return
         # log the error
         self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
         for line in result:
@@ -327,7 +335,7 @@ if __name__ == "__main__" :
     if intf.name == 'STK.media_changer' :
         mc =  STK_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
-    elif intf.name == 'EMASS.media_changer' :
+    elif intf.name == 'grau.media_changer' :
         mc =  EMASS_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
     elif intf.name == 'FTT.media_changer' :
