@@ -502,12 +502,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	return ff_dict
 
     # we do this when a queue seems to be stalled
-    def queue_is_stalled(self, server, node, ff):
+    def queue_is_stalled(self, server, node, ff, pend_num, wam_num):
 	# send mail and raise an alarm, this looks stalled.
 	txt = "Write queue stall for %s, file_family: %s, from node %s"%(server, ff,
 									 node)
 	Trace.alarm(e_errors.ERROR, txt)
-	enstore_functions.send_mail(MY_NAME, txt, "Write Queue Stall")
+	enstore_functions.send_mail(MY_NAME, 
+	     enstore_functions.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
+		  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
+												  wam_num),
+		  txt), "Write Queue Stall")
 
 
     def check_for_stalled_queue(self, lib_man):
@@ -526,10 +530,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    # there are elements in the wark at movers queue
 		    if wam_dict[ff][NUM_IN_Q] < wam_dict[ff][FF_W]:
 			# we should be processing more for this file_family.
-			self.queue_is_stalled(lib_man.name, node, ff)
+			self.queue_is_stalled(lib_man.name, node, ff, pend_dict[ff][NUM_IN_Q],
+					      wam_dict[ff][NUM_IN_Q])
+
 		else:
 		    # there are no elements in the wam queue for this ff. oops.
-		    self.queue_is_stalled(lib_man.name, node, ff)
+		    self.queue_is_stalled(lib_man.name, node, ff, pend_dict[ff][NUM_IN_Q], 0)
 
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
