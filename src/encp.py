@@ -241,7 +241,7 @@ if __name__  ==  "__main__" :
     config_port = string.atoi(config_port)
 
     # bomb out if we don't have an input and an output
-    if len(args) != 2 :
+    if len(args) < 2 :
         print "python",sys.argv[0], options, "inputfilename outputfilename"
         print "   do not forget the '--' in front of each option"
         sys.exit(0)

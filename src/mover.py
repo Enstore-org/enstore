@@ -9,13 +9,14 @@ from callback import *
 from dict_to_a import *
 from driver import RawDiskDriver
 
-csc = configuration_client()
+#csc = configuration_client()
 u = UDPClient()
 
 class Mover :
         def __init__(self, config_host="localhost", config_port=7500):
             self.config_host = config_host
             self.config_port = config_port
+	    csc = configuration_client(self.config_host,self.config_port)
 
         def move_forever(self, name) :
                 self.name = name
@@ -347,7 +348,7 @@ if __name__ == "__main__" :
         elif opt == "--config_list" :
             config_list = 1
         elif opt == "--help" :
-            print "python ",sys.argv[0], options
+	    print "python ",sys.argv[0], options,"mover_device"
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
 
@@ -357,9 +358,16 @@ if __name__ == "__main__" :
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
+    # bomb out if we don't have a mover
+    if len(args) < 1 :
+        print "python",sys.argv[0], options, "mover_device"
+        print "   do not forget the '--' in front of each option"
+        sys.exit(0)
+
+    print config_host,config_port,config_list
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
 
     while (1) :
         mv = Mover(config_host,config_port)
-        mv.move_forever (sys.argv[1])
+        mv.move_forever (args[0])
