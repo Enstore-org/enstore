@@ -1,0 +1,13 @@
+
+
+The following files in this directory may contain Fermi specific settings for environment 
+variables, path names etc.  These instances have hopefully been isolated at the top of the 
+files and indicated with comments.  Please look at each of these files to make sure that 
+everything is set for your particular system.
+
+FILES
+-----
+	backup2Tape
+	ecron
+	perfloop
+	rdist-log
