@@ -24,6 +24,8 @@ import configuration_client
 import bfid_db
 import volume_family
 import sg_db
+import enstore_constants
+import monitored_server
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -1347,6 +1349,9 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
         keys = self.csc.get(MY_NAME)
+	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+								  MY_NAME,
+								  keys)
 
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
                                                              keys['port']))
@@ -1369,6 +1374,11 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         self.bfid_db=bfid_db.BfidDb(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
         
+	# start our heartbeat to the event relay process
+	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
+				 self.alive_interval)
+
+
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
 
