@@ -533,57 +533,60 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    movers = self.data_dict[lm][enstore_status.MOVERS]
 	    movers.sort()
 	    for mover in movers:
-		moverd = self.data_dict[mover]
+		# we may not have any other info on this mover as the inq may not be
+		# watching it.
+		moverd = self.data_dict.get(mover, {})
 		# mark this mover as not being an orphan, so we can easily find the
 		# orphans later
-		moverd[enstore_status.FOUND_LM] = 1
-		# check if this mover has been ipdated yet, we may not have gotten to it
-		# yet, as we are really processing the library manager info.  if there is
-		# no STATUs key, then we have no info on this mover yet.
-		table.append(self.alive_row(mover, moverd[enstore_status.STATUS]))
+		if moverd:
+		    moverd[enstore_status.FOUND_LM] = 1
+		    # check if this mover has been ipdated yet, we may not have gotten to it
+		    # yet, as we are really processing the library manager info.  if there is
+		    # no STATUs key, then we have no info on this mover yet.
+		    table.append(self.alive_row(mover, moverd[enstore_status.STATUS]))
 
-		# we may have gotten an error when trying to get it, 
-		# so look for a piece of it.  
-		if moverd.has_key(enstore_status.COMPLETED):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
-							    color=BRICKRED, html_escape='OFF')))
-		    tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
-					 align="LEFT"))
-		    mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
-						 align="LEFT", bgcolor=YELLOW)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sState"%(NBSP,),
-							    color=BRICKRED, html_escape='OFF')))
-		    tr.append(HTMLgen.TD(moverd[enstore_status.STATE], colspan=3, 
-					 align="LEFT"))
-		    mv_table.append(tr)
-		    mv_table.append(empty_row(4))
-		    if moverd.has_key(enstore_status.LAST_READ):
-			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sRead%s(bytes)"%(NBSP, NBSP),
-								color=BRICKRED, html_escape='OFF'),
-						   align="CENTER"))
-			self.add_bytes_volume_info(moverd, tr, 
-						   enstore_status.LAST_READ)
+		    # we may have gotten an error when trying to get it, 
+		    # so look for a piece of it.  
+		    if moverd.has_key(enstore_status.COMPLETED):
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
+								color=BRICKRED, html_escape='OFF')))
+			tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
+					     align="LEFT"))
+			mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
+						     align="LEFT", bgcolor=YELLOW)
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sState"%(NBSP,),
+								color=BRICKRED, html_escape='OFF')))
+			tr.append(HTMLgen.TD(moverd[enstore_status.STATE], colspan=3, 
+					     align="LEFT"))
 			mv_table.append(tr)
-			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sWrite%s(bytes)"%(NBSP, NBSP),
-							  color=BRICKRED, html_escape='OFF'),
-						   align="CENTER"))
-			self.add_bytes_eod_info(moverd, tr, enstore_status.LAST_WRITE)
-			mv_table.append(tr)
-			self.add_files(moverd, mv_table)
-		    elif moverd.has_key(enstore_status.CUR_READ):
-			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sRead%s(bytes)"%(NBSP, NBSP),
-								color=BRICKRED, html_escape='OFF'),
-						   align="CENTER"))
-			self.add_bytes_volume_info(moverd, tr, enstore_status.CUR_READ)
-			mv_table.append(tr)
-			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sWrite%s(bytes)"%(NBSP, NBSP),
-							  color=BRICKRED, html_escape='OFF'),
-					     align="CENTER"))
-			self.add_bytes_eod_info(moverd, tr, enstore_status.CUR_WRITE)
-			mv_table.append(tr)
-			self.add_files(moverd, mv_table)
-		    tr = HTMLgen.TR(empty_data())
-		    tr.append(HTMLgen.TD(mv_table, colspan=5))
+			mv_table.append(empty_row(4))
+			if moverd.has_key(enstore_status.LAST_READ):
+			    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sRead%s(bytes)"%(NBSP, NBSP),
+								    color=BRICKRED, html_escape='OFF'),
+						       align="CENTER"))
+			    self.add_bytes_volume_info(moverd, tr, 
+						       enstore_status.LAST_READ)
+			    mv_table.append(tr)
+			    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sWrite%s(bytes)"%(NBSP, NBSP),
+							      color=BRICKRED, html_escape='OFF'),
+						       align="CENTER"))
+			    self.add_bytes_eod_info(moverd, tr, enstore_status.LAST_WRITE)
+			    mv_table.append(tr)
+			    self.add_files(moverd, mv_table)
+			elif moverd.has_key(enstore_status.CUR_READ):
+			    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sRead%s(bytes)"%(NBSP, NBSP),
+								    color=BRICKRED, html_escape='OFF'),
+						       align="CENTER"))
+			    self.add_bytes_volume_info(moverd, tr, enstore_status.CUR_READ)
+			    mv_table.append(tr)
+			    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sWrite%s(bytes)"%(NBSP, NBSP),
+							      color=BRICKRED, html_escape='OFF'),
+						 align="CENTER"))
+			    self.add_bytes_eod_info(moverd, tr, enstore_status.CUR_WRITE)
+			    mv_table.append(tr)
+			    self.add_files(moverd, mv_table)
+			tr = HTMLgen.TR(empty_data())
+			tr.append(HTMLgen.TD(mv_table, colspan=5))
 		    table.append(tr)
 
     # output all of the library manager rows and their associated movers
