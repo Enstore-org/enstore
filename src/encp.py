@@ -75,11 +75,11 @@ LABEL=%s
 LOCATION=%s
 DRIVE=%s
 DRIVE_SN=%s
-TRANSFER_TIME=%f
-SEEK_TIME=%f
-MOUNT_TIME=%f
-QWAIT_TIME=%f
-TIME2NOW=%f
+TRANSFER_TIME=%.02f
+SEEK_TIME=%.02f
+MOUNT_TIME=%.02f
+QUEUE_TIME=%.02f
+TOTAL_TIME=%.02f
 STATUS=%s\n"""
 
 class Flag:
@@ -104,7 +104,7 @@ def quit(exit_code=1):
 
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
-    format = "Error: "+format
+    format = "ERROR: "+format
     sys.stderr.write(format)
     sys.stderr.flush()
     
@@ -148,8 +148,8 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         sys.stderr.flush()
     
     try:
-        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%f "+\
-                 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
+        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+\
+                 "SEEK_TIME=%.02f MOUNT_TIME=%.02f QUEUE_TIME=%.02f TOTAL_TIME=%.02f STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
@@ -526,7 +526,7 @@ def check_load_balance(mode, dest):
     return interface_details
     
 def write_to_hsm(input_files, output, output_file_family='',
-                 verbose=0, chk_crc=0,
+                 verbose=0, chk_crc=1,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0,
                  bytecount=None, #Test mode only
@@ -585,7 +585,7 @@ def write_to_hsm(input_files, output, output_file_family='',
         print "uinfo=",uinfo
 
     if verbose>2:
-        print "Checking input unix files:",input_files, "   cumt=", time.time()-t0
+        print "Checking input unix files:",input_files, "   elapsed=", time.time()-t0
     t1 =  time.time() #------------------------------------------Start
 
     # check the input unix files. if files don't exits, 
@@ -601,18 +601,18 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     tinfo["filecheck"] = time.time() - t1 #-------------------------End
     if verbose>2:
-        print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["filecheck"], "   elapsed=",time.time()-t0
     if verbose>3:
         print "inputlist=",inputlist
         print "file_size=",file_size
         print "delayed_dismount=",delayed_dismount
 
     if verbose>2:
-        print "Checking output pnfs files:",output, "   cumt=", time.time()-t0
+        print "Checking output pnfs files:",output, "   elapsed=", time.time()-t0
     t1 = time.time() #--------------------------------------------Start
 
-    if dcache:
-        output = [pnfs_hack.filename_from_id(output)]
+#    if dcache:
+#        output = [pnfs_hack.filename_from_id(output)]
         
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
@@ -653,7 +653,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     tinfo["pnfscheck"] = time.time() - t1 #------------------------End
     if verbose>2:
-        print "  dt:",tinfo["pnfscheck"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["pnfscheck"], "   elapsed=",time.time()-t0
     if verbose>3:
         print "outputlist=",outputlist
         print "library=",library
@@ -665,7 +665,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     t1 = time.time() #-------------------------------------------Start
     if verbose>1:
-        print "Requesting callback ports", "   cumt=",time.time()-t0
+        print "Requesting callback ports", "   elapsed=",time.time()-t0
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
@@ -678,10 +678,10 @@ def write_to_hsm(input_files, output, output_file_family='',
     tinfo["get_callback"] = time.time() - t1 #----------------------End
     if verbose>1:
         print " ",host,port
-        print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["get_callback"], "   elapsed=",time.time()-t0
 
     if verbose>1:
-        print "Calling Config Server to find file clerk  cumt=",time.time()-t0
+        print "Calling Config Server to find file clerk  elapsed=",time.time()-t0
     t1 = time.time() #--------------------------------------------Start
 
     # ask configuration server what port the file clerk is using
@@ -699,7 +699,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     tinfo["get_fileclerk"] = time.time() - t1 #---------------------End
     if verbose>1:
         print " ",fticket["hostip"],fticket["port"]
-        print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
+        print "  dt:", tinfo["get_fileclerk"], "   elapsed=",time.time()-t0
 
     # ask configuration server what port the volume clerk is using
     Trace.trace(10,"write_to_hsm calling config server to find volume clerk")
@@ -715,10 +715,10 @@ def write_to_hsm(input_files, output, output_file_family='',
     tinfo["get_volumeclerk"] = time.time() - t1 #---------------------End
     if verbose>1:
         print " ",vcticket["hostip"],vcticket["port"]
-        print "  dt:", tinfo["get_volumeclerk"], "   cumt=",time.time()-t0
+        print "  dt:", tinfo["get_volumeclerk"], "   elapsed=",time.time()-t0
 
     if verbose>1:
-        print "Calling Config Server to find %s.library_manager  cumt=%s"%(library[0],time.time()-t0)
+        print "Calling Config Server to find %s.library_manager  elapsed=%s"%(library[0],time.time()-t0)
 
 
     t1 = time.time() #-------------------------------------------Start
@@ -742,7 +742,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     tinfo["get_libman"] = time.time() - t1 #-----------------------End
     if verbose>1:
         print "  ",vticket["hostip"],vticket["port"]
-        print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["get_libman"], "   elapsed=",time.time()-t0
 
     file_fam = None
     # loop on all input files sequentially
@@ -757,7 +757,7 @@ def write_to_hsm(input_files, output, output_file_family='',
         retry = maxretry
         while retry>0:  # note that real rates are not correct in retries
             if verbose:
-                print "Sending ticket to %s.library manager,  cumt=%s"%(library[i],time.time()-t0)
+                print "Sending ticket to %s.library manager,  elapsed=%s"%(library[i],time.time()-t0)
 
             t1 = time.time() #-------------------------------Lap Start
 
@@ -828,14 +828,14 @@ def write_to_hsm(input_files, output, output_file_family='',
 
                 tinfo1["send_ticket%d"%(i,)] = time.time() - t1 #--Lap End
                 if verbose:
-                    print "  Q'd:",inputlist[i], library[i],\
+                    print "  queued:",inputlist[i], library[i],\
                           "family:",rq_file_family,\
                           "bytes:", file_size[i],\
                           "dt:",tinfo1["send_ticket%d"%(i,)],\
-                              "   cumt=",time.time()-t0
+                              "   elapsed=",time.time()-t0
 
                 if verbose>1:
-                    print "Waiting for mover to call back  cumt=",time.time()-t0
+                    print "Waiting for mover to call back  elapsed=",time.time()-t0
                 t1 = time.time() #--------------------------------Lap-Start
                 tMBstart = t1
 
@@ -897,16 +897,16 @@ def write_to_hsm(input_files, output, output_file_family='',
                 quit()
 
 
-            tinfo1["tot_to_mover_callback%d"%(i,)] = time.time() - t0 #-----Cum
+            tinfo1["tot_to_mover_callback%d"%(i,)] = time.time() - t0 
             dt = time.time() - t1 #-----------------------------Lap-End
             if verbose>1:
 
                 print " ",ticket["mover"]["callback_addr"],\
                       "cum:",tinfo1["tot_to_mover_callback%d"%(i,)]
-                print "  dt:",dt,"   cumt=",time.time()-t0
+                print "  dt:",dt,"   elapsed=",time.time()-t0
 
             if verbose:
-                print "Sending data for file ", outputlist[i], "   cumt=",time.time()-t0
+                print "Sending data for file ", outputlist[i], "   elapsed=",time.time()-t0
             t1 = time.time() #-------------------------------Lap-Start
 
             fsize = file_size[i]
@@ -984,7 +984,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                         # exit here
                         print_data_access_layer_format(inputlist[i],outputlist[i],0,
                                                        {'status':(
-                            'EPROTO', 'Network problem or mover crash')}) ##XXX RENAME
+                            'EPROTO', 'Network problem or mover reset')}) ##XXX RENAME
                         ## disconnected
                         quit()
 
@@ -1021,7 +1021,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                     else:
                         wdrate = 0.0
                         print "  bytes:",fsize, " Socket Write Rate = ", wtrate," MB/S"
-                        print "  dt:",tinfo1["sent_bytes%d"%(i,)]," cumt=",time.time()-t0
+                        print "  dt:",tinfo1["sent_bytes%d"%(i,)]," elapsed=",time.time()-t0
                         pass
 
                     pass
@@ -1029,7 +1029,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 pass
 
             if verbose>1:
-                print "Waiting for final mover dialog  cumt=",time.time()-t0
+                print "Waiting for final mover dialog  elapsed=",time.time()-t0
                 t1 = time.time() #----------------------------Lap-Start
 
             # File has been sent - wait for final dialog with mover. 
@@ -1096,10 +1096,10 @@ def write_to_hsm(input_files, output, output_file_family='',
 
             tinfo1["final_dialog"] = time.time()-t1 #----------Lap End
             if verbose>1:
-                print "  dt:",tinfo1["final_dialog"], "   cumt=",time.time()-t0
+                print "  dt:",tinfo1["final_dialog"], "   elapsed=",time.time()-t0
 
             if verbose>1:
-                print "Adding file to pnfs", "   cumt=",time.time()-t0
+                print "Adding file to pnfs", "   elapsed=",time.time()-t0
             t1 = time.time() #-------------------------------Lap Start
 
             # create a new pnfs object pointing to current output file
@@ -1152,7 +1152,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
             tinfo1["pnfsupdate%d"%(i,)] = time.time() - t1 #--Lap End
             if verbose>1:
-                print "  dt:",tinfo1["pnfsupdate%d"%(i,)], "cumt=",time.time()-t0
+                print "  dt:",tinfo1["pnfsupdate%d"%(i,)], "elapsed=",time.time()-t0
 
 
             # calculate some kind of rate - time from beginning 
@@ -1172,7 +1172,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                      1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
             else:
                 tinfo1['rate%d'%(i,)] = 0.0
-            format = "  %s %s -> %s: %d bytes copied to %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s cumt= %f"
+            format = "  %s %s -> %s: %d bytes copied to %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s elapsed= %.02f"
 
             if verbose:
                 print format %\
@@ -1385,7 +1385,7 @@ def submit_read_requests(requests, client, tinfo, vols, verbose, retry_flag):
       tinfo["send_ticket%d"%(rq_list[j]["index"],)] = time.time() - t2 #------Lap-End
       if verbose :
           if len(Qd)==0:
-              format = "  Q'd: %s %s bytes: %d on %s %s dt: %f   cumt=%f"
+              format = "  queued: %s %s bytes: %d on %s %s dt: %.02f   elapsed=%.02f"
               Qd = format %\
                    (rq_list[j]["work_ticket"]["wrapper"]["fullname"],
                     rq_list[j]["bfid"],
@@ -1395,7 +1395,7 @@ def submit_read_requests(requests, client, tinfo, vols, verbose, retry_flag):
                     tinfo["send_ticket%d"%(rq_list[j]["index"],)],
                     time.time()-tinfo['abs_start'])
           else:
-              Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s dt: %f   cumt=%f" %\
+              Qd = "%s\n  queued: %s %s bytes: %d on %s %s dt: %.02f   elapsed=%.02f" %\
                    (Qd,
                     rq_list[j]["work_ticket"]["wrapper"]["fullname"],
                     rq_list[j]["bfid"],
@@ -1425,7 +1425,7 @@ def read_hsm_files(listen_socket, submitted, requests,
     
     for waiting in range(0,submitted):
         if verbose>1:
-            print "Waiting for mover to call back  cumt=",time.time()-t0
+            print "Waiting for mover to call back  elapsed=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
         tMBstart = t2
 
@@ -1493,16 +1493,16 @@ def read_hsm_files(listen_socket, submitted, requests,
                 requests[j]['retry'] = requests[j]['retry']+1
             continue
 
-        tinfo["tot_to_mover_callback%d"%(j,)] = time.time() - t0 #-----Cum
+        tinfo["tot_to_mover_callback%d"%(j,)] = time.time() - t0 
         dt = time.time() - t2 #-------------------------------------Lap-End
         if verbose>1:
 
             print " ",ticket["mover"]["callback_addr"],\
                   "cum:",tinfo["tot_to_mover_callback%d"%(j,)]
-            print "  dt:",dt,"   cumt=",time.time()-t0
+            print "  dt:",dt,"   elapsed=",time.time()-t0
 
         if verbose: print "Receiving data for file ", requests[j]['outfile'],\
-           "   cumt=",time.time()-t0
+           "   elapsed=",time.time()-t0
 
         localname = requests[j]['outfile']
 
@@ -1588,7 +1588,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                                                        requests[j]['outfile'],
                                                        0,
                                                        {'status':("EPROTO",
-                                                                  "Network problem or mover crash")})
+                                                                  "Network problem or mover reset")})
                         try:
                             if localname!="/dev/null":
                                 os.unlink(localname)
@@ -1712,7 +1712,7 @@ def read_hsm_files(listen_socket, submitted, requests,
 
         tinfo["final_dialog%d"%(j,)] = time.time()-t2 #-----------Lap-End
         if verbose>1:
-            print "  dt:",tinfo["final_dialog%d"%(j,)],"cumt=",time.time()-t0
+            print "  dt:",tinfo["final_dialog%d"%(j,)],"elapsed=",time.time()-t0
 
 
         # calculate some kind of rate - time from beginning to wait for
@@ -1767,7 +1767,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                             1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
             else:
                 tinfo['rate%d'%(j,)] = 0.0
-            format = "  %s %s -> %s: %d bytes copied from %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s cumt= %f  {'media_changer' : '%s'}"
+            format = "  %s %s -> %s: %d bytes copied from %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s elapsed= %.02f  {'media_changer' : '%s'}"
 
             if verbose:
                 print format %(
@@ -1816,7 +1816,7 @@ def read_hsm_files(listen_socket, submitted, requests,
 
 #######################################################################
 def read_from_hsm(input_files, output,
-                  verbose=0, chk_crc=0, 
+                  verbose=0, chk_crc=1, 
                   pri=1, delpri=0, agetime=0,
                   delayed_dismount=None, t0=0, dcache=0):
     if t0==0:
@@ -1833,13 +1833,13 @@ def read_from_hsm(input_files, output,
     maxretry = 2
 
     if verbose>2:
-        print "Checking input pnfs files:",input_files, "   cumt=",time.time()-t0
+        print "Checking input pnfs files:",input_files, "   elapsed=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
 
     #check the input unix files. if files don't exits, we bomb out to the user
-    if dcache: #XXX
-        input_files = [pnfs_hack.filename_from_id(input_files)]
-        output = [output]
+#    if dcache: #XXX
+#        input_files = [pnfs_hack.filename_from_id(input_files)]
+#        output = [output]
         
     (inputlist, file_size) = inputfile_check(input_files)
         
@@ -1854,7 +1854,7 @@ def read_from_hsm(input_files, output,
 
     tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
-        print "  dt:",tinfo["pnfscheck"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["pnfscheck"], "   elapsed=",time.time()-t0
     if verbose>3:
         print "ninput=",ninput
         print "inputlist=",inputlist
@@ -1864,7 +1864,7 @@ def read_from_hsm(input_files, output,
         print "p=",p
 
     if verbose>2:
-        print "Checking output unix files:",output, "   cumt=",time.time()-t0
+        print "Checking output unix files:",output, "   elapsed=",time.time()-t0
     t1 = time.time() #---------------------------------------------------Start
 
     # check (and generate) the output files(s)
@@ -1873,12 +1873,12 @@ def read_from_hsm(input_files, output,
 
     tinfo["filecheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
-        print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["filecheck"], "   elapsed=",time.time()-t0
     if verbose>3:
         print "outputlist=",outputlist
 
     if verbose>2:
-        print "Requesting callback ports", "   cumt=",time.time()-t0
+        print "Requesting callback ports", "   elapsed=",time.time()-t0
     t1 = time.time() #---------------------------------------------------Start
 
     # get a port to talk on and listen for connections
@@ -1893,10 +1893,10 @@ def read_from_hsm(input_files, output,
     tinfo["get_callback"] = time.time() - t1 #-----------------------------End
     if verbose>2:
         print " ",host,port
-        print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["get_callback"], "   elapsed=",time.time()-t0
 
     if verbose>1:
-        print "Calling Config Server to find file clerk  cumt=",time.time()-t0
+        print "Calling Config Server to find file clerk  elapsed=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
     # ask configuration server what port the file clerk is using
@@ -1913,7 +1913,7 @@ def read_from_hsm(input_files, output,
     tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
     if verbose>1:
         print " ",fticket["hostip"],fticket["port"]
-        print "  dt:", tinfo["get_fileclerk"], "   cumt=",time.time()-t0
+        print "  dt:", tinfo["get_fileclerk"], "   elapsed=",time.time()-t0
 
     # ask configuration server what port the volume clerk is using
     Trace.trace(10,"read_from_hsm calling config server to find volume clerk")
@@ -1929,10 +1929,10 @@ def read_from_hsm(input_files, output,
     tinfo["get_volumeclerk"] = time.time() - t1 #-----------------------------End
     if verbose>1:
         print " ",vticket["hostip"],vticket["port"]
-        print "  dt:", tinfo["get_volumeclerk"], "   cumt=",time.time()-t0
+        print "  dt:", tinfo["get_volumeclerk"], "   elapsed=",time.time()-t0
 
     if verbose>1:
-        print "Calling file clerk for file info", "   cumt=",time.time()-t0
+        print "Calling file clerk for file info", "   elapsed=",time.time()-t0
     t1 = time.time() # ---------------------------------------------------Start
 
     nfiles = 0
@@ -2029,10 +2029,10 @@ def read_from_hsm(input_files, output,
         quit()
     tinfo['fc'] = time.time() - t1 #-------------------------------End
     if verbose>1:
-        print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
+        print "  dt:",tinfo["fc"], "   elapsed=",time.time()-t0
 
     if verbose:
-        print "Submitting read requests", "   cumt=",time.time()-t0
+        print "Submitting read requests", "   elapsed=",time.time()-t0
     t1 = time.time() #----------------------------------------------------Start
 
     total_bytes = 0
@@ -2057,7 +2057,7 @@ def read_from_hsm(input_files, output,
         if verbose:
             print Qd
         if verbose>1:
-            print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
+            print "  dt:",tinfo["send_ticket"], "   elapsed=",time.time()-t0
 
         # We have placed our work in the system and now we have to 
         # wait for resources. All we need to do is wait for the system
@@ -2122,14 +2122,16 @@ def read_from_hsm(input_files, output,
 
 class encp(interface.Interface):
 
+    deprecated_options = ['--crc']
+    
     def __init__(self):
-        self.chk_crc = 0           # we will not check the crc unless told to
+        self.chk_crc = 1           # we will check the crc unless told not to
         self.priority = 1          # lowest priority
         self.delpri = 0            # priority doesn't change
         self.age_time = 0          # priority doesn't age
         self.data_access_layer = 0 # no special listings
         self.verbose = 0 
-
+        
         self.delayed_dismount = 0
         self.output_file_family = '' # initial set for use with --ephemeral or
                                      # or --file-family
@@ -2148,10 +2150,11 @@ class encp(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options()+[
-            "verbose=","crc","priority=","delpri=","age-time=",
+            "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
 #            "get-cache", "put-cache", "storage-info=",
             "data-access-layer"] + self.help_options()
+
     
     ##########################################################################
     #  define our specific help
@@ -2228,6 +2231,11 @@ def main():
     Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
 
+    for opt in encp.deprecated_options:
+        if opt in sys.argv:
+            print "WARNING: option %s is deprecated, ignoring" % (opt,)
+            sys.argv.remove(opt)
+    
     # use class to get standard way of parsing options
     e = encp()
     if e.test_mode:
