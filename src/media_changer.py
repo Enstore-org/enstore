@@ -440,7 +440,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                 sts=apply(function,args)
                 if sts[1] != 0:
                    if self.logdetail:
-                      Trace.log(e_errors.ERROR, 'function %s %s error %s'%(repr(function),args,sts[2])) 
+                      Trace.log(e_errors.ERROR, 'retry_function: function %s %s error %s'%(repr(function),args,sts[2])) 
                 if sts[1] == 1 and rpcErrors < 2:  # RPC failure
                     time.sleep(10)
                     rpcErrors = rpcErrors + 1
@@ -670,15 +670,18 @@ class STK_MediaLoader(MediaLoaderMethods):
                 sts=apply(function,args)
                 if sts[1] != 0:
                    if self.logdetail:
-                      Trace.log(e_errors.ERROR, 'function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
-                if (sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-                    fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-                    Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  sts[1] %s  sts[2] %s'%(args,sts[1],sts[2]))
+                      Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
+                if (sts[1] == 91 or           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
+		    sts[1] == 99):            #STATUS_VOLUME_IN_USE
+			time.sleep(60)
+			fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
+			Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  fixsts[1] %s  fixsts[2] %s'%(args,fixsts[1],fixsts[2]))
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
+                    sts[1] == 99 or          #STATUS_VOLUME_IN_USE
                     sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-                    time.sleep(60)
-                    count = count - 1
+			time.sleep(60)
+			count = count - 1
                 else:
                     break
             except:
