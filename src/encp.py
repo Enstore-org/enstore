@@ -764,7 +764,7 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
         try:
             control_socket, mover_address, ticket = open_control_socket(
                 listen_socket, mover_timeout, verbose)
-        except (socket.error,):
+        except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
             if detail.args[0] == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
