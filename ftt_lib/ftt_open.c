@@ -220,7 +220,7 @@ ftt_open_dev(ftt_descriptor d) {
 	** a read/write desciptor.
 	*/
 	d->file_descriptor = open(d->devinfo[d->which_is_default].device_name,
-				  O_RDONLY|FNONBLOCK, 0);
+				  O_RDONLY|FNONBLOCK|O_EXCL, 0);
 	if ( d->file_descriptor < 0 ) {
 	    d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
 	    		d->file_descriptor, "an ftt_open_dev()",1);
@@ -235,7 +235,7 @@ ftt_open_dev(ftt_descriptor d) {
 	    close(d->file_descriptor);
 	    d->file_descriptor = open(
 		d->devinfo[d->which_is_default].device_name,
-	        O_RDWR|FNONBLOCK,0);
+	        O_RDWR|FNONBLOCK|O_EXCL,0);
 	    if ( d->file_descriptor < 0 ) {
 		d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
 			    d->file_descriptor, "an ftt_open_dev()",1);

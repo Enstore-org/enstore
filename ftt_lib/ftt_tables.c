@@ -230,7 +230,7 @@ int *ftt_trans_table[] = {
     /* FTT_OPN_RSKIPFM		16 */ ftt_trans_skipr,
 };
 
-char *Generic_density_trans[] = {
+char *Generic_density_trans[MAX_TRANS_DENSITY] = {
 	"unknown",
 	"low",
 	"med",
@@ -238,14 +238,14 @@ char *Generic_density_trans[] = {
 	0
 };
 
-char *Exabyte_density_trans[] = {
+char *Exabyte_density_trans[MAX_TRANS_DENSITY] = {
 	"unknown",
 	"8200",
 	"8500",
 	0
 };
 
-char *DLT_density_trans[] = {
+char *DLT_density_trans[MAX_TRANS_DENSITY] = {
 	"unknown",
 	"6667bpi",
 	"10000bpi",
@@ -731,8 +731,8 @@ ftt_dev_entry devtable[] = {
 	{ "/dev/rmt/jag%dd%dnrnsv",       0,  0,   0, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
 	{ 0,},
     }},
-    {"", "", "unknown", 0, 0, ftt_trans_table, Generic_density_trans,
-	"/dev/%3$s", 1, "echo", {
+    {"", "", "unknown", FTT_FLAG_REOPEN_AT_EOF, 0, ftt_trans_table, 
+	Generic_density_trans, "/dev/%3$s", 1, "echo", {
 	/*   string   den mod hwd pas fxd rewind 1st */
 	/*   ======   === === === === === ====== === */
 	{ "/dev/%3$s", 0,  0,  0,  0,  0,  0,     1, EXB_MAX_BLKSIZE},

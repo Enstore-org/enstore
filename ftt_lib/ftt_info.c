@@ -12,6 +12,46 @@ ftt_get_basename(ftt_descriptor d) {
     return d->basename;
 }
 
+char *
+ftt_density_to_name(ftt_descriptor d, int density){
+    char *res;
+
+    ENTERING("ftt_density_to_name");
+    if (density > MAX_TRANS_DENSITY) {
+	res = 0;
+    } else {
+	res = d->densitytrans[density];
+    }
+    if (res == 0) {
+	ftt_errno = FTT_ENODEV;
+	ftt_eprintf(
+	   "ftt_density_to_name density %d is not appropriate for device %s\n",
+	   density,
+	   d->basename );
+    }
+    return res;
+}
+
+int
+ftt_name_to_density(ftt_descriptor d, char *name){
+    int res;
+
+    ENTERING("ftt_name_to_density");
+    CKNULL("density name", name);
+
+    for (res = 0; d->densitytrans[res] != 0; res++) {
+	if( ftt_matches(name, d->densitytrans[res])) {
+	    return res;
+	}
+    }
+    ftt_errno = FTT_ENODEV;
+    ftt_eprintf(
+       "ftt_name_to_density: name %s is not appropriate for device %s\n",
+       name,
+       d->basename );
+    return -1;
+}
+
 int
 ftt_get_max_blocksize(ftt_descriptor d) {
     int result;

@@ -80,7 +80,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	    ftt_errno = FTT_EWRONGVOL;
 	    res = -1;
 	} else {
-	ftt_eprintf("ftt_verify_vol_label expected %s header, but got %d", 
+	ftt_eprintf("ftt_verify_vol_label expected %s header, but got %s", 
 		ftt_label_type_names[type], ftt_label_type_names[res]);
 	    ftt_errno = FTT_EWRONGVOLTYP;
 	    res = -1;
@@ -93,15 +93,21 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 int
 ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
     int res;
-    char buf[65536];
+    static char buf[10240]; /* biggest blocksize of any label we support */
+    int blocksize = 10240;
 
     CKOK(d,"ftt_write_vol_label",1,1);
     CKNULL("ftt_descriptor", d);
     CKNULL("volume label", vollabel);
 
     res = ftt_rewind(d);			if (res <  0) return res;
-    res = ftt_format_label(buf,65536,vollabel, strlen(vollabel), type);
+    res = ftt_format_label(buf,blocksize,vollabel, strlen(vollabel), type);
 						if (res <  0) return res;
+    /* next highest blocksize */
+    if (d->default_blocksize != 0) {
+	res = res + d->default_blocksize - 1 ;
+	res = res - (res % d->default_blocksize);
+    }
     res = ftt_write(d,buf,res);			if (res <  0) return res;
     ftt_close_dev(d);
     res = ftt_skip_fm(d,1);

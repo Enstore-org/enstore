@@ -4,33 +4,51 @@
 
 int
 ftt_debug_dump(unsigned char *pc, int n) {
-	int i, j;
+    return ftt_dump(stderr,pc,n,1,1);
+}
 
-	if( 0 == pc ){
-		fprintf(stderr,"(null)");
-		return 0;
-	}
-	for (i = 0; i < n-16; i += 16) {
-		for (j = 0; j < 16; j++) {
-			fprintf(stderr,"%02x", pc[i+j] & 0xff );
-		}
-		putc('\t',stderr);
-		for (j = 0; j < 16; j++) {
-			putc( isprint(pc[i+j]) ? pc[i+j] : '.' , stderr);
-		}
-		putc('\n', stderr);
-	}
-	for ( j = 0; j < n - i ; j++ ) {
-		fprintf(stderr,"%02x", pc[i+j] & 0xff );
-	}
+int
+ftt_dump(FILE *pf, unsigned char *pc, int n, int do_offsets, int do_chars) {
+    int i, j;
+
+    if( 0 == pc ){
+        fprintf(stderr,"(null)");
+        return 0;
+    }
+    for (i = 0; i < n-16; i += 16) {
+
+        if (do_offsets) {
+            fprintf(pf, "%04x: ", i);
+        }
+
+        for (j = 0; j < 16; j++) {
+            fprintf(pf,"%02x", pc[i+j] & 0xff );
+        }
+
+        if (do_chars) {
+            putc('\t',pf);
+            for (j = 0; j < 16; j++) {
+                putc( isprint(pc[i+j]) ? pc[i+j] : '.' , pf);
+            }
+        }
+        putc('\n', pf);
+    }
+    if (do_offsets) {
+	fprintf(pf, "%04x: ", i);
+    }
+    for ( j = 0; j < n - i ; j++ ) {
+        fprintf(pf,"%02x", pc[i+j] & 0xff );
+    }
+    if (do_chars) {
 	for ( ; j < 16; j++ ) {
-		fprintf(stderr,"  ");
+	    fprintf(pf,"  ");
 	}
-	putc('\t',stderr);
+	putc('\t',pf);
 	for ( j = 0; j < n - i ; j++ ) {
-		putc( isprint(pc[i+j]) ? pc[i+j] : '.' ,stderr );
+	    putc( isprint(pc[i+j]) ? pc[i+j] : '.' ,pf );
 	}
-	putc('\n',stderr);
-	fflush(stderr);
-	return 0;
+    }
+    putc('\n',pf);
+    fflush(pf);
+    return 0;
 }
