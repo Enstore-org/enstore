@@ -28,7 +28,7 @@ ENSTORE_MAIL=enstore-auto@fnal.gov
 
 case $node in
 
-  stken*|rip9|rip10)
+  stken*|rip9|rip10*|d0enmvr4a|d0enmvr7a|d0enmvr9a|d0enmv11a|d0enmvr12a)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
