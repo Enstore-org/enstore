@@ -54,7 +54,9 @@ corruption).  This file is also on a mirrored disk and rsynced to
 another mirrored disk.
 
 <p>
-<li> Complete information on a particular bfid can be seen by
+<li> <a href="http://www-d0en.fnal.gov/enstore/enstore_user.html">
+Complete information </a> on a particular bfid can be seen by using
+the Enstore User command web page.  Alternatively,
     <ul>
        <li> Logging in as enstore to one of the console servers
        <li> Type "setup enstore"
@@ -95,7 +97,9 @@ from corruption).  This file is also on a mirrored disk and rsynced to
 another mirrored disk.
 
 <p>
-<li> Complete information on a particular volume can be seen by
+<li> <a href="http://www-d0en.fnal.gov/enstore/enstore_user.html">
+Complete information </a> on a particular volume can be seen by using
+the Enstore User command web page.  Alternatively
     <ul>
        <li> Logging in as enstore to one of the console servers
        <li> Type "setup enstore"
@@ -129,15 +133,17 @@ flushing/checkpointing of data to the database files.
 
      <li> Stop all enstore processes on the node "setup enstore"
      "enstore stop". Make sure they are stopped.  "lsof | egrep
-     '/diska|/diskb' shows you who is still accesses the databases.
-     Stop everyone.
+     '/diska|/diskb' shows you who is still accessing the databases.
+     Stop everyone. <a
+     href="http://www-d0en.fnal.gov/enstore/d0ensrv1_raid_status.txt">
+     This information </a> is also available on a web page.
 
      <li> Make sure the inquisitor doesn't start enstore up while you
      are working.
 
-     <li> cd /diskb/enstore-database
+     <li> Type "cd /diskb/enstore-database"
 
-     <li> db_recover -h . -v and then try to restart the enstore
+     <li> Type "db_recover -h . -v" and then try to restart the enstore
      servers.
 
      <li> If that fails (it almost never does), rm __db* *.index log.*
@@ -145,9 +151,10 @@ flushing/checkpointing of data to the database files.
 
 
      <li> If that fails, it is time to go to the database backups!
-     Contact a developer for help.
+     Contact an Enstore developer for help.
 
-     <li> Restart the enstore servers.
+     <li> <a href="http://www-hppc/enstore/d0en_running.html"> Restart
+     </a> the Enstore servers.
 
    </ul>
 
@@ -184,12 +191,12 @@ directory is on a raid level-1 (software mirroring) disk.
   </ul>
 
 <p>
-<li> Two files must be in /usr/etc, pnfsObserver and pnfsSetup, for
-the automated pnfs scripts to work.
+<li> Two files, owned and readable by root, must be in /usr/etc,
+pnfsObserver and pnfsSetup, for the automated pnfs scripts to work.
 
 <p>
 <li> You can gain access to the PNFS admin commands by logging into
-d0ensrv1 and typing "setup pnfs", and "mount /pnfs/fs".
+d0ensrv1 as root and typing "setup pnfs", and "mount /pnfs/fs".
 
   <br> Typical commands are:
      <ul>
@@ -225,7 +232,7 @@ whatsoever.
 <li> The PNFS user tree starts at /pnfs/fs/usr/.
 
 <p> <li> PNFS metadata information can be examined by logging into
-d0ensrv1 and typing "setup enstore" and then "pnfs cat filename 4"
+d0ensrv1 and typing "setup enstore" and then "enstore pnfs cat filename 4"
 
 <p>
 <li> Sometimes if there is a crash and the raid disks are not shut
@@ -241,7 +248,8 @@ again after the disk fixes have been resolved.
 <br>
 <br>
 <br>
-Cron jobs executing on d0ensrv1:
+<a href="http://www-d0en.fnal.gov/enstore/cron_pics.html"> Cron jobs
+</a>. executing on d0ensrv4:
 <ul>
 
 <li> user root - plog.  If this fails, either you are out of disk
@@ -255,8 +263,8 @@ down or out of disk space, or the network connection to the backup
 node is down. (This cronjob runs in the pnfs framework, not the
 enstore one).
 
-<li> user root - delfile. If this fails, there is probably with the
-file clerk.
+<li> user root - delfile. If this fails, there are most likely
+problems with the file clerk.
 
 <li> user root - rsync. If this fails, there are problems with the
 raid disks, /diska or /diskb.
@@ -297,8 +305,8 @@ ftp://ftp.kernel.org/pub/linux/daemons/raid/alpha/raidtools-19990824-0.90.tar.gz
 
 <li> The raid devices are declared in /etc/raidtab (not the older
 /etc/mdtab). There are 2 raid disks on d0ensrv1 and each one is
-composed of 2 9 GB scsi disks to form 1 9 GB scsi disk.  There are no
-spare disks in the configuration.
+composed of 2 9 GB scsi disks to form 1 9 GB raid mirrored disk.
+There are no spare disks in the configuration.
 
 <li> You can check the <a
 href="http://www-d0en.fnal.gov/enstore/d0ensrv1_raid_status.txt"> Raid Status

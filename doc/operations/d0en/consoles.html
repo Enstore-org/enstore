@@ -22,9 +22,8 @@ There are 2 console servers for the D0En cluster, d0ensrv3 and
 d0ensrv5.  Normally there would only be one console server per Enstore
 system, but since there are PC nodes on both sides of the AML/2 robot,
 it was easier have 2 console servers.  Each console has full
-functionality for the entire system..  For example, a console for any
-Enstore PC, except the console servers themselves, of course, can be
-gotten from either console server.
+functionality for the entire system.  For example, a console for any
+Enstore server or mover PC can be gotten from either console server.
 
 <p>
 <p>
@@ -71,7 +70,7 @@ The console servers have these major purposes:
 
 <p>
 <li> Provide backup storage (disk and tape) for primary pnfs and
-enstore databases and other important information. This only runs on
+Enstore databases and other important information. This only runs on
 d0ensrv3 for now.
    <br>
     <ul>
@@ -79,17 +78,18 @@ d0ensrv3 for now.
           d0ensrv1 to /diska/pnfs-backup. Files are kept on disk for
           approximately 1 week.
 
-          <li> Once an hour, the enstore databases are copied from
+          <li> Once an hour, the Enstore databases are copied from
           d0ensrv1 to /diska/enstore-backup. Files are kept on disk
           for approximately 1 week.
 
-          <li> Once an hour, the entire (except for unreadable files
+          <li> Once an hour, the entire system disk (except for
+          unreadable files
           MPTN/ETC/TRUSERS|OS2/SYSTEM/SWAPPER.DAT|tcpip/DOS/ETC/TRUSERS)
           from the AML/2 OS/2 node adic2 is mirrored to
           /diska/aml2Shadow. This provides a simple way to see what is
           on the adic2 node as well as a backup.
 
-          <li> Every 15 minutes, the enstore log files are copied from
+          <li> Every 15 minutes, the Enstore log files are copied from
           d0ensrv2 to /diska/enstore-log-backup. These files are not
           critical to keeping the system running, but are our source
           of what happened.  They are copied more frequently than the
@@ -97,11 +97,12 @@ d0ensrv3 for now.
           d0ensrv1 databases are on mirrored and duplicated disks).
           Files are kept on disk for approximately 1 week.
 
-          <li> Twice a day, at 7 AM and 7 PM, a backup of files
-          currently on disk is made to tape.  There is a full backup
-          Monday and Thursday mornings.  [This is a sticky flag, a
-          full backup is attempted until it is successful.]  The other
-          backups are incremental since the last full backup.
+          <li> Twice a day, at 7 AM and 7 PM, a backup of files,
+          (listed in the preceding bullets) currently on disk is made
+          to tape.  There is a full backup Monday and Thursday
+          mornings.  [This is a sticky flag, a full backup is
+          attempted until it is successful.]  The other backups are
+          incremental since the last full backup.
 
              <ul>
 
@@ -133,16 +134,12 @@ d0ensrv3 for now.
     <br>
     <ul>
 
-          <li> The easiest way to get the browser is log in as root
-          and type "donet". This will bring up the correct status page
-          for you automatically and with the correct uid.
+          <li> The easiest way to get the browser is log in as enstore
+          and type "netscape". Don't run netscape as root. Log in as
+          enstore instead.
 
-          <li> Alternatively, you can just type "netscape" and then
-          hit the "home" button. But don't run netscape as root. Log
-	  in as enstore instead.
-
-          <li> If you actually typing on the console monitor, you can
-          use the start menu or right-button menu to do the same
+          <li> If you are actually typing on the console monitor, you
+          can use the start menu or right-button menu to do the same
           thing.
 
      </ul>
@@ -159,13 +156,13 @@ the other ones.
 
           <li> Get the correct environment "setup enstore"
 
-          <li> To issue an enstore command: "enstore command &lt
+          <li> To issue an Enstore command: "enstore command &lt
           farmlet &gt &lt options &gt". For example, "enstore EPS"
-          will list the enstore processes on all enstore nodes;
-          "enstore EPS d0enmvr" will list the enstore processes on
+          will list the Enstore processes on all Enstore nodes;
+          "enstore EPS d0enmvr" will list the Enstore processes on
           just the mover nodes; and "enstore EPS d0ensrv1" will list
-          the enstore processes on just d0ensrv1.  See other sections
-          for more details on controlling enstore.
+          the Enstore processes on just d0ensrv1.  See other sections
+          for more details on controlling Enstore.
 
     </ul>
 
@@ -179,7 +176,8 @@ outside the AML/2 and without affecting the users.
 <br>
 <br>
 <br>
-Cron jobs executing on d0ensrv3:
+<a href="http://www-d0en.fnal.gov/enstore/cron_pics.html"> Cron jobs
+</a>. executing on d0ensrv3:
 <ul>
 
 <li> user enstore - aml2mirror.  If this fails, the most likely reason
@@ -204,15 +202,16 @@ set and needs to be cleaned.
                     <li> TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
                     <li> TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
                     <li> setup enstore
-                    <li> $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label= &lt NEW_LABEL &gt
+                    <li> $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label= &lt <it>NEW_LABEL</it> &gt
                 </ul>
-           <li> edit $TAPE_DB//CURRENT_TAPE and enter the  &lt NEW_LABEL &gt  of the replacement tape.
+           <li> edit $TAPE_DB/CURRENT_TAPE and enter the  &lt <it>NEW_LABEL</it> &gt  of the replacement tape.
 
      </ul>
 
 
 <li> user root - perm.  If this fails, look in /diska/pnfs-backup for
-"peculiar" things.  Report it to a developer.
+"peculiar" things, such as strange file ownership or permissions.
+Report it to an Enstore developer.
 
 <br>
 <li> user root - tarit. If this fails, the most likely reason is
@@ -233,13 +232,14 @@ Console Software
 This is a more up-to-date version of the console software typically
 distributed in the standard Fermi console server distribution.
 
-<li> The escape sequence is "^Ec &lt command_letter &gt "; "h" for the command
-letter gives you a list of commands'
+<li> The escape sequence is "^Ec &lt command_letter &gt "; "h" for the
+command letter gives you a list of commands.
 
 <li> The logs of all traffic on the console and bios screens are saved
-in /var/log/conserver. {Note, they are not on a separate disk
-/usr/farm.) The console server log of itself is in
-/var/log/conserver.log.
+in separate log files in the /var/log/conserver directory. (Note, the
+logs are not on a separate disk called /usr/farm as is done in the
+standard console server install.) The console server log of itself is
+in /var/log/conserver.log.
 
 <li> Occasionally a port seems to get "stuck" and you can't
 communicate with it.  Usually if you send a ^Q, the port will
@@ -292,12 +292,12 @@ config file) on each console server node.  This is a small problem not
 worth worrying about.
 
 <li> The console server nodes can be booted without affecting normal
-enstore operations. You might get some errors from the cron jobs when
+Enstore operations. You might get some errors from the cron jobs when
 you boot the node.
 
 <li> The xscreensaver (http://www.jwz.org/xscreensaver) software is
-running in the background in the background. This software helps
-identify the console server on its monitor.
+running in the background. This software helps identify the console
+server on its monitor.
 
 </ul>
 

@@ -52,20 +52,23 @@ The D0En cluster consists of the following nodes:
 
 <ul>
 
-<li> d0ensrv3 and d0ensrv5: Console Servers
-
 <li> d0ensrv1: Runs enstore file and volume clerk and pnfs namespace
 
 <li> d0ensrv2: Runs enstore configuration, logger, alarm and
 inquisitor servers.
 
+<li> d0ensrv3: Console Server
+
 <li> d0ensrv4: Runs enstore library manager and media changer
 
-<li> d0enmvr4a-d0enmvr18a (aka d0enmvr4b-d0enmvr18b): Run enstore movers.
+<li> d0ensrv5: Console Servers
+
+<li> d0enmvr4a-d0enmvr18a: Run enstore movers.
 
 </ul>
 <b> NO user areas on these machines are backed up, </b> system files
-are backed up daily.
+are backed up daily. Enstore related files are backed up much more
+frequently.
 
 <p>
 <p>
@@ -75,9 +78,9 @@ Enstore provides a generic interface for experimenters to
 efficiently use mass storage systems as easily as if they were native file
 systems.
 <p>
-<center><img src="enstore_at_fnal2.gif"></center>
+<center><img src="enstoreSimple.gif"></center>
 <p>
-<div align=right><a href="enstore_at_fnal2.ps">(also available in Postscript)</a><div align=left>
+<div align=right><a href="enstoreSimple.ps">(also available in Postscript)</a><div align=left>
 <p>
 <p>
 <br><br>
