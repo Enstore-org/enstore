@@ -61,6 +61,8 @@ main(int argc, char **argv)
 	    /*it's an option*/
 	    if (match_opt("--verbose", argv[i])) {
 		verbose = 1;
+	    } else if ((cp=match_opt("--erase",argv[i]))) {
+		erase=1;
 	    } else if ((cp=match_opt("--tape-device=", argv[i]))) {
 		tape_device = cp;
 	    } else if ((cp=match_opt("--tape-db=",argv[i]))) {
