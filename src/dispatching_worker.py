@@ -10,6 +10,7 @@ import checksum
 import sys
 import socket
 import os
+import string
 
 #enstore imports
 import cleanUDP
@@ -170,7 +171,10 @@ class DispatchingWorker:
             if len(self.server_fds):                        # if there are svr procs
                for fd in self.server_fds:                   #    got thru them
                    if fd in r:                              #        and see if there is any input
-                       request= (os.read(fd,999),())        #             if so read it
+                       msg = os.read(fd, 8)
+                       bytecount = string.atoi(msg)
+                       msg = os.read(fd, bytecount)
+                       request= (msg,())                    #             if so read it
                        os.close(fd)
                        self.server_fds.remove(fd)
                        return request
