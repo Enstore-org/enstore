@@ -22,6 +22,10 @@ SEEK_CUR =       1
 SEEK_END =       2
 #lseek(fd,offset,whence)
 
+SeekError = "seek error"
+SWMountError = "sw_mount error"
+InvalidLocationError = "invalid location error"
+
 def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
                              'w':os.O_WRONLY|os.O_CREAT,
                              'w+':os.O_RDWR|os.O_CREAT,
@@ -298,7 +302,7 @@ class  FTTDriver(GenericDriver) :
 	    pass
 	if x == 0:
 	    Trace.log( e_errors.INFO, "sw_mount error" )
-	    raise "sw_mount error"
+	    raise SWMountError
 
 	part, block_loc, filenum = loc2int( self, eod_cookie )
 
@@ -494,7 +498,7 @@ class  FTTDriver(GenericDriver) :
 		if string.atoi(ss['bloc_loc']) == block_loc: break
 		xx = xx - 1
 		pass
-	    if xx == 0: raise "seek error"
+	    if xx == 0: raise SeekError
 	    pass
 	elif filenum != loc2int(self,self.cur_loc_cookie)[2]:
 	    # NOTE: when skipping file marks, there must be a file mark to
@@ -505,7 +509,7 @@ class  FTTDriver(GenericDriver) :
 		FTT.rewind()
 		ss = FTT.get_stats()  # block_loc should be 0
 		if ss['bloc_loc'] != None:
-		    if ss['bloc_loc'] != 0: raise "seek error"
+		    if ss['bloc_loc'] != 0: raise SeekError
 		    pass
 		else:
 		    Trace.log( e_errors.ERROR, "FTT.get_stats - no block_loc" )
@@ -525,7 +529,7 @@ class  FTTDriver(GenericDriver) :
 		    # STATEMENT ABOVE, THE "if block_loc" CODE BELOW
 		    # IS BOGUS.
 		    if block_loc and block_loc != string.atoi(ss['bloc_loc']):
-			raise "seek error"
+			raise SeekError
 		    block_loc = string.atoi(ss['bloc_loc'])
 		    pass
 		else:
@@ -587,7 +591,7 @@ class  FTTDriver(GenericDriver) :
 	elif part1 > part2: rr =  1
 	elif block_loc1<=block_loc2 and filenum1<=filenum2: rr = -1
 	elif block_loc1>=block_loc2 and filenum1>=filenum2: rr =  1
-	else: raise "invalid location(s)"
+	else: raise InvalidLocationError
 	return rr
 
     pass

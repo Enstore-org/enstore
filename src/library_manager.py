@@ -341,7 +341,7 @@ def next_work_any_volume(self):
         else:
 	    Trace.log(e_errors.ERROR,"next_work_any_volume \
 	    assertion error in next_work_any_volume w=%"%w)
-            raise "assertion error"
+            raise AssertionError
         w=self.pending_work.get_next()
 
 	
@@ -998,7 +998,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
 	    Trace.log(1,"idle_mover: assertion error w=%s ticket=%"%\
 			(w, mticket))
-            raise "assertion error"
+            raise AssertionError
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
@@ -1134,7 +1134,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # alas
         else:
 	    Trace.log(1,"have_bound_volume: assertion error %s %s"%(w,mticket))
-            raise "assertion error"
+            raise AssertionError
 
 
     # if the work is on the awaiting bind list, it is the library manager's

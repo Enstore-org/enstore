@@ -101,7 +101,7 @@ class Pnfs:
                 if sys.exc_info()[1][0] == errno.ENOENT:
                     return ENABLED
                 else:
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+                    raise
                 f = open(self.dir+'/.(config)(flags)/disabled')
                 why = f.readlines()
                 f.close()
@@ -133,7 +133,7 @@ class Pnfs:
                 else:
                     Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ \
                                        self.pnfsFilename)
-                    raise sys.exc_info()[0],sys.exc_info()[1]
+                    raise
             self.pstatinfo()
             self.get_id()
 
@@ -365,7 +365,7 @@ class Pnfs:
                         self.utime()
                         self.pstatinfo()
                     else:
-                        raise sys.exc_info()[0],sys.exc_info()[1]
+                        raise 
                 if self.file_size != 0:
                     Trace.log(e_errors.INFO, "can not set file size to 0 - oh well!")
             f = open(self.dir+'/.(fset)('+self.file+')(size)('\

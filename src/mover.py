@@ -82,6 +82,8 @@ import EXfer				# needed for EXfer.error
 import e_errors
 import write_stats
 
+MoverError = "Mover error"
+
 # for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
 #                            and convert back using just ticket['status']=m_err[exit_status]
 m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
@@ -737,7 +739,8 @@ def forked_write_to_hsm( self, ticket ):
 
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = driver_object.tell()
-	    if driver_object.loc_compare(eod_cookie,location_cookie) != 1: raise "bad eod"
+	    if driver_object.loc_compare(eod_cookie,location_cookie) != 1:
+                raise MoverError, "bad eod"
 	    t0 = time.time()
 	    stats = driver_object.get_stats()
 	    ticket['times']['get_stats_time'] = time.time() - t0
@@ -765,7 +768,7 @@ def forked_write_to_hsm( self, ticket ):
 					   e_errors.WRITE_ERROR )
 		pass
 	    pass
-	except "seek error":
+	except driver.SeekError:
 	    Trace.log( e_errors.ERROR, "seek error during write" )
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
             vcc.update_counts( self.vol_info['external_label'],
@@ -983,7 +986,7 @@ def forked_read_from_hsm( self, ticket ):
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, err)
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
-	except "seek error":
+	except driver.SeekError:
 	    Trace.log( e_errors.ERROR, "seek error during read" )
             wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
             vcc.update_counts( self.vol_info['external_label'],
@@ -1151,7 +1154,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         # get my (localhost) configuration from the configuration server
         mvr_config = self.csc.get( name )
         if mvr_config['status'][0] != 'ok':
-            raise 'could not start mover',name,' up:' + mvr_config['status']
+            raise MoverError, 'could not start mover'+name+' up:'+ mvr_config['status']
         # clean up the mvr_config a bit
         mvr_config['name'] = name
         mvr_config['do_fork'] = 1
@@ -1463,7 +1466,7 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 					    exit_status)+sys.exc_info()[0:2]) )
 	    #traceback.print_exc()
 	    #os.system( 'ps alxwww' )
-	    #raise sys.exc_info()[0], sys.exc_info()[1]
+	    #raise
 	    pass
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0

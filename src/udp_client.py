@@ -18,6 +18,8 @@ import checksum
 import cleanUDP
 import hostaddr
 
+UDPError = "UDP Error"
+
 TRANSFER_MAX=16384
 
 # see if we can allocate a specific port on a specific host
@@ -68,7 +70,7 @@ def empty_socket( sock ):
 	    reply , server = sock.recvfrom(TRANSFER_MAX)
 	    Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
 	elif x or w :
-	    raise "imposible to get these set w/out [r]"
+	    raise UDPError, "imposible to get these set w/out [r]"
         else:
             xcount = xcountmax # nothing to read - no more retries
     return
@@ -90,7 +92,7 @@ def wait_rsp( sock, address, rcv_timeout ):
                   "UDPClient.send: exception on select after send to "+\
                   repr(address)+" "+repr(x)+" "+str(sys.exc_info()[0])+" "+\
                   str(sys.exc_info()[1]))
-	raise "impossible to get these set w/out [r]"
+	raise UDPError, "impossible to get these set w/out [r]"
     return reply, server
 
 def protocolize( self, text ):
@@ -194,7 +196,7 @@ class UDPClient:
                               "server="+repr(server)+" "+\
                               "reply: "+repr(reply)+" "+\
                               str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-		    raise sys.exc_info()[0],sys.exc_info()[1]
+		    raise
 		# goofy test feature - need for client being echo service only
 		except exceptions.ValueError :
 		    Trace.trace(6,'send GOOFY TEST FEATURE')
@@ -205,7 +207,7 @@ class UDPClient:
                     Trace.log(e_errors.ERROR,
                               "unexpected exception in udp_client:send "+
                              str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
-		    raise sys.exc_info()[0],sys.exc_info()[1]
+		    raise
 
 		# now (after receive), check...
 		if number != self.number :

@@ -75,7 +75,7 @@ class ConfigurationClient(generic_client.GenericClient):
         else:
             Trace.trace(6, repr(id)+" "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
-            raise sys.exc_info()[0],sys.exc_info()[1]
+            raise 
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):

@@ -56,7 +56,7 @@ def collect_children():
         if sys.exc_info()[1][0] != errno.ECHILD:
             Trace.trace(6,"collect_children "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
-            raise sys.exc_info()[0],sys.exc_info()[1]
+            raise 
     Trace.trace(20,"collect_children count=%d",count)
 
 # Generic request response server class, for multiple connections

@@ -184,7 +184,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             print "width=",width
             msg =  "library, file_family, width not all the same"
             print_data_access_layer_format('','',0,{'status':(e_errors.USERERROR,msg)})
-            jraise('EPROTO',msg)
+            jraise(errno.errorcode[errno.EPROTO],msg)
 
 
     tinfo["pnfscheck"] = time.time() - t1 #------------------------End
@@ -452,7 +452,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             if ticket["status"][0] != e_errors.OK :
 		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
 
-                jraise('EPROTO',
+                jraise(errno.errorcode[errno.EPROTO],
 		       " encp.write_to_hsm: "+
                        "1st (pre-file-send) mover callback on socket "+
                        repr(address)+", failed to setup transfer: "+
@@ -495,7 +495,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 if not bytecount and statinfo[stat.ST_SIZE] != fsize:
                     print_data_access_layer_format(
                         inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
-		    jraise('EPROTO',
+		    jraise(errno.errorcode[errno.EPROTO],
 			   " encp.write_to_hsm: TILT "
 			   " file size has changed: was %s and now is %s" %
                            (fsize,statinfo[stat.ST_SIZE]))
@@ -545,7 +545,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 			print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
 			if not e_errors.is_retriable(done_ticket["status"][0]):
 			    # exit here
-			    jraise('EPROTO',
+			    jraise(errno.errorcode[errno.EPROTO],
 				   " encp.write_to_hsm: 2nd (post-file-send)"+
 				   "mover callback on socket "+
 				   repr(address)+", failed to transfer: "+
@@ -565,7 +565,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    else:
 		        #some other error that needs coding
 			traceback.print_exc()
-			raise sys.exc_info()[0], sys.exc_info()[1]
+			raise 
 		    pass
 
 		# close the data socket and the file, we've sent it 
@@ -609,10 +609,10 @@ def write_to_hsm(input_files, output, output_file_family='',
 		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
 		# exit here
 		if not e_errors.is_retriable(done_ticket["status"][0]):
-		    jraise('EPROTO',
+		    jraise(errno.errorcode[errno.EPROTO],
 			   " encp.write_to_hsm: 2nd (post-file-send)"+
 			   "mover callback on socket "+
-			   +repr(address)+", failed to transfer: "+
+			   repr(address)+", failed to transfer: "+
 			   "done_ticket[\"status\"]="+
 			   repr(done_ticket["status"]))
 
@@ -637,7 +637,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 elif mover_crc != mycrc :
                     done_ticket['status']=('EPROTO', "CRC mismatch")
 		    print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
-                    jraise('EPROTO',
+                    jraise(errno.errorcode[errno.EPROTO],
                            " encp.write_to_hsm: CRC's mismatch: "+
                            repr(mover_crc)+
 			   " "+repr(mycrc))
@@ -1381,7 +1381,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                         print_data_access_layer_format(
                             requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                             {'status':("ENOSPC", "No space left on device")})
-                        jraise("ENOSPC", "no space left on device");
+                        jraise(errno.errorcode[errno.ENOSPC], "no space left on device");
                         
                     if err_msg.args[0] == "fd_xfer - read EOF unexpected":
                         error = 1
@@ -1397,7 +1397,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                            0,
                                                            {'status':("EPROTO",
                                                                       "Network problem or mover crash")})
-                            jraise('EPROTO',
+                            jraise(errno.errorcode[errno.EPROTO],
                                    " encp._read_from_hsm: network problem or mover crash %s"%err_msg)
 
                             pass
@@ -1856,7 +1856,7 @@ def inputfile_check(input_files, bytecount=None):
         print_data_access_layer_format(inputlist[0],'',0,
                                        {'status':('EPROTO',"Cannot specify --bytes with multiple files")}
                                        )
-        jraise('EPROTO'," encp.inputfile_check: "
+        jraise(errno.errocode[errno.EPROTO]," encp.inputfile_check: "
                "Cannot specify --bytes with multiple files")
 
     # we need to know how big each input file is
@@ -1872,7 +1872,7 @@ def inputfile_check(input_files, bytecount=None):
         # input files must exist
         if not access.access(inputlist[i],access.R_OK):
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','No such file')})
-            jraise('EACCES'," encp.inputfile_check: "+
+            jraise(errno.errorcode[errno.EACCES]," encp.inputfile_check: "+
                    inputlist[i]+", NO read access to file")
 
         # get the file size
@@ -1887,7 +1887,7 @@ def inputfile_check(input_files, bytecount=None):
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','Not a regular file')})
 
-            jraise('EACCES'," encp.inputfile_check: "+
+            jraise(errno.errorcode[EACCES]," encp.inputfile_check: "+
                    inputlist[i]+" is not a regular file")
 
 
@@ -1897,7 +1897,7 @@ def inputfile_check(input_files, bytecount=None):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
                 print_data_access_layer_format(inputlist[j],'',0,{'status':('EPROTO','Duplicate entry')})
-                jraise('EPROTO'," encp.inputfile_check: "+
+                jraise(errno.errorcode[EPROTO]," encp.inputfile_check: "+
                        inputlist[i]+" is the duplicated - not allowed")
 
     return (ninput, inputlist, file_size)
@@ -1913,7 +1913,7 @@ def outputfile_check(ninput,inputlist,output):
     # this is just the current policy - nothing fundamental about it
     if len(output)>1:
         print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Cannot have multiple output files')})  
-        jraise('EPROTO'," encp.outputfile_check: "
+        jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
                "can not handle multiple output files: %s"%output)
 
 
@@ -1950,7 +1950,7 @@ def outputfile_check(ninput,inputlist,output):
                                                0,
                                                {'status':
                                                 ('EEXIST', "No such directory"+odir)})
-                jraise('EEXIST'," encp.outputfile_check:"
+                jraise(errno.errorcode[EEXIST]," encp.outputfile_check:"
                        " base directory doesn't exist for "+outputlist[i])
 
         # note: removed from itexist=1 try block to isolate errors

@@ -168,7 +168,7 @@ def hex8(x):
     if type(x)==type(1L): s=s[:-1]
     l = len(s)
     if l>8:
-        raise "Overflow Error", x
+        raise OverflowError, x
     return '0'*(8-l)+s
     
 

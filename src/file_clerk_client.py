@@ -104,7 +104,7 @@ class FileClient(generic_client.GenericClient, \
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
             Trace.trace(7,msg)
-            raise 'EPROTO',msg
+            raise errno.errorcode[errno.EPROTO],msg
 
         return ticket
 
@@ -166,7 +166,7 @@ class FileClient(generic_client.GenericClient, \
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
             Trace.trace(7,msg)
-            raise 'EPROTO',msg
+            raise errno.errorcode[errno.EPROTO],msg
 
         return ticket
 
