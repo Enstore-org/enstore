@@ -2283,6 +2283,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
+            # the following insertion is for antispoofing
+            if ticket.has_key('route_selection') and ticket['route_selection']:
+                ticket['mover_ip'] = host
+                # bind control socket to data ip
+                control_socket.bind((host, 0))
+                u = udp_client.UDPClient()
+                Trace.trace(10, "sending IP %s to %s" % (host, ticket['callback_addr']))
+                try:
+                    x= u.send(ticket,ticket['callback_addr'] , 15, 3)
+                except errno.errorcode[errno.ETIMEDOUT]:
+                    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+                              (ticket['callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                    self.control_socket, self.client_socket = None, None
+                    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                    return
+                    
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
 		control_socket.connect(ticket['callback_addr'])
