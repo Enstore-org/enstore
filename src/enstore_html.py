@@ -2133,7 +2133,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 		# we have a corresponding ps file
 		trps2.append(HTMLgen.TD(HTMLgen.Href(ps_file, POSTSCRIPT)))
 	    else:
-		trps2.append(self.empty_data())
+		trps2.append(empty_data())
 
     def add_leftover_jpgs(self, table, jpgs, pss):
 	while jpgs:
