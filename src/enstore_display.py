@@ -59,7 +59,7 @@ def my_atof(s):
 
 _font_cache = {}
 
-def get_font(height_wanted, family='Arial'):
+def get_font(height_wanted, family='arial'):
     height_wanted = int(height_wanted)
     f = _font_cache.get((height_wanted, family))
     if f:
@@ -67,13 +67,14 @@ def get_font(height_wanted, family='Arial'):
     size = height_wanted * 2 #We know this will be too big
     while size > 0:
         f = tkFont.Font(size=size, family=family)
-        metrics = f.metrics()
+        metrics = f.metrics()  #f.metrics returns something like:
+        # {'ascent': 11, 'linespace': 15, 'descent': 4, 'fixed': 1}
         height = metrics['ascent']
         if height < height_wanted: #good, we found it
             break
         else:
             size = size - 1 #Try a little bit smaller...
-    _font_cache[(height_wanted, family)] = f
+        _font_cache[(height_wanted, family)] = f
     return f
 
 def rgbtohex(r,g,b):
@@ -214,7 +215,7 @@ class Mover:
         self.height = min(self.height, self.display.height/3)
         
         self.x, self.y  = self.position(N)     
-        self.font = get_font(12, 'Arial')
+        self.font = get_font(12, 'arial')
         #These 3 pieces make up the progress gauge display
         self.progress_bar             = None
         self.progress_bar_bg          = None
@@ -239,21 +240,19 @@ class Mover:
 
 
         #Attributes of draw()
-        self.bar_width               = 45
+        self.bar_width               = 10
         self.img_offset              =  XY(90, 2)
         self.label_offset            = XY(200, 18)
-        self.percent_disp_offset     = XY(75, 10)
-        self.progress_bar_offset1     = XY(5, 12)
-        self.progress_bar_offset2     = XY(6, 18)
-        self.progress_bar_bg_offset1 = XY(5, 12) #pink
-        self.progress_bar_bg_offset2 = XY(6, 18) #pink
+        self.percent_disp_offset     = XY(85, 22)
+        self.progress_bar_offset1     = XY(5, 22)#yellow
+        self.progress_bar_offset2     = XY(6, 30)#yellow
+        self.progress_bar_bg_offset1 = XY(5, 22) #pink
+        self.progress_bar_bg_offset2 = XY(6, 30) #pink
         self.state_offset            = XY(124, 6)
         self.timer_offset            = XY(124, 18)
         self.tape_offset = (5, 2)
-        
         self.draw()
-
- 
+    
     def draw(self):
         x, y                    = self.x, self.y
 
@@ -285,11 +284,15 @@ class Mover:
                                                                                             x+self.progress_bar_offset2.x+(self.bar_width*self.percent_done/100.0),
                                                                                             y+self.progress_bar_offset2.y,
                                                                                             fill = progress_bar_color)
-            if self.display.width > 470:
+            f= str(self.percent_done)+"%"
+            #print  "measure of percent = ", self.font.measure(f)
+            #print "width of mover = ", self. width
+            difference=self.font.measure(f)/self.width
+            #print "difference bt mover width and percent = ", difference
+            if self.display.width > 500:
                 self.progress_percent_display =  self.display.create_text(x+self.percent_disp_offset.x, y+self.percent_disp_offset.y,
-                                                                                                                   text = str(self.percent_done)+"%",
-                                                                                                                   fill = percent_color, font = self.font)
-
+                                                                          text = str(self.percent_done)+"%",
+                                                                          fill = percent_color, font = self.font)
         self.display.update()
     def update_state(self, state, time_in_state=0):
 
@@ -373,10 +376,9 @@ class Mover:
             x, y = scale_to_display(coord.real. coord.imag, self.display.width, self.display.height)
         else:
             if ejected:
-                #x, y = self.x+self.width+self.tape_offset.x, self.y+ self.tape_offset.y
-                x, y = self.x+120, self.y +1
+                #x, y = self.x*2.2, self.y +1
+                x, y = self.x+self.width+5, self.y
             else:
-                #x, y = x+ self.tape_offset.x, y+ self.tape_offset.y
                 x, y = self.x + 2, self.y +1
                 
         return x, y
@@ -485,7 +487,7 @@ class Mover:
                 self.column = 1
                 x = self.display.width -  ((self.display.width/3.5)+label_width)
                 y = 20 + (k-half-0.5)*space
-            print k, self.name, x, y, self.column
+            #print k, self.name, x, y, self.column
         self.display.mover_columns[self.column] = int(x)
         return int(x), int(y)
     
@@ -500,7 +502,6 @@ class Mover:
 
     
     def reposition(self, N, state=None):
-
         #This is the new configuration for mover size
         if N >= 20:
             self.height = 0.75 * (self.display.height - 40) / (N/2.0)
@@ -508,7 +509,7 @@ class Mover:
             self.height = 0.75 * (self.display.height - 40) / N
 
         self.width = (self.display.width/4.0)
-        font = get_font(self.height, 'Arial')
+        font = get_font(self.height/2.5, 'arial')
         len_text = font.measure(self.name)
 
 
@@ -517,7 +518,7 @@ class Mover:
         #These are the new offsets
         self.label_offset            = XY(self.width+5, self.height)
         self.state_offset            = XY(self.width/1.3, self.height/3.)
-        self.timer_offset            = XY(self.width/1.3, self.height/1.4)
+        self.timer_offset            = XY(self.width/1.3, self.height/1.3)
         self.percent_disp_offset     = XY(self.width/1.9, self.height/1.2)#green
         self.progress_bar_offset1     = XY(self.width/25., self.height/1.6)#yellow
         self.progress_bar_offset2    = XY(self.width/25., self.height/1.2)#yellow
@@ -548,6 +549,7 @@ class Mover:
             self.state_display = self.display.create_text(self.x+self.state_offset.x, self.y+self.state_offset.y, text=self.state, fill=state_color, font = self.font)
 
         if self.volume:
+            #self.volume.font= font
             self.volume.vol_width = self.width/2.5
             self.volume.vol_height = self.height/2.25
             if self.volume.ejected == 0:
@@ -577,7 +579,8 @@ class Volume:
         self.vol_width = 50
         self.vol_height = 11
         self.draw()
-        self.font  = get_font(12, 'Arial')
+        self.font  = get_font(10, 'arial')
+        
     def __setattr__(self, attr, value):
 
         ### color
@@ -603,8 +606,8 @@ class Volume:
         label_stable_color  = colors('label_stable_color')
         tape_offline_color  = colors('tape_offline_color')
         label_offline_color = colors('label_offline_color')
-        
         x, y = self.x, self.y
+        self.font  = get_font(self.vol_height/1.5, 'arial')
         if x is None or y is None:
             return
         if self.loaded:
@@ -641,7 +644,7 @@ class Client:
         self.n_connections      = 0
         self.waiting            = 0
         i                       = 0
-        self.font = get_font(12, 'Arial')
+        self.font = get_font(12, 'arial')
 
         
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
@@ -664,6 +667,7 @@ class Client:
         x, y = self.x, self.y
         self.width = self.display.width/12
         self.height =  self.display.height/28
+        self.font = get_font(self.height/2.5, 'arial')
         if self.waiting:
             color = client_wait_color
         else:
@@ -689,6 +693,7 @@ class Client:
         
     def reposition(self):
         self.undraw()
+        self.font = get_font(self.height/2.5, 'arial')
         self.x, self.y = scale_to_display(-0.9, self.index/10.,
                                           self.display.width, self.display.height)
         self.draw()
@@ -730,7 +735,6 @@ class Connection:
                                              dash='...-',width=2,
                                              dashoffset = self.dashoffset,
                                              smooth=1)
-
    
     def undraw(self):
         self.display.delete(self.line)
@@ -766,7 +770,7 @@ class Title:
         self.display    = display
         self.tk_text    = None #this is a tk Text object
         self.fill       = None #color to draw with
-        #self.font       = tkFont.Font(size=36, family="Helvetica")
+        #self.font       = tkFont.Font(size=36, family="Arial")
         self.font = get_font(20, "arial")
         self.length     = 2.5  #animation runs 2.5 seconds
         now             = time.time()
@@ -859,9 +863,11 @@ class Display(Tkinter.Canvas):
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
         N = len(mover_names)
+
         for k in range(N):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
+        self.reposition_movers()
 
     def reposition_movers(self):
         items = self.movers.items()
@@ -1049,7 +1055,12 @@ class Display(Tkinter.Canvas):
         # (B) we check for commands coming from standard input
 
         while not self.stopped:
-            size = self.winfo_width(), self.winfo_height()
+            try:
+                size = self.winfo_width(), self.winfo_height()
+            except:
+                self.stopped = 1
+                break
+            
             if size != (self.width, self.height):
                 # size has changed
                 self.width, self.height = size
