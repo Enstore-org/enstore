@@ -97,6 +97,14 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.ENCP_GONE,
 	  e_errors.TCP_HUNG,
 	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
+
+forked_state = [ 'forked',
+		 'encp check',
+		 'bind',
+		 'wrapper, pre',
+		 'data',
+		 'wrapper, post',
+		 'send_user_done' ]
 	   
 
 def sigterm( sig, stack ):
@@ -115,12 +123,39 @@ def sigterm( sig, stack ):
     except: pass			# wacky things can happen with forking
     sys.exit( 0x80 | sig )
     return None
+
 def sigint( sig, stack ):
     del mvr_srvr.client_obj_inst.hsm_driver
     print 'Traceback (innermost last):'
     traceback.print_stack( stack )
     print 'KeyboardInterrupt'
     sys.exit( 1 )
+    return None
+    
+def sigsegv( sig, stack ):
+    if mvr_srvr.client_obj_inst.pid:
+	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
+	time.sleep(3)
+	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
+	pass
+    # kill just shm to avoid "AttributeError: hsm_driver" which causes
+    # forked process to become server via dispatching working exception handling
+    try: del mvr_srvr.client_obj_inst.hsm_driver.shm
+    except: pass			# wacky things can happen with forking
+    try: del mvr_srvr.client_obj_inst.hsm_driver.sem
+    except: pass			# wacky things can happen with forking
+    try: del mvr_srvr.client_obj_inst.hsm_driver.msg
+    except: pass			# wacky things can happen with forking
+
+    if mvr_srvr.client_obj_inst.pid:
+	mvr_srvr.client_obj_inst.usr_driver.close()
+	send_user_done( mvr_srvr.client_obj_inst, ticket,
+			e_errors.WRITE_ERROR )
+	return_or_update_and_exit( mvr_srvr.client_obj_inst,
+				   mvr_srvr.client_obj_inst.lm_origin_addr,
+				   e_errors.WRITE_ERROR )
+    else:
+	sys.exit( 0x80 | sig )
     return None
     
 
@@ -161,9 +196,10 @@ def fatal_enstore( self, error_info, ticket ):
 # MUST SEPARATE SYSTEM AND USER FUNCTIONS - I.E. ERROR MIGHT BE USERGONE
 # send a message to our user (last means "done with the read or write")
 def send_user_done( self, ticket, error_info ):
+    self.hsm_driver.user_state_set( forked_state.index('send_user_done') )
     ticket['status'] = (error_info,None)
     callback.write_tcp_socket( self.control_socket, ticket,
-			       "mover send_user_done" )
+			       'mover send_user_done' )
     self.control_socket.close()
     return
 
@@ -174,7 +210,7 @@ def send_user_done( self, ticket, error_info ):
 #
 class MoverClient:
     def __init__( self, config ):
-	self.print_id = "MOVER"
+	self.print_id = 'MOVER'
 	self.config = config
 	self.state = 'idle'
 	self.mode = ''			# will be either 'r' or 'w'
@@ -205,6 +241,7 @@ class MoverClient:
 	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
 	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
+	signal.signal( signal.SIGSEGV, sigsegv )# scsi reset???
 	return None
 
     def nowork( self, ticket ):
@@ -263,25 +300,27 @@ def bind_volume( self, external_label ):
     #                                           get stale
     #          then fc adds it's fc-info to encp ticket and sends it to lm
     
+    self.hsm_driver.user_state_set( forked_state.index('bind') )
+
     if self.vol_info['external_label'] == '':
 
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
 	self.vol_info['err_external_label'] = external_label
 	tmp_vol_info = vcc.inquire_vol( external_label )
-	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
+	if tmp_vol_info['status'][0] != 'ok': return 'NOTAPE' # generic, not read or write specific
 
         # if there is a tape in the drive, eject it (then the robot can put it away and we can continue)
 	if mvr_config['do_eject'] == 'yes':
-            logc.send(log_client.INFO,2,"Performing precautionary offline/eject of device"+str(mvr_config['device']))
+            logc.send(log_client.INFO,2,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
-            logc.send(log_client.INFO,2,"Completed  precautionary offline/eject of device"+str(mvr_config['device']))
+            logc.send(log_client.INFO,2,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
 
 	self.vol_info['read_errors_this_mover'] = 0
-	logc.send(log_client.INFO,2,"Requesting media changer load "+str(tmp_vol_info)+" "+str(self.config['mc_device']))
+	logc.send(log_client.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
 	rsp = mcc.loadvol( tmp_vol_info,
 			   self.config['mc_device'] )
-	logc.send(log_client.INFO,2,"Media changer load status"+str(rsp['status']))
-	if rsp['status'][0] != "ok":
+	logc.send(log_client.INFO,2,'Media changer load status'+str(rsp['status']))
+	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
 	    # in the following race condition:
 	    #   library manager told another mover to unbind.
@@ -289,15 +328,15 @@ def bind_volume( self, external_label ):
 	    #   more work for library manager arrives and is given to a
 	    #     new mover before the old volume was given back to the library
 	    # SHULD I RETRY????????
-	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
+	    if rsp['status'][0] == 'media_in_another_device': time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
 	try:
-            logc.send(log_client.INFO,2,"Requesting software mount "+str(external_label)+" "+str(mvr_config['device']))
+            logc.send(log_client.INFO,2,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
 				      external_label )
-            logc.send(log_client.INFO,2,"Software mount complete "+str(external_label)+" "+str(mvr_config['device']))
+            logc.send(log_client.INFO,2,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
 	self.vol_info.update( tmp_vol_info )
 	pass
@@ -308,27 +347,32 @@ def bind_volume( self, external_label ):
 
     return e_errors.OK
 
+def do_fork( self, ticket, mode ):
+    self.pid = os.fork()
+    self.state = 'busy'
+    self.hsm_driver._bytes_clear()
+    self.hsm_driver.user_state_set( forked_state.index('forked') )
+    self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
+    self.bytes_to_xfer = ticket['fc']['size']
+    self.mode = mode			# client mode, not driver mode
+    return None
+
 def forked_write_to_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
-    if mvr_config['do_fork']:
-	self.pid = os.fork()
-	self.state = 'busy'
-	self.hsm_driver._bytes_clear()
-	self.bytes_to_xfer = ticket['fc']['size']
-	self.mode = 'w'			# client mode, not driver mode
+    if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
-	logc.send(log_client.INFO,2,"WRITE_TO_HSM start"+str(ticket))
+	logc.send(log_client.INFO,2,'WRITE_TO_HSM start'+str(ticket))
 
-	origin_addr = ticket['lm']['address']# who contacts me directly
+	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
     
 	# First, call the user (to see if they are still there)
 	sts = get_user_sockets( self, ticket )
-	if sts == "error":
-	    return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
+	if sts == 'error':
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
 
 	t0 = time.time()
@@ -340,7 +384,7 @@ def forked_write_to_hsm( self, ticket ):
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
 	    send_user_done( self, ticket, sts )
-	    return_or_update_and_exit( self, origin_addr, sts )
+	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
@@ -348,7 +392,7 @@ def forked_write_to_hsm( self, ticket ):
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
-	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
         logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
@@ -371,13 +415,15 @@ def forked_write_to_hsm( self, ticket ):
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
+	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
 	    wrapper.write_pre_data( do, ticket['wrapper'] )
 	    Trace.trace( 11, 'done with pre_data' )
 
 	    # should not be getting this from wrapper sub-ticket
 	    file_bytes = ticket['wrapper']['size_bytes']
-	    san_bytes = ticket["wrapper"]["sanity_size"]
+	    san_bytes = ticket['wrapper']['sanity_size']
 	    if file_bytes < san_bytes: san_bytes = file_bytes
+	    self.hsm_driver.user_state_set( forked_state.index('data') )
 	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  san_bytes, self.crc_func, 0 )
 	    Trace.trace( 11, 'done with sanity' )
@@ -388,9 +434,10 @@ def forked_write_to_hsm( self, ticket ):
 				       san_crc )
 	    else: file_crc = san_crc
 
-	    logc.send(log_client.INFO,2,"done with write fd_xfers")
+	    logc.send(log_client.INFO,2,'done with write fd_xfers')
 	    
-	    Trace.trace( 11, 'done with rest' )
+	    Trace.trace( 11, 'done with rest of data' )
+	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
 	    wrapper.write_post_data( do, file_crc )
 	    Trace.trace( 11, 'done with post_data' )
 	    do.flush()
@@ -409,13 +456,13 @@ def forked_write_to_hsm( self, ticket ):
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send(log_client.INFO,2,
-		      "FTT or Exfer exception: "+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+            logc.send( log_client.ERROR,1,
+		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    #traceback.print_exc()
 	    # err_msg is <type 'instance'>
 	    if str(err_msg) == "(0, 'fd_xfer - read EOF unexpected - Success')":
 		# assume encp dissappeared
-		return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
+		return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 		pass
 	    else:
 		wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
@@ -423,7 +470,7 @@ def forked_write_to_hsm( self, ticket ):
 				   wr_err, rd_err, wr_access, rd_access )
 		self.usr_driver.close()
 		send_user_done( self, ticket, e_errors.WRITE_ERROR )
-		return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
+		return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_ERROR )
 		pass
         except:
 	    traceback.print_exc()
@@ -432,7 +479,7 @@ def forked_write_to_hsm( self, ticket ):
                                wr_err, rd_err, wr_access, rd_access )
 	    self.usr_driver.close()
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
-	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_ERROR )
 	    pass
 
         # we've read the file from user, shut down data transfer socket
@@ -470,31 +517,26 @@ def forked_write_to_hsm( self, ticket ):
 	Trace.trace( 11, 'b4 send_user_done' )
 	send_user_done( self, ticket, e_errors.OK )
 
-	return_or_update_and_exit( self, origin_addr, e_errors.OK )
+	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
 	pass
     return {}
 
 def forked_read_from_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
-    if mvr_config['do_fork']:
-	self.pid = os.fork()
-	self.state = 'busy'
-	self.hsm_driver._bytes_clear()
-	self.bytes_to_xfer = ticket['fc']['size']
-	self.mode = 'r'			# client mode, not driver mode
+    if mvr_config['do_fork']: do_fork( self, ticket, 'r' )
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM start"+str(ticket))
 
-	origin_addr = ticket['lm']['address']# who contacts me directly
+	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
 	# First, call the user (to see if they are still there)
 	sts = get_user_sockets( self, ticket )
 	if sts == "error":
-	    return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
 
 	t0 = time.time()
@@ -506,7 +548,7 @@ def forked_read_from_hsm( self, ticket ):
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
 	    send_user_done( self, ticket, sts )
-	    return_or_update_and_exit( self, origin_addr, sts )
+	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
 
         # space to where the file will begin and save location
@@ -538,8 +580,10 @@ def forked_read_from_hsm( self, ticket ):
 	    else: crc_func = self.crc_func
 	    t0 = time.time()
             Trace.trace(11,'calling read_pre_data')
+	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
             wrapper.read_pre_data( do, None )
             Trace.trace(11,'calling fd_xfer -sanity size='+repr(ticket['fc']['sanity_cookie'][0]))
+	    self.hsm_driver.user_state_set( forked_state.index('data') )
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
 				  self.crc_func,
@@ -558,7 +602,7 @@ def forked_read_from_hsm( self, ticket ):
 		user_file_crc = san_crc
 		pass
 
-	    logc.send(log_client.INFO,2,"done with read fd_xfers")
+	    logc.send(log_client.INFO,2,'done with read fd_xfers')
 	    
 	    if     self.crc_func != None \
 	       and ticket['fc']['complete_crc'] != None \
@@ -566,6 +610,7 @@ def forked_read_from_hsm( self, ticket ):
 		pass
 	    tt = {'data_crc':ticket['fc']['complete_crc']}
             Trace.trace(11,'calling read_post_data')
+	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
             wrapper.read_post_data( do, tt )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
@@ -579,12 +624,12 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send(log_client.INFO,2,
-		      "FTT or Exfer exception: "+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+            logc.send( log_client.ERROR,1,
+		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    traceback.print_exc()
 	    self.usr_driver.close()
 	    send_user_done( self, ticket, e_errors.READ_ERROR )
-	    return_or_update_and_exit( self, origin_addr, e_errors.OK )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
         except:
 	    traceback.print_exc()
             media_error = 1 # I don't know what else to do right now
@@ -603,13 +648,13 @@ def forked_read_from_hsm( self, ticket ):
         if media_error :
             vcc.set_system_readonly( self.vol_info['external_label'] )
             send_user_done( self, ticket, e_errors.READ_ERROR )
-	    return_or_update_and_exit( self, origin_addr, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.READ_ERROR )
 
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_errors :
             vcc.set_hung( self.vol_info['external_label'] )
             send_user_done( self, ticket, e_errors.READ_ERROR )
-	    return_or_update_and_exit( self, origin_addr, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.READ_ERROR )
 
         # All is well - read has finished correctly
 
@@ -619,10 +664,10 @@ def forked_read_from_hsm( self, ticket ):
 	ticket['mover'] = self.config
 	ticket['mover']['callback_addr'] = self.callback_addr# this was the data callback
 
-        logc.send(log_client.INFO,2,"READ DONE"+str(ticket))
+        logc.send(log_client.INFO,2,'READ DONE'+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
-	return_or_update_and_exit( self, origin_addr, e_errors.OK )
+	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
 	pass
     return
 
@@ -633,7 +678,7 @@ def return_or_update_and_exit( self, origin_addr, status ):
 	# hsm_driver_info (read: hsm_driver.position
 	#                  write: position, eod, remaining_bytes)
 	# recent (read) errors (part of vol_info???)
-	udpc.send_no_wait( {'work':"update_client_info",
+	udpc.send_no_wait( {'work':'update_client_info',
 			    'address':origin_addr,
 			    'pid':os.getpid(),
 			    'hsm_driver':{'blocksize':self.hsm_driver.blocksize,
@@ -650,19 +695,20 @@ def return_or_update_and_exit( self, origin_addr, status ):
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
 def get_user_sockets( self, ticket ):
+    self.hsm_driver.user_state_set( forked_state.index('encp check') )
     try:
 	host, port, listen_socket = callback.get_data_callback()
 	self.callback_addr = (host,port)
 	listen_socket.listen(4)
-	mover_ticket = {"callback_addr":self.callback_addr}
-	ticket["mover"] = mover_ticket
+	mover_ticket = {'callback_addr':self.callback_addr}
+	ticket['mover'] = mover_ticket
 	
 	# call the user and tell him I'm your mover and here's your ticket
 	# ticket should have index ['callback_addr']
 	# and then the entire ticket is sent to the callback_addr
 	# The user expects the ticket to contain the following fields:
 	#           ['unique_id'] == id sent by the user
-	#           ['status'] == "ok"
+	#           ['status'] == 'ok'
 	#           ['mover']['callback_addr']   set above
 	self.control_socket = callback.user_callback_socket( ticket )
 	
@@ -673,28 +719,28 @@ def get_user_sockets( self, ticket ):
 	
 	self.usr_driver, address = listen_socket.accept()
 	listen_socket.close()
-	return "ok"
+	return 'ok'
     except:
-	return "error"
+	return 'error'
 
 # create ticket that says we are idle
 def idle_mover_next( self ):
-    return {'work'   :"idle_mover",
+    return {'work'   :'idle_mover',
 	    'mover'  :self.config['name'],
 	    'address': (self.config['hostip'],self.config['port'])}
 
 # create ticket that says we have bound volume x
 def have_bound_volume_next( self ):
-    next_req_to_lm =  { 'work'   : "have_bound_volume",
+    next_req_to_lm =  { 'work'   : 'have_bound_volume',
 			'mover'  : self.config['name'],
 			'address': (self.config['hostip'],self.config['port']),
-			'state'  : "idle",
+			'state'  : 'idle',
 			'vc'     : self.vol_info }
     return next_req_to_lm
 
 # create ticket that says we need to unbind volume x
 def unilateral_unbind_next( self, error_info ):
-    next_req_to_lm = {'work'           : "unilateral_unbind",
+    next_req_to_lm = {'work'           : 'unilateral_unbind',
 		      'mover'          : self.config['name'],
 		      'address'        : (self.config['hostip'],self.config['port']),
 		      'external_label' : self.fc['external_label'],
@@ -711,7 +757,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def __init__( self, server_address, verbose=0 ):
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.verbose = verbose
-        logc.send( log_client.INFO, 0, "Mover starting - contacting libman")
+        logc.send( log_client.INFO, 0, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
 	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
@@ -753,6 +799,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	out_ticket['no_xfers'] = self.client_obj_inst.hsm_driver.no_xfers
 	out_ticket['rd_bytes'] = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	out_ticket['wr_bytes'] = self.client_obj_inst.hsm_driver.wr_bytes_get()
+	out_ticket['forked_state'] = self.client_obj_inst.hsm_driver.user_state_get()
 	out_ticket['bytes_to_xfer'] = self.client_obj_inst.bytes_to_xfer
 	out_ticket['crc_func'] = str(self.client_obj_inst.crc_func)
 	self.reply_to_caller( out_ticket )
@@ -805,6 +852,29 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def handle_timeout( self ):
+	if self.client_obj_inst.state == 'busy' and \
+	   self.client_obj_inst.hsm_driver.user_state_get() ==  forked_state.index('data'):
+	    if self.client_obj_inst.init_stall_time == 1:
+		self.client_obj_inst.stall_time = time.time()
+		self.client_obj_inst.init_stall_time = 0
+	    else:
+		rr = self.client_obj_inst.hsm_driver.rd_bytes_get()
+		ww = self.client_obj_inst.hsm_driver.wr_bytes_get()
+		p_rr = self.client_obj_inst.prev_r_bytes
+		p_ww = self.client_obj_inst.prev_w_bytes
+		if rr == p_rr and ww == p_ww:
+		    if time.time()-self.client_obj_inst.stall_time > 20.0:# aritrary number
+			logc.send( log_client.ERROR,1,'stalled mover - should abort' )
+			self.client_obj_inst.stall_time = time.time()
+			pass
+		    pass
+		else:
+		    self.client_obj_inst.prev_r_bytes = rr
+		    self.client_obj_inst.prev_w_bytes = ww
+		    self.client_obj_inst.stall_time = time.time()
+		    pass
+		pass
+	    pass
         return
 
     pass
@@ -812,15 +882,15 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 def do_next_req_to_lm( self, next_req_to_lm, address ):
     while next_req_to_lm != {} and next_req_to_lm != None:
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
-	if next_req_to_lm['work'] == "unilateral_unbind":
+	if next_req_to_lm['work'] == 'unilateral_unbind':
 	    # FOR SOME ERRORS I FREEZE
 	    #if next_req_to_lm['status'] in [ ]:
-	 	#logc.send( log_client.ERROR, 1, "MOVER FREEZE - told busy mover to do work" )
+	 	#logc.send( log_client.ERROR, 1, 'MOVER FREEZE - told busy mover to do work' )
 		#while 1: time.sleep( 1 )# freeze
 		#pass
 	    pass
 	if self.client_obj_inst.state == 'busy' and rsp_ticket['work'] != 'nowork':
-	    logc.send( log_client.ERROR, 1, "FATAL ENSTORE - libman told busy mover to do work" )
+	    logc.send( log_client.ERROR, 1, 'FATAL ENSTORE - libman told busy mover to do work' )
 	    while 1: time.sleep( 1 )	# freeze
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
@@ -840,7 +910,7 @@ def get_state_build_next_lm_req( self, wait ):
 	except:
 	    traceback.print_exc()
 	    logc.send( log_client.ERROR, 1,
-		       "waitpid-for pid:"+str(self.client_obj_inst.pid)+":"+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+		       'waitpid-for pid:'+str(self.client_obj_inst.pid)+':'+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    os.system( 'ps alxwww' )
 	    #raise sys.exc_info()[0], sys.exc_info()[1]
 	    # assume success???
@@ -902,7 +972,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
-	logc.send( log_client.ERROR, 1, "FATAL ERROR - MOVER - unknown transfer status - fix me now" )
+	logc.send( log_client.ERROR, 1, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
 	while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
 	pass
     return next_req_to_lm
@@ -922,13 +992,13 @@ class MoverInterface(interface.Interface):
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16, "{}options")
+        Trace.trace(16, '{}options')
         return self.config_options()+\
                self.help_options()
 
     #  define our specific help
     def parameters(self):
-        return "mover_device"
+        return 'mover_device'
 
     # parse the options like normal but make sure we have a mover
     def parse_options(self):
@@ -961,8 +1031,8 @@ csc  = configuration_client.ConfigurationClient( intf.config_host,
 
 # get my (localhost) configuration from the configuration server
 mvr_config = csc.get( intf.name )
-if mvr_config['status'][0] != "ok":
-    raise "could not start mover",intf.name," up:" + mvr_config['status']
+if mvr_config['status'][0] != 'ok':
+    raise 'could not start mover',intf.name,' up:' + mvr_config['status']
 # clean up the mvr_config a bit
 mvr_config['name'] = intf.name
 mvr_config['config_host'] = intf.config_host
@@ -1007,4 +1077,4 @@ Trace.init( mvr_config['logname'] )
 Trace.on( mvr_config['logname'], 0, 31 )
 mvr_srvr.serve_forever()
 
-generic_cs.enprint("ERROR?")
+generic_cs.enprint('ERROR?')
