@@ -82,8 +82,13 @@ for des in \
 EOF
   for i in `cat $farmlet`; do
     val="`getval "$des" $filebase$i`"
+    if [ "$val" = "" ]; then
+      data_item="<td align=center bgcolor=\"RED\"></td>"
+    else
+      data_item="<td align=center>$val</td>"
+    fi
     cat <<EOF >>$output
-<td align=center>$val</td>
+$data_item
 EOF
   done
   cat << EOF >>$output
