@@ -620,6 +620,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.set_comment = None
         self.volume = None
         self.assign_sg = None
+        self.touch = None
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
