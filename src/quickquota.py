@@ -51,14 +51,13 @@ for line in lines:
             vol_family = vv['volume_family']
 
             # volser, cap, x1, x2, x3, x3, lib, vol_family =  string.split(line)
-            storage_group, ff  = get_storage_info(vol_family)
-            total_vols_for_entity[storage_group] = total_vols_for_entity.get(storage_group,0) +1
-            if ff == 'none' :
-                unused_vols_for_entity[storage_group] = unused_vols_for_entity.get( storage_group,0) + 1
-
     except ValueError:
         print "ERROR parsing", line
         continue
+    storage_group, ff  = get_storage_info(vol_family)
+    total_vols_for_entity[storage_group] = total_vols_for_entity.get(storage_group,0) +1
+    if ff == 'none' :
+        unused_vols_for_entity[storage_group] = unused_vols_for_entity.get( storage_group,0) + 1
 
 total_vols=0
 total_unused_vols=0
