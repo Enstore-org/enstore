@@ -1608,19 +1608,26 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
         EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
                                   e.bufsize, crc_flag, e.mover_timeout, 0)
+
         #Exfer_rtn is a tuple.
         # [0] exit_status (1 or 0)
 	# [1] crc
-        # The following should never be needed.
+        #The following should never be needed.
 	# [2] bytes_left_untransfered
         # [3] errno
         # [4] msg
-        # [5] filename,
-        # [6] line number
+        #The read time and write time are only useful if EXfer is threaded.
+        # [5] read time
+        # [6] write time
+        #More error information.
+        # [7] filename,
+        # [8] line number
         #encp_crc = EXfer_rtn[1]
         EXfer_ticket = {'status':(e_errors.OK, None)}
         EXfer_ticket['encp_crc'] = EXfer_rtn[1]
         EXfer_ticket['bytes_not_transfered'] = EXfer_rtn[2]
+        EXfer_ticket['read_time'] = EXfer_rtn[5]
+        EXfer_ticket['write_time'] = EXfer_rtn[6]
     except EXfer.error, msg:
         #The exception raised can have two forms.  Both share the same values
         # for the first four positions in the msg.args tuple.
@@ -1630,8 +1637,10 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         # [3[ pid
         #It is also possible to have the following extra elements:
         # [4] bytes left untransfered
-        # [5] filename of error
-        # [6] line number that the error occured on
+        # [5] read time
+        # [6] write time
+        # [7] filename of error
+        # [8] line number that the error occured on
         if msg.args[1] == errno.ENOSPC: #This should be non-retriable.
             error_type = e_errors.NOSPACE
         else:
@@ -1643,8 +1652,10 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         #If this is the longer form, add these values to the ticket.
         if len(msg.args) >= 7:
             EXfer_ticket['bytes_not_transfered'] = msg.args[4]
-            EXfer_ticket['filename'] = msg.args[5]
-            EXfer_ticket['line_number'] = msg.args[6]
+            EXfer_ticket['read_time'] = msg.args[5]
+            EXfer_ticket['write_time'] = msg.args[6]
+            EXfer_ticket['filename'] = msg.args[7]
+            EXfer_ticket['line_number'] = msg.args[8]
             
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" %
                   (str(msg),))
@@ -2110,14 +2121,35 @@ def calculate_rate(done_ticket, tinfo):
     id = done_ticket['unique_id']
 
     #Make these variables easier to use.
-    network_time = tinfo.get('%s_elapsed_time' % (id,), 0)
+    elapsed_time = tinfo.get('%s_elapsed_time' % (id,), 0)
     complete_time = tinfo.get('%s_elapsed_finished' % (id,), 0)
-    drive_time = done_ticket['times'].get('transfer_time', 0)
+    drive_time = done_ticket['times'].get('drive_transfer_time', 0)
+    #These are newer more accurate time measurements and may not always
+    # be present.
+    read_time = done_ticket.get('exfer', {}).get('read_time', None)
+    write_time = done_ticket.get('exfer', {}).get('write_time', None)
 
     if done_ticket['work'] == "read_from_hsm":
         preposition = "from"
+        if read_time != None:
+            network_time = read_time
+        else:
+            network_time = elapsed_time
+        if write_time != None:
+            disk_time = write_time
+        else:
+            disk_time = elapsed_time
     else: #write "to"
         preposition = "to"
+        if write_time != None:
+            network_time = write_time
+        else:
+            network_time = elapsed_time
+        if read_time != None:
+            disk_time = read_time
+        else:
+            disk_time = elapsed_time
+
     
     if e_errors.is_ok(done_ticket['status'][0]):
 
@@ -2133,6 +2165,10 @@ def calculate_rate(done_ticket, tinfo):
             tinfo['drive_rate_%s'%(id,)] = MB_transfered / drive_time
         else:
             tinfo['drive_rate_%s'%(id,)] = 0.0
+        if disk_time != 0:
+            tinfo['disk_rate_%s'%(id,)] = MB_transfered / disk_time
+        else:
+            tinfo['disk_rate_%s'%(id,)] = 0.0
             
         sg = done_ticket.get('fc', {}).get('storage_group', "")
         if not sg:
@@ -2141,13 +2177,13 @@ def calculate_rate(done_ticket, tinfo):
         
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
-                 "\t(%.3g MB/S network) (%.3g MB/S drive)\n " \
+                 "\t(%.3g MB/S network) (%.3g MB/S drive) (%.3g MB/S disk)\n" \
                  "\tdrive_id=%s drive_sn=%s drive_vendor=%s\n" \
                  "\tmover=%s media_changer=%s   elapsed=%.02f"
         
         log_format = "  %s %s -> %s: "\
                      "%d bytes copied %s %s at %.3g MB/S " \
-                     "(%.3g MB/S network) (%.3g MB/S drive) " \
+                     "(%.3g MB/S network) (%.3g MB/S drive) (%.3g MB/S disk) "\
                      "mover=%s " \
                      "drive_id=%s drive_sn=%s drive_vendor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
@@ -2162,6 +2198,7 @@ def calculate_rate(done_ticket, tinfo):
                         tinfo["overall_rate_%s"%(id,)],
                         tinfo['network_rate_%s'%(id,)],
                         tinfo["drive_rate_%s"%(id,)],
+                        tinfo["disk_rate_%s"%(id,)],
                         done_ticket["mover"]["product_id"],
                         done_ticket["mover"]["serial_num"],
                         done_ticket["mover"]["vendor_id"],
@@ -2179,6 +2216,7 @@ def calculate_rate(done_ticket, tinfo):
                       tinfo["overall_rate_%s"%(id,)],
                       tinfo["network_rate_%s"%(id,)],
                       tinfo['drive_rate_%s'%(id,)],
+                      tinfo["disk_rate_%s"%(id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
