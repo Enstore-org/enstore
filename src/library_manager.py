@@ -95,7 +95,7 @@ def find_mover(mover, mover_list):
 	                   verbose)
     
 # update mover list
-def update_mover_list(mover, state):
+def update_mover_list(self, mover, state):
     Trace.trace(3,"{update_mover_list " + repr(mover))
     mv = find_mover(mover, movers)
     if mv == None:
@@ -106,7 +106,11 @@ def update_mover_list(mover, state):
 	
     # change mover state
     generic_cs.enprint("changing mover state", generic_cs.SERVER, verbose)
-    mv['mover'] = mover['mover']
+    if mv['mover'] != mover['mover']:
+	format = "Mover name changed from %s to %s"
+        logticket = self.logc.send(log_client.INFO, 2, format,
+				   mv['mover'], mover['mover'])
+	mv['mover'] = mover['mover']
     mv['state'] = state
     mv['last_checked'] = time.time()
     Trace.trace(3,"}update_mover_list " + repr(mv))
@@ -557,7 +561,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	
 	Trace.trace(3,"{idle_mover " + repr(mticket))
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, verbose)
-	update_mover_list(mticket, mticket['work'])
+	update_mover_list(self, mticket, mticket['work'])
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
 	if ((mv != None) and mv):
@@ -644,7 +648,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, verbose)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
-	    update_mover_list(mticket, 'work_at_mover')
+	    update_mover_list(self, mticket, 'work_at_mover')
             self.enprint("Work at movers appended", generic_cs.SERVER, verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, verbose)
 	    Trace.trace(3,"}idle_mover " + repr(w))
@@ -672,7 +676,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    state = 'idle_mover'  # to make names consistent
 	else:
 	    state = mticket['state']
-	update_mover_list(mticket, state)
+	update_mover_list(self, mticket, state)
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
 	if ((mv != None) and mv):
@@ -713,7 +717,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    state = 'work_at_mover'
-	    update_mover_list(mticket, state)
+	    update_mover_list(self, mticket, state)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
             self.enprint("Pending Work", generic_cs.SERVER, verbose)
@@ -763,7 +767,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w = get_work_at_movers(ticket["external_label"])
 
 	# update mover list. If mover is in the list - update its state
-	update_mover_list(ticket, 'idle_mover')
+	update_mover_list(self, ticket, 'idle_mover')
 
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(ticket, self.summon_queue)
