@@ -1096,14 +1096,15 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         # check if the volume is declared right
         if vk[:3] != 'CLN':
+            actual_size = total_size+vv['remaining_bytes']
             if vv['media_type'] == '9940':
-                if total_size+vv['remaining_bytes'] > 80*1048576*1024 or vv['library'][-5:] == '9940B':
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                if actual_size > 80*1048576*1024 or vv['library'][-5:] == '9940B':
+                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
             elif vv['media_type'] == '9940B':
-                if total_size and (total_size+vv['remaining_bytes'] < 100*1048576*1024 or (vv['library'][-5:] != '9940B' and vv['library'][-9:] != 'Migration') or vv['capacity_bytes'] < 180*1048576*1024):
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                if total_size and (actual_size < 100*1048576*1024 or (vv['library'][-5:] != '9940B' and vv['library'][-9:] != 'Migration') or vv['capacity_bytes'] < 180*1048576*1024):
+                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
             elif (vv['library'][-5:] == '9940B' or vv['library'][-9:] == 'Migration') and vv['media_type'] != '9940B':
-                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, total_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                    de_file.write("%s\t%12d\t%12d\t%16s\t%16s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
