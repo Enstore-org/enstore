@@ -31,7 +31,7 @@ traceShow*
 #include	"trace.h"		/* */
 
 
-int	traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,int incPMC,int proc );
+int	traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int optRevr );
 int	traceInfo( int start, int num );
 int	traceReset( void );
 int	tracePMC( int cntr, int val );
@@ -53,23 +53,25 @@ main(  int	argc
     exit_sts = 0;
 
     if      (strcmp(trc_basename(argv[0],'/'),"traceShow") == 0)
-    {   int	arg, delta_t=0, lines=0, incHDR=1,incLVL=0,incINDT=1,incCPU=0,incPMC=0,proc=-1;
+    {   int	arg, delta_t=0, lines=0, incHDR=1,incLVL=0,incINDT=1,optRevr=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{        if (strcmp(argv[arg],"-lvl") == 0)      incLVL=1;
 	    else if (strcmp(argv[arg],"-nohdr") == 0)    incHDR=0;
+	    else if (strcmp(argv[arg],"-r") == 0)        optRevr=1;
+	    else if (strcmp(argv[arg],"-nr") == 0)       optRevr=0;
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-noindent") == 0) incINDT=0;
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [delta_time [lines]]\n"
 			, trc_basename(argv[0],'/') );
-		fprintf(  stderr, "valid options: nohdr,cpu,pmc,lvl,noindent\n" );
+		fprintf(  stderr, "valid options: nohdr,lvl,noindent,-r,-nr\n" );
 		exit( 1 );
 	    }
 	}
 	if ((argc>arg) && (atoi(argv[arg])>=1)) delta_t=1;
 	if (argc >arg+1)  if ((lines=atoi(argv[arg+1])) < 0) lines=0;
-	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,incCPU,incPMC,proc );
+	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,optRevr );
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceInfo") == 0)
     {   int	arg, start=0, num=0;
@@ -160,7 +162,7 @@ void	strncatCheck( char *str_buf, const char *msg, int num );
 #define STD_OUT         1
 
 int
-traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,int incPMC,int proc )
+traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRevr )
 {
 	int	head, tmp;
 	double  time, time_sav;
@@ -193,20 +195,38 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
     /* get time of the previous entry now - makes delta processing easier */
     /* look for biggest time */
     time_sav = 0;
-
-    tmp = head - 1;
-    if (tmp == -1) tmp = trc_cntl_sp->last_idx; /* recall, "last" is an entry */
-    time_sav = (double)((trc_ent_sp+tmp)->time.tv_sec)
-	+ (double)((trc_ent_sp+tmp)->time.tv_usec)/1000000;	
+    if (optRevr)
+    {   head = trc_cntl_sp->tail_idx - 1;
+	tmp = head + 1;
+	if (tmp == (trc_cntl_sp->last_idx+1)) tmp = 0; /* recall, "last" is an entry */
+	time_sav = (double)((trc_ent_sp+tmp)->time.tv_sec)
+	    + (double)((trc_ent_sp+tmp)->time.tv_usec)/1000000;
+    }
+    else
+    {   tmp = head - 1;
+	if (tmp == -1) tmp = trc_cntl_sp->last_idx; /* recall, "last" is an entry */
+	time_sav = (double)((trc_ent_sp+tmp)->time.tv_sec)
+	    + (double)((trc_ent_sp+tmp)->time.tv_usec)/1000000;
+    }
     do
     {   
-	head--;	/* head points to a free slot, head-- is where the info is */
-	if (head == -1) head = trc_cntl_sp->last_idx;
+	if (optRevr)
+	{   head++;	/* head points to a free slot, head-- is where the info is */
+	    if (head == (trc_cntl_sp->last_idx+1)) head = 0;;
+	}
+	else
+	{   head--;	/* head points to a free slot, head-- is where the info is */
+	    if (head == -1) head = trc_cntl_sp->last_idx;
+	}
 
 	time = (double)((trc_ent_sp+head)->time.tv_sec)
 	    + (double)((trc_ent_sp+head)->time.tv_usec)/1000000;
 	if (delta_t)
-	{   time = time_sav - time;
+	{   
+	    if (optRevr)
+		time = time - time_sav;
+	    else
+		time = time_sav - time;
 	    time_sav = (double)((trc_ent_sp+head)->time.tv_sec)
 		+ (double)((trc_ent_sp+head)->time.tv_usec)/1000000;
 	}
@@ -245,7 +265,8 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
 	    printf( "\n" );
 	    line_count=0;
 	}
-    } while ((head!=trc_cntl_sp->tail_idx) && (lines? --lines: 1));
+    } while (   (head!=(optRevr?(trc_cntl_sp->head_idx-1):trc_cntl_sp->tail_idx))
+	     && (lines? --lines: 1));
     if (incHDR && c2) printf("entries: %d\n",c2);
 
     return (0);
