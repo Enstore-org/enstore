@@ -28,8 +28,8 @@ else:
 
 #print "IMAGE_DIR=", IMAGE_DIR
     
-from Tkinter import *
-from tkFont import Font
+import Tkinter
+import tkFont
 
 debug = 1 
 
@@ -92,7 +92,7 @@ def find_image(name):
         try:
             statinfo = os.stat(filename)
             file_mtime = statinfo[stat.ST_MTIME]
-            img = PhotoImage(file=filename)
+            img = Tkinter.PhotoImage(file=filename)
             _image_cache[name] = file_mtime, img #keep track of image and modification time
         except:
             img = None
@@ -168,7 +168,8 @@ class Mover:
         self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
         img = find_image(self.state + '.gif')
         if img:
-            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y,
+                                                           anchor=Tkinter.NW, image=img)
         else:
             self.state_display = self.display.create_text(x+state_offset.x, y+state_offset.y, text=self.state, fill='light blue')
         self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00',fill='white')
@@ -539,7 +540,7 @@ class Title:
         self.display = display
         self.tk_text = None #this is a tk Text object
         self.fill = None #color to draw with
-        self.font = Font(size=36, family="Helvetica")
+        self.font = tkFont.Font(size=36, family="Helvetica")
         self.length = 2.5  #animation runs 2.5 seconds
         now = time.time()
         self.start_time = now
@@ -549,7 +550,7 @@ class Title:
         #center this in the entire canvas
         self.tk_text = self.display.create_text(self.display.width/2, self.display.height/2,
                                                 text=self.text,
-                                                font=self.font, justify=CENTER)
+                                                font=self.font, justify=Tkinter.CENTER)
 
     def animate(self, now=None):
         if now==None:
@@ -568,7 +569,7 @@ class Title:
         self.display.delete(self.tk_text)
 
         
-class Display(Canvas):
+class Display(Tkinter.Canvas):
     """  The main state display """
     def __init__(self, master, title, window_width, window_height, canvas_width=None, canvas_height=None, **attributes):
  
@@ -578,13 +579,13 @@ class Display(Canvas):
         if canvas_height is None:
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
-        Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
+        Tkinter.Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
 
 ##        self.QUIT = Button(self, text='QUIT', background='blue', height=1, command=self.quit)
 ##        self.QUIT.pack(side=BOTTOM, fill=BOTH)
 
-        self.scrollX = Scrollbar(self, orient=HORIZONTAL)
-        self.scrollY = Scrollbar(self, orient=VERTICAL)
+        self.scrollX = Tkinter.Scrollbar(self, orient=HORIZONTAL)
+        self.scrollY = Tkinter.Scrollbar(self, orient=VERTICAL)
 
        #When the canvas changes size or moves, update the scrollbars
         self['xscrollcommand']= self.scrollX.set
@@ -595,13 +596,13 @@ class Display(Canvas):
         self.scrollY['command'] = self.yview
 
         #pack 'em up
-        self.scrollX.pack(side=BOTTOM, fill=X)
-        self.scrollY.pack(side=RIGHT, fill=Y)
-        self.pack(side=LEFT)
+        self.scrollX.pack(side=Tkinter.BOTTOM, fill=X)
+        self.scrollY.pack(side=Tkinter.RIGHT, fill=Y)
+        self.pack(side=Tkinter.LEFT)
 
-        Tk.title(self.master, title)
+        Tkinter.Tk.title(self.master, title)
         self.configure(attributes)
-        self.pack(expand=1, fill=BOTH)
+        self.pack(expand=1, fill=Tkinter.BOTH)
         self.stopped = 0
         self.width =  int(self['width'])
         self.height = int(self['height'])
