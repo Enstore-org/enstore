@@ -295,14 +295,14 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
 	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
-	
+	"""
         try:
             if WSdata['cleaning_bit'] == 1:
                 rr = self.mcc.doCleaningCycle(self.mvr_config)
                 Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
         except KeyError:
             Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined in WSdata")
-     
+        """
         self.return_or_update_and_exit(self.vol_info['from_lm'], e_errors.OK )
 	pass
 
@@ -341,7 +341,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
         except KeyError:
             Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
             return
-        output_data = {'DEVNAME' : self.mvr_config['mc_device']}
+        output_data = {'DEVNAME' : self.mvr_config['mc_device'],
+                       'VSN'     : }
         """
         try:
             fd = open(path,'a')
