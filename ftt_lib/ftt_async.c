@@ -38,7 +38,7 @@ ftt_fork(ftt_descriptor d) {
 	case 0:    /* child, fork again so no SIGCLD, zombies, etc. */
 
 	  /* close all files except fds[1] */
-	  for( i=0; i<NOFILE; i++ ) {
+	  for( i=3; i<NOFILE; i++ ) {
 	    if ( i != fds[1] ) close(i);
 	  }
 	  

@@ -83,7 +83,7 @@ ftt_close_scsi_dev(ftt_descriptor d) {
     if(d->scsi_descriptor == d->file_descriptor) {
 	d->scsi_descriptor = -1;
     }
-    if(d->scsi_descriptor > 0 ) {
+    if(d->scsi_descriptor >= 0 ) {
 	DEBUG1(stderr,"Actually closing scsi device\n");
         res = ftt_scsi_close(d->scsi_descriptor);
 	DEBUG2(stderr,"close returned %d, errno %d\n", res, errno);

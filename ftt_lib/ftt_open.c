@@ -499,7 +499,7 @@ ftt_close_io_dev(ftt_descriptor d) {
     ENTERING("ftt_close_io_dev");
     CKNULL("ftt_descriptor", d);
 
-    if ( d->which_is_open >= 0 ){
+    if ( d->which_is_open >= 0 ) {
 		ftt_write_fm_if_needed(d);
         DEBUG1(stderr,"Actually closing\n");
 
