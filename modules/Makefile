@@ -2,7 +2,6 @@
 #
 #  $Id$
 #
-CC=`grep '^CC=' $(PYTHONLIB)/config/Makefile | sed -e 's/CC=[       ]*//'`
 all:	 Trace adler32.a Makefile.modules Modules tape_copy  
 
 # The target Makefile.modules generates a file Makefile.modules

@@ -7,7 +7,6 @@
 # $Date$
 
 WARN=  `case \`uname\` in Linux) echo "-Wall";;IRIX*) echo "-fullwarn";;esac`
-CC=`grep '^CC=' $(PYTHON_DIR)/lib/python*/config/Makefile | sed -e 's/CC=[       ]*//'`
 CFLAGS=-D`uname` -g
 
 all:		traceShow lib trace_delta
