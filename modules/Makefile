@@ -32,7 +32,7 @@ LIBSO=		`$(PYMAKE) -s echodestshared`
 # Put the object files for your module here:
 
 WARN=  `if [ \`uname\` = Linux ];then echo -Wall; fi`
-CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include
+CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include -lc
 
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
@@ -56,13 +56,13 @@ all:	EXfer ETape Devcodes Trace
 
 ETape:
 	MODULE=ETape; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs`"; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lc `cat $(FTT_DIR)/lib/libs`"; \
 	OBS=ETape.o ; \
 	$(MAKEIT)
 
 EXfer:
 	MODULE=EXfer; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a `cat $(FTT_DIR)/lib/libs`"; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lc `cat $(FTT_DIR)/lib/libs`"; \
 	OBS=EXfer.o ; \
 	$(MAKEIT)
 
@@ -84,7 +84,7 @@ Trace.so: trace.a Trace.c
 	rm -f Trace.so	# must force relink as $(LIBPL)/Makefile does not
 			# check agains YOURLIBS
 	MODULE=Trace; \
-	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a"; \
+	YOURLIBS="$(ENSTORE_DIR)/modules/trace.a -lc"; \
 	OBS=Trace.o ; \
 	$(MAKEIT)
 
