@@ -202,7 +202,7 @@ def handle_error(exc=None, value=None, tb=None):
 	exc, value, tb = sys.exc_info()
     # log it
     for l in traceback.format_exception( exc, value, tb ):
-	log( ERROR, l, MSG_DEFAULT, "TRACEBACK")
+	log( e_errors.ERROR, l, MSG_DEFAULT, "TRACEBACK")
     return exc, value, tb
 
 
