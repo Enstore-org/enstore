@@ -1972,14 +1972,14 @@ def get_clerks_info(bfid, client):
         
     #Get the volume clerk information.
     vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
-    vc_ticket = vcc.inquire_vol(fc_ticket['fc']['external_label'])
+    vc_ticket = vcc.inquire_vol(fc_ticket['external_label'])
 
     if vc_ticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vc_ticket)
         quit()
 
     Trace.trace(7,"read_from_hsm on volume=%s"%
-                (fc_ticket['fc']['external_label'],))
+                (fc_ticket['external_label'],))
     
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
@@ -2093,7 +2093,15 @@ def create_read_requests(inputlist, outputlist, file_size,
         Trace.message(5, pprint.pformat(fc_reply))
         Trace.message(5, "VOLUME CLERK:")
         Trace.message(5, pprint.pformat(vc_reply))
-        
+
+        try:
+            if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
+                sys.stderr.write("Old file clerk format detected.\n")
+            del fc_reply['fc'] #Speed up debugging by removing these.
+            del fc_reply['vc']
+        except:
+            pass
+
         # make the part of the ticket that encp knows about.
         # (there's more later)
         encp_el = {}
@@ -2114,19 +2122,12 @@ def create_read_requests(inputlist, outputlist, file_size,
         times['t0'] = tinfo['encp_start_time']
 
         label = fc_reply['external_label']
-        vf = fc_reply['vc']['volume_family']
+        vf = vc_reply['volume_family']
         vc_reply['address'] = volume_clerk_address
         vc_reply['storage_group']=volume_family.extract_storage_group(vf)
         vc_reply['file_family'] = volume_family.extract_file_family(vf)
         vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
         fc_reply['address'] = file_clerk_address
-        try:
-            if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
-                sys.stderr.write("Old file clerk format detected.\n")
-            del fc_reply['fc'] #Speed up debugging by removing these.
-            del fc_reply['vc']
-        except:
-            pass
 
         uinfo = {}
         uinfo['uid'] = os.getuid()
