@@ -1,0 +1,16 @@
+File=table
+Product=ftt
+
+Group:
+   Flavor = ANY
+   Qualifiers = "" 
+
+   Flavor = ANY
+   Qualifiers = "build" 
+
+Common:
+   Action = setup
+	proddir()
+	setupenv()
+
+End:
