@@ -205,7 +205,7 @@ class EncpError(Exception):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_1  CVS $Revision$ "
+    version_string = "v3_2  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + encp_file
     return version_string
