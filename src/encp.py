@@ -2148,7 +2148,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         try:
             delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
-        except IndexError:
+        except (IndexError, KeyError):
             Trace.log(e_errors.INFO, "unable to register bfid")
         
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
@@ -2214,9 +2214,15 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
-        delete_at_exit.unregister(done_ticket['outfile']) #localname
-        delete_at_exit.unregister_bfid(done_ticket['fc']['bfid'])
-
+        try:
+            delete_at_exit.unregister_bfid(done_ticket['fc']['bfid'])
+        except (IndexError, KeyError):
+            Trace.log(e_errors.INFO, "unable to unregister bfid")
+        try:
+            delete_at_exit.unregister(done_ticket['outfile']) #localname
+        except (IndexError, KeyError):
+             Trace.log(e_errors.INFO, "unable to unregister file")
+             
         Trace.message(TRANSFER_LEVEL,
                       "File status after verification: %s   elapsed=%s" %
                       (done_ticket['status'],
