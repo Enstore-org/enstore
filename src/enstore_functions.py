@@ -71,9 +71,3 @@ def is_generic_server(server):
     if server in enstore_constants.GENERIC_SERVERS:
 	return 1
     return 0
-
-# return try if this server is the blocksizes
-def is_blocksizes(server):
-    if server == enstore_constants.BLOCKSIZES:
-	return 1
-    return 0
