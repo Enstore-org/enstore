@@ -119,9 +119,6 @@ class GenericDriver:
     def offline( self, device ):	# eject tape
 	return None
 
-    def send_statistics( self ):
-        return {'mount':self.statisticsOpen, 'dismount':self.statisticsClose}
-
     def get_stats( self ) :
 	# return error count and # of files accesses since???
 	# Note: remaining_bytes is updated in write and
@@ -412,6 +409,7 @@ class  FTTDriver(GenericDriver) :
 	x = 2;
 	while x:
 	    try:
+                self.statisticsClose = self.get_allStats() # get statistics before unload
 		FTT.unload()
 		break
 	    except: time.sleep( 1 )
@@ -584,7 +582,6 @@ class  FTTDriver(GenericDriver) :
 
     def close( self, skip=1 ):
         self.statisticsClose = self.get_allStats()
-        Trace.log(e_errors.INFO,"Gathering statistics: close, length = "+repr(len(self.statisticsClose)) )
 	if self.mode == 'r':
             if skip:
                 FTT.skip_fm( 1 )
