@@ -39,7 +39,7 @@ if [ "${opt_additional_ticket-}" ];then
 else
     additional=
 fi
-echo
+
 python -c '
 import udp_client
 import sys
