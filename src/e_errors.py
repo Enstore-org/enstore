@@ -158,9 +158,11 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NOVOLUME, #unknown volume
                          DELETED,
                          QUOTAEXCEEDED,
-                         TOO_MANY_RETRIES,
-                         TOO_MANY_RESUBMITS,
-                         MALFORMED)
+                         TOO_MANY_RETRIES, #atttempts with failure
+                         TOO_MANY_RESUBMITS, #attempts without trying
+                         MALFORMED,
+                         VERSION_MISMATCH, #ENCP to old
+                         )
 
 raise_alarm_errors = ( CRC_ERROR,
                        UNKNOWNMEDIA,
