@@ -753,7 +753,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     else:
         done_ticket["MB_per_S"] = 0.0
 
-    if list:
+    if list or ninput>1:
         print "Complete: ",total_bytes," bytes in ",ninput," files",\
               " in",tf-t0,"S.  Overall rate = ",\
               done_ticket["MB_per_S"]," MB/s"
