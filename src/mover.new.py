@@ -169,7 +169,6 @@ class MoverClient:
 	    pass
 
 	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
-	self.net_driver = Mover()
 
     def nowork( self, ticket ):
 	# nowork is no work
@@ -268,7 +267,7 @@ def forked_write_to_hsm( self, ticket ):
 	self.state = 'busy'
 	self.mode = 'w'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
-        #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
+        #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
 	logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
@@ -286,7 +285,7 @@ def forked_write_to_hsm( self, ticket ):
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
-	    self.net_driver.data_socket.close()
+	    self.usr_driver.close()
 	    Trace.trace( 17, 'bind problem in write' )
 	    # make write specific and ...
 	    sts = eval( "e_errors.WRITE_"+sts )
@@ -297,7 +296,7 @@ def forked_write_to_hsm( self, ticket ):
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
-	    self.net_driver.data_socket.close()
+	    self.usr_driver.close()
 	    Trace.trace( 17, 'vcc.set_writing problem in write' )
 	    send_user_done( self, ticket, e_errors.WRITE_NOTAPE )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_NOTAPE )
@@ -319,7 +318,7 @@ def forked_write_to_hsm( self, ticket ):
 
 	    # create the wrapper instance (could be different for different
 	    # tapes) so it can save data between pre and post
-            wrapper = cpio.Cpio(  self.net_driver, self.hsm_driver, ECRC.ECRC
+            wrapper = cpio.Cpio(  self.usr_driver, self.hsm_driver, ECRC.ECRC
 				, fast_write )
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
@@ -330,12 +329,12 @@ def forked_write_to_hsm( self, ticket ):
 	    file_bytes = ticket['wrapper']['size_bytes']
 	    san_bytes = ticket["wrapper"]["sanity_size"]
 	    if file_bytes < san_bytes: san_bytes = file_bytes
-	    san_crc = do.fd_xfer( self.net_driver.fileno(),
+	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
 					       san_bytes, ECRC.ECRC, 0 )
 	    Trace.trace( 11, 'done with sanity' )
 	    sanity_cookie = (san_bytes, san_crc)
 	    if file_bytes > san_bytes:
-		file_crc = do.fd_xfer( self.net_driver.fileno(),
+		file_crc = do.fd_xfer( self.usr_driver.fileno(),
 						    file_bytes - san_bytes,
 						    ECRC.ECRC, san_crc )
 	    else:
@@ -360,13 +359,13 @@ def forked_write_to_hsm( self, ticket ):
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
             vcc.update_counts( self.vol_info['external_label'],
                                wr_err, rd_err, wr_access, rd_access )
-	    self.net_driver.data_socket.close()
+	    self.usr_driver.close()
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
 	    pass
 
         # we've read the file from user, shut down data transfer socket
-        self.net_driver.data_socket.close()
+        self.usr_driver.close()
 	Trace.trace( 11, 'close data' )
 
 	# Tell volume server & update database
@@ -411,7 +410,7 @@ def forked_read_from_hsm( self, ticket ):
 	self.state = 'busy'
 	self.mode = 'r'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
-        #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
+        #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
@@ -429,7 +428,7 @@ def forked_read_from_hsm( self, ticket ):
 	ticket['times']['mount_time'] = time.time() - t0
 	if sts != e_errors.OK:
 	    # add CLOSING DATA SOCKET SO ENCP DOES NOT GET 'Broken pipe'
-	    self.net_driver.data_socket.close()
+	    self.usr_driver.close()
 	    Trace.trace( 17, 'bind problem in read' )
 	    # make read specific and ...
 	    sts = eval( "e_errors.READ_"+sts )
@@ -456,17 +455,17 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
-	    wrapper = cpio.Cpio( self.hsm_driver, self.net_driver, ECRC.ECRC )
+	    wrapper = cpio.Cpio( self.hsm_driver, self.usr_driver, ECRC.ECRC )
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    t0 = time.time()
             wrapper.read_pre_data( do, None )
-            san_crc = do.fd_xfer( self.net_driver.data_socket.fileno(),
+            san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
 				  ECRC.ECRC,
 				  0 )
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
-		user_file_crc = do.fd_xfer( self.net_driver.data_socket.fileno(),
+		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
 					    ECRC.ECRC,
 					    ticket['fc']['sanity_cookie'][1] )
@@ -485,7 +484,7 @@ def forked_read_from_hsm( self, ticket ):
         except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
             logc.send( log_client.ERROR, 1, "Error writing to user"+str(ticket) )
 	    traceback.print_exc()
-	    self.net_driver.data_socket.close()
+	    self.usr_driver.close()
 	    send_user_done( self, ticket, e_errors.READ_ERROR )
 	    return_or_update_and_exit( self, origin_addr, e_errors.OK )
         except:
@@ -496,7 +495,7 @@ def forked_read_from_hsm( self, ticket ):
             wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
 
         # we've sent the hsm file to the user, shut down data transfer socket
-        self.net_driver.data_socket.close()
+        self.usr_driver.close()
 
         # get the error/mount counts and update database
         xx = vcc.update_counts( self.vol_info['external_label'],
@@ -573,7 +572,7 @@ def get_user_sockets( self, ticket ):
 	# kick off if the user dropped the control_socket, but I am at
 	# home and am not able to find documentation on select...
 	
-	self.net_driver.data_socket, address = listen_socket.accept()
+	self.usr_driver, address = listen_socket.accept()
 	listen_socket.close()
 	return "ok"
     except:
@@ -602,52 +601,6 @@ def unilateral_unbind_next( self, error_info ):
 		      'external_label' : self.fc['external_label'],
 		      'status'         : (error_info,None)}
     return next_req_to_lm
-
-
-class Mover:
-    # Note: the self.data_socket member/object gets created/initialized
-    #       by get_user_sockets
-
-    # Read a block from the network (from the user).  This method is call
-    # from the wrapper object when writing to the HSM
-    def read_block( self ):
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0:
-            self.enprint("Mover read_block, pre-recv error: "+ \
-                         repr(errno.errorcode[badsock]))
-	    raise errno.errorcode[badsock]
-	block = self.data_socket.recv( self.blocksize )
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0:
-            self.enprint("Mover read_block, post-recv error: "+ \
-                         repr(errno.errorcode[badsock]))
-	    raise errno.errorcode[badsock]
-	return block
-
-    # write a block to the network (to the user).  This method is call
-    # from the wrapper object when reading from the HSM
-    def write_block( self, buff ):
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0:
-            self.enprint("Mover write_block, pre-send error: "+\
-	     	         repr(errno.errorcode[badsock]))
-	    raise errno.errorcode[badsock]
-	count = self.data_socket.send(buff)
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0:
-            self.enprint("Mover write_block, post-send error: "+ \
-                         repr(errno.errorcode[badsock]))
-	    raise errno.errorcode[badsock]
-        return count
-
-    def fileno( self ):
-	return self.data_socket.fileno()
-
-    pass
 
 
 # Gather everything together and add to the mess
