@@ -143,7 +143,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
         # send the work ticket to the library manager
         t1 = time.time()
         if list:
-            print "Sending ticket to",p.library+".library_manager", \
+            print "Sending ticket to",p.library+".library_manager",\
                   "   cum=",time.time()-t0
         tinfo["tot_to_send_ticket"] = t1 -t0
         ticket = u.send(ticket, (vticket['host'], vticket['port']))
@@ -154,7 +154,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
                    +", ticket[\"status\"]="+ticket["status"])
         tinfo["send_ticket"] = time.time() - t1
         if list:
-            print "  Q'd:",unixfile, ticket["library"], \
+            print "  Q'd:",unixfile, ticket["library"],\
                   "family:",ticket["file_family"],\
                   "bytes:", ticket["size_bytes"],\
                   "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
@@ -190,7 +190,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
         tinfo["tot_to_mover_callback"] = t1 - t0
         if list:
             print "  ",ticket["mover_callback_host"],\
-                  ticket["mover_callback_port"], \
+                  ticket["mover_callback_port"],\
                   "   cum=",time.time()-t0
 
         t1 = time.time()
@@ -289,7 +289,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
         if list:
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, ":",p.file_size,"bytes",\
-                  "copied to", done_ticket["external_label"], \
+                  "copied to", done_ticket["external_label"],\
                   "in ",tinfo["total"],"seconds",\
                   "at",done_ticket["MB_per_S"],"MB/S", "   cum=",time.time()-t0
             #print done_formatted
@@ -333,7 +333,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     try:
         noutput = len(output)
         jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-               "can not handle multiple output files: "+output)
+               +"can not handle multiple output files: "+output)
     except TypeError:
         pass
 
@@ -357,6 +357,8 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     finfo = []
     vinfo = []
     volume = []
+    unique_id = []
+    vols_needed = {}
 
     # first check the input pnfs files and get all info from pnfs that is needed
     # if files don't exits, we bomb out to the user
@@ -379,6 +381,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
         # get the most important info and store into separate lists
         bfid.append(p.bit_file_id)
         file_size.append(p.file_size)
+        unique_id.append(0)
 
         # get all the required pnfs info for the ticket
         pinf = {}
@@ -479,21 +482,10 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cum=",time.time()-t0
 
-    # generate the work ticket
-    ticket = {"work"               : "read_from_hsm",
-              "pnfs_info"          : pinfo[0],
-              "user_info"          : uinfo,
-              "bfid"               : bfid[0],
-              "sanity_size"        : 5000,
-              "user_callback_port" : port,
-              "user_callback_host" : host,
-              "unique_id"          : time.time()
-              }
-
     # ask configuration server what port the file clerk is using
     t1 = time.time()
     if list:
-        print "Calling Config Server to find file clerk", \
+        print "Calling Config Server to find file clerk",\
               "   cum=",time.time()-t0
     fticket = csc.get("file_clerk")
     tinfo["get_fileclerk"] = time.time() - t1
@@ -514,146 +506,196 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                    +" can not get info on bfid"+repr(bfid[i]))
         vinfo.append(binfo['volume_clerk'])
         finfo.append(binfo['file_clerk'])
-        volume.append(binfo['file_clerk']['external_label'])
+        label = binfo['file_clerk']['external_label']
+        volume.append(label)
+        try:
+            vols_needed[label] = vols_needed[label]+1
+        except KeyError:
+            vols_needed[label] = 1
     tinfo['file_clerk'] =  time.time() - t1
     if list:
         print "  dt:",tinfo["file_clerk"], "   cum=",time.time()-t0
 
-    # send work ticket to file clerk who sends it to right library manger
-    if list:
-        print "Sending ticket to file clerk", "   cum=",time.time()-t0
-    t1 = time.time()
-    ticket = u.send(ticket, (fticket['host'], fticket['port']))
-    if ticket['status'] != "ok" :
-        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: from"\
-               +"u.send to file_clerk at "+fticket['host']+"/"\
-               +repr(fticket['port']) +", ticket[\"status\"]="\
-               +ticket["status"])
-    tinfo["send_ticket"] = time.time() - t1
-    if list :
-        print "  Q'd:",inputlist[0], bfid[0], \
-              "bytes:",file_size[0], "on",\
-              finfo[0]["external_label"],finfo[0]["bof_space_cookie"],\
-              "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
+    # loop over all volumes that are needed and submit all requests for
+    # that volume. Read files from each volume before submitting requests
+    # for different volumes.
 
+    for vol in vols_needed.keys():
+        submitted = 0
+        for i in range(0,ninput):
+            if volume[i]==vol:
+                unique_id[i] = time.time()  # note that this is down to mS
+                uinfo["fullname"] = outputlist[i]
 
-    # We have placed our work in the system and now we have to wait for
-    # resources. All we  need to do is wait for the system to call us back,
-    # and make sure that is it calling _us_ back, and not some sort of old
-    # call-back to this very same port. It is dicey to time out, as it
-    # is probably legitimate to wait for hours....
-    if list:
-        print "Waiting for mover to call back", "   cum=",time.time()-t0
-    while 1 :
-        control_socket, address = listen_socket.accept()
-        new_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
-                                              "to_hsm, mover call back")
-        if ticket["unique_id"] == new_ticket["unique_id"] :
-            listen_socket.close()
-            break
-        else:
-            print ("encp read_from_hsm: imposter called us back, trying again")
+                # generate the work ticket
+                ticket = {"work"               : "read_from_hsm",
+                          "pnfs_info"          : pinfo[i],
+                          "user_info"          : uinfo,
+                          "bfid"               : bfid[i],
+                          "sanity_size"        : 5000,
+                          "user_callback_port" : port,
+                          "user_callback_host" : host,
+                          "unique_id"          : unique_id[i]
+                          }
+
+                # send ticket to file clerk who sends it to right library manger
+                if list:
+                    print "Sending ticket to file clerk",\
+                          "   cum=",time.time()-t0
+                t1 = time.time()
+                ticket = u.send(ticket, (fticket['host'], fticket['port']))
+                if ticket['status'] != "ok" :
+                    jraise(errno.errorcode[errno.EPROTO],\
+                           " encp.read_from_hsm: from"\
+                           +"u.send to file_clerk at "+fticket['host']+"/"\
+                           +repr(fticket['port']) +", ticket[\"status\"]="\
+                           +ticket["status"])
+                submitted = submitted+1
+                tinfo["send_ticket"] = time.time() - t1
+                if list :
+                    print "  Q'd:",inputlist[i], bfid[i],\
+                          "bytes:",file_size[i], "on",\
+                          finfo[i]["external_label"],finfo[i]["bof_space_cookie"],\
+                          "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
+
+        # We have placed our work in the system and now we have to wait for
+        # resources. All we need to do is wait for the system to call us
+        # back, and make sure that is it calling _us_ back, and not some
+        # sort of old call-back to this very same port. It is dicey to time
+        # out, as it is probably legitimate to wait for hours....
+
+        for waiting in range(0,submitted):
+            if list:
+                print "Waiting for mover to call back",\
+                      "   cum=",time.time()-t0
+
+            # listen for a mover - see if corresponds to one of the tickets
+            # we submitted for the volume
+            while 1 :
+                control_socket, address = listen_socket.accept()
+                new_ticket = callback.read_tcp_socket(control_socket,\
+                             "encp read_to_hsm, mover call back")
+                callback_id = new_ticket['unique_id']
+                forus = 0
+                for j in range(0,ninput):
+                    # compare strings not floats
+                    if str(unique_id[j])==str(callback_id):
+                        forus = 1
+                        listen_socket.close()
+                        break
+                if forus==1:
+                    break
+                else:
+                    print ("encp read_from_hsm: imposter called us back, "\
+                           +"trying again")
+                    control_socket.close()
+            # ok, we've been called back
+            ticket = new_ticket
+            if ticket["status"] != "ok" :
+                jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                       +"1st (pre-file-read) mover callback on socket "\
+                       +repr(address)+", failed to setup transfer: "\
+                       +"ticket[\"status\"]="+ticket["status"])
+            data_path_socket = callback.mover_callback_socket(ticket)
+
+            # If system has called us back with our own unique id, call
+            # back the mover on the mover's port and read the file on that port.
+
+            t1 = time.time()
+            tinfo["tot_to_mover_callback"] = t1 - t0
+            if list:
+                print "  ",ticket["mover_callback_host"],\
+                      ticket["mover_callback_port"],\
+                      "cum_time:",tinfo["tot_to_mover_callback"],\
+                      "   cum=",time.time()-t0
+
+            t1 = time.time()
+            if list:
+                print "Receiving data for file ", outputlist[j],\
+                      "   cum=",time.time()-t0
+            l = 0
+            mycrc = 0
+            f = open(outputlist[j],"w")
+            while 1:
+                buf = data_path_socket.recv(65536*4)
+                l = l + len(buf)
+                if len(buf) == 0 : break
+                if chk_crc != 0 :
+                    mycrc = binascii.crc_hqx(buf,mycrc)
+                f.write(buf)
+            data_path_socket.close()
+            f.close()
+            fsize = l
+            t2 = time.time()
+            tinfo["recvd_bytes"] = t2-t1
+            if list:
+                print "  bytes:",l,"dt:",tinfo["recvd_bytes"],\
+                      "   cum=",time.time()-t0
+
+            # File has been read - wait for final dialog with mover.
+            t1 = time.time()
+            if list:
+                print "Waiting for final mover dialog",\
+                      "   cum=",time.time()-t0
+            done_ticket = callback.read_tcp_socket(control_socket,\
+                          "encp read_to_hsm, mover final dialog")
             control_socket.close()
-    ticket = new_ticket
-    if ticket["status"] != "ok" :
-        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-               +"1st (pre-file-read) mover callback on socket "\
-               +repr(address)+", failed to setup transfer: "\
-               +"ticket[\"status\"]="+ticket["status"])
-    data_path_socket = callback.mover_callback_socket(ticket)
 
-    # If the system has called us back with our own  unique id, call back
-    # the mover on the mover's port and read the file on that port.
-    t1 = time.time()
-    tinfo["tot_to_mover_callback"] = t1 - t0
-    if list:
-        print "  ",ticket["mover_callback_host"],\
-              ticket["mover_callback_port"], \
-              "cum_time:",tinfo["tot_to_mover_callback"], \
-              "   cum=",time.time()-t0
+            if done_ticket["status"] == "ok" :
 
-    t1 = time.time()
-    if list:
-        print "Receiving data", "   cum=",time.time()-t0
-    l = 0
-    mycrc = 0
-    f = open(outputlist[0],"w")
-    while 1:
-        buf = data_path_socket.recv(65536*4)
-        l = l + len(buf)
-        if len(buf) == 0 : break
-        if chk_crc != 0 :
-            mycrc = binascii.crc_hqx(buf,mycrc)
-        f.write(buf)
-    data_path_socket.close()
-    f.close()
-    fsize = l
-    t2 = time.time()
-    tinfo["recvd_bytes"] = t2-t1
-    if list:
-        print "  bytes:",l,"dt:",tinfo["recvd_bytes"], \
-              "   cum=",time.time()-t0
+                if chk_crc != 0 :
+                    if done_ticket["complete_crc"] != mycrc :
+                        print "CRC error",complete_crc, mycrc
 
-    # File has been read - wait for final dialog with mover.
-    t1 = time.time()
-    if list:
-        print "Waiting for final mover dialog", "   cum=",time.time()-t0
-    done_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
-                                           "to_hsm, mover final dialog")
-    control_socket.close()
+                tinfo["final_dialog"] = time.time()-t1
+                if list:
+                    print "  dt:",tinfo["final_dialog"],\
+                          "   cum=",time.time()-t0
 
-    if done_ticket["status"] == "ok" :
+                t1 = time.time()
+                if 0:
+                    if list:
+                        print "Updating pnfs last parked",\
+                              "   cum=",time.time()-t0
+                    try:
+                        p.set_lastparked(repr(uinfo['fullname']))
+                    except:
+                        print "Failed to update last parked info"
+                    tinfo["last_parked"] = time.time()-t1
+                    if list:
+                        print "  dt:",tinfo["last_parked"],\
+                              "   cum=",time.time()-t0
 
-        if chk_crc != 0 :
-            if done_ticket["complete_crc"] != mycrc :
-                print "CRC error",complete_crc, mycrc
+                tinfo["total"] = time.time()-t0
+                done_ticket["tinfo"] = tinfo
+                tf = time.time()
+                if tf!=t0:
+                    done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
+                else:
+                    done_ticket["MB_per_S"] = 0.0
 
-        tinfo["final_dialog"] = time.time()-t1
-        if list:
-            print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
+                if list:
+                    print outputlist[0], ":",fsize,"bytes",\
+                          "copied from", done_ticket["external_label"],\
+                          "in ",tinfo["total"],"seconds",\
+                          "at",done_ticket["MB_per_S"],"MB/S",\
+                          "   cum=",time.time()-t0
+                    #done_formatted  = pprint.pformat(done_ticket)
+                    #print done_formatted
 
-        t1 = time.time()
-        if 0:
-            if list:
-                print "Updating pnfs last parked", "   cum=",time.time()-t0
-            try:
-                p.set_lastparked(repr(uinfo['fullname']))
-            except:
-                print "Failed to update last parked info"
-            tinfo["last_parked"] = time.time()-t1
-            if list:
-                print "  dt:",tinfo["last_parked"], "   cum=",time.time()-t0
+                format = "%s -> %s : %d bytes copied from %s in %f seconds at"+\
+                         " %s MB/S  requestor:%s     cum= %f"
+                logc.send(log_client.INFO, 2, format, inputlist[i],
+                          uinfo["fullname"], fsize,
+                          done_ticket["external_label"], tinfo["total"],
+                          done_ticket["MB_per_S"], uinfo["uname"],
+                          time.time()-t0)
 
-        tinfo["total"] = time.time()-t0
-        done_ticket["tinfo"] = tinfo
-        tf = time.time()
-        if tf!=t0:
-            done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
-        else:
-            done_ticket["MB_per_S"] = 0.0
-
-        if list:
-            print outputlist[0], ":",fsize,"bytes",\
-                  "copied from", done_ticket["external_label"], \
-                  "in ",tinfo["total"],"seconds",\
-                  "at",done_ticket["MB_per_S"],"MB/S", \
-                  "   cum=",time.time()-t0
-            #done_formatted  = pprint.pformat(done_ticket)
-            #print done_formatted
-
-        format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
-                     "%s MB/S  requestor:%s     cum= %f"
-        logc.send(log_client.INFO, 2, format, inputlist[0],
-                              uinfo["fullname"], fsize,
-                              done_ticket["external_label"], tinfo["total"],
-                              done_ticket["MB_per_S"], uinfo["uname"],
-                              time.time()-t0)
-
-    else :
-        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-               +"2nd (post-file-read) mover callback on socket "\
-               +repr(address)+", failed to transfer: "\
-               +"done_ticket[\"status\"]="+done_ticket["status"])
+            else :
+                jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                       +"2nd (post-file-read) mover callback on socket "\
+                       +repr(address)+", failed to transfer: "\
+                       +"done_ticket[\"status\"]="+done_ticket["status"])
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
@@ -702,7 +744,7 @@ if __name__  ==  "__main__" :
     chk_crc = 1
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list", \
+    options = ["config_host=","config_port=","config_list",\
                "nocrc","list","verbose","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
