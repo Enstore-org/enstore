@@ -676,7 +676,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                 if sts[1] in retry_these and function==self.STK.mount:
                         time.sleep(60)
                         fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-                        Trace.log(e_errors.INFO, 'Tried %s %s  status=%s   Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
+                        Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
                 if sts[1] in retry_these:
                         time.sleep(60)
                         count = count - 1
