@@ -19,6 +19,9 @@ setup enstore
 # . Check that root's crontab has reset of watchdog, ntpset and netscan running.
 # . Check that ipmisrv is running and has NO_DOG option
 # . Check that watchdog action is to do nothing
+# . Check that there are less than N processes running on the node
+# . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
+# . Check that web servers are running on right nodes and not elsewhere
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -64,10 +67,17 @@ MKDIR="/bin/mkdir"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
+RELAX=0
 
 # we need to report errors on devel machines to a production place that is watched
-if [ `echo $node | egrep -c ^rip[1-8]` -ne 0 ]; then ENSTORE_CONFIG_HOST=d0ensrv2;  fi
-if [ `echo $node | egrep -c ^cachen`   -ne 0 ]; then ENSTORE_CONFIG_HOST=stkensrv2; fi
+if [ `echo $node | egrep -c ^rip[1-8]` -ne 0 ]; then
+    ENSTORE_CONFIG_HOST=d0ensrv2
+    RELAX=1
+fi
+if [ `echo $node | egrep -c ^cachen`   -ne 0 ]; then
+    ENSTORE_CONFIG_HOST=stkensrv2
+    RELAX=1
+fi
 
 LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
@@ -99,6 +109,18 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
                   fi
                fi
              }
+
+croncheck() { if [ `$EGREP -c "$1" /var/spool/cron/root` -ne 1 ]; then
+                msg="/var/spool/cron/root is missing $1 or it is misconfigured"
+                logit "$msg"
+                if [ $ALARM -eq 1 ]; then
+                  enstore alarm --raise --severity "A" --root-error "$msg"
+                fi
+              elif [ $QUIET -ne 1 ]; then
+                logit  "$1 crontab ok"
+              fi
+            }
+
 
 # function to check for allowed services and complain if not allowed
 allow() { tt=$1
@@ -358,9 +380,10 @@ $ECHO "$dflines" | while read a b c d e rest; do
 done
 
 
-# check that we have a check_watchdog_reset.py running in the crontab:
-if [ ! -r /etc/watchdog_reset ]; then 
+# we need a watchdog_reset file to make check_watchdog work
+if [ ! -r /etc/watchdog_reset ]; then
    msg="/etc/watchdog_reset is missing"
+   logit "$msg"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -368,38 +391,16 @@ elif [ $QUIET -ne 1 ]; then
    logit  "/etc/watchdog_reset, ok"
 fi
 
-if [ `$EGREP -c check_watchdog_reset.py /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing check_watchdog_reset.py or it is misconfigured"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
-   fi
-elif [ $QUIET -ne 1 ]; then
-   logit  "check_watchdog_reset.py crontab ok"
-fi
-
-# check that we have a ntpset running in the crontab:
-if [ `$EGREP -c ntpset /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing ntpset or misconfigured"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
-   fi
-elif [ $QUIET -ne 1 ]; then
-   logit  "ntpset crontab, ok"
-fi
-
-# check that we have a netscan running in the crontab:
-if [ `$EGREP -c "netscan -a -q" /var/spool/cron/root` -ne 1 ]; then
-   msg="/var/spool/cron/root is missing netscan or misconfigured"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
-   fi
-elif [ $QUIET -ne 1 ]; then
-   logit  "netscan crontab, ok"
-fi
+# check that we special jobs are running in crontab
+croncheck "check_watchdog_reset.py"
+croncheck "ntpset"
+croncheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
+croncheck "ekill"
 
 # check that ipmisrv is running without watchdog timer
 if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
    msg="ipmisrv NO_DOG not running or misconfigured"
+   logit "$msg"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -411,6 +412,7 @@ fi
 ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
 if [  $ACTION != "00"  ];then
    msg="watchdog action is $ACTION. Should be 00"
+   logit "$msg"
    if [ $ALARM -eq 1 ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
@@ -421,6 +423,61 @@ elif [ $QUIET -ne 1 ]; then
 fi
 
 
+# check that we don't have too many processes running
+NPROC=`$PS axu|wc -l`
+if [ $NPROC -ge 200 ]; then
+   msg="$NPROC processes running. Way too many"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "$NPROC processes, ok"
+fi
+
+
+# check that db_deadlock and db_checkpoint are running if file or vol clerk running:
+if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c 'file_clerk.py|volume_clerk.py'` -ge 1 ]; then
+   for need in db_checkpoint db_deadlock; do
+     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c $need` -ne 1 ]; then
+       msg="$need not running (or more than 1 running) and file/volume clerk are running."
+       logit "$msg"
+       if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+       fi
+     elif [ $QUIET -ne 1 ]; then
+       logit  "$need running, ok"
+     fi
+   done
+elif [ $QUIET -ne 1 ]; then
+  logit  "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
+fi
+
+# web servers need to be running on certain nodes.
+case $node in
+  rip7|cdfensrv2|d0ensrv2|stkensrv2|cdfendca3|stkendca3a)
+    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c 'httpd'` -eq 0 ]; then
+       msg="httpd Web server not running"
+       logit "$msg"
+       if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+       fi
+    elif [ $QUIET -ne 1 ]; then
+       logit  "httpd web server running, ok"
+    fi
+    ;;
+  *)
+    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c 'httpd'` -ne 0 ]; then
+       msg="httpd Web server running on illegal node"
+       logit "$msg"
+       if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+       fi
+    elif [ $QUIET -ne 1 ]; then
+       logit  "httpd web server not running, ok"
+    fi
+    ;;
+esac
 
 # get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
@@ -451,7 +508,7 @@ done
 #+++++++++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
 
 # check that farmlets match
-if [ $gang != "rip" ]; then 
+if [ $gang != "rip" ]; then
   msg="`$FARMLETS` 2>&1"
   if [ $? -ne 0 ]; then
      logit "$msg"
