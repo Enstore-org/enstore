@@ -154,8 +154,8 @@ if __name__ == "__main__" :
         try:
             logserver.serve_forever(keys["log_file_path"])
             logserver.logfile.write(
-                time.strftime("%c",time.localtime(time.time()))+
-                "log server (re)starting")
+                time.strftime("%c",time.localtime(time.time()))+\
+                " log server (re)starting")
             logserver.logfile.flush()
         except:
             print time.strftime("%c",time.localtime(time.time())),\
