@@ -1427,6 +1427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
+        nblocks = 0L
         if self.header_labels:
             t1 = time.time()
             try:
@@ -1462,6 +1463,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                       self.bytes_to_write, self.buffer.nbytes(), time.time()))
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+            Trace.log(33,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
@@ -1504,6 +1506,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             t1 = time.time()
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
+                nblocks = nblocks+1
+                Trace.trace(33,"bytes_to_write %s bytes_written %s"%(nbytes,bytes_written))
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
@@ -1545,7 +1549,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
             return
 
-        Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
+        Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
 
         if failed: return
         if self.bytes_written == self.bytes_to_write:
@@ -1694,8 +1698,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("transfer %s %s %s media %s %.3f" %
                      (self.shortname, -self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
+
             
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+            Trace.trace(33,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
@@ -1708,6 +1714,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 continue
             
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
+            Trace.trace(33,"bytes to read00 %s"%(nbytes,))
             self.buffer.bytes_for_crc = nbytes
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                 nbytes = self.buffer.blocksize
@@ -1715,7 +1722,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 t1 = time.time()
+                Trace.trace(33,"bytes to read %s"%(nbytes,))
                 bytes_read = self.buffer.block_read(nbytes, driver)
+                Trace.trace(33,"bytes read %s"%(bytes_read,))
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except "CRC_ERROR":
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
@@ -1728,6 +1737,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 failed = 1
