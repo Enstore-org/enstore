@@ -55,13 +55,13 @@ fullpath = enstore_functions2.fullpath
 def is_pnfs_path(pathname, check_name_only = None):
 
     #Expand the filename to the absolute path.
-    machine, filename, dirname, basename = fullpath(pathname)
+    unused, filename, dirname, unused = fullpath(pathname)
 
     #Some versions of python have gotten dirname wrong if filename was
     # already a directory.
     if os.path.isdir(filename):
         dirname = filename
-        basename = ""
+        #basename = ""
     
     #Determine if the target file or directory is in the pnfs namespace.
     if string.find(dirname,"/pnfs/") < 0:
@@ -123,7 +123,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.id = pnfsFilename
             try:
                 pnfsFilename = self.get_path(self.id)
-            except (OSError, IOError), detail:
+            except (OSError, IOError):
                 #No long do just the following: pnfsFilename = ""
                 # on an exception.  Attempt to get the ".(access)(<pnfs id>)"
                 # version of the filename.
@@ -237,13 +237,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
-    def writelayer(self,layer,value, filepath=None):
+    def writelayer(self, layer, value, filepath=None):
         if filepath:
-            (directory, file) = os.path.split(filepath)
+            (directory, name) = os.path.split(filepath)
         else:
-            (directory, file) = os.path.split(self.filepath)
+            (directory, name) = os.path.split(self.filepath)
             
-        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
+        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, name))
 
         #If the value isn't a string, make it one.
         if type(value)!=types.StringType:
@@ -256,16 +256,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.pstatinfo()
 
     # read the value stored in the requested file layer
-    def readlayer(self,layer, filepath=None):
+    def readlayer(self, layer, filepath=None):
         if filepath:
-            (directory, file) = os.path.split(filepath)
+            (directory, name) = os.path.split(filepath)
         else:
-            (directory, file) = os.path.split(self.filepath)
+            (directory, name) = os.path.split(self.filepath)
 
-        if file[:9] == ".(access)":
-            fname = os.path.join(directory, "%s(%s)" % (file, layer))
+        if name[:9] == ".(access)":
+            fname = os.path.join(directory, "%s(%s)" % (name, layer))
         else:
-            fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
+            fname = os.path.join(directory, ".(use)(%s)(%s)" % (layer, name))
         
         f = open(fname,'r')
         l = f.readlines()
@@ -279,11 +279,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_const(self, filepath=None):
 
         if filepath:
-            (directory, file) = os.path.split(filepath)
+            (directory, name) = os.path.split(filepath)
         else:
-            (directory, file) = os.path.split(self.filepath)
+            (directory, name) = os.path.split(self.filepath)
 
-        fname = os.path.join(directory, ".(const)(%s)"%(file,))
+        fname = os.path.join(directory, ".(const)(%s)" % (name,))
 
         f=open(fname,'r')
         const = f.readlines()
@@ -297,28 +297,28 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_id(self, filepath=None):
 
         if filepath:
-            (directory, file) = os.path.split(filepath)
+            (directory, name) = os.path.split(filepath)
         else:
-            (directory, file) = os.path.split(self.filepath)
+            (directory, name) = os.path.split(self.filepath)
             
-        fname = os.path.join(directory, ".(id)(%s)" % (file,))
+        fname = os.path.join(directory, ".(id)(%s)" % (name,))
 
         f = open(fname,'r')
-        id = f.readlines()
+        pnfs_id = f.readlines()
         f.close()
 
-        id = string.replace(id[0],'\n','')
+        pnfs_id = string.replace(pnfs_id[0],'\n','')
 
         if not filepath:
-            self.id = id
-        return id
+            self.id = pnfs_id
+        return pnfs_id
 
     def get_showid(self, id=None, directory=""):
 
-        if directory:
-            use_dir = directory
-        else:
-            use_dir = self.dir
+        #if directory:
+        #    use_dir = directory
+        #else:
+        #    use_dir = self.dir
 
         if id:
             fname = os.path.join(directory, ".(showid)(%s)"%(id,))
@@ -526,14 +526,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_file_size(self, filepath=None):
 
         if filepath:
-            file = filepath
+            name = filepath
         else:
-            file = self.filepath
+            name = self.filepath
 
         self.verify_existance()
 
         #Get the file system size.
-        os_filesize = long(os.stat(file)[stat.ST_SIZE])
+        os_filesize = long(os.stat(name)[stat.ST_SIZE])
         
         #If there is no layer 4, make sure an error occurs.
         try:
@@ -578,11 +578,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Set the filesize that the filesystem knows about.
         if filepath:
-            (directory, file) = os.path.split(filepath)
+            (directory, name) = os.path.split(filepath)
         else:
-            (directory, file) = os.path.split(self.filepath)
+            (directory, name) = os.path.split(self.filepath)
         fname = os.path.join(directory,
-                             ".(fset)(%s)(size)(%s)"%(file,size))
+                             ".(fset)(%s)(size)(%s)"%(name, size))
         f = open(fname,'w')
         f.close()
 
@@ -710,7 +710,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # if that fails, try the directory
             try:
                 self.pstat = os.stat(os.path.dirname(self.filepath))
-            except OSError, msg2:
+            except OSError:
                 raise msg
 
     # get the uid from the stat member
@@ -880,9 +880,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 ##############################################################################
 
     def pls(self, intf):
-        (directory, file) = os.path.split(self.filepath)
+        (directory, name) = os.path.split(self.filepath)
         filename = os.path.join(directory, "\".(use)(%s)(%s)\"" % \
-                                (intf.named_layer, file))
+                                (intf.named_layer, name))
         os.system("ls -alsF " + filename)
         
     def pecho(self, intf):
@@ -1758,7 +1758,7 @@ class Tag:
                 #Make sure that the current working directory is still valid.
                 cwd = os.path.abspath(os.getcwd())
             except OSError:
-                exc, msg = sys.exc_info()[:2]
+                msg = sys.exc_info()[1]
                 if msg.errno == errno.ENOENT:
                     msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
                                           "No current working directory")
@@ -1770,8 +1770,9 @@ class Tag:
         filename = os.path.join(cwd, ".(tags)(all)")
 
         try:
-            file = open(filename, "r")
-            data = file.readlines()
+            f = open(filename, "r")
+            data = f.readlines()
+            f.close()
         except IOError, detail:
             print detail
             return 1
@@ -2395,9 +2396,9 @@ class File:
 	# get_pnfs_id() -- get pnfs id from pnfs id file
 	def get_pnfs_id(self):
 		f = open(self.id_file())
-		id = string.strip(f.read())
+		pnfs_id = string.strip(f.read())
 		f.close()
-		return id
+		return pnfs_id
 
 	def show(self):
 		print "           file =", self.path
@@ -2578,7 +2579,7 @@ def do_work(intf):
                     try:
                         #Not all functions use/need intf passed in.
                         rtn = apply(getattr(instance, "p" + arg), ())
-                    except TypeError, msg:
+                    except TypeError:
                         rtn = apply(getattr(instance, "p" + arg), (intf,))
                     break
             else:
