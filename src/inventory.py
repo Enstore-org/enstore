@@ -980,7 +980,11 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
     de_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
-    de_file.write("%12s\t%12s\t%12s\t%12s\t%12s\n\n"%("volume", "actual size", "capacity", "library", "media type"))
+    de_file.write("\t%12s\t%12s\t%12s\t%12s\t%12s\n\n"%("volume", "actual size", "capacity", "library", "media type"))
+
+    de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
+    de_count = 0
+
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
 
@@ -1104,14 +1108,21 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         # check if the volume is declared right
         if vk[:3] != 'CLN':
             actual_size = total_size+vv['remaining_bytes']
+            if actual_size <= 0:
+                remark = '*'
+            else:
+                remark = ''
             if vv['media_type'] == '9940':
                 if actual_size > 80*1048576*1024 or is_b_library(vv['library']):
-                    de_file.write("%12s\t%12d\t%12d\t%12s\t%12s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                    de_count = de_count + 1
+                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
             elif vv['media_type'] == '9940B':
                 if actual_size and (actual_size < 100*1048576*1024 or not is_b_library(vv['library']) or vv['capacity_bytes'] < 180*1048576*1024):
-                    de_file.write("%12s\t%12d\t%12d\t%12s\t%12s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                    de_count = de_count + 1
+                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
             elif is_b_library(vv['library']) and vv['media_type'] != '9940B':
-                    de_file.write("%12s\t%12d\t%12d\t%12s\t%12s\n"%(vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type']))
+                    de_count = de_count + 1
+                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
