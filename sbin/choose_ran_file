@@ -17,7 +17,6 @@ FORGET=${2:-CLN}
 MUSTHAVE=${3:-""}
 EXTRA=${5:-""}
 WHICH_FILE=${4:-"onlyran"} # valid values are "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" or "onlyfirstlast" or "alsofirstlast" or "onlyran"
-echo "count=${COUNT} forget=${FORGET} musthave=${MUSTHAVE} which=$WHICH_FILE extra=$EXTRA"
 here=`pwd`
 override_ro=""
 echo $EXTRA | egrep "full|readonly|migrated"
