@@ -19,25 +19,31 @@ USAGE="
    ${product}Cut -options
 
 -r version   next release version
--d directory directory base (without version number and product) for the new revision (i.e. /p/Linux)
--c chain     to set (force) chain to be <new|old|test|development|current>
--s steps     to control which steps get executed ie. 1,2,4-13
+-i directory install directory (without version number and product) for the new revision (i.e. /p/Linux)
+-c chain     to set chain to be <new|old|test|development|current|none>
+-s steps     to control which steps get executed,  zB 1,2,4-13
 -x           to set -xv
 -?           to list this
 
-You need to be in the main ${product}'s CVS working directory.
-
-steps:
-1. cvs directory check
-2. cd modules - make clean all
-3. cd src - make clean encp
-4. cvs tag
-5. sdssmake install
-6. ups undeclare
-7. ups declare
-8. uprist
-
+Steps to the cutting process:
+  1. cvs directory check
+  2. cd modules - make clean all
+  3. cd src - make clean encp
+  4. cvs tag
+  5. install into product area
+  6. ups undeclare
+  7. ups declare
+  8. upd delproduct
+  9. upd addproduct
 "
+
+##############################################################################
+
+STEPSDEFINED=9
+
+echo "$USAGE"
+
+thepwd=`pwd`
 
 ##############################################################################
 # utility functions that do what their names imply
@@ -61,14 +67,22 @@ echo_timed_read() { jtime=${1:-10}
                     /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
                     read ans ; echo "$ans"' ;}
 
+starting() { if [ $try != "list" ] ; then
+                /bin/echo -n "starting at `date`"
+             fi; }
+
 ##############################################################################
+# we need ups and upd to be setup
 
-STEPSDEFINED=8
+if [ -z "${UPS_DIR-}" ] ; then
+  Step="ups check"
+  check_status 1 "You need ups to be setup before using ${product}Cut"
+fi
 
-echo "$USAGE"
-
-UNAME=`uname`
-thepwd=`pwd`
+if [ -z "${UPD_DIR-}" ] ; then
+  Step="upd check"
+  check_status 1 "You need upd to be setup before using ${product}Cut"
+fi
 
 ##############################################################################
 # we need enstore to be setup and we need to be in a cvs working directory
@@ -78,6 +92,7 @@ if [ -z "${ENSTORE_DIR-}" ] ; then
   check_status 1 "You need enstore to be setup before using ${product}Cut"
 fi
 cd $ENSTORE_DIR
+FLAVOR=`echo $SETUP_ENSTORE | cut -d" " -f4` # potentially troublesome - not very robust if the setup_enstore line changes
 
 if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
@@ -97,20 +112,20 @@ if [ $# -gt 0 ] ; then
    for optarg in $@ ; do
 
       case $opt in
-         -d) INSTALLDIR=$optarg
+         -i) INSTALLDIR=$optarg
              opt=""
              ;;
          -r) REV=$optarg
              opt=""
              ;;
          -c) case $optarg in
-               "")  CHAIN="";                 chain=none        ;;
-               no*) CHAIN="";                 chain=none        ;;  # no or none
-               c*)  CHAIN="${CHAIN-} -c"; chain=current     ;;  # you can have multiple chains
-               d*)  CHAIN="${CHAIN-} -d"; chain=development ;;
-               n*)  CHAIN="${CHAIN-} -n"; chain=new         ;;
-               o*)  CHAIN="${CHAIN-} -o"; chain=old         ;;
-               t*)  CHAIN="${CHAIN-} -t"; chain=test        ;;
+               "")  CHAIN="";             ;;
+               no*) CHAIN="";             ;;  # no or none
+               c*)  CHAIN="${CHAIN-} -c"; ;;  # you can have multiple chains
+               d*)  CHAIN="${CHAIN-} -d"; ;;
+               n*)  CHAIN="${CHAIN-} -n"; ;;
+               o*)  CHAIN="${CHAIN-} -o"; ;;
+               t*)  CHAIN="${CHAIN-} -t"; ;;
                 *)   Step="chain getopts"; check_status 1 "You have specified an illegal chain";  ;;
              esac
              gotc=1
@@ -142,13 +157,6 @@ if [ -n "$opt" ] ; then echo "$USAGE"; Step="getopts"; check_status 1 "Can not p
 echo ""
 echo "options have been processed... checking"
 
-if /bin/false; then
-  echo INSTALLDIR ${INSTALLDIR-x}
-  echo REV ${REV-x}
-  echo CHAIN ${CHAIN-x}
-  echo STEPS ${STEPS-x}
-fi
-
 ##############################################################################
 # we need a revision - if not specified, get old one from a cvs tag
 
@@ -171,10 +179,11 @@ fi
 # we need a place to install the cut product
 
 if [ -z "${INSTALLDIR-}" ] ; then
+   Step="installdir"
    case `uname -n` in
       airedale*) INSTALLDIR=/home/products/$product;;
       pcfarm9*)  INSTALLDIR=/products/$product;;
-      *)         INSTALLDIR=/p/$UNAME/$product;;
+      *)         INSTALLDIR=/p/`uname`/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
 fi
@@ -192,7 +201,7 @@ if [ -z "${STEPS-}" ] ; then
 fi
 STEPSOK=""
 for step in $STEPS; do
-   if [ $step -le $STEPSDEFINED ] ; then
+   if [ $step -le $STEPSDEFINED -a $step -ge 1 ] ; then
       if [ -z "${STEPSOK-}" ] ; then
         STEPSOK=$step
       else
@@ -200,7 +209,10 @@ for step in $STEPS; do
       fi
    fi
 done
-set +xv
+if [ -z "${STEPSOK-}" ] ; then
+  Step="checksteps"
+  check_status 1 "No steps defined, how odd"
+fi
 STEPS=$STEPSOK
 STEPS="$STEPS done" # done is flag that we are finished
 save_STEPS=$STEPS
@@ -210,13 +222,12 @@ save_STEPS=$STEPS
 
 if [ -z "${gotc-}" ] ; then
    CHAIN=" -c"
-   chain=current
-   echo "UPS/UPD chaing not specified - Defaulting to chain $CHAIN"
+   echo "UPS/UPD chain not specified - Defaulting to chain $CHAIN"
 fi
 
 echo ""
-echo "Using files in CVS $Cvs_Module working directory `pwd` to cut revision $REV"
-echo "  and ups declaring it as $chain ($CHAIN) into directory $INSTALLDIR using steps $save_STEPS."
+echo "Using files in CVS $Cvs_Module working directory `pwd` to cut $product $REV"
+echo "  and ups/upd declaring it as ($CHAIN) into directory $INSTALLDIR using steps $save_STEPS."
 
 ##############################################################################
 
@@ -228,20 +239,22 @@ for try in list doit; do
       STEPS="`expr \"$STEPS\" : '[^ ]* \(.*\)'`"
       case $Step in
 
-        1) echo "Step $Step cvs directory check for `pwd` starting at `date`"
+        1) echo "Step $Step:  cvs directory check for `pwd`    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
               cvs_nq_update=`cvs -nq update 2>&1`
               check_status $? "cvs -nq update: $cvs_nq_update"
               if echo "$cvs_nq_update" | fgrep '[server aborted]' >/dev/null ; then
                 check_status 1 "server aborted problems with cvs: $cvs_nq_update"
-              elif x="`echo \"$cvs_nq_update\"|grep '^M'`" ; then
-                check_status 1 "$x: Modified or unknown files ($cvs_nq_update) in working directory - update/commit needed first"
+              elif x="`echo \"$cvs_nq_update\"|grep '^M'`"   ; then
+               check_status 1 "$x: Modified or unknown files ($cvs_nq_update) in working directory - update/commit needed first"
+              elif x="`echo \"$cvs_nq_update\"|grep '^[PU]'`"; then
+               check_status 1 "$x: Update/Patched files ($cvs_nq_update) in repository - update/commit needed first"
               fi
            fi
            ;;
 
-        2) echo "Step $Step cd modules - make clean all starting at `date`"
+        2) echo "Step $Step:  cd modules and make clean all   `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/modules
               make clean all
@@ -249,7 +262,7 @@ for try in list doit; do
            fi
            ;;
 
-        3) echo "Step $Step cd src - make clean encp starting at `date`"
+        3) echo "Step $Step:  cd src and make clean encp    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src
               make clean encp
@@ -257,18 +270,16 @@ for try in list doit; do
            fi
            ;;
 
-
-        4) TAG=${REV}_${product}
-           echo "Step $Step cvs tag $TAG starting at `date`"
+        4) tag=${REV}_$product
+           echo "Step $Step:  cvs tag $tag    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
-              cvs tag $TAG
-              check_status $? "cvs tag $TAG"
+              cvs tag $tag
+              check_status $? "cvs tag $tag"
            fi
            ;;
 
-
-        5) echo "Step $Step install ${product} into $INSTALLDIR starting at `date`"
+        5) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src/ENCPBIN
               # check if directory doesn't exist
@@ -282,56 +293,59 @@ for try in list doit; do
            fi
            ;;
 
-
-        6) echo "Step $Step ups undeclare $REV starting at `date`"
+        6) echo "Step $Step:  ups undeclare -f $FLAVOR $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
-              $UPS_DIR/bin/ups undeclare -v  -f $UNAME ${product} $REV
-              #check_status $? "ups undeclare"
-           fi
-           ;;
-
-
-        7) DIR=$INSTALLDIR
-           export DIR
-           echo "Step $Step ups declare ${product} $REV into $DIR starting at `date`"
-           if [ "$try" = "doit" ] ; then
-              if [ "$product" = "cop" ] ; then
-                 $UPS_DIR/bin/ups declare -v -c -f $UNAME -u "= astroda $ASTRODA_REV $UNAME" -r $DIR  ${product} $REV
-                 check_status $? "ups declare"
-              else
-                 $UPS_DIR/bin/ups declare -v -c -f $UNAME -u "= dervish $DERVISH_REV $UNAME" -r $DIR  ${product} $REV
-                 check_status $? "ups declare"
+              a=`$UPS_DIR/bin/ups undeclare  -f $FLAVOR $product $REV 2>&1`
+              stat=$?
+              if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
+                check_status $? $a
               fi
            fi
            ;;
 
-
-        8) UPR_DIR=`csh -fc "echo ~upr"`
-           UPRIST=$UPR_DIR/bin/uprist
-           echo "Step $Step $UPRIST ${product} $REV starting at `date`"
+        7) echo "Step $Step:  ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV    `starting`"
            if [ "$try" = "doit" ] ; then
-              $UPRIST -addf ${product} $REV $UNAME
-              check_status $? uprist
+                 $UPS_DIR/bin/ups declare $CHAIN -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
+                 check_status $? "ups declare"
+           fi
+           ;;
+
+        8) echo "Step $Step:  upd delproduct -H $FLAVOR -f $FLAVOR  $product $REV   `starting`"
+           if [ "$try" = "doit" ] ; then
+              a=`$UPD_DIR/bin/upd delproduct  -H $FLAVOR -f $FLAVOR $product $REV 2>&1`
+              stat=$?
+              if [ `echo "$a" | grep -c "No matching product"` -eq 0 ]; then
+                check_status $? $a
+              fi
+           fi
+           ;;
+
+        9) echo "Step $Step:  upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV   `starting`"
+           if [ "$try" = "doit" ] ; then
+              $UPD_DIR/bin/upd addproduct $CHAIN -H $FLAVOR -f $FLAVOR -r $INSTALLDIR -M $INSTALLDIR -m $product.table $product $REV
+              check_status $? "upd addproduct"
            fi
            ;;
 
 
-        *) check_status 1 "There is no step $Step. Why did you ask for it?"
+        *) check_status 1 "There is no step \"$Step\". Why did you ask for it?"
            ;;
 
        esac
    done
 
    if [ "$try" = "list" ] ; then
-      /bin/echo -n "\nThere are a total of $STEPS defined. Is this the set that you want to do? "
+      /bin/echo -n "\nThere are a total of $STEPSDEFINED steps defined. Is this the set that you want to do? "
       ans=`echo_timed_read 10`
       if [ $? != 0 ] || expr "$ans" : '[Yy]' >/dev/null ; then
         echo "Proceeding with ${product}Cut..."
         echo ""
       else
+         cd $thepwd
          exit 0
       fi
   fi
 done
 
-echo "${product}Cut finished at `date`"
+cd $thepwd
+echo "${product}Cut $REV finished at `date`"
