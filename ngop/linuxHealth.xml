@@ -335,7 +335,7 @@
             <apply>
             <or/>
             <apply>
-            <eg/>
+            <eq/>
              <ci>mask1</ci>
              <cn>4</cn>
             </apply>
