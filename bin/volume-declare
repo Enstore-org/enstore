@@ -122,11 +122,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      mam   none 8MM     CA2501 35003983462 35003983462
-                      mam   none 8MM     CA2502 35003983462 35003983462
-                      mam   none 8MM     CA2503 35003983462 35003983462
-                      mam   none 8MM     CA2504 35003983462 35003983462
-                      mam   none 8MM     CA2505 35003983462 35003983462
+                      dlt   none DECDLT  CA2501 35003983462 35003983462
+                      dlt   none DECDLT  CA2502 35003983462 35003983462
+                      dlt   none DECDLT  CA2503 35003983462 35003983462
+                      dlt   none DECDLT  CA2504 35003983462 35003983462
+                      dlt   none DECDLT  CA2505 35003983462 35003983462
                      "
          ;;
   rip6)  rm -fr /pnfs/rip6/*
