@@ -161,6 +161,8 @@ COMMON:
                 # special treatment for libds.a on IRIX64
                 execute("uname", UPS_ENV, ENSTORE_OSV)
                 execute("sh -c 'if [ ${ENSTORE_OSV} = IRIX64 ]; then echo -L/usr/lib32 -lds ; fi'", UPS_ENV, LIBDS)
+		# special treatment for libsocket and libnsl on SunOS
+                execute("sh -c 'if [ ${ENSTORE_OSV} = SunOS ]; then echo -lsocket -lnsl ; fi'", UPS_ENV, LIBSOCKETNSL)
                 envUnset(ENSTORE_OSV)
 
                 # create some links to put commands into your path
