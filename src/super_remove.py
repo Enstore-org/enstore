@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Got to run this at the server that hosts pnfs!
+# Got to run this at the server that hosts bfid_db (just for now)
 
 import sys
 import os
@@ -69,6 +69,7 @@ if __name__ == '__main__':
 		pnfsname = fileInfo['pnfs_name0']
 		pnfsdir, pnfsfile = os.path.split(pnfsname)
 		volmapdir, volmapfile = os.path.split(volmap)
+		volmapdpd, junk = os.path.split(volmapdir)
 		# check access permission to pnfs files
 		if not os.access(pnfsdir, os.W_OK):
 			if os.access(pnfsdir, os.F_OK):
@@ -82,6 +83,13 @@ if __name__ == '__main__':
 			else:
 				print pnfsname, 'does not exist'
 			error = error + 1
+		if not os.access(volmapdpd, os.W_OK):
+			if os.access(volmapdpd, os.F_OK):
+				print 'No write permission to', volmapdpd
+				error = error + 1
+			else:
+				print '(Warning)', volmapdpd, 'does not exist'
+				# ignore it
 		if not os.access(volmapdir, os.W_OK):
 			if os.access(volmapdir, os.F_OK):
 				print 'No write permission to', volmapdir
@@ -115,8 +123,6 @@ if __name__ == '__main__':
 		volmap = fileInfo['pnfs_mapname']
 		external_label = fileInfo['external_label']
 		pnfsname = fileInfo['pnfs_name0']
-		pnfsdir, pnfsfile = os.path.split(pnfsname)
-		volmapdir, volmapfile = os.path.split(volmap)
 		# check access permission to pnfs files
 		print external_label, i, pnfsname, volmap
 
@@ -134,25 +140,49 @@ if __name__ == '__main__':
 		pnfsname = fileInfo['pnfs_name0']
 		pnfsdir, pnfsfile = os.path.split(pnfsname)
 		volmapdir, volmapfile = os.path.split(volmap)
+		volmapdpd, junk = os.path.split(volmapdir)
 		# check access permission to pnfs files
 		if os.access(pnfsname, os.W_OK):
-			os.unlink(pnfsname)
-			print 'os.unlink('+pnfsname+')'
+			print 'removing', pnfsname, '...',
+			try:
+				os.unlink(pnfsname)
+				print 'done'
+			except:
+				print 'failed'
 		if os.access(volmap, os.W_OK):
-			os.unlink(volmap)
-			print 'os.unlink('+volmap+')'
+			print 'removing', volmap, '...',
+			try:
+				os.unlink(volmap)
+				print 'done'
+			except:
+				print 'failed'
 
 		# clean it up in file database
 
 		fcc.bfid = i
+		print 'removing', i, 'from file database ...',
 		ticket = fcc.del_bfid()
 		if ticket['status'][0] == e_errors.OK:
-			print i, 'deleted'
+			print 'done'
 		else:
-			print 'fail to delete', i
+			print 'failed'
+
+	# now remove the volmap directory, too
+
+	if os.access(volmapdir, os.W_OK):
+		print 'removing', volmapdir, '...',
+		try:
+			os.unlink(volmapdir)
+			print 'done'
+		except:
+			print 'failed'
 
 	# delete from volume database
 
+	print 'removing', vol, 'from volume database ...',
 	ticket = vcc.rmvolent(vol)
 	if ticket['status'][0] == e_errors.OK:
-		print 'volume', vol, 'removed forever'
+		print 'done'
+		print vol, 'is removed forever'
+	else:
+		print 'failed'
