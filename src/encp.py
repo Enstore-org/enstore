@@ -57,7 +57,7 @@ import types
 import Trace
 import pnfs
 import callback
-#import log_client
+import log_client
 #import alarm_client
 import configuration_client
 import udp_server
@@ -1450,8 +1450,15 @@ def clients():
         Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
                       (server, ticket.get('address', "Unknown")))
     
-    # get a logger client
-    #logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
+    #Get a logger client, this will set the global log client Trace module
+    # variable.  If this is not done here, it would get done while
+    # creating the client classes for the csc, vc, fc, etc.  This however
+    # is to late for the first message to be logged (the one with the
+    # command line).
+    #
+    #Note: There will be a similar situation for the alarm client should it
+    # be needed earier than it currently is.
+    log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     #global client #should not do this
     #client = {}
