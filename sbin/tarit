@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # $Id$
 
-# This script attempts to backup most things on a node
+# This script attempts to backup importatnt things on a node
 
 bang=`echo -e "\041"`
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -23,13 +23,6 @@ case $node in
        *) gang=UNKNOWN
           ;;
 esac
-
-
-#compressor=/usr/bin/bzip2
-#compressor_suffix=tbz2
-
-compressor=/usr/bin/gzip
-compressor_suffix=tgz
 
 d=`date +"%j" | sed -e 's/^0*//'`
 d2=`expr $d \/ 2 \* 2`
@@ -66,42 +59,33 @@ here=`pwd`
 cd $M
 if [ "$BACKUP" = "/backup" ]; then
   mkdir -p old >/dev/null 2>/dev/null
-  mv files.err files.list files.$compressor_suffix partition_table.dd old
+  mv files.err files.list files.tgz partition_table.dd old
 else
-  rm files.err files.list files.$compressor_suffix partition_table.dd
+  rm files.err files.list files.tgz partition_table.dd
 fi
 cd $here
 
 echo "`date`: dd-ing partition table to $M/partition_table"
 dd if=/dev/hda of=$M/partition_table.dd bs=512 count=1
 
-echo "`date` tar-ing files to $M/files.$compressor_suffix"
-nice -n 20 tar -l \
-        --exclude="/lost+found" \
-        --exclude="/proc" \
-        --exclude="/tmp/*" \
-        --exclude="/var/log/*" \
-        --exclude="/home/alcorn/*" \
-        --exclude="/home/berman/*" \
-        --exclude="/home/cgw/*" \
-        --exclude="/home/djholm/*" \
-        --exclude="/home/genser/*" \
-        --exclude="/home/huangch/*" \
-        --exclude="/home/joes/*" \
-        --exclude="/home/jonest/*" \
-        --exclude="/home/moibenko/*" \
-        --exclude="/home/patrol/*" \
-        --exclude="/home/petravic/*" \
-        --exclude="/home/ron/*" \
-        --exclude="/home/sachs/*" \
-        --exclude="*\.jon*" \
-        --exclude="*\.fnal\.gov\.startup" \
-    -cf - / 2>$M/files.err |  $compressor > $M/files.$compressor_suffix
+# generate a script excluding files we don't care about.
+# NOTE:  no users files are backed up.
+tar_script=/tmp/tar_script
+rm -f $tar_script
+echo 'nice -n 20 tar -l \
+--exclude="/lost+found/*" --exclude=/proc/ --exclude="/tmp/*" --exclude="/var/log/*" \
+--exclude="/*\.jon*" --exclude="/*\.fnal\.gov\.startup"  \
+--exclude="/var/tmp/*" --exclude="/var/spool/mqueue/*" --exclude=.netscape \ ' >$tar_script
+users=""
+ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
+   echo "--exclude=\"/home/$user/*\" \\">>$tar_script ;fi; done
+echo " $users  / -czf $M/files.tgz  2>$M/files.err" >>$tar_script
+echo
+echo "`date`: starting tar"
+cat $tar_script
 
-### echo "`date`: reading tar file and making list"
-### $compressor < $M/files.$compressor_suffix | tar -tvf - > $M/files.list
-
-echo "`date`:"
+. $tar_script
+echo "`date`: tar complete"
 ls -alR $M
 
 # on server1, also copy all "special" node-specific files from all nodes
