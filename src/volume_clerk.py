@@ -616,6 +616,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         vol_fam = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
+        use_exact_match = ticket['use_exact_match']
 
         Trace.trace(20, "next_write_volume %s" % ticket)
         # go through the volumes and find one we can use for this request
@@ -629,6 +630,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                         first_found, min_remaining_bytes,exact_match=1)
         Trace.trace(20, "find matching volume returned %s" % vol)
 
+        if use_exact_match:
+            if not vol or len(vol) == 0:
+                # nothing was available at all
+                msg="Volume Clerk: no new volumes available"
+                ticket["status"] = (e_errors.NOVOLUME, msg)
+                Trace.log(e_errors.ERROR,msg)
+                self.reply_to_caller(ticket)
+                return
+        
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
             # given storage group and file family.

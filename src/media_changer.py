@@ -552,7 +552,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, self.cleanTapeVolumeFamily, wrapper, 
-                                  vol_veto_list, first_found)  # get which volume to use
+                                  vol_veto_list, first_found, exact_match=1)  # get which volume to use
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
                       (v["status"][0],v["status"][1]))

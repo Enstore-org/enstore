@@ -425,14 +425,15 @@ class VolumeClerkClient(generic_client.GenericClient,
 	
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           volume_family, wrapper, vol_veto_list,first_found):
+                           volume_family, wrapper, vol_veto_list,first_found, exact_match=0):
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'volume_family'       : volume_family,
 		   'wrapper'             : wrapper,
                    'vol_veto_list'       : `vol_veto_list`,
-                   'first_found'         : first_found }
+                   'first_found'         : first_found,
+                   'use_exact_match'     : exact_match}
 
         x = self.send(ticket)
         return x
