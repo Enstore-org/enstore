@@ -567,6 +567,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to delete file %s from %s"%(bfid, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
+            self.reply_to_caller(ticket)
+            return
+
         # now just delete the bfid
         del self.dict[bfid]
         Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%(bfid,))
