@@ -113,7 +113,7 @@ def make_subdir(subdir):
     try:
 	os.stat(subdir)
     except OSError:
-	print "Making %s"%(enstore_cgi,)
+	print "Making %s"%(subdir,)
 	os.mkdir(subdir)
 
 if __name__ == "__main__" :
