@@ -70,6 +70,7 @@ class BfidDb:
         fname=self.dbfile_for_volume(vol)
         f=open(fname,'r')
         lines=f.readlines()
+        f.close()
         for line in lines[:-1]:
             line=string.strip(line)
             if line:
@@ -115,6 +116,8 @@ class BfidDb:
         r=[]
         csum=0L
         fname=self.dbfile_for_volume(vol)
+        if not os.path.exists(fname):
+            self.init_dbfile(vol)
         f=open(fname,'r+')
         f.seek(0,2)
         eof=f.tell()
