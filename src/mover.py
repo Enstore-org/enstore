@@ -301,7 +301,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 rr = self.mcc.doCleaningCycle(self.mvr_config)
                 Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
             except KeyError:
-                Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined in WSdata")
+                Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined")
+            except: ## REMOVE
+                e_errors.handle_error()  ## REMOVE
+        print "RETURN" ## REMOVE
         self.return_or_update_and_exit(self.vol_info['from_lm'], e_errors.OK )
 	pass
 
