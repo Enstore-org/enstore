@@ -1,5 +1,20 @@
 #!/usr/bin/env python
+"""
+migration_scope.py
 
+A tool to watch migration and/or to analyze its log files
+
+This is designed to read from a file, if specified, or stdin.
+Since migrate.py spits everything out through stdout, in addition to
+writing log files, it is good to pipe migrate.py to this.
+
+migrate.py <command> .... | migration_scope.py
+
+In migrate.py's log file, each line has a keyword.
+Based on the keyword, migration_scope.py displays the messages in
+appropriate windows. Special attention is paid to ERROR message.
+
+"""
 import Tkinter
 import tkMessageBox
 import ScrolledText
@@ -8,6 +23,7 @@ import string
 import os
 import sys
 
+# InfoBox is a ScrooledText with a label as heading
 class InfoBox(Tkinter.Frame):
 
 	def __init__(self, master, w = 200, h = 20, heading="InfoBox"):
@@ -44,40 +60,42 @@ class StatusBar(Tkinter.Frame):
 		self.label.config(text = "")
 		self.label.update_idletasks()
 
-
-#FILE = "M.log"
-FILE = "/data1/Migration_tmp/archive/EAGLE_MIGRATION_2004/MigrationLog@2004-10-26.20:42:59#20233"
-
+# for event loop
 quit_now = 0
 paused = 0
 
+# set_quit() -- callback for Exit
 def set_quit():
 	global quit_now
 	quit_now = 1
 	sys.exit(0)
 
+# set_pause() -- callback for Pause
 def set_pause():
 	global paused
 	paused = 1
 
+# set_resume() -- callback for Resume
 def set_resume():
 	global paused
 	paused = 0
 
+# show_help() -- callback for Help
 def show_help():
 	# God helps those who help themselves
 	tkMessageBox.showinfo(
 		"God helps those who help themselves",
 		"Call Chih-Hao at x8076")
 
-if __name__ == "__main__":
-	if len(sys.argv) > 1:
-		f = open(sys.argv[1])
-	else:
-		f = sys.stdin
+# migration_watch() -- for "migrate.py --vol ..."
+def migration_watch(f, l1):
+
+	# root window
 	root = Tkinter.Tk()
-	root.title("Migration")
+	root.title("Migration Watch")
 	root.protocol("WM_DELETE_WINDOW", set_quit)
+
+	# create menu bar
 	menu = Tkinter.Menu(root)
 	root.config(menu=menu)
 	filemenu = Tkinter.Menu(menu)
@@ -91,33 +109,42 @@ if __name__ == "__main__":
 	menu.add_cascade(label="Help", menu=helpmenu)
 	helpmenu.add_command(label="Help me!", command = show_help)
 
+	# pack command_line and volume_status in the same frame
 	frame1 = Tkinter.Frame(root)
-	command_line = InfoBox(frame1, h = 5, w = 150, heading = "Command Line")
+	# command_line to show the migrate.py command and its arguments
+	command_line = InfoBox(frame1, h = 5, w = 133, heading = "Command Line")
 	command_line.pack(side=Tkinter.LEFT)
-	volume_status = InfoBox(frame1, h = 5, w = 46, heading = "Volume Status")
+	# volume_status to show everything about the volume
+	volume_status = InfoBox(frame1, h = 5, w = 63, heading = "Volume Status")
 	volume_status.pack(side=Tkinter.LEFT)
 	frame1.pack()
+	# error_info to show ERROR messages
 	error_info = InfoBox(root, h = 10,  heading = "Errors")
 	error_info.s.config(foreground="#FF0000")
 	error_info.pack()
+	# progress shows EVERYTHING
 	progress = InfoBox(root, h = 20, heading = "Progress")
 	progress.pack()
+	# copy_to_disk shows COPYING_TO_DISK messages
 	copy_to_disk = InfoBox(root, h = 10, heading = "Copying to Disk")
 	copy_to_disk.pack()
+	# copy_to_tape shows COPYING_TO_TAPE messages
 	copy_to_tape = InfoBox(root, h = 10, heading = "Copying to Tape")
 	copy_to_tape.pack()
+	# swap_metadata shows SWAPPING_METADATA messages
 	swap_metadata = InfoBox(root, h = 10, heading = "Swapping Meta Data")
 	swap_metadata.pack()
 
-	# f = open(FILE)
-	# read command
-	l = f.readline()
+	l = l1
 	cnl = 1
 	while l:
 		if quit_now:
 			sys.exit(0)
 		if paused:
+			# sleep so that it won't consume too much cpu
+			# while being paused
 			time.sleep(0.1)
+			# still needs to process the events
 			root.update()
 			continue
 
@@ -127,6 +154,8 @@ if __name__ == "__main__":
 		part = string.split(l)
 		key = part[5]
 		if key == "COMMAND":
+			# some padding to make it prettier
+			part[8] = part[8]+'    '
 			ll = string.join(part[7:])
 			command_line.printline(ll+'\n')
 		elif key == "COPYING_TO_DISK":
@@ -171,8 +200,76 @@ if __name__ == "__main__":
 		elif key == "MIGRATING_VOLUME":
 			ll = string.join(part[6:])
 			volume_status.printline(ll+'\n')
-		else:
-			pass
+
+		if part[-1] == "ERROR":
+			error_info.printline(l+'\n')
+		root.update()
+		# time.sleep(1)
+		l = f.readline()
+	root.mainloop()
+
+# scan_watch() -- for "migrate.py --scan-vol ..."
+def scan_watch(f, l1):
+
+	# root window
+	root = Tkinter.Tk()
+	root.title("Final Scan Watch")
+	root.protocol("WM_DELETE_WINDOW", set_quit)
+
+	# create menu bar
+	menu = Tkinter.Menu(root)
+	root.config(menu=menu)
+	filemenu = Tkinter.Menu(menu)
+	menu.add_cascade(label="File", menu=filemenu)
+	filemenu.add_command(label="Exit", command = set_quit)
+	action_menu = Tkinter.Menu(menu)
+	menu.add_cascade(label="Action", menu=action_menu)
+	action_menu.add_command(label="Pause", command = set_pause)
+	action_menu.add_command(label="Resume", command = set_resume)
+	helpmenu = Tkinter.Menu(menu)
+	menu.add_cascade(label="Help", menu=helpmenu)
+	helpmenu.add_command(label="Help me!", command = show_help)
+
+	# pack command_line and volume_status in the same frame
+	frame1 = Tkinter.Frame(root)
+	command_line = InfoBox(frame1, h = 5, w = 133, heading = "Command Line")
+	command_line.pack(side=Tkinter.LEFT)
+	volume_status = InfoBox(frame1, h = 5, w = 63, heading = "Volume Status")
+	volume_status.pack(side=Tkinter.LEFT)
+	frame1.pack()
+	error_info = InfoBox(root, h = 10,  heading = "Errors")
+	error_info.s.config(foreground="#FF0000")
+	error_info.pack()
+	progress = InfoBox(root, h = 20, heading = "Progress")
+	progress.pack()
+	final_scan = InfoBox(root, h = 20, heading = "Final Scan")
+	final_scan.pack()
+
+	l = l1
+	cnl = 1
+	while l:
+		if quit_now:
+			sys.exit(0)
+		if paused:
+			time.sleep(0.1)
+			root.update()
+			continue
+
+		l = string.strip(l)
+		progress.printline(l+'\n')
+		# processing line
+		part = string.split(l)
+		key = part[5]
+		if key == "COMMAND":
+			ll = string.join(part[7:])
+			command_line.printline(ll+'\n')
+		elif key == "FINAL_SCAN_VOLUME":
+			if part[6] != "set":
+				ll = string.join(part[6:])
+				if part[7] == "volume" or part[6] == "restore":
+					volume_status.printline(ll+'\n')
+				else:
+					final_scan.printline(ll+'\n')
 		if part[-1] == "ERROR":
 			error_info.printline(l+'\n')
 		root.update()
@@ -181,3 +278,17 @@ if __name__ == "__main__":
 	root.mainloop()
 	
 
+if __name__ == "__main__":
+	if len(sys.argv) > 1:
+		f = open(sys.argv[1])
+	else:
+		f = sys.stdin
+
+	l = f.readline()
+	part = string.split(l)
+
+	# determine which one to call based on the command line switch
+	if part[8] == "--vol":
+		migration_watch(f, l)
+	elif part[8] == "--scan-vol":
+		scan_watch(f, l)
