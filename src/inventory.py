@@ -43,17 +43,18 @@ def format_storage_size(size_in_bytes):
     return volume_size, suffix[count]
 
 #Takes an arbitrary number of arguments which contain directories and creates
-# them if they do not exist.  If they already exist, then it simply delete
+# them if they do not exist.  If they already exist, then simply delete
 # everything in the directory.
 def create_clean_dirs(*dirs):
     for dir in dirs:
         #An empty output directory would be nice.
         if string.find(dir, "/dev/stdout") == -1:
-            os.system("rm -rf " + dir) #clear/remove the directory
             try:
-                os.mkdir(dir, 0755)
+                os.stat(dir)
             except OSError:
-                pass
+                os.mkdir(dir, 0755)
+                
+            checkBackedUpDatabases.remove_files(os.listdir(dir),dir)
 
 #Takes an arbitrary number of arguments which contain directories and deletes
 # them and their contents.
@@ -714,13 +715,13 @@ if __name__ == "__main__":
     if inventory_extract_dir[-1] != "/":
         inventory_extract_dir = inventory_extract_dir + "/"
 
-    print "backup_dir", backup_dir
-    print "current_dir", current_dir
-    print "inventory_dir", inventory_dir
-    print "inventory_tmp_dir", inventory_tmp_dir
-    print "inventory_extract_dir", inventory_extract_dir
-    print "inventory_rcp_dir", inventory_rcp_dir
-    print "extract_dir", extract_dir
+#    print "backup_dir", backup_dir
+#    print "current_dir", current_dir
+#    print "inventory_dir", inventory_dir
+#    print "inventory_tmp_dir", inventory_tmp_dir
+#    print "inventory_extract_dir", inventory_extract_dir
+#    print "inventory_rcp_dir", inventory_rcp_dir
+#    print "extract_dir", extract_dir
 
     #Look through the arguments list for valid arguments.
     if "-stdout" in sys.argv:
