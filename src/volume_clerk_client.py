@@ -28,6 +28,7 @@ import Trace
 import e_errors
 import file_clerk_client
 import cPickle
+import info_client
 
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"
@@ -1131,6 +1132,8 @@ def do_work(intf):
     vcc = VolumeClerkClient((intf.config_host, intf.config_port), None,  intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(vcc.get_name(MY_NAME))
 
+    ifc = info_client.infoClient(vcc.csc)
+
     ticket = vcc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
@@ -1164,9 +1167,9 @@ def do_work(intf):
         else:
             key = None
             in_state = None 
-        ticket = vcc.get_vols(key, in_state, not_cond)
+        ticket = ifc.get_vols(key, in_state, not_cond)
     elif intf.pvols:
-        ticket = vcc.get_vols(print_list=0)
+        ticket = ifc.get_vols(print_list=0)
 	problem_vol = {}
 	for i in ticket['volumes']:
             if i['volume'][-8:] != '.deleted':
@@ -1203,7 +1206,7 @@ def do_work(intf):
                 for i in output:
                     print i
     elif intf.labels:
-        ticket = vcc.get_vol_list()
+        ticket = ifc.get_vol_list()
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['volumes']:
                 print i
@@ -1218,7 +1221,7 @@ def do_work(intf):
     elif intf.rebuild_sg_count:
         ticket = vcc.rebuild_sg_count()
     elif intf.ls_sg_count:
-        ticket = vcc.list_sg_count()
+        ticket = ifc.list_sg_count()
         sgcnt = ticket['sgcnt']
         sk = sgcnt.keys()
         sk.sort()
@@ -1228,7 +1231,7 @@ def do_work(intf):
             lib, sg = string.split(i, ".")
             print "%12s %16s %10d"%(lib, sg, sgcnt[i])
     elif intf.get_sg_count:
-        ticket = vcc.get_sg_count(intf.get_sg_count, intf.storage_group)
+        ticket = ifc.get_sg_count(intf.get_sg_count, intf.storage_group)
         print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
     elif intf.set_sg_count:
         ticket = vcc.set_sg_count(intf.set_sg_count, intf.storage_group, intf.count)
@@ -1242,7 +1245,7 @@ def do_work(intf):
         ticket = vcc.show_quota()
 	pprint.pprint(ticket['quota'])
     elif intf.vol:
-        ticket = vcc.inquire_vol(intf.vol)
+        ticket = ifc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
@@ -1251,7 +1254,7 @@ def do_work(intf):
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.gvol:
-        ticket = vcc.inquire_vol(intf.gvol)
+        ticket = ifc.inquire_vol(intf.gvol)
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
@@ -1266,7 +1269,7 @@ def do_work(intf):
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.check:
-        ticket = vcc.inquire_vol(intf.check)
+        ticket = ifc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
         # guard against error
         if ticket['status'][0] == e_errors.OK:
@@ -1275,7 +1278,7 @@ def do_work(intf):
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
     elif intf.history:
-        ticket = vcc.show_history(intf.history)
+        ticket = ifc.show_history(intf.history)
         if ticket['status'][0] == e_errors.OK and len(ticket['history']):
             for state in ticket['history']:
                 type = state['type']
@@ -1293,7 +1296,7 @@ def do_work(intf):
     elif intf.write_protect_off:
         ticket = vcc.write_protect_off(intf.write_protect_off)
     elif intf.write_protect_status:
-        ticket = vcc.write_protect_status(intf.write_protect_status)
+        ticket = ifc.write_protect_status(intf.write_protect_status)
         if ticket['status'][0] == e_errors.OK:
             print intf.write_protect_status, "write-protect", ticket['status'][1]
     elif intf.set_comment: # set comment of vol
@@ -1566,8 +1569,7 @@ def do_work(intf):
     elif intf.lm_to_clear:
         ticket = vcc.clear_lm_pause(intf.lm_to_clear)
     elif intf.list:
-        fcc = file_clerk_client.FileClient(vcc.csc)
-        ticket = fcc.tape_list(intf.list)
+        ticket = ifc.tape_list(intf.list)
         vol = ticket['tape_list']
         print "     label           bfid       size        location_cookie delflag original_name\n"
         for record in vol:
@@ -1582,8 +1584,7 @@ def do_work(intf):
                 record['location_cookie'], deleted,
                 record['pnfs_name0'])
     elif intf.ls_active:
-        fcc = file_clerk_client.FileClient(vcc.csc)
-        ticket = fcc.list_active(intf.ls_active)
+        ticket = ifc.list_active(intf.ls_active)
         active_list = ticket['active_list']
         for i in active_list:
             print i
