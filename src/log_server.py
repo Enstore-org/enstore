@@ -54,6 +54,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         # get a logger client
         self.is_logger = 1
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        self.repeat_count = 0
+        self.last_message = ''
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -103,21 +105,34 @@ class Logger(  dispatching_worker.DispatchingWorker
 
     # log the message recieved from the log client
     def log_message(self, ticket) :
-        tm = time.localtime(time.time()) # get the local time
-	# take care of case where we can't figure out the host name
+        if not ticket.has_key('message'):
+            return
         host = hostaddr.address_to_name(self.reply_address[0])
-        # format log message
-        message = "%.2d:%.2d:%.2d %-8s %s\n" % \
-                  (tm[3], tm[4], tm[5],
-                   host,
-                   ticket['message'])
+                  ## XXX take care of case where we can't figure out the host name
+        message = "%-8s %s"%(host,ticket['message'])
+        tm = time.localtime(time.time()) # get the local time
+        if message == self.last_message:
+            self.repeat_count=self.repeat_count+1
+        elif self.repeat_count:
+            self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
+                               (tm[3],tm[4],tm[5], self.repeat_count))
+            self.logfile.flush()
+            self.repeat_count=0
+        self.last_message=message
 
-        Trace.trace(12, repr(message))
+
+
+        # format log message
+        message = "%.2d:%.2d:%.2d %s\n" %  (tm[3], tm[4], tm[5], message)
+        
+        Trace.trace(12, message)
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        Trace.trace(12, repr(res))
+        Trace.trace(12, "%s"%res)
 
     def serve_forever(self):                      # overrides UDPServer method
+        self.repeat_count=0
+        self.last_message=''
         tm = time.localtime(time.time())          # get the local time
         day = current_day = tm[2];
         if self.test :
