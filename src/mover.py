@@ -818,7 +818,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0# Can only write at end of tape
 
             
-        self.seek_to_position(location)
+        self.seek_to_location(location)
         self.last_seek = self.current_location
         return 1
     
@@ -877,7 +877,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if verbose: print "Precautionary dismount"
         if verbose: print "dismounting", self.current_volume
         self.last_volume = self.current_volume
-        self.last_position = self.current_position
+        self.last_location = self.current_location
         self.current_volume = None
         self.tape_driver.close() 
         return
@@ -888,7 +888,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = volume_label
         return
     
-    def seek_to_position(self, location):
+    def seek_to_location(self, location):
         if verbose: print "seek to", location
         self.tape_driver.seek(location)
         self.timer('seek_time')
