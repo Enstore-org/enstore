@@ -2,12 +2,23 @@
 Each .c file in this modules directory must be a python module -
 see one of the existing modules.   
 
-The file name suffix, e.g. ETape, is the module name.   In python
+The file name base, e.g. ETape, is the module name.   In python
 you say "import ETape".   ETape.c has one externalized entry point
 initETape which does module initialization for python.
 
 ETape.exp contains "initETape" - this is for the AIX loader.
 
+The PYTHONINC file is the location of python.h.  python.h includes
+config.h.  Python 1.5's make install copies config.h to the
+instll's include directory but Python 1.4 does not and you need to
+do something.
+
+PYTHONMOD is the location is the location of python.exp which is a list 
+of all of the entry points in python and is used in the AIX ld.
+
+Makefile is copied from a generic makefile in the oracledb module.
+It uses the results of the configure step in the python build
+so it is prtable.
 
 
 To use dbx with modules

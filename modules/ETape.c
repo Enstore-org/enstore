@@ -29,10 +29,25 @@ raise_ftt_exception(location, ET_desc, va_alist)
 #endif
 {
   char errbuf[500];
-/*  dealloc and raise exception fix */
+  int sts;
+/*  dealloc and raise exception  */
   sprintf(errbuf,"Error at %s - FTT reports: %s\n", location, ftt_get_error(ET_desc->ftt_desc));
   printf("%s\n",errbuf);
   PyErr_SetString(ETErrObject,errbuf);
+/*
+    Clean up
+*/
+  sts=ftt_rewind(ET_desc->ftt_desc);
+  sts=ftt_unload(ET_desc->ftt_desc);
+  sts=ftt_close(ET_desc->ftt_desc);
+  if (sts <0)
+     printf("error in ftt exceptio\n");
+/*
+        Free the memory we allocated   N.B. WE MUST ALWAYS HAVE OPENED A FTT
+*/
+  free(ET_desc->buffer);
+  free(ET_desc);
+
   return NULL;
 }
 
@@ -76,7 +91,6 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /*
 	Open the FTT way
 */
-  printf(" ETOPENREAD %s %d %d\n",fname,loc,position);
 
   ET_desc->ftt_desc = ftt_open(fname, FTT_RDONLY);
   sts = ftt_open_dev(ET_desc->ftt_desc);
@@ -85,12 +99,10 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
 /*
 	Position to the file, if backwards then skip back forward to BOF
 */
-  printf(" ETOPENREAD %d %d\n",loc,position);
   if ((loc == 0) && (position != 0))
   {
     sts = ftt_rewind(ET_desc->ftt_desc);
-    printf("rewind %d\n",sts,position);
-    if (sts)
+    if (sts<0)
     {
         return raise_ftt_exception("ET_OpenRead_rew", ET_desc, "%s", fname);
     }
@@ -98,14 +110,13 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
     if (position != 0) 
     {
       sts = ftt_skip_fm(ET_desc->ftt_desc, position);
-      printf("skip %d  \n",sts,position);
-      if (sts)
+      if (sts<0)
         return raise_ftt_exception("ET_OpenRead_skipfm", ET_desc, "%s", fname);
     }
     if (position < 0)
     {
       sts = ftt_skip_fm(ET_desc->ftt_desc, 1);
-      if (sts)
+      if (sts<0)
         return raise_ftt_exception("ET_OpenRead_NegForward", ET_desc, "%s", fname);
     }
   }
@@ -204,6 +215,8 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
 /*
 	open the ftt file
 */
+  printf("DEBUG open write %s\n",fname);
+
   ET_desc->ftt_desc = ftt_open(fname, FTT_RDWR);
   sts = ftt_open_dev(ET_desc->ftt_desc);
   if (!sts)
@@ -211,7 +224,7 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
   if (eod != 0)
   {
     sts = ftt_skip_fm(ET_desc->ftt_desc, eod);
-    if (sts)
+    if (sts<0)
       return raise_ftt_exception("ET_OpenWrite_skipfm", ET_desc, "%s", fname);
   }
 /*
@@ -220,7 +233,12 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
   return Py_BuildValue("l",(long)ET_desc);
 }
 /* = = = = = = = = = = = = = = -  ET_WriteBlock  = = = = = = = = = = = = = = - */
-
+/*
+   ET_WriteBlock does not really write a block.  It copies the
+   the data passed in the agruement to a buffer and if the buffer is full
+   it writes a block.  It accepts any size input 0 and lengths grater than a 
+   tape block
+*/
 static char ET_WriteBlock_Doc[] = "Write a block to tape";
 
 static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
@@ -233,6 +251,7 @@ static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
 
   PyArg_ParseTuple(args, "ls#", &ET_desc, &data_buff, &length);
   ET_desc->filesize += length;
+  printf("DEBUG write %d\n",length);
   while (length > 0)
   {
     if (ET_desc->bufptr + length < ET_desc->buffer + ET_desc->block_size) 
@@ -273,6 +292,7 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
 /*
 	Write unwritten buffer
 */
+  printf("DEBUG close \n");
   partlen = ET_desc->bufptr - ET_desc->buffer;
   if (partlen > 0)
   {
@@ -404,7 +424,5 @@ void initETape()
   ETErrObject = PyErr_NewException("ETape.error", NULL, NULL);
   if (ETErrObject != NULL)
              PyDict_SetItemString(d,"error",ETErrObject);
-
-  
 }
 
