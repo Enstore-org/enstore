@@ -946,25 +946,12 @@ def check_crc(done_ticket, chk_crc, my_crc):
         mover_crc = done_ticket['fc'].get('complete_crc', None)
         if mover_crc is None:
             msg =   "warning: mover did not return CRC; skipping CRC check"
-            Trace.alarm(e_errors.WARNING, msg, {
-                'infile':done_ticket['infile'],
-                'outfile':done_ticket['outfile']})
-            sys.stderr.write(msg+'\n')
-            done_ticket['status'] = (e_errors.WARNING, msg)
-            
+            done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+
         elif mover_crc != my_crc :
             msg = "CRC mismatch: %d != %d" % (mover_crc, my_crc)
             done_ticket['status'] = (e_errors.CRC_ERROR, msg)
 
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
-
-            Trace.alarm(e_errors.WARNING, e_errors.CRC_ERROR, {
-                'infile':done_ticket['infile'],
-                'outfile':done_ticket['outfile']})
-            
 ############################################################################
 
 def set_outfile_permissions(ticket):
@@ -999,11 +986,10 @@ def verify_file_size(ticket):
             msg = "Expected file size (%s) not equal to actuall file size " \
                   "(%s) for file %s." % \
                   (ticket['file_size'], file_size, filename)
-            Trace.log(e_errors.INFO, msg)
 
             ticket['file_size'] = file_size
-            ticket['status'] = (e_errors.EPROTO,
-                                "Input/Ouput file size mismatch.")
+            ticket['status'] = (e_errors.EPROTO, msg)
+
     except OSError, msg:
         Trace.log(e_errors.INFO, "Retrieving %s info. failed: %s" % \
                   (filename, msg))
@@ -1105,6 +1091,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if len(request_dictionary) > 3:
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
+
+        if status[0] in e_errors.raise_alarm_errors:
+            Trace.alarm(e_errors.WARNING, status[0], {
+                'infile':infile, 'outfile':outfile, 'status':status[1]})
+        
         try:
             #Try to delete the request.  In the event that the connection
             # didn't let us determine which request failed, don't worry.
@@ -1463,13 +1454,16 @@ def set_pnfs_settings(ticket, client, verbose):
 
     try:
         # save the bfid and set the file size
-        p.set_bit_file_id(ticket["fc"]["bfid"])    #, ticket['file_size'])
+        p.set_bit_file_id(ticket["fc"]["bfid"])
         p.set_file_size(ticket['file_size'])
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
     except:
         exc, msg, tb = sys.exc_info()
-        print exc, msg
-    print "DUMPING TICKET:"
-    pprint.pprint(ticket)
+        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s, "
+                  "continuing" % (exc, msg))
+        ticket['status'] = (exc, msg)
         
     # create volume map and store cross reference data
     mover_ticket = ticket.get('mover', {})
@@ -1670,13 +1664,10 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             print "FINAL DIALOG"
             pprint.pprint(done_ticket)
 
-        print "BEFORE CHECK_CRC"
-        #pprint.pprint(done_ticket)
-        
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-        print "DURRING CHECK_CRC"
+
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, None, e)
@@ -1684,12 +1675,11 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
-        print "AFTER CHECK_CRC"
-        print "BEFORE PNFS_SETTING"
+
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
         set_pnfs_settings(done_ticket, client, e.verbose)
-        print "DURRING PNFS_SETTING"
+
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, None, e)
@@ -1697,25 +1687,23 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
-        print "AFTER PNFS_SETTING"
-        print "BEFORE FILE PERMISIONS"
+
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
         #This error should result in the file being left where it is, but it
         # is still considered a failed transfer (aka. exit code = 1 and
         # data access layer is still printed).
-        print "DURRING FILE PERMISIONS"
+
         if done_ticket.get('status', (e_errors.OK,None)) != (e_errors.OK,None):
             print_data_access_layer_format(done_ticket['infile'],
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
-        print "AFTER FILE PERMISIONS"
-        print "BEFORE DELETE AT EXIT"
+
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
         delete_at_exit.unregister(done_ticket['outfile']) #localname
-        print "AFTER DELETE AT EXIT"
+
         if e.verbose > 1:
             print "File status after verification: %s   elapsed=%s" % \
                   (done_ticket['status'], time.time()-tinfo['encp_start_time'])
