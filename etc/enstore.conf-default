@@ -55,7 +55,7 @@ configdict['fndaprdisk.mover'] = { 'host':'fndapr', 'port':7543, 'logname':'PRMO
 
 configdict['airedaledisk.mover'] = { 'host':'airedale', 'port':7544, 'logname':'ADMOV ', \
                                      'library':'airedaledisk.library_manager', 'device':'/jon/enstore/airedaledisk.fake', 'driver':'RawDiskDriver', \
-                                     'mc_device':'/jon/enstore/airedaledisk.fake', 'media_changer':'airedaledisk.media_changer' }
+                                     'mc_device':'-1', 'media_changer':'airedaledisk.media_changer' }
 
 configdict['fndapndisk.mover'] = { 'host':'fndapn', 'port':7545, 'logname':'PNMOV ', \
                                    'library':'fndapndisk.library_manager', 'device':'/enstore/fndapndisk.fake', 'driver':'RawDiskDriver', \
