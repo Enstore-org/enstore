@@ -517,16 +517,13 @@ class Buffer:
             if self.empty():
                 Trace.trace(10, "stream_write: buffer empty")
                 return 0
-            Trace.trace(35, "ZZZZZ")
             self._writing_block = self.pull()
-            Trace.trace(35, "YYYYYY")
             self._write_ptr = 0
         bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
         Trace.trace(35, "bytes_to_write %s write_ptr %s"%(bytes_to_write,self._write_ptr))
         
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
-            Trace.trace(35,"!!!!!!!!!!!!!!!!!")
             if bytes_written != bytes_to_write:
                 Trace.trace(e_errors.ERROR, "encp gone? bytes to write %s, bytes written %s"%
                             (bytes_to_write, bytes_written)) 
@@ -557,7 +554,6 @@ class Buffer:
             self._freespace(self._writing_block)
             self._writing_block = None
             self._write_ptr = 0
-        Trace.trace(35,"uuuuu")
         return bytes_written
 
     def _getspace(self):
@@ -661,7 +657,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.clear()
             del(self.buffer)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
-        Trace.log(e_errors.INFO, "Buffer %s"%(self.buffer,)) # REMOVE
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
@@ -907,6 +902,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer = None
         self.udpc = udp_client.UDPClient()
         self.udp_control_address = None  ## needed for tape ingest
+        self.udp_ext_control_address = None ## needed for tape ingest
         self.udp_cm_sent = 0  ## needed for tape ingest 
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
@@ -1192,16 +1188,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
         
     def nowork(self, ticket):
+        Trace.trace(98, "nowork")
         x =ticket # to trick pychecker
-        if self.control_socket is None:
-            return {}
-        try:
-            self.control_socket.close()
-            self.listen_socket.close()
-        except:
-            pass
-        self.control_socket = None
-        self.listen_socket = None
+        if self.control_socket:
+            try:
+                self.control_socket.close()
+                self.listen_socket.close()
+            except:
+                pass
+            self.control_socket = None
+            self.listen_socket = None
+        if self.udp_control_address:
+            if self.udp_ext_control_address in self.libraries:
+                self.libraries = self.saved_libraries
+                self.lm_address = self.lm_address_saved
+            self.udp_control_address = None
+            self.udp_ext_control_address = None
         return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -1333,6 +1335,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
         #ticket = self.format_lm_ticket(state=state, error_source=error_source)
         # send offline less often
+        Trace.trace(20, "BEFORE: STATE %s udp_sent %s"%(state_name(self.state), self.udp_cm_sent))
         send_rq = 1
         use_state = 1
         if ((self.state == self._last_state) and
@@ -1343,8 +1346,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.send_update_cnt == 0:
                send_rq = 1
                self.send_update_cnt = 10
-        if self.method and self.method == 'read_next' and not self.udp_cm_sent:
+        if self.method and self.method == 'read_next' and self.udp_cm_sent:
             send_rq = 0
+        set_cm_sent = 1 # tape ingest, initially enable
         if send_rq:
             libraries = copy.deepcopy(self.libraries)
             if self.state == IDLE and len(libraries) > 1:
@@ -1364,44 +1368,66 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if ((thread_name is 'MainThread') and
                     (ticket['work'] is not 'mover_busy') and
                     (ticket['work'] is not 'mover_error')):
-                    Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
                     ## XXX Sasha - this is an experiment - not sure this is a good idea!
                     if addr != self.lm_address and self.state == HAVE_BOUND:
                         ticket['work'] = 'mover_busy'
                     else:
-                        try:
-                            request_from_lm = self.udpc.send(ticket, addr)
-                            #request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=30)
-                            #self.waiting_for_lm_response = 1
-                        except:
-                            exc, msg, tb = sys.exc_info()
-                            if exc == errno.errorcode[errno.ETIMEDOUT]:
-                                x = {'status' : (e_errors.TIMEDOUT, msg)}
-                            else:
-                                x = {'status' : (str(exc), str(msg))}
-                            Trace.trace(10, "update_lm: got %s" %(x,))
-                            continue
-                        work = request_from_lm.get('work')
-                        if not work or work=='nowork':
-                            continue
-                        method = getattr(self, work, None)
-                        if method:
-                            use_state = 0
+                        to = 0
+                        retry = 0
+                        if addr == self.udp_control_address:
+                            to = 10
+                            retry = 3
+                        if addr == self.udp_control_address and ticket['work'] == 'mover_busy':
+                            # do not send mover_busy to get
+                            set_cm_sent = 0
+                            pass
+                        else:
+                            Trace.trace(20,"update_lm: send with wait %s to %s TO %s retry %s"%
+                                        (ticket['work'],addr, to, retry))
                             try:
-                                method(request_from_lm)
+                                request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=to, max_send=retry)
+                                #request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=30)
+                                #self.waiting_for_lm_response = 1
                             except:
-                                exc, detail, tb = sys.exc_info()
-                                Trace.handle_error(exc, detail, tb)
-                                Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
-                                          (method,request_from_lm)) 
+                                exc, msg, tb = sys.exc_info()
+                                if exc == errno.errorcode[errno.ETIMEDOUT]:
+                                    x = {'status' : (e_errors.TIMEDOUT, msg)}
+                                    if addr == self.udp_control_address:
+                                        # break a connection with get
+                                        self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
+                                else:
+                                    x = {'status' : (str(exc), str(msg))}
+                                Trace.trace(10, "update_lm: got %s" %(x,))
+                                continue
+                            work = request_from_lm.get('work')
+                            if addr == self.udp_control_address:
+                                set_cm_sent = 0
+                            if not work:
+                                continue
+                            method = getattr(self, work, None)
+                            if method:
+                                use_state = 0
+                                try:
+                                    method(request_from_lm)
+                                except:
+                                    exc, detail, tb = sys.exc_info()
+                                    Trace.handle_error(exc, detail, tb)
+                                    Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
+                                              (method,request_from_lm)) 
                 # if work is mover_busy or mover_error
                 # send no_wait message
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
-                    Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
-                    self.udpc.send_no_wait(ticket, addr)
-            if self.method and self.method == 'read_next':
+                    Trace.trace(20,"update_lm: send with no wait %s to %s"%(ticket['work'],addr))
+                    if ticket['work'] == 'mover_busy' and addr == self.udp_control_address:
+                        #do not send mover_busy to get
+                        set_cm_sent = 0
+                        pass
+                    else:
+                        self.udpc.send_no_wait(ticket, addr)
+            if self.method and self.method == 'read_next' and set_cm_sent:
                 self.udp_cm_sent = 1
         self.check_dismount_timer()
+        Trace.trace(20, "STATE %s udp_sent %s"%(state_name(self.state), self.udp_cm_sent))
 
 
     def need_update(self):
@@ -1973,13 +1999,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break_here = 1
                         Trace.log(e_errors.INFO, "hit EOF while reading tape. Current Location %s Previous location %s"%
                                   (self.current_location, prev_loc))
-                        if bytes_read == 0:
-                          #End of tape
-                          Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
-                                    (self.current_location, prev_loc))
-                          self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
-                          failed = 1
-                          break
+                        if self.bytes_read == 0 and bytes_read == 0:
+                            #End of tape
+                            Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
+                                      (self.current_location, prev_loc))
+                            self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD, error_source=TAPE)
+                            failed = 1
+                            break
                             
                     else:
                         Trace.log(e_errors.ERROR, "Read failed. Current Location %s Previous location %s"%
@@ -2060,27 +2086,40 @@ class Mover(dispatching_worker.DispatchingWorker,
         if failed: return
         if do_crc:
             if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
+            complete_crc = self.file_info.get('complete_crc',None)
+            bfid = self.file_info.get('bfid',None)
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
-                        (self.buffer.complete_crc, self.file_info['complete_crc']))
-            if self.buffer.complete_crc != self.file_info['complete_crc']:
+                        (self.buffer.complete_crc, complete_crc))
+            if self.buffer.complete_crc != complete_crc:
                 Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
-                          (self.buffer.complete_crc, self.file_info['complete_crc']))
+                          (self.buffer.complete_crc, complete_crc))
                 # this is to fix file db
-                if self.file_info['complete_crc'] == None:
+                if complete_crc == None:
                     sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
-                    if self.method == 'read_next' and self.file_info['bfid'] == None:
+                    if self.method == 'read_next' and bfid == None:
                         # must be tape ingest case
+                        if self.bytes_to_write != self.bytes_read:
+                            self.bytes_to_write = self.bytes_read
                         Trace.log(e_errors.WARNING, "updating file db entry for the tape ingest")
                         # create a bit file entry
                         self.file_info['size'] = self.bytes_read
                         self.file_info['sanity_cookie'] = sanity_cookie
                         self.file_info['complete_crc'] = self.buffer.complete_crc
                         self.file_info['drive'] = "%s:%s" % (self.config['device'], self.config['serial_num'])
-                        self.file_info = self.fcc.create_bit_file(self.file_info)
-                        if self.file_info['status'][0] != e_errors.OK:
-                            Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(self.file_info,))
+                        self.file_info['pnfsid'] = None
+                        self.file_info['pnfs_name0'] = None # it may later come in get ticket
+                        
+                        ret = self.fcc.create_bit_file(self.file_info)
+                        Trace.trace(98, "updated file info %s"%(ret,))
+                        if ret['status'][0] != e_errors.OK:
+                            Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
                             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
                             return
+                        self.file_info.update(ret['fc'])
+                        self.current_work_ticket['fc'].update(self.file_info)
+                        self.current_work_ticket['vc'].update(self.vol_info)
+                        self.current_work_ticket['bfid'] = self.file_info['bfid']
+                        Trace.trace(98, "updated file db %s"%(self.current_work_ticket['fc'],))
                     else:
                         Trace.log(e_errors.WARNING, "found complete CRC set to None in file DB for %s. Changing cookie to %s and CRC to %s" %
                                   (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
@@ -2093,7 +2132,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                  'location_cookie':self.current_work_ticket['fc']['location_cookie'],
                                  'external_label':self.current_work_ticket['vc']['external_label']})
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
-                return
+                    return
         self.bytes_read_last = self.bytes_read
         # if data is tranferred slowly
         # the false "too long in state.." may be generated
@@ -2180,11 +2219,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if bytes_written != nbytes:
                     pass #this is not unexpected, since we send with MSG_DONTWAIT
                 self.bytes_written = self.bytes_written + bytes_written
-                Trace.trace(35,"22222")
                 if not self.buffer.full():
-                    Trace.trace(35,"33333")
                     self.buffer.read_ok.set()
-                    Trace.trace(35,"444444")
 
                 #If it is time to do so, send the notify message.
                 if is_threshold_passed(self.bytes_written, bytes_notified,
@@ -2254,16 +2290,19 @@ class Mover(dispatching_worker.DispatchingWorker,
     def setup_transfer(self, ticket, mode):
         self.lock_state()
         self.save_state = self.state
-
+        self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
         if self.method and self.method == "read_next" and self.udp_control_address:
             self.lm_address = self.udp_control_address
+            self.lm_address_saved = self.lm_address
             Trace.trace(98, "LM address %s"%(self.lm_address,)) 
             self.libraries = [("get", self.lm_address)]
-        try:
-            self.lm_address = ticket['lm']['address']
-        except KeyError:
-            self.lm_address = ('none',0)
+            
+        else:
+            try:
+                self.lm_address = ticket['lm']['address']
+            except KeyError:
+                self.lm_address = ('none',0)
         Trace.trace(10, "setup transfer1 %s"%(ticket,))
         self.tr_failed = 0
         self.current_library = ticket['vc'].get('library', None)
@@ -2720,6 +2759,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tr_failed = 0
             return
 
+        Trace.log(e_errors.INFO, "STATE %s"%(state_name(self.state),)) #REMOVE
+        # this only can happen when initial communication with get failed
+        # just return here as no tape was mounted yet
+        if self.udp_control_address and self.udp_cm_sent:
+            self.nowork({})
+
         if exc not in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
             if msg.find("FTT_EBUSY") != -1:
                 # tape thread stuck in D state - offline mover
@@ -3006,7 +3051,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
-        if ticket['method'] != 'read_next':
+        if self.method and self.method != 'read_next':
             # close sockets only for general case
             # in case of tape reads do not close them
             try:
@@ -3014,12 +3059,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.listen_socket.close()
             except:
                 pass
-        self.control_socket = None
-        self.listen_socket = None
-        if self.udp_control_address:
-            if self.udp_control_address in self.libraries:
-                self.libraries = self.saved_libraries
-            self.udp_control_address = None
+            self.control_socket = None
+            self.listen_socket = None
         return
 
     def del_udp_client(self, udp_client):
@@ -3040,23 +3081,27 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
 
     def connect_client(self):
-        self.control_socket, self.listen_socket, self.client_socket = None, None, None
+        self.client_socket = None
         # run this in a thread
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
-            host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+            if (not self.method) or self.method and self.method != 'read_next':
+                host, port, self.listen_socket = callback.get_callback(ip=data_ip)
             #self.listen_socket.listen(1)
-            if ticket['method'] == 'read_tape_start':
+            if self.method and self.method == 'read_tape_start':
                 self.udp_control_address = ticket.get('routing_callback_addr', None)
                 if self.udp_control_address:
+                    self.lm_address_saved = self.lm_address
                     self.lm_address = self.udp_control_address
                     Trace.trace(98, "LM address %s"%(self.lm_address,))
                     self.state = IDLE
-                    self.libraries = [("get", self.lm_address)]
+                    self.udp_ext_control_address =("get", self.lm_address) 
+                    self.libraries = [self.udp_ext_control_address]
                 
-            if ticket['method'] != 'read_next':
-                self.listen_socket.listen(1)
+            self.listen_socket.listen(1)
+            if (not self.method) or (self.method and self.method != 'read_next'):
+                #self.listen_socket.listen(1)
                 # need a control connection setup
                 # otherwise: not because it must be left open
                 
@@ -3247,7 +3292,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if not hostaddr.allow(address):
                     # just for a case
                     try:
-                        if ticket['method'] != 'read_next':
+                        if (not self.method) or (self.method and self.method != 'read_next'):
                             # close sockets only for general case
                             # in case of tape reads do not close them
                             self.control_socket.close()
@@ -3266,7 +3311,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
 
-                if ticket['method'] != 'read_next':
+                if (not self.method) or (self.method and self.method != 'read_next'):
                     # close sockets only for general case
                     # in case of tape reads do not close them
                     self.listen_socket.close()
@@ -3280,7 +3325,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "timeout on waiting for client connect")
                 # just for a case
                 try:
-                    if ticket['method'] != 'read_next':
+                    if (not self.method) or (self.method and self.method != 'read_next'):
                         # close sockets only for general case
                         # in case of tape reads do not close them
                         self.control_socket.close()
@@ -3421,6 +3466,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 0
     
     def dismount_volume(self, after_function=None):
+        Trace.trace(10, "state %s"%(state_name(self.state),))
+        self.nowork({})
         broken = ""
         self.dismount_time = None
         self.method = None
@@ -4015,6 +4062,7 @@ class DiskMover(Mover):
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
         self.lm_address = ('none',0) # LM that called mover
+        self.lm_address_saved = self.lm_address
         self.default_block_size = 131072
         self.mover_type = self.config.get('type','')
         self.ip_map = self.config.get('ip_map','')
