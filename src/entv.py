@@ -66,15 +66,8 @@ DEFAULT_ANIMATE = 1
 status_thread = None
 messages_thread = None
 
-#_csc = None
-#_system_csc = None
-#_config_cache = None
-
 #Should we need to stop (ie. cntl-C) this is the global flag.
 stop_now = 0
-
-#A lock to allow only one thread at a time access the display class instance.
-#display_lock = threading.Lock()
 
 #########################################################################
 # common support functions
@@ -969,9 +962,10 @@ def set_geometry(tk, entvrc_info):
                                 x_position, y_position)
     #Set the geometry.
     tk.geometry(geometry)
-
-    #tk.update()
-
+    #Force the update.  Without this the window frame is not considered in
+    # the geometry on reinitializations.  The effect without this is
+    # that the window appears to migrate upward without human intervention.
+    tk.update()
 
 #########################################################################
 #  Interface class
@@ -1087,6 +1081,7 @@ def main(intf):
 
     #Get the main window.
     master = Tkinter.Tk()
+    master.withdraw()
     
     continue_working = 1
 
@@ -1157,6 +1152,12 @@ def main(intf):
         #On average collecting the status of all the movers takes 10-15
         # seconds.  We don't want to wait that long.  This can be done
         # in parallel to displaying live data.
+
+        #First acquire the startup lock.  This will delay the other threads
+        # from consuming resources that would be better spent on this
+        # thread at the moment.  This lock is released inside of
+        # enstore_display.mainloop().
+        enstore_display.startup_lock.acquire()
         
         #Start a thread for each event relay we should contact.
         status_threads = []

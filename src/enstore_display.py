@@ -18,6 +18,7 @@ import stat
 import types
 import threading
 import re
+import gc
 
 import Trace
 import mover_client
@@ -109,8 +110,10 @@ MMPC = 20.0     # Max Movers Per Column
 MIPC = 20       # Max Items Per Column
 
 REINIT_TIME = 3600000  #in milliseconds (1 hour)
-ANIMATE_TIME = 30      #in milliseconds (~1/3rd of second)
+#ANIMATE_TIME = 30      #in milliseconds (~1/33rd of second)
+ANIMATE_TIME = 42      #in milliseconds (~1/42nd of second)
 UPDATE_TIME = 1000     #in milliseconds (1 second)
+MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
@@ -127,7 +130,8 @@ def HMS(s):
 
 _font_cache = {}
 
-def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
+#def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
+def get_font(height_wanted, family='Helvetica', fit_string="", width_wanted=0):
 
     height_wanted = int(height_wanted)
 
@@ -158,18 +162,18 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
     _font_cache[(height_wanted, width_wanted, len(fit_string), family)] = f
     return f
 
-def fit_string(font, string, width_wanted):
+def fit_string(font, the_string, width_wanted):
 
     #Get the list in index ranges to check.
-    search = range(len(string) + 1)
+    search = range(len(the_string) + 1)
     search.reverse()
 
     #Start at the end of the string and move toward the beginning.  Return
     # only the portion of the string that will fit.
     for i in search:
-        width = font.measure(string[:i])
+        width = font.measure(the_string[:i])
         if width <= width_wanted:
-            return string[:i]
+            return the_string[:i]
 
     return ""
     
@@ -378,7 +382,7 @@ class Mover:
         now                     = time.time()
         self.rate               = None  #In bytes per second.
         self.rate_string        = "0 MB/S"
-        self.t0                 = 0
+        self.t0                 = 0.0
         self.timer_seconds      = 0
         self.timer_started      = now
         self.timer_string       = '00:00:00'
@@ -387,11 +391,11 @@ class Mover:
         try:
             csc = self.display.csc_dict[self.name.split("@")[1]]
             minfo = csc.get(self.name.split("@")[0] + ".mover")
-            #64GB is the default listed in mover.py.
+            #64MB is the default listed in mover.py.
             self.max_buffer = long(minfo.get('max_buffer', 67108864))
             self.library = minfo.get('library', "Unknown")
         except (AttributeError, KeyError):
-            self.max_buffer = 67108864
+            self.max_buffer = 67108864L
             self.library = "Unknown"
             
         self.update_state("Unknown")
@@ -495,24 +499,15 @@ class Mover:
                     fill=self.state_color, anchor=Tkinter.CENTER)
 
     def draw_timer(self):
-        
-        #### color
-        if (self.timer_seconds > 3600) and \
-           (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
-                           "MOUNT_WAIT", "DISMOUNT_WAIT", "FINISH_WRITE",
-                           "HAVE_BOUND", "DRAINING", "CLEANING"]):
-            timer_color = self.timer_longtime_color
-        else: #state is "Unknown", "IDLE", "OFFLINE", "ERROR"
-            timer_color = self.timer_color
-        
+
         if self.timer_display:
             self.display.itemconfigure(self.timer_display,
-                                       text=self.timer_string,
-                                       fill = timer_color)
+                                       text = self.timer_string,
+                                       fill = self.timer_color)
         else:
             self.timer_display = self.display.create_text(
                 self.x + self.timer_offset.x, self.y + self.timer_offset.y,
-                text = self.timer_string, fill = timer_color,
+                text = self.timer_string, fill = self.timer_color,
                 font = self.font, anchor = Tkinter.SE)
 
     def draw_volume(self):
@@ -520,7 +515,7 @@ class Mover:
 
         #Diaplay the volume.
         if self.volume:
-
+            
             #If necessary define the font to use.
             if not self.volume_font:
                 self.volume_font = get_font(self.vol_height, 'arial',
@@ -555,29 +550,13 @@ class Mover:
                                      self.volume, self.vol_width),
                    fill = self.volume_font_color,
                    font = self.volume_font, width = self.vol_width,)
-            
-    def draw_progress(self, percent_done, alt_percent_done):
 
-        #### color
-        progress_bg_color     = colors('progress_bg_color')
-        progress_bar_color    = colors('progress_bar_color')
-        progress_alt_bar_color = colors('progress_alt_bar_color')
-        percent_display_color = colors('percent_color')
-        
-        x,y=self.x,self.y
-        if percent_done == self.percent_done and \
-           alt_percent_done == self.alt_percent_done:
-            #don't need to redraw
+    def draw_background_progress(self):  #, percent_done, alt_percent_done):
+        if self.percent_done == None and self.alt_percent_done == None:
             return
-        
-        self.percent_done = percent_done
-        self.alt_percent_done = alt_percent_done
 
         # Redraw the old progress bg gauge.
-        if self.percent_done == None and self.alt_percent_done == None:
-            self.undraw_progress()
-            return
-        elif self.progress_bar_bg:
+        if self.progress_bar_bg:
             new_location = self.get_bar_position(100)
             self.display.coords(self.progress_bar_bg,
                                 new_location[0], new_location[1],
@@ -588,40 +567,67 @@ class Mover:
             self.progress_bar_bg = self.display.create_rectangle(
                 new_location[0], new_location[1],
                 new_location[2], new_location[3],
-                fill=progress_bg_color, outline="")
+                fill = colors('progress_bg_color'), outline = "")
+
+    def draw_network_progress(self):  #, percent_done):
+        if self.percent_done == None:
+            return
 
         # Redraw the old progress gauge.
-        if self.percent_done == None:
-            pass
-        elif self.progress_bar:
-            new_location = self.get_bar_position(percent_done)
+        if self.progress_bar:
+            new_location = self.get_bar_position(self.percent_done)
             self.display.coords(self.progress_bar,
                                 new_location[0], new_location[1],
                                 new_location[2], new_location[3])
         else:
-            new_location = self.get_bar_position(percent_done)
+            new_location = self.get_bar_position(self.percent_done)
             #If both are not to be drawn, then this will draw the correct one.
             self.progress_bar = self.display.create_rectangle(
                 new_location[0], new_location[1],
                 new_location[2], new_location[3],
-                fill=progress_bar_color, outline="")
+                fill = colors('progress_bar_color'), outline = "")
+
+        #Draw the percent of transfer done next to progress bar.
+        if self.width > 100:
+            if self.progress_percent_display:
+                self.display.itemconfigure(self.progress_percent_display,
+                                           text = str(self.percent_done)+"%")
+                self.display.lift(self.progress_percent_display)
+            else:
+                self.progress_percent_display =  self.display.create_text(
+                    self.x + self.percent_disp_offset.x,
+                    self.y + self.percent_disp_offset.y,
+                    text = str(self.percent_done)+"%",
+                    fill = colors('percent_color'), font = self.font,
+                    anchor = Tkinter.SW)
+
+    def draw_media_progress(self):
+        if self.alt_percent_done == None:
+            return
 
         # Redraw the old alternate progress gauge.
-        if self.alt_percent_done == None:
-            pass
-        elif self.progress_alt_bar:
-            new_location = self.get_bar_position(alt_percent_done)
+        if self.progress_alt_bar:
+            new_location = self.get_bar_position(self.alt_percent_done)
             self.display.coords(self.progress_alt_bar,
                                 new_location[0], new_location[1],
                                 new_location[2], new_location[3])
         else:
-            new_location = self.get_bar_position(alt_percent_done)
+            new_location = self.get_bar_position(self.alt_percent_done)
             #If both are not to be drawn, then this will draw the correct one.
             self.progress_alt_bar = self.display.create_rectangle(
                 new_location[0], new_location[1],
                 new_location[2], new_location[3],
-                fill=progress_alt_bar_color, outline="")
+                fill = colors('progress_alt_bar_color'), outline = "")
+        
+    def draw_progress(self): #, percent_done, alt_percent_done):
 
+        #(Re)draw the old progress bg gauge.
+        self.draw_background_progress()  #percent_done, alt_percent_done)
+        #(Re)draw the two progress bars if necessary.
+        self.draw_network_progress()  #percent_done)
+        self.draw_media_progress()  #alt_percent_done)
+
+        #Raise the correct progress bar to the top of the window stack.
         if self.rate > 0:  #write transfer, make media bar on top.
             try:
                 self.display.tag_raise(self.progress_alt_bar,
@@ -635,20 +641,6 @@ class Mover:
             except Tkinter.TclError:
                 pass #We get here if percentage is still None.
 
-        #Draw the percent of transfer done next to progress bar.
-        if self.width > 100:
-            if self.progress_percent_display:
-                self.display.itemconfigure(self.progress_percent_display,
-                                           text = str(self.percent_done)+"%")
-                self.display.lift(self.progress_percent_display)
-            else:
-                self.progress_percent_display =  self.display.create_text(
-                    x + self.percent_disp_offset.x,
-                    y + self.percent_disp_offset.y,
-                    text = str(self.percent_done)+"%",
-                    fill = percent_display_color, font = self.font,
-                    anchor = Tkinter.SW)
-
     def get_bar_position(self, percent):
         offset = (self.bar_width*percent/100.0)
         bar = (self.x + self.progress_bar_offset1.x,
@@ -656,30 +648,26 @@ class Mover:
                self.x + self.progress_bar_offset2.x + offset,
                self.y + self.progress_bar_offset2.y)
         return bar
-    
-    def draw_buffer(self, buffer_size):
-        
-        #### color
-        progress_bg_color     = colors('progress_bg_color')
-        progress_bar_color    = colors('progress_bar_color')
 
-        if buffer_size == self.buffer_size:
-            #don't need to redraw
-            return
-
-        self.buffer_size = buffer_size
+    def draw_background_buffer(self):
         if self.buffer_size == None:
             #Don't display the buffer bar.
-            self.undraw_buffer()
+            #self.undraw_buffer()
             return
-        
+
         if self.buffer_bar_bg:
             self.display.coords(self.buffer_bar_bg,
-                                self.get_buffer_position(100))
+                                self.get_buffer_position(self.max_buffer))
         else:
             self.buffer_bar_bg = self.display.create_rectangle(
                 self.get_buffer_position(100),
-                fill = progress_bg_color, outline = "")
+                fill = colors('progress_bg_color'), outline = "")
+
+    def draw_bar_buffer(self):
+        if self.buffer_size == None:
+            #Don't display the buffer bar.
+            #self.undraw_buffer()
+            return
 
         if self.buffer_bar:
             self.display.coords(self.buffer_bar,
@@ -687,10 +675,15 @@ class Mover:
         else:
             self.buffer_bar = self.display.create_rectangle(
                 self.get_buffer_position(self.buffer_size),
-                fill = progress_bar_color, outline = "")
-            
+                fill = colors('progress_bar_color'), outline = "")
+    
+    def draw_buffer(self):  #, buffer_size):
+        self.draw_background_buffer()
+        self.draw_bar_buffer()
+
     def get_buffer_position(self, bufsize):
-        offset = (self.bar_width*bufsize/100.0)
+        #offset = (self.bar_width * bufsize / 100.0)
+        offset = (self.bar_width * bufsize / self.max_buffer)
         bar = (self.x + self.buffer_bar_offset1.x,
                self.y + self.buffer_bar_offset1.y,
                self.x + self.buffer_bar_offset2.x + offset,
@@ -738,9 +731,9 @@ class Mover:
         self.draw_timer()
 
         #Display the progress bar and percent done.
-        self.draw_progress(self.percent_done, self.alt_percent_done)
+        self.draw_progress()  #self.percent_done, self.alt_percent_done)
         
-        self.draw_buffer(self.buffer_size)
+        self.draw_buffer()  #self.buffer_size)
 
         self.draw_volume()
 
@@ -776,8 +769,8 @@ class Mover:
             pass
 
     def undraw_progress(self):
-        self.percent_done = None
-        self.alt_percent_done = None
+        #self.percent_done = None
+        #self.alt_percent_done = None
         
         try:
             self.display.delete(self.progress_alt_bar)
@@ -804,7 +797,7 @@ class Mover:
             pass
 
     def undraw_buffer(self):
-        self.buffer_size = None #Clear this before next connection.
+        #self.buffer_size = None #Clear this before next connection.
 
         try:        
             self.display.delete(self.buffer_bar_bg)
@@ -819,7 +812,7 @@ class Mover:
             pass
 
     def undraw_volume(self):
-        self.volume = None
+        #self.volume = None
         
         try:
             self.display.delete(self.volume_display)
@@ -858,51 +851,76 @@ class Mover:
         self.state = state
 
         #different mover colors
-        mover_error_color   = colors('mover_error_color')
-        mover_offline_color = colors('mover_offline_color')
-        mover_stable_color  = colors('mover_stable_color')
-        state_error_color   = colors('state_error_color')
-        state_offline_color = colors('state_offline_color')
-        state_stable_color  = colors('state_stable_color')
-        state_idle_color    = colors('state_idle_color')
+        #mover_error_color   = colors('mover_error_color')
+        #mover_offline_color = colors('mover_offline_color')
+        #mover_stable_color  = colors('mover_stable_color')
+        #state_error_color   = colors('state_error_color')
+        #state_offline_color = colors('state_offline_color')
+        #state_stable_color  = colors('state_stable_color')
+        #state_idle_color    = colors('state_idle_color')
         #tape_stable_color   = colors('tape_stable_color')
         #label_stable_color  = colors('label_stable_color')
         #tape_offline_color  = colors('tape_offline_color')
         #label_offline_color = colors('label_offline_color')
-        mover_label_color   = colors('mover_label_color')
+        #mover_label_color   = colors('mover_label_color')
 
         #These mover colors stick around.
-        self.percent_color       =  colors('percent_color')
+        self.percent_color       = colors('percent_color')
         self.progress_bar_color  = colors('progress_bar_color')
         self.progress_bg_color   = colors('progress_bg_color')
-        #self.state_color         = colors('state_color') 
         self.timer_color         = colors('timer_color')
-        self.timer_longtime_color = colors('timer_longtime_color')
-        self.volume_font_color = colors('label_stable_color')
-        self.volume_bg_color = colors('tape_stable_color')
-        self.mover_color = {'ERROR': mover_error_color,
-                            'OFFLINE':mover_offline_color}.get(self.state,
-                                                           mover_stable_color)
-        self.state_color = {'ERROR': state_error_color,
-                            'OFFLINE':state_offline_color,
-                            'Unknown':state_idle_color,
-                            'IDLE':state_idle_color}.get(self.state,
-                                                         state_stable_color)
-        self.label_color = {'ERROR': state_error_color,
-                            'OFFLINE':state_offline_color}.get(self.state,
-                                                            mover_label_color)
-        
-        self.library_color = self.display.get_mover_color(self.library)
+        self.volume_font_color   = colors('label_stable_color')
+        self.volume_bg_color     = colors('tape_stable_color')
+        self.library_color       = self.display.get_mover_color(self.library)
+        if self.state in ['ERROR']:
+            self.mover_color = colors('mover_error_color')
+            self.state_color = colors('state_error_color')
+            self.label_color = colors('state_error_color')
+        elif self.state in ['OFFLINE']:
+            self.mover_color = colors('mover_offline_color')
+            self.state_color = colors('state_offline_color')
+            self.label_color = colors('state_offline_color')
+        else:
+            self.mover_color = colors('mover_stable_color')
+            if self.state in ['Unknown', 'IDLE']:
+                self.state_color = colors('state_idle_color')
+            else:
+                self.state_color = colors('state_stable_color')
+            self.label_color = colors('mover_label_color')
         
         #Update the time in state counter for the mover.
         now = time.time()
         self.timer_started = now - time_in_state
         self.update_timer(now)
 
-        if self.state in ['IDLE', 'Unknown', 'OFFLINE', 'ERROR']:
-            self.undraw_rate()
-            self.undraw_progress()
-            self.undraw_buffer()
+        self.draw_state()
+
+        #Perform some cleanup in case some UDP Mmessages were lost.
+
+        #If the mover should not have a volume, remove it.
+        if state in ['IDLE', 'Unknown']:
+            msg="need to unload tape because mover state changed to: %s"
+            Trace.trace(2, msg % (state,))
+            self.unload_tape()
+
+        #If a transfer is not in progress, some things need to be undrawn.
+        if state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND'
+                     'FINISH_WRITE', 'CLEANING']:
+            #If the connection line needs to be removed.
+            if self.display.connections.get(self.name, None):
+                msg="Need to disconnect because mover state changed to: %s"
+                Trace.trace(2, msg % (state,))
+                self.display.disconnect_command(
+                    ["mover", self.name, "Unknown"])
+
+        #Undraw these objects that correlate only to the ACTIVE/DRAINING
+        # state.
+        if state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND',
+                     'FINISH_WRITE', 'CLEANING', 'SEEK', 'SETUP',
+                     'DISMOUNT_WAIT', 'MOUNT_WAIT']:
+            self.update_rate(None)
+            self.update_progress(None, None)
+            self.update_buffer(None)
         
     def update_timer(self, now):
         seconds = int(now - self.timer_started)
@@ -912,7 +930,18 @@ class Mover:
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
 
-        self.draw_timer()
+        #Only worry if this for "too long" situation.  When the state changes
+        # this will be set back to normal color in update_state().
+        if (self.timer_seconds > 3600) and \
+           (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
+                           "MOUNT_WAIT", "DISMOUNT_WAIT", "FINISH_WRITE",
+                           "HAVE_BOUND", "DRAINING", "CLEANING"]):
+            self.timer_color = colors('timer_longtime_color')
+            self.display.itemconfigure(self.timer_display,
+                                       fill = self.timer_color)
+
+        self.display.itemconfigure(self.timer_display,
+                                   text = self.timer_string)
 
     def update_rate(self, rate):
 
@@ -927,6 +956,47 @@ class Mover:
         else:
             self.undraw_rate()
 
+    def update_progress(self, percent_done, alt_percent_done):
+
+        if percent_done == None and alt_percent_done == None:
+            self.percent_done = None
+            self.alt_percent_done = None
+            self.undraw_progress()
+            return
+
+        #Only draw the background if it does not exist.
+        if not self.progress_bar_bg:
+            self.draw_background_progress()
+        
+        if percent_done != self.percent_done:
+            self.percent_done = percent_done
+            self.draw_network_progress()
+
+        if alt_percent_done != self.alt_percent_done:
+            self.alt_percent_done = alt_percent_done
+            self.draw_media_progress()
+
+    def update_buffer(self, buffer_size):  #buffer_size in bytes
+        
+        if buffer_size == None:
+            buffer_size = None
+            self.undraw_buffer()
+            return
+
+        #Only draw the background if it does not exist.
+        if not self.buffer_bar_bg:
+            self.draw_background_buffer()
+
+        #This helps prevent potential problems against changes on the fly.
+        buffer_size = long(buffer_size)
+        if buffer_size > self.max_buffer:
+            #In case we don't know the correct max mover size; set it.
+            self.max_buffer = buffer_size
+        #If the buffer size has changed, update the buffer bar.
+        if buffer_size != self.buffer_size:
+            self.buffer_size = buffer_size
+            self.draw_buffer()
+
     def load_tape(self, volume_name, load_state):
         self.volume = volume_name
         self.update_state(load_state)
@@ -940,27 +1010,27 @@ class Mover:
         self.volume = None
         self.undraw_volume()
 
-    def transfer_rate(self, num_bytes, mover_time=None):
+    def transfer_rate(self, num_bytes, mover_time = None):
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
-        self.b1 = num_bytes
-        if mover_time and type(mover_time) == types.FloatType:
-            #Newer mover code will include its current time.  This should
-            # reduce bouncing rates from network delays, etc.
-            self.t1 = float(mover_time)
-        else:
-            self.t1 = float(time.time())
-
-        #Get the values.
-        numerator = float(self.b1 - self.b0)
-        denominator = float(self.t1 - self.t0)
+        num_bytes = int(num_bytes)  #If this throughs an error...
         try:
-            rate = float(numerator) / denominator
+            el_time = float(mover_time)
+        except (ValueError, TypeError):
+            el_time = time.time()  #time.time() returns a float.
+
+        try:
+            rate = float(num_bytes - self.b0) / float(el_time - self.t0)
         except ZeroDivisionError:
             rate = 0.0
-            
-        self.b0 = self.b1
-        self.t0 = self.t1
+        except TypeError:
+            #Something really bad happend.  The code failed to work.
+            rate = None
+
+        #self.b0 should always be an integer, and self.t0 should always
+        # be a float.
+        self.b0 = num_bytes
+        self.t0 = el_time
         return rate
 
     #########################################################################
@@ -1065,13 +1135,13 @@ class Mover:
         self.width = (self.display.width / (total_columns + 1))
         
         #Font geometry. (state, label, timer)
-        self.font = get_font(self.height/3.5, 'arial',
+        self.font = get_font(self.height/3.5, #'arial',
                              width_wanted=self.max_font_width(),
                              fit_string="DISMOUNT_WAIT")
 
         #Size of the volume portion of mover display.
         self.vol_height = (self.height)/2.5
-        self.volume_font = get_font(self.vol_height, 'arial',
+        self.volume_font = get_font(self.vol_height, #'arial',
                                     fit_string="MMMM99",
                                     width_wanted=((self.width/2.5)))
         self.vol_width = max(((self.width)/2.5),
@@ -1227,7 +1297,7 @@ class Client:
         self.width = self.display.width / \
                      (self.display.get_total_column_count() + 1)
         self.height =  self.display.height/28
-        self.font = get_font(self.height/2.5, 'arial')
+        self.font = get_font(self.height/2.5) #'arial')
 
     def position(self):
 
@@ -1282,7 +1352,7 @@ class Connection:
 
         if self.line:
             self.display.coords(self.line, tuple(self.path))
-            self.display.itemconfigure(self.line,dashoffset = self.dashoffset)
+            self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
         else:
             self.line = self.display.create_line(self.path, dash='...-',
                                                  width=2, smooth=1,
@@ -1297,28 +1367,38 @@ class Connection:
             pass
 
     def animate(self, now=None):
-        if now is None:
-            now = time.time()
-        if now >= self.segment_stop_time:
-            return
         if self.rate == None:
             #The transfer is complete don't update in this case.
             return
+        
+        if now == None:
+            now = time.time()
+        if now >= self.segment_stop_time:
+            return
 
-        new_offset = self.segment_start_offset + \
-                     self.rate * (now-self.segment_start_time) 
-    
+        #Despite the local_variables and if statements it is still faster
+        # to perform these actions then do the itemconfigure() every time;
+        # includeing when it will have now effect.
+
+        new_offset = int(self.dashoffset + \
+                              self.rate * (now - self.segment_start_time))
+
         if new_offset != self.dashoffset:  #we need to redraw the line
             self.dashoffset = new_offset
-            self.draw()
+            if self.line:
+                #Since we only want to change this one aspect of the line
+                # don't call draw().  Doing any uncesessary computation
+                # is a real performace killer.
+                self.display.itemconfigure(self.line,
+                                           dashoffset = self.dashoffset)
                 
     #########################################################################
                 
     def update_rate(self, rate):
         now                       = time.time()
-        self.segment_start_time   = now #starting time at this rate
+        self.segment_start_time   = now     #starting time at this rate
         self.segment_stop_time    = now + 5 #let the animation run 5 seconds
-        self.segment_start_offset = self.dashoffset
+        #self.segment_start_offset = self.dashoffset
         self.rate                 = rate
 
     #########################################################################
@@ -1478,7 +1558,7 @@ class Title:
         self.display    = display
         self.tk_text    = None #this is a tk Text object
         self.fill       = None #color to draw with
-        self.font       = get_font(20, "arial")
+        self.font       = get_font(20)  #, "arial")
         self.length     = 2.5  #animation runs 2.5 seconds
         now             = time.time()
         self.start_time = now
@@ -1518,7 +1598,7 @@ class MoverDisplay(Tkinter.Toplevel):
             Tkinter.Toplevel.__init__(self)
             self.configure(attributes)
             #Font geometry.
-            self.font = get_font(12, 'arial')
+            self.font = get_font(12)  #, 'arial')
         
         #Tell it to set the remaining configuration values and to apply them.
         self.title(mover.name)
@@ -1666,7 +1746,7 @@ class Display(Tkinter.Canvas):
     def __init__(self, entvrc_info, master = None, **attributes):
 
         self.master = master
-        geometry = entvrc_info.get('geometry', "1200x1600+0+0")
+        #geometry = entvrc_info.get('geometry', "1200x1600+0+0")
         title = entvrc_info.get('title', "Enstore")
         self.animate = int(entvrc_info.get('animate', 1))
         self.library_colors = entvrc_info.get('library_colors', {})
@@ -1674,9 +1754,6 @@ class Display(Tkinter.Canvas):
 
         self.csc_dict = {}
 
-        self.unframed_geometry = geometry
-        #Set the geometry of the master window the canvas will be inside of.
-        self.master.geometry(geometry)
         self.master_geometry = self.master.geometry()
         Tkinter.Canvas.__init__(self, master=master)
 
@@ -1759,18 +1836,6 @@ class Display(Tkinter.Canvas):
         #Clear the window for drawing to the screen.
         self.update()
 
-        #When the program is in an iconic state, the visibility() callback
-        # method will not be called.  Thus, this needs to be specified here.
-        self.framed_geometry = self.winfo_toplevel().geometry()
-	
-	#Now that the window geometry is finalized we can get the size
-	# difference and determine the size of the window frames.
-	frame_width = int(self.winfo_toplevel().geometry().split("+")[1]) \
-		      - int(self.unframed_geometry.split("+")[1])
-	frame_height = int(self.winfo_toplevel().geometry().split("+")[2]) \
-		       - int(self.unframed_geometry.split("+")[2])
-	(self.frame_width, self.frame_height) = (frame_width, frame_height)
-
     def toggle_animation(self):
         if self.animate:
             self.animate = STILL
@@ -1842,6 +1907,7 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_smooth_animation_id)
             self.after_cancel(self.after_clients_id)
             self.after_cancel(self.after_reinitialize_id)
+            self.after_cancel(self.after_process_messages_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -1860,6 +1926,8 @@ class Display(Tkinter.Canvas):
                                                self.disconnect_clients)
             self.after_reinitialize_id = self.after(REINIT_TIME,
                                                     self.reinitialize)
+            self.after_process_messages_id = self.after(UPDATE_TIME,
+                                                        self.process_messages)
         except AttributeError:
             pass
 
@@ -1873,6 +1941,7 @@ class Display(Tkinter.Canvas):
         self.after_cancel(self.after_smooth_animation_id)
         self.after_cancel(self.after_clients_id)
         self.after_cancel(self.after_reinitialize_id)
+        self.after_cancel(self.after_process_messages_id)
         self._reinit = 1
         self.quit()
 
@@ -1887,6 +1956,14 @@ class Display(Tkinter.Canvas):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
+
+        #Since the window has been closed, it makes no sense to continue
+        # to update this information.  It is a major performace killer
+        # to leave these running.
+        self.after_cancel(self.after_smooth_animation_id)
+        self.after_cancel(self.after_clients_id)
+        self.after_cancel(self.after_reinitialize_id)
+        self.after_cancel(self.after_process_messages_id)
         
         self.stopped = 1
 
@@ -1939,7 +2016,7 @@ class Display(Tkinter.Canvas):
 
     #########################################################################
 
-    #Called from self.after().
+    #Called from smooth_animation().
     def connection_animation(self):
 
         #If the user turned off animation, don't do it.
@@ -1959,7 +2036,8 @@ class Display(Tkinter.Canvas):
         result = startup_lock.acquire(False)
         if result:
         
-            words = self.command_queue[0].split(" ")
+            #words = self.command_queue[0].split(" ")
+            words = command.split(" ")
 
             if words and words[0] in ["state"]:
                 status = None
@@ -2010,7 +2088,7 @@ class Display(Tkinter.Canvas):
 
         #Only process the messages in the queue at this time.
         display_lock.acquire()
-        number = len(self.command_queue)
+        number = min(len(self.command_queue), MIPC)
 
         while number > 0:
 
@@ -2027,10 +2105,12 @@ class Display(Tkinter.Canvas):
         #Release the lock.
         display_lock.release()
 
+        #Schedule the next animation.
+        self.after_process_messages_id = self.after(MESSAGES_TIME,
+                                                    self.process_messages)
+
     #Called from self.after().
     def smooth_animation(self):
-        #Always process items in the queue.
-        self.process_messages()
         #If necessary, process the animation of the connections lines.
         self.connection_animation()
 
@@ -2064,18 +2144,18 @@ class Display(Tkinter.Canvas):
                                            self.disconnect_clients)
 
     #Called from entv.handle_periodic_actions().
-    def handle_titling(self):
-
-        now = time.time()
-        #### Handle titling
-        if self.title_animation:
-            if now > self.title_animation.stop_time:
-                self.title_animation = None
-            else:
-                self.title_animation.animate(now)
-
-        ####force the display to refresh
-        self.update()
+    #def handle_titling(self):
+    #
+    #    now = time.time()
+    #    #### Handle titling
+    #    if self.title_animation:
+    #        if now > self.title_animation.stop_time:
+    #            self.title_animation = None
+    #        else:
+    #            self.title_animation.animate(now)
+    #
+    #    ####force the display to refresh
+    #    self.update()
 
     #########################################################################
     
@@ -2366,6 +2446,7 @@ class Display(Tkinter.Canvas):
                 self.reposition_canvas()
             
             client.waiting = 1
+            client.update_state() #change fill color if needed
             client.draw()
 
     def connect_command(self, command_list):
@@ -2388,6 +2469,10 @@ class Display(Tkinter.Canvas):
             self.add_client_position(client_name)
             client = Client(client_name, self)
             self.clients[client_name] = client
+            #If the client command is ever used, these lines are necessary.
+            #   client.waiting = 0
+            #   client.update_state() #change fill color if needed
+            client.draw()  #Draws the client.
 
             #If the number of client columns changed we need to reposition.
             new_number = self.get_client_column_count()
@@ -2396,7 +2481,6 @@ class Display(Tkinter.Canvas):
         else:
             client.waiting = 0
             client.update_state() #change fill color if needed
-        client.draw()
 
         #Draw the connection.
 
@@ -2451,8 +2535,8 @@ class Display(Tkinter.Canvas):
 
         #Remove the progress bar.
         if mover == None:
-            mover.draw_progress(None, None)
-            mover.draw_buffer(None)
+            mover.update_progress(None, None)
+            mover.update_buffer(None)
             mover.update_rate(None)
                 
     def loaded_command(self, command_list):
@@ -2476,34 +2560,7 @@ class Display(Tkinter.Canvas):
         except (ValueError, TypeError, IndexError):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
-        mover.draw()
 
-        #Perform some cleanup in case some UDP Mmessages were lost.
-
-        #If the mover should not have a volume, remove it.
-        if what_state in ['IDLE', 'Unknown']:
-            msg="need to unload tape because mover state changed to: %s"
-            Trace.trace(2, msg % (what_state,))
-            mover.unload_tape()
-
-        #If a transfer is not in progress, some things need to be undrawn.
-        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND'
-                          'FINISH_WRITE', 'CLEANING']:
-            #If the connection line needs to be removed.
-            msg="Need to disconnect because mover state changed to: %s"
-            if self.connections.get(mover.name, None):
-                Trace.trace(2, msg % (what_state,))
-                self.disconnect_command(["mover", mover.name, "Unknown"])
-
-        #Undraw these objects that correlate only to the ACTIVE/DRAINING
-        # state.
-        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND',
-                          'FINISH_WRITE', 'CLEANING', 'SEEK', 'SETUP',
-                          'DISMOUNT_WAIT', 'MOUNT_WAIT']:
-            mover.undraw_progress()
-            mover.undraw_buffer()
-            mover.undraw_rate()
-                        
     def unload_command(self, command_list):
 
         mover = self.movers.get(command_list[1])
@@ -2519,56 +2576,47 @@ class Display(Tkinter.Canvas):
         # command_list[0] = transfer
         # command_list[1] = MOVER_NAME
         # command_list[2] = BYTES_TRANSFERED
-        # command_list[3] = BYTES_TO_TRANSFER
+        # command_list[3] = TOTAL_BYTES_TO_TRANSFER
         # command_list[4] = media or network
         # command_list[5] = BUFFER_SIZE
         # command_list[6] = CURRENT_TIME
         
-        #print command_list
-
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
 
         num_bytes = float(command_list[2])
-        total_bytes = float(command_list[3])
+        #total_bytes = float(command_list[3])
 
-        if total_bytes == 0:
+        try:
+            percent_done = abs(int(100 * (num_bytes / float(command_list[3]))))
+        except ZeroDivisionError:
             percent_done = 100
-        else:
-            percent_done = abs(int(100 * num_bytes/total_bytes))
         if command_list[4] == "network":
-            mover.draw_progress(percent_done, mover.alt_percent_done)
+            mover.update_progress(percent_done, mover.alt_percent_done)
         elif command_list[4] == "media":
-            mover.draw_progress(mover.percent_done, percent_done)
+            mover.update_progress(mover.percent_done, percent_done)
         else:
             return
 
         #If the mover sends the buffer size info. display the bar.
         try:
-            buffer_size = float(long(command_list[5]))
-            #This helps prevent potential problems against changes on the fly.
-            if long(buffer_size) > long(mover.max_buffer):
-                mover.max_buffer = long(buffer_size)
-            buffer_percent = int(100 * (buffer_size/float(mover.max_buffer)))
-            mover.draw_buffer(buffer_percent)
+            #Redraw/reposition the buffer bar.
+            mover.update_buffer(command_list[5])
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()
         except:
-            pass
             #exc, msg  = sys.exc_info()[:2]
-            #print msg
+            #print exc, msg
+            pass
 
         #Skip media transfers from the network connection update.
         connection = self.connections.get(mover.name, None)
         if connection and command_list[4] == "network":
-
-            try:
-                now = float(command_list[6])
-            except IndexError:
-                now = time.time()
-
             #Calculate the new instantanious rate.
-            rate = mover.transfer_rate(num_bytes, now)
+            try:
+                rate = mover.transfer_rate(num_bytes, command_list[6])
+            except IndexError:
+                rate = mover.transfer_rate(num_bytes)
 
             #Now that the rate is known, update the display.
             mover.update_rate(rate)
@@ -2580,7 +2628,7 @@ class Display(Tkinter.Canvas):
 
         if connection:
             #Don't use the variable "now" here.  We want to use the local
-            # machines time for this measure.
+            # machine's time for this measure.
             connection.client.last_activity_time = time.time()
 
     def movers_command(self, command_list):
@@ -2651,6 +2699,11 @@ class Display(Tkinter.Canvas):
         if words[0] not in self.comm_dict.keys():
             return []
 
+        #Don't bother processing transfer messages if we are not keeping up.
+        if words[0] in ["transfer"] and \
+               len(self.command_queue) > max(20, (len(self.movers))):
+            return []
+
         if len(words) < self.comm_dict[words[0]]['length']:
             Trace.trace(1, "Insufficent length for %s command." % (words[0],))
             return []
@@ -2660,7 +2713,7 @@ class Display(Tkinter.Canvas):
             #This is an error, a message from a mover we never heard of
             Trace.trace(1, "Don't recognize mover, continuing ....")
             return []
-
+        
         return words
 
     def handle_command(self, command):
@@ -2688,18 +2741,12 @@ class Display(Tkinter.Canvas):
 
         #Words is a list of the split string command.
         words = self.get_valid_command(command)
-
-        #Every command gets processed though handle_command().  Thus,
-        # this will output all processed messages and those necessary
-        # to insert because of missed messges.
-        Trace.message(10, string.join((time.ctime(), command), " "))
-
-        #Don't bother processing transfer messages if we are not keeping up.
-        if words and words[0] in ["transfer"] and \
-               len(self.command_queue) > max(20, (len(self.movers))):
-            return
-
         if words:
+            #Every command gets processed though handle_command().  Thus,
+            # this will output all processed messages and those necessary
+            # to insert because of missed messges.
+            Trace.message(10, string.join((time.ctime(), command), " "))
+            #Run the corresponding function.
             apply(self.comm_dict[words[0]]['function'], (self, words,))
             
     #########################################################################
@@ -2727,6 +2774,12 @@ class Display(Tkinter.Canvas):
             del self.do_animation
         except AttributeError:
             pass
+        try:
+            #When a reinitialization occurs, there is a resource leak.
+            for key in self.csc_dict.keys():
+                del self.csc_dict[key]
+        except (AttributeError, KeyError):
+            pass
         Tkinter.Canvas.destroy(self)
     
     #overloaded 
@@ -2741,12 +2794,32 @@ class Display(Tkinter.Canvas):
 
 
     def mainloop(self, threshold = None):
+        #If the window does not yet exist, draw it.  This should only
+        # be true the first time mainloop() gets called; for
+        # reinitializations this should not happen.
+        if self.master.state() == "withdrawn":
+            self.reposition_canvas(force = True)
+            self.master.deiconify()
+            self.master.lift()
+            self.master.update()
+        
         self.after_smooth_animation_id = self.after(ANIMATE_TIME,
                                                     self.smooth_animation)
         self.after_clients_id = self.after(UPDATE_TIME,
                                            self.disconnect_clients)
         self.after_reinitialize_id = self.after(REINIT_TIME,
                                                 self.reinitialize)
+        self.after_process_messages_id = self.after(MESSAGES_TIME,
+                                                    self.process_messages)
+
+        #Since, the startup_lock is still held, we have nothing yet to do.
+        # This would be a good time to cleanup before things get hairy.
+        gc.collect()
+        del gc.garbage[:]
+
+        #Let the other startup threads go.
+        startup_lock.release()
+        
         self.after_reposition_id = None
         if threshold == None:
             self.master.mainloop()
