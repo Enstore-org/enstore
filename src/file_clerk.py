@@ -246,18 +246,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.get_user_sockets(ticket)
      ticket["status"] = (e_errors.OK, None)
      callback.write_tcp_obj(self.data_socket,ticket)
-     msg=""
      dict.cursor("open")
      key,value=dict.cursor("first")
      while key:
-        msg=msg+repr(key)+","
-        if len(msg) >= 16384:
-           callback.write_tcp_raw(self.data_socket,msg)
-           msg=""
-        key,value=dict.cursor("next")
+         callback.write_tcp_raw(self.data_socket,repr(key))
+         key,value=dict.cursor("next")
+     callback.write_tcp_raw(self.data_socket,"")
      dict.cursor("close")
-     msg=msg[:-1]
-     callback.write_tcp_raw(self.data_socket,msg)
+     callback.write_tcp_raw(self.data_socket,"")
      self.data_socket.close()
      callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
@@ -410,7 +406,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.get_user_sockets(ticket)
      callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
-
+     callback.write_tcp_raw(self.data_socket, msg)
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
      key,value=dict.cursor("first")
@@ -425,16 +421,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                  deleted = "unknown"
              if not value.has_key('pnfs_name0'):
                  value['pnfs_name0'] = "unknown"
-             msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+             msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
-             if len(msg) >= 16384:
-                 #print "sending len(msg)"
-                 callback.write_tcp_raw(self.data_socket,msg)
-                 msg=""
+             callback.write_tcp_raw(self.data_socket, msg)
          key,value=dict.cursor("next")
      dict.cursor("close")
-     callback.write_tcp_raw(self.data_socket,msg)
+     callback.write_tcp_raw(self.data_socket,"")
      self.data_socket.close()
      callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
@@ -442,12 +435,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     def start_backup(self,ticket):
         dict.start_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
+        self.reply_to_caller({"status" : (e_errors.OK, None),
                 "start_backup"  : 'yes' })
 
     def stop_backup(self,ticket):
         dict.stop_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
+        self.reply_to_caller({"status" : (e_errors.OK, None),
                 "stop_backup"  : 'yes' })
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
