@@ -583,14 +583,14 @@ def do_work(intf):
             check_server(csc, server)
 
     #Stop the Berkley DB dameons.
-    if (intf.should_stop(enstore_constants.FILE_CLERK) and \
-        intf.should_stop(enstore_constants.VOLUME_CLERK)) or \
-       (intf.should_stop(enstore_constants.FILE_CLERK) and \
-        not is_there(enstore_constants.VOLUME_CLERK)) or \
-       (intf.should_stop(enstore_constants.VOLUME_CLERK) and \
-        not is_there(enstore_constants.FILE_CLERK)):
-        check_db(csc, "db_checkpoint")
-        check_db(csc, "db_deadlock")
+    # if (intf.should_stop(enstore_constants.FILE_CLERK) and \
+    #     intf.should_stop(enstore_constants.VOLUME_CLERK)) or \
+    #    (intf.should_stop(enstore_constants.FILE_CLERK) and \
+    #     not is_there(enstore_constants.VOLUME_CLERK)) or \
+    #    (intf.should_stop(enstore_constants.VOLUME_CLERK) and \
+    #     not is_there(enstore_constants.FILE_CLERK)):
+    #     check_db(csc, "db_checkpoint")
+    #     check_db(csc, "db_deadlock")
 
     #Stop the event relay.
     if intf.should_stop(enstore_constants.EVENT_RELAY):
