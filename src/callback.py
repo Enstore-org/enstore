@@ -46,7 +46,10 @@ def try_a_port(host, port, reuseaddr=1) :
         interface=hostaddr.interface_name(host)
         if interface:
             Trace.trace(16,"bindtodev:  %s %s %s"%(host,port,interface))
-            status=socket_ext.bindtodev(sock.fileno(),interface)
+            if 0:
+                status=socket_ext.bindtodev(sock.fileno(),interface)
+            else:
+                status =0
             if status and status != errno.ENOSYS:
                 Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
     except socket.error, detail:
