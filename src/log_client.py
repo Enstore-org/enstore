@@ -79,7 +79,7 @@ class LoggerClient(generic_client.GenericClient):
            return
 
         if severity in range(e_errors.ERROR, e_errors.MISC) :
-            msg = '%.6d %.8s' % (self.uid, self.uname)
+            msg = '%.6d %.8s' % (self.pid, self.uname)
             msg = msg + ' ' + e_errors.sevdict[severity] + ' ' + \
                   self.i_am + ' '
 	    if args != ():
