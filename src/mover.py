@@ -595,7 +595,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
-        start our heartbeat to the event relay process
+        ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
