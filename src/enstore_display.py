@@ -1929,7 +1929,7 @@ class Display(Tkinter.Canvas):
         except AttributeError:
             pass
 
-    def reinitialize(self, event):
+    def reinitialize(self, event=None):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
