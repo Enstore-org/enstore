@@ -2009,6 +2009,32 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
+            #A serious bug was found in the file clerk.  It could give
+            # two different files the same bfid.  This is a check to make
+            # sure that the bfid points to the correct file.
+            p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
+            p.get_xreference()
+            if request['fc']['external_label'] != p.volume or \
+               request['fc']['location_cookie'] != p.location_cookie or \
+               long(request['fc']['size']) != long(p.size):
+
+                rest = {'infile':request['infile'],
+                        'outfile':request['outfile'],
+                        'bfid':request['bfid'],
+                        'db_volume':request['fc']['external_label'],
+                        'pnfs_volume':p.volume,
+                        'db_location_cookie':request['fc']['location_cookie'],
+                        'pnfs_location_cookie':p.location_cookie,
+                        'db_size':long(request['fc']['size']),
+                        'pnfs_size':long(p.size),
+                        'status':"Probable database conflict with pnfs."}
+                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
+                request['status'] = (e_errors.CONFLICT, rest['status'])
+                print_data_access_layer_format(request['infile'],
+                                               request['outfile'],
+                                               request['file_size'], request)
+                quit() #Harsh, but necessary.
+
 #######################################################################
 
 def get_clerks_info(bfid, client):
