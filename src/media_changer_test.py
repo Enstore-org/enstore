@@ -1208,7 +1208,7 @@ class Manual_MediaLoader(MediaLoaderMethods):
 
     def unloadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
-            rc = os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
+            rc = os.system("mc_popup_test 'Please unload %s'"%(ticket['vol_ticket']['external_label']),) >> 8
         if rc: self.set_this_error = rc + 9990
         else: self.set_this_error = e_errors.OK
         return MediaLoaderMethods.unloadvol(self,ticket)
