@@ -1,27 +1,32 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# $RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
-import errno
+#import errno
 import time
-import os
-import traceback
+#import os
+#import traceback
 import checksum
-import sys
+#import sys
 import socket
-import signal
-import string
+#import signal
+#import string
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_SETFD = FCNTL.F_SETFD
-    fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
+#if sys.version_info < (2, 2, 0):
+#    import FCNTL #FCNTL is depricated in python 2.2 and later.
+#    fcntl.F_SETFD = FCNTL.F_SETFD
+#    fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
 import copy
-import types
+#import types
 import rexec
 
-#enstore imports
-import hostaddr
+# enstore imports
+#import hostaddr
 import cleanUDP
 import udp_common
 import Trace
