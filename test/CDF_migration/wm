@@ -1,8 +1,8 @@
 #!/bin/sh 
 
-watch -n60 'grep "Starting tape" /tmp/CDF_migrate1*|tail -n30
+watch -n60 'grep "Starting tape" /tmp/CDF_migrate1*|tail -n25
         grep "Starting tape" /tmp/CDF_migrate1*|wc -l
-        echo; grep "Starting tape" /tmp/CDF_migrate2*|tail -n30
+        echo; grep "Starting tape" /tmp/CDF_migrate2*|tail -n25
         grep "Starting tape" /tmp/CDF_migrate2*|wc -l
         ndone=`grep "Starting tape" /tmp/CDF_migrate2*|wc -l`
         echo
