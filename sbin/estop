@@ -1,0 +1,5 @@
+source /usr/local/etc/setups.sh
+setup -t enstore
+ecmd stop
+~bakken/bin/zapit mover
+ps axuww | grep -i bakken| sort

@@ -1,0 +1,3 @@
+source /usr/local/etc/setups.sh
+setup -t enstore
+ecmd start
