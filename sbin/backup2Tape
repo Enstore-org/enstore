@@ -1,0 +1,39 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+# script to backup databases to a standalone tape drive 
+
+# function to return date so it can be used in filename
+date_string() { date +"%Y-%m-%d.%H.%M" }
+
+LABEL=${1:-NOLABL}
+if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
+  TAPE=/dev/rmt/tps0d4n;         export TAPE
+  TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
+  TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
+  VAULT=/diska/BackupToTape;     export VAULT
+  PNFS=/diska/pnfs-backup;       export PNFS
+  ENSTORE=/diska/enstore-backup; export ENSTORE
+  STRIP=/diska;                  export STRIP
+  AML2=/diska/aml2Shadow;        export AML2
+else
+  echo "Do not know about node `uname -n`... fix script"
+  exit 1
+fi
+
+PNFS_TAR=$VAULT/pnfs.`date_string`.tar
+tar -cvf $PNFS_TAR $PNFS
+
+ENSTORE_TAR=$VAULT/enstore.`date_string`.tar
+tar -cvf $ENSTORE_TAR $ENSTORE
+
+enstore_tape --write --verbose --volume-label=$LABEL \
+             --pnfs-dir=path /pnfs/backups --strip-path=$STRIP\
+             $PNFS_TAR $ENSTORE_TAR
+
+rm -f $PNFS_TAR $ENSTORE_TAR
+
+exit 0
