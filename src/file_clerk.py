@@ -409,7 +409,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         #####################################################################
 
         ticket["status"] = (e_errors.OK, None)
-        pprint.pprint(ticket)
         self.reply_to_caller(ticket)
         Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
         return

@@ -965,9 +965,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # until the error is fixed.
     try:
         infile = request_dictionary.get('infile', '')
-        infile.close()
     except AttributeError, detail:
-        print "request_dictionary:", type(request_dictionary),
+        print "request_dictionary:", type(request_dictionary), detail
         pprint.pprint(request_dictionary)
 
     infile = request_dictionary.get('infile', '')
@@ -1010,6 +1009,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     except KeyError:
         pass
 
+    #Log the intermidiate error as a warning instead as a full error.
+    Trace.log(e_errors.WARNING, status)
+
+    #Change the unique id so the library manager won't remove the retry
+    # request when it removes to old one.
     request_dictionary['unique_id'] = generate_unique_id()
 
     #Since a retriable error occured, resubmit the ticket.
@@ -1294,15 +1298,11 @@ def set_pnfs_settings(ticket, client, verbose):
         fc_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
         fc_ticket["fc"]["pnfs_mapname"] = p.mapfile
         fc_ticket["fc"]["drive"] = drive
-        #This shouldn't half to be set here.  It should be handled inside of
-        # the file clerk client.  Until it is this needs to be set here.
-        fc_ticket["work"] = "set_pnfsid"
 
         fcc = file_clerk_client.FileClient(client['csc'], ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
     
         if fc_reply['status'][0] != e_errors.OK:
-            print "aljhdfkajlshfjkasfhklasjfh"
             print_data_access_layer_format('', '', 0, fc_reply)
             quit()
         
@@ -1817,16 +1817,19 @@ def create_read_requests(inputlist, outputlist, file_size,
         times = {}
         times['t0'] = tinfo['encp_start_time']
 
-        label = fc_reply['fc']['external_label']
-        #label = fc_reply['external_label']
+        label = fc_reply['external_label']
         vf = fc_reply['vc']['volume_family']
         vc_reply['address'] = volume_clerk_address
         vc_reply['storage_group']=volume_family.extract_storage_group(vf)
         vc_reply['file_family'] = volume_family.extract_file_family(vf)
         vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
-        fc_reply['fc']['address'] = file_clerk_address
-        #fc_reply['address'] = file_clerk_address
-
+        fc_reply['address'] = file_clerk_address
+        try:
+            del fc_reply['fc'] #Speed up debugging by removing these.
+            del fc_reply['vc']
+        except:
+            pass
+        
         pnfs.get_file_family()
         pnfs.get_file_family_width()
         pnfs.get_file_family_wrapper()
@@ -1839,8 +1842,7 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['client_crc'] = chk_crc
         request['encp'] = encp_el
         request['encp_daq'] = encp_daq
-        request['fc'] = fc_reply['fc']
-        #request['fc'] = fc_reply
+        request['fc'] = fc_reply
         request['file_size'] = file_size[i]
         request['infile'] = inputlist[i]
         request['outfile'] = outputlist[i]
