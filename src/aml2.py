@@ -140,7 +140,7 @@ def dismount(volume, drive, media_type,view_first=1):
 def view(volume, media_type):
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
-        Trace.log(e_errors.ERROR, derrno.ENOVOLUME,'Media code is None. media_type=%s'%(media_type,))
+        Trace.log(e_errors.ERROR, 'Media code is None. media_type=%s'%(media_type,))
         return (-1,None)
     
     stat,volstate = aci.aci_view(volume,media_code)
