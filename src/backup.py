@@ -19,6 +19,8 @@ import e_errors                 # error information
 import log_client               # for getting info into the log
 
 
+journal_backup = 'JOURNALS'     # for journal file backup
+
 # get_size(dbFile) -- get the number of records and size of a dbFile
 
 def logthis(code, message):
@@ -102,8 +104,13 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         # try gzip first, if it does not exist, try compress
         # never mind if the compression programs are missing
 
+        fjbk = 'file.tar.gz'
+        vjbk = 'volume.tar.gz'
+
 	if os.system("gzip *.tar"):	# failed?
             os.system("compress *.tar")
+            fjbk = 'file.tar.Z'
+            vjbk = 'volume.tar.Z'
 
 	cmd="enrcp *.tar* " + hst_bck+":"+dir_bck
 	logthis(e_errors.INFO, cmd)
@@ -111,6 +118,24 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	if ret !=0 :
            logthis(e_errors.INFO,"Failed: %s"%(cmd,))
 	   sys.exit(1)
+        # duplicate the journal backup in another directory
+        time_stamp = '.'+str(time.time())
+        p = string.split(fjbk, '.')
+        p[0] = p[0]+time_stamp
+        fp = string.join(p, '.')
+        cmd = "enrcp "+fjbk+' '+hst_bck+":"+os.path.join(os.path.join(dir_bck, journal_backup), fp)
+        if os.system(cmd):
+            Trace.log(e_errors.ERROR, "Failed: "+cmd)
+            sys.exit(1)
+        
+        p = string.split(vjbk, '.')
+        p[0] = p[0]+time_stamp
+        fp = string.join(p, '.')
+        cmd = "enrcp "+vjbk+' '+hst_bck+":"+os.path.join(os.path.join(dir_bck, journal_backup), fp)
+        if os.system(cmd):
+            Trace.log(e_errors.ERROR, "Failed: "+cmd)
+            sys.exit(1)
+        
         tarfiles=glob.glob("*.tar*")
         for file in tarfiles:
             os.unlink(file)
