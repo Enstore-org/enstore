@@ -149,9 +149,9 @@ enstore_media_changers=
 enstore_movers=
 enstore_start_fileclerk=0
 enstore_start_volumeclerk=0
+enstore_start_alarm=0
 enstore_start_log=0
 
-enstore_start_admin=0
 enstore_start_inquisitor=0
 ENSTORE_CONFIG_HOST=$ENSTORE_CONFIG_HOST;export ENSTORE_CONFIG_HOST
 ENSTORE_CONFIG_PORT=$ENSTORE_CONFIG_PORT;export ENSTORE_CONFIG_PORT
@@ -205,6 +205,8 @@ for server in $node_servers;do
         enstore_start_volumeclerk=1;;
     inquisitor)
         enstore_start_inquisitor=1;;
+    alarm_server)
+        enstore_start_alarm=1;;
     esac
 done
 
@@ -233,6 +235,34 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     fi
 
     check_server logserver $PID_DIR/`uname -n`-log_server_pids
+
+fi
+
+###################################################################################################################################
+
+# the alarm server is next
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" ];then
+    if [ "${opt_ping-}" != 1 -a $enstore_start_alarm -eq 1 ];then
+      if   [ ! "${opt_nocheck-}" ]\
+        && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep alarm_server |sed -e 's/.*://'` $timeout >/dev/null
+        then
+        echo "Alarm Server already started"
+      else
+        echo "Starting Alarm Server"
+        out=$PID_DIR/alarm_server
+        rm -f $out
+        cmd="python $ENSTORE_DIR/src/alarm_server.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
+        if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|alarm' >/dev/null; then
+            title="Enstore Alarm Server"
+            eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
+        else
+            eval "$cmd &"
+        fi
+        echo $! >> $PID_DIR/`uname -n`-alarm_server_pids
+      fi
+    fi
+
+    check_server alarm_server $PID_DIR/`uname -n`-alarm_server_pids
 
 fi
 

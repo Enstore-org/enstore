@@ -151,6 +151,12 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
     fi
     turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration server"
 fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" ];then
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep alarm |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
+    turnoff "$PID_DIR/`uname -n`-alarm_server*pids"      "alarm server"
+fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log |sed -e 's/.*://'` $timeout --work quit >/dev/null
