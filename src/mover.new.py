@@ -222,10 +222,10 @@ def bind_volume( self, ticket ):
     #                                           get stale
     #          then fc adds it's fc-info to encp ticket and sends it to lm
     
-    tmp_vol_info = vcc.inquire_vol( ticket['fc']['external_label'] )
-    if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
-
     if self.vol_info['external_label'] == '':
+
+	tmp_vol_info = vcc.inquire_vol( ticket['fc']['external_label'] )
+	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
 	#self.vol_info.update( vcc.inquire_vol(ticket['fc']['external_label']) )
@@ -250,13 +250,11 @@ def bind_volume( self, ticket ):
 				      tmp_vol_info['remaining_bytes'],
 				      ticket['fc']['external_label'] )
 	except: return 'BADMOUNT' # generic, not read or write specific
+	self.vol_info.update( tmp_vol_info )
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],ticket['fc']['external_label']) )
 	return 'NOTAPE' # generic, not read or write specific
-
-    # FOR NOW - alway update info - as counts may be updated in child process
-    self.vol_info.update( tmp_vol_info )
 
     return e_errors.OK
 
