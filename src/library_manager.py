@@ -173,18 +173,18 @@ class LibraryManagerMethods:
     # send a regret
     def send_regret(self, ticket):
         # fork off the regret sender
-        ret = self.fork()
-        if ret == 0:
-            try:
-                Trace.trace(11,"send_regret %s" % (ticket,))
-                callback.send_to_user_callback(ticket)
-                Trace.trace(13,"send_regret ")
-            except:
-                exc,msg,tb=sys.exc_info()
-                Trace.log(1,"send_regret %s %s %s"%(exc,msg,ticket))
-            os._exit(0)
-        else:
-            Trace.trace(12, "CHILD ID= %s"%(ret,))
+        ## ret = self.fork() #XXX do we really need to fork off here? - cgw
+        try:
+            Trace.trace(11,"send_regret %s" % (ticket,))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(ticket['callback_addr'])
+            callback.write_tcp_obj(sock,ticket)
+            sock.close()
+
+            Trace.trace(13,"send_regret ")
+        except:
+            exc,msg,tb=sys.exc_info()
+            Trace.log(1,"send_regret %s %s %s"%(exc,msg,ticket))
 
 
     # find mover in the list
@@ -1219,9 +1219,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         library_manager_host, library_manager_port, listen_socket =\
                               callback.get_callback()
         listen_socket.listen(4)
-        ticket["library_manager_callback_host"] = library_manager_host
-        ticket["library_manager_callback_port"] = library_manager_port
-        self.control_socket = callback.user_callback_socket(ticket)
+        ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
+        self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.control_socket.connect(ticket['callback_addr'])
+        callback.write_tcp_obj(self.control_socket, ticket)
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
