@@ -1,0 +1,26 @@
+#!/bin/sh
+#===============================================================================
+# This will test that close puts you in the suspected position
+#===============================================================================
+ 
+#===============================================================================
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+ 
+ftt_test << EOD
+ftt_open
+ftt_rewind
+#===============================================================================
+# first check to see if when we forward skip a file we are where
+# we should be.
+#===============================================================================
+ftt_write_tblock -nblock 10
+ftt_close_dev
+ftt_skip_rec -10
+ftt_test_status -FTT_ABOT
+ftt_close
+EOD
