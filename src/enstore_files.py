@@ -78,14 +78,18 @@ class EnFile:
         self.file_name = file 
         self.real_file_name = file 
         self.openfile = 0
+	self.opened = 0
         self.system_tag = system_tag
+	self.lockfile = "%s.lock"%(file,)
 
     def open(self, mode='w'):
         try:
             self.openfile = open(self.file_name, mode)
+	    self.opened = 1
             Trace.trace(enstore_constants.INQFILEDBG,"%s open "%(self.file_name,))
         except IOError:
             self.openfile = 0
+	    self.opened = 0
             Trace.log(e_errors.WARNING,
                       "%s not openable for %s"%(self.file_name, mode))
 
@@ -560,6 +564,26 @@ class ScheduleFile(EnFile):
     def __init__(self, dir, name):
         self.html_dir = dir
         EnFile.__init__(self, "%s/%s"%(dir, name))
+
+    def open(self, mode='w'):
+	# first check if we can get a lockfile for this
+	try:
+	    for attempt in [1,2,3,4,5]:
+		os.stat(self.lockfile)
+		# oops file exists, wait awhile then try again
+		time.sleep(1)
+	    else:
+		Trace.log(e_errors.ERROR,
+			"Could not create outage file lock file (%s)"%(self.lockfile,))
+	except OSError:
+	    # file does not exist, create it
+	    os.system("touch %s"%(self.lockfile,))
+	    EnFile.open(self, mode)
+
+    def close(self):
+	# get rid of the lock file first
+	os.system("rm %s"%(self.lockfile,))
+	EnFile.close(self)
 
     def read(self):
         try:

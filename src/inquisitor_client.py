@@ -6,6 +6,7 @@ import sys
 import generic_client
 import udp_client
 import enstore_constants
+import enstore_functions
 import interface
 import Trace
 
@@ -228,7 +229,8 @@ def do_work(intf):
 
     elif intf.show:
 	ticket = iqc.show()
-	iqc.print_show(ticket)
+	if enstore_functions.is_ok(ticket):
+	    iqc.print_show(ticket)
 
     else:
 	intf.print_help()

@@ -811,42 +811,49 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ticket["bad_server"] = []
 	server_l = string.split(ticket["servers"], ',')
         sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
-	for key in server_l:
-	    # map the entered name to the name in the outage dictionary
-	    num, server = self.find_server_match(key)
-	    if num == 1:
-		# we found a match
-		if func == UP:
-		    out_key = server_map[server]
-		    if offline_d.has_key(out_key):
-			del offline_d[out_key]
-		elif func == DOWN:
-		    offline_d[server_map[server]] = ticket["time"]
-		elif func == OUTAGE:
-		    outage_d[server_map[server]] = ticket["time"]
-		elif func == NOOUTAGE:
-		    out_key = server_map[server]
-		    if outage_d.has_key(out_key):
-			del outage_d[out_key]
-	    elif self.is_valid(key):
-		if func == UP:
-		    if offline_d.has_key(key):
-			del offline_d[key]
-		elif func == DOWN:
-		    offline_d[key] = ticket["time"]
-		elif func == OUTAGE:
-		    outage_d[key] = ticket["time"]
-		elif func == NOOUTAGE:
-		    if outage_d.has_key(key):
-			del outage_d[key]
-	    else:
-		ticket["status"] = (e_errors.DOESNOTEXIST, None)
-		ticket["bad_server"].append(key)
-	if not sfile.write(outage_d, offline_d, seen_down_d):
+	if sfile.opened != 0:
+	    for key in server_l:
+		# map the entered name to the name in the outage dictionary
+		num, server = self.find_server_match(key)
+		if num == 1:
+		    # we found a match
+		    if func == UP:
+			out_key = server_map[server]
+			if offline_d.has_key(out_key):
+			    del offline_d[out_key]
+		    elif func == DOWN:
+			offline_d[server_map[server]] = ticket["time"]
+		    elif func == OUTAGE:
+			outage_d[server_map[server]] = ticket["time"]
+		    elif func == NOOUTAGE:
+			out_key = server_map[server]
+			if outage_d.has_key(out_key):
+			    del outage_d[out_key]
+		elif self.is_valid(key):
+		    if func == UP:
+			if offline_d.has_key(key):
+			    del offline_d[key]
+		    elif func == DOWN:
+			offline_d[key] = ticket["time"]
+		    elif func == OUTAGE:
+			outage_d[key] = ticket["time"]
+		    elif func == NOOUTAGE:
+			if outage_d.has_key(key):
+			    del outage_d[key]
+		else:
+		    ticket["status"] = (e_errors.DOESNOTEXIST, None)
+		    ticket["bad_server"].append(key)
+	    if not sfile.write(outage_d, offline_d, seen_down_d):
+		ticket["status"] = (e_errors.IOERROR, None)
+		Trace.log(e_errors.ERROR, 
+			  "Could not write to file %s/%s"%(self.html_dir, 
+							 enstore_constants.OUTAGEFILE))
+	else:
+	    # file was not opened, maybe a problem with the lock file
 	    ticket["status"] = (e_errors.IOERROR, None)
-	    Trace.log(e_errors.ERROR, "Could not write to file %s/%s"%(self.html_dir, 
-						      enstore_constants.OUTAGEFILE))
-	sfile.close()
+	    Trace.log(e_errors.ERROR,
+		      "Could not read file %s/%s"%(self.html_dir, 
+						   enstore_constants.OUTAGEFILE))
 
     def up(self, ticket):
 	self.update_schedule_file(ticket, UP)
@@ -872,10 +879,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def show(self, ticket):
 	ticket["status"] = (e_errors.OK, None)
         sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
-	ticket["outage"] = outage_d
-	ticket["offline"] = offline_d
-	ticket["seen_down"] = seen_down_d
-	sfile.close()
+	if sfile.opened != 0:
+	    ticket["outage"] = outage_d
+	    ticket["offline"] = offline_d
+	    ticket["seen_down"] = seen_down_d
+	else:
+	    ticket["status"] = (e_errors.IOERROR, None)
+	    Trace.log(e_errors.ERROR,
+		      "Could not read file %s/%s"%(self.html_dir, 
+						   enstore_constants.OUTAGEFILE))
         self.send_reply(ticket)
         Trace.trace(enstore_constants.INQWORKDBG, "show up/down status work from user")
 
