@@ -48,9 +48,9 @@ class NetDriver(driver.Driver):
         return self.sock.fileno()
     
     def close(self):
-	r = 0
-	if self.sock is not None:
-	    r = self.sock.close()
+        r = 0
+        if self.sock is not None:
+            r = self.sock.close()
         self.sock = None
         return r
 
