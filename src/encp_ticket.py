@@ -31,24 +31,10 @@ def write_request_ok(ticket):
                'storage_group': '',
                }
 
-    wrapper_keys = {'fullname': '',
-                    'gid': 0,
-                    'gname': '',
-                    'inode': 0,
-                    'machine': ('','','','',''),
-                    'major': 0,
-                    'minor': 0,
-                    'mode': 0,
-                    'mtime': 0,
-                    'pnfsFilename': '',
-                    'sanity_size': 0,
-                    'size_bytes': 0L,
-                    'type': '',
-                    'uid': 0,
-                    'uname': ''}
     for key in ticket_keys:
         if not ticket.has_key(key):
             return key
+    fsize_type = type(ticket['file_size']) # hack to make get happy, as it guves None for the file size
     for key in encp_keys:
         if not ticket['encp'].has_key(key):
             return key
@@ -60,6 +46,22 @@ def write_request_ok(ticket):
     for key in vc_keys:
         if not ticket['vc'].has_key(key):
             return key
+    wrapper_keys = {'fullname': '',
+                    'gid': 0,
+                    'gname': '',
+                    'inode': 0,
+                    'machine': ('','','','',''),
+                    'major': 0,
+                    'minor': 0,
+                    'mode': 0,
+                    'mtime': 0,
+                    'pnfsFilename': '',
+                    'sanity_size': 0,
+                    'size_bytes': fsize_type,
+                    'type': '',
+                    'uid': 0,
+                    'uname': ''}
+    
     for key in wrapper_keys:
         if not ticket['wrapper'].has_key(key):
             return key
