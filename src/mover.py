@@ -657,6 +657,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.unlock_state()
             
     def idle(self):
+        if self.state == ERROR:
+            return
         if not self.do_eject:
             return
         self.state = IDLE
