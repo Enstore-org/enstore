@@ -21,20 +21,24 @@ class InquisitorPlots:
 
     # create the html file with the inquisitor plot information
     def	make_plot_html_page(self):
-	self.plothtmlfile.open()
+	self.plotfile.open()
 	# get the list of stamps and jpg files
 	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
-	self.plothtmlfile.write(jpgs, stamps, pss)
-	self.plothtmlfile.close()
-	self.plothtmlfile.install()
+	self.plotfile.write(jpgs, stamps, pss)
+	self.plotfile.close()
+	self.plotfile.install()
 
     # plot thread
     def plot_function(self, ticket, lfd, keep, pts_dir, out_dir):
+	Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq transfer plots")
 	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
+	Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq mount plots")
 	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
-	ret_ticket = { 'status'   : (e_errors.OK, None) }
 	# update the inquisitor plots web page
+	Trace.trace(enstore_constants.INQPLOTDBG, "Creating the inq plot web page")
 	self.make_plot_html_page()
+	ret_ticket = { 'status'   : (e_errors.OK, None), 'work' : 'plot' }
+	Trace.trace(enstore_constants.INQPLOTDBG, "Sending the reply to the user")
 	self.send_reply(ret_ticket)
 
     # make the mount plots (mounts per hour and mount latency
@@ -154,4 +158,5 @@ class InquisitorPlots:
 						target=self.plot_function,
 						name=PLOTTHRNAME, args=plot_args)
 	    self.plot_thread.setDaemon(1)	    
+	    Trace.trace(enstore_constants.INQPLOTDBG, "Starting the inq plot thread")
 	    self.plot_thread.start()
