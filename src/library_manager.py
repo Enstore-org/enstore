@@ -39,7 +39,8 @@ def add_mover(name, address):
 	     'address' : address,
 	     'state'   : 'idle_mover',
 	     'last_checked' : time.time(),
-	     'summon_try_cnt' : 0
+	     'summon_try_cnt' : 0,
+	     'tr_error' : 'ok'
 	     }
     movers.append(mover)
     mover_cnt = mover_cnt + 1
@@ -951,7 +952,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.get_user_sockets(ticket)
         rticket = {}
         rticket["status"] = (e_errors.OK, None)
-        rticket["moverlist"] = movers
+        rticket["moverlist"] = []
+	for mover in movers:
+	    m = {'mover'          : mover['mover'],\
+		 'address'        : mover['address'],\
+		 'state'          : mover['state'],\
+		 'last_checked'   : mover['last_checked'],\
+		 'summon_try_cnt' : mover['summon_try_cnt'],\
+		 'tr_error'       : mover['tr_error']
+		 }
+	    rticket["moverlist"].append(m)
         callback.write_tcp_socket(self.data_socket,rticket,
                                   "library_manager getmoverlist, datasocket")
         self.data_socket.close()
