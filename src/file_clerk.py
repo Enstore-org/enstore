@@ -24,17 +24,17 @@ import Trace
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
-    def new_bit_file(self, ticket):
+    def new_bit_file(self, ticket) :
      Trace.trace(10,'{new_bit_file')
      # input ticket is a file clerk part of the main ticket
      try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
         record = {}
-        record["external_label"]   = ticket["file_clerk"]["external_label"]
-        record["bof_space_cookie"] = ticket["file_clerk"]["bof_space_cookie"]
-        record["sanity_cookie"]    = ticket["file_clerk"]["sanity_cookie"]
-        record["complete_crc"]     = ticket["file_clerk"]["complete_crc"]
+        record["external_label"]   = ticket["fc"]["external_label"]
+        record["bof_space_cookie"] = ticket["fc"]["bof_space_cookie"]
+        record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
+        record["complete_crc"]     = ticket["fc"]["complete_crc"]
 
         # get a new bit file id
         bfid = self.unique_bit_file_id()
@@ -42,19 +42,18 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # record it to the database
         dict[bfid] = copy.deepcopy(record)
 
-        ticket["file_clerk"]["bfid"] = bfid
+        ticket["fc"]["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
-        Trace.trace(10,"}new_bit_file bfid="+repr(bfid))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
          Trace.trace(0,"}new_bit_file "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
          return
 
 
@@ -67,7 +66,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # everything is based on bfid - make sure we have this
         try:
             key="bfid"
-            bfid = ticket["file_clerk"][key]
+            bfid = ticket["fc"][key]
         except KeyError:
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
@@ -97,8 +96,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # copy all file information we have to user's ticket
-        ticket["file_clerk"] = finfo
-
+        ticket["fc"] = finfo
 
         # become a client of the volume clerk to get library information
         Trace.trace(10,"read_from_hsm getting volume clerk")
@@ -108,7 +106,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
-            external_label = ticket["file_clerk"][key]
+            external_label = ticket["fc"][key]
         except KeyError:
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
@@ -235,7 +233,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # copy all file information we have to user's ticket
-        ticket["file_clerk"] = finfo
+        ticket["fc"] = finfo
 
         # become a client of the volume clerk to get library information
         Trace.trace(11,"bfid_info getting volume clerk")
@@ -322,6 +320,7 @@ class FileClerk(FileClerkMethods,
     pass
 
 if __name__ == "__main__":
+    Trace.init("file clerk")
     import sys
     import getopt
     import string
@@ -334,8 +333,6 @@ if __name__ == "__main__":
         import SOCKS; socket = SOCKS
     except ImportError:
         import socket
-    Trace.init("file clerk")
-    Trace.trace(1,"file clerk called with args "+repr(sys.argv))
 
     # defaults
     (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
@@ -398,4 +395,3 @@ if __name__ == "__main__":
             logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
             continue
-    Trace.trace(1,"File Clerk finished (impossible)")
