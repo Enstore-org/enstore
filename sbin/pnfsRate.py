@@ -157,9 +157,12 @@ if __name__=="__main__":
 	if database>0:
            for db in range(mindb,maxdb):
 		#print 'enrsh '+node+' "/usr/local/bin/isPnfsDbEnabled %s"'%db
-                enabled = os.popen('enrsh '+node+' "/usr/local/bin/isPnfsDbEnabled %s" 2>/dev/null '%db,'r').readlines()
+		try:
+                  enabled = os.popen('enrsh '+node+' "/usr/local/bin/isPnfsDbEnabled %s" 2>/dev/null '%db,'r').readlines()
+		except:
+                  enabled = ['0\n']
 		#print enabled
-		if string.find(enabled[0],"1\n") == 0:
+		if len(enabled)>0 and string.find(enabled[0],"1\n") == 0:
                   rates = pnfsRate(mountpoint,"%d"%db,sleeptime,once)
                   if genhtml:
                           if col == ncolumns:
