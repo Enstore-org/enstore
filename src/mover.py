@@ -110,6 +110,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
           e_errors.WRITE_NOTAPE,
 	  e_errors.WRITE_TAPEBUSY,
 	  e_errors.WRITE_BADMOUNT,
+          e_errors.WRITE_BADSWMOUNT,
 	  e_errors.WRITE_BADSPACE,
 	  e_errors.WRITE_ERROR,
 	  e_errors.WRITE_EOT,		# special (not freeze_tape_in_drive, offline_drive, or freeze_tape)
@@ -118,6 +119,7 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.READ_NOTAPE,
 	  e_errors.READ_TAPEBUSY,
 	  e_errors.READ_BADMOUNT,
+          e_errors.READ_BADSWMOUNT,
 	  e_errors.READ_BADLOCATE,
 	  e_errors.READ_ERROR,
 	  e_errors.READ_COMPCRC,
