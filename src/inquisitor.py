@@ -545,7 +545,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def dump(self, ticket):
 	Trace.trace(10,"{dump "+repr(ticket))
         ticket["status"] = (e_errors.OK, None)
-	self.enprint("last_update - "+repr(self.last_update))
+	self.enprint("last_update - "+repr(self.last_update.sort()))
 	self.enprint("timeouts    - "+repr(self.timeouts))
 	self.enprint("server_keys - "+repr(self.server_keys))
 	self.enprint("reset       - "+repr(self.reset))

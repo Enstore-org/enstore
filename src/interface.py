@@ -206,6 +206,8 @@ class Interface:
                 self.agetime = string.atoi(value)
             elif opt == "--debug":
                 self.debug = 1
+            elif opt == "--dump":
+                self.dump = 1
             elif opt == "--nosummon":
                 self.summon = 1
             elif opt == "--verbose" :

@@ -45,3 +45,9 @@ class GenericClient(generic_cs.GenericCS):
         Trace.trace(10,'}set_verbose (client) '+repr(x))
         return x
 
+    # tell the server to spill it's guts
+    def dump(self, rcv_timeout=0, tries=0):
+        Trace.trace(10,'{dump')
+        x = self.send({'work':'dump'}, rcv_timeout, tries)
+        Trace.trace(10,'}dump '+repr(x))
+        return x
