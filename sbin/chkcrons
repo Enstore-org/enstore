@@ -40,7 +40,7 @@ set xlabel 'Date'
 set timefmt '%Y-%m-%d:%H:%M:'
 set xdata time
 set xrange ['$lastweek' :'$tomorrow']
-set yrange [-1:15]
+set yrange [-5:15]
 set grid
 #set format x '%m-%d'
 plot '$j' using 1:2 t '$title' with points
