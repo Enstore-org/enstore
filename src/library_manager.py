@@ -1296,7 +1296,17 @@ class LibraryManagerMethods:
             #remove entry from suspect volume list
             self.suspect_volumes.remove(suspect_volume)
             # delete the job
-            rq, err = self.pending_work.find(ticket)
+            ## !!! To catch a bug use try
+            rq,err = None, None
+            try:
+                rq, err = self.pending_work.find(ticket)
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, "TypeError %s %s"%(detail,ticket))
+                if rq:
+                    Trace.log(e_errors.ERROR, "Request: %s"%(rq,))
+                if err:
+                    Trace.log(e_errors.ERROR, "Error: %s"%(err,))
+                    
             Trace.trace(15,"bad volume: find returned %s %s"%(rq, err))
             if rq:
                 self.pending_work.delete_job(rq)
