@@ -169,18 +169,18 @@ class AtMovers:
 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
-        Trace.trace(12,"busy_volumes: family=%s"%(volume_family_name,))
+        Trace.trace(19,"busy_volumes: family=%s"%(volume_family_name,))
         vols = []
         write_enabled = 0
         if not  self.sg_vf.vf.has_key(volume_family_name):
             return vols, write_enabled
         # look in the list of work_at_movers
-        Trace.trace(13,"busy_volumes: sg_vf %s" % (self.sg_vf,))
+        Trace.trace(19,"busy_volumes: sg_vf %s" % (self.sg_vf,))
         for rec in self.sg_vf.vf[volume_family_name]:
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]): ### DBG: REMOVE
-                Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]],))
-                Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
+                Trace.trace(19,"busy_volumes: rec %s" % (self.at_movers[rec[0]],))
+                Trace.trace(19,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
             if self.at_movers.has_key(rec[0]):
                 if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
                     # system inhibit
@@ -631,7 +631,7 @@ class LibraryManagerMethods:
                self.processed_admin_requests.append(vol_family) 
         if not self.write_vf_list.has_key(vol_family):
             vol_veto_list, wr_en = self.busy_volumes(vol_family)
-            Trace.trace(12,"process_write_request vol veto list:%s, width:%d"%\
+            Trace.trace(19,"process_write_request vol veto list:%s, width:%d"%\
                         (vol_veto_list, wr_en))
             self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
         else:
@@ -863,7 +863,7 @@ class LibraryManagerMethods:
 
     def check_write_request(self, external_label, rq, requestor):
         vol_veto_list, wr_en = self.busy_volumes(rq.ticket['vc']['volume_family'])
-        Trace.trace(11, "check_write_request: vet_list %s wr_en %s"%(vol_veto_list, wr_en))
+        Trace.trace(19, "check_write_request: vet_list %s wr_en %s"%(vol_veto_list, wr_en))
         label = rq.ticket['fc'].get('external_label', external_label)
         if label != external_label:
             # this is a case with admin pri
@@ -871,12 +871,12 @@ class LibraryManagerMethods:
             # check if tape is already mounted somewhere
             if label in vol_veto_list:
                 rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-                Trace.trace(12, "check_write_request: request for volume %s rejected %s Mounted somwhere else"%
+                Trace.trace(19, "check_write_request: request for volume %s rejected %s Mounted somwhere else"%
                                 (external_label, rq.ticket["reject_reason"]))
                 rq.ticket['status'] = ("VOLS_IN_WORK",None)
                 return rq, rq.ticket['status']
         external_label = label
-        Trace.trace(11, "check_write_request %s %s"%(external_label, rq.ticket))
+        Trace.trace(19, "check_write_request %s %s"%(external_label, rq.ticket))
         if wr_en >= rq.ticket["vc"]["file_family_width"]:
             if not external_label in vol_veto_list:
                 if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its linmit
