@@ -785,6 +785,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				# we just updated the server info so record the
 				# current time as the last time updated.
 				self.last_update[key] = ctime
+			    except SystemExit, exit_code:
+				raise SystemExit, exit_code
 			    except:
 				# there was a problem getting info from the server
 				# change the color of the dispolayed info and

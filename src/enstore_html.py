@@ -446,11 +446,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# first the alive information
 	lm_status = self.data_dict[lm][enstore_status.STATUS]
 	table.append(self.alive_row(HTMLgen.Name(lm, lm), lm_status))
-	# we do not have any of this info if the library manager has timed out and was
-	# never alive during this incarnation of the inquisitor.  if the last
-	# time alive is ------ , then it was never alive.
-	if len(lm_status) == 4 or \
-	   (len(lm_status) == 5 and not lm_status[4] == enstore_status.NO_INFO):
+	# we may have gotten an error while trying to get the info, 
+	# so check for a piece of it first
+	if self.data_dict[lm].has_key(enstore_status.LMSTATE):
 	    # the rest of the lm information is in a separate table, it starts
 	    # with the suspect volume info
 	    lm_table = HTMLgen.TableLite(self.lm_state_row(lm), cellpadding=0, 
@@ -508,12 +506,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # add the mover information for this library manager
     def mv_rows(self, lm, table):
-	# we do not have any of this info if the library manager has timed out and was
-	# never alive during this incarnation of the inquisitor.  if the last
-	# time alive is ------ , then it was never alive.
-	lm_status = self.data_dict[lm][enstore_status.STATUS]
-	if len(lm_status) == 4 or \
-	   (len(lm_status) == 5 and not lm_status[4] == enstore_status.NO_INFO):
+	# we may have gotten an error while trying to get the info, 
+	# so check for a piece of it first
+	if self.data_dict[lm].has_key(enstore_status.LMSTATE):
 	    movers = self.data_dict[lm][enstore_status.MOVERS]
 	    movers.sort()
 	    for mover in movers:
@@ -526,14 +521,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		# no STATUs key, then we have no info on this mover yet.
 		table.append(self.alive_row(mover, moverd[enstore_status.STATUS]))
 
-		# we do not have any of this info if the mover has timed out and was
-		# never alive during this incarnation of the inquisitor.  if the last
-		# time alive is ------ , then it was never alive.  if moverd only has 4
-		# elements, then it is currently alive, if it has 5, then the last is a last
-		# time alive and moverd has 5.
-		if len(moverd[enstore_status.STATUS]) == 4 or \
-		   (len(moverd[enstore_status.STATUS]) == 5 and \
-		   not moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO):
+		# we may have gotten an error when trying to get it, 
+		# so look for a piece of it.  
+		if moverd.has_key(enstore_status.COMPLETED):
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
 							    color=BRICKRED, html_escape='OFF')))
 		    tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
@@ -573,7 +563,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 			self.add_files(moverd, mv_table)
 		    tr = HTMLgen.TR(self.empty_data())
 		    tr.append(HTMLgen.TD(mv_table, colspan=5))
-		table.append(tr)
+		    table.append(tr)
 
     # output all of the library manager rows and their associated movers
     def lm_mv_rows(self, table):
