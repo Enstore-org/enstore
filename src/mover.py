@@ -54,6 +54,7 @@ import signal				# signal - to del shm on sigterm, etc
 import sys				# exit
 import time				# .sleep
 import traceback			# print_exc == stack dump
+import string				# find
 
 # enstore modules
 import generic_server
@@ -108,24 +109,36 @@ forked_state = [ 'forked',
 	   
 
 def sigterm( sig, stack ):
-    # must just try: b/c may get "AttributeError: hsm_driver" which causes
-    # forked process to become server via dispatching working exception handling
-    #print '%d sigterm called'%os.getpid()
-    try: del mvr_srvr.client_obj_inst.hsm_driver.shm
-    except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.client_obj_inst.hsm_driver.sem
-    except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.client_obj_inst.hsm_driver.msg
-    except: pass			# wacky things can happen with forking
+    print '%d sigterm called'%os.getpid()
     if mvr_srvr.client_obj_inst.pid:
 	print 'attempt kill of mover subprocess', mvr_srvr.client_obj_inst.pid
 	# SIGTERM does not seem to get through if encp is ctl-Z'ed
 	# SIGKILL works, but leaves sub-sub process.
-	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
+	# try: posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
+	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGHUP )
 	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
-	time.sleep(3)
-	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
+	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGINT )
+	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGQUIT )
+	#posix.waitpid( mvr_srvr.client_obj_inst.pid, 0 ) #posix.WNOHANG )
+	#print 'process killed'
 	pass
+    # ONLY DELETE AFTER FORKED PROCESS IS KILL
+    # must just try: b/c may get "AttributeError: hsm_driver" which causes
+    # forked process to become server via dispatching working exception handling
+    try: del mvr_srvr.client_obj_inst.hsm_driver.shm
+    except: pass			# wacky things can happen with forking
+    sem = 0; msg = 0
+    try: sem = mvr_srvr.client_obj_inst.hsm_driver.sem
+    except: pass
+    try: msg = mvr_srvr.client_obj_inst.hsm_driver.msg
+    except: pass
+    print 'deleting sem (id=%d) and msg (id=%d)'%(sem,msg)
+    try: del mvr_srvr.client_obj_inst.hsm_driver.sem; print '%d deleted sem'%os.getpid()
+    except: pass			# wacky things can happen with forking
+    try: del mvr_srvr.client_obj_inst.hsm_driver.msg; print '%d deleted msg'%os.getpid()
+    except: pass			# wacky things can happen with forking
+    #print '%d sigterm exiting'%os.getpid()
+    sys.exit( 0 )   # anything other than 0 causes traceback
     sys.exit( 0x80 | sig ) # Without this, this process exits, but only - 
     # after a "select.error: (4, 'Interrupted system call')" exception (with
     # associated traceback tty output).
@@ -164,6 +177,9 @@ def sigsegv( sig, stack ):
     else:
 	sys.exit( 0x80 | sig )
     return None
+
+def sigstop( sig, stack ):
+    return None
     
 
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
@@ -188,8 +204,12 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 	    next_req_to_lm = {}		# so what if library manager is left in the dark???
 	    self.state = 'offline'
 	else:
+            #self.unbind( {} )
 	    next_req_to_lm = unilateral_unbind_next( self, error_info )
+	    pass
+	pass
     else:
+        #self.unbind( {} )
 	next_req_to_lm = unilateral_unbind_next( self, error_info )
     return next_req_to_lm
 
@@ -246,6 +266,15 @@ class MoverClient:
 	    pass
 
 	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
+
+	# check for tape in drive
+	# if no vol one labels, I can only eject. -- tape maybe left in bad
+	# state.
+	if mvr_config['do_eject'] == 'yes':
+	    self.hsm_driver.offline( self.config['device'] )
+	    # tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
+	    #mcc.unloadvol( self.vol_info, self.config['mc_device'] )
+
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
 	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
 	signal.signal( signal.SIGSEGV, sigsegv )# scsi reset???
@@ -357,13 +386,16 @@ def bind_volume( self, external_label ):
     return e_errors.OK
 
 def do_fork( self, ticket, mode ):
-    self.pid = os.fork()
-    self.state = 'busy'
     self.hsm_driver._bytes_clear()
-    self.hsm_driver.user_state_set( forked_state.index('forked') )
+    self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
     self.bytes_to_xfer = ticket['fc']['size']
     self.mode = mode			# client mode, not driver mode
+    self.pid = os.fork()
+    if self.pid == 0:
+	# do in child only
+	self.hsm_driver.user_state_set( forked_state.index('forked') )
+	pass
     return None
 
 def forked_write_to_hsm( self, ticket ):
@@ -471,10 +503,12 @@ def forked_write_to_hsm( self, ticket ):
             logc.send( log_client.ERROR,1,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    #traceback.print_exc()
+	    #print 'type of err_msg is',type(err_msg),'type of sys.exc_info()[1]) is',type(sys.exc_info()[1])
 	    # err_msg is <type 'instance'>
-	    if str(err_msg) == "(0, 'fd_xfer - read EOF unexpected - Success')":
+	    if string.find(str(err_msg),'fd_xfer - read EOF unexpected') != -1:
 		# assume encp dissappeared
-		return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
+		return_or_update_and_exit( self, self.lm_origin_addr,
+					   e_errors.ENCP_GONE )
 		pass
 	    else:
 		wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
@@ -482,7 +516,8 @@ def forked_write_to_hsm( self, ticket ):
 				   wr_err, rd_err, wr_access, rd_access )
 		self.usr_driver.close()
 		send_user_done( self, ticket, e_errors.WRITE_ERROR )
-		return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_ERROR )
+		return_or_update_and_exit( self, self.lm_origin_addr,
+					   e_errors.WRITE_ERROR )
 		pass
         except:
 	    traceback.print_exc()
@@ -756,6 +791,10 @@ def have_bound_volume_next( self ):
 
 # create ticket that says we need to unbind volume x
 def unilateral_unbind_next( self, error_info ):
+    # This method use to automatically unbind, but now it does not because
+    # there are some errors where the tape should be left in the drive. So
+    # unilateral_unbind now just means that there was an error.
+    # The response to this command can be either 'nowork' or 'unbind'
     next_req_to_lm = {'work'           : 'unilateral_unbind',
 		      'mover'          : self.config['name'],
 		      'address'        : (self.config['hostip'],self.config['port']),
@@ -882,7 +921,16 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		    if time.time()-self.client_obj_inst.stall_time > 3.0:# aritrary number
 			try:    os.system( '/usr/local/bin/traceMode 0' )
 			except: pass
-			logc.send( log_client.ERROR,1,'stalled mover - should abort' )
+			if self.client_obj_inst.mode == 'w':
+			    msg = 'writing mover '
+			    if rr > ww+100000: msg = msg + 'tape stall'
+			    else:              msg = msg + 'network stall'
+			else:
+			    msg = 'reading mover '
+			    if rr > ww+100000: msg = msg + 'network stall'
+			    else:              msg = msg + 'tape stall'
+			    pass
+			logc.send( log_client.ERROR,1,msg+' - should abort' )
 			self.client_obj_inst.stall_time = time.time()
 			pass
 		    pass
