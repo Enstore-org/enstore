@@ -140,7 +140,8 @@ def busy_vols_in_family (self, vc, family_name):
     vols = []
     # look in the list of work_at_movers
     for w in self.work_at_movers.list:
-	if w["vc"]["file_family"] == family_name:
+        fn = w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
+	if fn == family_name:
 	    vols.append(w["fc"]["external_label"])
 
     # now check if any volume in this family is still mounted
@@ -162,7 +163,7 @@ def busy_vols_in_family (self, vc, family_name):
 		    # but the volume has is still mounted and must
 		    # go into the volume veto list
 		    vols.append(mv["external_label"])
-	     # check if this mover can do the work
+            # check if this mover can do the work
 	    if (vol_info['at_mover'][0] == 'mounted' and 
 		mv['state'] == 'idle_mover'):
 		work_movers.append(mv)
@@ -844,7 +845,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"IDLE RQ %s"%repr(mticket))
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, mticket['work'])
-	self.last_idle = mv
+        cur_mv = mticket['mover']
 	# check if there is a work for this mover in work_at_movers list
 	# it should not happen in a normal operations but it may when for 
 	# instance mover detects that encp is gone and returns idle or
@@ -921,6 +922,28 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if mv:
                     summon_mover(self, mv, w)
                 return
+
+            elif vol_info['at_mover'][0] == 'mounting':
+                # volume is in the mounting state
+                # if it is for current mover check it's "real" state
+                if vol_info['at_mover'][1] == cur_mv:
+                    # restore volume state
+                    mcstate =  self.vcc.update_mc_state(w['fc']['external_label'])
+                    format = "vol:%s state recovered to %s"
+                    Trace.log(e_errors.INFO,format%(w['fc']['external_label'],
+                                                    mcstate["at_mover"][0]))
+                else:
+                    # if it is not this mover, summon it
+                    Trace.trace(11,"volume %s mounting, trying to summon %s"%\
+                            (w['fc']['external_label'],vol_info['at_mover'][1])) 
+                    mv = find_mover_by_name(vol_info['at_mover'][1], movers)
+                    if mv:
+                        summon_mover(self, mv, w)
+
+                # no work for this mover
+                self.reply_to_caller({"work" : "nowork"})
+                return
+
 	    else:
                 Trace.log(e_errors.INFO,
                           "Cannot satisfy request. Vol %s is %s"%\
@@ -943,7 +966,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.work_at_movers.append(w)
 	    mv = update_mover_list(mticket, 'work_at_mover')
 	    mv['external_label'] = w['fc']['external_label']
-	    mv["file_family"] = w["vc"]["file_family"]
+            file_family = w["vc"]["file_family"]
+            if w["work"] == "write_to_hsm":
+                file_family = file_family+"."+w["vc"]["wrapper"]
+	    mv["file_family"] = file_family
 	    #sys.exit(0)
             return
 
