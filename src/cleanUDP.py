@@ -37,7 +37,7 @@ import e_errors
 def Select (R, W, X, timeout) :
 
 # we have an error under linux where we get an error, and
-# r and x are set, but there is no data. If the erro ris a spurrious erro, 
+# r and x are set, but there is no data. If the error is a spurrious error, 
 # we must delete the object from all lists.
 #
 
@@ -47,19 +47,17 @@ def Select (R, W, X, timeout) :
 		r, w, x = select.select(R, W, X, timeout)
 		timeout = timeout - (time.time() - t0)
 		timeout = max (0, timeout)
-		Trace.trace( 6, "cleanUDP.Select: %s %s"%(r,cleaned_r) )
 
 		if r == cleaned_r :
-			# all except FD's as the saem as not scrubbed
+			# all except FD's as the same as not scrubbed
 			# previously.
 			return r, w, x
 		cleaned_r = []
 		for obj in r :
-			try :
+			try:
 			    if obj.scrub() :
-				Trace.trace( 6, "cleaned_r cleanUDP object" )
 				cleaned_r.append(obj)		
-			except : 
+			except: 
 			    Trace.trace( 6, "non clean UDP object" )
 			    cleaned_r.append(obj)
 
@@ -79,7 +77,6 @@ class cleanUDP :
 	def scrub(self) :
 		self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
 		r, w, x = select.select([self], [], [self], 0)
-		Trace.trace (20, "cleanUDP.scrub : %s %s %s" % (r, w, x))
 		if r :
 			return 1 # it's clean - there really is a read to do
 		return 0 # it went away - just the icmp message under A. Cox's linux implementation
@@ -129,7 +126,6 @@ class cleanUDP :
 
 		for n in range(0, self.retry_max - 1) :
 			try:
-				Trace.trace( 6, "about to sendto" )
 				return self.socket.sendto(string, address)
 			except socket.error:
 				self.logerror("sendto", n)
