@@ -3,15 +3,6 @@ import re
 import string
 import sys
 
-global errDict     # These globals are to change dictionaries or to 
-global errLine     # add to lists from various functions. You have one
-global errList     # copy instead of working with multiple copies
-global miscDict
-global miscLine
-global miscList
-global msgDict
-global msgList
-global MAXMSG
 errDict = {}
 errLine = {}
 errList = []
@@ -24,15 +15,6 @@ MAXMSG = 5         # YOU ONLY NEED TO CHANGE THIS NUMBER TO CHANGE HOW MANY LINE
                    # ARE TO BE PRINTED OUT I.E. UP TO 10; CHANGE 5 TO 10
 
 def newLog(inFile):
-    global errDict
-    global errLine
-    global errList
-    global miscDict
-    global miscLine
-    global miscList
-    global msgDict
-    global msgList
-    global MAXMSG
     
     t1lines = []
     TRUE = 1
@@ -246,15 +228,6 @@ def newLog(inFile):
 # THIS FUNCTION BUILDS ALLTHE DICTIONARIES AND LISTS. IT ALSO KEEPS TRACK
 # OF HOW MANY TIMES EACH LINE OCCURRED
 def updList(listType, key, line):
-    global errDict
-    global errLine
-    global errList
-    global miscDict
-    global miscLine
-    global miscList
-    global msgDict
-    global msgList
-    global MAXMSG
     
     if listType == "ERR":
         if errDict.has_key(key):
@@ -287,15 +260,6 @@ def updList(listType, key, line):
 # A REPORT FILE NAME 'FILE_NAME.RPT'. THIS IS WHERE FILE_NAME IS THE NAME OF THE
 # LOG FILE THAT WAS ENTERED IN USING ARGV FUNCTION.
 def printMsgs(outFile):
-    global errDict
-    global errLine
-    global errList
-    global miscDict
-    global miscLine
-    global miscList
-    global msgDict
-    global msgList
-    global MAXMSG
     
     miscList.sort()
     msgList.sort()
