@@ -1154,252 +1154,6 @@ $ ecmd encp $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
 /pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.454517460805 MB/S  requestor:bakken     cum= 8.078855
 </pre>
 
-Here is the same transfer, but this time with the "--verbose=5" option enabled,
-so more details of the transfers are printed out:
-<pre>
-$ ecmd encp --list $P/ran-1       $P/ran-2        $P/ran-3        $P/ran-4 \
-                   $P/test2/ran-5 $P/test2/ran-6  $P/test2/ran-7  $P/test2/ran-8 \
-                   $P/test3/ran-9 $P/test3/ran-10 $P/test3/ran-11 $P/test3/ran-12 .
-Storing/checking  local info   cum= 0.00021493434906
-  dt: 0.00107896327972    cum= 0.00155103206635
-Checking input pnfs files: ['/pnfs/enstore/airedale/ran-1', '/pnfs/enstore/airedale/ran-2', '/pnfs/enstore/airedale/ran-3', '/pnfs/enstore/airedale/ran-4', '/pnfs/enstore/airedale/test2/ran-5', '/pnfs/enstore/airedale/test2/ran-6', '/pnfs/enstore/airedale/test2/ran-7', '/pnfs/enstore/airedale/test2/ran-8', '/pnfs/enstore/airedale/test3/ran-9', '/pnfs/enstore/airedale/test3/ran-10', '/pnfs/enstore/airedale/test3/ran-11', '/pnfs/enstore/airedale/test3/ran-12']    cum= 0.00179898738861
-  dt: 0.834562063217    cum= 0.836575031281
-Checking output unix files: ['/home/bakken/enstore/src/.']    cum= 0.836683034897
-  ['/home/bakken/enstore/src/ran-1', '/home/bakken/enstore/src/ran-2', '/home/bakken/enstore/src/ran-3', '/home/bakken/enstore/src/ran-4', '/home/bakken/enstore/src/ran-5', '/home/bakken/enstore/src/ran-6', '/home/bakken/enstore/src/ran-7', '/home/bakken/enstore/src/ran-8', '/home/bakken/enstore/src/ran-9', '/home/bakken/enstore/src/ran-10', '/home/bakken/enstore/src/ran-11', '/home/bakken/enstore/src/ran-12']
-  dt: 0.80575799942    cum= 1.64285504818
-Requesting callback ports    cum= 1.64292299747
-  airedale.fnal.gov 7613
-  dt: 0.0070469379425    cum= 1.65014898777
-Calling Config Server to find file clerk    cum= 1.6502250433
-  pcfarm9 7511
-  dt: 0.00744593143463    cum= 1.65786099434
-Calling file clerk for file info    cum= 1.65792798996
-  dt: 0.747581005096    cum= 2.40566301346
-Sending ticket to file clerk    cum= 2.4057289362
-  Q'd: /pnfs/enstore/airedale/test2/ran-5 90121648900000L bytes: 102400 on flop302 (516608, 619520) dt: 0.125765   cum=2.531657
-  Q'd: /pnfs/enstore/airedale/test2/ran-6 90121649400000L bytes: 102400 on flop302 (619520, 722432) dt: 0.251316   cum=2.657218
-  Q'd: /pnfs/enstore/airedale/test2/ran-7 90121651400000L bytes: 102400 on flop302 (722432, 825344) dt: 0.452826   cum=2.858725
-  Q'd: /pnfs/enstore/airedale/test2/ran-8 90121652100000L bytes: 102400 on flop302 (825344, 928256) dt: 11.345965   cum=13.751878
-  dt: 11.3462849855    cum= 13.752177
-Waiting for mover to call back    cum= 13.7522759438
-  airedale.fnal.gov 7614 cum: 13.7816929817
-  dt: 0.0294079780579    cum= 13.7819700241
-Receiving data for file  /home/bakken/enstore/src/ran-5    cum= 13.7820539474
-  bytes: 102400  Socket read Rate =  1.99837046939  MB/s
-  dt: 0.0488679409027    cum= 13.8313089609
-Waiting for final mover dialog    cum= 13.8313920498
-  dt: 0.119197010994    cum= 13.9508379698
-/pnfs/enstore/airedale/test2/ran-5 -> /home/bakken/enstore/src/ran-5 : 102400 bytes copied from flop302 at 0.491777789917 MB/S  requestor:bakken     cum= 13.951014
-Waiting for mover to call back    cum= 13.9696760178
-  airedale.fnal.gov 7615 cum: 13.9908440113
-  dt: 0.0211460590363    cum= 13.9911179543
-Receiving data for file  /home/bakken/enstore/src/ran-6    cum= 13.9912029505
-  bytes: 102400  Socket read Rate =  2.06947075913  MB/s
-  dt: 0.0471889972687    cum= 14.0387710333
-Waiting for final mover dialog    cum= 14.0388560295
-  dt: 0.119550943375    cum= 14.1586530209
-/pnfs/enstore/airedale/test2/ran-6 -> /home/bakken/enstore/src/ran-6 : 102400 bytes copied from flop302 at 0.516757071819 MB/S  requestor:bakken     cum= 14.158835
-Waiting for mover to call back    cum= 14.1599019766
-  airedale.fnal.gov 7616 cum: 14.2008810043
-  dt: 0.0409680604935    cum= 14.2011679411
-Receiving data for file  /home/bakken/enstore/src/ran-7    cum= 14.2012529373
-  bytes: 102400  Socket read Rate =  2.36295877514  MB/s
-  dt: 0.0413279533386    cum= 14.2429490089
-Waiting for final mover dialog    cum= 14.2430330515
-  dt: 0.114647984505    cum= 14.3579289913
-/pnfs/enstore/airedale/test2/ran-7 -> /home/bakken/enstore/src/ran-7 : 102400 bytes copied from flop302 at 0.493126210693 MB/S  requestor:bakken     cum= 14.358107
-Waiting for mover to call back    cum= 14.359153986
-  airedale.fnal.gov 7617 cum: 14.3949129581
-  dt: 0.0357400178909    cum= 14.3951740265
-Receiving data for file  /home/bakken/enstore/src/ran-8    cum= 14.3953809738
-  bytes: 102400  Socket read Rate =  2.15405489264  MB/s
-  dt: 0.0453360080719    cum= 14.4412109852
-Waiting for final mover dialog    cum= 14.4412950277
-  dt: 0.122217059135    cum= 14.5637539625
-/pnfs/enstore/airedale/test2/ran-8 -> /home/bakken/enstore/src/ran-8 : 102400 bytes copied from flop302 at 0.477291649552 MB/S  requestor:bakken     cum= 14.563928
-udp_client.send: read old info: (16, {'unique_id': 901216851.972, 'bfid': '90121652100000L', 'file_clerk': {'bof_space_cookie': '(825344, 928256)', 'sanity_cookie': '(5000, 33638)', 'external_label': 'flop302', 'bfid': '90121652100000L', 'complete_crc': 30442}, 'sanity_cookie': '(5000, 33638)', 'complete_crc': 30442, 'pnfs_info': {'minor': 5, 'mode': 33268, 'gid': 0, 'gname': 'root', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test2/ran-8', 'pstat': (33204, 38375816, 5, 1, 5406, 0, 102400, 901216512, 901216512, 901216521), 'rmajor': 0, 'uname': 'bakken', 'major': 0}, 'user_info': {'gname': 'g023', 'uid': 5406, 'gid': 1530, 'fullname': '/home/bakken/enstore/src/ran-8', 'uname': 'bakken', 'machine': ('Linux', 'airedale', '2.0.35', '#1 Mon Jul 20 08:54:09 CDT 1998', 'i686')}, 'bof_space_cookie': '(825344, 928256)', 'sanity_size': 5000, 'external_label': 'flop302', 'user_callback_port': 7613, 'work': 'read_from_hsm', 'user_callback_host': 'airedale.fnal.gov', 'status': 'ok'}, 901216872.506) ('131.225.97.10', 7511)
-  Q'd: /pnfs/enstore/airedale/test3/ran-9 90121653300000L bytes: 102400 on flop303 (928256, 1031168) dt: 0.136023   cum=14.701104
-  Q'd: /pnfs/enstore/airedale/test3/ran-10 90121653900000L bytes: 102400 on flop303 (1031168, 1134080) dt: 0.287928   cum=14.853003
-  Q'd: /pnfs/enstore/airedale/test3/ran-11 90121655100000L bytes: 102400 on flop303 (1134080, 1236992) dt: 0.413479   cum=14.978561
-  Q'd: /pnfs/enstore/airedale/test3/ran-12 90121655600000L bytes: 102400 on flop303 (1236992, 1339904) dt: 0.541382   cum=15.106496
-  dt: 12.7008770704    cum= 15.1067709923
-Waiting for mover to call back    cum= 15.1068719625
-  airedale.fnal.gov 7618 cum: 15.6871869564
-  dt: 0.580304026604    cum= 15.6874320507
-Receiving data for file  /home/bakken/enstore/src/ran-9    cum= 15.6875170469
-  bytes: 102400  Socket read Rate =  1.34824877428  MB/s
-  dt: 0.0724319219589    cum= 15.7603620291
-Waiting for final mover dialog    cum= 15.7604500055
-  dt: 0.0972409248352    cum= 15.8579269648
-/pnfs/enstore/airedale/test3/ran-9 -> /home/bakken/enstore/src/ran-9 : 102400 bytes copied from flop303 at 0.130022665084 MB/S  requestor:bakken     cum= 15.858102
-Waiting for mover to call back    cum= 15.859210968
-  airedale.fnal.gov 7619 cum: 15.9228279591
-  dt: 0.0635979175568    cum= 15.9230870008
-Receiving data for file  /home/bakken/enstore/src/ran-10    cum= 15.9231729507
-  bytes: 102400  Socket read Rate =  1.52604351981  MB/s
-  dt: 0.0639930963516    cum= 15.9875530005
-Waiting for final mover dialog    cum= 15.9876400232
-  dt: 0.0923020839691    cum= 16.0801730156
-/pnfs/enstore/airedale/test3/ran-10 -> /home/bakken/enstore/src/ran-10 : 102400 bytes copied from flop303 at 0.441947460475 MB/S  requestor:bakken     cum= 16.080348
-Waiting for mover to call back    cum= 16.0814180374
-  airedale.fnal.gov 7620 cum: 16.1459280252
-  dt: 0.0644949674606    cum= 16.1461839676
-Receiving data for file  /home/bakken/enstore/src/ran-11    cum= 16.1462689638
-  bytes: 102400  Socket read Rate =  1.42897512202  MB/s
-  dt: 0.0683400630951    cum= 16.2150000334
-Waiting for final mover dialog    cum= 16.2150889635
-  dt: 0.0967879295349    cum= 16.3121169806
-/pnfs/enstore/airedale/test3/ran-11 -> /home/bakken/enstore/src/ran-11 : 102400 bytes copied from flop303 at 0.423289390535 MB/S  requestor:bakken     cum= 16.312295
-Waiting for mover to call back    cum= 16.3133749962
-  airedale.fnal.gov 7621 cum: 16.3780419827
-  dt: 0.0646479129791    cum= 16.3782949448
-Receiving data for file  /home/bakken/enstore/src/ran-12    cum= 16.3783789873
-  bytes: 102400  Socket read Rate =  1.48648697691  MB/s
-  dt: 0.0656960010529    cum= 16.4444799423
-Waiting for final mover dialog    cum= 16.4445669651
-  dt: 0.0912410020828    cum= 16.5361510515
-/pnfs/enstore/airedale/test3/ran-12 -> /home/bakken/enstore/src/ran-12 : 102400 bytes copied from flop303 at 0.438329425538 MB/S  requestor:bakken     cum= 16.536341
-  Q'd: /pnfs/enstore/airedale/ran-1 90121542000000L bytes: 102400 on flop301 (2048, 104960) dt: 0.129802   cum=16.667315
-  Q'd: /pnfs/enstore/airedale/ran-2 90121542700000L bytes: 102400 on flop301 (104960, 207872) dt: 0.260114   cum=16.797613
-  Q'd: /pnfs/enstore/airedale/ran-3 90121543200000L bytes: 102400 on flop301 (207872, 310784) dt: 0.390148   cum=16.927652
-  Q'd: /pnfs/enstore/airedale/ran-4 90121543600000L bytes: 102400 on flop301 (310784, 413696) dt: 0.517002   cum=17.054500
-  dt: 14.6489070654    cum= 17.0548000336
-Waiting for mover to call back    cum= 17.0549010038
-  airedale.fnal.gov 7622 cum: 17.6872760057
-  dt: 0.632364988327    cum= 17.687525034
-Receiving data for file  /home/bakken/enstore/src/ran-1    cum= 17.6876089573
-  bytes: 102400  Socket read Rate =  1.47265556183  MB/s
-  dt: 0.0663130283356    cum= 17.7543139458
-Waiting for final mover dialog    cum= 17.7544020414
-  dt: 0.0931440591812    cum= 17.8477829695
-/pnfs/enstore/airedale/ran-1 -> /home/bakken/enstore/src/ran-1 : 102400 bytes copied from flop301 at 0.123163392809 MB/S  requestor:bakken     cum= 17.847959
-Waiting for mover to call back    cum= 17.8490309715
-  airedale.fnal.gov 7623 cum: 17.9164079428
-  dt: 0.0673609972    cum= 17.9166640043
-Receiving data for file  /home/bakken/enstore/src/ran-2    cum= 17.9167480469
-  bytes: 102400  Socket read Rate =  0.66466315728  MB/s
-  dt: 0.146925926208    cum= 18.0640599728
-Waiting for final mover dialog    cum= 18.0641460419
-  dt: 0.0902429819107    cum= 18.1546230316
-/pnfs/enstore/airedale/ran-2 -> /home/bakken/enstore/src/ran-2 : 102400 bytes copied from flop301 at 0.319555867275 MB/S  requestor:bakken     cum= 18.154798
-Waiting for mover to call back    cum= 18.1558859348
-  airedale.fnal.gov 7624 cum: 18.2239129543
-  dt: 0.0680110454559    cum= 18.224167943
-Receiving data for file  /home/bakken/enstore/src/ran-3    cum= 18.2242510319
-  bytes: 102400  Socket read Rate =  1.40887460294  MB/s
-  dt: 0.0693150758743    cum= 18.293956995
-Waiting for final mover dialog    cum= 18.2940440178
-  dt: 0.0940099954605    cum= 18.3883080482
-/pnfs/enstore/airedale/ran-3 -> /home/bakken/enstore/src/ran-3 : 102400 bytes copied from flop301 at 0.42014781079 MB/S  requestor:bakken     cum= 18.388487
-Waiting for mover to call back    cum= 18.3895900249
-  airedale.fnal.gov 7625 cum: 18.4557709694
-  dt: 0.0661630630493    cum= 18.4560240507
-Receiving data for file  /home/bakken/enstore/src/ran-4    cum= 18.4561079741
-  bytes: 102400  Socket read Rate =  1.43308480601  MB/s
-  dt: 0.0681440830231    cum= 18.524641037
-Waiting for final mover dialog    cum= 18.5247290134
-  dt: 0.0877720117569    cum= 18.6127489805
-/pnfs/enstore/airedale/ran-4 -> /home/bakken/enstore/src/ran-4 : 102400 bytes copied from flop301 at 0.437588604748 MB/S  requestor:bakken     cum= 18.612926
-Complete:  1228800  bytes in  12  files  in 18.6140960455 S.  Overall rate =  0.0629563206903  MB/s
-</pre>
-
-Here's an example of writing 4 unix files to the HSM:
-
-<pre>
-Linux-airedale[353] 09:17:37 jon1$ ecmd encp ran-1 ran-2 ran-3 ran-4 $P/test
-  /home/bakken/enstore/test/jon1/ran-1 -> /pnfs/enstore/airedale/test/ran-1 : 10485760 bytes copied to flop306 at 1.11655493497 MB/S  requestor:bakken     cumt= 10.983013
-  /home/bakken/enstore/test/jon1/ran-2 -> /pnfs/enstore/airedale/test/ran-2 : 10485760 bytes copied to flop306 at 1.18191504602 MB/S  requestor:bakken     cumt= 19.482414
-  /home/bakken/enstore/test/jon1/ran-3 -> /pnfs/enstore/airedale/test/ran-3 : 10485760 bytes copied to flop306 at 1.25504795528 MB/S  requestor:bakken     cumt= 27.481132
-  /home/bakken/enstore/test/jon1/ran-4 -> /pnfs/enstore/airedale/test/ran-4 : 10485760 bytes copied to flop306 at 1.02843066309 MB/S  requestor:bakken     cumt= 37.235880
-Complete:  41943040  bytes in  4  files  in 37.239297986 S.  Overall rate =  1.07413410465  MB/s
-</pre>
-
-And here's the same test but with the verbose=5 flag set:
-
-<pre>
-Linux-airedale[368] 09:21:40 jon1$ ecmd encp --verbose=5 ran-1 ran-2 ran-3 ran-4 $P/test/testa
-Getting clients, storing/checking local info   cumt= 0.125026941299
-Connecting to configuration server at  pcfarm9.fnal.gov 7510
-  dt: 0.0242840051651    cumt= 0.151304960251
-csc= <configuration_client.configuration_client instance at 8119fc0>
-u= <udp_client.UDPClient instance at 811a3e8>
-logc= <log_client.LoggerClient instance at 811a580>
-uinfo= {'gname': 'g023', 'uid': 5406, 'gid': 1530, 'fullname': '', 'uname': 'bakken', 'machine': ('Linux', 'airedale', '2.0.35', '#1 Mon Jul 20 08:54:09 CDT 1998', 'i686')}
-Checking input unix files: ['/home/bakken/enstore/test/jon1/ran-1', '/home/bakken/enstore/test/jon1/ran-2', '/home/bakken/enstore/test/jon1/ran-3', '/home/bakken/enstore/test/jon1/ran-4']    cumt= 0.152971982956
-  dt: 0.185861945152    cumt= 0.339438915253
-ninput= 4
-inputlist= ['/home/bakken/enstore/test/jon1/ran-1', '/home/bakken/enstore/test/jon1/ran-2', '/home/bakken/enstore/test/jon1/ran-3', '/home/bakken/enstore/test/jon1/ran-4']
-file_size= [10485760, 10485760, 10485760, 10485760]
-delayed_dismount= 1
-Checking output pnfs files: ['/pnfs/enstore/airedale/test/testa']    cumt= 0.345446944237
-  dt: 0.51175403595    cumt= 0.857663989067
-outputlist= ['/pnfs/enstore/airedale/test/testa/ran-1', '/pnfs/enstore/airedale/test/testa/ran-2', '/pnfs/enstore/airedale/test/testa/ran-3', '/pnfs/enstore/airedale/test/testa/ran-4']
-library= ['airedaledisk', 'airedaledisk', 'airedaledisk', 'airedaledisk']
-file_family= ['jon', 'jon', 'jon', 'jon']
-width= [1, 1, 1, 1]
-pinfo= [{'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-1', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-2', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-3', 'gid': 1530, 'major': 0, 'uname': 'bakken'}, {'pstat': (16893, 38392440, 5, 1, 5406, 1530, 512, 901808412, 901808412, 901808412), 'minor': 0, 'rmajor': 0, 'mode': 32798, 'gname': 'g023', 'rminor': 0, 'uid': 5406, 'pnfsFilename': '/pnfs/enstore/airedale/test/testa/ran-4', 'gid': 1530, 'major': 0, 'uname': 'bakken'}]
-p= <pnfs.pnfs instance at 8115a30>
-Requesting callback ports    cumt= 0.862877011299
-  airedale.fnal.gov 7600
-  dt: 0.238645911217    cumt= 1.10273790359
-Calling Config Server to find airedaledisk.library_manager    cumt= 1.10303294659
-   airedale 7517
-  dt: 0.0058319568634    cumt= 1.10947692394
-Sending ticket to airedaledisk.library_manager    cumt= 1.10977995396
-  Q'd: /home/bakken/enstore/test/jon1/ran-1 airedaledisk family: jon bytes: 10485760 dt: 0.0713790655136    cumt= 1.18164396286
-Waiting for mover to call back    cumt= 1.18626201153
-  airedale.fnal.gov 7601 cum: 2.64205896854
-  dt: 1.45555996895    cumt= 2.64386999607
-Sending data for file  /pnfs/enstore/airedale/test/testa/ran-1    cumt= 2.64423692226
-  bytes: 10485760  Socket Write Rate =  2.01092899528  MB/s
-  dt: 4.97282600403    cumt= 7.61788499355
-Waiting for final mover dialog    cumt= 7.61800897121
-  dt: 0.35071003437    cumt= 7.96896100044
-Adding file to pnfs    cumt= 7.96911489964
-  dt: 1.93133103848    cumt= 9.90079092979
-  /home/bakken/enstore/test/jon1/ran-1 -> /pnfs/enstore/airedale/test/testa/ran-1 : 10485760 bytes copied to flop306 at 1.14729553162 MB/S  requestor:bakken     cumt= 9.903162
-Sending ticket to airedaledisk.library_manager    cumt= 9.91201090813
-  Q'd: /home/bakken/enstore/test/jon1/ran-2 airedaledisk family: jon bytes: 10485760 dt: 0.0295230150223    cumt= 9.94205701351
-Waiting for mover to call back    cumt= 9.94686996937
-  airedale.fnal.gov 7601 cum: 10.7699859142
-  dt: 0.822878956795    cumt= 10.7718319893
-Sending data for file  /pnfs/enstore/airedale/test/testa/ran-2    cumt= 10.7721740007
-  bytes: 10485760  Socket Write Rate =  2.1859992052  MB/s
-  dt: 4.57456707954    cumt= 15.3475339413
-Waiting for final mover dialog    cumt= 15.3476879597
-  dt: 0.278494954109    cumt= 15.6264359951
-Adding file to pnfs    cumt= 15.6266009808
-  dt: 2.92102301121    cumt= 18.5479849577
-  /home/bakken/enstore/test/jon1/ran-2 -> /pnfs/enstore/airedale/test/testa/ran-2 : 10485760 bytes copied to flop306 at 1.16245629222 MB/S  requestor:bakken     cumt= 18.549760
-Sending ticket to airedaledisk.library_manager    cumt= 18.5514349937
-  Q'd: /home/bakken/enstore/test/jon1/ran-3 airedaledisk family: jon bytes: 10485760 dt: 0.0314730405807    cumt= 18.5834269524
-Waiting for mover to call back    cumt= 18.5839298964
-  airedale.fnal.gov 7601 cum: 19.4579730034
-  dt: 0.873831033707    cumt= 19.459815979
-Sending data for file  /pnfs/enstore/airedale/test/testa/ran-3    cumt= 19.4601159096
-  bytes: 10485760  Socket Write Rate =  2.0228595011  MB/s
-  dt: 4.94349706173    cumt= 24.4044009447
-Waiting for final mover dialog    cumt= 24.4045529366
-  dt: 0.289401054382    cumt= 24.6942389011
-Adding file to pnfs    cumt= 24.6957499981
-  dt: 1.75857806206    cumt= 26.4547179937
-  /home/bakken/enstore/test/jon1/ran-3 -> /pnfs/enstore/airedale/test/testa/ran-3 : 10485760 bytes copied to flop306 at 1.27029727496 MB/S  requestor:bakken     cumt= 26.456495
-Sending ticket to airedaledisk.library_manager    cumt= 26.4581599236
-  Q'd: /home/bakken/enstore/test/jon1/ran-4 airedaledisk family: jon bytes: 10485760 dt: 0.0315480232239    cumt= 26.4902279377
-Waiting for mover to call back    cumt= 26.4907259941
-  airedale.fnal.gov 7601 cum: 27.4995449781
-  dt: 1.00860905647    cumt= 27.5014169216
-Sending data for file  /pnfs/enstore/airedale/test/testa/ran-4    cumt= 27.5017179251
-  bytes: 10485760  Socket Write Rate =  2.04191980491  MB/s
-  dt: 4.89735198021    cumt= 32.3998779058
-Waiting for final mover dialog    cumt= 32.4000319242
-  dt: 0.259968996048    cumt= 32.6602540016
-Adding file to pnfs    cumt= 32.6604199409
-  dt: 2.11265301704    cumt= 34.7734309435
-  /home/bakken/enstore/test/jon1/ran-4 -> /pnfs/enstore/airedale/test/testa/ran-4 : 10485760 bytes copied to flop306 at 1.20713143087 MB/S  requestor:bakken     cumt= 34.775209
-Complete:  41943040  bytes in  4  files  in 34.7769209146 S.  Overall rate =  1.15018808302  MB/s
-
-</pre>
 
 <h3><a name="encp_queue">
 1.2.4 <em>Encp</em> Transfer Lists
@@ -5636,11 +5390,7 @@ part of the software project.
 <TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
 <TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
 
-
 </TABLE></center>
-
-
-<h3> Enstore System Instance Interface</h3>
 
 <p> Interfacing to an experiment means placing Enstore in a larger
 system context. 
@@ -5671,7 +5421,7 @@ constraints:
 
 <TR VALIGN=TOP>
 <TD> <P><FONT SIZE=2>Network </FONT> </TD>
-<TD> <P><FONT SIZE=2>8K minimum UDP Datagram size </FONT> </TD>
+<TD> <P><FONT SIZE=2>16K minimum UDP Datagram size </FONT> </TD>
 <TD> <P><FONT SIZE=2>Enstore </FONT> </TD>
 
 <TR VALIGN=TOP>
@@ -5708,9 +5458,6 @@ constraints:
 <TD> <P><FONT SIZE=2>Security </FONT> </TD>
 <TD> <P><FONT SIZE=2>Authentication etc are TBD </FONT> </TD>
 <TD> <P><FONT SIZE=2>System </FONT> </TD>
-
-
-
 
 </TABLE></center>
 
