@@ -129,6 +129,8 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
+            except:
+                Trace.handle_error()
                 
     def rewind(self):
         try:

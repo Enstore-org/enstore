@@ -1006,6 +1006,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
             if self.state is IDLE:
+                good_label = 1
                 have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
 
                 stats = self.tape_driver.ftt.get_stats()
@@ -1021,8 +1022,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                         self.dismount_time = time.time() + self.default_dismount_delay
                         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                        
                     else:
                         # failed to read label eject tape
+                        good_label = 0
                         Trace.alarm(e_errors.ERROR, "failed to read volume label on startup")
                         ejected = self.tape_driver.eject()
                         if ejected == -1:
@@ -1049,9 +1052,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.state = OFFLINE
                     else:
                         mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
-
-                if self.maybe_clean():
-                    have_tape = 0
+                if good_label: # to prevent mover from failure in ftt_get_stats
+                    if self.maybe_clean():
+                        have_tape = 0
                     
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
