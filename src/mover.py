@@ -1054,7 +1054,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_location = self.current_location
 
         if not vol_info.get('external_label'):
-            vol_info['external_label'] = 'Unknown'
+            vol_info = self.query_volume_clerk(self.current_volume)
+            self.vol_info.update(vol_info)
 
         mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
         status = mcc_reply.get('status')
