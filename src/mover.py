@@ -1284,10 +1284,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                             return
                         
-        ticket = self.format_lm_ticket(state=state, error_source=error_source)
-        work_saved = ticket['work']
+        #ticket = self.format_lm_ticket(state=state, error_source=error_source)
         # send offline less often
         send_rq = 1
+        use_state = 1
         if ((self.state == self._last_state) and
             self.state == OFFLINE):
             send_rq = 0
@@ -1299,6 +1299,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if send_rq:
             for lib, addr in self.libraries:
+                if use_state:
+                    ticket = self.format_lm_ticket(state=state, error_source=error_source)
+                else:
+                    ticket = self.format_lm_ticket(state=self.state, error_source=error_source)
+
                 if state != self._last_state:
                     Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
                 self._last_state = self.state
@@ -1327,6 +1332,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             continue
                         method = getattr(self, work, None)
                         if method:
+                            use_state = 0
                             try:
                                 method(request_from_lm)
                             except:
@@ -1339,7 +1345,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
                     Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
                     self.udpc.send_no_wait(ticket, addr)
-                ticket['work'] = work_saved
         self.check_dismount_timer()
 
 
