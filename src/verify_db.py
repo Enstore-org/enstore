@@ -22,7 +22,7 @@ def verify_db(dbname):
                 if kl == k and vl == v:
                     k = None
                 else:
-                    raise EOFError
+                    raise EOFError, 'Current: '+`k`+':'+`v`+'\n'+'   Last: '+`kl`+':'+`vl`
             if count % 1000 == 0:
                 print count
 
@@ -37,7 +37,7 @@ def verify_db(dbname):
             pass
 
         if notok:
-            raise EOFError
+            raise IndexError, "cursor advanced beyond the last record"
 
         delta = time.time()-t0
 
@@ -45,7 +45,7 @@ def verify_db(dbname):
         d.close()
 
         if not count:
-            print "DATABASE",dbname,"IS CORRUPT. NO KEYS FOUND"
+            print "Backup of DATABASE",dbname,"IS CORRUPT. NO KEYS FOUND"
             return 1
 
         print "%d keys checked ok in database %s. Rate was %.1f keys/S" %(count,dbname,count/delta)
@@ -55,8 +55,9 @@ def verify_db(dbname):
             c.close()
             d.close()
             exc, msg, tb = sys.exc_info()
-            print "DATABASE",dbname,"IS CORRUPT. Current count is",count
-            print exc, msg
+            print "Backup of DATABASE",dbname,"IS CORRUPT. Current count is",count
+            print exc
+            print msg
             return 1
 
 if __name__ == "__main__":
