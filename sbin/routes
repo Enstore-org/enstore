@@ -281,7 +281,7 @@ EOF
          if [ $production -ne 0 ]; then
 	   msg="Node $node has rate=$i.  FIX, or disable its mover"
 	   enstore alarm --raise --severity 'A' --root_error=$msg
-	   enstore sched --override enstore --saagStatus red
+	   #enstore sched --override enstore --saagStatus red
            /usr/bin/Mail -s "$msg" $ENSTORE_MAIL
            flag2="CHECK"
          else
