@@ -7,7 +7,9 @@ FREEZE=`find $(PYTHON_DIR) -name freeze.py -print`
 PYMODULES=$(PYTHON_DIR)/Python-*/Modules
 
 # No static version for SunOS for now
-LDFLAGS2=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-dy"; else echo "-static"; fi`
+# No static version for any one any more ... since v3_0
+# LDFLAGS2=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-dy"; else echo "-static"; fi`
+LDFLAGS2=
 
 OSV=`uname -s r`
 
@@ -76,6 +78,7 @@ fileinfo:
 #	cp MONITOR_CLIENT_BIN_TEMP/monitor_client      ENCPBIN/enmonitor
 #	rm -rf MONITOR_CLIENT_BIN_TEMP
 
+# This install never works!
 install: encp enstore_user
 	cp encp $ENSTORE_DIR/bin
 	cp enstore_user $ENSTORE_DIR/bin
