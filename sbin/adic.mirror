@@ -1,0 +1,133 @@
+# mirror -u guest adic.mirror (you'll be prompted for pw)
+#remote_user=guest
+remote_user=anonymous
+#remote_password=XXXXXX
+#site=131.225.110.97 (emass1)
+#site=131.225.164.10 (rip3a)
+#site=131.225.164.19 (adic2)
+
+package=main
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/
+        local_dir=/rip8a/enstore/adicShadow
+        recursive=false
+        flags_nonrecursive=
+        get_patt=.*(ini|INI)$
+        get_patt+|.*(sys|SYS)$
+        get_patt+|.*(cmd|CMD)$
+        get_patt+|.*(bat|BAT)$
+        get_patt+|.*(cfg|CFG)$
+        get_patt+|.*(ndf|NDF)$
+	get_patt+|(CONFIG|config).*
+	get_patt+|(AUTOEXEC|autoexec).*
+	get_patt+|(STARTUP|startup).*
+	get_patt+|(EEDATA|eedata).*
+        delete_excl=(AMU|BACKUP|das|os2|RHO|save|usr|logs)(/|$)
+
+package=amu
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/AMU
+        local_dir=/rip8a/enstore/adicShadow/AMU
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.*(ini|INI)$
+        get_patt+|.*(R01|r01)$
+        get_patt+|.*(R02|r02)$
+        get_patt+|.*(sys|SYS)$
+        get_patt+|.*(cmd|CMD)$
+        get_patt+|.*(bat|BAT)$
+        get_patt+|.*(cfg|CFG)$
+        get_patt+|.*(ndf|NDF)$
+
+package=amu-logs
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/amu/logs-trc
+        local_dir=/rip8a/enstore/adicShadow/logs
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.
+        delete_excl=(decoded)(/|$)
+
+package=backup
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/BACKUP
+        local_dir=/rip8a/enstore/adicShadow/BACKUP
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.
+
+package=das
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/das
+        local_dir=/rip8a/enstore/adicShadow/das
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.*(ini|INI)$
+        get_patt+|.*(sys|SYS)$
+        get_patt+|.*(cmd|CMD)$
+        get_patt+|.*(bat|BAT)$
+        get_patt+|.*(cfg|CFG)$
+        get_patt+|.*(ndf|NDF)$
+        delete_excl=(etc)(/|$)
+
+package=das-etc
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/das/etc
+        local_dir=/rip8a/enstore/adicShadow/das/etc
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.
+
+package=os2
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/os2
+        local_dir=/rip8a/enstore/adicShadow/os2
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.*(ini|INI)$
+        get_patt+|.*(sys|SYS)$
+        get_patt+|.*(cmd|CMD)$
+        get_patt+|.*(bat|BAT)$
+        get_patt+|.*(cfg|CFG)$
+        get_patt+|.*(ndf|NDF)$
+
+package=imbcon
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/os2
+        local_dir=/rip8a/enstore/adicShadow/imbcom
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.*(ini|INI)$
+        get_patt+|.*(sys|SYS)$
+        get_patt+|.*(cmd|CMD)$
+        get_patt+|.*(bat|BAT)$
+        get_patt+|.*(cfg|CFG)$
+        get_patt+|.*(ndf|NDF)$
+
+package=mptn
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/os2
+        local_dir=/rip8a/enstore/adicShadow/mptn
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.
+
+package=rho
+        site=adic2.fnal.gov
+        remote_fs=os2
+        remote_dir=/RHO
+        local_dir=/rip8a/enstore/adicShadow/RHO
+        recurse_hard=true
+        flags_nonrecursive=
+        get_patt=.
+
+
