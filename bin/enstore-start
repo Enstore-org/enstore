@@ -66,7 +66,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
             eval "$cmd &"
         fi
         echo $! >> $enstore_db/`uname -n`-configuration_pids
-        #sleep 1
       fi
     fi
 
@@ -148,7 +147,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
             eval "$cmd &"
         fi
         echo $! >> $enstore_db/`uname -n`-log_server_pids
-        #sleep 1
       fi
     fi
 
@@ -181,7 +179,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
             eval "$cmd &"
         fi
         echo $! >> $enstore_db/`uname -n`-volume_clerk_pids
-        #sleep 1
       fi
     fi
 
@@ -214,7 +211,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
             eval "$cmd &"
         fi
         echo $! >> $enstore_db/`uname -n`-file_clerk_pids
-        #sleep 1
       fi
     fi
 
@@ -248,7 +244,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                     eval "$cmd &"
                 fi
                 echo $! >> $enstore_db/`uname -n`-library_manager_pids
-                #sleep 1
             fi
         fi
         echo "Checking $i Library Manager"
@@ -283,7 +278,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                     eval "$cmd &"
                 fi
                 echo $! >> $enstore_db/`uname -n`-media_changer_pids
-                #sleep 1
             fi
         fi
         echo "Checking $i Media Changer"
@@ -346,7 +340,6 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
                 echo "Starting DB Admin Server"
                 python $ENSTORE_DIR/src/admin_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
                 echo $! >> $enstore_db/`uname -n`-admin_pids
-                #sleep 1
             fi
         else
             echo "ERROR: file and volume database are not present - can't start db tools"
