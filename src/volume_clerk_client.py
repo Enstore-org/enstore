@@ -166,7 +166,7 @@ class VolumeClerkClient(generic_client.GenericClient,
     # remove a volume entry in volume database
     def rmvolent(self, external_label):
         ticket= { 'work'           : 'rmvolent',
-                  'external_label' : external_label)
+                  'external_label' : external_label}
         return self.send(ticket)
 
     # delete a volume from the stockpile
