@@ -793,7 +793,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             print exc_type, exc_value
             print "vk =", `vk`
             print "vv =", `vv`
-            raise # let it fail
+            raise 
 
         print 'processing', vk, '...',
 
