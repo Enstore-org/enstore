@@ -1454,11 +1454,44 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 			  struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
-  
-  /* If direct io was specified, make sure the location is page aligned. */
+#if defined ( O_DIRECT ) && defined ( F_DIOINFO )
+  int rtn_fcntl;
+  struct dioattr direct_io_info;
+#endif /*O_DIRECT and F_DIOINFO*/
+
+  /* The variable bytes_to_transfer is passed in by value.  Changing it
+     here only lasts as long as this function does. */
+
   if(info->direct_io)
   {
+    /* If direct i/o was specified, make sure the location is page aligned. */
     bytes_to_transfer = align_to_page(bytes_to_transfer);
+
+#if defined ( O_DIRECT ) && defined ( F_DIOINFO )
+
+    /* SGIs have some limits on the size of read()s and write()s that can be
+       done with direct i/o.  This fcntl() call obtains those limits.  The
+       "struct dioattr" data type contains three items: d_mem, d_miniosz and
+       d_maxiosz.  See "man fcntl" for details. */
+    if((rtn_fcntl = fcntl(info->fd, F_DIOINFO, &direct_io_info)) < 0)
+    {
+      pack_return_values(info, 0, errno, FILE_ERROR,
+			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
+      return 1;
+    }
+    
+    /* If the size of bytes_to_transfer is outside the range of d_miniosz
+       and d_maxiosz, adjust them to fit inside. */
+    if(bytes_to_transfer < direct_io_info.d_miniosz)
+    {
+      bytes_to_transfer = direct_io_info.d_miniosz;
+    }
+    else if(bytes_to_transfer > direct_io_info.d_maxiosz)
+    {
+      bytes_to_transfer = direct_io_info.d_maxiosz;
+    }
+
+#endif /*O_DIRECT and F_DIOINFO*/
   }
 
   errno = 0;
@@ -1487,11 +1520,44 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 			   struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
+#if defined ( O_DIRECT ) && defined ( F_DIOINFO )
+  int rtn_fcntl;
+  struct dioattr direct_io_info;
+#endif /*O_DIRECT and F_DIOINFO*/
 
-  /* If direct io was specified, make sure the location is page aligned. */
+  /* The variable bytes_to_transfer is passed in by value.  Changing it
+     here only lasts as long as this function does. */
+
   if(info->direct_io)
   {
+    /* If direct io was specified, make sure the location is page aligned. */
     bytes_to_transfer = align_to_page(bytes_to_transfer);
+
+#if defined ( O_DIRECT ) && defined ( F_DIOINFO )
+
+    /* SGIs have some limits on the size of read()s and write()s that can be
+       done with direct i/o.  This fcntl() call obtains those limits.  The
+       "struct dioattr" data type contains three items: d_mem, d_miniosz and
+       d_maxiosz.  See "man fcntl" for details. */
+    if((rtn_fcntl = fcntl(info->fd, F_DIOINFO, &direct_io_info)) < 0)
+    {
+      pack_return_values(info, 0, errno, FILE_ERROR,
+			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
+      return 1;
+    }
+    
+    /* If the size of bytes_to_transfer is outside the range of d_miniosz
+       and d_maxiosz, adjust them to fit inside. */
+    if(bytes_to_transfer < direct_io_info.d_miniosz)
+    {
+      bytes_to_transfer = direct_io_info.d_miniosz;
+    }
+    else if(bytes_to_transfer > direct_io_info.d_maxiosz)
+    {
+      bytes_to_transfer = direct_io_info.d_maxiosz;
+    }
+
+#endif /*O_DIRECT and F_DIOINFO*/
   }
 
   /* When faster methods will not work, use read()/write(). */
@@ -3282,7 +3348,7 @@ static void do_read_write(struct transfer *read_info,
       write_info->bytes -= sts;
 
 #ifdef DEBUG
-      *stored = 0;
+      *stored = bytes_transfered;
       write_info->crc_ui = crc_ui;
       print_status(stderr, bytes_transfered, bytes_remaining, write_info);
 #endif /*DEBUG*/
@@ -3828,7 +3894,10 @@ int main(int argc, char **argv)
   reads.size = size;
   reads.bytes = size;
   reads.block_size = align_to_page(block_size);
-  reads.array_size = array_size;
+  if(threaded_transfer)
+    reads.array_size = array_size;
+  else
+    reads.array_size = 1;
   reads.mmap_size = mmap_size;
   reads.timeout = timeout;
 #ifdef DEBUG
@@ -3845,7 +3914,10 @@ int main(int argc, char **argv)
   writes.size = size;
   writes.bytes = size;
   writes.block_size = align_to_page(block_size);
-  writes.array_size = array_size;
+  if(threaded_transfer)
+    writes.array_size = array_size;
+  else
+    writes.array_size = 1;
   writes.mmap_size = mmap_size;
   writes.timeout = timeout;
   writes.crc_flag = 1;
