@@ -41,7 +41,7 @@ def get_client_version():
     if get_file: version_string = version_string + get_file
     return version_string
 
-encp.EncpInterface.parameters = ["<volume> <source file> <destination file>"]
+encp.EncpInterface.parameters = ["<volume> <source dir> <destination dir>"]
 #encp.encp_client_version = get_client_version
 encp.EncpInterface.encp_options[option.LIST] = {
     option.HELP_STRING: "Takes in a filename of a file containing a list "
