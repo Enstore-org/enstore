@@ -22,6 +22,7 @@ encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $
 	(cd ENCPBIN_TEMP; make;)
 	cp ENCPBIN_TEMP/encp ENCPBIN
 	cp ../ups/encp.table ENCPBIN
+	cp ../sbin/encp1stInstall ENCPBIN
 	rm -rf ENCPBIN_TEMP
 
 

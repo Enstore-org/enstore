@@ -1,0 +1,49 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# sbin/$RCSfile$  $Revision$
+# This script creates the links, locks... needed for an initial install of encp
+
+# Needs to be run by su
+if [ $(whoami) != "root" ]; then
+  echo "$(basename $0) needs to be run by root"
+  exit 1
+fi
+
+# it takes 3  parameters - the version of encp to install 
+#                        - the mount point for pnfs under the /pnfs main root
+#                        - the node that is serving pnfs to you
+
+opts_wo_args='help'
+opts_w_args='version|mountpoint|pnfsnode'
+USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
+while opt=`expr "${1-}" : '--\(.*\)'`;do
+    shift
+    eval "case \$opt in
+    \\?) echo \"$USAGE\"; exit 0;;
+    $opts_wo_args)
+        eval opt_\$opt=1;;
+    $opts_w_args)
+        if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
+        eval opt_\$opt=\"'\$1'\";shift ;;
+    *)  echo \"invalid option: \$opt\"; exit 1;;
+    esac"
+done
+
+if [ -z "${opt_version-}" -o -z "${opt_mountpoint-}" -o -z "${opt_pnfsnode-}" -o ${opt_help:-0} -eq 1 ]; then
+   echo $USAGE
+   exit 1
+fi
+
+mkdir /var/lock/hsm
+touch /var/lock/hsm/lockfile
+chmod -R o+w /var/lock/hsm
+
+setup upd
+upd install -G"-c" encp $opt_version
+
+mkdir -p /pnfs/$opt_mountpoint
+
+echo "$opt_pnfsnode:/$opt_mountpoint /pnfs/$opt_mountpoint nfs noauto,user,intr,bg,hard,rw,noac 0 0" >> /etc/fstab
+mount /pnfs/$opt_mountpoint
