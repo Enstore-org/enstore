@@ -9,16 +9,58 @@
 %{
 #include "drivestat.h"
 #include "ds_api.h"
-%}
 
+DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag);
+
+DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d){
+	DS_OPEN_PARMS *parms;
+	DS_DESCRIPTOR *ds_desc=NULL;
+
+	parms = (DS_OPEN_PARMS *) malloc(sizeof(DS_OPEN_PARMS));
+	if (parms==NULL) {
+	    printf("FATAL ERROR: Can not malloc space for parms.\n");
+	    return NULL;	
+	}
+	parms->ftt_d = ftt_d;
+
+	ds_desc = ds_open(parms, FTT_DESC);
+	if (ds_desc==NULL) {
+	    printf("FATAL ERROR: ds_open returned NULL.\n");
+	    /* fall thru and return NULL*/
+	}
+
+	return ds_desc;
+}
+
+DS_STATS * ds_get_stats_buff(void) {
+	DS_STATS *stats_buff;
+
+	stats_buff = (DS_STATS *) malloc(sizeof(DS_STATS));
+	if (stats_buff==NULL) {
+	    printf("FATAL ERROR: Can not malloc space for stats_buff.\n");
+	    /* fall thru and return NULL*/
+	}
+
+	return stats_buff;
+}
+
+%}
 
 /*************************************************************************
  *                                                                       *
- * ds_open()                                                             *
- *   Create a drivestat descriptor.                                      *
+ * ds_open_from_ftt_d()                                                  *
+ *   Create a drivestat descriptor, given an already=open FTT descriptor *
  *                                                                       *
  *************************************************************************/
-DS_DESCRIPTOR *ds_open(DS_OPEN_PARMS *parms, int flag);
+DS_DESCRIPTOR *ds_open_from_ftt_d(ftt_descriptor ftt_d);
+
+/*************************************************************************
+ *                                                                       *
+ * ds_get_stats_buff()                                                   *
+ *   Create a drivestat DS_STATS buffere                                 *
+ *                                                                       *
+ *************************************************************************/
+DS_STATS * ds_get_stats_buff(void);
 
 /****************************************************************************
  *                                                                          *
@@ -36,7 +78,13 @@ int ds_init_stats(DS_DESCRIPTOR *d);
  *   reports are printed to stdout.  Return 0 on success, 1 on failure.    *
  *                                                                         *
  ***************************************************************************/
-int ds_print_stats(DS_DESCRIPTOR *d,char *file);
+%typemap(python, in) char *file {
+    if ($source == Py_None)
+	 $target = (char *)0;
+    else
+	 $target = PyString_AsString($source);
+}
+int ds_print_stats(DS_DESCRIPTOR *d, char *file);
 
 /*************************************************************************
  *                                                                       *
