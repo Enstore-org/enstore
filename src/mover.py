@@ -95,7 +95,7 @@ class Mover:
             mconfig = self.csc.get_uncached(self.name)
 	    if mconfig["status"] != "ok":
                 raise "could not start mover up:" + mconfig["status"]
-            self.library_device = mconfig["library_device"]
+            self.mc_device = mconfig["mc_device"]
             self.driver_name = mconfig["driver"]
             self.device = mconfig["device"]
             self.library = mconfig["library"]
@@ -147,7 +147,7 @@ class Mover:
         self.mlc = media_changer_client.MediaChangerClient(self.csc,0,\
                                                           self.media_changer)
 
-        lmticket = self.mlc.loadvol(self.external_label, self.library_device)
+        lmticket = self.mlc.loadvol(self.external_label, self.mc_device)
         if lmticket["status"] != "ok":
 
             # it is possible, under normal conditions, for the system to be
@@ -178,7 +178,7 @@ class Mover:
                                                           self.media_changer)
 
         # now ask the media changer to unload the volume
-        ticket = self.mlc.unloadvol(self.external_label, self.library_device)
+        ticket = self.mlc.unloadvol(self.external_label, self.mc_device)
         if ticket["status"] != "ok":
             raise "media loader cannot unload my volume"
 
@@ -300,7 +300,7 @@ class Mover:
         ticket["vc"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
-                  'library', 'library_device', 'library_manager_host',
+                  'library', 'mc_device', 'library_manager_host',
                   'library_manager_port', 'media_changer', 'name', 
 		  'callback_addr' ]:
             exec("minfo["+repr(k)+"] = self."+k)
@@ -409,7 +409,7 @@ class Mover:
         ticket["vc"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
-                  'library', 'library_device', 'library_manager_host',
+                  'library', 'mc_device', 'library_manager_host',
                   'library_manager_port', 'media_changer', 'name',
 		  'callback_addr']:
             exec("minfo["+repr(k)+"] = self."+k)
