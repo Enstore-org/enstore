@@ -699,14 +699,16 @@ def do_real_work():
     
     # rewrite the seen down file as we keep track of how many times something has 
     # been down
+    import pdb
+    pdb.set_trace()
     servers = summary_d.keys()
     if dfile:
 	# get rid of any servers no longer being monitored
 	for srvr in seen_down_d.keys():
 	    for server in servers:
-		if enstore_constants.SERVER_NAMES.has_key(server):
+		#if enstore_constants.SERVER_NAMES.has_key(server):
 		    # get the real name of the server
-		    server = enstore_constants.SERVER_NAMES[server]
+		    #server = enstore_constants.SERVER_NAMES[server]
 		if srvr == server:
 		    # this is a legitimate server in seen_down_d
 		    break
