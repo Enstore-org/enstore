@@ -1351,7 +1351,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    else:
                 # see if this flag is in the other_saag_links section
                 if self.config_d.has_key("other_saag_links") and \
-                   self.config["other_saag_links"].has_key(server):
+                   self.config_d["other_saag_links"].has_key(server):
                     return 1
 		return 0
 
