@@ -46,7 +46,8 @@ def complain(error):
 
 ignore_patterns = ["defined before [0-9]+ not used",
                    "Warning: set of global .* in local context",
-                    "ref at ([0-9]+) before assign at \\1"
+                   "ref at ([0-9]+) before assign at \\1",
+                   "\(<module global>\) local '.+' ref at [0-9]+ before assign at [0-9]+",
                    ]
 
 ignore_list = map(re.compile, ignore_patterns)
