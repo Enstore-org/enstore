@@ -1,6 +1,11 @@
 #!/usr/bin/env python
+
+###############################################################################
+#
 # $Id$
-############################################################################
+#
+###############################################################################
+
 """
 Example option group dictionaries:
 
@@ -521,6 +526,13 @@ class Interface:
         self.options = {}
         self.help = 0
         self.usage = 0
+
+        self.options = {}
+        self.option_list = []
+        self.args = []           #Contains unprocessed arguments.
+        self.parameters = []
+        self.some_args = []
+        self.config_options = {} #hack for old code
         
         apply(self.compile_options_dict, self.valid_dictionaries())
         
@@ -543,11 +555,6 @@ class Interface:
         
 ############################################################################
 
-    options = {}
-    option_list = []
-    args = []
-    parameters = []
-    some_args = []
 
     alive_rcv_options = {
         TIMEOUT:{HELP_STRING:"number of seconds to wait for alive response",
@@ -619,8 +626,6 @@ class Interface:
 		    USER_LEVEL:ADMIN,
                     FORCE_SET_DEFAULT:NORMAL}
         }
-
-    config_options = {} #hack for old code
 
     test_options = {
         'test':{DEFAULT_VALUE:2,
@@ -1454,7 +1459,6 @@ class Interface:
             elif opt_dict.get(EXTRA_VALUES, None) and \
                  not self.is_option(self.some_args[2]):
                 self.some_args = self.some_args[2:]
-            
             ###elif self.some_args[1] == value:
             ###    self.some_args = self.some_args[2:]
             else:
@@ -1551,11 +1555,13 @@ class Interface:
                 next = self.next_argument(value)
             else:
                 next = self.next_argument(opt)
-            ###if extra_option[VALUE_USAGE] == IGNORED:
-            ###    next = None
-            ###elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
-            ###     next != None and self.is_option(next):
-            ###    next = None
+
+            if extra_option[VALUE_USAGE] == IGNORED:
+                next = None
+            elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
+                 next != None and self.is_option(next):
+                next = None
+                
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
             self.set_from_dictionary(extra_option, long_opt, next)
             try:
