@@ -1311,6 +1311,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+        if external_label == None:
+            external_label = '<None>'
+
         # get the current entry for the volume
         try:
             record = self.dict[external_label]  
