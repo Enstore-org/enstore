@@ -95,12 +95,12 @@ pinfo_helper()  { choice=$1
                   c=0
                   echo "$xref" | while read x; do
                     c=`expr $c + 1`
-                    if [ $c -gt 8 ] ; then echo "parse-error"; break; fi
+                    if [ $c -gt 9 ] ; then echo "parse-error"; break; fi
                     if [ $c -eq $choice ] ; then echo $x; break; fi
                   done ; }
 
 pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
-              bfid=`pbfid $@`
+              bfid=`pbfid $@` # this should be deleted after everyone starts using the new code - the bfid is also in layer 4
               xref=`pxref $@`
               volume="`pinfo_helper 1`"
               location_cookie="`pinfo_helper 2`"
@@ -110,12 +110,14 @@ pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
               map_file="`pinfo_helper 6`"
               pnfsid_file="`pinfo_helper 7`"
               pnfsid_map="`pinfo_helper 8`"
+              bfid2="`pinfo_helper 9`"  # change this to bfid after bit
               filename=`ppath $pnfsid_file`
               if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
                    `echo $SHELL | grep -c /sh`   -ne 0 -o \
                    `echo $SHELL | grep -c /ksh`  -ne 0 -o \
                    `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
               echo "bfid=\"$bfid\";
+bfid2=\"$bfid2\";
 volume=\"$volume\";
 location_cookie=\"$location_cookie\";
 size=\"$size\";
@@ -127,6 +129,7 @@ pnfsid_file=\"$pnfsid_file\";
 pnfsid_map=\"$pnfsid_map\";"
               else
               echo "set bfid=\"$bfid\";
+set bfid2 \"$bfid2\";
 set volume \"$volume\";
 set location_cookie \"$cookie\";
 set size \"$size\";
