@@ -209,9 +209,8 @@ def do_work(intf):
 
     elif intf.list:
         ticket = fcc.tape_list(intf.list)
-        print ticket['tape_list']
-        aticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                            intf.alive_retries) #clear out any zombies from the forked file clerk
+        if ticket['status'][0] == e_errors.OK:
+            print ticket['tape_list']
 
     elif intf.bfid:
         ticket = fcc.bfid_info()

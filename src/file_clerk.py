@@ -514,11 +514,22 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = (e_errors.KEYERROR, msg)
          Trace.log(e_errors.ERROR, msg)
          self.reply_to_caller(ticket)
+         ####XXX client hangs waiting for TCP reply
          return
 
      # fork as it may take quite a while to get the list
      if self.fork() != 0:
          return
+     
+     try:
+         bfid_list = self.bfid_db.get_all_bfids(external_label)
+     except:
+         msg = "File Clerk: no entry for volume %s" % external_label
+         ticket["status"] = (e_errors.KEYERROR, msg)
+         Trace.log(e_errors.ERROR, msg)
+         bfid_list = []
+         
+     
      # get a user callback
      if not self.get_user_sockets(ticket):
          return
@@ -526,7 +537,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      msg="     label            bfid       size        location_cookie delflag original_name\n"
      callback.write_tcp_raw(self.data_socket, msg)
 
-     bfid_list = self.bfid_db.get_all_bfids(external_label)
+         
      for bfid in bfid_list:
          value = self.dict[bfid]
          if value.has_key('deleted'):
