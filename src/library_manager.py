@@ -687,7 +687,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # check if work is in the at mover list before inserting it
 	for wt in self.work_at_movers.list:
             # 2 requests cannot have the same output file names
-	    print 'wt["unique_id"]=%s   ticket["unique_id"]=%s'%(wt["unique_id"],ticket["unique_id"])
+	    #print 'wt["unique_id"]=%s   ticket["unique_id"]=%s'%(wt["unique_id"],ticket["unique_id"])
             if     wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"] \
 	       and wt['retry']                   == ticket['retry']:
                 ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
