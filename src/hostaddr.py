@@ -10,7 +10,7 @@
 import os, sys
 import stat
 import socket
-import string
+import string,re
 import time
 
 
@@ -130,6 +130,55 @@ def get_multiple_interfaces(verbose=0):
         sys.stdout.flush()
     return multi_interface_table
 
+ifconfig_command=None
+ifinfo={}
+def find_ifconfig_command():
+    global ifconfig_command
+    if ifconfig_command:
+        return ifconfig_command
+    for testpath in '/sbin', '/usr/sbin','/etc','/usr/etc','/bin','/usr/bin':
+        tryit = os.path.join(testpath,'ifconfig')
+        if os.access(tryit,os.X_OK):
+            ifconfig_command=tryit
+            return ifconfig_command
+    return None
+        
+def interface_name(ip):
+    if not ifinfo or not ifinfo.has_key(ip):
+        find_ifconfig_command()
+        if not ifconfig_command:
+            return None
+        p=os.popen(ifconfig_command+' -a','r')
+        text=p.readlines()
+        status=p.close()
+        if status:
+            return None
+        interface=None
+
+        #a regular expression to match an IP address in dotted-quad format
+        ip_re = re.compile(r'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)')
+        for line in text:
+            if not line:
+                interface=None
+                continue
+            tokens=string.split(line)
+            if not tokens:
+                interface=None
+                continue
+            if line[0] not in ' \t':
+                interface=tokens[0]
+                tokens=tokens[1:]
+                if interface[-1]==':':
+                    interface=interface[:-1]
+            for tok in tokens:
+                match=ip_re.search(tok)
+                if match:
+                    ifinfo[match.group(1)]=interface
+                
+    return ifinfo.get(ip)
+    
+    
+    
 if __name__ == "__main__":
     print gethostinfo(1)
     print gethostinfo(1)
@@ -139,11 +188,12 @@ if __name__ == "__main__":
     print address_to_name('1.1.1.1')
     print address_to_name('131.225.84.156')
     print name_to_address('rip8.fnal.gov')
+    print interface_name('127.0.0.1')
     while 1:
         print get_multiple_interfaces(1)
         time.sleep(1)
     
-    
+
 
     
                         
