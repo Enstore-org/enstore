@@ -1698,7 +1698,7 @@ def clients(config_host,config_port,verbose):
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver')
 
     # convenient, but maybe not correct place, to hack in log message that shows how encp was called
-    Trace.trace(1, '%s' % sys.argv)
+    Trace.trace(e_errors.INFO, '%s' % sys.argv)
 
     uinfo = {}
     uinfo['uid'] = os.getuid()
