@@ -257,6 +257,12 @@ ALLOW_SRV1="$ALLOW_BASE
        LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]
 "
 
+# Extra for stkensrv4
+ALLOW_SSRV4="$ALLOW_BASE
+       LISTEN,rsh,TCP,fntt -l acsss echo,x
+"
+
+
 # Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
@@ -273,6 +279,7 @@ case $node in
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
        *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
        *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
+   stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
     d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
  *srv5|*srv7)      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
