@@ -21,6 +21,12 @@ QUALIFIERS=d0en
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
+QUALIFIERS=cdfen
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
+                exeActionRequired(COMMON_SETUP)
+
+FLAVOR=ANY
 QUALIFIERS=rip
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)

@@ -24,6 +24,13 @@ QUALIFIERS=d0en
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
+QUALIFIERS=cdfen
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/cdf.conf)
+                exeActionRequired(COMMON_SETUP)
+
+FLAVOR=ANY
 QUALIFIERS=rip
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
@@ -31,7 +38,7 @@ QUALIFIERS=rip
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
-QUALIFIERS=cahen
+QUALIFIERS=cachen
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
                 envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)

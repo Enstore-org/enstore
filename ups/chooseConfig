@@ -11,6 +11,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 stken=stkensrv2.fnal.gov
 d0en=d0ensrv2.fnal.gov
+cdfen=cdfensrv2.fnal.gov
 rip=rip7.fnal.gov
 cachen=$stken
 rain=rain.fnal.gov
@@ -28,7 +29,7 @@ ENSTORE_MAIL=enstore-auto@fnal.gov
 
 case $node in
 
-  stken*|rip9|rip10*|d0enmvr4a|d0enmvr7a|d0enmvr9a|d0enmvr11a|d0enmvr12a)
+  stken*|rip9|rip10*|d0enmvr4a|d0enmvr7a|d0enmvr9a|d0enmvr11a|d0enmvr12a|cdfenmvr1a|cdfenmvr2a)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
@@ -44,9 +45,12 @@ case $node in
             ENSTORE_CONFIG_FILE=stk.conf
             complain=0
             ;;
-
   d0en*)    ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
+            complain=0
+            ;;
+  cdfen*)   ENSTORE_CONFIG_HOST=$cdfen
+	    ENSTORE_CONFIG_FILE=cdf.conf
             complain=0
             ;;
   rain)     ENSTORE_CONFIG_HOST=$water
