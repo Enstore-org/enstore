@@ -2164,7 +2164,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def broken(self, msg, err=e_errors.ERROR):
         #self.set_sched_down()
-        print "ERRRRRRRRRR",err
         Trace.alarm(err, str(msg))
         self.error(msg, err)
         
@@ -2204,8 +2203,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     err = r
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
                     if s:
-                        self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
-                        self.dismount_volume(after_function=self.idle)
+                        self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT, dismount_allowed=0)
+                        self.unload_volume(self.vol_info, after_function=self.idle)
                         return
 
                 except:
@@ -2213,8 +2212,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     err = detail
                     Trace.log(e_errors.ERROR, "rewind/retry: %s %s" % ( exc, detail))
         else:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
-            self.dismount_volume(after_function=self.idle)
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT, dismount_allowed=0)
+            self.unload_volume(self.vol_info, after_function=self.idle)
             return
         self.state = SEEK ##XXX start a timer here?
         eod = self.vol_info['eod_cookie']
@@ -2422,11 +2421,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(26,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
         Trace.log(e_errors.INFO,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
         if cur_thread_name:
-            if cur_thread_name == 'tape_thread':
-                # if encp is gone there is no need to dismount a tape
-                dism_allowed = not encp_gone
-
-            elif cur_thread_name == 'net_thread':
+            if cur_thread_name == 'net_thread':
                 # check if tape_thread is active before allowing dismount
                 Trace.trace(26,"checking thread %s"%('tape_thread',))
                 thread = getattr(self, 'tape_thread', None)
@@ -2434,13 +2429,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if thread and thread.isAlive():
                         Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
-                        dism_allowed = not encp_gone
                         break
-                else:
-                    dism_allowed = not encp_gone
-            else:
-                # Main thread ?
-                dism_allowed = not encp_gone
+            # if encp is gone there is no need to dismount a tape
+            dism_allowed = not encp_gone
         dism_allowed = dism_allowed & dismount_allowed
         Trace.trace(26,"dismount_allowed %s"%(dism_allowed,))
         if encp_gone:
@@ -2453,7 +2444,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.log_state()
                 
         if dism_allowed:
-            self.dismount_volume(after_function=after_dismount_function)
+            if save_state == DRAINING:
+                self.dismount_volume()
+                #self.state = OFFLINE
+                self.offline()
+            else:
+                if not after_dismount_function:
+                    self.maybe_clean()
+                    self.idle()
+                else:
+                    self.dismount_volume(after_function=after_dismount_function)
         if not ftt_eio:
             self.send_error_msg(error_info = (exc, msg),error_source=error_source)
             self.need_lm_update = (1, ERROR, 1, error_source)
@@ -2468,16 +2468,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             # to LM and go idle
             self.send_error_msg(error_info = (exc, msg),error_source=error_source)
 
-        if save_state == DRAINING:
-            self.dismount_volume()
-            #self.state = OFFLINE
-            self.offline()
-        else:
-            if not encp_gone:
-                if not after_dismount_function:
-                    self.maybe_clean()
-                    self.idle()
-        
         self.tr_failed = 0   
         #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
         #self.update_lm()
@@ -3093,6 +3083,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vol_info['media_type'] = self.media_type #kludge
 
         if not vol_info: vol_info = self.vol_info
+
+        self.unload_volume(vol_info, after_function=after_function)
+        
+    def unload_volume(self, vol_info,after_function=None):
+        broken= ''
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.asc.log_start_dismount(self.current_volume,self.config['product_id'])
