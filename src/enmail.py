@@ -66,7 +66,7 @@ def mail_bin(from_add, to_add, subject, file, msg):
 def mail(from_add, to_add, subject, msg):
 
 	if type(to_add) == type([]):
-		to_addresses = string.jointfields(to_add, ',')
+		to_addresses = string.joinfields(to_add, ',')
 	else:
 		to_addresses = to_add
 
