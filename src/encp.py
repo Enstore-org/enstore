@@ -1005,7 +1005,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                  done_ticket["fc"]["size"])
             except:
                 exc,msg,tb=sys.exc_info()
-                ### CGW tmp ###print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
+                print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
             # add the pnfs ids and filenames to the file clerk ticket and store it
             done_ticket["fc"]["pnfsid"] = p.id
             done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
