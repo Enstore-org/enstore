@@ -147,7 +147,7 @@ class UDPClient:
         return message, tsd.txn_counter
 
         
-    def send(self, data, dst, rcv_timeout=0, max_send=0):
+    def send(self, data, dst, rcv_timeout=0, max_send=0,send_done=1):
         """send msg to dst address, up to `max_send` times, each time
         waiting `rcv_timeout' seconds for reply
         A value of 0 for max_send means retry forever"""
@@ -199,7 +199,8 @@ class UDPClient:
                     rcvd_txn_id=None
             else: # we got a good reply
                 ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
-                self.send_no_wait({"work":"done_cleanup"}, dst)
+                if send_done:
+                    self.send_no_wait({"work":"done_cleanup"}, dst)
                 del tsd.send_done[dst]
                 return out
 	    
