@@ -341,9 +341,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
         except KeyError:
             Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
             return
-        output_data = {'DEVNAME' : self.mvr_config['mc_device'],
+        output_dict = driver_object.OCS_stats(self.driveStatistics[action])
+        output_dict = {'DEVNAME' : self.mvr_config['mc_device'],
                        'VSN'     : self.vol_info['external_label']}
-        """
+        
         try:
             fd = open(path,'a')
         except IOError, msg:
@@ -351,8 +352,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
             return
         try:
             fd.write("%s\n"%action)
-           
-        """    
+            fd.write(repr(output_dict))
+            fd.write('\n')
+            fd.close()
+        except IOError, msg:
+            Trace.log(e_errors.INFO, "IOError: "+str(msg))
         return
 
     # The following functions are the result of the enstore error documentation...
@@ -509,7 +513,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                           tmp_vol_info['eod_cookie'] )
                 Trace.log(e_errors.INFO,'Software mount complete %s %s'%
                           (external_label,self.mvr_config['device']))
-                self.store_statistics('mount', self.hsm_driver)
             except:
                 e_errors.handle_error()
                 return 'BADMOUNT' # generic, not read or write specific
@@ -521,6 +524,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # a label is placed on the tape.
             self.vol_info.update( tmp_vol_info )
             self.vol_info['from_lm'] = self.work_ticket['lm']['address'] # who gave me this volume
+            self.store_statistics('mount', self.hsm_driver)
 
             #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
             if vol1_paranoia and self.mvr_config['driver']=='FTTDriver':
