@@ -1324,6 +1324,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         try:
                             request_from_lm = self.udpc.send(ticket, addr)
+                            #request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=30)
+                            #self.waiting_for_lm_response = 1
                         except:
                             exc, msg, tb = sys.exc_info()
                             if exc == errno.errorcode[errno.ETIMEDOUT]:
@@ -2503,7 +2505,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return 0
                 eod = 1
                 self.target_location = eod
-                self.vol_info['eod_cookie'] = eod
+                self.vol_info['eod_cookie'] = self.loc_to_cookie(eod)
                 if self.driver_type == 'FTTDriver' and self.rem_stats:
                     import ftt
                     stats = self.tape_driver.ftt.get_stats()
