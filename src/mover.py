@@ -1281,7 +1281,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         t_thread = getattr(self, 'tape_thread', None)
         n_thread = getattr(self, 'net_thread', None)
         if self.state in (IDLE, HAVE_BOUND):
-            if n_thread and n_thread.isAlive():
+            t_in_state = int(now - self.state_change_time)
+            if n_thread and n_thread.isAlive() and t_in_state > 11:
+                # 11 sec to allow network thread to complete
                 Trace.alarm(e_errors.ALARM,
                             "Net thread is running in the state %s. Will restart the mover"%
                             (state_name(self.state),))
@@ -1289,7 +1291,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.dismount_volume(after_function=self.restart)
                 else:
                     self.restart()
-            elif t_thread and t_thread.isAlive():
+            elif t_thread and t_thread.isAlive() and t_in_state > 11:
+                # 11 sec to allow tape thread to complete
                 Trace.alarm(e_errors.ALARM,
                             "Tape thread is running in the state %s. Will offline the mover"%
                             (state_name(self.state),))
