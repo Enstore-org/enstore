@@ -689,6 +689,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
             
 
+    def watch_syslog(self):
+        try:
+            if self.syslog_match:
+                cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
+                pipeObj = popen2.Popen3(cmd, 0, 0)
+                if pipeObj is None:
+                    return
+                stat = pipeObj.wait()
+                result = pipeObj.fromchild.readlines()  # result has returned string
+                if result:
+                    for l in result:
+                        Trace.log(e_errors.INFO,"SYSLOG Entry:[%s]"%(l[:-1],))
+        except: # do not know what kind of exception it may be
+            Trace.handle_error()
+
     def lock_state(self):
         self._state_lock.acquire()
 
@@ -783,9 +798,20 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
-
         self.logname = self.config.get('logname', name)
         Trace.init(self.logname)
+        # do not restart if some mover processes are already running
+        cmd = "EPS | grep %s"%(self.name,)
+        pipeObj = popen2.Popen3(cmd, 0, 0)
+        if pipeObj:
+            stat = pipeObj.wait()
+            result = pipeObj.fromchild.readlines()  # result has returned string
+            if len(result) >= 1:
+                Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
+                time.sleep(2)
+                sys.exit(-1)
+        
+
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
         self.config['device'] = os.path.expandvars(self.config['device'])
@@ -823,6 +849,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
+        self.syslog_match = self.config.get("syslog_entry",None) # pattern to match in syslog for scsi error
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -2268,6 +2295,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
         broken = ""
+        if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
+            if msg.find("FTT_EIO") != -1:
+                # possibly a scsi error, log low level diagnostics
+                self.watch_syslog()
         Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
             exc, msg, self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -2281,6 +2312,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         if exc not in (e_errors.ENCP_GONE, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
+            if msg.find("FTT_EBUSY") != -1:
+                # tape thread stuck in D state - offline mover
+                after_dismount_function = self.offline
+                Trace.alarm(e_errors.ERROR, "tape thread is possibly stuck in D state")
+                self.log_state()
+
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
                 broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_failures)
