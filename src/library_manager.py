@@ -274,9 +274,11 @@ def next_work_this_volume(v):
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
+	#print "next_work_this_volume", w
+	#print "COMP", w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
-            w["vc"]["file_family"]   == v['vc']["file_family"] and
+            (w["vc"]["file_family"]+"."+w["vc"]["wrapper"])   == v['vc']["file_family"] and
             v["vc"]["user_inhibit"]        == "none"           and
             v["vc"]["system_inhibit"]      == "none"           and
             w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
@@ -693,6 +695,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def idle_mover(self, mticket):
 	global mover_cnt
 	
+	print "IDLE"
 	Trace.trace(3,"{idle_mover " + repr(mticket))
         self.enprint("IDLE MOVER "+repr(mticket), generic_cs.DEBUG, \
 	             self.verbose)
@@ -782,6 +785,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    + repr(item))
 			return
 
+	    # set volume to mounting
+	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    v = vc.set_at_mover(w['fc']['external_label'], 'mounting', 
+				mticket["mover"])
+	    if v['status'][0] != e_errors.OK:
+		format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+                                       w["fc"]["external_label"],
+                                       v['at_mover'][1], v['at_mover'][0])
+		
+		Trace.trace(3,"}idle_mover: cannot change to 'mounting'"+repr(v['at_mover']))
+		self.reply_to_caller({"work" : "nowork"})
+		return
+		
+
             # reply now to avoid deadlocks
             format = "%s work on vol=%s mover=%s requester:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
@@ -819,6 +837,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
+	#print "HAVE_BOUND", mticket
 	Trace.trace(3,"{have_bound_volume " + repr(mticket))
         self.enprint("LM:have_bound_volume ", generic_cs.SERVER, self.verbose)
         self.enprint(mticket, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
@@ -888,6 +907,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # if the pending work queue is empty, then we're done
         elif  w["status"][0] == e_errors.NOWORK:
+	    print "delayed_dismount=",delayed_dismount
 	    mv = find_mover(mticket, movers, self.verbose)
 	    if not ((mv != None) and mv):
 		mvr_found = 1 # fake dismount request
@@ -897,12 +917,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		mvr = find_mover(mticket,self.del_dismount_list,self.verbose)
 		if (mvr != None) and mvr: 
 		    mvr_found = 1
+		    #print "sending NOWORK"
+		    #self.reply_to_caller({'work': 'nowork'})
+		    #Trace.trace(3,"}have_bound_volume delayed dismount"+\
+				#repr(w))
+		    #return
 		try:
 		    if (delayed_dismount):
 			if not mvr_found:
 			    self.del_dismount_list.append(mv)
 			timer_task.msg_add(delayed_dismount*60, 
 					   summon_mover, self, mv, w)
+			print "sending NOWORK"
 			self.reply_to_caller({'work': 'nowork'})
 			Trace.trace(3,"}have_bound_volume delayed dismount"+\
 				    repr(w))
@@ -926,6 +952,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		self.enprint("unbind volume for "+repr(mv), generic_cs.SERVER, \
 			     self.verbose)
 		#print "Unbind", mv
+		# set volume to unmounting
+		vc = volume_clerk_client.VolumeClerkClient(self.csc)
+		v = vc.set_at_mover(mticket['vc']['external_label'], 
+				    'unmounting', 
+				    mticket["mover"])
+		if v['status'][0] != e_errors.OK:
+		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
+		    logticket = self.logc.send(log_client.INFO, 2, format,
+					       mticket['vc']['external_label'],
+					       v['at_mover'][1], 
+					       v['at_mover'][0])
+		
+		    Trace.trace(3,"have_bound_volume: cannot change to 'mounting'"+repr(v['at_mover']))
 		self.reply_to_caller({"work" : "unbind_volume"})
 		Trace.trace(3,"}have_bound_volume: No work, sending unbind "+\
 			    repr(mv))
@@ -950,6 +989,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     def unilateral_unbind(self, ticket):
 	Trace.trace(3,"{unilateral_unbind " + repr(ticket))
+	vc = volume_clerk_client.VolumeClerkClient(self.csc)
+
         # get the work ticket for the volume
         self.enprint("unilateral_unbind", generic_cs.SERVER|generic_cs.DEBUG, \
 	             self.verbose)
@@ -1004,6 +1045,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.enprint(w, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
             work_at_movers.remove(w)
+
+	    # change volume state to unmounting
+
+	    v = vc.set_at_mover(ticket['vc']['external_label'], 
+				'unmounting', 
+				ticket["mover"])
+	    if v['status'][0] != e_errors.OK:
+		format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   ticket['vc']['external_label'],
+					   v['at_mover'][1], 
+					   v['at_mover'][0])
+	
         self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
@@ -1012,7 +1066,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    w['status'] = (e_errors.NOACCESS, None)
 
 	    # set volume as noaccess
-	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
 	    v = vc.set_system_noaccess(w['fc']['external_label'])
 	    self.enprint("set_system_noaccess retrned "+repr(v))
 

@@ -91,6 +91,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             record["system_inhibit"] = "none"
         try:
+            record['at_mover'] = ticket['at_mover']
+        except KeyError:
+            record["at_mover"] = ("unmounted", "none")
+        try:
             record['user_inhibit'] = ticket['user_inhibit']
         except KeyError:
             record["user_inhibit"] = "none"
@@ -236,6 +240,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 break
             v = copy.deepcopy(dict[label])
+	    # for backward compatibility for at_mover field
+	    try:
+		at_mover = v['at_mover']
+	    except KeyError:
+		v['at_mover'] = ('unmounted', '')
+	    
 	    #self.enprint(v, generic_cs.PRETTY_PRINT)
             if v["library"] != library:
                 continue
@@ -247,6 +257,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
             if v["system_inhibit"] != "none":
                 continue
+	    if v['at_mover'][0] != "unmounted":
+		continue
             if v["remaining_bytes"] < min_remaining_bytes:
                 # if it __ever__ happens that we can't write a file on a
                 # volume, then mark volume as full.  This prevents us from
@@ -305,6 +317,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             else:
                 break
             v = copy.deepcopy(dict[label])
+	    # for backward compatibility for at_mover field
+	    try:
+		at_mover = v['at_mover']
+	    except KeyError:
+		v['at_mover'] = ('unmounted', '')
+
             if v["library"] != library:
                 continue
             if v["file_family"] != "none":
@@ -313,6 +331,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
             if v["system_inhibit"] != "none":
                 continue
+	    if v['at_mover'][0] != "unmounted":
+		continue
             if v["remaining_bytes"] < min_remaining_bytes:
                 continue
             vetoed = 0
@@ -586,6 +606,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # update the fields that have changed
         record ["system_inhibit"] = "none"
+        record ["at_mover"] = ('unmounted','none')
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
@@ -776,6 +797,78 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
          return
 
+
+    # set at_mover flag
+    def set_at_mover(self, ticket):
+     Trace.trace(11,'{set_at_mover '+repr(ticket))
+     try:
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}set_at_mover "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}set_at_mover "+repr(ticket["status"]))
+            return
+
+	# see if record has key at_mover
+	try:
+	    at_mover = record['at_mover']
+	except KeyError:
+	    record['at_mover'] = ('unmounted','none')
+        # update the fields that have changed
+
+	wrong_state = 1
+	if (ticket['at_mover'][0] == 'mounting' and
+	    record['at_mover'][0] != 'unmounted'):
+	    pass
+	elif (ticket['at_mover'][0] == 'mounted' and
+	      record['at_mover'][0] != 'mounting'):
+	    pass
+	elif (ticket['at_mover'][0] == 'unmounting' and
+	      record['at_mover'][0] != 'mounted'):
+	    pass
+	elif (ticket['at_mover'][0] == 'unmounted' and
+	      record['at_mover'][0] != 'unmounting'):
+	    pass
+	else:
+	    wrong_state = 0
+
+	if wrong_state:
+	    record["status"] = (e_errors.CONFLICT, "volume "+\
+				repr(external_label)+ " state "+\
+				repr(record['at_mover'][0])+" req. state "+\
+				     repr(ticket['at_mover'][0]))
+	else:      
+	    record ['at_mover'] = ticket['at_mover']
+	    dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
+	    record["status"] = (e_errors.OK, None)
+        self.reply_to_caller(record)
+        Trace.trace(11,"}set_at_mover "+repr(record))
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}set_at_mover "+repr(ticket["status"]))
+         return
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):

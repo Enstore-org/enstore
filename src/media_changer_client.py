@@ -18,6 +18,8 @@ import interface
 import generic_client
 import generic_cs
 import Trace
+import volume_clerk_client
+import e_errors
 
 class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, verbose=0, name="", \
@@ -43,19 +45,45 @@ class MediaChangerClient(generic_client.GenericClient):
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
-    def loadvol(self, vol_ticket, drive):
+    def loadvol(self, vol_ticket, mover, drive):
         ticket = {'work'           : 'loadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
-        return self.send(ticket)
+	rt = self.send(ticket)
+	if rt['status'][0] == e_errors.OK:
+	    vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted', 
+				mover)
+	    if v['status'][0] != e_errors.OK:
+		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   w["fc"]["external_label"],
+					   v['at_mover'][1], v['at_mover'][0])
+	    rt['status'] =  v['status']
+	    return rt
+	
 
-    def unloadvol(self, vol_ticket, drive):
+        return rt
+
+    def unloadvol(self, vol_ticket, mover, drive):
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
-        return self.send(ticket)
+	rt = self.send(ticket)
+	if rt['status'][0] == e_errors.OK:
+	    vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    v = vcc.set_at_mover(vol_ticket['external_label'], 'unmounted', 
+				mover)
+	    if v['status'][0] != e_errors.OK:
+		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   w["fc"]["external_label"],
+					   v['at_mover'][1], v['at_mover'][0])
+		rt['status'] =  v['status']
+		return rt
+        return rt
 
     def MaxWork(self, maxwork):
         ticket = {'work'           : 'maxwork',

@@ -232,6 +232,20 @@ class VolumeClerkClient(generic_client.GenericClient,\
         Trace.trace(10,'}set_system_noaccess '+repr(x))
         return x
 
+    # mark volume as noaccess
+    def set_at_mover(self, external_label, flag, mover):
+        Trace.trace(10,'set_at_mover label='+repr(external_label)+\
+		    ' flag='+repr(flag)+' mover='+repr(mover))
+        ticket= { 'work'           : 'set_at_mover',
+                  'external_label' : external_label,
+		  'at_mover' : (flag, mover)}
+        x = self.send(ticket)
+	generic_cs.enprint("set_at_mover:VCC returned "+\
+			   repr(x['at_mover'])+repr(x['status']))
+
+        Trace.trace(10,'}set_at_mover '+repr(x))
+        return x
+
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label):
         Trace.trace(3,'clr_system_inhibit label='+repr(external_label))
