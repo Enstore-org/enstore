@@ -29,27 +29,27 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
-     # input ticket is a file clerk part of the main ticket
-     # create empty record and control what goes into database
-     # do not pass ticket, for example to the database!
-     record = {}
-     record["external_label"]   = ticket["fc"]["external_label"]
-     record["location_cookie"]  = ticket["fc"]["location_cookie"]
-     record["size"]             = ticket["fc"]["size"]
-     record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
-     record["complete_crc"]     = ticket["fc"]["complete_crc"]
-
-     # get a new bit file id
-     bfid = self.unique_bit_file_id()
-     record["bfid"] = bfid
-     # record it to the database
-     self.dict[bfid] = record 
-     
-     ticket["fc"]["bfid"] = bfid
-     ticket["status"] = (e_errors.OK, None)
-     self.reply_to_caller(ticket)
-     Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
-     return
+        # input ticket is a file clerk part of the main ticket
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
+        record = {}
+        record["external_label"]   = ticket["fc"]["external_label"]
+        record["location_cookie"]  = ticket["fc"]["location_cookie"]
+        record["size"]             = ticket["fc"]["size"]
+        record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
+        record["complete_crc"]     = ticket["fc"]["complete_crc"]
+        
+        # get a new bit file id
+        bfid = self.unique_bit_file_id()
+        record["bfid"] = bfid
+        # record it to the database
+        self.dict[bfid] = record 
+        
+        ticket["fc"]["bfid"] = bfid
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
+        return
 
     # update the database entry for this file - add the pnfs file id
     def set_pnfsid(self, ticket):
@@ -114,76 +114,76 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # change the delete state element in the dictionary
     # this method is for private use only
     def set_deleted_priv(self, bfid, deleted, restore_dir="no"):
-     try:
-        # look up in our dictionary the request bit field id
         try:
-            record = self.dict[bfid] 
-        except KeyError:
-            status = (e_errors.KEYERROR, 
-		      "File Clerk: bfid %s not found"%(bfid,))
-            Trace.log(e_errors.INFO, "%s"%(status,))
-            Trace.trace(10,"set_deleted %s"%(status,))
-            return status, None, None
-        
+            # look up in our dictionary the request bit field id
+            try:
+                record = self.dict[bfid] 
+            except KeyError:
+                status = (e_errors.KEYERROR, 
+                          "File Clerk: bfid %s not found"%(bfid,))
+                Trace.log(e_errors.INFO, "%s"%(status,))
+                Trace.trace(10,"set_deleted %s"%(status,))
+                return status, None, None
 
-	if 'y' in string.lower(deleted):
-	    deleted = "yes"
-	    decr_count = 1
-	else:
-	    self.deleted = "no"
-	    decr_count = -1
-        if record["deleted"] == deleted:
-            # don't return a status error to the user - she needs a 0 status in order to delete
-            # the file in the trashcan.  Otherwise we are in a hopeless loop & it makes no sense
-            # to try and keep deleting the already deleted file over and over again
-            #status = (e_errors.USER_ERROR,
-            #                    "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+
+            if 'y' in string.lower(deleted):
+                deleted = "yes"
+                decr_count = 1
+            else:
+                self.deleted = "no"
+                decr_count = -1
+            if record["deleted"] == deleted:
+                # don't return a status error to the user - she needs a 0 status in order to delete
+                # the file in the trashcan.  Otherwise we are in a hopeless loop & it makes no sense
+                # to try and keep deleting the already deleted file over and over again
+                #status = (e_errors.USER_ERROR,
+                #                    "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+                status = (e_errors.OK, None)
+                Trace.log(e_errors.USER_ERROR, 
+                "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+                Trace.trace(12,'set_deleted_priv %s'%(status,))
+                return status, None, None
+
+            if deleted == "no":
+                # restore pnfs entry
+                import pnfs
+                map = pnfs.Pnfs(record["pnfs_mapname"])
+                status = map.restore_from_volmap(restore_dir)
+                del map
+                if status[0] != e_errors.OK:
+                    Trace.log(e_errors.ERROR, "restore_from_volmap failed. Status: %s"%(status,))
+                    return status, None, None 
+
+            # mod the delete state
+            record["deleted"] = deleted
+
+            # become a client of the volume clerk and decrement the non-del files on the volume
+            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            vticket = vcc.decr_file_count(record['external_label'],decr_count)
+            status = vticket["status"]
+            if status[0] != e_errors.OK: 
+                Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
+                return status, None, None 
+
+            # record our changes
+            self.dict[bfid] = record 
+
+            Trace.log(e_errors.INFO,
+                      "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
+                      (bfid,record["pnfs_name0"],record["deleted"],
+                       record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
+
+            # and return to the caller
             status = (e_errors.OK, None)
-            Trace.log(e_errors.USER_ERROR, 
-            "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
-            Trace.trace(12,'set_deleted_priv %s'%(status,))
-            return status, None, None
-            
-	if deleted == "no":
-	    # restore pnfs entry
-	    import pnfs
-	    map = pnfs.Pnfs(record["pnfs_mapname"])
-	    status = map.restore_from_volmap(restore_dir)
-	    del map
-	    if status[0] != e_errors.OK:
-		Trace.log(e_errors.ERROR, "restore_from_volmap failed. Status: %s"%(status,))
-		return status, None, None 
+            fc = record
+            vc = vticket
+            Trace.trace(12,'set_deleted_priv status %s'%(status,))
+            return status, fc, vc
 
-        # mod the delete state
-        record["deleted"] = deleted
-
-        # become a client of the volume clerk and decrement the non-del files on the volume
-        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-        vticket = vcc.decr_file_count(record['external_label'],decr_count)
-	status = vticket["status"]
-	if status[0] != e_errors.OK: 
-	    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
-	    return status, None, None 
-
-        # record our changes
-        self.dict[bfid] = record 
-
-        Trace.log(e_errors.INFO,
-                  "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
-                  (bfid,record["pnfs_name0"],record["deleted"],
-                   record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
-
-        # and return to the caller
-        status = (e_errors.OK, None)
-        fc = record
-        vc = vticket
-        Trace.trace(12,'set_deleted_priv status %s'%(status,))
-        return status, fc, vc
-
-     # if there is an error - log and return it
-     except:
-	 exc, val, tb = e_errors.handle_error()
-         status = (str(exc), str(val))
+        # if there is an error - log and return it
+        except:
+            exc, val, tb = e_errors.handle_error()
+            status = (str(exc), str(val))
 
     def get_crcs(self, ticket):
         try:
@@ -659,6 +659,7 @@ if __name__ == "__main__":
 
     # get a file clerk
     fc = FileClerk((intf.config_host, intf.config_port))
+    fc.handle_generic_commands(intf)
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
     Trace.log(e_errors.INFO,"determine dbHome and jouHome")
