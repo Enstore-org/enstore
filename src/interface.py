@@ -323,8 +323,6 @@ class Interface:
             elif opt == "--help":
                 self.print_help()
                 sys.exit(0)
-            elif opt == "--host":
-                self.host=value
             elif opt == "--html":
                 self.html = 1
             elif opt == "--html-dir":
@@ -387,8 +385,6 @@ class Interface:
                 self.output_dir = value
             elif opt == "--plot":
                 self.plot = 1
-            elif opt == "--poll":
-                self.poll = 1
             elif opt == "--prefix":
                 self.prefix = value
             elif opt == "--priority":
@@ -411,8 +407,6 @@ class Interface:
                 self.restore = value
             elif opt == "--restore-all":
                 self.restore_all = 1
-            elif opt == "--retries":
-                self.alive_retries = int(value)
             elif opt == "--rm-active-vol":
                 self.active_volume = value
                 self.rm_active_vol = 1

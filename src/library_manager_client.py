@@ -165,9 +165,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def priority(self, id, pri):
         return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
-    def poll(self):
-         return self.send({"work":"poll"})
-
     def getlist(self, work):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
@@ -243,14 +240,11 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.name = ""
         self.get_work = 0
         self.alive_rcv_timeout = 0
-        self.alive_retries = 0
         self.get_susp_vols = 0
         self.get_susp_vols = 0
         self.delete_work = 0
         self.priority = -1
-        self.poll = 0
         self.get_queue = None
-        self.host = 0
         self.start_draining = 0
         self.stop_draining = 0
         self.status = 0
@@ -268,7 +262,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
             return self.client_options()+[
                 "get-work", "get-suspect-vols",
                 "delete-work=","priority=",
-                "poll", "get-queue=","host=",
+                "get-queue=",
                 "start-draining=", "stop-draining", "status", "vols",
                 "storage-groups", "rm-suspect-vol=","rm-active-vol="]
 
@@ -332,10 +326,6 @@ def do_work(intf):
         ticket = lmc.remove_active_volume(intf.active_volume)
     elif not intf.priority == -1:
         ticket = lmc.priority(intf.args[1], intf.priority)
-        if enstore_functions.is_ok(ticket):
-            print ticket
-    elif intf.poll:
-        ticket = lmc.poll()
         if enstore_functions.is_ok(ticket):
             print ticket
     elif intf.vols:
