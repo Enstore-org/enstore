@@ -54,7 +54,7 @@ other:
 
 #
 # Move into the distribution directory.
-install :
+install : install_home
 	@rm -rf           $(ENSTORE_INSTALL_DIR)/doc
 	@mkdir		 $(ENSTORE_INSTALL_DIR)/doc
 	cp Makefile mk_inherit class4module $(ENSTORE_INSTALL_DIR)/doc
@@ -63,6 +63,12 @@ install :
 	@if [ -d "$(ENSTORE_HOME)" ]; then \
 		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME) \
 	fi;
+
+install_home:
+	@if [ -d "$(ENSTORE_HOME)" ]; then \
+		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME) \
+	fi;
+
 
 #
 #
