@@ -142,9 +142,6 @@ procMail=${procInfos}-mail
 noMail=${procInfos}NOMAIL
 noNeg=${procInfos}NONEG
 
-rm -f $procOutput
-rm -f $procMail
-
 echo "$start 10" >> $histogram
 
 #  check whether this proc is enabled
@@ -175,12 +172,16 @@ then
  	setup ${products}
 fi
 
-# make sure procName is set to $1 again
+# job is enabled and no other ones are still running. 
+# delete old output and old possible mail file
+rm -f $procOutput
+rm -f $procMail
 
+# make sure procName is set to $1 again
 procName=$1
 
 shift
-#echo  Executing: $procName $*
+echo  Executing: $procName $*
 
 eval $procName $*  >$procOutput 2>&1
 problem=$?
