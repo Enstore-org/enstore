@@ -46,7 +46,7 @@ write_db_u(char *db_path, char *key, unsigned int value)
 }
 
 static int 
-read_db_fmt(char *db_path, char *fmt, char *key, void *value)
+read_db_fmt(char *db_path, char *fmt, char *key, void *value, int warn)
 {
     FILE *fp;
     char path[MAX_PATH_LEN];
@@ -55,10 +55,16 @@ read_db_fmt(char *db_path, char *fmt, char *key, void *value)
 	return -1;
 
     if (!(fp=fopen(path,"r"))){
-	fprintf(stderr,"%s: cannot open ",progname);
-	perror(path);
+	if (warn){
+	    fprintf(stderr,"%s: cannot open ",progname);
+	    perror(path);
+	}
 	return -1;
     }
+
+    if (value==(void*)0)
+	return 0;
+
     if (fscanf(fp, fmt, value)<=0){
 	fprintf(stderr,"%s: cannot read database file %s\n", progname, path);
 	return -1;
@@ -72,7 +78,20 @@ read_db_fmt(char *db_path, char *fmt, char *key, void *value)
 }
 
 int 
-read_db_i(char *db_path, char *key, int *value)
+read_db_i(char *db_path, char *key, int *value, int warn)
 {
-    return read_db_fmt(db_path, "%d", key, (void *)value);
+    return read_db_fmt(db_path, "%d", key, (void *)value, warn);
+}
+
+int 
+read_db_u(char *db_path, char *key, unsigned *value, int warn)
+{
+    return read_db_fmt(db_path, "%u", key, (void *)value, warn);
+}
+
+
+int 
+read_db_s(char *db_path, char *key, char *value, int warn)
+{
+    return read_db_fmt(db_path, "%s", key, (void *)value, warn);
 }
