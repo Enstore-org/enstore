@@ -3,6 +3,7 @@
 #include "acsapi.h"
 /* #include "cl_pub.h" */
 #include <Python.h>
+#include <mc.h>
 /*
   	This is a python interface to the stk acsls system.
         It requires -
@@ -188,15 +189,6 @@ void  asc2STKdrv( char *drive,  DRIVEID *stkdrv)
 }
 
 /*
-	Convert the STK error code to a canonical code
-		e_type is also defined in EMASS.c and media_changer.py
-		see stk/common_lib/cl_status.c
-*/
-enum e_type {EM_OK=0,           /* mount successful */
-                EM_UNKOWN,      /* something wrong with library system */
-                EM_DRIVE,       /* a drive problem - retry another drive */
-                EM_MEDIA};      /* a cartridge problem - drive ok */
-/*
 	STK errors impying drive problem or media problem
 */
 int drive_errs[]={STATUS_DRIVE_IN_USE, STATUS_DRIVE_NOT_IN_LIBRARY, STATUS_DRIVE_OFFLINE,
@@ -206,22 +198,13 @@ int media_errs[]={STATUS_MISPLACED_TAPE,STATUS_UNREADABLE_LABEL,STATUS_INVALID_V
 	STATUS_VOLUME_ACCESS_DENIED,0};
 int *e;
 
-int status_class(int stat)
-{
-  if (stat == 0) return(EM_OK);
-  for (e=drive_errs; *e; e++)
-	if (stat == *e) return(EM_DRIVE);
-  for (e=media_errs; *e; e++)
-	if (stat == *e) return(EM_MEDIA);
-  return(EM_UNKOWN);
-}
 /*
 	Documentation for python
 */
-static char STK_Doc[] =  "STK Robot Mount and Dismount";
+static char STK_Doc[] =  "STK Robot load and unload";
 static char Mount_Doc[] =  "Mount a tape";
 static char Dismount_Doc[] =  "Dismount a tape";
-/*   	Mount
+/*   	mount
 
 	Arguments{
                 vol - cartridge id
@@ -233,7 +216,7 @@ static char Dismount_Doc[] =  "Dismount a tape";
                 char* text desciption of error
 */
 
-static PyObject* Mount(PyObject *self, PyObject *args)
+static PyObject* mount(PyObject *self, PyObject *args)
 {
   char *vol;
   char *drive;
@@ -243,27 +226,35 @@ static PyObject* Mount(PyObject *self, PyObject *args)
   /*
         Get the arguements
   */
-  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);
+  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);                /* get args */ 
+  if (!stat) return (NULL);
   asc2STKdrv(drive, &stkdrv);
-  stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
-  return(Py_BuildValue("iis",stat,status_class(stat),cl_status(stat) ));
+  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
+    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
+  else
+    stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
+  return(Py_BuildValue("iis",stat,status_class(stat, drive_errs, media_errs),cl_status(stat) ));
 }
 
 /*
-        Dismount - see Mount parameters and return values
+        dismount - see mount parameters and return values
 */
-static PyObject* Dismount(PyObject *self, PyObject *args)
+static PyObject* dismount(PyObject *self, PyObject *args)
 {
   char *vol;
   char *drive;
   char *media_type;
   DRIVEID stkdrv;
   int stat;
-  
-  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);			/* get args */
+
+  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);		/* get args */
+  if (!stat) return (NULL);
   asc2STKdrv(drive, &stkdrv);							/* cvt drive 0,0,9,1 to binary */
-  stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
-  return(Py_BuildValue("iis",stat,status_class(stat),cl_status(stat) ));	/* return results */
+  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
+    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
+  else
+    stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
+  return(Py_BuildValue("iis",stat,status_class(stat,drive_errs, media_errs), cl_status(stat) ));	/* return results */
 }
 
 /*
@@ -278,8 +269,8 @@ static PyObject* Dismount(PyObject *self, PyObject *args)
 */
 
 static PyMethodDef STK_Methods[] = {
-  { "Mount", Mount, 1, Mount_Doc},
-  { "Dismount", Dismount, 1, Dismount_Doc},
+  { "mount", mount, 1, Mount_Doc},
+  { "dismount", dismount, 1, Dismount_Doc},
   {0,     0}        /* Sentinel */
 };
 

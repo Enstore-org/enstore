@@ -68,9 +68,9 @@ Devcodes Devcodes.c
 ECRC ECRC.c
 
 # STK is not build unless STK_DIR is defined ; see Makefile
-STK STK.c -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
+STK STK.c -I. -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
 
 # EMASS is not build unless ACI_DIR is defined ; see Makefile
-EMASS EMASS.c -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
+EMASS EMASS.c -I. -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 
 Trace Trace.c trace.a -lc
