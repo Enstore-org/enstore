@@ -18,10 +18,11 @@ privilege to the software, with a corresponding decrease in functionality.
 			    --------- -------
 
 Currently, ftt fully supports Exabyte 82xx, Exabyte 85xx, and Quantum DLT
-tape drives, on AIX, IRIX, Solaris (SunOS), and Digital Unix (OSF1).  Other
-drives are not specifically supported and receive "generic" drive support,
-which includes input, output, and positioning, but very little in the way
-of statistics collection.
+tape drives, on AIX, IRIX, Solaris (SunOS), and Digital Unix (OSF1).  Other 
+drives are not specifically supported and receive "generic" drive support, 
+which includes input, output, and positioning, but very little in the way 
+of statistics collection.  
+
 There is Windows NT support for any tape drive but with limited functionality
 (not tape drive statistics and no density setting).
 
