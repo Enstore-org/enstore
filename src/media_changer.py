@@ -456,7 +456,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
                     break
             except:
                 exc,val,tb = e_errors.handle_error()
-                return exc,0,""
+		return "ERROR", 37, str(val)   #XXX very ad-hoc!
+	                         ## this is "command error" in aml2.py
         return sts
     
     # load volume into the drive;
