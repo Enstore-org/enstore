@@ -221,7 +221,7 @@ EXto_HSM(  PyObject	*self
     sops_wr_wr2rd.sem_op  = idx;	/* restore to saved */
 
     /* fork off read (from) */
-    if (fork() == 0)
+    if ((pid=fork()) == 0)
     {   /* child - does the reading */
 	int	read_byts, shm_byts, just_red_byts;
 	char	*crc_p;
@@ -404,11 +404,11 @@ EXusrTo_(  PyObject	*self
 #      endif
 
 
-    printf( "EXfer.usrTo_ --- \n" );
+    /*printf( "EXfer.usrTo_ --- \n" );*/
     /*  Parse the arguments */
     PyArg_ParseTuple(  args, "OOOll", &obj_pa[0], &obj_pa[1], &obj_pa[2]
 		     , &inc_size, &crc_flg );
-    printf( "EXfer.usrTo_ after parse\n" );
+    /*printf( "EXfer.usrTo_ after parse\n" );*/
 
     for (idx=0; idx<2; idx++)
     {
@@ -419,7 +419,7 @@ EXusrTo_(  PyObject	*self
 	filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
     }
 
-    printf( "EXfer.usrTo_ crc_flg=%d\n", crc_flg );
+    /*printf( "EXfer.usrTo_ crc_flg=%d\n", crc_flg );*/
 
     /* create private (to be inherited by child) shm seg */
     /* there does not seem to be a 4M size limitation */
@@ -427,9 +427,9 @@ EXusrTo_(  PyObject	*self
     assert( inc_size < 0x400000 );
     rd_ahead = 0x400000 / inc_size;
     shmid = shmget( IPC_PRIVATE, inc_size*rd_ahead, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
-    printf( "EXfer usrTo_ shmid=%d (size=inc*%d=%d bytes)\n",shmid,rd_ahead,inc_size*rd_ahead);
+    /*printf( "EXfer usrTo_ shmid=%d (size=inc*%d=%d bytes)\n",shmid,rd_ahead,inc_size*rd_ahead);*/
     shmaddr = shmat( shmid, 0, 0 );	/* no addr hint, no flags */
-    printf( "EXfer shmaddr=%p\n", shmaddr );
+    /*printf( "EXfer shmaddr=%p\n", shmaddr );*/
     if (shmaddr == (char *)-1)
 	perror( "shmat" );
 
@@ -544,7 +544,7 @@ EXusrTo_(  PyObject	*self
 	    san_crc = msgbuf_s.data;
 	    break;
 	case DatCrc:
-	    printf( "EXfer crc is %d\n", msgbuf_s.data );
+	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
 	    dat_crc = msgbuf_s.data;
 	    break;
 	default:		/* assume DatByt */
