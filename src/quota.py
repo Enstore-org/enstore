@@ -88,9 +88,13 @@ class Quota:
 
 	# show summary by the libraries
 	def show_by_library(self):
-		q = "select library, sum(requested) as requested, \
+		q = "select sg_count.library, sum(requested) as requested, \
 			sum(authorized) as authorized, \
-			sum(quota) as quota from quota \
+			sum(quota) as quota, \
+			sum(count) as allocated \
+			left outer join quota on \
+			sg_count.library = quota.library and \
+			sg_count.storage_group = quota.storage_group \
 			group by library order by library;"
 		show_query_result(self.db.query(q))
 
