@@ -18,6 +18,7 @@ SG = "sg"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 MAX_LOG_FILE_SIZE = "max_log_file_size"
+NO_DEBUG_LOG = "no_debug_log"
 
 ALIVE = 1
 DEAD = 0

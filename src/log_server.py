@@ -101,6 +101,9 @@ class Logger(  dispatching_worker.DispatchingWorker
         self.max_log_file_size = keys.get(enstore_constants.MAX_LOG_FILE_SIZE,
                                           NO_MAX_LOG_FILE_SIZE)
 
+        # see if no debug log is desired
+        self.no_debug = keys.has_key(enstore_constants.NO_DEBUG_LOG)
+
 	# get the dictionary of ancillary log files
 	self.msg_type_logs = keys.get('msg_type_logs', {})
 	self.msg_type_keys = self.msg_type_logs.keys()
@@ -132,12 +135,14 @@ class Logger(  dispatching_worker.DispatchingWorker
             if not os.path.exists(dirname):
                 os.mkdir(dirname)
             self.logfile = open(logfile_name, 'a')
-            self.debug_logfile = open(debug_file_name, 'a')
+            if not self.no_debug:
+                self.debug_logfile = open(debug_file_name, 'a')
 	    self.open_extra_logs('a')
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
-                self.debug_logfile = open(debug_file_name, 'a')
+                if not self.no_debug:
+                    self.debug_logfile = open(debug_file_name, 'a')
 		self.open_extra_logs('w')
 	    except:
                 print  "cannot open log %s"%(logfile_name,)
@@ -218,9 +223,10 @@ class Logger(  dispatching_worker.DispatchingWorker
                 self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
                                    (tm[3],tm[4],tm[5], self.repeat_count))
                 self.logfile.flush()
-            self.debug_logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
-                                     (tm[3],tm[4],tm[5], self.repeat_count))
-            self.debug_logfile.flush()
+            if not self.no_debug:
+                self.debug_logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
+                                         (tm[3],tm[4],tm[5], self.repeat_count))
+                self.debug_logfile.flush()
             self.repeat_count=0
         self.last_message=message
 
@@ -234,8 +240,9 @@ class Logger(  dispatching_worker.DispatchingWorker
         if message_type !=  e_errors.sevdict[e_errors.MISC]:
             res = self.logfile.write(message)    # write log message to the file
             self.logfile.flush()
-        res = self.debug_logfile.write(message)    # write log message to the file
-        self.debug_logfile.flush()
+        if not self.no_debug:
+            res = self.debug_logfile.write(message)    # write log message to the file
+            self.debug_logfile.flush()
 	self.write_to_extra_logfile(message)
 
     def check_for_extended_files(self, filename):
@@ -295,7 +302,8 @@ class Logger(  dispatching_worker.DispatchingWorker
                 if day != current_day :
                     # day changed: close the current log file
                     self.logfile.close()
-                    self.debug_logfile.close()
+                    if not self.no_debug:
+                        self.debug_logfile.close()
 		    self.close_extra_logs()
 	            self.last_logfile_name = self.logfile_name
                     current_day = day;
@@ -312,7 +320,8 @@ class Logger(  dispatching_worker.DispatchingWorker
                     size = os.stat(self.logfile_name)[6]
                     if size >= self.max_log_file_size:
                         self.logfile.close()
-                        self.debug_logfile.close()
+                        if not self.no_debug:
+                            self.debug_logfile.close()
                         self.close_extra_logs()
                         # and open the new one
                         self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
@@ -323,7 +332,8 @@ class Logger(  dispatching_worker.DispatchingWorker
                 if min != current_min :
                     # minute changed: close the current log file
                     self.logfile.close()
-                    self.debug_logfile.close()
+                    if not self.no_debug:
+                        self.debug_logfile.close()
                     current_min = min;
                     # and open the new one
                     fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
