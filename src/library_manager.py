@@ -534,6 +534,7 @@ class LibraryManagerMethods:
     def process_read_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
+        Trace.trace(12,"process_read_request %s"%(rq))
 
         key_to_check = self.fair_share(rq)
         if key_to_check:
@@ -543,6 +544,7 @@ class LibraryManagerMethods:
         if self.is_vol_busy(rq.ticket["fc"]["external_label"]):
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             self.continue_scan = 1
+            Trace.trace(12,"process_read_request VOL_BUSY %s"%(rq.ticket["fc"]["external_label"]))
             return rq, key_to_check
         # otherwise we have found a volume that has read work pending
         Trace.trace(12,"process_read_request %s"%(rq.ticket,))
