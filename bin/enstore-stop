@@ -76,13 +76,14 @@ turnoff_s() { for pid in $1; do
                 pidkill_s $pid
             done; }
 
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-    if [ $config_running -eq 1 ] ; then
-      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
-    fi
-    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
+#if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
+#    if [ $config_running -eq 1 ] ; then
+#      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
+#    fi
+#    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
 ##    turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
-fi
+#fi
+
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
@@ -160,3 +161,7 @@ fi
 #   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
 
 exit
+
+#if [ "${opt_just-}" = "" ];then
+    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
+fi
