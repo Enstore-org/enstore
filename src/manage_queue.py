@@ -1,11 +1,28 @@
 # manage the pending Library Managerwork queue
 import time
+import restore
+import db
+#import Trace
+import e_errors
 
 class LM_Queue:
 
-    def __init__(self):
+    def __init__(self, db_dir):
+	#Trace.log(e_errors.INFO,"opening pending_queue database using DbTable")
+	# temporary fix: touch the file
+	self.dict = db.DbTable("pending_queue", db_dir, None, None, 0)
+	#Trace.log(e_errors.INFO,"pending_queue database is open")
 	self.queue=[]
 	self.queue_ptr=0
+
+    # resotre queue from DB
+    def restore_queue(self):
+	self.dict.cursor("open")
+	key,value=self.dict.cursor("first")
+	while key:
+	    self.queue.append(value)
+	    key,value=self.dict.cursor("next")
+	self.dict.cursor("close")
 
     # return the priority of a ticket
     def priority(self,ticket):
@@ -38,6 +55,9 @@ class LM_Queue:
     # A call back for sort, highest file location should be first.
     def compare_location(self,t1,t2):
 	if 0: print self.keys() # lint fix
+	# compare location is not appliable for write requests
+	if t1["work"] == "write_to_hsm" or t2["work"] == "write_to_hsm":
+	    return 0
 	if not (t1["fc"].has_key("external_label") and
 		t2["fc"].has_key("external_label")):
 	    return 0
@@ -56,6 +76,7 @@ class LM_Queue:
 	    ticket['times']['job_queued'] = time.time()
 	    ticket['at_the_top'] = 0
 	    self.queue.append(ticket)
+	    self.dict[ticket["unique_id"]] = ticket
    
     # Remove a ticket 
     def delete_job(self,ticket):
@@ -69,6 +90,8 @@ class LM_Queue:
 		    else:
 			ticket['times']['in_queue'] = 0
 		    self.queue.remove(w)
+		    #print "deleted",w["fc"]["location_cookie"]
+		    del self.dict[w["unique_id"]]
 		    return
 
     # Find a job 
@@ -99,6 +122,9 @@ class LM_Queue:
 	for w in self.queue:
 	    w["encp"]["curpri"] = self.priority(w)
 	self.queue.sort(self.compare_priority)		# Sort the jobs by priority
+	# this is for test
+	#if self.queue[0]["fc"].has_key("location_cookie"):
+	#    print "LC0", self.queue[0]["fc"]["location_cookie"]
 	return self.queue[0]				# Return the top one
 
     # Sort jobs by location for the given volume and return the top one
@@ -107,6 +133,9 @@ class LM_Queue:
 	if len(self.queue) == 0:			    # There are no jobs
 	    return
 	self.queue.sort(self.compare_location)	    # Sort the jobs by location
+	# this is for test
+	#if self.queue[0]["fc"].has_key("location_cookie"):
+	#    print "LC0", self.queue[0]["fc"]["location_cookie"]
 	return self.queue[0]			    # Return the top one
 
     # Return the next highest priority job.  get_init must be called first
@@ -115,6 +144,9 @@ class LM_Queue:
 	if len(self.queue) > self.queue_ptr:
 	    self.queue[self.queue_ptr]['at_the_top'] = \
 	      self.queue[self.queue_ptr]['at_the_top'] + 1
+	    # this is for test
+	    #if self.queue[self.queue_ptr]["fc"].has_key("location_cookie"):
+	    #  print "LC", self.queue[self.queue_ptr]["fc"]["location_cookie"]
 	    return self.queue[self.queue_ptr]
 	return
 
@@ -124,17 +156,20 @@ class LM_Queue:
 	for w in self.queue:
 	    if w["work"] == "read_from_hsm":
 		if w['vc']['external_label'] == v["external_label"]:
-		    if w['fc']['location_cookie'] > v['current_location']:
+		    if w['fc']['location_cookie'] >= v["current_location"]:
 			w['at_the_top'] = w['at_the_top']+1
 			break
 	else:
 	    # no match has been found, return first for this volume
 	    for w in self.queue:
-		if w['vc']['external_label'] ==v["external_label"]:
+		if w['vc']['external_label'] == v["external_label"]:
 		    w['at_the_top'] = w['at_the_top']+1
 		    w['status'] = v['status']
 		    break
 	    else: return None 
+	# this is for test
+	#if w["fc"].has_key("location_cookie"):
+	#    print "LC1", w["fc"]["location_cookie"]
 	return w
 
       
@@ -197,4 +232,3 @@ if __name__ == "__main__":
 # get the whole list of jobs
   print "get_queue"
   pprint.pprint(pending_work.get_queue())
-

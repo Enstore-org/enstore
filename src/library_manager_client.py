@@ -61,12 +61,18 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def load_mover_list(self):
 	return self.send({"work":"load_mover_list"})
 
+    def summon_mover(self, mover):
+	return self.send({"work":"summon", "mover":mover})
+
     def get_mc(self):
 	mc = self.send({"work":"get_mc"})
 	if mc:
 	    return mc['mc']
 	return None
-	
+
+    def poll(self):
+	 return self.send({"work":"poll"})
+
     def getlist(self, work):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
@@ -132,13 +138,17 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.get_susp_vols = 0
 	self.remove_work = 0
 	self.change_priority = 0
+	self.load_mover_list = 0
+	self.summon = 0
+	self.poll = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
 	       ["getwork", "getmoverlist", "get_suspect_vols",
-	       "get_del_dismount","del_work","change_priority","loadmovers"]
+		"get_del_dismount","del_work","change_priority","loadmovers",
+		"summon=", "poll"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -206,6 +216,12 @@ if __name__ == "__main__" :
 	print repr(ticket)
     elif intf.load_mover_list:
 	ticket = lmc.load_mover_list()
+	print repr(ticket)
+    elif intf.summon:
+	ticket = lmc.summon_mover(intf.summon)
+	print repr(ticket)
+    elif intf.poll:
+	ticket = lmc.poll()
 	print repr(ticket)
 	
     else:
