@@ -3859,24 +3859,138 @@ This plot shows mount latencies.
 <h3><a name="alarm_server">
 1.3.9 Alarm Server
 </h3>
-The Alarm Server records alarms raised by another server.  Currently, alarms
-are raised when the following conditions are detected -
-<ul>
-<li>
-</ul>
+The Alarm Server maintains a record of alarms raised by other servers.  
 Since Enstore attempts error recovery whenever possible,
 it is expected that raised alarms will need human intervention to correct the
 problem.
-
-
-
-'Raising' an
-alarm means, the following - <br>
+Currently, alarms are raised when the following conditions are detected -
+<ul>
+<li>A server has died and it is specified in the configuration file that it
+should not be restarted.
+<li>A server has died and the inquisitor was unsuccessful in restarting it.
+</ul>
+The alarm server compares a newly raised alarm with the previously raised ones
+in order to not raise the same alarm more than once.
+Raising an alarm means, the following - <br>
 <ul>
 <li>logging the alarm
 <li>adding the alarm to the ascii alarm file
 <li>adding the alarm to the Patrol alarm file
 </ul>
+<p>
+The ascii alarm file is located in the same directory as the log files and is
+called <i>enstore_alarms.txt</i>.  The Patrol alarm file is located in the same
+directory and is called <i>enstore_patrol.txt</i>.
+<p>
+Resolving an alarm means the following - <br>
+<ul>
+<li>logging the cancellation
+<li>removing the alarm from the ascii alarm file
+<li>removing the alarm from the Patrol alarm file
+</ul>
+Currently it is only possible to cancel an alarm via the command line.
+
+<h4><a name="alarm_server_cmds">
+1.3.9.1 Command Line Control of the Alarm Server
+</h4>
+Alarm Server functionality may be controlled through a command line interface 
+using <B>ecmd</B>.  A summary of the supported commands is given below.  In 
+addition to the following commands, the Alarm Server command line interface 
+supports the general commands supported by all other servers.
+<P>
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>FUNCTION</B></TD>
+<TD NOSAVE><B>COMMAND</B></TD>
+<TD NOSAVE><B>OUTPUT</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>raise an alarm with root error of UNKNOWN and severity of WARNING</TD>
+<TD NOSAVE>ecmd ac --alarm</TD>
+<TD NOSAVE>None</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>raise an alarm with the specified root error and a severity of WARNING</TD>
+<TD NOSAVE>ecmd ac --alarm --root_error="root_error"</TD>
+<TD NOSAVE>None</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>raise an alarm with the specified severity and a root error of UNKNOWN</TD>
+<TD NOSAVE>ecmd ac --severity=severity_value</TD>
+<TD NOSAVE>None</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>resolve the specified alarm</TD>
+<TD NOSAVE>ecmd ac --resolve=unique_id</TD>
+<TD NOSAVE>None</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the name of the patrol file</TD>
+<TD NOSAVE>ecmd ac --patrol_file</TD>
+<TD NOSAVE>patrol file name</TD>
+</TR>
+</TABLE></center>
+
+<h4><a name="alarm_server_config">
+1.3.9.2 Alarm Server Config file Values
+</h4>
+The Alarm Server looks for the following values in the Alarm Server section of
+the
+Enstore config file. The default value is used if the dictionary element is not
+found. Dictionary elements with no default must be specified in the Enstore 
+config file.<BR>
+<P>
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>DICTIONARY ELEMENT</B></TD>
+<TD NOSAVE><B>DEFINITION</B></TD>
+<TD NOSAVE><B>DEFAULT</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>host</TD>
+<TD NOSAVE>node where Alarm Server runs</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>logname</TD>
+<TD NOSAVE>ascii value used for id in messages to Log Server</TD>
+<TD NOSAVE>ALARM_SERVER</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>norestart</TD>
+<TD NOSAVE>do not restart this server if it crashes</TD>
+<TD NOSAVE>do a restart</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>port</TD>
+<TD NOSAVE>udp port for Alarm Server communication</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+</TABLE></center>
+
+<h4><a name="ascii_alarm_file">
+1.3.9.3 Ascii Alarm File
+</h4>
+The ascii alarm file that the Alarm Server creates stores all of the current
+raised alarms.  When the Alarm Server is started this file is read.  Below is
+an example file -
+<pre>
+[927226812.665, 'rip7.fnal.gov', 13917, 'enstore', 'E', 'INQ_CHILD', 'CANTRESTART', {'server': 'DM12AIT.mover'}]
+[927230044.586, 'rip7.fnal.gov', 18409, 'enstore', 'E', 'INQ_CHILD', 'CANTRESTART', {'server': 'DM07AIT.mover'}]
+[927255672.586, 'rip7.fnal.gov', 835, 'enstore', 'E', 'INQ_CHILD', 'SERVERDIED', {'server': 'DM07AIT.mover'}]
+[927255677.704, 'rip7.fnal.gov', 836, 'enstore', 'E', 'INQ_CHILD', 'SERVERDIED', {'server': 'DM08AIT.mover'}]
+</pre>
+<h4><a name="patrol_alarm_file">
+1.3.9.4 Patrol Alarm File
+</h4>
+The Patrol alarm file that the Alarm Server creates stores all of the current
+raised alarms in a format that Patrol can parse.  Below is an example file -
+<pre>
+rip7 Enstore 'E' INQ_CHILD on rip7.fnal.gov - CANTRESTART 
+rip7 Enstore 'E' INQ_CHILD on rip7.fnal.gov - CANTRESTART 
+rip7 Enstore 'E' INQ_CHILD on rip7.fnal.gov - SERVERDIED 
+rip7 Enstore 'E' INQ_CHILD on rip7.fnal.gov - SERVERDIED 
+</pre>
 Patrol was developed at SLAC and enhanced and modified at DESY.  It is 
 currently in use at these institutions and at Fermilab.  We have begun 
 investigating its use in association with the Enstore system. 
@@ -3885,13 +3999,6 @@ investigating its use in association with the Enstore system.
 <p>
 <div align=right><a href="patrol-status.ps">(also available in Postscript)</a><div align=left>
 <p>
-1.3.9.1 Command Line Control of the Alarm Server
-1.3.9.2 Alarm Server Config file Values
-1.3.9.3 Ascii Alarm File
-1.3.9.4 Patrol Alarm File
-
-<p>
-
 
 <hr>
 <h2><a name="server_protocols">
