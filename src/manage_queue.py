@@ -433,7 +433,8 @@ class Request_Queue:
                 key = string.join((ticket['vc']['storage_group'],
                        ticket['vc']['file_family'],
                        ticket['vc']['wrapper']),'.')
-            else: key = string.join((ticket['vc']['storage_group'],'ephemeral','none'), '.')
+            else: key = string.join((ticket['vc']['storage_group'],
+                                     'ephemeral',ticket['vc']['wrapper']), '.')
             ticket['vc']['volume_family'] = key
         elif ticket['work'] == 'read_from_hsm':
             key = ticket['fc']['external_label']

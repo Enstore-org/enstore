@@ -539,7 +539,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         min_remaining_bytes = 1
-        wrapper = self.cleanTapeWrapper
         vol_veto_list = []
         first_found = 0
         libraryManagers = inTicket['moverConfig']['library']
@@ -552,7 +551,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
         v = vcc.next_write_volume(library,
-                                  min_remaining_bytes, self.cleanTapeVolumeFamily, wrapper, 
+                                  min_remaining_bytes, self.cleanTapeVolumeFamily, 
                                   vol_veto_list, first_found, exact_match=1)  # get which volume to use
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\

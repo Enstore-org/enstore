@@ -425,12 +425,11 @@ class VolumeClerkClient(generic_client.GenericClient,
 	
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           volume_family, wrapper, vol_veto_list,first_found, exact_match=0):
+                           volume_family, vol_veto_list,first_found, exact_match=0):
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'volume_family'       : volume_family,
-		   'wrapper'             : wrapper,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found,
                    'use_exact_match'     : exact_match}
@@ -570,8 +569,7 @@ def do_work(intf):
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
-                                       intf.args[2], #file_family
-                                       intf.args[3], # wrapper
+                                       intf.args[2], #volume_family
                                             [], #vol_veto_list
                                              1) #first_found
     elif intf.vol:

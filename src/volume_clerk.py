@@ -93,7 +93,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          cur_rec = self.dict[old_label]
          # should not happen
          if self.dict.has_key(new_label):
-             return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
+             rec = self.dict[new_label]
+             if rec['system_inhibit'][0] != e_errors.RECYCLE: 
+                 return 'EEXIST', "Volume Clerk: volume "+new_label+" already exists"
          # rename volume names in the FC database
          if string.find(new_label, ".deleted") != -1:
              cur_rec["system_inhibit"][0] = e_errors.DELETED
@@ -173,31 +175,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              del self.dict[external_label]
              # update the bfid database too
              self.bfid_db.delete_all_bfids(external_label)
+             new_label = string.replace(external_label, '.deleted','')
+             rec = self.dict[new_label]
+             rec['system_inhibit'] = ('none', 'none')
+             self.dict[new_label] = rec
              Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
 
-             # return volume to its pool
-             
-             new_label = string.replace(cur_rec['external_label'], '.deleted', '')
-             if not self.dict.has_key(new_label):
-                 cur_rec['exrenal_label'] = new_label
-                 cur_rec['volume_family'] = string.join((volume_family.extract_storage_group(cur_rec['volume_family']),
-                                                                                            'none'),'.')
-                 cur_rec['remaining_bytes'] = cur_rec['capacity_bytes']
-                 cur_rec['eod_cookie'] = 'none'
-                 cur_rec['last_access'] = -1
-                 cur_rec['first_access'] = -1
-                 cur_rec['declared'] = time.time()
-                 cur_rec['system_inhibit'] = ["none", "none"]
-                 cur_rec['user_inhibit'] = ["none", "none"]
-                 cur_rec['sum_wr_err'] = 0
-                 cur_rec['sum_rd_err'] = 0
-                 cur_rec['sum_wr_access'] = 0
-                 cur_rec['sum_rd_access'] = 0
-                 cur_rec['non_del_files'] = 0
-                 # write the new record out to the database
-                 self.dict[new_label] = cur_rec
-                 # initialize the bfid database for this volume
-                 self.bfid_db.init_dbfile(new_label)
              return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
@@ -232,6 +215,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     record = self.dict[ticket["external_label"]]
                     if record["system_inhibit"][0] == e_errors.DELETED:
                         vols.append(ticket["external_label"])
+            Trace.log(e_errors.INFO,"remove_deleted_vols: vols %s" % (vols,)) 
             for vol in vols:
                 ret = self.remove_deleted_volume(vol)
                 msg="VOLUME "+vol
@@ -417,6 +401,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         else:
             Trace.log(e_errors.ERROR,"non_del_files not found in volume ticket - old version of table")
 
+        if record['system_inhibit'][0] == e_errors.RECYCLE:
+            # volume has been deleted but still can be recovered
+            # to delete this volume it must be destroyed by admin.
+            ticket['status'] = (e_errors.RECYCLE, "volume must be deleted by administrator")
+            self.reply_to_caller(ticket)
+            return
+        if record['system_inhibit'][0] == e_errors.DELETED:
+            # volume is already deleted
+            ticket['status'] = (e_errors.DELETED, "volume is deleted")
+            self.reply_to_caller(ticket)
+            return
         # if volume has not been written delete it
         if record['sum_wr_access'] == 0:
             del self.dict[external_label]
@@ -425,6 +420,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.OK, None)
         else:
             record["system_inhibit"][0] = e_errors.DELETED
+            cur_rec = self.dict[external_label]
             self.dict[external_label] = record
             # try to remove deleted volume and mark the current one as deleted
             if self.dict.has_key(external_label+".deleted"):
@@ -434,9 +430,35 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # rename current volume
             status = self.rename_volume(external_label, 
                                         external_label+".deleted")
+
             ticket["status"] = status
             if status[0] == e_errors.OK:
-                Trace.log(e_errors.INFO,"Volume %s is deleted"%(external_label,))
+                # return volume to its pool
+             
+                new_label = string.replace(cur_rec['external_label'], '.deleted', '')
+                if not self.dict.has_key(new_label):
+                    cur_rec['exrenal_label'] = new_label
+                    # form a volume family
+                    sg = volume_family.extract_storage_group(cur_rec['volume_family'])
+                    cur_rec['volume_family'] = volume_family.make_volume_family(sg,'none', 'none')
+                    cur_rec['remaining_bytes'] = cur_rec['capacity_bytes']
+                    cur_rec['eod_cookie'] = 'none'
+                    cur_rec['last_access'] = -1
+                    cur_rec['first_access'] = -1
+                    #cur_rec['declared'] = time.time()
+                    cur_rec['system_inhibit'] = [e_errors.RECYCLE, "none"]
+                    cur_rec['user_inhibit'] = ["none", "none"]
+                    cur_rec['sum_wr_err'] = 0
+                    cur_rec['sum_rd_err'] = 0
+                    cur_rec['sum_wr_access'] = 0
+                    cur_rec['sum_rd_access'] = 0
+                    cur_rec['non_del_files'] = 0
+                    # write the new record out to the database
+                    self.dict[new_label] = cur_rec
+                    # initialize the bfid database for this volume
+                    self.bfid_db.init_dbfile(new_label)
+            
+                    Trace.log(e_errors.INFO,"Volume %s is deleted"%(external_label,))
 
         self.reply_to_caller(ticket)
         return
@@ -607,6 +629,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
+        Trace.trace(20, "next_write_volume %s" % ticket)
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -615,10 +638,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         library = ticket["library"]
         vol_fam = ticket['volume_family']
         first_found = ticket["first_found"]
-        wrapper_type = ticket["wrapper"]
+        wrapper_type = volume_family.extract_wrapper(vol_fam)
         use_exact_match = ticket['use_exact_match']
 
-        Trace.trace(20, "next_write_volume %s" % ticket)
         # go through the volumes and find one we can use for this request
         # first use exact match
         sg = volume_family.extract_storage_group(vol_fam)
@@ -638,7 +660,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.ERROR,msg)
                 self.reply_to_caller(ticket)
                 return
-        
+
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
             # given storage group and file family.
