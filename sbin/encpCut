@@ -4,19 +4,20 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
-# script to cut the encp product from the enstore sources
+# script to cut the encp (client) product from the enstore sources
 
 # based on copCut which is based almost entirely on Ron R's dscCut
 
 product=encp
+productCut=`basename $0`
 
-echo "${product}Cut starting at `date`"
+echo "$productCut starting at `date`"
 
 ##############################################################################
 
 USAGE="
 
-   ${product}Cut -options
+   $productCut -options
 
 -r version   next release version
 -i directory install directory (without version number and product) for the new revision (i.e. /p/Linux)
@@ -54,13 +55,13 @@ check_status() { jstatus=${1:-0}
                  jstep=${Step:-unknown}
                  if [ $jstatus != 0 ] ; then
                    echo ""
-                   echo "${product}Cut Fatal Error=$1 \"$jname\", Step \"$jstep\"" >&2
-                   echo "${product}Cut ABORTED at `date`"
+                   echo "$productCut Fatal Error=$1 \"$jname\", Step \"$jstep\"" >&2
+                   echo "$productCut ABORTED at `date`"
                    cd $thepwd
                    exit $jstatus
                  else
                    if [ -z "${3-}" ] ; then
-                      echo "${product}Cut success for \"$jname\", Step \"$jstep\" at `date`" >&2
+                      echo "$productCut success for \"$jname\", Step \"$jstep\" at `date`" >&2
                    fi
                  fi ; }
 
@@ -72,17 +73,20 @@ starting() { if [ $try != "list" ] ; then
                 /bin/echo -n "starting at `date`"
              fi; }
 
+copyit()   { cp $1 $2;
+             check_status $? "cp $1 $2"; }
+
 ##############################################################################
 # we need ups and upd to be setup
 
 if [ -z "${UPS_DIR-}" ] ; then
   Step="ups check"
-  check_status 1 "You need ups to be setup before using ${product}Cut"
+  check_status 1 "You need ups to be setup before using $productCut"
 fi
 
 if [ -z "${UPD_DIR-}" ] ; then
   Step="upd check"
-  check_status 1 "You need upd to be setup before using ${product}Cut"
+  check_status 1 "You need upd to be setup before using $productCut"
 fi
 
 ##############################################################################
@@ -90,7 +94,7 @@ fi
 
 if [ -z "${ENSTORE_DIR-}" ] ; then
   Step="enstore check"
-  check_status 1 "You need enstore to be setup before using ${product}Cut"
+  check_status 1 "You need enstore to be setup before using $productCut"
 fi
 cd $ENSTORE_DIR
 #FLAVOR=`echo $SETUP_ENSTORE | cut -d" " -f4` # potentially troublesome - not very robust if the setup_enstore line changes
@@ -99,7 +103,7 @@ if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
 fi
 if [ "${Cvs_Module:-}" = "" ];then
-   check_status 1 "You need to be in a cvs working directory to use ${product}Cut"
+   check_status 1 "You need to be in a cvs working directory to use $productCut"
 fi
 
 ##############################################################################
@@ -188,7 +192,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
       hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2/
-	         setrev=0;;
+                 setrev=0;;
       *)         INSTALLDIR=/p/`uname`/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
@@ -296,20 +300,25 @@ for try in list doit; do
 
         6) echo "Step $Step:  install $product into $INSTALLDIR    `starting`"
            if [ "$try" = "doit" ] ; then
-              cd $ENSTORE_DIR/src/ENCPBIN
               # check if directory doesn't exist
               if [ ! -d $INSTALLDIR ] ; then
                  echo "$INSTALLDIR does not exist... making it"
                  mkdir -p $INSTALLDIR
                  check_status $? "mkdir -p $INSTALLDIR"
               fi
-              cp * $INSTALLDIR
-              check_status $? "cp * $INSTALLDIR"
-	      cp $ENSTORE_DIR/volume_import/enstore_tape $INSTALLDIR
-	      check_status $? "cp enstore_tape $INSTALLDIR"
-	      cd $INSTALLDIR
-	      ln -s sam.table enstore_variables.table
-	      check_status $? "cp ln -s sam.table enstore_variables.table"
+
+              copyit $ENSTORE_DIR/src/ENCPBIN/encp            $INSTALLDIR
+              copyit $ENSTORE_DIR/src/ENCPBIN/enstore         $INSTALLDIR
+              copyit $ENSTORE_DIR/volume_import/enstore_tape  $INSTALLDIR
+              copyit $ENSTORE_DIR/bin/pcmd                    $INSTALLDIR
+              copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR
+              copyit $ENSTORE_DIR/ups/pcfarm.table            $INSTALLDIR
+              copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR
+              copyit $ENSTORE_DIR/ups/sam.table               $INSTALLDIR
+
+              cd $INSTALLDIR
+              ln -s sam.table enstore_variables.table
+              check_status $? "ln -s sam.table enstore_variables.table"
            fi
            ;;
 
@@ -358,7 +367,7 @@ for try in list doit; do
       /bin/echo -n "\nThere are a total of $STEPSDEFINED steps defined. Is this the set that you want to do? "
       ans=`echo_timed_read 10`
       if [ $? != 0 ] || expr "$ans" : '[Yy]' >/dev/null ; then
-        echo "Proceeding with ${product}Cut..."
+        echo "Proceeding with $productCut..."
         echo ""
     else
          cd $thepwd
@@ -368,4 +377,4 @@ for try in list doit; do
 done
 
 cd $thepwd
-echo "${product}Cut $REV finished at `date`"
+echo "$productCut $REV finished at `date`"
