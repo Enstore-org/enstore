@@ -620,7 +620,7 @@ def final_scan_volume(vol):
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 	MY_TASK = "FINAL_SCAN_VOLUME"
-	q = "select bfid, pnfs_path, src_bfid  \
+	q = "select bfid, pnfs_id, src_bfid  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
@@ -642,13 +642,20 @@ def final_scan_volume(vol):
 		error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 		return 
 	for r in query_res:
-		bfid, pnfs_path, src_bfid = r
+		bfid, pnfs_id, src_bfid = r
 		st = is_swapped(src_bfid, db)
 		if not st:
 			error_log(MY_TASK, "%s %s %s has not been swapped"%(src_bfid, bfid, pnfs_path))
 			continue
 		ct = is_closed(bfid, db)
 		if not ct:
+			# get the real path
+			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
+			# make sure the volume is the same
+			pf = pnfs.File(pnfs_path)
+			if pf.volume != vol:
+				error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
+				continue
 			res = run_encp([pnfs_path, '/dev/null'])
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
