@@ -323,8 +323,6 @@ class Interface:
             elif opt == "--help":
                 self.print_help()
                 sys.exit(0)
-            elif opt == "--hostip":
-                self.hostip = value
             elif opt == "--html":
                 self.html = 1
             elif opt == "--html-dir":
