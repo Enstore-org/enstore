@@ -63,8 +63,8 @@ def get_callback_port(start,end):
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
         sleeptime = 1
-        msg = "get_callback_port: all ports from "+repr(port1)+' to '+repr(port2)+\
-              " used. waiting"+repr(sleeptime)+" seconds"
+        msg = "get_callback_port: all ports from "+repr(start)+' to ' \
+	      +repr(end) + " used. waiting"+repr(sleeptime)+" seconds"
         print msg
         Trace.trace(2,msg)
         time.sleep (sleeptime)
