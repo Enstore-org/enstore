@@ -116,10 +116,10 @@ class LoggerClient(generic_client.GenericClient):
 #             - debugging should be > 20
     def set_logpriority(priority):
         log_priority = priority
-    
+
     def get_logpriority():
         return log_priority
-    
+
 
     # check on alive status
     def alive(self):
@@ -146,7 +146,7 @@ class LoggerClientInterface(interface.Interface):
                ["config_list", "config_file=", "test", "logit=", "alive"] +\
                self.help_options()
 
-    # our help stuff 
+    # our help stuff
     def help_line(self):
         return interface.Interface.help_line(self)+" media_changer volume drive"
 
@@ -155,7 +155,7 @@ class LoggerClientInterface(interface.Interface):
     This function takes arbitrary number of arguments. The mandatory arguments
     are:
        severity - see severity codes above
-       priority - an integer which is compared to a bit mask(log_priority) 
+       priority - an integer which is compared to a bit mask(log_priority)
 		  1 implies always log, 2 imply normally go to logger,
                   4 more complete file tracing, 8,16,... detailed debugging.
                   the log_priority is set on a per server basis.
@@ -168,8 +168,10 @@ class LoggerClientInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    Trace.init("log client")
     import pprint
+    import sys
+    Trace.init("log client")
+    Trace.trace(1,"logc called with args "+repr(sys.argv))
 
     # fill in interface
     intf = LoggerClientInterface()
@@ -191,7 +193,9 @@ if __name__ == "__main__" :
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
+        Trace.trace(0,"logc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
     elif list:
         pprint.pprint(ticket)
+        Trace.trace(1,"logc exit ok")
         sys.exit(0)

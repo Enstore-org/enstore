@@ -11,7 +11,7 @@ import dict_to_a
 import interface
 import generic_client
 import backup_client
-import configuration_client 
+import configuration_client
 import udp_client
 import db
 import Trace
@@ -287,9 +287,10 @@ class VolumeClerkClientInterface(interface.Interface):
 
 
 if __name__ == "__main__":
-    Trace.init("VC client")
     import sys
     import pprint
+    Trace.init("VC client")
+    Trace.trace(1,"vcc called with args "+repr(sys.argv))
 
     # fill in the interface
     intf = VolumeClerkClientInterface()
@@ -329,7 +330,9 @@ if __name__ == "__main__":
     if ticket['status'] != 'ok':
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
+        Trace.trace(0,"vcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
     elif intf.list:
         pprint.pprint(ticket)
+        Trace.trace(1,"vcc exit ok")
         sys.exit(0)

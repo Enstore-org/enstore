@@ -183,6 +183,8 @@ if __name__ == "__main__" :
     import socket
     import time
     import timeofday
+    Trace.init("medchanger")
+    Trace.trace(1,"media changer called with args "+repr(sys.argv))
 
     # defaults
     #config_host = "localhost"
@@ -263,4 +265,6 @@ if __name__ == "__main__" :
                      "media changer serve_forever continuing"
             print format
             logc.send(log_client.ERROR, 1, format)
+            Trace.trace(0,format)
             continue
+    Trace.trace(1,"Media Changer finished (impossible)")

@@ -1,6 +1,6 @@
 ###############################################################################
 # src/$RCSfile$   $Revision$
-#                                                                       
+#
 #########################################################################
 # Log Server.                                                           #
 # Receives log messages form the client process and logs them into      #
@@ -135,9 +135,10 @@ class Logger(LogMethods,\
 
 
 if __name__ == "__main__" :
-    Trace.init("log server")
     import getopt
     import socket
+    Trace.init("log server")
+    Trace.trace(1,"log server called with args "+repr(sys.argv))
 
     # defaults
     #config_host = "localhost"
@@ -185,8 +186,16 @@ if __name__ == "__main__" :
 
     while 1:
         try:
+            Trace.trace(1,'Log Server (re)starting')
             logserver.serve_forever(keys["log_file_path"])
         except:
-            print timeofday.tod(),\
-                  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            traceback.print_exc()
+            format = timeofday.tod()+" "+\
+                     str(sys.argv)+" "+\
+                     str(sys.exc_info()[0])+" "+\
+                     str(sys.exc_info()[1])+" "+\
+                     "log server serve_forever continuing"
+            print format
+            Trace.trace(0,format)
             continue
+    Trace.trace(1,"Log Server finished (impossible)")

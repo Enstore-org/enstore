@@ -666,7 +666,6 @@ class VolumeClerk(VolumeClerkMethods,\
     pass
 
 if __name__ == "__main__":
-    Trace.init("Vol Clerk")
     import sys
     import getopt
     import string
@@ -679,6 +678,8 @@ if __name__ == "__main__":
         import SOCKS; socket = SOCKS
     except ImportError:
         import socket
+    Trace.init("Vol Clerk")
+    Trace.trace(1,"Volume clerk called with args "+repr(sys.argv))
 
     # defaults
     #config_host = "localhost"
@@ -721,6 +722,7 @@ if __name__ == "__main__":
     dict = db.dBTable("volume",logc,indlst)
     while 1:
         try:
+            Trace.trace(1,'Volume Clerk (re)starting')
             logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
@@ -732,5 +734,6 @@ if __name__ == "__main__":
                      "volume clerk serve_forever continuing"
             print format
             logc.send(log_client.ERROR, 1, format)
+            Trace.trace(0,format)
             continue
-
+    Trace.trace(1,"Volume Clerk finished (impossible)")

@@ -120,9 +120,10 @@ class LibraryManagerClientInterface(interface.Interface) :
             self.name = self.args[0]
 
 if __name__ == "__main__" :
-    Trace.init("libm cli")
     import sys
     import pprint
+    Trace.init("libm cli")
+    Trace.trace(1,"lmc called with args "+repr(sys.argv))
 
     # fill in the interface
     intf = LibraryManagerClientInterface()
@@ -140,8 +141,10 @@ if __name__ == "__main__" :
     if ticket['status'] == 'ok' :
         if intf.list:
             pprint.pprint(ticket)
+        Trace.trace(1,"lmc exit ok")
         sys.exit(0)
     else :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
+        Trace.trace(0,"lcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)

@@ -12,7 +12,7 @@
 import pdb
 
 #enstore imports
-import configuration_client 
+import configuration_client
 import udp_client
 import interface
 import generic_client
@@ -87,9 +87,10 @@ class MediaLoaderClientInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    Trace.init("medch cli")
     import sys
     import pprint
+    Trace.init("medch cli")
+    Trace.trace(1,"mcc called with args "+repr(sys.argv))
 
     # fill in the interface
     intf = MediaLoaderClientInterface()
@@ -107,8 +108,10 @@ if __name__ == "__main__" :
     if ticket['status'] == 'ok' :
         if intf.list:
             pprint.pprint(ticket)
+        Trace.trace(1,"mcc exit ok")
         sys.exit(0)
     else :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
+        Trace.trace(0,"mcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
