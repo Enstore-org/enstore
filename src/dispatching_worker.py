@@ -1,4 +1,5 @@
 import errno
+import time
 from SocketServer import UDPServer, TCPServer
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -79,7 +80,17 @@ class DispatchingWorker:
         if badsock != 0 :
             print "dispatching_worker reply_with_list, pre-sendto error:",\
                   errno.errorcode[badsock]
-        self.socket.sendto(repr(list), self.reply_address)
+        sent = 0
+        while sent == 0:
+            try:
+                self.socket.sendto(repr(list), self.reply_address)
+                sent = 1
+            except socket.error:
+                print time.strftime("%c",time.localtime(time.time())),\
+                      "dispatching_worker: Nameserver not responding\n",\
+                      message,"\n",address,"\n",\
+                      sys.exc_info()[0],"\n", sys.exc_info()[1]
+                sleep(1)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "dispatching_worker reply_with_list, post-sendto error:",\

@@ -171,6 +171,7 @@ if __name__ == "__main__" :
     import os
     import sys
     import getopt
+    import time
     # Import SOCKS module if it exists, else standard socket module socket
     try:
         import SOCKS; socket = SOCKS
@@ -222,6 +223,7 @@ if __name__ == "__main__" :
         try:
             cs.serve_forever()
         except:
-            print sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            print time.strftime("%c",time.localtime(time.time())),\
+		  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
 

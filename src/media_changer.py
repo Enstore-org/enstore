@@ -145,6 +145,7 @@ if __name__ == "__main__" :
     import sys
     import getopt
     import socket
+    import time
 
     # defaults
     #config_host = "localhost"
@@ -216,5 +217,6 @@ if __name__ == "__main__" :
         try:
             mls.serve_forever()
         except:
-            print sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            print time.strftime("%c",time.localtime(time.time())),\
+		  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
