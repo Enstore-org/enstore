@@ -370,7 +370,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
     /* various mode checks */
     if (0 == strncmp(d->controller,"SCSI",4)) {
-        stat_ops = FTT_DO_RS|FTT_DO_INQ;
+        stat_ops = FTT_DO_TUR|FTT_DO_RS|FTT_DO_INQ;
     } else {
         stat_ops = 0;
     }
@@ -382,6 +382,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     ** this *really* is, then *another* request sense, and check
     ** for drive specific data.
     */
+    if (stat_ops & FTT_DO_TUR) {
+        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
+	set_stat(b,FTT_TUR_STATUS,ftt_itoa((long)-res), 0);
+	if (res < 0) {
+	    set_stat(b,FTT_READY,"0",0);
+	} else {
+	    set_stat(b,FTT_READY,"1",0);
+	}
+    }
 
     if (stat_ops & FTT_DO_RS) {
 	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   18, 0x00};
@@ -523,17 +534,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
 		set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
 	    }
-	}
-    }
-    if (stat_ops & FTT_DO_TUR) {
-        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
-	set_stat(b,FTT_TUR_STATUS,ftt_itoa((long)-res), 0);
-	if (res < 0) {
-	    set_stat(b,FTT_READY,"0",0);
-	} else {
-	    set_stat(b,FTT_READY,"1",0);
 	}
     }
     if (stat_ops & FTT_DO_SN) {
