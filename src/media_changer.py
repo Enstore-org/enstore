@@ -91,7 +91,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    time.sleep( self.mc_config['delay'] )
 	    self.enprint( 'continuing with reply' )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
+        self.reply_to_caller({'status' : (e_errors.OK, ,0, None)})
 
     # unload volume from the drive
     def unload(self,
@@ -102,8 +102,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, None)})
+        self.reply_to_caller({'status' : (e_errors.OK, ,0, None)})
 
+    # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
                external_label,  # volume external label
                drive,
