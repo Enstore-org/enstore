@@ -35,17 +35,18 @@ def default_file():
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
         if host == "localhost" :
-            (self.config_hostname, self.ca, self.ci) = \
-                socket.gethostbyaddr(socket.gethostname())
-            self.config_host = self.ci[0]
+            self.check_host(socket.gethostname())
         else:            
-	    self.config_host = host
+            self.check_host(host)
 
-	self.check_host()
 	self.check_port(port)
 
         # now parse the options
         self.parse_options()
+
+    def check_host(self, host):
+        (self.config_hostname, self.ca, self.ci) = socket.gethostbyaddr(host)
+        self.config_host = self.ci[0]
 
     def charopts(self):
         if 0: print self # lint fix
@@ -107,10 +108,6 @@ class Interface:
         else:
             self.config_port = port
 
-    def check_host(self):
-	# bomb out if can't translate host
-	self.ip = socket.gethostbyname(self.config_host)
-
     def print_help(self):
         generic_cs.enprint("USAGE:\n  "+self.help_line()+"\n")
 
@@ -120,10 +117,10 @@ class Interface:
     def parse_config_host(self, value):
         try:
             self.csc.config_host = value
-            self.csc.check_host()
+            self.csc.check_host(self.csc.config_host)
         except AttributeError:
             self.config_host = value
-            self.check_host()
+            self.check_host(self.config_host)
 
     def parse_config_port(self, value):
         try:
@@ -316,6 +313,10 @@ class Interface:
 	        self.output_file_family=value
             elif opt == "--mail_node":
 	        self.mail_node=value
+            elif opt == "--root_error" :
+                self.root_error = value
+            elif opt == "--severity" :
+                self.severity = string.atoi(value)
             elif opt == "--help" :
 	        self.print_help()
                 sys.exit(0)

@@ -76,7 +76,7 @@ def parse_encp_line(line):
     [etime, enode, etmp, euser, estatus, etmp2, erest] = \
                                                    string.split(line, None, 6)
     if 0: print etmp,etmp2 # quiet lint
-    if estatus == log_client.sevdict[log_client.INFO]:
+    if estatus == e_errors.sevdict[e_errors.INFO]:
         [erest2, erest3] = string.splitfields(erest, ":", 1)
         # erest2 has the file name info which we do not need, get the 
         # total data transfer rate from the end of erest3
@@ -546,7 +546,7 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 	    str = str+spacing+einfo[ETIME]+" on "+einfo[ENODE]+" by "+\
 	          einfo[EUSER]
 	    spacing = "                  "
-	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	    if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
 	        str = str+" (Data Transfer Rate : "+einfo[EXRATE]+" MB/S)"
 	        # what's left in erest2 is what we want, but make it clearer
 	        # that the rate in this line is the user rate
@@ -623,7 +623,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
 	    einfo = parse_encp_line(line)
-	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	    if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
 	        str = str+trow+tdata+einfo[ETIME]+tdata_end+ \
 	                       tdata+einfo[ENODE]+tdata_end+ \
 	                       tdata+einfo[EUSER]+tdata_end+ \
@@ -774,7 +774,7 @@ class EnEncpDataFile(EnDataFile):
         if 0: print self # quiet lint
 	Trace.trace(12,"{parse_line "+repr(line))
 	einfo = parse_encp_line(line)
-	if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
 	    # the time info may contain the file directory which we must
 	    # strip off
 	    strip_file_dir(einfo[ETIME])
@@ -789,7 +789,7 @@ class EnEncpDataFile(EnDataFile):
 	Trace.trace(10,"{parse_data ")
 	for line in self.lines:
 	    einfo = self.parse_line(line)
-	    if einfo[0] == log_client.sevdict[log_client.INFO]:
+	    if einfo[0] == e_errors.sevdict[e_errors.INFO]:
 	        self.data.append([string.replace(einfo[1], LOG_PREFIX, ""), \
 	                         einfo[2]])
 	Trace.trace(10,"}parse_data ")

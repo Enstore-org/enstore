@@ -180,19 +180,19 @@ def sigstop( sig, stack ):
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
 
-    logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
+    logc.send( e_errors.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
 
-    logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
+    logc.send( e_errors.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
-    logc.send( log_client.ERROR, 1, "MOVER OFFLINE "+str(error_info) )
+    logc.send( e_errors.ERROR, 1, "MOVER OFFLINE "+str(error_info) )
 
     if error_info == e_errors.READ_ERROR:
 	if self.read_error[1]:
@@ -210,7 +210,7 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 
 
 def fatal_enstore( self, error_info, ticket ):
-    logc.send( log_client.ERROR, 1, "FATAL ERROR - MOVER - "+str(error_info) )
+    logc.send( e_errors.ERROR, 1, "FATAL ERROR - MOVER - "+str(error_info) )
     rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, ticket['address'] )
     while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
     return
@@ -293,16 +293,16 @@ class MoverClient:
     def unbind_volume( self, ticket ):
 	# do any driver level rewind, unload, eject operations on the device
 	if mvr_config['do_eject'] == 'yes':
-            logc.send(log_client.INFO,2,"Performing offline/eject of device"+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,"Performing offline/eject of device"+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
-            logc.send(log_client.INFO,2,"Completed  offline/eject of device"+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,"Completed  offline/eject of device"+str(mvr_config['device']))
 
 	# now ask the media changer to unload the volume
-	logc.send(log_client.INFO,2,"Requesting media changer unload")
+	logc.send(e_errors.INFO,2,"Requesting media changer unload")
 	rr = mcc.unloadvol( self.vol_info, self.config['name'], 
 			    self.config['mc_device'],
 			    self.vol_vcc[self.vol_info['external_label']] )
-	logc.send(log_client.INFO,2,"Media changer unload status"+str(rr['status']))
+	logc.send(e_errors.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
 	    return freeze_tape_in_drive( self, errors.WRITE_UNMOUNT )
 	    raise "media loader cannot unload my volume"
@@ -360,16 +360,16 @@ def bind_volume( self, external_label ):
 	# If we can detect "cleaning in progress" we can wait for it to
 	# complete before ejecting.
 	if mvr_config['do_eject'] == 'yes':
-            logc.send(log_client.INFO,2,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
 	    self.hsm_driver.offline(mvr_config['device'])
-            logc.send(log_client.INFO,2,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
 
 	self.vol_info['read_errors_this_mover'] = 0
-	logc.send(log_client.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
+	logc.send(e_errors.INFO,2,'Requesting media changer load '+str(tmp_vol_info)+' '+str(self.config['mc_device']))
 	try: rsp = mcc.loadvol( tmp_vol_info, self.config['name'],
 				self.config['mc_device'], vcc )
 	except: rsp = { 'status':('ETIMEDOUT',None) }
-	logc.send(log_client.INFO,2,'Media changer load status'+str(rsp['status']))
+	logc.send(e_errors.INFO,2,'Media changer load status'+str(rsp['status']))
 	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
 	    # in the following race condition:
@@ -383,12 +383,12 @@ def bind_volume( self, external_label ):
 		return 'TAPEBUSY' # generic, not read or write specific
 	    else: return 'BADMOUNT'
 	try:
-            logc.send(log_client.INFO,2,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
 				      external_label )
-            logc.send(log_client.INFO,2,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
+            logc.send(e_errors.INFO,2,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
 	self.vol_info.update( tmp_vol_info )
 	pass
@@ -428,7 +428,7 @@ def forked_write_to_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
 	pass
     else:
-	logc.send(log_client.INFO,2,'WRITE_TO_HSM start'+str(ticket))
+	logc.send(e_errors.INFO,2,'WRITE_TO_HSM start'+str(ticket))
 
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
     
@@ -458,7 +458,7 @@ def forked_write_to_hsm( self, ticket ):
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
-        logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
+        logc.send(e_errors.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
         try:
 	    # if forked, our eod info is not correct (after previous write)
@@ -479,7 +479,7 @@ def forked_write_to_hsm( self, ticket ):
 		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"+\
 		      str(ticket['wrapper']['type'])
 
-            logc.send(log_client.INFO,2,"WRAPPER.WRITE")
+            logc.send(e_errors.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
 	    wrapper.blocksize = self.vol_info['blocksize']
@@ -501,7 +501,7 @@ def forked_write_to_hsm( self, ticket ):
 				       san_crc )
 	    else: file_crc = san_crc
 
-	    logc.send(log_client.INFO,2,'done with write fd_xfers')
+	    logc.send(e_errors.INFO,2,'done with write fd_xfers')
 	    
 	    Trace.trace( 11, 'done with rest of data' )
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
@@ -523,7 +523,7 @@ def forked_write_to_hsm( self, ticket ):
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send( log_client.ERROR,1,
+            logc.send( e_errors.ERROR,1,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    #traceback.print_exc()
 	    #print 'type of err_msg is',type(err_msg),'type of sys.exc_info()[1]) is',type(sys.exc_info()[1])
@@ -575,12 +575,12 @@ def forked_write_to_hsm( self, ticket ):
 					 'external_label':self.vol_info['external_label'],
 					 'complete_crc':file_crc}} )
 	if rsp['status'][0] != e_errors.OK:
-	    logc.send( log_client.ERROR, 1,
+	    logc.send( e_errors.ERROR, 1,
 		       "XXXXXXXXXXXenstore software error" )
 	    pass
 	ticket['fc'] = rsp['fc']
 	
-	logc.send(log_client.INFO,2,"WRITE DONE"+str(ticket))
+	logc.send(e_errors.INFO,2,"WRITE DONE"+str(ticket))
 	
 	Trace.trace( 11, 'b4 send_user_done' )
 	send_user_done( self, ticket, e_errors.OK )
@@ -596,7 +596,7 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork'] and self.pid != 0:
 	pass
     else:
-	logc.send(log_client.INFO,2,"READ_FROM_HSM start"+str(ticket))
+	logc.send(e_errors.INFO,2,"READ_FROM_HSM start"+str(ticket))
 
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
@@ -644,7 +644,7 @@ def forked_read_from_hsm( self, ticket ):
 		if wrapper == None:
 		    raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
-            logc.send(log_client.INFO,2,"WRAPPER.READ")
+            logc.send(e_errors.INFO,2,"WRAPPER.READ")
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...
 		crc_func = None
 	    else: crc_func = self.crc_func
@@ -672,7 +672,7 @@ def forked_read_from_hsm( self, ticket ):
 		user_file_crc = san_crc
 		pass
 
-	    logc.send(log_client.INFO,2,'done with read fd_xfers')
+	    logc.send(e_errors.INFO,2,'done with read fd_xfers')
 	    
 	    if ticket['mover']['local_mover']:
 		# give the file to the user
@@ -700,7 +700,7 @@ def forked_read_from_hsm( self, ticket ):
 	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
 	except (FTT.error, EXfer.error), err_msg:
-            logc.send( log_client.ERROR,1,
+            logc.send( e_errors.ERROR,1,
 		       'FTT or Exfer exception: '+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    traceback.print_exc()
 	    self.usr_driver.close()
@@ -738,7 +738,7 @@ def forked_read_from_hsm( self, ticket ):
         ticket['vc'] = self.vol_info
 	ticket['vc']['current_location'] = ticket['fc']['location_cookie']
 
-        logc.send(log_client.INFO,2,'READ DONE'+str(ticket))
+        logc.send(e_errors.INFO,2,'READ DONE'+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
@@ -746,7 +746,7 @@ def forked_read_from_hsm( self, ticket ):
     return
 
 def return_or_update_and_exit( self, origin_addr, status ):
-    if status != e_errors.OK: logc.send( log_client.ERROR, 1, str(status) )
+    if status != e_errors.OK: logc.send( e_errors.ERROR, 1, str(status) )
     if mvr_config['do_fork']:
 	# need to send info to update parent: vol_info and
 	# hsm_driver_info (read: hsm_driver.position
@@ -856,7 +856,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.verbose = verbose
 	self.summoned_while_busy = []
-        logc.send( log_client.INFO, 0, 'Mover starting - contacting libman')
+        logc.send( e_errors.INFO, 0, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries
 	    # a "respone" to server being summoned
 	    try:
@@ -864,7 +864,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		next_req_to_lm = idle_mover_next( self.client_obj_inst )
 		do_next_req_to_lm( self, next_req_to_lm, address )
 	    except KeyError:    
-		logc.send( log_client.ERROR, 1, "ERROR GETTING LM:%s FROM Config Server "+\
+		logc.send( e_errors.ERROR, 1, "ERROR GETTING LM:%s FROM Config Server "+\
 			   str(sys.exc_info()[0])+ "  "+\
 			   str(sys.exc_info()[1]), repr(lm))
 
@@ -964,7 +964,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 					ticket['hsm_driver']['cur_loc_cookie']
 	self.client_obj_inst.hsm_driver.no_xfers = \
 					ticket['hsm_driver']['no_xfers']
-	logc.send( log_client.INFO, 2,
+	logc.send( e_errors.INFO, 2,
 		   "update_client_info - pid:"+str(self.client_obj_inst.pid)+
 		   "ticket['pid']:"+str(ticket['pid']) )
 	wait = 0
@@ -1005,7 +1005,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 			    if rr >= ww+bs: msg = msg + 'network stall'
 			    else:              msg = msg + 'tape stall'
 			    pass
-			logc.send( log_client.ERROR,1,msg+' - should abort' )
+			logc.send( e_errors.ERROR,1,msg+' - should abort' )
 			self.client_obj_inst.stall_time = time.time()
 			pass
 		    pass
@@ -1026,13 +1026,13 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	if next_req_to_lm['work'] == 'unilateral_unbind':
 	    # FOR SOME ERRORS I FREEZE
 	    #if next_req_to_lm['status'] in [ ]:
-	 	#logc.send( log_client.ERROR, 1, 'MOVER FREEZE - told busy mover to do work' )
+	 	#logc.send( e_errors.ERROR, 1, 'MOVER FREEZE - told busy mover to do work' )
 		#while 1: time.sleep( 1 )# freeze
 		#pass
 	    pass
 	# STATE COULD BE 'BUSY' OR 'OFFLINE'
 	if self.client_obj_inst.state != 'idle' and rsp_ticket['work'] != 'nowork':
-	    logc.send( log_client.ERROR, 1, 'FATAL ENSTORE - libman told busy mover to do work' )
+	    logc.send( e_errors.ERROR, 1, 'FATAL ENSTORE - libman told busy mover to do work' )
 	    while 1: time.sleep( 1 )	# freeze
 	    pass
 	# Exceptions are caught (except block) in dispatching_worker.py.
@@ -1067,7 +1067,7 @@ def get_state_build_next_lm_req( self, wait ):
 	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
 	except:
 	    traceback.print_exc()
-	    logc.send( log_client.ERROR, 1,
+	    logc.send( e_errors.ERROR, 1,
 		       'waitpid-for pid:'+str(self.client_obj_inst.pid)+':'+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
 	    os.system( 'ps alxwww' )
 	    #raise sys.exc_info()[0], sys.exc_info()[1]
@@ -1134,7 +1134,7 @@ def status_to_request( client_obj_inst, exit_status ):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
     else:
 	# new error
-	logc.send( log_client.ERROR, 1, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
+	logc.send( e_errors.ERROR, 1, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
 	while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
 	pass
     return next_req_to_lm

@@ -403,7 +403,7 @@ if __name__ == "__main__":
     while 1:
         try:
             Trace.trace(1,'File Clerk (re)starting')
-            fc.logc.send(log_client.INFO, 1, "File Clerk (re)starting")
+            fc.logc.send(e_errors.INFO, 1, "File Clerk (re)starting")
             fc.serve_forever()
         except:
 	    fc.serve_forever_error("file clerk", fc.logc)

@@ -119,7 +119,7 @@ def update_mover_list(self, mover, state):
     if mv['mover'] != mover['mover']:
 	# mover name has changed: report and modify it's name
 	format = "Mover name changed from %s to %s"
-        self.logc.send(log_client.INFO, 2, format,
+        self.logc.send(e_errors.INFO, 2, format,
 		       mv['mover'], mover['mover'])
 	mv['mover'] = mover['mover']
     # change the state of the mover
@@ -709,7 +709,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    return
 
         format = "write Q'd %s -> %s : library=%s family=%s requester:%s"
-        self.logc.send(log_client.INFO, 2, format,
+        self.logc.send(e_errors.INFO, 2, format,
 		       repr(ticket["wrapper"]["fullname"]),
 		       ticket["wrapper"]["pnfsFilename"],
 		       ticket["vc"]["library"],
@@ -748,7 +748,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.reply_to_caller(ticket)
 	    format = "read request discarded for unique_id=%s : \
 	    volume %s is marked as %s"
-	    self.logc.send(log_client.ERROR, 1, format,
+	    self.logc.send(e_errors.ERROR, 1, format,
 			   ticket['unique_id'],
 			   ticket['fc']['external_label'],
 			   ticket["status"][0])
@@ -773,7 +773,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		     ticket["status"] = (e_errors.CONFLICT, 
 					 "volume mounted on the idle mover")
 		     format = "volume %s mounted on the idle mover %s"
-		     logticket = self.logc.send(log_client.ERROR, 1, format,
+		     logticket = self.logc.send(e_errors.ERROR, 1, format,
 						repr(ticket['fc']['external_label']),
 						repr(mv['mover']))
 		     self.reply_to_caller(ticket)
@@ -801,7 +801,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    return
 
         format = "read Q'd %s -> %s : vol=%s bfid=%s requester:%s"
-        self.logc.send(log_client.INFO, 2, format,
+        self.logc.send(e_errors.INFO, 2, format,
 		       ticket["wrapper"]["pnfsFilename"],
 		       repr(ticket["wrapper"]["fullname"]),
 		       ticket["fc"]["external_label"],
@@ -849,7 +849,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# try to remove work from work_at_movers list
 		work_at_movers.remove(mv['work_ticket'])
 		format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
-		self.logc.send(log_client.INFO, 2, format,
+		self.logc.send(e_errors.INFO, 2, format,
 			       repr(mv['work_ticket']),
 			       repr(mv))
 		# check if tape is stuck in in the mounting state
@@ -969,7 +969,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    mticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'mounting' vol=%s mover=%s state=%s"
-		    self.logc.send(log_client.INFO, 2, format,
+		    self.logc.send(e_errors.INFO, 2, format,
 				   w["fc"]["external_label"],
 				   v['at_mover'][1], v['at_mover'][0])
 		
@@ -983,7 +983,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		
             # reply now to avoid deadlocks
             format = "%s work on vol=%s mover=%s requester:%s"
-            self.logc.send(log_client.INFO, 2, format,
+            self.logc.send(e_errors.INFO, 2, format,
 			   w["work"],
 			   w["fc"]["external_label"],
 			   mticket["mover"],
@@ -1061,7 +1061,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	             self.verbose)
         if w["status"][0] == e_errors.OK:
             format = "%s next work on vol=%s mover=%s requester:%s"
-            self.logc.send(log_client.INFO, 2, format,
+            self.logc.send(e_errors.INFO, 2, format,
 			   w["work"],
 			   w["fc"]["external_label"],
 			   mticket["mover"],
@@ -1125,7 +1125,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		except:
 		    pass
 		format = "unbind vol %s mover=%s"
-		self.logc.send(log_client.INFO, 2, format,
+		self.logc.send(e_errors.INFO, 2, format,
 			       mticket['vc']["external_label"],
 			       mticket["mover"])
 		mv['state'] = 'unbind_sent'
@@ -1139,7 +1139,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    mticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-		    self.logc.send(log_client.INFO, 2, format,
+		    self.logc.send(e_errors.INFO, 2, format,
 				   mticket['vc']['external_label'],
 				   v['at_mover'][1], 
 				   v['at_mover'][0])
@@ -1229,7 +1229,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    ticket["mover"])
 		if v['status'][0] != e_errors.OK:
 		    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-		    self.logc.send(log_client.INFO, 2, format,
+		    self.logc.send(e_errors.INFO, 2, format,
 				   ticket['external_label'],
 				   v['at_mover'][1], 
 				   v['at_mover'][0])
@@ -1469,7 +1469,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    else:
 		pending_work.delete_job(w)
 		format = "Request:%s deleted. Complete request:%s"
-		self.logc.send(log_client.INFO, 2, format,
+		self.logc.send(e_errors.INFO, 2, format,
 			       repr(w["unique_id"]), repr(w))
 		Trace.trace(3,"{remove_work ")
 		self.reply_to_caller({"status" : (e_errors.OK, "Work deleted")})
@@ -1498,7 +1498,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		return
 	    else:
 		format = "Changed priority to:%s Complete request:%s"
-		self.logc.send(log_client.INFO, 2, format,
+		self.logc.send(e_errors.INFO, 2, format,
 			       repr(w["encp"]["curpri"]), repr(w))
 		Trace.trace(3,"}change_priority ")
 		self.reply_to_caller({"status" : (e_errors.OK, "Priority changed")})
@@ -1564,7 +1564,7 @@ if __name__ == "__main__":
         try:
             #Trace.init(intf.name[0:5]+'.libm')
             Trace.init(lm.keys["logname"])
-            lm.logc.send(log_client.INFO, 1, "Library Manager "+intf.name+"(re)starting")
+            lm.logc.send(e_errors.INFO, 1, "Library Manager "+intf.name+"(re)starting")
             lm.serve_forever()
         except:
 	    traceback.print_exc()

@@ -135,13 +135,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def DoWork(self, function, ticket):
 
         Trace.trace(10, '>dowork')
-        self.logc.send(log_client.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
+        self.logc.send(e_errors.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
                                           ticket['vol_ticket']['external_label']+" "  +\
                                           ticket['drive_id']+" "  +\
                                           ticket['vol_ticket']['media_type'] )
         #if we have max number of working children, assume client will resend
         if len(self.work_list) >= self.MaxWork :
-            self.logc.send(log_client.INFO, 2, "MC Overflow: "+ repr(self.MaxWork) + " " +\
+            self.logc.send(e_errors.INFO, 2, "MC Overflow: "+ repr(self.MaxWork) + " " +\
                       ticket['vol_ticket']['external_label'] + " " + ticket['drive_id'])
         # otherwise, we can do this
         else:
@@ -203,7 +203,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
            if i["ra"] == ticket["ra"]:
               self.work_list.remove(i)
               break
-        self.logc.send(log_client.INFO, 2,"FINISHED "+ticket['function']+" "  +\
+        self.logc.send(e_errors.INFO, 2,"FINISHED "+ticket['function']+" "  +\
                                           ticket['vol_ticket']['external_label']+" "  +\
                                           ticket['drive_id']+" "  +\
                                           repr(ticket['status']) )
@@ -303,7 +303,7 @@ if __name__ == "__main__" :
     while 1:
         try:
             Trace.init(intf.name[0:5]+'.medc')
-            mc.logc.send(log_client.INFO, 1, "Media Changer"+intf.name+"(re) starting")
+            mc.logc.send(e_errors.INFO, 1, "Media Changer"+intf.name+"(re) starting")
             mc.serve_forever()
         except:
 	    mc.serve_forever_error("media changer", mc.logc)

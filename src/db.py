@@ -15,6 +15,7 @@ import Trace
 import interface
 import configuration_client
 import generic_cs
+import e_errors
 
 import libtpshelve
 
@@ -231,7 +232,7 @@ class DbTable:
      if self.auto_journal:
         del self.jou
      if self.logc:
-        self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
+        self.logc.send(e_errors.INFO, 1, "Start checkpoint for "+self.name+" journal")
      cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
                         self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
@@ -240,18 +241,18 @@ class DbTable:
         self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
      self.count=0
      if self.logc:
-        self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
+        self.logc.send(e_errors.INFO, 1, "End checkpoint for "+self.name)
   def start_backup(self):
      global  backup_flag
      backup_flag=0
      if self.logc:
-        self.logc.send(log_client.INFO, 1, "Start backup for "+self.name)
+        self.logc.send(e_errors.INFO, 1, "Start backup for "+self.name)
      self.checkpoint()
   def stop_backup(self):
      global  backup_flag
      backup_flag=1
      if self.logc:
-        self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
+        self.logc.send(e_errors.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
      #import time
      #try:

@@ -676,7 +676,7 @@ def write_to_hsm(input, output, output_file_family='',
 		       time.time()-done_ticket["times"]["t0"],
 		       e_errors.OK)
 
-	    logc.send(log_client.INFO, 2, format,
+	    logc.send(e_errors.INFO, 2, format,
 		      inputlist[i], outputlist[i], fsize,
 		      done_ticket["fc"]["external_label"],
 		      tinfo1["rate"+repr(i)], 
@@ -1537,7 +1537,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            fsize, done_ticket)
 
-        logc.send(log_client.INFO, 2, format,
+        logc.send(e_errors.INFO, 2, format,
                   requests[j]['infile'], requests[j]['outfile'], fsize,
                   done_ticket["fc"]["external_label"],
                   tinfo["rate"+repr(j)], 
@@ -1582,7 +1582,7 @@ def print_error(errcode,errmsg) :
     print format
     try:
         global logc
-        logc.send(log_client.ERROR, 1, format)
+        logc.send(e_errors.ERROR, 1, format)
     except:
         pass
     sys.stdout=x
@@ -1633,7 +1633,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
 		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
 
-        logc.send(log_client.ERROR, 1, format, inputfile, outputfile, filesize, 
+        logc.send(e_errors.ERROR, 1, format, inputfile, outputfile, filesize, 
 		  external_label, device, transfer_time, seek_time, mount_time, in_queue, total,
 		  status)
     except:
@@ -1654,7 +1654,7 @@ def jraise(errcode,errmsg,exit_code=1) :
     print format
     try:
         global logc
-        logc.send(log_client.ERROR, 1, format)
+        logc.send(e_errors.ERROR, 1, format)
     except:
         pass
     Trace.trace(0,"}encp.jraise and exitting with code="+\

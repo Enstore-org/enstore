@@ -350,7 +350,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		    file_family = label
                 v["file_family"] = file_family+"."+wrapper_type
 		v["wrapper"] = wrapper_type
-                self.logc.send(log_client.INFO,2,
+                self.logc.send(e_errors.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = (e_errors.OK, None)
@@ -373,7 +373,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		file_family = label
             vol["file_family"] = file_family+"."+wrapper_type
 	    vol["wrapper"] = wrapper_type
-            self.logc.send(log_client.INFO,2,
+            self.logc.send(e_errors.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = (e_errors.OK, None)
@@ -385,7 +385,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # nothing was available at all
         ticket["status"] = (e_errors.NOVOLUME, \
 			    "Volume Clerk: no new volumes available")
-        self.logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
+        self.logc.send(e_errors.ERROR,1, "No blank volumes"+str(ticket) )
         self.reply_to_caller(ticket)
         Trace.trace(0,"}delvol "+repr(ticket["status"]))
         return
@@ -396,7 +396,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.logc.send(log_client.ERROR,1, str(ticket) )
+         self.logc.send(e_errors.ERROR,1, str(ticket) )
          self.reply_to_caller(ticket)
          return
 
@@ -1120,7 +1120,7 @@ if __name__ == "__main__":
     while 1:
         try:
             Trace.trace(1,'Volume Clerk (re)starting')
-            vc.logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
+            vc.logc.send(e_errors.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
 	    vc.serve_forever_error("volume clerk", vc.logc)

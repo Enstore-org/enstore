@@ -55,7 +55,7 @@ class GenericServer(generic_cs.GenericCS):
                  id+" serve_forever continuing"
         self.enprint(format)
 	if logger:
-            logger.send(log_client.ERROR, 1, format)
+            logger.send(e_errors.ERROR, 1, format)
 
     # reset the verbosity
     def set_verbose(self, ticket):

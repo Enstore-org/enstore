@@ -28,21 +28,6 @@ import udp_client
 import Trace
 import e_errors
 
-# Severity codes
-ERROR=0
-USER_ERROR=1
-WARNING=2
-INFO=3
-MISC=4
-
-# severity translator
-sevdict = { ERROR      : 'E', \
-            USER_ERROR : 'U', \
-            WARNING    : 'W', \
-            INFO       : 'I', \
-            MISC       : 'M'
-            }
-
 # send a message to the logger
 def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 
@@ -57,7 +42,7 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
         logc = LoggerClient(logname,  'logserver', 0)
 
         # send the message
-        return logc.send(INFO, 1, message)
+        return logc.send(e_errors.INFO, 1, message)
 
     except:
         return  str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])
@@ -93,9 +78,10 @@ class LoggerClient(generic_client.GenericClient):
         if  ((1<<priority) & self.log_priority) == 0 :
            return
 
-        if severity in range(ERROR, MISC) :
+        if severity in range(e_errors.ERROR, e_errors.MISC) :
             msg = '%.6d %.8s' % (self.uid, self.uname)
-            msg = msg + ' ' + sevdict[severity] + ' ' + self.i_am + ' '
+            msg = msg + ' ' + e_errors.sevdict[severity] + ' ' + \
+                  self.i_am + ' '
 	    if args != ():
                 str = format % args
 	    else:
@@ -233,9 +219,10 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
 
     elif intf.test:
-        ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
+        ticket = logc.send(e_errors.ERROR, 1, \
+                           "This is a test message %s %d", 'TEST', 3456)
 	msg_id = generic_cs.CLIENT
-        #ticket = logc.send(INFO, 21, "this is an INFO message")
+        #ticket = logc.send(e_errors.INFO, 21, "this is an INFO message")
 
     elif intf.logit:
         ticket = logit(intf.logmsg)

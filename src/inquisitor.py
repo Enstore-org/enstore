@@ -594,7 +594,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	             str(sys.exc_info()[0])+" "+\
 	             str(sys.exc_info()[1])+" "+\
 	             "inquisitor update system error"
-	    self.logc.send(log_client.ERROR, 1, format)
+	    self.logc.send(e_errors.ERROR, 1, format)
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
     def serve_forever(self) :
@@ -1045,7 +1045,7 @@ if __name__ == "__main__":
     while 1:
         try:
             Trace.trace(1,'Inquisitor (re)starting')
-            inq.logc.send(log_client.INFO, 1, "Inquisitor (re)starting")
+            inq.logc.send(e_errors.INFO, 1, "Inquisitor (re)starting")
             inq.serve_forever()
         except:
 	    inq.serve_forever_error(inq.name, inq.logc)

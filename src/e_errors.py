@@ -26,6 +26,28 @@ if 0: print KEYERROR,OK,DOESNOTEXIST,WRONGPARAMETER,NOWORK,\
             DRIVEERROR,UNKNOWNMEDIA,NOVOLUME,NOACCESS,CONFLICT,\
             TIMEDOUT # lint fix
 
+# Severity codes
+ERROR=0
+USER_ERROR=1
+WARNING=2
+INFO=3
+MISC=4
+
+# severity translator
+sevdict = { ERROR      : 'E', \
+            USER_ERROR : 'U', \
+            WARNING    : 'W', \
+            INFO       : 'I', \
+            MISC       : 'M'
+            }
+
+# Alarm severities
+DEFAULT_SEVERITY = WARNING
+DEFAULT_ROOT_ERROR = OK
+
+if 0: print ERROR,USER_ERROR,WARNING,INFO,MISC, \
+   sevdict,DEFAULT_SEVERITY,DEFAULT_ROOT_ERROR  # lint fix
+
 # Tape Errors:
 #--------------------------------------
 # Write Error:
