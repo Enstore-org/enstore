@@ -380,9 +380,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.close()
             if not have_tape:
                 Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
-                self.dismount_volume()
-                self.state = IDLE #XXX hack, if the above dismount fails we don't want
-                                  ## this to be a fatal error.
+                self.dismount_volume(after_function=self.idle)
+
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
@@ -420,20 +419,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
     
-    def update(self, reset_timer=None):
-        Trace.trace(20,"update: %s" % (state_name(self.state)))
+    def update(self, state=None, reset_timer=None):
+        if state is None:
+            state = self.state
+        Trace.trace(20,"update: %s" % (state_name(state)))
         if not hasattr(self,'_last_state'):
             self._last_state = None
-        if self.state in (CLEANING, DRAINING, OFFLINE, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
-            if self.state == self._last_state:
+        if state in (CLEANING, DRAINING, OFFLINE, ERROR, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
+            if state == self._last_state:
                 return
         if reset_timer:
             self.reset_interval_timer()
-        ticket = self.format_lm_ticket()
+        ticket = self.format_lm_ticket(state=state)
         for lib, addr in self.libraries:
-            if self.state is OFFLINE and self._last_state is OFFLINE:
+            if state is OFFLINE and self._last_state is OFFLINE:
                 continue
-            if self.state != self._last_state:
+            if state != self._last_state:
                 Trace.trace(10, "Send %s to %s" % (ticket, addr))
             self.udpc.send_no_wait(ticket, addr)
 
@@ -776,8 +777,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
-            
 
+    def error(self, msg, err=e_errors.ERROR):
+        self.status = (err, msg)
+        Trace.log(e_errors.ERROR, msg+ "state=ERROR")
+        self.state = ERROR
+        
     def position_media(self, verify_label=1):
         #At this point the correct volume is loaded; now position it
         label_tape = 0
@@ -785,9 +790,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
         self.tape_driver.set_mode(compression = 0, blocksize = 0)
         if have_tape != 1:
-            #This is bad...
-            Trace.log(e_errors.ERROR, "cannot open tape device for positioning, state=ERROR")
-            self.state = ERROR
+            self.error("cannot open tape device for positioning")
             return
         
         self.state = SEEK
@@ -822,8 +825,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   (volume_label, status[1]))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, "%s should be %s"%
                                              (status[1], volume_label))
+                        self.error(status[1], status[0])
                         ##XXX set volume noaccess? Eject it?
-                        self.state = ERROR
                         return 0
             if label_tape:
                 self.tape_driver.rewind()
@@ -851,7 +854,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = self.tape_driver.verify_label(volume_label, self.mode)
             if status[0] != e_errors.OK:
                 self.transfer_failed(status[0], status[1])
-                self.state = ERROR
+                self.error(status[1], status[0])
                 return 0
         location = cookie_to_long(self.target_location)
         self.run_in_thread('seek_thread', self.seek_to_location,
@@ -889,7 +892,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
         now = time.time()
         self.dismount_time = now + self.delay
-        self.update(reset_timer=1)
+        self.update(state=ERROR, reset_timer=1)
 
         
     def transfer_completed(self):
@@ -1093,8 +1096,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if have_tape == 1:
                 ejected = self.tape_driver.eject()
                 if ejected == -1:
-                    Trace.log(e_errors.ERROR, "Oops, cannot eject tape, state=ERROR")
-                    self.state = ERROR
+                    self.error("Cannot eject tape")
             self.tape_driver.close()
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
@@ -1126,11 +1128,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_function()
             else:
                 self.idle()
+        ###XXX aml-specific hack! Media changer should provide a layer of abstraction
+        ### on top of media changer error returns, but it doesn't  :-(
+        elif status[-1] == "the drive did not contain an unloaded volume":
+            self.idle()
         else:
-            Trace.log(e_errors.ERROR, "dismount volume: %s: state=ERROR" % (status,))
-            self.state = ERROR
-
-                
+            self.error(status[-1], status[0])
+            
 
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
@@ -1152,18 +1156,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
-        else: #Mount failure
+        else: #Mount failure, attempt to recover
             self.last_error = status
             Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
-            self.transfer_failed(e_errors.ERROR, 'mount failure %s' % (status,))
-            mcc_reply = self.mcc.unloadvol(self.vol_info, self.name, self.mc_device)
-            status = mcc_reply.get('status')
-            if status and status[0]==e_errors.OK:
-                self.current_volume = None
-                self.idle()
-            else:
-                Trace.log(e_errors.ERROR, "dismount %s: failure %s" % (volume_label, status))
-                self.state = ERROR
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,))
+            self.dismount_volume(after_function=self.idle)
     
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
