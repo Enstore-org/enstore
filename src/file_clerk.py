@@ -17,6 +17,7 @@ import volume_clerk_client
 import dispatching_worker
 import SocketServer
 import generic_server
+import interface
 import udp_client
 import db
 import Trace
@@ -298,75 +299,63 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 "stop_backup"  : 'yes' })
         Trace.trace(10,'}stop_backup')
 
-class FileClerk(FileClerkMethods,
-                generic_server.GenericServer,
+class FileClerk(FileClerkMethods, generic_server.GenericServer,
                 SocketServer.UDPServer):
-    pass
+
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port()):
+	Trace.trace(10, '{__init__')
+	# get the config server
+	configuration_client.set_csc(self, csc, host, port, list)
+	#   pretend that we are the test system
+	#   remember, in a system, there is only one bfs
+	#   get our port and host from the name server
+	#   exit if the host is not this machine
+	keys = self.csc.get("file_clerk")
+	SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
+	                                FileClerkMethods)
+        # get a logger
+        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+                                            'logserver', 0)
+	Trace.trace(10, '}__init__')
+
+
+class FileClerkInterface(interface.Interface):
+
+    def __init__(self):
+	Trace.trace(10,'{fcsi.__init__')
+	# fill in the defaults for possible options
+	self.config_list = 0
+	interface.Interface.__init__(self)
+
+	# now parse the options
+	self.parse_options()
+	Trace.trace(10,'}fcsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+	Trace.trace(16, "{}options")
+	return self.config_options()+["config_list"] +\
+	       self.help_options()
+
 
 if __name__ == "__main__":
     import sys
-    import getopt
-    import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
     Trace.init("file clerk")
     Trace.trace(1,"file clerk called with args "+repr(sys.argv))
 
-    # defaults
-    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_host = ci[0]
-    config_port = "7500"
-    config_list = 0
+    # get the interface
+    intf = FileClerkInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port="\
-               ,"config_list","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist:
-        if opt == "--config_host":
-            config_host = value
-        elif opt == "--config_port":
-            config_port = value
-        elif opt == "--config_list":
-            config_list = 1
-        elif opt == "--help":
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    # get a file clerk
+    fc = FileClerk(0, intf.config_list, intf.config_host, intf.config_port)
 
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    config_list)
-
-    #   pretend that we are the test system
-    #   remember, in a system, there is only one bfs
-    #   get our port and host from the name server
-    #   exit if the host is not this machine
-    keys = csc.get("file_clerk")
-    fc = FileClerk( (keys["hostip"], keys["port"]), FileClerkMethods)
-    fc.set_csc(csc)
-
-    # get a logger
-    logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    fc.set_logc(logc)
     indlst=['external_label']
-    dict = db.DbTable("file",logc,indlst)
+    dict = db.DbTable("file",fc.logc,indlst)
     while 1:
         try:
             Trace.trace(1,'File Clerk (re)starting')
-            logc.send(log_client.INFO, 1, "File Clerk (re)starting")
+            fc.logc.send(log_client.INFO, 1, "File Clerk (re)starting")
             fc.serve_forever()
         except:
             traceback.print_exc()
@@ -376,7 +365,7 @@ if __name__ == "__main__":
                      str(sys.exc_info()[1])+" "+\
                      "file clerk serve_forever continuing"
             print format
-            logc.send(log_client.ERROR, 1, format)
+            fc.logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
             continue
     Trace.trace(1,"File Clerk finished (impossible)")

@@ -18,6 +18,7 @@ import dict_to_a
 import configuration_client
 import dispatching_worker
 import generic_server
+import interface
 import db
 import dbutil
 import Trace
@@ -144,57 +145,62 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
 
 class AdminClerk(AdminClerkMethods, generic_server.GenericServer,
                  SocketServer.UDPServer) :
-	pass
+
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port()):
+        Trace.trace(10, '{__init__')
+        # get the config server
+        configuration_client.set_csc(self, csc, host, port, list)
+        #   pretend that we are the test system
+        #   remember, in a system, there is only one bfs
+        #   get our port and host from the name server
+        #   exit if the host is not this machine
+        keys = self.csc.get("admin_clerk")
+        SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
+                                        AdminClerkMethods)
+        # get a logger
+        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+                                            'logserver', 0)
+        Trace.trace(10, '}__init__')
+
+
+class AdminClerkInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{acsi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}acsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+["config_list"] +\
+               self.help_options()
+
 if __name__=="__main__":
-   import getopt 
-   import string
-   try:
-     import SOCKS; socket = SOCKS
-   except ImportError:
-     import socket
-   Trace.init("AdminClerk")
-   Trace.trace(1,"Admin Clerk called with args "+repr(sys.argv))
+    import string
+    Trace.init("AdminClerk")
+    Trace.trace(1,"Admin Clerk called with args "+repr(sys.argv))
 
-   # defaults
-   (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-   config_host = ci[0]
-   config_port = "7500"
-   config_list = 0
-   # see what the user has specified. bomb out if wrong options specified
-   options = ["config_host=","config_port=","config_list","help"]
-   optlist,args=getopt.getopt(sys.argv[1:],'',options)
-   for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    # get the interface
+    intf = AdminClerkInterface()
 
-   # bomb out if can't translate host
-   ip = socket.gethostbyname(config_host)
+    # get an admin clerk
+    ac = AdminClerk(0, intf.config_list, intf.config_host, intf.config_port)
 
-   # bomb out if port isn't numeric
-   config_port = string.atoi(config_port)
-
-   csc = configuration_client.ConfigurationClient(config_host,config_port,config_list)  
-   keys = csc.get("admin_clerk")
-   ac =  AdminClerk((keys['hostip'], keys['port']), AdminClerkMethods)
-   ac.set_csc(csc)
-   logc = log_client.LoggerClient(csc, "", 'logserver', 0)
-   ac.set_logc(logc)
-   indlst=['media_type','file_family','library']
-   dictV = db.DbTable("volume",logc,indlst) 
-   indlst=['external_label']
-   dictF = db.DbTable("file",logc,indlst)
-   while 1:
+    indlst=['media_type','file_family','library']
+    dictV = db.DbTable("volume",ac.logc,indlst) 
+    indlst=['external_label']
+    dictF = db.DbTable("file",ac.logc,indlst)
+    while 1:
         try:
             Trace.trace(1,"Admin Clerk (re)starting")
-            logc.send(log_client.INFO, 1, "Admin Clerk (re)starting")
+            ac.logc.send(log_client.INFO, 1, "Admin Clerk (re)starting")
             ac.serve_forever()
         except:
             traceback.print_exc()
@@ -204,8 +210,10 @@ if __name__=="__main__":
                      str(sys.exc_info()[1])+" "+\
                      "admin clerk serve_forever continuing"
             print format
-            logc.send(log_client.ERROR, 1, format)
+            ac.logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,"Admin Clerk error"+format)
             continue
 
-   Trace.trace(1,"Admin Clerk finished") # impossible
+    Trace.trace(1,"Admin Clerk finished") # impossible
+
+
