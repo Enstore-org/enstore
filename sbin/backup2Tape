@@ -114,9 +114,13 @@ fi
 
 PNFS_FILES=$VAULT/pnfs.files
 rm -f $PNFS_FILES
-cmd="find $PNFS -type f $find_options -print > $PNFS_FILES"
-list "$cmd"
-eval $cmd
+#only backup latest copy on disk, not all of them since we are running out of tape!
+find $PNFS $find_options -type f  -print | sort -r | while read f; do 
+    basename $f | cut -f1 -d.
+  done | uniq | while read g; do 
+    ls -ltr $PNFS/${g}.*.Z | head -n1 |awk '{print $NF}'
+  done > $PNFS_FILES
+
 lines=`wc -l $PNFS_FILES | awk '{print $1}'`
 list ""
 list "PNFS databases backup: $lines files to backup to tape"
@@ -130,18 +134,18 @@ cat $PNFS_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $PNFS_FILES
-cmd="find $PNFS -type f -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;"
-list "$cmd"
-eval $cmd
+find $PNFS -type f -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+
 
 #### Enstore Database Backup ###############################################
 # copy the files that have not been copied to tape
 
 ENSTORE_FILES=$VAULT/enstore.files
 rm -f $ENSTORE_FILES
-cmd="find $ENSTORE -type f $find_options -print > $ENSTORE_FILES"
-list "$cmd"
-eval $cmd
+#only backup the latest directory copy.
+ELAST=`ls -ltrd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
+find $ELAST -type f $find_options -print > $ENSTORE_FILES
+
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
 list ""
 list "ENSTORE databases backup: $lines files to backup to tape"
@@ -155,9 +159,7 @@ cat $ENSTORE_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $ENSTORE_FILES
-cmd="find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;"
-list "$cmd"
-eval $cmd
+find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 
 
@@ -186,9 +188,7 @@ cat $ENSTORELOG_FILES| while read file; do
 done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $ENSTORELOG_FILES
-cmd="find $ENSTORELOG -follow -daystart -mtime +30 -exec rm -fr {} \;"
-list "$cmd"
-eval $cmd
+find $ENSTORELOG -follow -daystart -mtime +30 -exec rm -fr {} \;
 
 
 
