@@ -71,5 +71,8 @@ done
 
 # clean up the output area
 if [ "$output" != "" ]; then
-  find $output -daystart -mtime +2 -exec rm -f {} \;
+  here=`pwd`
+  cd $output
+  find . -daystart -mtime +2 -exec rm -f {} \;
+  cd $here
 fi
