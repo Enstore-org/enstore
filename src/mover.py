@@ -104,6 +104,12 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.UNMOUNT,
 	  e_errors.ENCP_GONE,
 	  e_errors.TCP_HUNG,
+          e_errors.READ_VOL1_READ_ERR,
+          e_errors.WRITE_VOL1_READ_ERR,
+          e_errors.READ_VOL1_MISSING,
+          e_errors.WRITE_VOL1_MISSING,
+          e_errors.READ_VOL1_WRONG,
+          e_errors.WRITE_VOL1_WRONG,
 	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
 
 forked_state = [ 'forked',
@@ -114,6 +120,15 @@ forked_state = [ 'forked',
 		 'wrapper, post',
 		 'send_user_done' ]
 	   
+
+#setting this to 1 turns on printouts related to "paranoid"
+# checking of VOL1 and EOV1 headers.
+#once this is all working, the printout code should be stripped out
+debug_paranoia=0
+vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
+eov1_paranoia=0 #write and check EOV1 headers (spacing error)
+### eov1 checks are still a "work in progress", do not enable this!
+
 
 def sigterm( sig, stack ):
     print '%d sigterm called'%os.getpid()
@@ -176,7 +191,7 @@ def sigstop( sig, stack ):
     return None
     
 
-# The following function are the result of the enstore error documentation...
+# The following functions are the result of the enstore error documentation...
 # know it, live it, love it.
 def freeze_tape( self, error_info ):# DO NOT UNLOAD TAPE  (BUT --
     # LIBRARY MANAGER CAN RSP UNBIND)
@@ -206,8 +221,9 @@ def fatal_enstore( self, error_info ):
 	      'status'        :error_info}
     rsp = udpc.send( ticket, self.lm_origin_addr )
     # Enstore design issue... it has not yet been decided what to do; so for
-    # now I just...
-    while 1: time.sleep( 100 )	 # this does exactly what you think it does!
+    # now I just...   #XXX
+    sys.exit(-1)
+#    while 1: time.sleep( 100 )	 # this does exactly what you think it does!
     return
 
 # MUST SEPARATE SYSTEM AND USER FUNCTIONS - I.E. ERROR MIGHT BE USERGONE
@@ -288,6 +304,17 @@ class MoverClient:
 	return {}
 
     def unbind_volume( self, ticket ):
+        #if last action was write, and the feature is enabled, write an EOV label before
+        #unloading tape.  
+        if eov1_paranoia and self.mode=='w' and mvr_config['driver']!='NullDriver':
+            driver_object = self.hsm_driver.open( mvr_config['device'], 'a+')
+            eod_cookie=self.vol_info['eod_cookie']
+            external_label=self.vol_info['external_label']
+            ll = driver_object.format_eov1_header( external_label, eod_cookie)
+            if debug_paranoia: print "writing EOV1 label", ll
+	    driver_object.write( ll )
+	    driver_object.writefm()
+            driver_object.seek(eod_cookie)
 	if self.vol_info['external_label'] == '': return idle_mover_next( self )
 	if mvr_config['do_fork']:
             do_fork( self, ticket, 'u' )
@@ -346,9 +373,9 @@ def bind_volume( object, external_label ):
     #          lm puts vc-external_label in fc "sub-ticket"
     #       for a read:
     #          encp contacts fc 1st with bfid
-    #          fc uses bfid to get external_label from it's database
+    #          fc uses bfid to get external_label from its database
     #          fc uses external_label to ask vc which library
-    #          fc could pas vc info, but it does not as some of the info could
+    #          fc could pass vc info, but it does not as some of the info could
     #                                           get stale
     #          then fc adds it's fc-info to encp ticket and sends it to lm
     
@@ -374,12 +401,13 @@ def bind_volume( object, external_label ):
 
 	object.vol_info['read_errors_this_mover'] = 0
         tmp_mc = ", "+str({"media_changer":mvr_config['media_changer']})
-        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(mvr_config['mc_device']))
+        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+
+                  " "+tmp_mc+' '+str(mvr_config['mc_device']))
 	try: rsp = object.mcc.loadvol( tmp_vol_info, mvr_config['name'],
 				mvr_config['mc_device'], vcc )
 	except errno.errorcode[errno.ETIMEDOUT]:
             rsp = { 'status':('ETIMEDOUT',None) }
-	Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status '+\
+	Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status '+
                   str(rsp['status'])+" "+tmp_mc)
 	if rsp['status'][0] != 'ok':
 	    # it is possible, under normal conditions, for the system to be
@@ -402,29 +430,86 @@ def bind_volume( object, external_label ):
 				      tmp_vol_info['eod_cookie'] )
             Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
-	driver_object = object.hsm_driver.open( mvr_config['device'], 'a+' )
-	if driver_object.is_bot(driver_object.tell()) and driver_object.is_bot(tmp_vol_info['eod_cookie']):
+
+        #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
+        if vol1_paranoia and mvr_config['driver']!='NullDriver':
+            driver_object = object.hsm_driver.open( mvr_config['device'], 'r' )
+            if debug_paranoia: print "Rewinding (pre check-label)"
+            r=driver_object.rewind()
+            if debug_paranoia:
+                print "pre check-label rewind complete, returned",r
+            header_type, header_label = driver_object.check_header()
+            if debug_paranoia: print header_type, header_label
+            if header_type == None:  #This only happens if
+                                     ##there was a read error
+                return 'VOL1_READ_ERR'
+            elif header_type == 'VOL1':
+                if header_label != external_label:
+                    vcc.set_system_noaccess( external_label )
+                    if debug_paranoia:
+                        print "wrong VOL1 header: got %s, expected %s" % (
+                            header_label, external_label)
+                    ##XXX alarm ???
+                    return 'VOL1_WRONG'
+            else:
+                if not driver_object.is_bot(tmp_vol_info['eod_cookie']):
+                    if debug_paranoia: print tmp_vol_info['eod_cookie']
+                    ## This tape really should have been labelled!
+                    if debug_paranoia: print "Tape should have been labeled"
+                    vcc.set_system_noaccess( external_label )
+                    if debug_paranoia:
+                        print "no VOL1 header present for volume %s" %\
+                              external_label
+                    ##XXX alarm/log?
+                    return 'VOL1_MISSING' 
+        
+            if debug_paranoia: print "Rewind (post check-label)"
+            # Note:  Closing the device seems to write a
+            #file mark (even though it was opened "r"!),
+            # so we better close *before* rewinding.
+            driver_object.close()
+            driver_object = object.hsm_driver.open( mvr_config['device'], 'a+')
+            r=driver_object.rewind()
+            if debug_paranoia:
+                print "post check-label rewind complete, returned",r
+            if debug_paranoia: print "tell", driver_object.tell()
+        ##end of paranoid checks    
+        else:
+            driver_object = object.hsm_driver.open( mvr_config['device'], 'a+')
+            
+        if (driver_object.is_bot(driver_object.tell()) and
+            driver_object.is_bot(tmp_vol_info['eod_cookie'])):
 	    # write an ANSI label and update the eod_cookie
-	    ll = driver_object.format_label( external_label )
+	    ll = driver_object.format_vol1_header( external_label )
+            if debug_paranoia: print "writing VOL1 label", ll
 	    driver_object.write( ll )
 	    driver_object.writefm()
-	    tmp_vol_info['eod_cookie'] = driver_object.tell()
+            eod_cookie = driver_object.tell()
+	    tmp_vol_info['eod_cookie'] = eod_cookie
 	    tmp_vol_info['remaining_bytes'] = driver_object.get_stats()['remaining_bytes']
 	    vcc.set_remaining_bytes( external_label,
 				     tmp_vol_info['remaining_bytes'],
 				     tmp_vol_info['eod_cookie'],
 				     0,0,0,0,None )
-	    Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%\
+	    Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%
 			 (tmp_vol_info['eod_cookie'],
 			  tmp_vol_info['remaining_bytes']) )
+            if eov1_paranoia and mvr_config['driver']!='NullDriver':
+                ll = driver_object.format_eov1_header  (
+                    external_label, eod_cookie)
+                if debug_paranoia: print "writing EOV1 label", ll
+                driver_object.write( ll )
+                driver_object.writefm()
+                driver_object.skip_fm(-1)
 	    pass
 	driver_object.close()
 	object.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != object.vol_info['external_label']:
-	object.vol_info['err_external_label'] = external_label
-	fatal_enstore( object, "unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
-	return 'NOTAPE' # generic, not read or write specific
+        object.vol_info['err_external_label'] = external_label
+        fatal_enstore( object,"unbind label %s before read/write label %s"%
+                       (object.vol_info['external_label'],external_label) )
+        return 'NOTAPE' # generic, not read or write specific
 
     return e_errors.OK  # bind_volume
 
@@ -464,6 +549,9 @@ def do_fork( self, ticket, mode ):
 def forked_write_to_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
+    check_eov=0
+    if eov1_paranoia and self.mode!='w' and mvr_config['driver']!='NullDriver':
+        check_eov=1
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
     
     if mvr_config['do_fork'] and self.pid != 0:
@@ -515,6 +603,16 @@ def forked_write_to_hsm( self, ticket ):
 	    # tell will convert it.
 	    driver_object.seek( self.vol_info['eod_cookie'] )
 	    self.vol_info['eod_cookie'] = driver_object.tell()
+            if check_eov:
+                if debug_paranoia: print "checking EOV label"
+                header_type, header_label=driver_object.check_header()
+                if debug_paranoia: print header_type, header_label
+                if header_type != "EOV1":
+                    #XXX Error!!
+                    print "bad EOV1 %s %s"%(header_type, header_label)
+                driver_object.skip_fm(-1)
+                              
+                
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    fast_write = 1
@@ -652,6 +750,14 @@ def forked_write_to_hsm( self, ticket ):
     return {}
 
 def forked_read_from_hsm( self, ticket ):
+
+    # if we're changing state from writing to reading, and the feature is enabled,
+    # put an eov label on the tape before repositioning
+    write_eov=0
+    if eov1_paranoia and self.mode=='w' and mvr_config['driver']!='NullDriver':
+        #cgw
+        write_eov=1
+    
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'r' )
@@ -690,7 +796,20 @@ def forked_read_from_hsm( self, ticket ):
         bytes_sent = 0			# reset below, BUT not used afterwards!!!!!!!!!!!!!
         user_file_crc = 0		# reset below, BUT not used afterwards!!!!!!!!!!!!!
 
-        Trace.log(e_errors.INFO,"OPEN_FILE_READ "+str(ticket['fc']['external_label'])+":"+str(ticket['fc']['location_cookie']))
+        Trace.log(e_errors.INFO,"OPEN_FILE_READ "+str(ticket['fc']['external_label'])+
+                  ":"+str(ticket['fc']['location_cookie']))
+
+        #eov1 paranoia.
+        #XXX need to check returns of open, write, and close
+        if write_eov:
+            eod_cookie = self.vol_info['eod_cookie']
+            driver_object=self.hsm_driver.open( mvr_config['device'], 'w' )
+            if debug_paranoia: print "writing EOV"
+            ll = driver_object.format_eov1_header( external_label, eod_cookie)
+            if debug_paranoia: print "writing EOV1 label", ll
+	    driver_object.write( ll )
+	    driver_object.writefm()
+            driver_object.close()
         # open the hsm file for reading and read it
         try:
             Trace.trace(11, 'driver_open '+mvr_config['device'])
@@ -958,7 +1077,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         # clean up the mvr_config a bit
         mvr_config['name'] = name
         mvr_config['do_fork'] = 1
-	# for porduction, either add 'execution_env':'production to mover
+	# for production, either add 'execution_env':'production to mover
         # config or change this default to 'production'
 	if not 'execution_env' in mvr_config.keys(): mvr_config['execution_env'] = 'devel'
         if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
@@ -994,7 +1113,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    do_next_req_to_lm( self, next_req_to_lm, address )
 	    pass
 	# now go on with *server* setup (i.e. respond to summon,status,etc.)
-	dispatching_worker.DispatchingWorker.__init__( self,(mvr_config['hostip'],mvr_config['port']) )
+	dispatching_worker.DispatchingWorker.__init__( self,(mvr_config['hostip'],
+                                                             mvr_config['port']) )
 	self.last_status_tick = {}
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
@@ -1308,13 +1428,13 @@ def status_to_request( client_obj_inst, exit_status ):
                                                      m_err[exit_status] )
 	    pass
 	pass
-    elif m_err[exit_status] in [e_errors.WRITE_NOTAPE,
+    elif m_err[exit_status] in (e_errors.WRITE_NOTAPE,
 				e_errors.WRITE_TAPEBUSY,
 				e_errors.READ_NOTAPE,
-				e_errors.READ_TAPEBUSY]:
+				e_errors.READ_TAPEBUSY):
 	next_req_to_lm = freeze_tape( client_obj_inst, m_err[exit_status] )
 	pass
-    elif m_err[exit_status] in [e_errors.WRITE_BADMOUNT,
+    elif m_err[exit_status] in (e_errors.WRITE_BADMOUNT,
 				e_errors.WRITE_BADSPACE,
 				e_errors.WRITE_UNLOAD,
 				e_errors.READ_BADMOUNT,
@@ -1323,8 +1443,25 @@ def status_to_request( client_obj_inst, exit_status ):
 				e_errors.READ_EOT,
 				e_errors.READ_EOD,
 				e_errors.READ_UNLOAD,
-				e_errors.UNMOUNT]:
+				e_errors.UNMOUNT):
 	next_req_to_lm = freeze_tape_in_drive( client_obj_inst, m_err[exit_status] )
+    elif m_err[exit_status] in (e_errors.READ_VOL1_READ_ERR,
+                                e_errors.WRITE_VOL1_READ_ERR):
+        # XXX jon says we have to add the volume to the suspect volume list.  Am I doing this correctly?
+        next_req_to_lm = offline_drive( client_obj_inst,m_err[exit_status])
+        pass
+    elif m_err[exit_status] in (e_errors.WRITE_VOL1_MISSING,
+                                e_errors.WRITE_VOL1_WRONG):
+        # grab another volume
+        next_req_to_lm = freeze_tape( client_obj_inst,
+                                      m_err[exit_status] )
+        pass
+    elif m_err[exit_status] in (e_errors.READ_VOL1_MISSING,
+                                e_errors.READ_VOL1_WRONG):
+        #fatal
+        next_req_to_lm = freeze_tape_in_drive( client_obj_inst,
+                                               m_err[exit_status] )
+        pass
     else:
 	# new error
         Trace.log( e_errors.ERROR, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
