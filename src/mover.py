@@ -395,7 +395,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.current_volume = volname
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
-                    self.dismount_time = time.time() + self.default_dismount_delay()
+                    self.dismount_time = time.time() + self.default_dismount_delay
                     
             self.tape_driver.close()
 
