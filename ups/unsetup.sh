@@ -8,6 +8,10 @@ if [ "${PYTHONPATH:-1}" = "1" ]; then
     unset PYTHONPATH
 fi
 
+unset PYTHONLIB
+unset PYTHONINC
+unset PYTHONMOD
+
 # unset encp
 # unset pnfs
 # unset config
