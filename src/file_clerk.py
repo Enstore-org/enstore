@@ -1,9 +1,12 @@
+# system import
 import sys
 import time
-import timeofday
 import pprint
 import copy
 import log_client
+
+# enstore imports
+import timeofday
 import traceback
 import callback
 from configuration_client import configuration_client
@@ -14,7 +17,7 @@ from SocketServer import UDPServer, TCPServer
 from generic_server import GenericServer
 from udp_client import UDPClient
 from db import dBTable
-
+import Trace
 
 
 class FileClerkMethods(DispatchingWorker) :
@@ -298,6 +301,7 @@ class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    Trace.init("file clerk"
     import sys
     import getopt
     import string

@@ -37,6 +37,7 @@ import time
 import timeofday
 import pprint
 import socket
+import Trace
 
 list = 0
 test = 0
@@ -128,6 +129,7 @@ class Logger(LogMethods, GenericServer, UDPServer) :
 
 
 if __name__ == "__main__" :
+    Trace.init("log server")
     import getopt
     import socket
 
