@@ -171,6 +171,7 @@ class MoverClient:
 	    pass
 
 	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
+	return None
 
     def nowork( self, ticket ):
 	# nowork is no work
@@ -324,6 +325,7 @@ def forked_write_to_hsm( self, ticket ):
 	    wrapper.write_pre_data( do, ticket['wrapper'] )
 	    Trace.trace( 11, 'done with pre_data' )
 
+	    # should not be getting this from wrapper sub-ticket
 	    file_bytes = ticket['wrapper']['size_bytes']
 	    san_bytes = ticket["wrapper"]["sanity_size"]
 	    if file_bytes < san_bytes: san_bytes = file_bytes
@@ -636,10 +638,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	    do_next_req_to_lm( self, next_req_to_lm, address )
 	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
-	return
+	return None
 
     def set_timeout( self, ticket ):
-	out_ticket = {'status':'ok','old timeout':self.rcv_timeout}
+	out_ticket = {'status':(e_errors.OK,None),'old timeout':self.rcv_timeout}
 	out_ticket['extra status'] = 'changed'
 	try:    self.rcv_timeout = ticket['timeout']
 	except: out_ticket['extra status'] = 'not changed'
@@ -648,7 +650,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def status( self, ticket ):
-	out_ticket = {'status':'ok'}
+	out_ticket = {'status':(e_errors.OK,None)}
 	out_ticket['state']    = self.client_obj_inst.state
 	out_ticket['mode']     = self.client_obj_inst.mode
 	out_ticket['no_xfers'] = self.client_obj_inst.hsm_driver.no_xfers
@@ -659,12 +661,24 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.reply_to_caller( out_ticket )
 	return
 
+    def shutdown( self, ticket ):
+	del self.client_obj_inst	# clean up shm??? I should not have to!
+	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
+	sys.exit( 0 )
+	return
+
     def crc_on( self, ticket ):
 	self.client_obj_inst.crc_func = ECRC.ECRC
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
 	return
 	
     def crc_off( self, ticket ):
 	self.client_obj_inst.crc_func = None
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
 	return
 	
     def update_client_info( self, ticket ):
