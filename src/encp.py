@@ -3577,7 +3577,7 @@ class encp(interface.Interface):
         self.delayed_dismount = None
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
-        self.mover_timeout = 15 #*60 # seconds to wait for mover to call back,
+        self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
         self.output_file_family = '' # initial set for use with --ephemeral or
