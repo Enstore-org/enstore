@@ -16,7 +16,6 @@ import pprint
 import setpath
 import traceback
 import callback
-# import volume_clerk_client
 import dispatching_worker
 import generic_server
 import event_relay_client
@@ -28,7 +27,6 @@ import e_errors
 import configuration_client
 import hostaddr
 import pnfs
-import volume_clerk_client
 import volume_family
 
 MY_NAME = "file_clerk"
@@ -695,18 +693,18 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     sanity_size, sanity_crc, size \
              from file, volume \
              where \
-                 file.volume = volume.id and volume.label = '%s';"%(
-             external_label)
+                 file.volume = volume.id and volume.label = '%s' \
+             order by location_cookie;"%(external_label)
 
         res = self.dict.db.query(q).dictresult()
 
-        vol = {}
+        vol = []
 
         for ff in res:
             value = self.dict.export_format(ff)
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
-            vol[value['bfid']] = value
+            vol.append(value)
 
         # finishing up
 
@@ -746,8 +744,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     sanity_size, sanity_crc, size \
              from file, volume \
              where \
-                 file.volume = volume.id and volume.label = '%s';"%(
-             external_label)
+                 file.volume = volume.id and volume.label = '%s' \
+             order by location_cookie;"%(external_label)
 
         res = self.dict.db.query(q).dictresult()
 
