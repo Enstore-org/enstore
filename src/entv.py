@@ -677,23 +677,26 @@ class EntvClientInterface(generic_client.GenericClientInterface):
     
     entv_options = {
         option.COMMANDS_FILE:{option.HELP_STRING:
-                              "use 'canned' version of entv",
+                              "Use 'canned' version of entv.",
                               option.VALUE_USAGE:option.REQUIRED,
                               option.VALUE_TYPE:option.STRING,
                               option.VALUE_LABEL:"commands_file",
                               option.USER_LEVEL:option.ADMIN,},
-        option.DONT_SHOW:{option.HELP_STRING:"don't display the movers that"
+        option.DONT_SHOW:{option.HELP_STRING:"Don't display the movers that"
                           " belong to the specified library manager(s).",
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_LABEL:"LM short name,...",
                           option.USER_LEVEL:option.USER,},
-        option.MOVERS_FILE:{option.HELP_STRING:"use 'canned' version of entv",
+        option.MOVERS_FILE:{option.HELP_STRING:"Use 'canned' version of entv.",
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_LABEL:"movers_file",
                             option.USER_LEVEL:option.ADMIN,},
-        option.VERBOSE:{option.HELP_STRING:"print out information.",
+        option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.USER_LEVEL:option.ADMIN,},
+        option.VERBOSE:{option.HELP_STRING:"Print out information.",
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_TYPE:option.INTEGER,
                         option.USER_LEVEL:option.USER,},
@@ -803,15 +806,12 @@ if __name__ == "__main__":
 
     intf = EntvClientInterface(user_mode=0)
 
-    main(intf)
-
-
-#Remember this in case it is needed again...
-"""
-    elif "--profile" in sys.argv or "-p" in sys.argv:
-            import profile
-            import pstats
-            profile.run("main()", "/tmp/entv_profile")
-            p=pstats.Stats("/tmp/entv_profile")
-            p.sort_stats('cumulative').print_stats(100)
-"""
+    if intf.profile:
+        #If the user wants to see the profile of entv...
+        import profile
+        import pstats
+        profile.run("main(intf)", "/tmp/entv_profile")
+        p = pstats.Stats("/tmp/entv_profile")
+        p.sort_stats('cumulative').print_stats(100)
+    else:
+        main(intf)
