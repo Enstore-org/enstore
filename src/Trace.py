@@ -13,6 +13,9 @@ import pwd				# required for default logging, ???
 import Ptrace				# basis for this work    
 import base64                           # to send pickled dictionary as  string
 import cPickle                          # to preserve dictionaries and lists
+import cStringIO		# to make freeze happy
+import copy_reg			# to make freeze happy
+
 import string
 
 # message types.  a message type will be appended to every message so that
