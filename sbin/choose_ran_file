@@ -183,7 +183,7 @@ while [ $done -gt 0 ]; do
     fi
 
     for f in $thefiles; do
-      cmd="encp --verbose=10 --max-resubmit=7 --delayed-dismount=1 $override_ro $f /dev/null"
+      cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro $f /dev/null"
       echo $cmd
       eval $cmd
       rc=$?
