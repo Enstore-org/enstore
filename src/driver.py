@@ -27,6 +27,8 @@ class GenericDriver:
 	self.shm = IPC.shmget( IPC.IPC_PRIVATE, 0x400000, IPC.IPC_CREAT|0x1ff )
 	self.shm.offset( 0, 0x400000 )
 	self.shm.offset( 1, self.shm.id )
+	self.shm.offset( 6, 0 )		# user state location (for the record)
+	self.shm.offset( 7, 0 )		# for possible tcp port info
 
 	# volume info
         self.remaining_bytes = 0
@@ -66,6 +68,8 @@ class GenericDriver:
 
     def get_stats( self ) :
 	# return error count and # of files accesses since???
+	# Note: remaining_bytes is updated in write and
+	# fd_xfer (when opened for write)
 	return {'remaining_bytes':self.remaining_bytes,
 		'wr_err':self.wr_err,
 		'rd_err':self.rd_err,
@@ -81,7 +85,6 @@ class GenericDriver:
 	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
-	self.shm.offset( 6, 0 )		# abort flg
 	self.fo.flush()			# Important - sync fp and fd
 	if self.mode == 'r':		# relative to this driver = "from hsm"
 	    crc = EXfer.fd_xfer( self.fo.fileno(), fd, siz_bytes, 
@@ -102,6 +105,11 @@ class GenericDriver:
 	self.shm.offset( 4, 0 )
 	self.shm.offset( 5, 0 )
 	return None
+    def user_state_set( self, ii ):
+	self.shm.offset( 6, ii )
+	return None
+    def user_state_get( self ):
+	return self.shm.offget( 6 )
 
     def writefm( self ):			# wrapper may need this
 	self.file_marks = self.file_marks + 1
@@ -202,7 +210,10 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def get_stats( self ) :
+	# Note: remaining_bytes is updated in write and
+	# fd_xfer (when opened for write)
 	ss = FTT.get_stats()
+	print 'ronDBG - self.remaining_bytes:',self.remaining_bytes," ss['remain_tape']:", ss['remain_tape']
 	return {'remaining_bytes':self.remaining_bytes,
 		'wr_err':self.wr_err,
 		'rd_err':self.rd_err,
@@ -218,7 +229,6 @@ class  FTTDriver(GenericDriver) :
 	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
-	self.shm.offset( 6, 0 )		# abort flg
 	crc = FTT.fd_xfer( fd, siz_bytes, crc_fun, crc, self.shm )
 	if self.mode != 'r':
 	    self.remaining_bytes = self.remaining_bytes - siz_bytes
