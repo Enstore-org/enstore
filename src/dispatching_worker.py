@@ -88,6 +88,11 @@ class DispatchingWorker:
         self.server_address = server_address
         self.socket = socket.socket(self.address_family,
                                     self.socket_type)
+# Uncomment the lines below to try cleanUDP
+#	import cleanUDP
+#	self.socket = cleanUDP.cleanUDP (self.address_family,
+#                                    self.socket_type)
+
         self.server_bind()
         Trace.trace(10,"}__init__")
 
