@@ -179,8 +179,13 @@ class MonitorServerClient(generic_client.GenericClient):
     #mon_serv_addr: A 2-tuple containing the host and port to connect to.
     def _open_data_socket(self, mon_serv_addr):
         Trace.trace(10, "Creating non-blocking data socket.")
-        #Create the socket and put it into non-blocking mode.
-        sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #Create the socket.
+        try:
+            sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error, detail:
+            raise CLIENT_CONNECTION_ERROR, detail[1]
+
+        #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|os.O_NONBLOCK)
 

@@ -191,8 +191,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     # same node that the library manager runs on.  For this test, they are
     # the same machine.
     def _open_cntl_socket(self, client_addr, mover_addr):
-        #Create the socket and put it into non-blocking mode.
-        sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #Create the socket.
+        try:
+            sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error, detail:
+            raise CLIENT_CONNECTION_ERROR, detail[1]
+
+        #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|os.O_NONBLOCK)
 
