@@ -203,7 +203,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                 "system_inhibit","user_inhibit",
                 "library","    file_family")
             for v in volumes["volumes"]:
-                print "%-10s"%v['volume'],
+                print "%-10s"%(v['volume'],),
                 print capacity_str(v['remaining_bytes']),
                 print " %-12s (%-08s %08s) (%-08s %08s) %-012s %012s"%(
                     v['at_mover'][0],

@@ -163,7 +163,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         Trace.log(msg_type, errmsg)
     except:
         exc,msg,tb=sys.exc_info()
-        sys.stderr.write("cannot log error message %s\n"%errmsg)
+        sys.stderr.write("cannot log error message %s\n"%(errmsg,))
         sys.stderr.write("internal error %s %s"%(exc,msg))
         
 

@@ -120,7 +120,7 @@ class BfidDb:
         pos=eof-2
 
         if pos<=0:  #how can this be?
-            raise BfidDbError, "vol %s: database file truncated"%vol
+            raise BfidDbError, "vol %s: database file truncated"%(vol,)
 
         while pos>=0:
             pos=f.tell()
