@@ -44,8 +44,9 @@ class GenericDriver:
     def get_iomax(self) :
         return self.iomax
 
-    def get_error(self) :
-        return (self.wr_err,rd_err,wr_mnt,rd_mnt)
+    def get_errors(self) :
+        return (self.wr_err, self.rd_err,\
+                self.wr_mnt, self.rd_mnt)
 
 
 

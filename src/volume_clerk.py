@@ -7,6 +7,7 @@ from callback import send_to_user_callback
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from journal import JournalDict
+import pprint
 
 dict = JournalDict({},"volume_clerk.jou")
 
@@ -204,6 +205,33 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(record)
 
 
+    # update the database entry for this volume
+    def update_counts(self, ticket) :
+        try:
+            # get the current entry for the volume
+            key = ticket["external_label"]
+            record = dict[key]
+
+            # update the error counts
+            record["last_access"] = time.time()
+            if record["first_access"] == -1 :
+                record["first_access"] = record["last_access"]
+            record['sum_wr_err'] = record['sum_wr_err'] + ticket['wr_err']
+            record['sum_rd_err'] = record['sum_rd_err'] + ticket['rd_err']
+            record['sum_wr_mnt'] = record['sum_wr_mnt'] + ticket['wr_mnt']
+            record['sum_rd_mnt'] = record['sum_rd_mnt'] + ticket['rd_mnt']
+
+            # record our changes
+            dict[key] = record
+            record["status"] = "ok"
+
+        except KeyError:
+            record["status"] = "Volume Clerk: no such volume"\
+                               +"- or badly formed ticket"
+
+        self.reply_to_caller(record)
+
+
     def inquire_vol(self, ticket) :
         try:
             old = dict[ticket["external_label"]]
@@ -224,7 +252,6 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             record["status"] = "Volume Clerk: no such volume"
         self.reply_to_caller(record)
-        return record
 
     def set_system_readonly(self, ticket) :
         try:
@@ -236,7 +263,13 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             record["status"] = "Volume Clerk: no such volume"
         self.reply_to_caller(record)
-        return record
+
+    
+    # device is broken
+    def set_hung(self,ticket) :
+	print "set_hung",pprint.pformat(ticket)
+	self.reply_to_caller({"status" : "ok"})
+
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :

@@ -94,13 +94,29 @@ class VolumeClerkClient :
                   'external_label' : external_label }
         return self.send(ticket)
 
-    # this many bytes left
+    # we are using the volume
+    def set_hung(self, external_label) :
+        ticket= { 'work'           : 'set_hung',
+                  'external_label' : external_label }
+        return self.send(ticket)
+
+    # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
                             wr_err,rd_err,wr_mnt,rd_mnt) :
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
+                  'wr_err'          : wr_err,
+                  'rd_err'          : rd_err,
+                  'wr_mnt'          : wr_mnt,
+                  'rd_mnt'          : rd_mnt }
+        return self.send(ticket)
+
+    # update the counts in the database
+    def update_counts(self, external_label, wr_err,rd_err,wr_mnt,rd_mnt) :
+        ticket= { 'work'            : 'update_counts',
+                  'external_label'  : external_label,
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
                   'wr_mnt'          : wr_mnt,

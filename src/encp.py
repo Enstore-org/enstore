@@ -110,13 +110,16 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # namespace with information about transfer.
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
+    done_formatted  = pprint.pformat(done_ticket)
     if done_ticket["status"] == "ok" :
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
-                          ,pprint.pformat(done_ticket))
+                          ,done_formatted)
         if list :
+            fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, p.bit_file_id, p.file_size,\
-                  done_ticket["external_label"]                     ,\
-                  done_ticket["bof_space_cookie"]
+                  done_ticket["external_label"], fticket["bof_space_cookie"]\
+                  ,done_formatted
+
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket "\
@@ -198,13 +201,16 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # File has been read - wait for final dialog with mover.
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
+    done_formatted  = pprint.pformat(done_ticket)
     if done_ticket["status"] != "ok" :
         raise errorcode[EPROTO],"encp.read_from_hsm: "\
               +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
     if list :
-        print outfile, p.file_size
+        print outfile, p.file_size\
+              ,done_formatted
+
 
 ##############################################################################
 

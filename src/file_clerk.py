@@ -51,6 +51,7 @@ class FileClerkMethods(DispatchingWorker) :
         # copy all file information we have to user's ticket
         for key in finfo.keys() :
             ticket[key] = finfo[key]
+        ticket["file_clerk"] = finfo
 
         # found the bit file id, now go and find the library
         # become a client of the volume clerk server first
