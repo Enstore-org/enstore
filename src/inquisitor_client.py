@@ -1,5 +1,6 @@
 # system imports
 #
+import sys
 
 # enstore imports
 import generic_client
@@ -128,8 +129,10 @@ class Inquisitor(generic_client.GenericClient):
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
 
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
         # fill in the defaults for the possible options
+        self.do_parse = flag
+        self.restricted_opts = opts
 	self.update = ""
 	self.interval = 0
 	self.reset_interval = ""
@@ -175,15 +178,19 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options() +\
-              ["interval=", "get_interval=", "reset_interval=",
-               "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
-               "update=", "timestamp", "max_ascii_size=",
-               "get_max_ascii_size", "dump",
-               "refresh=", "get_refresh", "max_encp_lines=",
-               "get_max_encp_lines", "plot", "logfile_dir=",
-               "start_time=", "stop_time=", "media_changer=", "keep",
-               "keep_dir=", "output_dir="]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options() +\
+                   ["interval=", "get_interval=", "reset_interval=",
+                    "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
+                    "update=", "timestamp", "max_ascii_size=",
+                    "get_max_ascii_size", "dump",
+                    "refresh=", "get_refresh", "max_encp_lines=",
+                    "get_max_encp_lines", "plot", "logfile_dir=",
+                    "start_time=", "stop_time=", "media_changer=", "keep",
+                    "keep_dir=", "output_dir="]
+
 
 # this is where the work is actually done
 def do_work(intf):
@@ -261,7 +268,6 @@ def do_work(intf):
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init(MY_NAME)
     Trace.trace(6,"iqc called with args "+repr(sys.argv))
 

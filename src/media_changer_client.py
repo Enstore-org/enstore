@@ -119,7 +119,9 @@ class MediaChangerClient(generic_client.GenericClient):
         return self.send(ticket)
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.media_changer = ""
@@ -135,9 +137,12 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+\
-               ["maxwork=","update=","get_work","import",
-	        "export"]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+\
+                   ["maxwork=","update=","get_work","import",
+                    "export"]
     #  define our specific help
     def parameters(self):
         if 0: print self.keys() #lint fix
@@ -190,13 +195,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
         print "        --get_work          List operations in progress"
         
-if __name__ == "__main__" :
-    Trace.init("MEDCH CLI")
-    Trace.trace(6,"mcc called with args "+repr(sys.argv))
-    
-    # fill in the interface
-    intf = MediaChangerClientInterface()
-
+def do_work(intf):
     # get a media changer client
     mcc = MediaChangerClient((intf.config_host, intf.config_port),
                              intf.media_changer)
@@ -228,3 +227,12 @@ if __name__ == "__main__" :
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     mcc.check_ticket(ticket)
+
+if __name__ == "__main__" :
+    Trace.init("MEDCH CLI")
+    Trace.trace(6,"mcc called with args "+repr(sys.argv))
+    
+    # fill in the interface
+    intf = MediaChangerClientInterface()
+
+    do_work(intf)

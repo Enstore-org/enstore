@@ -170,8 +170,10 @@ class ConfigurationClient(generic_client.GenericClient):
 
         
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
         # fill in the defaults for the possible options
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.config_dump = {}
         self.config_file = ""
         self.show = 0
@@ -186,17 +188,13 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+[
-            "config_file=","summary","show","load"]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+[
+                "config_file=","summary","show","load"]
 
-if __name__ == "__main__":
-    import sys
-    Trace.init(MY_NAME)
-    Trace.trace(6,"config client called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = ConfigurationClientInterface()
-
+def do_work(intf):
     # now get a configuration client
     csc = ConfigurationClient((intf.config_host, intf.config_port))
 
@@ -224,3 +222,13 @@ if __name__ == "__main__":
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     csc.check_ticket(stati)
+
+if __name__ == "__main__":
+    import sys
+    Trace.init(MY_NAME)
+    Trace.trace(6,"config client called with args "+repr(sys.argv))
+
+    # fill in interface
+    intf = ConfigurationClientInterface()
+
+    do_work(intf)

@@ -96,7 +96,9 @@ class AlarmClient(generic_client.GenericClient):
 class AlarmClientInterface(generic_client.GenericClientInterface,\
                            interface.Interface):
 
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
+        self.do_parse = flag
+        self.restricted_opts = opts
         # fill in the defaults for the possible options
         # we always want a default timeout and retries so that the alarm
         # client/server communications does not become a weak link
@@ -112,17 +114,14 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options() +\
-	       ["raise", "severity=", "root_error=", "get_patrol_file",
-                "resolve="]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options() +\
+                   ["raise", "severity=", "root_error=", "get_patrol_file",
+                    "resolve="]
 
-if __name__ == "__main__" :
-    Trace.init(MY_NAME)
-    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = AlarmClientInterface()
-
+def do_work(intf):
     # now get an alarm client
     alc = AlarmClient((intf.config_host, intf.config_port),
                       intf.alive_rcv_timeout, intf.alive_retries)
@@ -155,3 +154,11 @@ if __name__ == "__main__" :
 
     alc.check_ticket(ticket)
 
+if __name__ == "__main__" :
+    Trace.init(MY_NAME)
+    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
+
+    # fill in interface
+    intf = AlarmClientInterface()
+
+    do_work(intf)

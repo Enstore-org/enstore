@@ -5,6 +5,7 @@
 import time
 import string
 import errno
+import sys
 
 # enstore imports
 import generic_client
@@ -214,8 +215,10 @@ class FileClient(generic_client.GenericClient, \
 
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
         # fill in the defaults for the possible options
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.bfids = 0
         self.list = 0
         self.bfid = 0
@@ -228,17 +231,15 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["bfids","bfid=","deleted=","list=","backup", "restore=", "recursive"]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+\
+                   ["bfids","bfid=","deleted=","list=","backup",
+                    "restore=", "recursive"]
 
 
-if __name__ == "__main__" :
-    import sys
-    Trace.init(MY_NAME)
-    Trace.trace(6,"fcc called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = FileClerkClientInterface()
-
+def do_work(intf):
     # now get a file clerk client
     fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
     Trace.init(fcc.get_name(MY_NAME))
@@ -288,4 +289,11 @@ if __name__ == "__main__" :
 
     fcc.check_ticket(ticket)
 
+if __name__ == "__main__" :
+    Trace.init(MY_NAME)
+    Trace.trace(6,"fcc called with args "+repr(sys.argv))
 
+    # fill in interface
+    intf = FileClerkClientInterface()
+
+    do_work(intf)

@@ -38,7 +38,9 @@ class MoverClient(generic_client.GenericClient):
 	                rcv_timeout, tries)
 
 class MoverClientInterface(generic_client.GenericClientInterface):
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.mover = ""
@@ -49,7 +51,10 @@ class MoverClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+["status", "local_mover="]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+["status", "local_mover="]
 
     #  define our specific help
     def parameters(self):
@@ -67,13 +72,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
             self.mover = self.args[0]
 
 
-if __name__ == "__main__" :
-    Trace.init("MOVER_CLI")
-    Trace.trace(6,"movc called with args "+repr(sys.argv))
-
-    # fill in the interface
-    intf = MoverClientInterface()
-
+def do_work(intf):
     # get a mover client
     movc = MoverClient((intf.config_host, intf.config_port), intf.mover)
     Trace.init(movc.get_name(movc.log_name))
@@ -98,3 +97,12 @@ if __name__ == "__main__" :
     del movc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     movc.check_ticket(ticket)
+
+if __name__ == "__main__" :
+    Trace.init("MOVER_CLI")
+    Trace.trace(6,"movc called with args "+repr(sys.argv))
+
+    # fill in the interface
+    intf = MoverClientInterface()
+
+    do_work(intf)

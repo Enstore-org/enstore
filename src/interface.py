@@ -83,15 +83,16 @@ def dash_to_underscore(s):
 
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
-        if host == 'localhost' :
-            self.check_host(hostaddr.gethostinfo()[0])
-        else:            
-            self.check_host(host)
+        if self.__dict__.get("do_parse", 1):
+            if host == 'localhost' :
+                self.check_host(hostaddr.gethostinfo()[0])
+            else:            
+                self.check_host(host)
 
-	self.check_port(port)
+                self.check_port(port)
 
-        # now parse the options
-        self.parse_options()
+            # now parse the options
+            self.parse_options()
 
     def check_host(self, host):
         self.config_host = hostaddr.name_to_address(host)
@@ -155,9 +156,10 @@ class Interface:
     def print_help(self):
         print "USAGE:\n"+self.help_line()+"\n"
 
-    def print_usage_line(self):
-        print "["+self.format_options(self.options(), " ")+\
-              "] "+self.parameters()+"\n"
+    def print_usage_line(self, opts=[]):
+        if not opts:
+            opts = self.options()
+        print "["+self.format_options(opts, " ")+"] "+self.parameters()+"\n"
 
     def parse_config_host(self, value):
         try:
@@ -184,6 +186,7 @@ class Interface:
         return []
 
     def parse_options(self):
+        self.options_list = []
         try:
             argv=map(dash_to_underscore, sys.argv[1:])
             optlist,self.args=getopt.getopt(argv,self.charopts(),
@@ -195,6 +198,9 @@ class Interface:
             sys.exit(1)
 	    
         for (opt,value) in optlist :
+            # keep a list of the options entered without the leading "--"
+            self.options_list.append(string.replace(opt, "-", ""))
+
             value=self.strip(value)
             Trace.trace(10, "opt = %s, value = %s"%(opt,value))
             if opt == "--config_host" :

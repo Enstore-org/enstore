@@ -148,7 +148,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return worklist
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
-    def __init__(self) :
+    def __init__(self, flag=1, opts=[]) :
+        # this flag if 1, means do everything, if 0, do no option parsing
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.name = ""
         self.get_work = 0
         self.alive_rcv_timeout = 0
@@ -168,10 +171,13 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+\
-	       ["get_work", "get_mover_list", "get_suspect_vols",
-		"get_delayed_dismount","delete_work=","priority=",
-                "load_movers", "summon=", "poll", "get_queue","host="]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+\
+                   ["get_work", "get_mover_list", "get_suspect_vols",
+                    "get_delayed_dismount","delete_work=","priority=",
+                    "load_movers", "summon=", "poll", "get_queue","host="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -204,13 +210,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def print_priority_args(self):
         print "   priority arguments: library work_id"
 
-if __name__ == "__main__" :
-    Trace.init("LIBM CLI")
-    Trace.trace(6,"lmc called with args "+repr(sys.argv))
-
-    # fill in the interface
-    intf = LibraryManagerClientInterface()
-
+def do_work(intf):
     # get a library manager client
     lmc = LibraryManagerClient((intf.config_host, intf.config_port), intf.name)
     Trace.init(lmc.get_name(lmc.log_name))
@@ -259,3 +259,11 @@ if __name__ == "__main__" :
 
     lmc.check_ticket(ticket)
 
+if __name__ == "__main__" :
+    Trace.init("LIBM_CLI")
+    Trace.trace(6,"lmc called with args "+repr(sys.argv))
+
+    # fill in the interface
+    intf = LibraryManagerClientInterface()
+
+    do_work(intf)

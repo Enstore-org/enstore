@@ -123,7 +123,9 @@ class LoggerClient(generic_client.GenericClient):
 
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.msg = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
@@ -133,8 +135,11 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+\
-               ["message=", "get_logfile_name", "get_last_logfile_name"]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+\
+                   ["message=", "get_logfile_name", "get_last_logfile_name"]
 
 
     """ 
@@ -147,14 +152,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     """
 
 
-if __name__ == "__main__" :
-    import sys
-    Trace.init(MY_NAME)
-    Trace.trace(6,"logc called with args "+repr(sys.argv))
-
-    # fill in interface
-    intf = LoggerClientInterface()
-
+def do_work(intf):
     # get a log client
     logc = LoggerClient((intf.config_host, intf.config_port), MY_NAME,
                         MY_SERVER)
@@ -184,3 +182,13 @@ if __name__ == "__main__" :
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
 
     logc.check_ticket(ticket)
+
+if __name__ == "__main__" :
+    import sys
+    Trace.init(MY_NAME)
+    Trace.trace(6,"logc called with args "+repr(sys.argv))
+
+    # fill in interface
+    intf = LoggerClientInterface()
+
+    do_work(intf)

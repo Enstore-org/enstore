@@ -6,6 +6,7 @@ import sys
 import string
 import time
 import errno
+import pprint
 
 # enstore imports
 import callback
@@ -338,7 +339,9 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
-    def __init__(self):
+    def __init__(self, flag=1, opts=[]):
+        self.do_parse = flag
+        self.restricted_opts = opts
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.clear = ""
@@ -362,10 +365,14 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     # define the command line options that are valid
     def options(self):
-        return self.client_options()+\
-               ["clear=", "backup", "vols","next","vol=","check=","add=",
-                "update=", "delete=","new_library=","read_only=","no_access=",
-                "atmover","decr_file_count=","force","restore=", "all"]
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options()+\
+                   ["clear=", "backup", "vols","next","vol=","check=","add=",
+                    "update=", "delete=","new_library=","read_only=",
+                    "no_access=", "atmover","decr_file_count=","force",
+                    "restore=", "all"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -404,14 +411,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.print_new_library_args()
 
 
-if __name__ == "__main__":
-    import pprint
-    Trace.init(MY_NAME)
-    Trace.trace( 6, 'vcc called with args: %s'%sys.argv )
-
-    # fill in the interface
-    intf = VolumeClerkClientInterface()
-
+def do_work(intf):
     # get a volume clerk client
     vcc = VolumeClerkClient((intf.config_host, intf.config_port))
     Trace.init(vcc.get_name(MY_NAME))
@@ -480,4 +480,13 @@ if __name__ == "__main__":
         sys.exit(0)
 
     vcc.check_ticket(ticket)
+
+if __name__ == "__main__":
+    Trace.init(MY_NAME)
+    Trace.trace( 6, 'vcc called with args: %s'%sys.argv )
+
+    # fill in the interface
+    intf = VolumeClerkClientInterface()
+
+    do_work(intf)
 
