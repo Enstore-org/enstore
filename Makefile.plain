@@ -1,0 +1,7 @@
+SHELL=/bin/sh
+SUBDIRS=ftt_lib ftt_test
+MAKE=make
+
+all install clean:
+	FTT_DIR=`pwd`; export FTT_DIR; \
+	for d in $(SUBDIRS); do (cd $$d; $(MAKE) $@); done
