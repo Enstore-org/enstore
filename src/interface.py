@@ -289,17 +289,6 @@ class Interface:
                 self.clrvol = 1
             elif opt == "--decr_file_count" :
                 self.decr_file_count = value
-            elif opt == "--eod_cookie" :
-                self.eod_cookie = value
-            elif opt == "--size" :
-                self.size = string.atoi(value)
-            elif opt == "--device" :
-                self.device = value
-            elif opt == "--test" :
-                self.test = 1
-            elif opt == "--restore" :
-                self.restore = 1
-	        self.file = value
             elif opt == "--logit" :
                 self.logit = value
             elif opt == "--alive" :
@@ -316,8 +305,6 @@ class Interface:
                 self.reset_timeout = 1
             elif opt == "--update" :
                 self.update = 1
-            elif opt == "--ascii_file" :
-                self.ascii_file = value
             elif opt == "--timestamp" :
                 self.timestamp = 1
             elif opt == "--max_ascii_size" :
@@ -328,11 +315,6 @@ class Interface:
                 self.get_max_encp_lines = 1
             elif opt == "--get_max_ascii_size" :
                 self.get_max_ascii_size = 1
-            elif opt == "--html_file" :
-                self.html_file = value
-            elif opt == "--file" :
-	        self.info = 1
-                self.file = value
             elif opt == "--crc":
                 self.chk_crc = 1
             elif opt == "--pri" :
@@ -343,8 +325,6 @@ class Interface:
                 self.agetime = string.atoi(value)
             elif opt == "--delayed_dismount" :
                 self.delayed_dismount = string.atoi(value)
-            elif opt == "--debug":
-                self.debug = 1
             elif opt == "--dump":
                 self.dump = 1
             elif opt == "--nosummon":
@@ -380,16 +360,12 @@ class Interface:
                 self.stop_time = value
             elif opt == "--plot":
                 self.plot = 1
-            elif opt == "--dbname":
-	        self.dbname=value
             elif opt == "--queue":
 	        self.queue_list=1
             elif opt == "--ephemeral":
 	        self.output_file_family="ephemeral"
             elif opt == "--file_family":
 	        self.output_file_family=value
-            elif opt == "--mail_node":
-	        self.mail_node=value
             elif opt == "--alarm" :
                 self.alarm = 1
             elif opt == "--resolve" :
