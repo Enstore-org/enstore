@@ -466,18 +466,19 @@ class FileClerkInterface(generic_server.GenericServerInterface):
     pass
 
 if __name__ == "__main__":
-    import sys
     Trace.init(string.upper(MY_NAME))
-    Trace.trace(6,"file clerk called with args "+repr(sys.argv))
 
     # get the interface
     intf = FileClerkInterface()
+    Trace.log(e_errors.INFO, '%s' % sys.argv)
 
     # get a file clerk
     fc = FileClerk((intf.config_host, intf.config_port))
 
-    indlst=['external_label']
-    dict = db.DbTable("file", indlst)
+    Trace.log(e_errors.INFO,"opening file database using DbTable")
+    dict = db.DbTable("file", [])
+    Trace.log(e_errors.INFO,"hurrah, file database is open")
+
     while 1:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
@@ -485,4 +486,4 @@ if __name__ == "__main__":
         except:
 	    fc.serve_forever_error(fc.log_name)
             continue
-    Trace.trace(6,"File Clerk finished (impossible)")
+    Trace.trace(e_errors.ERROR,"File Clerk finished (impossible)")
