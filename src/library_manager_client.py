@@ -57,14 +57,14 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    fn = pw_list[i]["wrapper"]["fullname"]
                    at_top = pw_list[i]["at_the_top"]
                    if (host == node) or (not node):
-                       print "%s %s %s %s P %d" % (host,user,pnfsfn,fn, at_top)
+                       print "%s %s %s %s %s P %d" % (host,self.name,user,pnfsfn,fn, at_top)
                for i in range(0, len(at_list)):
                    host = at_list[i]["wrapper"]["machine"][1]
                    user = at_list[i]["wrapper"]["uname"]
                    pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
                    fn = at_list[i]["wrapper"]["fullname"]
                    if (host == node) or (not node):
-                       print "%s %s %s %s M" % (host,user,pnfsfn,fn)
+                       print "%s %s %s %s %s M" % (host,self.name, user,pnfsfn,fn)
                
         return {"status" :(e_errors.OK, None)}
 
