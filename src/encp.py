@@ -1449,7 +1449,6 @@ def set_pnfs_settings(ticket, client, verbose):
     try:
         # save the bfid and set the file size
         p.set_bit_file_id(ticket["fc"]["bfid"])
-        p.set_file_size(ticket['file_size'])
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
@@ -1502,6 +1501,19 @@ def set_pnfs_settings(ticket, client, verbose):
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
 
+    try:
+        # set the file size
+        p.set_file_size(ticket['file_size'])
+    except KeyboardInterrupt:
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
+    except:
+        exc, msg, tb = sys.exc_info()
+        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s."
+                  % (str(exc), str(msg)))
+        ticket['status'] = (str(exc), str(msg))
+        return
+        
 ############################################################################
 #Functions for writes.
 ############################################################################
