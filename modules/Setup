@@ -53,10 +53,11 @@
 # xx xxmodule.c
 
 # This is for freeze to find the source of the included modules
+*shared*
 
-ETape ETape.c -L$(FTT_DIR)/lib -lftt
+ETape ETape.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
-EXfer EXfer.c -L$(FTT_DIR)/lib -lftt
+EXfer EXfer.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
 Devcodes Devcodes.c
 
