@@ -375,6 +375,39 @@ class Enstore(EnstoreInterface):
     def get_aml2_node(self):
         pass
 
+    # make sure the user wanted to start d0en nodes while on stken and vice versa
+    def verify_node(self,node):
+        if len(node)<=3:
+            return
+        # 1st three letters return the "production" cluster, almost
+        gang = node[0:3]
+        print 'gang', gang
+        # there are just 3 clusters we deal with right now... (code this better?)
+        if gang in ('stk','d0e','rip'):
+            thisnode = os.uname()[1]
+            thisgang = thisnode[0:3]
+            print 'thisnode, thisgang',thisnode,thisgang
+            # if we are trying to execute a command from a node in the same cluster, just do it
+            if thisgang == gang:
+                return 1
+            # rip9 and rip10 are special cases
+            if thisgang == 'stk' and node[0:4] == 'rip9':
+                    return 1
+            if len(node) > 4:
+                if thisgang == 'stk' and node[0:5] == 'rip10':
+                    return 1
+            # need to confirm if user really wanted to do this
+            print "You want to execute a command on",node,"but you are running on",thisnode
+            print "This doesn't seem right."
+            answer = prompt_user("Is this want you want to do - execute ",node)
+            if answer[0] == "y" or answer[0] == "Y":
+                return 1
+            else:
+                print 'command canceled'
+                return 0
+        else:
+            return 1
+
     # this is where all the work gets done
     def do_work(self):
         if len(sys.argv) > 1:
@@ -399,29 +432,43 @@ class Enstore(EnstoreInterface):
         elif not self.user_mode and arg1 == "backup":
             rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
-            rtn = do_rgang_command("enstore",command)
+            print sys.argv
+            argv3 = get_argv3("enstore")
+            farmlet = get_farmlet("")
+            if self.verify_node(farmlet):
+                command="%s enstore-start %s%s"%(CMD1, argv3, dbs.CMD2)
+                rtn = do_rgang_command("enstore",command)
+            else:
+                rtn = 0
         elif not self.user_mode and arg1 == "Estop":
-	    argv3 = get_argv3("enstore-down")
-            command="%s enstore-stop %s%s"%(CMD1, argv3, dbs.CMD2)
-	    farmlet = "enstore-down"
-	    answer = "y"
-	    if no_argv3():
-		# make sure user wants to do this before continuing
-		answer = prompt_user(command="Stopping", node="all nodes")
-	    elif no_argv4():
-		answer = prompt_user(command="Stopping",
-				     node="farmlet %s"%(get_farmlet(farmlet),))
-	    if answer[0] == "y" or answer[0] == "Y":
-		rtn = do_rgang_command("enstore-down",command)
-	    else:
-		rtn = 0
+            argv3 = get_argv3("enstore-down")
+            farmlet = get_farmlet("")
+            if self.verify_node(farmlet):
+                command="%s enstore-stop %s%s"%(CMD1, argv3, dbs.CMD2)
+                farmlet = "enstore-down"
+                answer = "y"
+                if no_argv3():
+                    # make sure user wants to do this before continuing
+                    answer = prompt_user(command="Stopping", node="all nodes")
+                elif no_argv4():
+                    answer = prompt_user(command="Stopping",
+                                         node="farmlet %s"%(get_farmlet(farmlet),))
+                if answer[0] == "y" or answer[0] == "Y":
+                    rtn = do_rgang_command("enstore-down",command)
+                else:
+                    rtn = 0
+            else:
+                rtn = 0
         elif not self.user_mode and arg1 == "Erestart":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
-            rtn1 = do_rgang_command("enstore-down",command)
-            command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
-            rtn2 = do_rgang_command("enstore",command)
-            rtn = rtn1|rtn2
+            argv3 = get_argv3("enstore-down")
+            if self.verify_node(argv3):
+                command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
+                rtn1 = do_rgang_command("enstore-down",command)
+                command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
+                rtn2 = do_rgang_command("enstore",command)
+                rtn = rtn1|rtn2
+            else:
+                rtn = 0
         elif not self.user_mode and arg1 == "aml2":
             # find the node to rsh to.  this node is the one associated with
             # the media changer of type "AML2_MediaLoader"
