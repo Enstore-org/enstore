@@ -240,8 +240,8 @@ def is_volume_busy(self, external_label):
 		# for work at movers volume cannot be in unmounted state
 		check_vol_state = 1
 		at_mov = 1
-            Trace.log(e_errors.ERROR, "volume %s is in work_at_movers. Mover=%s,requestor=%s"%\
-                      (external_label,vol_info['at_mover'][1],self.requestor))
+                Trace.log(e_errors.ERROR, "volume %s is in work_at_movers. Mover=%s,requestor=%s"%\
+                          (external_label,vol_info['at_mover'][1],self.requestor))
             rc = 1
             break
     else: # for
