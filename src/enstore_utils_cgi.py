@@ -98,8 +98,6 @@ def pgrep_html(pat, files, sensit):
 	print "<HR>"
 
 def agrep_html(pat1, pat2, files, sensit):
-    print pat1
-    print pat2
     patr1 = set_pattern_search(pat1, sensit)
     if pat2:
 	patr2 = set_pattern_search(pat2, sensit)
