@@ -96,10 +96,10 @@ class MoverError(exceptions.Exception):
 
 
 #states
-IDLE, SETUP, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR = range(11)
+IDLE, SETUP, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR, FINISH_WRITE = range(12)
 
 _state_names=['IDLE', 'SETUP', 'MOUNT_WAIT', 'SEEK', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
-             'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
+             'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR', 'FINISH_WRITE']
 
 ##assert len(_state_names)==11
 
@@ -1170,7 +1170,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
-                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR))):
+                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE))):
                 if not hasattr(self,'too_long_in_state_sent'):
                     Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                 (state_name(self.state),self.current_volume))
@@ -1192,7 +1192,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.in_state_to_cnt = self.in_state_to_cnt+1
                     
                 if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
-                    (self.state != ERROR)):
+                    (self.state != ERROR) and
+                    (self.state != FINISH_WRITE)):
                     # mover is stuck. There is nothing to do as to
                     # offline it
                     msg = "mover is stuck in %s" % (self.return_state(),)
@@ -1292,6 +1293,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info = {}
         self.file_info = {}
         self.current_volume = None
+        if hasattr(self,'too_long_in_state_sent'):
+            del(self.too_long_in_state_sent)
 
         thread = threading.currentThread()
         if thread:
@@ -2503,6 +2506,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
+        if hasattr(self,'too_long_in_state_sent'):
+            del(self.too_long_in_state_sent)
         ######### AM 01/30/01
         ### do not update lm as in a child thread
         # self.update_lm(reset_timer=1)
@@ -2624,15 +2629,24 @@ class Mover(dispatching_worker.DispatchingWorker,
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
         Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
-        reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
-        if reply['status'][0] != e_errors.OK:
-            self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
-            return 0
+
+        self.state = FINISH_WRITE
+        finish_writing = 1
+        while finish_writing:
+            Trace.trace(26,"sending set_remaining_bytes")
+            reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
+            Trace.trace(26,"set_remaining_bytes returned %s"%(reply,))
+            if reply['status'][0] != e_errors.OK:
+                if reply['status'][0] == e_errors.TIMEDOUT:
+                    # keep trying
+                    Trace.alarm(e_errors.ERROR,"Volume Clerk timeout on the final stage of file writing to %s"%(self.current_volume))
+                else:
+                    self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
+                    finish_writing = 0
+                    return 0
+            else:
+               finish_writing = 0 
         self.vol_info.update(reply)
-        if self.current_volume: ####XXX CGW why do this, set_remaining returns volume info....
-            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))  
-        else:
-            Trace.log(e_errors.ERROR, "update_after_writing: volume=%s" % (self.current_volume,))
         return 1
 
     def malformed_ticket(self, ticket, expected_keys=None):
@@ -2646,6 +2660,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.control_socket is None:
             return
         ticket['status'] = (status, error_info)
+        Trace.trace(26, "send_client_done: %s"%(ticket))
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
         except:
@@ -2910,7 +2925,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
+        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
@@ -3438,7 +3453,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         x = ticket # to trick pychecker
         save_state = self.state
         self.draining = 1 
-        if self.state is ACTIVE:
+        if self.state in (ACTIVE, FINISH_WRITE):
             self.state = DRAINING
         elif self.state in (IDLE, ERROR):
             self.state = OFFLINE
@@ -4413,6 +4428,9 @@ class DiskMover(Mover):
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
+        if hasattr(self,'too_long_in_state_sent'):
+            del(self.too_long_in_state_sent)
+
         ######### AM 01/30/01
         ### do not update lm as in a child thread
         # self.update_lm(reset_timer=1)
@@ -4506,7 +4524,7 @@ class DiskMover(Mover):
             work = "mover_idle"
         elif state in (HAVE_BOUND,):
             work = "mover_bound_volume"
-        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
+        elif state in (ACTIVE, SETUP, SEEK, DRAINING, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT, FINISH_WRITE):
             work = "mover_busy"
             if state == SETUP:
                 try:
