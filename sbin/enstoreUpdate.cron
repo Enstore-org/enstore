@@ -1,1 +1,0 @@
-0 5 * * * $ENSTORE_SBIN/ecron -q enstoreUpdate -setup ximagetools,tgif,ghostview,hppccvs enstoreUpdate.sh > /dev/null 2> /dev/null

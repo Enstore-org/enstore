@@ -1,5 +1,0 @@
-order deny,allow
-deny from all
-allow from .fnal.gov
-allow from 137.138
-allow from 131.169
