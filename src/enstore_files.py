@@ -166,6 +166,12 @@ class EnFile:
                     os.system("cp %s %s"%(self.file_name, pts_dir))
                     os.remove(self.file_name)
 
+    def exists(self):
+        if os.exists(self.file_name):
+            return 1
+        else:
+            return 0
+
 class EnStatusFile(EnFile):
 
     def __init__(self, file, system_tag=""):
