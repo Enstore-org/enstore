@@ -1612,15 +1612,16 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         outfile = requests[j]['outfile']
 	# remove file requests if transfer completed succesfuly
 	if done_ticket["status"][0] == e_errors.OK:
-            try:  #the directory or file may have been deleted!
-                os.rename(tempname, outfile)
-            except:
-                try:
-                    os.unlink(tempname)
+            if tempname != outfile:
+                try:  #the directory or file may have been deleted!
+                    os.rename(tempname, outfile)
                 except:
-                    pass
-                error = e_errors.NOACCESS
-                done_ticket['status']= (error,None)
+                    try:
+                        os.unlink(tempname)
+                    except:
+                        pass
+                    error = e_errors.NOACCESS
+                    done_ticket['status']= (error,None)
                 
                 
 	    bytes = bytes+requests[j]['file_size']
