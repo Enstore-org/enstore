@@ -465,7 +465,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 	        rm -f $HOME/${product}_$REV.tar
 		cd $INSTALLDIR
 		check_status $? "cd $INSTALLDIR"
-		basen=`basename $INSTALLDIR"
+		basen=`basename $INSTALLDIR`
 		tar -cf $HOME/${product}_$REV.tar $basen
                 check_status $? "tar -cf $HOME/${product}_$REV.tar $INSTALLDIR"
              fi
