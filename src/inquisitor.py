@@ -138,8 +138,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			# immediately so that the 2nd child is inherited by the
 			# init process and does not become a zombie when it 
 			# exits.
-			if not self.fork():        # getting the second child
-			    # we are the second child
+			pid2 = self.fork()        # getting the second child
+			if not pid2:
+			    # we are the second child #######################
 			    Trace.init("INQ_CHILD")
 			    # we need to get new udp clients so we don't collide
 			    # with our parent.
@@ -211,6 +212,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			    os._exit(0)   # second child
 			    # end of the second child ##################################
 			else:
+			    # add the second childs pid to the appropriate enstore file so the
+			    # child can be killed automatically
+			    os.system("tpid=`$ENSTORE_DIR/bin/en_get_pid_dir`;echo %s >> $tpid/`uname -n`-inquisitor_pids"%(pid2,))
 			    os._exit(0)   # first child
 		    else:
 			# we are the original parent.  now we must wait for the first

@@ -5,8 +5,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # stop enstore processes on the current node
 
-me=`whoami`
-PID_DIR=/tmp/enstore/$me
+PID_DIR=`$ENSTORE_DIR/bin/en_get_pid_dir`
 
 # NOTE: some options (w/ or w/o args) are currently provided just for restart
 # (compatible with start)
@@ -87,10 +86,23 @@ turnoff_s() { for pid in $1; do
             done; }
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
-    if [ $config_running -eq 1 ] ; then
-      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
-    fi
-    turnoff "$PID_DIR/`uname -n`-inquisitor*pids"      "inquisitor"
+    for serv in $PID_DIR/`uname -n`-inquisitor_pid; do
+	if [ `echo "$serv" | grep -c "\-\*\-"` -eq 1 ] ; then continue; fi
+        do_server=`echo $serv | egrep "$opt_just_ere"`
+        if [ ! "$do_server" ];then continue; fi
+        if [ $config_running -eq 1 ] ; then
+	  serv1=`echo $serv | cut -f2 -d-`
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$serv1" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        fi
+
+        # note: turnoff function assumes filename globbing, so we must add an *
+        turnoff "$serv*"   "inquisitor"
+    done
+
+#    if [ $config_running -eq 1 ] ; then
+#      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
+#    fi
+#    turnoff "$PID_DIR/`uname -n`-inquisitor*pids"      "inquisitor"
 fi
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
