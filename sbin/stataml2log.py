@@ -4,6 +4,7 @@ import os
 import re
 import string
 import sys
+import posixpath
 
 errDict = {}
 errLine = {}
@@ -301,12 +302,24 @@ def printMsgs(outFile):
         listCounter = listCounter + 1
     output.close()
     
+def chkInOut(inFile, outFile):
+    if not posixpath.isfile(inFile):
+        sys.stderr.write("ERROR: File - '%s' - doesn't exist\n" % inFile)
+        sys.exit(1)
+    tmp = string.split(outFile, '/')
+    dirLen = len(tmp) - 1
+    dirPath = string.joinfields(tmp[:dirLen], '/')
+    if not posixpath.isdir(dirPath):
+        sys.stderr.write("ERROR: Dir - '%s' - doesn't exist\n" % outFile)
+        sys.exit(1)
+        
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         sys.stderr.write("ERROR: Usage - %s logName\n" % sys.argv[0])
         sys.exit(1)
     inFile = sys.argv[1]
-    outFile = "%s.rpt" % inFile
+    outFile = sys.argv[2]
+    chkInOut(inFile, outFile)
     newLog(inFile)
     printMsgs(outFile)
 
