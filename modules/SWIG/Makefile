@@ -3,10 +3,7 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c \
-			../derrno_wrap.c \
-			../checksum_wrap.c \
-			../socket_ext_wrap.c 
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap.c ../socket_ext_wrap.c
 #			../ftt_wrap.c 
 
 
