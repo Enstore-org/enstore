@@ -683,13 +683,6 @@ def final_scan_volume(vol):
 	# get an encp
 	encp = encp_wrapper.Encp()
 
-	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
-		from file, volume, migration \
-		where file.volume = volume.id and \
-			volume.label = '%s' and \
-			deleted = 'n' and dst_bfid = bfid \
-		order by location_cookie;"%(vol)
-	query_res = db.query(q).getresult()
 	log(MY_TASK, "verifying volume", vol)
 
 	v = vcc.inquire_vol(vol)
@@ -697,16 +690,34 @@ def final_scan_volume(vol):
 		error_log(MY_TASK, "failed to find volume", vol)
 		return 1
 
-	# make sure the volume is full
-	if v['system_inhibit'][1] != 'full':
-		error_log(MY_TASK, "volume %s is not 'full'"%(vol))
+	# make sure the volume is ok to scan
+	if v['system_inhibit'][0] != 'none':
+		error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][0]))
 		return 1
+
+	if v['system_inhibit'][1] != 'full' and \
+		v['system_inhibit'][1] != 'none' and \
+		v['system_inhibit'][1] != 'readonly':
+		error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
+		return 1
+
+	if v['system_inhibit'][1] != 'full':
+		log(MY_TASK, 'volume %s is not "full"'%(vol), "... WARNING")
 
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
 		error_log(MY_TASK, "%s is not a migration volume")
 		return 1
+
+	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
+		from file, volume, migration \
+		where file.volume = volume.id and \
+			volume.label = '%s' and \
+			deleted = 'n' and dst_bfid = bfid \
+		order by location_cookie;"%(vol)
+	query_res = db.query(q).getresult()
+
 	for r in query_res:
 		bfid, pnfs_id, src_bfid, location_cookie = r
 		st = is_swapped(src_bfid, db)
