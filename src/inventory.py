@@ -949,12 +949,13 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         "Expected", "active", "deleted", "unknown",
         "Volume-Family"))
 
+    vd_file.write("<heml><pre>\n")
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
 
-    vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s\n" % \
+    vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s %s\n" % \
         ("label", "avail.", "system_inhibit", "user_inhibit",
-         "library", "volume_family"))
+         "library", "volume_family", "mounts"))
 
     #Process the tapes authorized file for the VOLUME_QUATAS page.
     authorized_tapes = get_authorized_tapes()
@@ -991,6 +992,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         else:
             vsum = {}
 
+        if vv.has_key['sum_mounts']:
+            mounts = vv['sum_mounts']
+        else:
+            mounts = -1
         if vsum and vsum['last'] == vv['last_access']:
             # good, don't do anything
             active = vsum['active']
@@ -1150,7 +1155,13 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         vs_file.write(format_string % format_tuple)
         
         formated_size = format_storage_size(vv['remaining_bytes'])
-        vd_file.write("%-10s %6.2f%s (%-08s %08s) (%-08s %08s) %-012s %012s\n" % \
+
+        # handle mounts -- need more work
+        if mounts < 1000:
+             mnts = `mounts`
+        else:
+             mnts = '<font color=#FF0000>'+`mounts`+'</fonts>'
+        vd_file.write("%-10s %6.2f%s (%-08s %08s) (%-08s %08s) %-012s %012s %s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
                 vv['system_inhibit'][0],
@@ -1158,7 +1169,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 vv['user_inhibit'][0],
                 vv['user_inhibit'][1],
                 vv['library'],
-                vv['volume_family']))
+                vv['volume_family'],
+                mnts))
 
         n_vols = n_vols + 1
         print 'done'
@@ -1171,6 +1183,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     sum_f.close()
     la_file.close()
     vs_file.close()
+    vd_file.write("</pre></html>\n")
     vd_file.close()
     vols.close()
     files.close()
