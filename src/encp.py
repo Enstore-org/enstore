@@ -7083,12 +7083,12 @@ def read_from_hsm(e, tinfo):
                     continue
 
         else:
-            #If all submits fail (i.e using an old encp), this avoids crashing.
-            #if not e_errors.is_ok(reply_ticket['status'][0]):
-            #    data_access_layer_ticket = reply_ticket
-            #else:
-            #    data_access_layer_ticket = {}
             exit_status = 1
+            #If all submits fail (i.e using an old encp), this avoids crashing.
+            if not e_errors.is_ok(reply_ticket['status'][0]):
+                done_ticket = reply_ticket
+            else:
+                done_ticket = {}
 
         Trace.message(TRANSFER_LEVEL,
                       "Files read for volume %s   elapsed=%s" %
