@@ -132,7 +132,7 @@ class VolumeClerkClient :
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
         oticket = self.send(ticket)
-	print "nwv dt=",time.time-t1
+	print "nwv dt=",time.time()-t1
 	return oticket
 
 

@@ -87,7 +87,7 @@ class Mover :
 
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket) :
-        time.sleep(1)
+        time.sleep(0.05)
 
         # get (possibly new) info about the library manager this mover serves
         mconfig = self.csc.get_uncached(self.name)
