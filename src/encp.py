@@ -3345,6 +3345,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         except (IOError, OSError):
             #Something is very wrong, deal with it later.
             pass
+    #If the transfer is a write from dcache, we need to clear any information
+    # that resides in layer 1 and/or layer 4.
+    elif is_write(encp_intf) and encp_intf.put_cache:
+        p = pnfs.Pnfs(outfile)
+        p.writelayer(1, "")
+        p.writelayer(4, "")
 
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
@@ -4617,7 +4623,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         except (IndexError, KeyError):
             Trace.log(e_errors.INFO, "unable to unregister bfid")
         try:
-            delete_at_exit.unregister(done_ticket['outfile']) #localname
+            delete_at_exit.unregister(done_ticket['outfile']) #pnfsname
         except (IndexError, KeyError):
              Trace.log(e_errors.INFO, "unable to unregister file")
              
