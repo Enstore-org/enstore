@@ -78,7 +78,7 @@ class DispatchingWorker:
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
         self.is_child = 0
-	self.server_socket = cleanUDP.cleanUDP (self.address_family,
+        self.server_socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
         self.custom_error_handler = None
 
@@ -144,18 +144,18 @@ class DispatchingWorker:
             self.last_interval=now
             self.interval_func()
 
-	if request == '':
-	    # nothing returned, must be timeout
-	    self.handle_timeout()
-	    return
-	try:
-	    self.process_request(request, client_address)
-	except KeyboardInterrupt:
-	    traceback.print_exc()
-	except SystemExit, code:	# processing may fork (forked process will call exit)
-	    sys.exit( code )
-	except:
-	    self.handle_error(request, client_address)
+        if request == '':
+            # nothing returned, must be timeout
+            self.handle_timeout()
+            return
+        try:
+            self.process_request(request, client_address)
+        except KeyboardInterrupt:
+            traceback.print_exc()
+        except SystemExit, code:        # processing may fork (forked process will call exit)
+            sys.exit( code )
+        except:
+            self.handle_error(request, client_address)
 
 
 
@@ -255,7 +255,7 @@ class DispatchingWorker:
         return (request, req[1])
 
     def handle_timeout(self):
-	# override this method for specific timeout hadling
+        # override this method for specific timeout hadling
         pass
 
     def fileno(self):
@@ -268,8 +268,8 @@ class DispatchingWorker:
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
-	# ref udp_client.py (i.e. we may wish to have a udp_client method
-	# to get this information)
+        # ref udp_client.py (i.e. we may wish to have a udp_client method
+        # to get this information)
         idn, number, ticket = eval(request)
         self.reply_address = client_address
         self.client_number = number
@@ -299,7 +299,7 @@ class DispatchingWorker:
             function = getattr(self,function_name)
         except (KeyError, AttributeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
-				  "cannot find requested function `%s'"%(function_name,))}
+                                  "cannot find requested function `%s'"%(function_name,))}
             Trace.trace(6,"%s process_request %s %s"%(detail,ticket,function_name))
             self.reply_to_caller(ticket)
             return
@@ -311,14 +311,14 @@ class DispatchingWorker:
         apply(function, (ticket,))
         
     def handle_error(self, request, client_address):
-	exc, msg, tb = sys.exc_info()
-	Trace.trace(6,"handle_error %s %s"%(exc,msg))
-	Trace.log(e_errors.INFO,'-'*40)
-	Trace.log(e_errors.INFO,
+        exc, msg, tb = sys.exc_info()
+        Trace.trace(6,"handle_error %s %s"%(exc,msg))
+        Trace.log(e_errors.INFO,'-'*40)
+        Trace.log(e_errors.INFO,
                   'Exception during request from %s, request=%s'%
                   (client_address, request))
-	e_errors.handle_error(exc, msg, tb)
-	Trace.log(e_errors.INFO,'-'*40)
+        e_errors.handle_error(exc, msg, tb)
+        Trace.log(e_errors.INFO,'-'*40)
         if self.custom_error_handler:
             self.custom_error_handler(exc,msg,tb)
         else:
@@ -371,9 +371,9 @@ class DispatchingWorker:
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
-	Trace.log( e_errors.INFO, 'QUITTING... via sys_exit python call' )
+        Trace.log( e_errors.INFO, 'QUITTING... via os._exit')
         self.reply_to_caller(ticket)
-        sys.exit(0)
+        os._exit(0)
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
