@@ -155,7 +155,7 @@ read_tape(char *data, int count){
     while (count>0){
 	nbytes = count>blocksize ? blocksize:count;
 	if ( (nread=read(tape_fd, data, nbytes)) != nbytes){
-	    fprintf(stderr,"%s: short read %d!=%d\n", progname, 
+	    verbage("%s: short read %d!=%d\n", progname, 
 		    nread, nbytes);
 	    if (nread<=0){
 		fprintf(stderr, "%s: read_tape", progname);
