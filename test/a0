@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile a0$  $Revision$
 
-/usr/local/bin/traceMode 1
+#rsh rip1 "/usr/local/bin/traceMode 1"
 
 cd $ENSTORE_DIR/test
 make jobs

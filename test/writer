@@ -42,11 +42,18 @@ while /bin/true; do
           age=`$ENSTORE_DIR/test/aran.sh 1 6`
           agetime=`expr $age \* 10 `
           if [ `$ENSTORE_DIR/test/aran.sh 0 1` -eq 0 ] ; then
-	    crc="--crc"
-	  else
             crc=""
+	  else
+	    crc="--crc"
           fi
-          ecmd encp --pri $priority --delpri $delpri --agetime $agetime $crc $f $output
+          if [ `$ENSTORE_DIR/test/aran.sh 0 5` -eq 0 ] ; then
+            delayed_dismount=""
+	  else
+	    delayed_dismount="--delayed_dismount=1"
+          fi
+	  cmd="ecmd encp --pri $priority --delpri $delpri --agetime $agetime $crc $delayed_dismount $f $output"
+	  echo $cmd
+	  eval $cmd
         fi
 	ec=$?
         if [ $ec -ne 0 ] ; then
