@@ -596,7 +596,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         self.SEQ_LOCK_FILE="stk_seq_lock"
         self.SEQ_LOCK=os.path.join(self.SEQ_LOCK_DIR, self.SEQ_LOCK_FILE)
         if not os.access(self.SEQ_LOCK_DIR,os.W_OK):
-            os.mkdir(SEQ_LOCK_DIR)
+            os.mkdir(self.SEQ_LOCK_DIR)
         lockf = open (self.SEQ_LOCK, "w")
         lockfile.writelock(lockf)  #holding write lock = right to bump sequence
         lockf.write("0")
