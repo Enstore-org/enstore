@@ -44,7 +44,7 @@ fi
 CACHE=cachen2a:/diska/enstore_backup/$gang/tarit
 
 mount $BACKUP
-munt_failed=$?
+mount_failed=$?
 
 
 if [ `echo $node | grep -c mvr` -ne 0 ]; then
