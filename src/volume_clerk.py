@@ -690,7 +690,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 self.reply_to_caller(ticket)
                 return
             record['blocksize'] = msize
-        record['mounts'] = 0
         # write the ticket out to the database
         self.dict[external_label] = record
         if inc_counter: self.sgdb.inc_sg_counter(library, sg)
