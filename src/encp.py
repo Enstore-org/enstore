@@ -1047,7 +1047,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                      1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
 	    else:
 		tinfo1['rate%d'%(i,)] = 0.0
-	    format = "  %s %s -> %s: %d bytes copied to %s at %.3g MB/S (%.3g MB/S) mover=%s driver=%s drive_id=%s drive_sn=%s drive_vendor=%s device=%s host=%s host_ip=%s cumt= %f"
+	    format = "  %s %s -> %s: %d bytes copied to %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s cumt= %f"
 
 	    if verbose:
 		print format %\
@@ -1057,13 +1057,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 		       tinfo1["rate%d"%(i,)],
                        tinfo1["transrate%d"%(i,)],
                        done_ticket["mover"]["name"],
-                       done_ticket["mover"]["driver"],
                        done_ticket["mover"]["product_id"],
                        done_ticket["mover"]["serial_num"],
                        done_ticket["mover"]["vendor_id"],
-                       done_ticket["mover"]["device"],
-                       done_ticket["mover"]["host"],
-                       done_ticket["mover"]["hostip"],
 		       time.time()-t0)
 	    if data_access_layer:
 		print data_access_layer_format % \
@@ -1089,9 +1085,6 @@ def write_to_hsm(input_files, output, output_file_family='',
                                              done_ticket["mover"]["product_id"],
                                              done_ticket["mover"]["serial_num"],
                                              done_ticket["mover"]["vendor_id"],
-                                             done_ticket["mover"]["device"],
-                                             done_ticket["mover"]["host"],
-                                             done_ticket["mover"]["hostip"],
 					     time.time()-t0),
                       Trace.MSG_ENCP_XFER )
 	    retry = 0
@@ -1661,7 +1654,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
             else:
                 tinfo['rate%d'%(j,)] = 0.0
-            format = "  %s %s -> %s: %d bytes copied from %s at %.3g MB/S (%.3g MB/S) mover=%s driver=%s drive_id=%s drive_sn=%s drive_vendor=%s device=%s host=%s host_ip=%s cumt= %f  {'media_changer' : '%s'}"
+            format = "  %s %s -> %s: %d bytes copied from %s at %.3g MB/S (%.3g MB/S) mover=%s drive_id=%s drive_sn=%s drive_vendor=%s cumt= %f  {'media_changer' : '%s'}"
 
             if verbose:
                 print format %(
@@ -1671,13 +1664,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     tinfo["rate%d"%(j,)],
                     tinfo["transrate%d"%(j,)],
                     done_ticket["mover"]["name"],
-                    done_ticket["mover"]["driver"],
                     done_ticket["mover"]["product_id"],
                     done_ticket["mover"]["serial_num"],
                     done_ticket["mover"]["vendor_id"],
-                    done_ticket["mover"]["device"],
-                    done_ticket["mover"]["host"],
-                    done_ticket["mover"]["hostip"],
                     time.time()-t0,
                     done_ticket["mover"]["media_changer"])
 
@@ -1687,13 +1676,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                              tinfo["rate%d"%(j,)], 
                                              tinfo["transrate%d"%(j,)],
                                              done_ticket["mover"]["name"],
-                                             done_ticket["mover"]["driver"],
                                              done_ticket["mover"]["product_id"],
                                              done_ticket["mover"]["serial_num"],
                                              done_ticket["mover"]["vendor_id"],
-                                             done_ticket["mover"]["device"],
-                                             done_ticket["mover"]["host"],
-                                             done_ticket["mover"]["hostip"],
                                              time.time()-t0,
                                              done_ticket["mover"]["media_changer"]),
                       Trace.MSG_ENCP_XFER )

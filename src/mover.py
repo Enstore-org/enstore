@@ -1322,7 +1322,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
         os._exit(0)
 	return
 
-    def start_draining(self, ticket):		# put itself into draining state
+    def start_draining(self, ticket):	    # put itself into draining state
+        if (self.state == 'idle' and
+            (self.mode == 'u' or self.mode == '')): self.mode = 'f'
         self.state = 'draining'
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
@@ -1363,7 +1365,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	
     def update_client_info( self, ticket ):
         if self.mode == 'c':     # cleaning
-            self.state = 'idle'
+            if self.state != 'draining': self.state = 'idle'
             # cleaning returned
             # tell all known library managers that mover is idle
             for lm in self.mvr_config['library']:# should be libraries
@@ -1371,6 +1373,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 next_req_to_lm = self.idle_mover_next()
                 self.do_next_req_to_lm(next_req_to_lm, address )
             return
+        # make 'hook' for state commad to identify completion of request
+        # in the draining state
+        if self.state == 'draining': self.mode = 'f'
 	self.vol_info = ticket['vol_info']
 	self.no_xfers = ticket['no_xfers']
 	self.hsm_driver.blocksize = ticket['hsm_driver']['blocksize']
