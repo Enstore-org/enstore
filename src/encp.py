@@ -298,7 +298,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
         jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
                +"2nd (post-file-send) mover callback on socket "\
                +repr(address)+", failed to transfer: "\
-               +"ticket[\"status\"]="+ticket["status"])
+               +"done_ticket[\"status\"]="+done_ticket["status"])
 
     # tell library manager we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
@@ -551,7 +551,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
                +"2nd (post-file-read) mover callback on socket "\
                +repr(address)+", failed to transfer: "\
-               +"ticket[\"status\"]="+ticket["status"])
+               +"done_ticket[\"status\"]="+done_ticket["status"])
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing

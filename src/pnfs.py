@@ -1,5 +1,6 @@
 import sys
 import os
+import posixpath
 import regex
 import errno
 import stat
@@ -369,12 +370,12 @@ class pnfs :
 
     # store the cross-referencing data
     def set_xreference(self,volume,cookie) :
-        #value=repr(volume)+':'+repr(cookie)+':'+ \
-        #     repr(self.file_family)+':'+repr(self.pnfsFilename)
-
+        self.volmap_filename(volume,cookie)
         value=volume+'\012'+cookie+'\012'+ \
-             self.file_family+'\012'+self.pnfsFilename+'\012'
+             self.file_family+'\012'+self.pnfsFilename+'\012' +\
+             self.volume_file+'\012'
         self.writelayer(4,value)
+        self.make_volmap()
         self.get_xreference()
 
     # get the bit file id
@@ -416,16 +417,19 @@ class pnfs :
                 self.cookie   = regsub.sub("\012","",xinfo[1])
                 self.origff   = regsub.sub("\012","",xinfo[2])
                 self.origname = regsub.sub("\012","",xinfo[3])
+                self.mapfile  = regsub.sub("\012","",xinfo[3])
             except :
-                self.volume = unknown
-                self.cookie = unknown
-                self.origff = unknown
+                self.volume   = unknown
+                self.cookie   = unknown
+                self.origff   = unknown
                 self.origname = unknown
+                self.mapfile  = unknown
         else :
-            self.volume = unknown
-            self.cookie = unknown
-            self.origff = unknown
+            self.volume   = unknown
+            self.cookie   = unknown
+            self.origff   = unknown
             self.origname = unknown
+            self.mapfile  = unknown
 
     ##########################################################################
 
@@ -555,6 +559,79 @@ class pnfs :
 
 ##############################################################################
 
+    # generate volmap directory name and filename
+    # the volmap directory looks like:
+    #         /pnfs/xxxx/volmap/origfilefamily/volumename/file_number_on_tape
+    def volmap_filename(self,vol="",kookie=""):
+        if self.valid == valid and self.exists == exists :
+
+            # origff not set until xref layer is filled in, use current file
+            #    family in this case.
+            if self.origff!=unknown:
+                ff = self.origff
+            else:
+                ff = self.file_family
+            # volume not set until xref layer is filled in, has to be specified
+            if self.volume!=unknown:
+                volume = self.volume
+            else:
+                volume = vol
+            # cookie  not set until xref layer is filled in, has to be specified
+            if self.cookie!=unknown:
+                cookie = self.cookie
+            else:
+                cookie = kookie
+
+            # cookies are usually just the filenumber, but in some instances
+            # they are byte oriented (offset,length). In these cases, just use
+            # offset as the file number
+            try:
+                size = len(cookie)
+                exec("(volfile,size)="+cookie)
+            except:
+                volfile = cookie
+
+            dir_elements = string.split(self.dir,'/')
+            self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ \
+                          ff+'/'+volume
+            # make the filename lexically sortable.  since this could be a byte offset,
+            #     allow for 100 GB offsets
+            self.volume_file = self.voldir+'/%12.12d'%volfile
+        else:
+            self.volume_file = "unknown"
+
+    # create a duplicate entry in pnfs that is ordered by file number on tape
+    def make_volmap(self):
+        if self.volume_file!=unknown:
+            if posixpath.exists(self.voldir) == 0:
+                dir = ""
+                dir_elements = string.split(self.voldir,'/')
+                for element in dir_elements:
+                    dir=dir+'/'+element
+                    if posixpath.exists(dir) == 0:
+                        # try to make the directory - just bomb out if we fail
+                        #   since we probably require user intervention to fix
+                        os.mkdir(dir)
+
+            # create the volume map file and set its size the same as main file
+            volume_file=pnfs(self.volume_file)
+            volume_file.touch()
+            volume_file.set_file_size(self.file_size)
+
+            # now copy the appropriate layers to the volmap file
+            for layer in [1,4] : # bfid and xref
+                inlayer = self.readlayer(layer)
+                value = ""
+                for e in range(0,len(inlayer)) :
+                    value=value+inlayer[e]
+                    volume_file.writelayer(layer,value)
+
+            # protect it against accidental deletion - and give ownership to root.root
+            os.chmod(self.volume_file,0644)  # disable write access except for owner
+            os.chown(self.volume_file,0,0)   # make the owner root.root
+
+
+##############################################################################
 if __name__ == "__main__" :
 
     import getopt
