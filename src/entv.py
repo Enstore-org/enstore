@@ -15,10 +15,6 @@ import re
 import rexec
 import signal
 import errno
-if sys.version_info < (2, 2, 0):
-    import fcntl, FCNTL
-else: #FCNTL is depricated in python 2.2 and later.
-    import fcntl
 
 #enstore imports
 import enstore_display
