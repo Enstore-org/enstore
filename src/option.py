@@ -270,6 +270,8 @@ STORAGE_GROUP = "storage-group"              #pnfs
 SUBSCRIBE = "subscribe"                      #inquisitor
 SUMMARY = "summary"                          #monitor, configuration, up_down
 TAG = "tag"                                  #pnfs
+TAGCHMOD = "tagchmod"                        #pnfs
+TAGCHOWN = "tagchown"                        #pnfs
 TAGECHO = "tagecho"                          #pnfs
 TAGRM = "tagrm"                              #pnfs
 TAGS = "tags"                                #pnfs
@@ -333,7 +335,8 @@ valid_option_list = [
     SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
-    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH,
+    TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
+    TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,

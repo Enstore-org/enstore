@@ -11,6 +11,7 @@ import pwd
 import grp
 import string
 import time
+import re
 
 # enstore imports
 import Trace
@@ -22,6 +23,7 @@ except ImportError:
 import option
 import enstore_constants
 import hostaddr
+import enstore_functions2
 
 #ENABLED = "enabled"
 #DISABLED = "disabled"
@@ -1182,21 +1184,6 @@ class PnfsInterface(option.Interface):
                          option.USER_LEVEL:option.ADMIN,
                          option.VALUE_USAGE:option.OPTIONAL,
                    },
-        option.TAGS:{option.HELP_STRING:"lists tag values and permissions",
-                option.DEFAULT_VALUE:option.DEFAULT,
-                option.DEFAULT_NAME:"tags",
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_USAGE:option.IGNORED,
-                option.USER_LEVEL:option.USER,
-                option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
-                                      option.DEFAULT_NAME:"directory",
-                                      option.DEFAULT_TYPE:option.STRING,
-                                      option.VALUE_NAME:"directory",
-                                      option.VALUE_TYPE:option.STRING,
-                                      option.VALUE_USAGE:option.OPTIONAL,
-                                      option.FORCE_SET_DEFAULT:option.FORCE,
-                                      }]
-                },
         option.TAG:{option.HELP_STRING:"lists the tag of the directory",
                     option.DEFAULT_VALUE:option.DEFAULT,
                     option.DEFAULT_NAME:"tag",
@@ -1216,6 +1203,53 @@ class PnfsInterface(option.Interface):
                                          option.FORCE_SET_DEFAULT:option.FORCE,
                                           }]
                },
+                option.TAGCHMOD:{option.HELP_STRING:"changes the permissions"
+                         " for the tag; use UNIX chmod style permissions",
+                         option.DEFAULT_VALUE:option.DEFAULT,
+                         option.DEFAULT_NAME:"tagchmod",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.VALUE_NAME:"permissions",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.FORCE_SET_DEFAULT:option.FORCE,
+                         option.USER_LEVEL:option.USER,
+                         option.EXTRA_VALUES:[{option.VALUE_NAME:"named_tag",
+                                            option.VALUE_TYPE:option.STRING,
+                                            option.VALUE_USAGE:option.REQUIRED,
+                                            option.VALUE_LABEL:"tag",
+                                              },]
+                         },
+        option.TAGCHOWN:{option.HELP_STRING:"changes the ownership"
+                         " for the tag; OWNER can be 'owner' or 'owner.group'",
+                         option.DEFAULT_VALUE:option.DEFAULT,
+                         option.DEFAULT_NAME:"tagchown",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.VALUE_NAME:"owner",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.FORCE_SET_DEFAULT:option.FORCE,
+                         option.USER_LEVEL:option.USER,
+                         option.EXTRA_VALUES:[{option.VALUE_NAME:"named_tag",
+                                            option.VALUE_TYPE:option.STRING,
+                                            option.VALUE_USAGE:option.REQUIRED,
+                                            option.VALUE_LABEL:"tag",
+                                              },]
+                         },
+        option.TAGS:{option.HELP_STRING:"lists tag values and permissions",
+                option.DEFAULT_VALUE:option.DEFAULT,
+                option.DEFAULT_NAME:"tags",
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.VALUE_USAGE:option.IGNORED,
+                option.USER_LEVEL:option.USER,
+                option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
+                                      option.DEFAULT_NAME:"directory",
+                                      option.DEFAULT_TYPE:option.STRING,
+                                      option.VALUE_NAME:"directory",
+                                      option.VALUE_TYPE:option.STRING,
+                                      option.VALUE_USAGE:option.OPTIONAL,
+                                      option.FORCE_SET_DEFAULT:option.FORCE,
+                                      }]
+                },
         option.XREF:{option.HELP_STRING:"lists the cross reference " \
                                         "data for file",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -1495,6 +1529,7 @@ class PnfsInterface(option.Interface):
                                             option.VALUE_LABEL:"tag",
                                               },]
                    },
+
         option.TAGRM:{option.HELP_STRING:"removes the tag (tricky, see DESY "
                                          "documentation)",
                       option.DEFAULT_VALUE:option.DEFAULT,
@@ -1661,6 +1696,104 @@ class Tag:
 
     ##########################################################################
 
+    def ptagchown(self, intf):
+        #Format the tag filename string.
+        fname = os.path.join(self.dir, ".(tag)(%s)" % (intf.named_tag,))
+        #If directory is empty indicating the current directory, prepend it.
+        if not os.path.dirname(self.dir):
+            fname = os.path.join(os.getcwd(), fname)
+        #Determine if the target directory is in pnfs namespace
+        if fname[:6] != "/pnfs/":
+            raise IOError(errno.EINVAL,
+                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+
+        #Determine if the tag file exists.
+        pstat = os.stat(fname)
+        if not stat:
+            print os.strerror(errno.EINVAL) + ": Tag not found"
+            return 1
+        
+        #Deterine the existing ownership.
+        uid = pstat[stat.ST_UID]
+        gid = pstat[stat.ST_GID]
+
+        #Determine if the owner or owner.group was specified.
+        owner = intf.owner.split(".")
+        if len(owner) == 1:
+            uid = owner[0]
+        elif len(owner) == 2:
+            uid = owner[0]
+            gid = owner[1]
+        else:
+            print os.strerror(errno.EINVAL) + ": Incorrect owner field"
+            return 1
+        
+        if uid and type(uid) != type(1):
+            try:
+                uid = pwd.getpwnam(str(uid))[2]
+            except KeyError:
+                print os.strerror(errno.EINVAL) + ": Not a valid user"
+                return 1
+
+        if gid and type(gid) != type(1):
+            try:
+                gid = grp.getgrnam(str(gid))[2]
+            except KeyError:
+                print os.strerror(errno.EINVAL) + ": Not a valid group"
+                return 1
+
+        try:
+            os.chown(fname, uid, gid)
+            #os.utime(fname, None)
+        except OSError, detail:
+            print str(detail)
+            return 1
+
+        return 0
+
+
+    def ptagchmod(self, intf):
+        #Format the tag filename string.
+        fname = os.path.join(self.dir, ".(tag)(%s)" % (intf.named_tag,))
+        #If directory is empty indicating the current directory, prepend it.
+        if not os.path.dirname(self.dir):
+            fname = os.path.join(os.getcwd(), fname)
+        #Determine if the target directory is in pnfs namespace
+        if fname[:6] != "/pnfs/":
+            print os.strerror(errno.EINVAL) + ": Not a valid pnfs directory"
+            return 1
+
+        #Determine if the tag file exists.
+        pstat = os.stat(fname)
+        if not stat:
+            print os.strerror(errno.EINVAL) + ": Tag not found"
+            return 1
+        
+        #Deterine the existing ownership.
+        st_mode = pstat[stat.ST_MODE]
+
+        try:
+            #If the user entered the permission numerically, this is it...
+            set_mode = enstore_functions2.numeric_to_bits(intf.permissions)
+        except (TypeError, ValueError):
+            #...else try the symbolic way.
+            try:
+                set_mode = enstore_functions2.symbolic_to_bits(
+                    intf.permissions, st_mode)
+            except (TypeError, ValueError):
+                print "%s: Invalid permission field" % \
+                      (os.strerror(errno.EINVAL),)
+                return 1
+        try:
+            os.chmod(fname, int(set_mode))
+            #os.utime(fname, None)
+        except OSError, detail:
+            print str(detail)
+            return 1
+
+        return 0
+        
+    ##########################################################################
     #Print or edit the library
     def plibrary(self, intf):
         try:
