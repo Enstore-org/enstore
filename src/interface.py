@@ -51,24 +51,31 @@ class Interface:
         self.parse_options()
 
     def charopts(self):
+        if 0: print self # lint fix
         return [""]
 
     def help_options(self):
+        if 0: print self # lint fix
 	return ["help", "usage_line"]
 
     def config_options(self):
+        if 0: print self # lint fix
 	return ["config_host=", "config_port="]
 
     def alive_rcv_options(self):
+        if 0: print self # lint fix
 	return ["alive_rcv_timeout=","alive_retries="]
 
     def verbose_options(self):
+        if 0: print self # lint fix
 	return ["verbose=","server_verbose="]
 
     def alive_options(self):
+        if 0: print self # lint fix
 	return ["alive"]+self.alive_rcv_options()
 
     def format_options(self, opts, prefix):
+        if 0: print self # lint fix
 	# put the options in alphabetical order and add a "--" to the front of
 	# each
 	opts.sort()
@@ -78,15 +85,19 @@ class Interface:
 	return nopts
 
     def missing_parameter(self, param):
+        if 0: print self # lint fix
 	generic_cs.enprint("ERROR: missing parameter "+repr(param))
 
     def parameters(self):
+        if 0: print self # lint fix
 	return " "
 
     def help_prefix(self):
+        if 0: print self # lint fix
 	return "python "+repr(sys.argv[0])+" [opts] "
 
     def help_suffix(self):
+        if 0: print self # lint fix
 	return "\n\n\t where 'opts' are:\n"
 
     def help_line(self):
@@ -124,6 +135,7 @@ class Interface:
             self.check_port(value)
 
     def strip(self, value):
+        if 0: print self # lint fix
 	return value
 
     def parse_options(self):
@@ -160,6 +172,7 @@ class Interface:
                 # bomb out if we can't find the file
                 if len(self.config_file) :
                     statinfo = os.stat(self.config_file)
+                    if 0: print statinfo # lint fix
             elif opt == "--dict" :
                 self.dict = 1
             elif opt == "--get_keys" :

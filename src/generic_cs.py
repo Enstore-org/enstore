@@ -12,6 +12,8 @@ import Trace
 ENNONE = 0
 ENNONE_V = -1
 
+if 0: print ENNONE,ENNONE_V # lint fix
+
 # define the bits used in the verbose mask
 SERVER            = 000000000001     # 1
 CLIENT            = 000000000002     # 2
@@ -26,6 +28,9 @@ ALL_SERVER        = SERVER | ALIVE | CONNECTING | SOCKET_ERROR
 ALL_CLIENT        = CLIENT | ALIVE | CONNECTING | SOCKET_ERROR
 PRETTY_PRINT      = 020000000000
 ALL               = 037777777777
+
+if 0: print SERVER,CLIENT,CONNECTING,DATA_ACCESS_LAYER,SOCKET_ERROR,\
+            ALIVE,PNFS,INTERFACE,DEBUG,ALL_SERVER,ALL_CLIENT,PRETTY_PRINT,ALL               
 
 global_print_id = ""
 global_logger = ENNONE
@@ -145,6 +150,7 @@ class GenericCS:
 	Trace.trace(23,"}self.enprint ")
 
     def add_logger(self, logger, log_severity=ENNONE):
+        if 0: print self #quiet lint
 	Trace.trace(23,"{self.add_logger ")
 	add_logger(logger, log_severity)
 	Trace.trace(23,"}self.add_logger ")
