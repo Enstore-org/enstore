@@ -80,6 +80,13 @@ QUALIFIERS=sirius
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
+QUALIFIERS=woodlawn
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, woodlawn)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/woodlawn.conf)
+                exeActionRequired(COMMON_SETUP)
+
+FLAVOR=ANY
 QUALIFIERS=efb
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, ripsgi.fnal.gov)
@@ -156,7 +163,7 @@ COMMON:
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up and use it
-                setupOptional("python v2_0_E_1") 
+                setupOptional("python v2_2_2") 
                 # if no python from ups available, we need it from the user's path
                 exeAccess("python")
                 # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
@@ -178,7 +185,7 @@ COMMON:
 
                 # we now need swig to generate the modules.
                 # as with python, allow the user to use his local copy if he doesn't have swig installed
-                setupOptional("swig v1_1p5")
+                setupOptional("swig")
                 # if no swig from ups available, we need it from the user's path
                 exeAccess("swig")
 
