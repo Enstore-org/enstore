@@ -14,7 +14,7 @@ import time
 def getNumber(developer):
     if not dev_phones.phones.has_key(developer):
         dev = string.lower(developer)
-        if dev_phones.alias.kas_key(dev):
+        if dev_phones.alias.has_key(dev):
             developer = dev
         else:
             developer = dev_phones.callme
