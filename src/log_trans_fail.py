@@ -31,8 +31,6 @@ def get_failures(log,grepv='GONE',grep=""):
         grepv_ = "JDE|"+grepv
     else:
         grepv_ = grepv
-    #FIXME bug in enstore - skip crc mismatch for a few weeks 3/30/01
-    grepv_ = "MISMATCH|"+grepv_
     
     # just force the directory.
     failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null| egrep -v "%s" | egrep "%s"' %(log,grepv_,grep))
