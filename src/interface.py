@@ -386,8 +386,6 @@ class Interface:
                 self.load = 1
             elif opt == "--logfile-dir":
                 self.logfile_dir = value
-            elif opt == "--client-name":
-                self.client_name = value
             elif opt == "--max-encp-lines":
                 self.max_encp_lines = int(value)
             elif opt == "--max-retry":
