@@ -1648,7 +1648,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def start_draining(self, ticket):       # put itself into draining state
         if self.state is ACTIVE:
             self.state = DRAINING
-        elif self.state is IDLE:
+        elif self.state in (IDLE, ERROR):
             self.state = OFFLINE
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
