@@ -24,8 +24,8 @@ all:
 clean:
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	rm -f *.pyc
-	- rm -rf SDSSCPBIN
-	- rm -rf SDSSCPBIN_TEMP
+	- rm -rf SDSSCP_BIN
+	- rm -rf SDSSCP_TEMP
 
 check:
 	$(ENSTORE_DIR)/tools/mylint.py ./*.py
