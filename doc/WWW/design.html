@@ -390,7 +390,7 @@ The fields tracked are as follows:
 <td valign=top><b>Comments</b>
 <tr>
 <td valign=top>bfid
-<td valign=top>primary key
+<td valign=top>string [primary_key]
 <td valign=top>bit file id; uniquely identifies every file in the system.
 <tr>
 <td valign=top>external_label
@@ -412,7 +412,8 @@ media.
 <td valign=top>Number of bytes used for a sanity crc and the sanity crc
 itself.  The sanity crc is just the normal crc but only for the 1st N bytes in
 the file. This allows the mover to check early in the transfer process that it
-probably has the right user file selected.
+probably has the right user file selected; it at least will know if it has the
+wrong file.
 </table>
 <p>
 The file clerk supports the following requests:
@@ -426,7 +427,7 @@ The file clerk supports the following requests:
 1.3.3 Library Manager
 </h3>
 The library manager is a server which queues up and dispatches work for
-a virtual library. There is one library manager for each virtual library
+a virtual library. There is one library manager for each virtual library.
 It has three types of clients
 <ol>
 <li><em>Users</em> -- seeking to have their files read or written files.
@@ -438,29 +439,31 @@ It has three types of clients
 </h3>
 <dl>
 <dt>Writes into the system
-<dd><em>pnfs</em> is used to identify
-    the library for a write request, so the <em>encp</em> program composes
-    a write request and contacts the appropriate library manager
+<dd>Based on the user's mss destination filename, a <em>pnfs</em> tag provides the identify
+    the library for a write request allowing the <em>encp</em> program to compose
+    a write request and contact the appropriate library manager
     directly.
     The library manager queues the work, and acknowledges the request.
 
 <dt>Read from the system
-<dd><em>pnfs</em> holds only the bit
-    file i.d., so <em>encp</em> contacts the bit file clerk, and that
-    software ultimately contacts the appropriate volume manager, which
-    queues up the work.
+<dd>Given the fact that users may mv the pnfs files, on reads from the system,
+     <em>pnfs</em> can only provide the bit
+    file ID associated with the file. In this case, <em>encp</em> contacts the
+     bit file clerk, and that
+    software ultimately contacts the appropriate library manager to 
+    queue up the work.
 </dl>
-The work is conceptually prioritized.
+Work can be prioritized.
 Larger priority numbers means higher priority.
-Currently, write is of priority 10, read priority 1.
-The priority is conceptually more flexible than that.
+Currently, write and read are both priority 1 for our test purposes.
+Any priority mechanism should be able to be developed.
 However, the system will exhaust all work for a volume,
 given that it has been mounted, regardless of priority.
 <p>
 <h3><a name="mover_request">
 1.3.3.2 Movers' Requests
 </h3>
-Movers seek to transport data between tape and users over a socket.
+Movers seek to transport data between media and users over a TCP socket.
 Movers contact library managers seeking work. If the library manager
 has work, the mover is requested to mount a volume, and report
 back. When reporting back, the mover may be told to contact a waiting
@@ -473,11 +476,11 @@ trouble.  This is summarized in the tables below
 <td><b>Mover sends</b>
 <td><b>Library manager may respond</b>
 <tr>
-<td>idle_mover
-<td>bind a volume, or just acknowledge
+<td valign=top>idle_mover
+<td>if work needs to be done - bind a volume; <br>or if no work - just acknowledge
 <tr>
-<td>have_bound_volume
-<td>read, write or unbind
+<td valign=top>have_bound_volume
+<td>if reads/writes pending for the volume - read/write;  <br>or if no work - unbind volume
 <tr>
 <td>unilateral_unbind
 <td>just acknowledge
@@ -493,29 +496,29 @@ trouble.  This is summarized in the tables below
 <td valign=top>mover crashed and was re-started
 <tr>
 <td valign=top>
-<td valign=top>have_bnd_vol
+<td valign=top>have_bound_volume
 <td valign=top>look for work on that volume<br>
     if work, give it<br>
-    if none, give unbind
+    if none, give unbind volume
 <tr>
 <td valign=top>
-<td valign=top>unilat_unbnd
+<td valign=top>unilateral_unbind
 <td valign=top>take any work reserved for that mover and put it back
    in the unassigned work queue
 <tr>
 <td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle mover
 <td valign=top>idle_mover
-<td valign=top>mover is available for work, If I have work I may ask it to bind a
+<td valign=top>mover is available for work, If more work available, bind a 
     volume
 <tr>
 <td valign=top>
-<td valign=top>have_bnd_vol
-<td valign=top>I have been restarted, the mover had a volume from a previous
+<td valign=top>have_bound_volume
+<td valign=top>it has restarted, the mover had a volume from a previous
     instance of me, tell it to unbind
 <tr>
 <td valign=top>
-<td valign=top>Unilat_unbnd
-<td valign=top>Just ack.
+<td valign=top>Unilateral_unbind
+<td valign=top>Just acknowledge
 </table>
 
 Note that if a mover should crash holding a volume, the worst that can
@@ -526,7 +529,9 @@ should be able to continue servicing requests.
 <h3><a name="pub_request">
 1.3.3.3 Publisher Requests
 </h3>
-Publishers are not yet implemented.
+It is possible to query the library manager and get information about its
+internal queues thereby knowing where work is.  More work needs to be done
+before this can be considered functional.
 
 <h3><a name="mover">
 1.3.4 Mover
