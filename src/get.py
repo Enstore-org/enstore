@@ -4,6 +4,7 @@ import os
 import time
 import pprint
 import select
+import socket
 
 import encp
 import pnfs
@@ -11,11 +12,12 @@ import e_errors
 import delete_at_exit
 import callback
 import host_config
+import Trace
 
 
 def print_usage():
     print "Usage:", os.path.basename(sys.argv[0]), \
-          "<Volume> <Input Dir.> <Output Dir.>"
+          "[--verbose <level>] <Volume> <Input Dir.> <Output Dir.>"
 
 def transfer_file(in_fd, out_fd):
 
@@ -26,19 +28,25 @@ def transfer_file(in_fd, out_fd):
         r, w, x = select.select([in_fd], [], [], 15 * 60)
 
         if in_fd not in r:
-            return -1
+            status = (e_errors.TIMEDOUT, "Read")
+            return {'status' : status, 'bytes' : bytes}
         
         data = os.read(in_fd, 1048576)
 
-        if len(data) == 0:
-            return bytes
+        if len(data) == 0: #If read the EOF, return number of bytes transfered.
+            status = (e_errors.OK, None)
+            return {'status' : status, 'bytes' : bytes}
 
         r, w, x = select.select([], [out_fd], [], 15 * 60)
 
         if out_fd not in w:
-            return -1
+            status = (e_errors.TIMEDOUT, "Write")
+            return {'status' : status, 'bytes' : bytes}
 
         bytes += os.write(out_fd, data)
+        
+    return {'status' : (e_errors.BROKEN, "Reached unreachable code."),
+            'bytes' : bytes}
 
 def get_single_file(work_ticket, control_socket, e):
 
@@ -61,7 +69,7 @@ def get_single_file(work_ticket, control_socket, e):
         try:
             done_ticket = callback.write_tcp_obj(control_socket, work_ticket)
         except e_errors.TCP_EXCEPTION:
-            sys.stderr.write("Unable to communicate request to mover\n",
+            sys.stderr.write("Unable to communicate request to mover.\n",
                              (work_ticket['outfile'], done_ticket['status'],))
             encp.quit(1)
 
@@ -70,8 +78,8 @@ def get_single_file(work_ticket, control_socket, e):
             data_path_socket = encp.open_data_socket(
                 work_ticket['mover']['callback_addr'],
                 work_ticket['callback_addr'][0])
-        except (encp.EncpError,), detail:
-            sys.stderr.write("Unable to open data socket with mover: %s\n",
+        except (encp.EncpError, socket.error), detail:
+            sys.stderr.write("Unable to open data socket with mover: %s\n" %
                              (str(detail),))
             encp.quit(1)
 
@@ -79,6 +87,9 @@ def get_single_file(work_ticket, control_socket, e):
         read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
                                                   [data_path_socket], 15 * 60)
 
+        if data_path_socket not in read_fd:
+            return {'status':(e_errors.TIMEDOUT, "No data received")}
+            
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
 
@@ -91,6 +102,8 @@ def get_single_file(work_ticket, control_socket, e):
                                      None, None, e)
 
         if e_errors.is_ok(result_dict):
+            work_ticket = encp.combine_dict(result_dict, work_ticket)
+            delete_at_exit.unregister(work_ticket['outfile']) #don't delete
             return encp.combine_dict(result_dict, work_ticket)
         elif e_errors.is_retriable(result_dict['status'][0]):
             continue
@@ -104,6 +117,13 @@ def main(e):
 
     t0 = time.time()
     tinfo = {'t0' : t0, 'encp_start_time' : t0}
+
+    #Initialize the Trace module.
+    Trace.init("GET")
+    for x in xrange(6, e.verbose+1):
+        Trace.do_print(x)
+    for x in xrange(1, e.verbose+1):
+        Trace.do_message(x)
 
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = encp.get_callback_addr(e)
@@ -130,6 +150,8 @@ def main(e):
 
     #Only the first submition goes to the LM for volume reads.
     requests_per_vol[e.volume][0]['method'] = "read_tape_start" #evil hack
+    Trace.message(10, "LM SUBMITION TICKET:")
+    Trace.message(10, pprint.pformat(requests_per_vol[e.volume][0]))
     submitted, reply_ticket = encp.submit_read_requests(
             [requests_per_vol[e.volume][0]], tinfo, e)
 
@@ -138,6 +160,7 @@ def main(e):
                          (e.volume, reply_ticket['status']))
         encp.quit(1)
 
+    Trace.message(4, "Read tape submition sent to LM.")
 
     #Open the routing socket.
     config = host_config.get_config()
@@ -145,6 +168,8 @@ def main(e):
     try:
         #There is no need to do this on a non-multihomed machine.
         if config and config.get('interface', None):
+            Trace.message(4, "Opening routing socket.")
+            
             ticket, use_listen_socket = encp.open_routing_socket(
                 udp_server,
                 [requests_per_vol[e.volume][0]['unique_id']], #unique_id_list
@@ -154,12 +179,15 @@ def main(e):
                 sys.stderr.write("Unable to handle routing: %s\n",
                          (reply_ticket['status'],))
                 encp.quit(1)
+
+            Trace.message(4, "Opened routing socket.")
     except (encp.EncpError,), detail:
         sys.stderr.write("Unable to handle routing: %s\n",
                          (reply_ticket['status'],))
         encp.quit(1)
 
     #Open the control socket.
+    Trace.message(4, "Opening control socket.")
     try:
         control_socket, mover_address, ticket = \
                         encp.open_control_socket(use_listen_socket, 15 * 60)
@@ -172,21 +200,49 @@ def main(e):
         sys.stderr.write("Unable to open control socket with mover: %s\n",
                          (reply_ticket['status'],))
         encp.quit(1)
+
+    Trace.message(4, "Opened control socket.")
+
+    # If this is a volume where the file information is not known...
+    if requests_per_vol[e.volume][0].get('bfid', None) == None:
+        # Keep looping until last file read error occurs.
+        pass
+    # ... Or there is file information is already known.
+    else:
+        # Loop through the already known files list.
+        for request in requests_per_vol[e.volume]:
+
+            Trace.message(4, "Reading %s." % request['outfile'])
+
+            request = encp.combine_dict(ticket, request)
+            done_ticket = get_single_file(request, control_socket, e)
+
+            if e_errors.is_ok(done_ticket):
+                Trace.message(1,"File %s read successfully." % request['infile'])
+            else:
+                Trace.message(1,"File %s read failed: %s" %
+                              (request['infile'], done_ticket['status']))
+
+            #print "DONE_TICKET:"
+            #pprint.pprint(done_ticket)
+            
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            #check_crc(done_ticket, e, out_fd) #Check the CRC.
+            #verify_file_size(done_ticket) #Verify size is the same.
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
+
+    #We are done, tell the mover.
+    nowork_ticket = {'work': "nowork", 'method' : "no_work"}
+    try:
+        done_ticket = callback.write_tcp_obj(control_socket, nowork_ticket)
+    except e_errors.TCP_EXCEPTION:
+        sys.stderr.write("Unable to terminate communication "
+                         "with mover cleanly.\n")
+        encp.quit(1)
+
+    #Either success or failure; this can be closed.
+    encp.close_descriptors(control_socket)
     
-
-    # Loop through the files.
-    for request in requests_per_vol[e.volume]:
-
-        print "Reading %s." % request['outfile']
-
-        encp.combine_dict(ticket, request)
-        done_ticket = get_single_file(request, control_socket, e)
-
-        if e_errors.is_ok(done_ticket):
-            print "File %s read successfully."
-        else:
-            print "File %s read failed."
-
     encp.quit(0)
 
 def do_work(intf):
@@ -194,9 +250,9 @@ def do_work(intf):
 
     try:
         main(intf)
-        quit(0)
+        encp.quit(0)
     except SystemExit, msg:
-        quit(1)
+        encp.quit(1)
 
 if __name__ == '__main__':
 
@@ -205,21 +261,21 @@ if __name__ == '__main__':
         print_usage()
         sys.exit(1)
 
-    if not encp.is_volume(sys.argv[1]):
+    if not encp.is_volume(sys.argv[-3]):
         sys.stderr.write("First argument is not a volume name.\n")
         sys.exit(1)
         
-    if not os.path.exists(sys.argv[2]) or not os.path.isdir(sys.argv[2]) \
-       or not pnfs.is_pnfs_path(sys.argv[2]):
+    if not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
+       or not pnfs.is_pnfs_path(sys.argv[-2]):
         sys.stderr.write("Second argument is not an input directory.\n")
         sys.exit(1)
 
-    if not os.path.exists(sys.argv[3]) or not os.path.isdir(sys.argv[3]):
+    if not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
         sys.stderr.write("Third argument is not an output directory.\n")
         sys.exit(1)
 
-    intf = encp.EncpInterface([sys.argv[0]] + sys.argv[2:4], 0) # zero = admin
-    intf.volume = sys.argv[1]
+    intf = encp.EncpInterface(sys.argv[0:-3] + sys.argv[-2:], 1) # one = user
+    intf.volume = sys.argv[-3] #Hackish
 
     #print encp.format_class_for_print(intf, "intf")
     
