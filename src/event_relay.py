@@ -181,11 +181,9 @@ class Relay:
 			self.ev_print("    sendto return = %s"%(l,))
 		    except socket.error, detail:
 			extra = "%s"%(detail,)
-			self.ev_print("    sendto return = %s"%(l,))
 			self.ev_print("    ERROR: %s"%(detail,))
 			self.handle_error(addr, msg, extra)
                     except:
-			self.ev_print("    sendto return = %s"%(l,))
 			self.ev_print("    ERROR: unknown")
 			self.handle_error(addr, msg)
 if __name__ == '__main__':
