@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy  
+all:	 adler32.a Makefile.modules Modules tape_copy enroute2
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -36,6 +36,10 @@ adler32.a: adler32.c
 tape_copy: tape_copy.c
 	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
+
+enroute2: enroute2.c
+	$(CC) enroute2.c -o enroute2 $(LIBSOCKETNSL)
+
 installpyc:
 	for m in $(PYMODULES) the-end; do \
 	  if [ "$$m" != the-end ]; then \
@@ -46,7 +50,7 @@ installpyc:
 
 clean:
 	-rm Makefile.modules
-	-rm -f *.o *.so *~ *# so_locations sedscript
+	-rm -f *.o *.so *~ *# so_locations sedscript enroute2
 	-rm -rf mksetup
 	-rm -rf tape_copy
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
