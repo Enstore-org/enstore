@@ -447,8 +447,8 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		cp     $ENSTORE_DIR/volume_import/*.c           $INSTALLDIR/volume_import/
 		cp     $ENSTORE_DIR/volume_import/*.h           $INSTALLDIR/volume_import/
 		copyit $ENSTORE_DIR/volume_import/Makefile      $INSTALLDIR/volume_import/
-                copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
-                copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
+#               copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
+#               copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
                 copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
                 copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
                 copyit $ENSTORE_DIR/ups/encp_mni_install.sh     $INSTALLDIR/encp_mni_install.sh
