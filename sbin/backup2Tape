@@ -14,10 +14,10 @@ fi
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 # function to return date so it can be used in filename
-date_string() { date +"%Y-%m-%d.%H.%M" }
+date_string() { date +"%Y-%m-%d.%H.%M" ; }
 
 # function to return date so it can be used in directory path
-date_string_d() { date +"%Y/%m/%d/%H" }
+date_string_d() { date +"%Y/%m/%d/%H" ; }
 
 today=`date +"%b %d"`
 now=`date +"%s"`
