@@ -46,7 +46,7 @@ sdsscp:
 	(cd SDSSCP_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 
         #Copy the important items and cleanup.
-	cp SDSSCP_TEMP/sdsscp $(ENSTORE_DIR)/ups/chooseConfig SDSSCP_BIN
+	cp SDSSCP_TEMP/sdsscp $(ENSTORE_DIR)/src/GETBIN/get $(ENSTORE_DIR)/ups/chooseConfig SDSSCP_BIN
 	sed -e 's/encp/sdsscp/g' $(ENSTORE_DIR)/ups/encp.table > SDSSCP_BIN/sdsscp.table
 	- rm -rf SDSSCP_TEMP
 
