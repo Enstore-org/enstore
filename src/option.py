@@ -745,8 +745,17 @@ class Interface:
         for opt in self.options.keys():
             if opt not in valid_option_list:
                 msg = "Developer error.  Option '%s' not in valid option list."
-                print msg % (opt,)
+                sys.stderr.write(msg % (opt,) + "\n")
                 sys.exit(1)
+
+    #Verifies that the number of left over options is correct.  If they are
+    # not then the process is killed.
+    def check_correct_count(self, num=0):
+        length = len(self.args)
+        if length > num:
+            extras = string.join(self.args[-(length - num):], " ")
+            msg = "%d extra arguments specified: %s\n" % (length - num, extras)
+            sys.stderr.write(msg)
 
 ############################################################################
 
