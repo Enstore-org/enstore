@@ -819,7 +819,13 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    args.append(rq.ticket['wrapper']['machine'][1])
+                    callback = rq.ticket.get('callback_addr', None)
+                    if callback:
+                        host_from_ticket = hostaddr.address_to_name(callback[0])
+                    else:
+                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    
+                    args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     #Trace.trace(16, "restrict_host_access returned %s"%(ret,))
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
@@ -1065,7 +1071,12 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    args.append(rq.ticket['wrapper']['machine'][1])
+                    callback = rq.ticket.get('callback_addr', None)
+                    if callback:
+                        host_from_ticket = hostaddr.address_to_name(callback[0])
+                    else:
+                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
@@ -1147,7 +1158,12 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    args.append(rq.ticket['wrapper']['machine'][1])
+                    callback = rq.ticket.get('callback_addr', None)
+                    if callback:
+                        host_from_ticket = hostaddr.address_to_name(callback[0])
+                    else:
+                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
@@ -1241,7 +1257,12 @@ class LibraryManagerMethods:
             if rc and fun and action:
                 rq.ticket["status"] = (e_errors.OK, None)
                 if fun == 'restrict_host_access':
-                    args.append(rq.ticket['wrapper']['machine'][1])
+                    callback = rq.ticket.get('callback_addr', None)
+                    if callback:
+                        host_from_ticket = hostaddr.address_to_name(callback[0])
+                    else:
+                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
@@ -1510,7 +1531,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if callback:
                 host_from_ticket = hostaddr.address_to_name(callback[0])
             else:
-                host_from_ticket = w['wrapper']['machine']
+                host_from_ticket = w['wrapper']['machine'][1]
             
             try:
                 if (w['vc']['storage_group'] == storage_group and
@@ -1634,7 +1655,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
-                args.append(ticket['wrapper']['machine'][1])
+                callback = ticket.get('callback_addr', None)
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                else:
+                    host_from_ticket = ticket['wrapper']['machine'][1]
+                args.append(host_from_ticket)
             
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, 'reject')):
@@ -1765,7 +1791,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
-                args.append(ticket['wrapper']['machine'][1])
+                callback = ticket.get('callback_addr', None)
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                else:
+                    host_from_ticket = ticket['wrapper']['machine'][1]
+                args.append(host_from_ticket)
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, 'reject')):
                 format = "access restricted for %s : library=%s family=%s requester:%s"
