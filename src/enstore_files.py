@@ -550,7 +550,8 @@ class ScheduleFile(EnFile):
 	    outage_d = {}
 	    offline_d = {}
 	    seen_down_d = {}
-        self.close()
+	if self.openfile:
+	    self.close()
         return outage_d, offline_d, seen_down_d
 
     # turn the dictionary into python code to be written out to the file
