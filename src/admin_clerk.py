@@ -21,15 +21,16 @@ import generic_server
 import db
 import dbutil
 import Trace
+import e_errors
 
 class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
    def select(self,ticket):
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         try:
             self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
         except:
-            ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
             self.reply_to_caller(ticket)
             return
         joint=0
@@ -41,13 +42,14 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
 	elif ticket['dbname']=="file"  :
 	    dict=dictF
 	else :
-	   ticket["status"] = "wrong name "+dbname+"for database table"
+	   ticket["status"] = (e_errors.DOESNOTEXIST, \
+			       "wrong name "+dbname+"for database table")
 	   self.reply_to_caller(ticket) 
 	   return
         criteria=self.modifyOpt(ticket['criteria'])
         del ticket['criteria']
         self.get_user_sockets(ticket)
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
 	callback.write_tcp_socket(self.data_socket,ticket,
                                   "admin_clerk select, controlsocket")
   	if len(criteria)==0 :

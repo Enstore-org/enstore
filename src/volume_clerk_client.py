@@ -19,6 +19,7 @@ import udp_client
 import db
 import Trace
 import pdb
+import e_errors
 
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
@@ -114,7 +115,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
-        if ticket['status'] != "ok":
+        if ticket['status'][0] != e_errors.OK:
             Trace.trace(0,"vcc.get_vols: sending ticket"+repr(ticket))
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
                   +repr(ticket)
@@ -136,7 +137,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 print ("vcc.get_vols: imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
-        if ticket["status"] != "ok":
+        if ticket["status"][0] != e_errors.OK:
             Trace.trace(0,"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +repr(address)+" failed to setup transfer: "\
@@ -166,7 +167,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
         control_socket.close()
-        if done_ticket["status"] != "ok":
+        if done_ticket["status"][0] != e_errors.OK:
             Trace.trace(0,"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
@@ -391,7 +392,7 @@ if __name__ == "__main__":
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
 
-    if ticket['status'] != 'ok':
+    if ticket['status'][0] != e_errors.OK:
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         Trace.trace(0,"vcc BAD STATUS - "+repr(ticket['status']))

@@ -10,6 +10,7 @@ import os
 import time
 import copy
 import pprint
+import errno
 
 # enstore imports
 import timeofday
@@ -22,6 +23,7 @@ import dispatching_worker
 import generic_server
 import db
 import Trace
+import e_errors
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
@@ -39,7 +41,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
@@ -47,8 +50,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # can't have 2 with same label
         if dict.has_key(external_label):
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" already exists"
+            ticket["status"] = (errno.errorcode[errno.EEXIST], \
+				"Volume Clerk: volume "+external_label\
+                               +" already exists")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
@@ -60,7 +64,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             try:
                 record[key] = ticket[key]
             except KeyError:
-                ticket["status"] = "Volume Clerk: "+key+" is missing"
+                ticket["status"] = (e_errors.KEYERROR, \
+				    "Volume Clerk: "+key+" is missing")
                 pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
@@ -118,8 +123,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             try:
                 msize = sizes[ticket['media_type']]
             except:
-                ticket['status'] = "Volume Clerk: "\
-                                   +"unknown media type = unknown blocksize"
+                ticket['status'] = (e_errors.UNKNOWNMEDIA, \
+				    "Volume Clerk: "\
+                                   +"unknown media type = unknown blocksize")
                 pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}addvol "+repr(ticket["status"]))
@@ -128,7 +134,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # write the ticket out to the database
         dict[external_label] = record
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,'}addvol ok '+repr(external_label)+" "+repr(record))
         return
@@ -137,7 +143,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          Trace.trace(0,"}addvol "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -152,7 +158,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}delvol "+repr(ticket["status"]))
@@ -161,11 +168,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # delete if from the database
         try:
             del dict[external_label]
-            ticket["status"] = "ok"
+            ticket["status"] = (e_errors.OK, None)
             Trace.trace(10,'}delvol ok '+repr(external_label))
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             Trace.trace(0,"}delvol "+repr(ticket["status"]))
 
@@ -176,7 +184,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          Trace.trace(0,"}delvol "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -191,7 +199,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             vol_veto = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}next_write_volume "+repr(ticket["status"]))
@@ -209,7 +218,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key = "first_found"
             first_found = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}next_write_volume "+repr(ticket["status"]))
@@ -262,7 +272,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,'next_write_vol found '+repr(v['external_label']))
             # supposed to return first volume found?
             if first_found:
-                v["status"] = "ok"
+                v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
                 Trace.trace(12,'}next_write_vol label = '+\
                             repr(v['external_label'])+" "+repr(v))
@@ -275,7 +285,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # return what we found
         if len(vol) != 0:
-            vol["status"] = "ok"
+            vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
             Trace.trace(12,'}next_write_vol label = '+\
                         repr(v['external_label'])+" "+repr(v))
@@ -316,7 +326,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
-                v["status"] = "ok"
+                v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
                 Trace.trace(12,'}next_write_vol label = '+\
                             repr(v['external_label'])+" "+repr(v))
@@ -336,14 +346,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
-            vol["status"] = "ok"
+            vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
             Trace.trace(12,'}next_write_vol label = '+\
                         repr(v['external_label'])+" "+repr(v))
             return
 
         # nothing was available at all
-        ticket["status"] = "Volume Clerk: no new volumes available"
+        ticket["status"] = (e_errors.NOVOLUME, \
+			    "Volume Clerk: no new volumes available")
         logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
         self.reply_to_caller(ticket)
         Trace.trace(0,"}delvol "+repr(ticket["status"]))
@@ -354,7 +365,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(0,"}next_write_volume "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          logc.send(log_client.ERROR,1, str(ticket) )
          self.reply_to_caller(ticket)
          return
@@ -369,7 +380,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
@@ -379,8 +391,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[external_label])
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
@@ -393,7 +406,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(12,'set_remaining bytes '+key+'='+\
                             repr(record[key]))
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
@@ -410,7 +424,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(12,'set_remaining_bytes '+key+'='+\
                             repr(ticket[key]))
             except KeyError:
-                ticket["status"] = "Volume Clerk: "+key+" key is missing"
+                ticket["status"] = (e_errors.KEYERROR, \
+				    "Volume Clerk: "+key+" key is missing")
                 pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
@@ -418,14 +433,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # record our changes
         dict[external_label] = copy.deepcopy(record)
-        record["status"] = "ok"
+        record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(12,'}set_remaining_bytes '+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_remaining_bytes "+repr(ticket["status"]))
@@ -441,7 +456,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}update_counts "+repr(ticket["status"]))
@@ -451,8 +467,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[external_label])
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}update_counts "+repr(ticket["status"]))
@@ -469,7 +486,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(12,'update_counts '+key+'='+\
                             repr(ticket[key]))
             except KeyError:
-                ticket["status"] = "Volume Clerk: "+key+" key is missing"
+                ticket["status"] = (e_errors.KEYERROR, \
+				    "Volume Clerk: "+key+" key is missing")
                 pprint.pprint(ticket)
                 self.reply_to_caller(ticket)
                 Trace.trace(0,"update_counts "+repr(ticket["status"]))
@@ -477,14 +495,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # record our changes
         dict[external_label] = copy.deepcopy(record)
-        record["status"] = "ok"
+        record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(12,'}update_counts ok '+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}update_counts "+repr(ticket["status"]))
@@ -500,7 +518,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
@@ -509,13 +528,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # get the current entry for the volume
         try:
             record = copy.deepcopy(dict[external_label])
-            record["status"] = "ok"
+            record["status"] = e_errors.OK, None
             self.reply_to_caller(record)
             Trace.trace(12,'}inquire_vol '+repr(record))
             return
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
@@ -523,7 +543,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}inquire_vol "+repr(ticket["status"]))
@@ -539,7 +559,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
@@ -549,8 +570,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[external_label])
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
@@ -559,14 +581,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # update the fields that have changed
         record ["system_inhibit"] = "none"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-        record["status"] = "ok"
+        record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,'}clr_system_inhibit '+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
@@ -582,7 +604,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_writing "+repr(ticket["status"]))
@@ -592,8 +615,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[external_label])
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_writing "+repr(ticket["status"]))
@@ -602,14 +626,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # update the fields that have changed
         record ["system_inhibit"] = "writing"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-        record["status"] = "ok"
+        record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(16,'}set_writing '+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_writing "+repr(ticket["status"]))
@@ -625,7 +649,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket[key]
         except KeyError:
-            ticket["status"] = "Volume Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
@@ -635,8 +660,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[external_label])
         except KeyError:
-            ticket["status"] = "Volume Clerk: volume "+external_label\
-                               +" no such volume"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
@@ -645,14 +671,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # update the fields that have changed
         record ["system_inhibit"] = "readonly"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-        record["status"] = "ok"
+        record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         Trace.trace(10,"}set_system_readonly "+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
@@ -663,13 +689,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_hung(self,ticket):
      Trace.trace(10,'{set_hung '+repr(ticket))
      try:
-        self.reply_to_caller({"status" : "ok"})
+        self.reply_to_caller({"status" : (e_errors.OK, None)})
         Trace.trace(10,'}set_hung')
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
@@ -679,12 +705,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
         Trace.trace(20,'get_vols R U CRAZY? '+repr(ticket))
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         try:
             self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
         except:
-            ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
             self.reply_to_caller(ticket)
             Trace.trace(0,"}get_vols "+repr(ticket["status"]))
             return
@@ -696,7 +722,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         Trace.init("get_vols")
         self.get_user_sockets(ticket)
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         callback.write_tcp_socket(self.data_socket,ticket,
                                   "volume_clerk get_vols, controlsocket")
         msg=""
@@ -740,14 +766,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def start_backup(self,ticket):
         Trace.trace(5,'{start_backup '+repr(ticket))
         dict.start_backup()
-        self.reply_to_caller({"status" : "ok",\
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "start_backup"  : 'yes' })
         Trace.trace(5,'}start_backup')
 
     def stop_backup(self,ticket):
         Trace.trace(5,'{stop_backup '+repr(ticket))
         dict.stop_backup()
-        self.reply_to_caller({"status" : "ok",\
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "stop_backup"  : 'yes' })
         Trace.trace(5,'}stop_backup')
 

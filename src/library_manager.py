@@ -23,6 +23,7 @@ import udp_client
 import pprint
 
 import manage_queue
+import e_errors
 
 pending_work = manage_queue.Queue()       # list of read or write work tickets
 
@@ -195,7 +196,7 @@ def next_work_any_volume(csc):
 
             # If the volume clerk has no volumes and our veto list was empty,
             # then we have run out of space for this file family == error
-            if (len(vol_veto_list) == 0 and v["status"] != "ok"):
+            if (len(vol_veto_list) == 0 and v["status"][0] != e_errors.OK):
                 w["status"] = v["status"]
                 return w
             # found a volume that has write work pending - return it
@@ -211,7 +212,7 @@ def next_work_any_volume(csc):
             raise "assertion error"
         w=pending_work.get_next()
     # if the pending work queue is empty, then we're done
-    return {"status" : "nowork"}
+    return {"status" : (e_errors.NOWORK, None)}
 
 
 # is there any work for this volume??  v is a work ticket with info
@@ -239,7 +240,7 @@ def next_work_this_volume(v):
             return w
         w=pending_work.get_next()
     # if the pending work queue for this volume is empty, then we're done
-    return {"status" : "nowork"}
+    return {"status" : (e_errors.NOWORK, None)}
 
 ##############################################################
 
@@ -348,9 +349,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	"""
 	self.handle_timeout()
 	if movers:
-	    ticket["status"] = "ok"
+	    ticket["status"] = (e_errors.OK, None)
 	else:
-	    ticket["status"] = "No movers"
+	    ticket["status"] = (e_errors.NOMOVERS, None)
 	    
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
@@ -385,9 +386,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	"""
 	self.handle_timeout()
 	if movers:
-	    ticket["status"] = "ok"
+	    ticket["status"] = (e_errors.OK, None)
 	else:
-	    ticket["status"] = "No movers"
+	    ticket["status"] = (e_errors.NOMOVERS, "No movers")
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
 	    return
@@ -433,14 +434,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pprint.pprint(w)
 
         # no work means we're done
-        if w["status"] == "nowork":
+        if w["status"][0] == e_errors.NOWORK:
             self.reply_to_caller({"work" : "nowork"})
 
         # ok, we have some work - bind the volume
-        elif w["status"] == "ok":
+	elif w["status"][0] == e_errors.OK:
 	    # check if the volume for this work had failed on this mover
 	    for item in self.suspect_volumes:
-		if (w["fc"]['external_label'] == item['external_label']):
+		if (w['fc']['external_label'] == item['external_label']):
 		    if list: print "FOUND volume ", item['external_label']
 		    for i in item['movers']:
 			if i == mticket['mover']:
@@ -452,7 +453,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    print "Number of movers for suspect volume", \
 				  len(item['movers'])
 			pending_work.delete_job(w)
-			w['status'] = 'Read failed'
+			w['status'] = (e_errors.READERROR, 'Read failed')
 			send_regret(w)
 			#remove volume from suspect volume list
 			self.suspect_volumes.remove(item)
@@ -462,7 +463,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    print "There is only one mover in the \
 			    configuration"
 			pending_work.delete_job(w)
-			w['status'] = 'Read failed' # set it to something more specific
+			w['status'] = (e_errors.READERROR, 'Read failed') # set it to something more specific
 			send_regret(w)
 			#remove volume from suspect volume list
 			self.suspect_volumes.remove(item)
@@ -533,7 +534,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(mticket)
-        if w["status"] == "ok":
+        if w["status"][0] == e_errors.OK:
             format = "%s next work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
@@ -551,7 +552,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 
         # if the pending work queue is empty, then we're done
-        elif  w["status"] == "nowork":
+        elif  w["status"][0] == e_errors.NOWORK:
             format = "unbind vol %s mover=%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
                                        mticket["external_label"],
@@ -595,7 +596,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pprint.pprint(self.suspect_volumes)
 	vol_found = 0
 	for item in self.suspect_volumes:
-	    if ticket["fc"]['external_label'] == item['external_label']:
+	    if ticket['fc']['external_label'] == item['external_label']:
 		vol_found = 1
 		break
 	if not vol_found:
@@ -636,7 +637,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def schedule(self):
         while 1:
             w = next_work_any_volume(self.csc)
-            if w["status"] == "ok" or w["status"] == "nowork":
+            if w["status"][0] == e_errors.OK or \
+	       w["status"][0] == e_errors.NOWORK:
                 return w
             # some sort of error, like write
             # work and no volume available
@@ -647,7 +649,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # what is going on
     def getwork(self,ticket):
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
@@ -655,7 +657,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         self.get_user_sockets(ticket)
         rticket = {}
-        rticket["status"] = "ok"
+        rticket["status"] = (e_errors.OK, None)
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work.get_queue()

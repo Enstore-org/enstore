@@ -37,7 +37,7 @@ class AdminClerkClient(generic_client.GenericClient) :
 		  "criteria"           : criteria}
         # send the work ticket to the library manager
         ticket = self.send(ticket)
-        if ticket['status'] != "ok" :
+        if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"select: sending ticket"\
                   +repr(ticket)
         while 1 :
@@ -52,7 +52,7 @@ class AdminClerkClient(generic_client.GenericClient) :
                 print ("acc.select: imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
-        if ticket["status"] != "ok" :
+        if ticket["status"][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"acc.select: "\
                   +"1st (pre-work-read) admin clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
@@ -78,7 +78,7 @@ class AdminClerkClient(generic_client.GenericClient) :
         done_ticket = callback.read_tcp_socket(control_socket, "admin clerk"\
 		  +"client select, ac final dialog")
         control_socket.close()
-	if done_ticket["status"] != "ok" :
+	if done_ticket["status"][0] != e_errors.OK :
             raise errno.errorcode[errno.EPROTO],"acc.select "\
                   +"2nd (post-work-read) admin clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
@@ -187,7 +187,7 @@ if __name__ == "__main__" :
 
     del acc.csc.u
     del acc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'] != 'ok' :
+    if ticket['status'][0] != e_errors.OK :
         print "Bad status:",ticket['status']
        	pprint.pprint(ticket)
         Trace.trace(0,"acc BAD STATUS - "+repr(ticket['status']))

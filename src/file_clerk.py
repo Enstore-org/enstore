@@ -20,6 +20,7 @@ import generic_server
 import udp_client
 import db
 import Trace
+import e_errors
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
@@ -43,7 +44,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         dict[bfid] = copy.deepcopy(record)
 
         ticket["fc"]["bfid"] = bfid
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,'}new_bit_file bfid='+repr(bfid))
         return
@@ -52,7 +53,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          Trace.trace(0,"}new_bit_file "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
@@ -69,7 +70,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket["fc"][key]
         except KeyError:
-            ticket["status"] = "File Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
@@ -79,7 +81,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: bfid "+repr(bfid)+" not found")
             pprint.pprint(ticket)
             # unusual error - no id, but it is there
             # what to do - let's try again and see what happens
@@ -109,7 +112,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = ticket["fc"][key]
         except KeyError:
-            ticket["status"] = "File Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
@@ -119,7 +123,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(9,"read_from_hsm inquiring about volume="+\
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
-        if vticket["status"] != "ok":
+        if vticket["status"][0] != e_errors.OK:
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
             Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
@@ -134,7 +138,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         vmticket = csc.get(library+".library_manager")
         Trace.trace(10,"write_to_hsm."+ library+".library_manager at host="+\
                     repr(vmticket["hostip"])+" port="+repr(vmticket["port"]))
-        if vmticket["status"] != "ok":
+	if vmticket["status"][0] != e_errors.OK:
             pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
             Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
@@ -150,7 +154,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"read_from_hsm "+repr(ticket["status"]))
@@ -173,17 +177,17 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
      Trace.trace(10,"{get_bfids  R U CRAZY? "+repr(ticket))
-     ticket["status"] = "ok"
+     ticket["status"] = (e_errors.OK, None)
      try:
         self.reply_to_caller(ticket)
      # even if there is an error - respond to caller so he can process it
      except:
-        ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+        ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         Trace.trace(0,"get_bfids "+repr(ticket["status"]))
         return
      self.get_user_sockets(ticket)
-     ticket["status"] = "ok"
+     ticket["status"] = (e_errors.OK, None)
      callback.write_tcp_socket(self.data_socket,ticket,
                                   "file_clerk get bfids, controlsocket")
      msg=""
@@ -217,7 +221,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket[key]
         except KeyError:
-            ticket["status"] = "File Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -227,7 +232,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: bfid "+repr(bfid)+" not found")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -246,7 +252,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = finfo[key]
         except KeyError:
-            ticket["status"] = "File Clerk: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, \
+				"File Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -256,7 +263,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(11,"bfid_info inquiring about volume="+\
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
-        if vticket["status"] != "ok":
+        if vticket["status"][0] != e_errors.OK:
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
             Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -268,14 +275,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # copy all volume information we have to user's ticket
         ticket["vc"] = vticket
 
-        ticket["status"] = "ok"
+        ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,"}bfid_info bfid="+repr(bfid))
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"bfid_info "+repr(ticket["status"]))
@@ -304,14 +311,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def start_backup(self,ticket):
         Trace.trace(10,'{start_backup '+repr(ticket))
         dict.start_backup()
-        self.reply_to_caller({"status" : "ok",\
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "start_backup"  : 'yes' })
         Trace.trace(10,'}start_backup')
 
     def stop_backup(self,ticket):
         Trace.trace(10,'{stop_backup '+repr(ticket))
         dict.stop_backup()
-        self.reply_to_caller({"status" : "ok",\
+        self.reply_to_caller({"status" : (e_errors.OK, None),\
                 "stop_backup"  : 'yes' })
         Trace.trace(10,'}stop_backup')
 

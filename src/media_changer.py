@@ -26,6 +26,7 @@ import log_client
 import traceback
 import string
 import Trace
+import e_errors
 
 list = 0
 # media loader template class
@@ -35,13 +36,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
     def load(self,
              external_label,    # volume external label
              drive) :           # drive id
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # unload volume from the drive
     def unload(self,
                external_label,  # volume external label
                drive) :         # drive id
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # wrapper method for client - server communication
     def loadvol(self,
@@ -58,11 +59,11 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, drive) :
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # unload volume from the drive
     def unload(self, external_label, drive) :
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
 # FTT tape drives with no robot
 class FTT_MediaLoaderMethods(MediaLoaderMethods) :
@@ -70,12 +71,12 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
     # assumes volume is in drive
     def load(self, external_label, drive) :
         os.system("mt -t " + drive + " rewind")
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # assumes volume is in drive and leave it there for testing
     def unload(self, external_label, drive) :
         os.system("mt -t " + drive + " rewind")
-        self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : (e_errors.OK, None)})
 
 # STK robot class
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
@@ -95,20 +96,20 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
         # call mount command
         logc.send(log_client.INFO, 4, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
-        out_ticket = {"status" : "mount_failed"}
+        out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
 
         # analyze the return message
         for line in returned_message:
             if list: logc.send(log_client.INFO, 4, "Mnt trc:"+stk_mount_command)
             if string.find(line, "mounted") != -1 :
-                out_ticket = {"status" : "ok"}
+                out_ticket = {"status" : (e_errors.OK, None)}
                 break
 
         # log the work
         for line in returned_message:
                 logc.send(log_client.INFO, 8, "Mnt sts:"+line)
         logc.send(log_client.INFO, 2, "Mnt returned:"+stk_mount_command)
-        if out_ticket["status"] != "ok" :
+        if out_ticket["status"][0] != e_errors.OK:
             logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
             for line in returned_message:
                 logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
@@ -136,19 +137,19 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
         # call dismount command
         logc.send(log_client.INFO, 4, "UMnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
-        out_ticket = {"status" : "dismount_failed"}
+        out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
 
         # analyze the return message
         for line in returned_message:
             if list: logc.send(log_client.INFO, 4, "UMnt trc:"+stk_mount_command)
             if string.find(line, "dismount") != -1 :
-                out_ticket = {"status" : "ok"}
+                out_ticket = {"status" : (e_errors.OK, None)}
                 break
         # log the work
         logc.send(log_client.INFO, 2, "UMnt ok:"+stk_mount_command)
         for line in returned_message:
                 logc.send(log_client.INFO, 8, "UMnt sts:"+line)
-        if out_ticket["status"] != "ok" :
+        if out_ticket["status"][0] != e_errors.OK :
             logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command,1)
             for line in returned_message:
                 logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)

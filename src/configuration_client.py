@@ -12,6 +12,7 @@ import generic_client
 import interface
 import udp_client
 import Trace
+import e_errors
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -197,7 +198,7 @@ if __name__ == "__main__":
     # now get a configuration client
     csc = ConfigurationClient(intf.config_host, intf.config_port,\
                                intf.config_list)
-    stat = "ok"
+    stat = (e_errors.OK, None)
 
     if intf.alive:
         stati = csc.alive()
@@ -217,7 +218,7 @@ if __name__ == "__main__":
         stat=stati['status']
 
     del csc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if stat == 'ok':
+    if stat[0] == e_errors.OK:
         Trace.trace(1,"config client exit ok")
         sys.exit(0)
     else:

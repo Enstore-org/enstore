@@ -12,6 +12,7 @@ import interface
 import generic_client
 import udp_client
 import Trace
+import e_errors
 
 class LibraryManagerClient(generic_client.GenericClient) :
     def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
@@ -43,7 +44,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                   "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
-        if ticket['status'] != "ok" :
+        if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc.getwork: sending ticket"\
                   +repr(ticket)
 
@@ -63,7 +64,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                 print ("lmc.getwork: imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
-        if ticket["status"] != "ok" :
+        if ticket["status"][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
                   +"1st (pre-work-read) library manager callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
@@ -81,7 +82,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         done_ticket = callback.read_tcp_socket(control_socket, "library "+\
                                       "manager getwork, mover final dialog")
         control_socket.close()
-        if done_ticket["status"] != "ok" :
+        if done_ticket["status"][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
                   +"2nd (post-work-read) library manger callback on socket "\
                   +repr(address)+", failed to transfer: "\
@@ -139,7 +140,7 @@ if __name__ == "__main__" :
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'] == 'ok' :
+    if ticket['status'][0] == e_errors.OK:
         if intf.list:
             pprint.pprint(ticket)
         Trace.trace(1,"lmc exit ok")

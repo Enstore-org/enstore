@@ -27,6 +27,7 @@ import udp_client
 import EXfer
 import interface
 import Trace
+import e_errors
 
 d0sam_format = "INFILE=%s\n"+\
                "OUTFILE=%s\n"+\
@@ -240,11 +241,11 @@ def write_to_hsm(input, output,
             if list > 3:
                 print "ENCP: write_to_hsm LM returned"
                 pprint.pprint(ticket)
-            if ticket['status'] != "ok" :
+            if ticket['status'][0] != e_errors.OK :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
                        +vticket['hostip']+"/"+repr(vticket['port'])\
-                       +", ticket[\"status\"]="+ticket["status"])
+                       +", ticket[\"status\"]="+repr(ticket["status"]))
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
             if list:
@@ -291,11 +292,11 @@ def write_to_hsm(input, output,
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"] != "ok" :
+            if ticket["status"][0] != e_errors.OK:
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        +"1st (pre-file-send) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+ticket["status"],2)
+                       +"ticket[\"status\"]="+repr(ticket["status"]),2)
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
@@ -366,11 +367,11 @@ def write_to_hsm(input, output,
         Trace.trace(10,"write_to_hsm final dialog recieved")
 
         # make sure mover thinks transfer went ok
-        if done_ticket["status"] != "ok" :
+        if done_ticket["status"][0] != e_errors.OK:
             jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    +"2nd (post-file-send) mover callback on socket "\
                    +repr(address)+", failed to transfer: "\
-                   +"done_ticket[\"status\"]="+done_ticket["status"])
+                   +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
         # Check the CRC
             if chk_crc != 0:
@@ -611,7 +612,7 @@ def read_from_hsm(input, output,
                     repr(bfid[i]))
         binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
-        if binfo['status']!='ok':
+        if binfo['status'][0] != e_errors.OK:
             pprint.pprint(binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
@@ -671,12 +672,12 @@ def read_from_hsm(input, output,
                 if list > 3:
                     print "ENCP:read_from_hsm FC read_from_hsm returned"
                     pprint.pprint(ticket)
-                if ticket['status'] != "ok" :
+                if ticket['status'][0] != e_errors.OK:
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: from"\
                            +"u.send to file_clerk at "+fticket['hostip']+"/"\
                            +repr(fticket['port']) +", ticket[\"status\"]="\
-                           +ticket["status"])
+                           +repr(ticket["status"]))
                 submitted = submitted+1
                 tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
                 if list :
@@ -746,11 +747,11 @@ def read_from_hsm(input, output,
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"] != "ok" :
+            if ticket["status"][0] != e_errors.OK:
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"1st (pre-file-read) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+ticket["status"])
+                       +"ticket[\"status\"]="+repr(ticket["status"]))
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
@@ -809,11 +810,11 @@ def read_from_hsm(input, output,
             Trace.trace(10,"read_from_hsm final dialog recieved")
 
             # make sure the mover thinks the transfer went ok
-            if done_ticket["status"] != "ok" :
+            if done_ticket["status"][0] != e_errors.OK:
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"2nd (post-file-read) mover callback on socket "\
                        +repr(address)+", failed to transfer: "\
-                       +"done_ticket[\"status\"]="+done_ticket["status"])
+                       +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
             # verify that the crc's match
             if chk_crc != 0 :

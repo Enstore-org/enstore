@@ -26,6 +26,7 @@ import interface
 import udp_client
 import pprint
 import Trace
+import e_errors
 
 # Severity codes
 ERROR=0
@@ -103,9 +104,10 @@ class LoggerClient(generic_client.GenericClient):
                       'message' : msg }
             lticket = self.csc.get(self.logger)
             self.u.send_no_wait(ticket, (lticket['hostip'], lticket['port']))
-            return {"status" : "ok"}
+            return {"status" : (e_errors.OK, None)}
         else :
-            return {"status" : "wrong_severity_level"}
+            return {"status" : (e_errors.WRONGPARAMETER, \
+				"wrong_severity_level")}
 #
 # priorty allows turning logging on and off in a server.
 #  Coventions - setting log_priority to 0 should turn off all logging.
@@ -193,7 +195,7 @@ if __name__ == "__main__" :
 
     del logc.csc.u
     del logc.u		# del now, otherwise get name exception (just for python v1.5???)
-    if ticket['status'] != 'ok' :
+    if ticket['status'][0] != e_errors.OK:
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         Trace.trace(0,"logc BAD STATUS - "+repr(ticket['status']))

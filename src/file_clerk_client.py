@@ -14,6 +14,7 @@ import db
 import callback
 import interface
 import Trace
+import errors
 
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
@@ -58,7 +59,7 @@ class FileClient(generic_client.GenericClient, \
                   "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
-        if ticket['status'] != "ok":
+        if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket"+repr(ticket)
 
         # We have placed our request in the system and now we have to wait.
@@ -78,7 +79,7 @@ class FileClient(generic_client.GenericClient, \
                 print ("fcc:get_bfids: imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
-        if ticket["status"] != "ok":
+        if ticket["status"][0] != e_errors.OK:
             msg = "get_bfids: "\
                   +"1st (pre-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
@@ -107,7 +108,7 @@ class FileClient(generic_client.GenericClient, \
         done_ticket = callback.read_tcp_socket(control_socket, "file clerk"\
                   +"client get_bfids, fc final dialog")
         control_socket.close()
-        if done_ticket["status"] != "ok":
+        if done_ticket["status"][0] != e_errors.OK:
             msg = "get_bfids "\
                   +"2nd (post-work-read) file clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
@@ -177,7 +178,7 @@ if __name__ == "__main__" :
     elif intf.bfid:
         ticket = fcc.bfid_info()
 
-    if ticket['status'] == 'ok':
+    if ticket['status'][0] == e_errors.OK:
         if intf.list:
             pprint.pprint(ticket)
         Trace.trace(1,"fcc exit ok")

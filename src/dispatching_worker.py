@@ -19,6 +19,7 @@ except ImportError:
 #enstore imports
 import timeofday
 import Trace
+import e_errors
 
 request_dict = {}
 #
@@ -110,7 +111,8 @@ class DispatchingWorker:
         try:
             function = ticket["work"]
         except KeyError:
-            ticket = {'status' : "cannot find requested function"}
+            ticket = {'status' : (e_errors.KEYERROR, \
+				  "cannot find requested function")}
             Trace.trace(0,"process_request "+repr(ticket)+repr(function))
             self.reply_to_caller(ticket)
             return
@@ -138,7 +140,11 @@ class DispatchingWorker:
 	import traceback
 	traceback.print_exception(exc, value, tb)
 	print '-'*40
-	self.reply_to_caller( {'status':'error','request':request,'exc_type':repr(exc),'exc_value':repr(value)} )
+	self.reply_to_caller( {'status':(str(sys.exc_info()[0]), \
+					    str(sys.exc_info()[1]),'error'), \
+			       'request':request, \
+			       'exc_type':repr(exc), \
+			       'exc_value':repr(value)} )
 	Trace.trace(0,"}handle_error "+str(sys.exc_info()[0])+\
 		    str(sys.exc_info()[1]))
 
@@ -146,7 +152,7 @@ class DispatchingWorker:
     def alive(self,ticket):
         Trace.trace(10,"{alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
-        ticket['status'] = "ok"
+        ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(10,"}alive")
 

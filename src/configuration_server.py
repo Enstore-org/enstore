@@ -13,6 +13,7 @@ import dispatching_worker
 import generic_server
 import SocketServer
 import Trace
+import e_errors
 
 class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
@@ -23,8 +24,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         try:
             f = open(configfile)
         except:
-            msg = "Configuration Server: load_config"\
-                   +repr(configfile)+" does not exists"
+            msg = (e_errors.DOESNOTEXIST,"Configuration Server: load_config"\
+                   +repr(configfile)+" does not exists")
             print msg
             Trace.trace(0,"}load_config "+msg)
             return msg
@@ -52,9 +53,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                 exec ("x"+line)
             except:
                 f.close()
-                msg = "Configuration Server: "\
+                msg = (EXECERROR, "Configuration Server: "\
                       +"can not process line: ",line \
-                      ,"\ndictionary unchanged."
+                      ,"\ndictionary unchanged.")
                 print msg
                 Trace.trace(0,"}load_config"+msg)
                 return msg
@@ -72,14 +73,14 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                      break
 
         Trace.trace(6,"}load_config ok")
-        return "ok"
+        return (e_errors.OK, None)
 
      # even if there is an error - respond to caller so he can process it
      except:
          print  sys.exc_info()[0],sys.exc_info()[1]
          Trace.trace(0,"}load_config "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
-         return str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
 
 
     # does the configuration dictionary exist?
@@ -121,7 +122,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             lookup = ticket[key]
         except KeyError:
             Trace.trace(0,"lookup "+repr(key)+" key is missing")
-            ticket["status"] = "Configuration Server: "+key+" key is missing"
+            ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
             Trace.trace(6,"}lookup")
@@ -132,8 +133,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             out_ticket = self.configdict[lookup]
         except KeyError:
             Trace.trace(0,"lookup no such name"+repr(lookup))
-            out_ticket = {"status": "Configuration Server: no such name: "\
-                          +repr(lookup)}
+            out_ticket = {"status": (e_errors.KEYERROR, "Configuration Server: no such name: "\
+                          +repr(lookup))}
             pprint.pprint(out_ticket)
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"}lookup "+repr(lookup)+"="+repr(out_ticket))
@@ -141,7 +142,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          Trace.trace(0,"}lookup "+str(sys.exc_info()[0])+\
@@ -181,7 +182,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
               else:
                  formatted= formatted + " }\n"
         #print formatted
-        out_ticket = {"status" : "ok", "list" : formatted}
+        out_ticket = {"status" : (e_errors.OK, None), "list" : formatted}
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"}list")
         return
@@ -205,7 +206,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		list = 1
 		out_ticket = {"status" : self.load_config(configfile,list)}
 	    except KeyError:
-		out_ticket = {"status" : "Configuration Server: no such name"}
+		out_ticket = {"status" : (e_errors.KEYERROR, "Configuration Server: no such name")}
 
 	    self.reply_to_caller(out_ticket)
 	    Trace.trace(6,"}load"+repr(out_ticket))
@@ -213,7 +214,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 	# even if there is an error - respond to caller so he can process it
 	except:
-	    ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    pprint.pprint(ticket)
 	    self.reply_to_caller(ticket)
 	    Trace.trace(0,"}load "+str(sys.exc_info()[0])+\
@@ -240,11 +241,11 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 
     def reply_configdict( self, ticket ):
-        out_ticket = {"status" : "ok", "list" : self.configdict }
+        out_ticket = {"status" : (e_errors.OK, None), "list" : self.configdict }
         self.reply_to_caller(out_ticket)
 
     def reply_serverlist( self, ticket ):
-        out_ticket = {"status" : "ok", "server_list" : self.serverlist }
+        out_ticket = {"status" : (e_errors.OK, None), "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
 	 
 
