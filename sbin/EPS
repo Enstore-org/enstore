@@ -41,7 +41,7 @@ esac
 if [ $returnpid -eq 0 ]; then
   echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload | tee '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver'
 else
-  psline=`echo "$x" | grep $lookfor | grep -v grep | grep \`whoami\``
+  psline=`echo "$x" | grep $lookfor | grep -v grep | grep -v returnpid | grep \`whoami\``
   # is the pid always the 2nd field???????
   # what if there is more than one process, this only returns the 1st!
   pid=`echo $psline | cut -f2 -d' '` # no quotes arounds $psline removes spaces
