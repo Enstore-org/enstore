@@ -2,6 +2,9 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+# assume we are talking to the remedy server specified in the following line
+remedy_server="csdserver"
+
 . /usr/local/etc/setups.sh
 setup remedy_api
 if [ "$?" = "1" ];
@@ -13,10 +16,10 @@ else
 	# make sure we have enough inputs, either 4 or 10
 	if [ "$#" = "4" ];
 	then
-		$REMEDY_API_DIR/bin/create_entry $1 $2 $3 $4
+		$REMEDY_API_DIR/bin/create_entry $remedy_server $1 $2 $3 $4
 	elif [ "$#" = "10" ];
 	then
-		$REMEDY_API_DIR/bin/create_entry "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10"
+		$REMEDY_API_DIR/bin/create_entry $remedy_server "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10"
 	else
 		setup enstore
 		enstore alarm --raise --root_error "generate_ticket invalid parameters" --message "expected 4 or 10 parameters and found $#" --severity E&
