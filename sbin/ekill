@@ -7,12 +7,18 @@ if [ "${1:-}" = "-9" ] ; then SIG='-9';shift; else SIG=' '; fi
 if [ -z "${1:-}" ]; then echo 'USUAGE: $0 [-c -9] \"egrep search string for kill\"'; exit 2; fi
 lookfor="${1}"
 
+UNAME="/bin/uname"
 PS="/bin/ps"
 ECHO="/bin/echo"
 EGREP="/bin/egrep"
 KILL="/bin/kill"
 SLEEP="/bin/sleep"
 SLEEPTIME=3
+
+if [ `$UNAME` != "Linux" ]; then
+    echo 'Sorry this only works for Linux.  You need to edit and fix $0'
+    exit 1
+fi
 
 $PS axwww | $EGREP "$lookfor"|$EGREP -v "grep|ekill"| while read pid line; do
     $ECHO killing $SIG $pid $line
@@ -22,15 +28,15 @@ $PS axwww | $EGREP "$lookfor"|$EGREP -v "grep|ekill"| while read pid line; do
 done;
 
 if [ $CHECK -eq 0 ]; then
+    if [ `$PS axwww | $EGREP "$lookfor"|$EGREP -v 'grep|ekill'| wc -w` -eq 0 ]; then exit 0; fi
+
     $SLEEP $SLEEPTIME
 
     x="`$PS axwww | $EGREP "$lookfor"|$EGREP -v 'grep|ekill'`"
-    if [ `echo "$x" | wc -w` -eq 0 ]; then
-        x=1
-        #$ECHO "None survived after kill"
-    else
-        $ECHO
-        $ECHO "These survived after the kill:"
-        $ECHO "$x"
-   fi
+    if [ `echo "$x" | wc -w` -eq 0 ]; then exit 0; fi
+    $ECHO
+    $ECHO "These survived after the kill:"
+    $ECHO "$x"
+    exit 1
 fi
+exit 0
