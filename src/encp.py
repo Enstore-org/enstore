@@ -874,6 +874,8 @@ def submit_one_request(ticket, verbose):
         responce_ticket = lmc.write_to_hsm(ticket)
 
     if responce_ticket['status'][0] != e_errors.OK :
+        Trace.message(3, "Submition to LM failed: " + \
+                      str(responce_ticket['status']))
         Trace.log(e_errors.NET_ERROR,
                   "submit_one_request: Ticket submit failed for %s"
                   " - retrying" % ticket['infile'])
@@ -981,9 +983,10 @@ def check_crc(done_ticket, chk_crc, my_crc):
     # Check the CRC
     if chk_crc:
         mover_crc = done_ticket['fc'].get('complete_crc', None)
-        if mover_crc is None:
-            msg =   "warning: mover did not return CRC; skipping CRC check"
-            done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        if mover_crc == None:
+            msg =   "warning: mover did not return CRC; skipping CRC check\n"
+            sys.stderr.write(msg)
+            #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
 
         elif mover_crc != my_crc :
             msg = "CRC mismatch: %d != %d" % (mover_crc, my_crc)
@@ -2014,7 +2017,18 @@ def verify_read_request_consistancy(requests_per_vol):
             # sure that the bfid points to the correct file.
             p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
             p.get_xreference()
-            if request['fc']['external_label'] != p.volume or \
+            if p.volume == pnfs.UNKNOWN or p.location_cookie == pnfs.UNKNOWN \
+               or p.size == pnfs.UNKNOWN:
+                rest = {'infile':request['infile'],
+                        'bfid':request['bfid'],
+                        'pnfs_volume':p.volume,
+                        'pnfs_location_cookie':p.location_cookie,
+                        'pnfs_size':p.size,
+                        'status':"Missing data in pnfs layer 4."}
+                sys.stderr.write(rest['status'] + "  Continuing.\n")
+                Trace.alarm(e_errors.ERROR, e_errors.UNKNOWN, rest)
+            
+            elif request['fc']['external_label'] != p.volume or \
                request['fc']['location_cookie'] != p.location_cookie or \
                long(request['fc']['size']) != long(p.size):
 
