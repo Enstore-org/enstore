@@ -21,6 +21,10 @@ import pdb
 
 #UDP_fixed_route = 0
 
+#Hack so mylint doesn't complain.
+def get_default_interface_ip():
+    pass
+
 ##############################################################################
 # The following three functions read in the enstore.conf file.
 ##############################################################################
