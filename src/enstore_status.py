@@ -34,6 +34,11 @@ MSTART = 5
 MREQUEST = 0
 MMOUNT = 1
 
+# flags to show if we are formatting an ENCP file or a regular Enstore status
+# file
+FROM_ENCP = 1
+FROM_STATUS = FROM_ENCP+1
+
 TRUE = 1
 FALSE = 0
 START_TIME = "start_time"
@@ -51,6 +56,32 @@ html_header1 = "<title>Enstore Status</title>\n"+\
 html_header2 = "\">\n"+\
                "<body bgcolor=\""+bg_color+"\">\n"
 html_header3 = "<pre>\n"
+
+default_dir = "./"
+
+def ascii_file_name():
+    return "inquisitor.txt"
+
+def inq_file_name():
+    return "inquisitor.html"
+
+def default_ascii_file():
+    return default_dir+ascii_file_name()
+
+def default_inq_file():
+    return default_dir+inq_file_name()
+
+def encp_html_file_name():
+    return "encp_"+inq_file_name()
+
+def default_encp_html_file():
+    return default_dir+encp_html_file_name()
+
+def status_html_file_name():
+    return "status_"+inq_file_name()
+
+def default_status_html_file():
+    return default_dir+status_html_file_name()
 
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
@@ -138,7 +169,7 @@ class EnStatus:
 	ftime = format_time(time)
 	str = tag + "timed out on "+self.unquote(repr(address))+" at "+\
 	       ftime+"\n"
-	if not last_time == 0:
+	if last_time:
 	    i = len(tag)
 	    if not last_time == -1:
 	        ltime = format_time(last_time)
@@ -430,7 +461,7 @@ class EnFile:
 
     def close(self):
 	Trace.trace(10,"{enfile close "+self.file_name)
-	if not self.filedes == 0:
+	if self.filedes:
 	    self.filedes.close()
 	    self.filedes = 0
 	Trace.trace(10,"}enfile close ")
@@ -465,7 +496,7 @@ class EnStatusFile(EnFile):
         Trace.trace(10,'{flush')
 	# well, nothing has really been written to the file, it is all stored
 	# in a hash.  so we must write it all now
-        if not self.filedes == 0:
+        if self.filedes:
             self.filedes.write("\nENSTORE SYSTEM STATUS\n")
             keys = self.text.keys()
             keys.sort()
@@ -496,16 +527,23 @@ class EnHTMLFile:
     # close the file
     def close(self):
         Trace.trace(12,"{close "+self.file_name)
-        if not self.filedes == 0:
+        if self.filedes:
             self.filedes.write(self.trailer)
             self.filedes.close()
         Trace.trace(12,"}close")
 
     # include a link to the main inquisitor page and a sideways page of the
     # users choice
-    def page_top(self):
-        return ""
-
+    def page_top_buttons(self, from_flag):
+        str = '<A HREF="'+inq_file_name()+\
+              '">Go Back</A>&nbsp&nbsp&nbsp<A HREF="'
+        if from_flag == FROM_ENCP:
+            str = str+status_html_file_name()+'">ENSTORE'
+        elif from_flag == FROM_STATUS:
+            str = str+encp_html_file_name()+'">ENCP'
+        str = str+' Status Page</A><BR><BR><HR><BR><BR>'
+        return str
+    
     # reset the header, the refresh has changed
     def set_header(self):
 	Trace.trace(10,"{set_header ")
@@ -530,7 +568,7 @@ class EncpFile:
     def output_encp(self, lines, key):
 	Trace.trace(12,"{output_html_encp ")
 	if lines != []:
-	    str = self.format_encp(lines, key)
+            str = self.format_encp(lines, key)
 	else:
 	    str = self.format_no_encp()
 	self.text[key] = str+"\n"
@@ -556,9 +594,10 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
     def open(self, verbose=0):
         Trace.trace(12,"{open "+self.header)
 	EnStatusFile.open(self, verbose)
-        if not self.filedes == 0:
+        if self.filedes:
             self.filedes.write(self.header)
             self.filedes.write(self.header2)
+            self.filedes.write(self.page_top_buttons(FROM_STATUS))
         Trace.trace(12,"}write_header ")
 
 class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
@@ -638,22 +677,21 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
     def open(self, verbose=0):
         Trace.trace(12,"{open "+self.header)
 	EnStatusFile.open(self, verbose)
-        if not self.filedes == 0:
+        if self.filedes:
             self.filedes.write(self.header)
+            self.filedes.write(self.page_top_buttons(FROM_ENCP))
         Trace.trace(12,"}write_header ")
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
 	Trace.trace(10,"{}format_no_encp ")
-	return "<br><pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
+	return "<pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
         if 0: print self,key # quiet lint
 	Trace.trace(13,"{format_encp ")
-        str = self.page_top()
-	str = str+\
-              "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
+	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
 	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
 	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
@@ -700,7 +738,7 @@ class EnDataFile(EnFile):
 	EnFile.__init__(self, oFile)
 	self.lines = []
 	self.data = []
-	if indir == "":
+	if not indir:
 	    cdcmd = " "
 	else:
 	    cdcmd = "cd "+indir+";"
@@ -718,7 +756,7 @@ class EnDataFile(EnFile):
     def read(self, max_lines):
 	Trace.trace(10,"{read "+repr(max_lines))
 	i = 0
-	if not self.filedes == 0:
+	if self.filedes:
             while i < max_lines:
                 l = self.filedes.readline()
                 if l:
@@ -739,7 +777,7 @@ class EnDataFile(EnFile):
         if not stop_time and not start_time:
             do_all = TRUE
 	# read it in.  only save the lines that match the desired time frame
-        if not self.filedes == 0:
+        if self.filedes:
             try:
                 while TRUE:
                     line = self.filedes.readline()
@@ -766,10 +804,10 @@ class EnDataFile(EnFile):
 	l = regsub.gsub(LOG_PREFIX, "", datetime)
 	# now see if the date/time is between the start time and the end time
 	time_ok = TRUE
-	if not start_time == "":
+	if start_time:
 	    if l < start_time:
 	        time_ok = FALSE
-	if time_ok and (not stop_time == ""):
+	if time_ok and stop_time:
 	    if l > stop_time:
 	        time_ok = FALSE
 	Trace.trace(10,"}check_line ")
@@ -840,18 +878,18 @@ class EnAlarmFile(EnFile):
     # open the file, if no mode is passed in, try opening for append and
     # then write
     def open(self, mode=""):
-        if not mode == "":
+        if mode:
             EnFile.open(self, mode)
         else:
             EnFile.open(self, "a")
-            if self.filedes == 0:
+            if not self.filedes:
                 # the open for append did not work, now try write
                 EnFile.open(self, "w")
 
     # read lines from the file
     def read(self):
         enAlarms = {}
-        if not self.filedes == 0:
+        if self.filedes:
             try:
                 while TRUE:
                     line = self.filedes.readline()
@@ -866,7 +904,7 @@ class EnAlarmFile(EnFile):
                 
     # write the alarm to the file
     def write(self, alarm):
-        if not self.filedes == 0:
+        if self.filedes:
             line = repr(alarm)
             try:
                 self.filedes.write(line)
@@ -890,7 +928,7 @@ class EnPatrolFile(EnFile):
 
     # write out the alarm
     def write(self, alarm):
-        if not self.filedes == 0:
+        if self.filedes:
             # tell the alarm that this is going to patrol so the alarm
             # can add the patrol expected header
             self.filedes.write(alarm.prepr())
@@ -898,7 +936,7 @@ class EnPatrolFile(EnFile):
     # rm the file
     def remove(self):
         try:
-            if not self.real_file_name == "":
+            if self.real_file_name:
                 filedes = open(self.real_file_name)
                 filedes.close()
                 os.system("rm "+self.real_file_name)

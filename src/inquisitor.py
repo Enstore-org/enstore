@@ -44,32 +44,6 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
-default_dir = "./"
-
-def ascii_file_name():
-    return "inquisitor.txt"
-
-def inq_file_name():
-    return "inquisitor.html"
-
-def default_ascii_file():
-    return default_dir+ascii_file_name()
-
-def default_inq_file():
-    return default_dir+inq_file_name()
-
-def encp_html_file_name():
-    return "encp_"+inq_file_name()
-
-def default_encp_html_file():
-    return default_dir+encp_html_file_name()
-
-def status_html_file_name():
-    return "status_"+inq_file_name()
-
-def default_status_html_file():
-    return default_dir+status_html_file_name()
-
 TRUE = 1
 FALSE = 0
 LOGFILE_DIR = "logfile_dir"
@@ -99,10 +73,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
 	    self.last_alive[key] = time
 	else:
-	    if self.last_alive.has_key(key):
-	        last_time = self.last_alive[key]
-	    else:
-	        last_time = -1
+            last_time = self.last_alive.get(key, -1)
 	    self.asciifile.output_etimedout((host, port), prefix, time, key, \
 	                                  last_time)
 	    self.htmlfile.output_etimedout((host, port), prefix, time, key, \
@@ -367,11 +338,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the default server timeout, either from the inquisitor config dict
     # or from the routine
     def set_default_server_timeout(self, inq_dict={}):
-	the_key = "default_server_timeout"
-	if inq_dict.has_key(the_key):
-	    self.default_server_timeout = inq_dict[the_key]
-	else:
-	    self.default_server_timeout = default_server_timeout()
+        self.default_server_timeout = inq_dict.get("default_server_timeout",
+                                                   default_server_timeout())
 
     # get the information from the volume clerk server
     def update_volume_clerk(self, key, time):
@@ -953,21 +921,24 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# get the ascii output file.  this should be in the configuration file.
 	if ascii_file == "":
 	    try:
-	        ascii_file = keys['ascii_file']+"/"+ascii_file_name()
+	        ascii_file = keys['ascii_file']+"/"+\
+                             enstore_status.ascii_file_name()
 	    except:
-	        ascii_file = default_ascii_file()
+	        ascii_file = enstore_status.default_ascii_file()
 
 	# get the directory where the files we create will go.  this should
 	# be in the configuration file.
 	if html_file == "":
 	    try:
 	        self.html_dir = keys['html_file']
-	        html_file = self.html_dir+"/"+status_html_file_name()
-	        encp_file = self.html_dir+"/"+encp_html_file_name()
+	        html_file = self.html_dir+"/"+\
+                            enstore_status.status_html_file_name()
+	        encp_file = self.html_dir+"/"+\
+                            enstore_status.encp_html_file_name()
 	    except:
-	        self.html_dir = default_dir
-	        html_file = default_status_html_file()
-	        encp_file = default_encp_html_file()
+	        self.html_dir = enstore_status.default_dir
+	        html_file = enstore_status.default_status_html_file()
+	        encp_file = enstore_status.default_encp_html_file()
 
 	# get a logger
 	self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
