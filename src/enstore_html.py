@@ -179,7 +179,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.system_tag = system_tag
 	self.script_title_gif = None
 	self.description = None
-	self.nav_link = ""
+        self.nav_link = ""
+        self.do_nav_table = 1
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
@@ -253,7 +254,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	# create the outer table and its rows	
 	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, 
 				     align="LEFT", width="800")
-	tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
+        if self.do_nav_table:
+            tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
+        else:
+            tr = HTMLgen.TR(empty_data())
 	self.script_title(tr)
 	fl_table.append(tr)
 	if self.source_server:
