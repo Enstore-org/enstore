@@ -861,7 +861,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	    mover = av[enstore_constants.MOVER]
 	    if av[enstore_constants.STATE] not in ['ACTIVE', 'SEEK']:
 		other_mv[mover] = [av[enstore_constants.STATE], av['external_label'],
-				   av['volume_family']]
+				   av['volume_family'], av['time_in_state']]
 	else:
 	    if other_mv:
 		header_done = 0
@@ -870,13 +870,15 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		    if mv not in self.busy_movers:
 			if not header_done:
 			    tr = HTMLgen.TR()
-			    for hdr in ["Additional Mover", "State","Volume", "File Family"]:
+			    for hdr in ["Additional Mover", "State", "Seconds in State",
+					"Volume", "File Family"]:
 				tr.append(self.make_th(hdr))
 			    mv_table = HTMLgen.TableLite(tr, border=1, cellpadding=CELLP,
 					     align="LEFT", bgcolor=AQUA)
 			    header_done = 1
 			tr = HTMLgen.TR(HTMLgen.TD(mv))
 			tr.append(HTMLgen.TD(other_mv[mv][0]))
+			tr.append(HTMLgen.TD(other_mv[mv][3]))
 			tr.append(HTMLgen.TD(other_mv[mv][1]))
 			ff = volume_family.extract_file_family(other_mv[mv][2])
 			tr.append(HTMLgen.TD(ff))
