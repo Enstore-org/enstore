@@ -2013,10 +2013,14 @@ class File:
 			if os.access(self.path, os.F_OK):
 				f = open(self.layer_file(4))
 				self.volume, self.location_cookie, self.size,\
-				self.file_family, self.volmap,\
+				self.file_family, p_path, self.volmap,\
 				self.pnfs_id, self.pnfs_vid, self.bfid,\
 				self.drive = map(string.strip, f.readlines())
 				f.close()
+				if p_path != self.path:
+					print 'different paths'
+					print '\t f>', self.path
+					print '\t 4>', p_path
 			else:
 				self.volume = ""
 				self.location_cookie = ""
