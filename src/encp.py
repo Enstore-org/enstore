@@ -1551,7 +1551,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                             "Unable to obtain responce from library manager.")}
             sys.stderr.write("Error processing resubmition of %s.\n" %
                              (request_dictionary['unique_id']))
-            sys.stderr.write(pprint.pformat(request_dictionary))
+            sys.stderr.write(pprint.pformat(request_dictionary)+"\n")
             
         #Now it get checked.  But watch out for the recursion!!!
         internal_result_dict = internal_handle_retries([request_dictionary],
@@ -2486,9 +2486,13 @@ def get_clerks_info(vcc, fcc, bfid):
 
     fc_ticket = fcc.bfid_info(bfid=bfid)
 
+    if fc_ticket['status'][0] != e_errors.OK:
+        raise EncpError(None,
+                        "Failed to obtain information for bfid %s" % bfid,
+                        e_errors.EPROTO, fc_ticket)
+
     vc_ticket = vcc.inquire_vol(fc_ticket['external_label'])
     
-
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         raise EncpError(None,
