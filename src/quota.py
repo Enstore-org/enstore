@@ -80,12 +80,14 @@ def whoami():
 
 # handles everthing with quota		
 class Quota:
-	def __init__(self, csc):
+	def __init__(self, csc, remote=0):
 		# where is the database
 		self.csc = configuration_client.ConfigurationClient(csc)
 		dbInfo = self.csc.get('database')
-		# self.host = dbInfo['db_host']
-		self.host = 'localhost'
+		if remote:
+			self.host = dbInfo['db_host']
+		else:
+			self.host = 'localhost'
 		self.port = dbInfo['db_port']
 		self.dbname = dbInfo['dbname']
 		try:
