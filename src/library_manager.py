@@ -1928,6 +1928,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is busy - update volumes_at_movers
     def mover_busy(self, mticket):
         Trace.trace(11,"BUSY RQ %s"%(mticket,))
+        library = mticket.get('library', None)
+        if library and library != self.name.split(".")[0]:
+            return
         state = mticket.get('state', None)
         if state is 'IDLE':
             # mover dismounted a volume on a request to mount another one
@@ -1938,6 +1941,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def mover_bound_volume(self, mticket):
         Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
+        library = mticket.get('library', None)
+        if library and library != self.name.split(".")[0]:
+            self.reply_to_caller({'work': 'no_work'})
+            return
+            
         if not mticket['external_label']:
             Trace.log(e_errors.ERROR,"mover_bound_volume: mover request with suspicious volume label %s" %
                       (mticket['external_label'],))
@@ -2099,6 +2107,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
     def mover_error(self, mticket):
         Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
+        library = mticket.get('library', None)
+        if library and library != self.name.split(".")[0]:
+            return
         self.volumes_at_movers.put(mticket)
         #if mticket.has_key(['volume_family']):
         #    sg = volume_family.extract_storage_group(mticket['volume_family'])

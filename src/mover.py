@@ -866,7 +866,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
-        self.lm_address = None # LM that called mover
+        self.lm_address = ('none',0) # LM that called mover
         self.do_eject = 1
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
@@ -902,6 +902,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         self.current_location = 0L
         self.current_volume = None #external label of current mounted volume
+        self.current_library = None
         self.last_location = 0L
         self.last_volume = None
         self.last_volume_family = None
@@ -1284,6 +1285,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return
                         
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
+        work_saved = ticket['work']
         # send offline less often
         send_rq = 1
         if ((self.state == self._last_state) and
@@ -1303,37 +1305,41 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # only main thread is allowed to send messages to LM
                 # exception is a mover_busy and mover_error works
                 if ((thread_name is 'MainThread') and
-                    (ticket['work'] is not 'mover_busy')
-                    and (ticket['work'] is not 'mover_error')):
+                    (ticket['work'] is not 'mover_busy') and
+                    (ticket['work'] is not 'mover_error')):
                     Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
                     ## XXX Sasha - this is an experiment - not sure this is a good idea!
-                    try:
-                        request_from_lm = self.udpc.send(ticket, addr)
-                    except:
-                        exc, msg, tb = sys.exc_info()
-                        if exc == errno.errorcode[errno.ETIMEDOUT]:
-                            x = {'status' : (e_errors.TIMEDOUT, msg)}
-                        else:
-                            x = {'status' : (str(exc), str(msg))}
-                        Trace.trace(10, "update_lm: got %s" %(x,))
-                        continue
-                    work = request_from_lm.get('work')
-                    if not work or work=='nowork':
-                        continue
-                    method = getattr(self, work, None)
-                    if method:
+                    if addr != self.lm_address and self.state == HAVE_BOUND:
+                        ticket['work'] = 'mover_busy'
+                    else:
                         try:
-                            method(request_from_lm)
+                            request_from_lm = self.udpc.send(ticket, addr)
                         except:
-                            exc, detail, tb = sys.exc_info()
-                            Trace.handle_error(exc, detail, tb)
-                            Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
-                                      (method,request_from_lm)) 
-                # if work is mover_busy of mover_error
+                            exc, msg, tb = sys.exc_info()
+                            if exc == errno.errorcode[errno.ETIMEDOUT]:
+                                x = {'status' : (e_errors.TIMEDOUT, msg)}
+                            else:
+                                x = {'status' : (str(exc), str(msg))}
+                            Trace.trace(10, "update_lm: got %s" %(x,))
+                            continue
+                        work = request_from_lm.get('work')
+                        if not work or work=='nowork':
+                            continue
+                        method = getattr(self, work, None)
+                        if method:
+                            try:
+                                method(request_from_lm)
+                            except:
+                                exc, detail, tb = sys.exc_info()
+                                Trace.handle_error(exc, detail, tb)
+                                Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
+                                          (method,request_from_lm)) 
+                # if work is mover_busy or mover_error
                 # send no_wait message
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
                     Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
                     self.udpc.send_no_wait(ticket, addr)
+                ticket['work'] = work_saved
         self.check_dismount_timer()
 
 
@@ -1367,7 +1373,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # send a single error message to LM - requestor
     # can be done from any thread
     def send_error_msg(self,error_info=(None,None),error_source=None,returned_work=None):
-        if self.lm_address: # send error message only to LM that called us
+        if self.lm_address != ('none',0): # send error message only to LM that called us
             ticket = self.format_lm_ticket(state=ERROR,
                                            error_info = error_info,
                                            error_source=error_source,
@@ -1384,6 +1390,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info = {}
         self.file_info = {}
         self.current_volume = None
+        self.current_library = None
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
@@ -2113,9 +2120,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             self.lm_address = ticket['lm']['address']
         except KeyError:
-            self.lm_address = None
-        Trace.trace(10, "setup transfer")
+            self.lm_address = ('none',0)
+        Trace.trace(10, "setup transfer1 %s"%(ticket,))
         self.tr_failed = 0
+        self.current_library = ticket['vc'].get('library', None)
+        if not self.current_library:
+            self.transfer_failed(e_errors.EPROTO)
+            return
         self.setup_mode = mode
         ## pprint.pprint(ticket)
         if (self.save_state not in (IDLE, HAVE_BOUND) or
@@ -3153,7 +3164,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "current_location": loc_to_cookie(self.current_location),
             "read_only" : 0, ###XXX todo: multiple drives on one scsi bus, write locking
             'mover_type': self.mover_type,
-            'ip_map':self.ip_map,
+            "ip_map":self.ip_map,
             "returned_work": returned_work,
             "state": state_name(self.state),
             "status": status,
@@ -3164,8 +3175,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             "unique_id": self.unique_id,
             "work": work,
             "transfer_deficiency": int(self.transfer_deficiency),
-            'time_in_state': now - self.state_change_time,
-
+            "time_in_state": now - self.state_change_time,
+            "library": self.current_library,
             }
         return ticket
 
@@ -3785,7 +3796,7 @@ class DiskMover(Mover):
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
-        self.lm_address = None # LM that called mover
+        self.lm_address = ('none',0) # LM that called mover
         self.default_block_size = 131072
         self.mover_type = self.config.get('type','')
         self.ip_map = self.config.get('ip_map','')
@@ -3803,6 +3814,7 @@ class DiskMover(Mover):
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
         self.current_volume = None #external label of current mounted volume
+        self.current_library = None
         self.last_volume = None
         self.last_volume_family = None
 
@@ -3899,6 +3911,7 @@ class DiskMover(Mover):
         self.mode = None
         self.vol_info = {}
         self.file_info = {}
+        self.current_library = None
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -4337,9 +4350,14 @@ class DiskMover(Mover):
         try:
             self.lm_address = ticket['lm']['address']
         except KeyError:
-            self.lm_address = None
-        Trace.trace(10, "setup transfer")
+            self.lm_address = ('none',0)
+        Trace.trace(10, "setup transfer1 %s"%(ticket,))
         self.tr_failed = 0
+        self.current_library = ticket['vc'].get('library', None)
+        if not self.current_library:
+            self.transfer_failed(e_errors.EPROTO)
+            return
+
         self.setup_mode = mode
         ## pprint.pprint(ticket)
         if self.save_state not in (IDLE, HAVE_BOUND):
@@ -4819,6 +4837,7 @@ class DiskMover(Mover):
             "work": work,
             "transfer_deficiency": int(self.transfer_deficiency),
             'time_in_state': now - self.state_change_time,
+            "library": self.current_library,
 
             }
         return ticket
