@@ -2884,7 +2884,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         Trace.notify("loading %s %s" % (self.shortname, volume_label))        
-        Trace.log(e_errors.INFO, "mounting %s %d"%(volume_label, self.config['product_id']),
+        Trace.log(e_errors.INFO, "mounting %s %s"%(volume_label, self.config['product_id']),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
 
         self.current_location = 0L
