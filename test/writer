@@ -28,8 +28,11 @@ while /bin/true; do
         output=$base/$fb`date +"%b%d%H%M%S"`$p
         ecmd encp $f $output
         if [ $? -eq 2 ] ; then
-            echo "FINISHED $base"
             exit 2
         fi
     done
+    if [ $? -eq 2 ] ; then
+       echo "FINISHED $base"
+       exit 2
+    fi
 done

@@ -2,21 +2,23 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
+rm -f longstop
+rm -f readstop
+rm -f writestop
+
+if [ "${1:-}" = "-m" ] ; then 
+    shift
+    make datafiles
+    rm data.in
+    find $ENSTORE_DIR/test/data -type f -print > $ENSTORE_DIR/test/data.in
+    make jobs
+fi
+
 if [ -z "${1-}" ] ; then
   place=fndapr
 else
   place=$1
 fi
-
-rm -f longstop
-rm -f readstop
-rm -f writestop
-
-make datafiles
-rm data.in
-find $ENSTORE_DIR/test/data -type f -print > $ENSTORE_DIR/test/data.in
-
-make jobs
 
 for d in 1 2 3 4 5; do
    (cd $d; rm -f writer.output; ./writer /pnfs/enstore/$place ../data.in >writer.output 2>&1 &)
