@@ -24,6 +24,8 @@ import setpath
 import generic_server
 import event_relay_client
 import monitored_server
+import inquisitor_client
+import enstore_functions
 import enstore_constants
 import interface
 import dispatching_worker
@@ -577,51 +579,30 @@ class Mover(dispatching_worker.DispatchingWorker,
     def unlock_state(self):
         self._state_lock.release()
 
-
-    ## XXX These functions work by way of rsh, because there
-    ## is not a proper client/server interface to the 'enstore sched'
-    ## commands - they must be run on the node where the html
-    ## pages are stored - sigh - there should really be a sched_client
+    # check if we are known to be down (offline) in the outage file
     def check_sched_down(self):
-        inq = self.csc.get('inquisitor')
-        host = inq.get('host')
-        if not host:
-            return 0
-        cmd = 'enrsh -n %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --show" enstore\'' % (host,)
-        p = os.popen(cmd, 'r')
-        r = p.read()
-        s = p.close()
-        if s:
-            Trace.log(e_errors.ERROR, "error running enstore sched: %s" % (s,))
-            return 0
-        lines = string.split(r,'\n')
-        roi = 0
-        for line in lines:
-            words = string.split(line)
-            if 'Enstore' in words:
-                roi = 'Known' in words
-                continue
-            if roi and self.name in words:
-                return 1
-        return 0
-    
-    ## XXX These functions work by way of rsh, because there
-    ## is not a proper client/server interface to the 'enstore sched'
-    ## commands - they must be run on the node where the html
-    ## pages are stored - sigh - there should really be a sched_client
+	self.inq = inquisitor_client.Inquisitor(self.csc)
+	# this gets the dictionary with the servers that are known down
+	ticket = self.inq.show()
+	if enstore_functions.is_ok(ticket):
+	    # check if we are listed
+	    offline_d = ticket["offline"]
+	    if offline_d.has_key(self.name):
+		return 1
+	else:
+	    Trace.log(e_errors.ERROR, 
+		      "error getting outage file : %s"%(enstore_functions.get_status(ticket)))
+	return 0
+
+    # set ourselves to be known down in the outage file
     def set_sched_down(self):
-        inq = self.csc.get('inquisitor')
-        host = inq.get('host')
-        if not host:
-            return 0
-        cmd = 'enrsh -n %s \' su -c ". /usr/local/etc/setups.sh; setup enstore; enstore sched --down=%s; enstore system" enstore\'' % (
-            host, self.name)
-        p = os.popen(cmd, 'r')
-        r = p.read()
-        s = p.close()
-        if s:
-            Trace.log(e_errors.ERROR, "error running enstore sched: %s" % (s,))
-        
+	self.inq = inquisitor_client.Inquisitor(self.csc)
+	ticket = self.inq.down(self.name, "set by mover")
+	if not enstore_functions.is_ok(ticket):
+	    Trace.log(e_errors.ERROR, 
+		      "error setting %s as known down in outage file : %s"%(self.name,
+						 enstore_functions.get_status(ticket)))
+
     def start(self):
         name = self.name
         self.t0 = time.time()
