@@ -3,6 +3,7 @@
 %module socket_ext
 
 %{
+	#include <sys/types.h>		/* for IRIX+6.2 */
 	#include <sys/socket.h>
 	#include <errno.h>
 	int bindtodev(int fd, char *dev){
