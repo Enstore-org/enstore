@@ -8,13 +8,16 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # function to redirect input/output when there is not a controlling terminal
 output() { tty -s
            if [ $? -ne 0 ] ; then
+             # no controlling tty
              if [ -z "${1-}" ] ; then
+               # no file to direct output to
 	       if test -w /dev/console; then
                  echo " < /dev/null > /dev/console 2>&1"
                else
                  echo "< /dev/null > /dev/null 2>&1"
                fi
              else
+               # use file in $1 to direct output to
 	       if test -w /dev/console; then
                  echo " < /dev/null |tee /dev/console > $1.out 2>&1"
                else
@@ -22,7 +25,13 @@ output() { tty -s
 	       fi
              fi
 	   else
-	     echo " < /dev/null |tee /dev/tty > $1.out 2>&1"
+             # have a controlling tty
+             if [ -z "${1-}" ] ; then
+	       # no file to direct output to
+	       echo " < /dev/null > /dev/tty  2>&1"
+             else
+               echo " < /dev/null |tee /dev/tty > $1.out 2>&1"
+             fi
            fi
          }
 
