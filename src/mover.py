@@ -17,6 +17,7 @@ import exceptions
 import traceback
 import fcntl, FCNTL
 import random
+import popen2
 
 # enstore modules
 
@@ -517,7 +518,7 @@ class Buffer:
     
 def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stuck with it :-(
     if type(cookie) is type(0L):
-        return cookie
+        return long(cookie)
     if type(cookie) is type(0):
         return long(cookie)
     if type(cookie) != type(''):
@@ -563,6 +564,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
         self.draining = 0
+        self.log_mover_state = None
         
         # self.need_lm_update is used in threads to flag LM update in
         # the main thread. First element flags update if not 0,
@@ -582,8 +584,40 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
 
+    def init_data_buffer(self):
+        if self.buffer:
+            del(self.buffer)
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        
     def return_state(self):
         return state_name(self.state)
+
+    def log_state(self):
+        if self.log_mover_state:
+            pid = os.getpid()
+            cmd = "EPS | grep %s"%(self.name,)
+            pipeObj = popen2.Popen3(cmd, 0, 0)
+            if pipeObj is None:
+                return
+            stat = pipeObj.wait()
+            result = pipeObj.fromchild.readlines()  # result has returned string
+            Trace.log(e_errors.INFO,"LOG(%s): PS %s"%(pid, result))
+            thread = threading.currentThread()
+            if thread:
+                thread_name = thread.getName()
+            else:
+                thread_name = None
+            Trace.log(e_errors.INFO,"LOG(%s): CurThread %s"%(pid, thread_name))
+          
+            # see what threads are running
+            threads = threading.enumerate()
+            for thread in threads:
+                if thread.isAlive():
+                    thread_name = thread.getName()
+                    Trace.log(e_errors.INFO,"LOG(%s): Thread %s is running" % (pid, thread_name,))
+                else:
+                    Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(pid,))
+            
 
     def lock_state(self):
         self._state_lock.acquire()
@@ -716,6 +750,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
+        self.log_mover_state = self.config.get('log_state', None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -1124,8 +1159,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def reset(self, sanity_cookie, client_crc_on):
         self.current_work_ticket = None
-        del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        self.init_data_buffer()
         self.buffer.reset(sanity_cookie, client_crc_on)
         self.bytes_read = 0L
         self.bytes_written = 0L
@@ -1872,6 +1906,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
             if have_tape == 1:
+                if self.mode == WRITE and self.tape_driver.mode == READ:
+                    Trace.alarm(e_errors.ERROR, "tape %s is write protected, will be set read-only"%
+                                (self.current_volume,))
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.vcc.set_comment(self.current_volume, "write-protected")
+                    self.send_client_done(self.current_work_ticket, e_errors.WRITE_ERROR,
+                                          "tape %s is write protected"%(self.current_volume,))
+                    self.net_driver.close()
+                    self.dismount_volume(after_function=self.idle)
+                    return
+                    
                 err = None
                 self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
                 break
@@ -1991,9 +2036,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
-        del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.timer('transfer_time')
+        self.log_state()
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
@@ -2103,8 +2147,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
-        del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -2133,6 +2175,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = HAVE_BOUND
             if self.maybe_clean():
                 self.state = IDLE
+        self.log_state()
         self.need_lm_update = (1, None, 1, None)
         ######### AM 01/30/01
         ### do not update lm in child a thread
@@ -2319,7 +2362,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
-                if x.has_key('callback_addr'):ticket['callback_addr'] = x['callback_addr'] 
+                if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
                 self.del_udp_client(u)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
@@ -2329,7 +2372,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 			  (detail, ticket['callback_addr']))
 		#We have seen that on IRIX, when the connection succeds, we
 		# get an ISCONN error.
-		if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+		if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
 		    pass
 		#The TCP handshake is in progress.
 		elif detail[0] == errno.EINPROGRESS:
@@ -2995,6 +3038,7 @@ class DiskMover(Mover):
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
+        self.log_mover_state = self.config.get('log_state', None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -3662,9 +3706,8 @@ class DiskMover(Mover):
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
-        del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.timer('transfer_time')
+        self.log_state()
         self.tape_driver.close()
         if self.mode == WRITE:
             try:
@@ -3757,8 +3800,6 @@ class DiskMover(Mover):
         #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
-        del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -3786,7 +3827,8 @@ class DiskMover(Mover):
         else:
             self.state = HAVE_BOUND
         self.need_lm_update = (1, None, 1, None)
-        
+        self.log_state()
+
     def update_after_writing(self):
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
