@@ -631,6 +631,9 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	self.ff = {}
 	# additional pending elements for a vol in r_vols
 	self.vols = {}
+        if not self.data_dict[enstore_constants.WORK]:
+            # nothing to do
+            return
 	# parse work at movers queue
 	if not self.data_dict[enstore_constants.WORK] == \
 	          enstore_constants.NO_WORK:
@@ -826,6 +829,9 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 						   colspan=LM_COLS)))
 
     def other_vol_info(self, table):
+	if not self.data_dict[enstore_constants.ACTIVE_VOLUMES]:
+	    # nothing to do
+	    return
 	other_mv = {}
 	avs = self.data_dict[enstore_constants.ACTIVE_VOLUMES]
 	for av in avs:
