@@ -239,7 +239,8 @@ if __name__ == "__main__" :
     intf = LoggerInterface()
 
     logserver = Logger((intf.config_host, intf.config_port), intf.test)
-
+    logserver.handle_generic_commands(intf)
+    
     while 1:
         try:
             logserver.serve_forever()

@@ -1356,6 +1356,8 @@ if __name__ == "__main__":
     # get the interface
     intf = VolumeClerkInterface()
     vc = VolumeClerk((intf.config_host, intf.config_port))
+    vc.handle_generic_commands(intf)
+    
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
     while 1:

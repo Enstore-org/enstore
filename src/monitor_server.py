@@ -149,7 +149,8 @@ if __name__ == "__main__":
                        html_directory,
                        config['refresh']
                        )
-
+    ms.handle_generic_commands(intf)
+    
     while 1:
         try:
             Trace.trace(6,"Monitor Server (re)starting")

@@ -1289,8 +1289,8 @@ if __name__ == "__main__":
                      intf.inq_timeout,intf.html_file,
                      intf.alive_rcv_timeout, intf.alive_retries,
 	             intf.max_encp_lines,intf.refresh)
-    # we no longer need the interface
-    del intf
+
+    inq.handle_generic_commands(intf)
 
     while 1:
         try:

@@ -282,6 +282,7 @@ if __name__ == "__main__":
 
     intf = AlarmServerInterface()
     als = AlarmServer(intf)
+    als.handle_generic_commands(intf)
     
     while 1:
         try:
