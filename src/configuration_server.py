@@ -57,7 +57,6 @@ class ConfigurationDict(DispatchingWorker) :
               for insidekey in self.configdict[key].keys():
                   if insidekey == 'host':
                      self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
-                     print self.configdict[key]['hostip'], self.configdict[key]['host']
                      break
         return "ok"
 
