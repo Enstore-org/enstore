@@ -5,6 +5,14 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # start enstore processes on the current node
 
+# the default coresize limit is 0.  This is set to unlimited in /etc/profile, 
+# but /etc/profile is only executed if you login.  Since we start most of
+# the enstore movers and servers from rsh or ssh without logging in, the coresize
+# remains set at the default 0 and hence, we do not get get core files!
+# Just do the same thing that /etc/profile does in this script.
+ulimit -c unlimited
+
+
 # Make sure we are running as enstore on the production or test systems.
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 ensudo=""
