@@ -252,7 +252,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
         if list:
             print "Adding transaction log to pnfs", "   cum=",time.time()-t0
         done_formatted  = pprint.pformat(done_ticket)
-        p.writelayer(3,done_formatted)
+        p.set_info(,done_formatted)
         t2 = time.time() - t1
         if list:
             print "  dt:",t2, "   cum=",time.time()-t0
@@ -478,6 +478,14 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
         tinfo["final_dialog"] = time.time()-t1
         if list:
             print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
+
+        t1 = time.time()
+        if list:
+            print "Updating pnfs last parked", "   cum=",time.time()-t0
+        p.set_lastparked(uinfo['fullname'])
+        tinfo["last_parked"] = time.time()-t1
+        if list:
+            print "  dt:",tinfo["last_parked"], "   cum=",time.time()-t0
 
         tinfo["total"] = time.time()-t0
         done_ticket["tinfo"] = tinfo
