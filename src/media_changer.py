@@ -14,15 +14,12 @@
 #########################################################################
 #  $Id$
 
-import sys
 import os
-from SocketServer import *
-from configuration_client import *
-from callback import send_to_user_callback
+from SocketServer import UDPServer, TCPServer
+from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 import string
-import pprint
 
 list = 0
 # media loader template class
@@ -32,86 +29,86 @@ class MediaLoaderMethods(DispatchingWorker) :
     def load(self,
              external_label,    # volume external label
              drive) :           # drive id
-	self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : 'ok'})
 
     # unload volume from the drive
     def unload(self,
                external_label,  # volume external label
                drive) :         # drive id
-	self.reply_to_caller({'status' : 'ok'})
+        self.reply_to_caller({'status' : 'ok'})
 
     # wrapper method for client - server communication
     def loadvol(self,
                 ticket):        # associative array containing volume and\
-	                        # drive id
+                                # drive id
         return self.load(ticket['external_label'], ticket['drive_id'])
 
     # wrapper method for client - server communication
     def unloadvol(self, ticket):
-	return self.unload(ticket['external_label'], ticket['drive_id'])
+        return self.unload(ticket['external_label'], ticket['drive_id'])
 
 # IBM3494 robot class
 class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, drive) :
-	print 'I am load function and my type is IBM3494'
-	return {"status" : "ok"}
+        print 'I am load function and my type is IBM3494'
+        return {"status" : "ok"}
 
     # unload volume from the drive
     def unload(self, external_label, drive) :
-	print 'I am unload function and my type is IBM3494'
-	return {"status" : "ok"}
+        print 'I am unload function and my type is IBM3494'
+        return {"status" : "ok"}
 
 # STK robot class
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, tape_drive) :
-	# form mount command to be executed
-	stk_mount_command = "rsh " + keys['acls_host'] + " -l " + \
+        # form mount command to be executed
+        stk_mount_command = "rsh " + keys['acls_host'] + " -l " + \
                             keys['acls_uname'] + " 'echo mount " + \
                             external_label + " " + tape_drive + \
-			    " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-	#print 'command is:'
-	#print stk_mount_command
+        #print 'command is:'
+        #print stk_mount_command
 
-	# call mount command
-	returned_message = os.popen(stk_mount_command, "r").readlines()
-	out_ticket = {"status" : "mount_failed"}
+        # call mount command
+        returned_message = os.popen(stk_mount_command, "r").readlines()
+        out_ticket = {"status" : "mount_failed"}
 
-	# analize the retrun message
-	for line in returned_message:
-	    if list: print line
-	    if string.find(line, "mounted") != -1 :
-		out_ticket = {"status" : "ok"}
-		break
-	# send reply to caller
-	self.reply_to_caller(out_ticket)
-	if list: print "status " + out_ticket["status"]
+        # analize the retrun message
+        for line in returned_message:
+            if list: print line
+            if string.find(line, "mounted") != -1 :
+                out_ticket = {"status" : "ok"}
+                break
+        # send reply to caller
+        self.reply_to_caller(out_ticket)
+        if list: print "status " + out_ticket["status"]
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
 
-	# form dismount command to be executed
-	stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
+        # form dismount command to be executed
+        stk_mount_command = "rsh " + keys['acls_host'] + " -l " +\
                             keys['acls_uname'] + " 'echo dismount " +\
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-	# call dismount command
-	returned_message = os.popen(stk_mount_command, "r").readlines()
-	out_ticket = {"status" : "dismount_failed"}
-	
-	# analize the retrun message
-	for line in returned_message:
-	    if list: print line
-	    if string.find(line, "dismount") != -1 :
-		out_ticket = {"status" : "ok"}
-		break
-	self.reply_to_caller(out_ticket)
-	if list: print "status " + out_ticket["status"]
+        # call dismount command
+        returned_message = os.popen(stk_mount_command, "r").readlines()
+        out_ticket = {"status" : "dismount_failed"}
+
+        # analize the retrun message
+        for line in returned_message:
+            if list: print line
+            if string.find(line, "dismount") != -1 :
+                out_ticket = {"status" : "ok"}
+                break
+        self.reply_to_caller(out_ticket)
+        if list: print "status " + out_ticket["status"]
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods, GenericServer, UDPServer) :
@@ -122,6 +119,7 @@ class RDD_MediaLoader(MediaLoaderMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    import sys
     import getopt
     import socket
 

@@ -1,15 +1,14 @@
 import sys
-from os import *
-from time import *
-from configuration_client import *
+#from os import *
+import time
+from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from file_clerk_client import FileClerkClient
 from udp_client import UDPClient
-from callback import *
-from dict_to_a import *
+import callback
+import dict_to_a
 from driver import RawDiskDriver, FTTDriver
-from media_changer_client import *
-import pprint
+from media_changer_client import MediaLoaderClient
 import cpio
 import binascii
 
@@ -61,13 +60,13 @@ class Mover :
 
     # send a message to our user
     def send_user_last(self, ticket):
-        self.control_socket.send(dict_to_a(ticket))
+        self.control_socket.send(dict_to_a.dict_to_a(ticket))
         self.control_socket.close()
 
 
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket) :
-        sleep(1)
+        time.sleep(1)
 
         # get (possibly new) info about the library manager this mover serves
         mconfig = self.csc.get_uncached(self.name)
@@ -158,13 +157,13 @@ class Mover :
 
     # data transfer takes place on tcp sockets, so get ports & call user
     def get_user_sockets(self, ticket) :
-        mover_host, mover_port, listen_socket = get_callback()
+        mover_host, mover_port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket["mover_callback_host"] = mover_host
         ticket["mover_callback_port"] = mover_port
 
         # call the user and tell him I'm your mover and here's your ticket
-        self.control_socket = user_callback_socket(ticket)
+        self.control_socket = callback.user_callback_socket(ticket)
 
         # we expect a prompt call-back here, and should protect against users
         # not getting back to us. The best protection would be to kick off if
@@ -449,7 +448,12 @@ class Mover :
 
 if __name__ == "__main__" :
     import getopt
-    import socket
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"

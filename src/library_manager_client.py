@@ -1,11 +1,9 @@
-import sys
-import pprint
 import time
-from configuration_client import *
+import errno
+from configuration_client import configuration_client
+import dict_to_a
+import callback
 from udp_client import UDPClient, TRANSFER_MAX
-from dict_to_a import *
-from callback import *
-from errno import *
 
 class LibraryManagerClient :
     def __init__(self, configuration_client, library_name) :
@@ -32,7 +30,7 @@ class LibraryManagerClient :
 
     def getwork(self,list) :
         # get a port to talk on and listen for connections
-        host, port, listen_socket = get_callback()
+        host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"               : "getwork",
                   "user_callback_port" : port,
@@ -42,7 +40,8 @@ class LibraryManagerClient :
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok" :
-            raise errorcode[EPROTO],"lmc.getwork: sending ticket"+repr(ticket)
+            raise errno.errorcode[EPROTO],"lmc.getwork: sending ticket"\
+                  +repr(ticket)
         if list :
             print "Q'd: getwork from",self.name
 
@@ -58,7 +57,7 @@ class LibraryManagerClient :
             if badsock != 0 :
                 print "library_manager, getwork mover callback, ",\
                       "pre-recv error:", errno.errorcode[badsock]
-            new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+            new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
             badsock = control_socket.getsockopt(socket.SOL_SOCKET,
                                                 socket.SO_ERROR)
             if badsock != 0 :
@@ -72,7 +71,7 @@ class LibraryManagerClient :
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"] != "ok" :
-            raise errorcode[EPROTO],"lmc.getwork: "\
+            raise errno.errorcode[EPROTO],"lmc.getwork: "\
                   +"1st (pre-work-read) library manager callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
@@ -80,28 +79,28 @@ class LibraryManagerClient :
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = library_manager_callback_socket(ticket)
+        data_path_socket = callback.library_manager_callback_socket(ticket)
         workmsg = ""
         while 1:
             buf = data_path_socket.recv(65536*4)
             if len(buf) == 0 : break
             workmsg = workmsg+buf
         data_path_socket.close()
-        worklist = a_to_dict(workmsg)
+        worklist = dict_to_a.a_to_dict(workmsg)
 
         # Work has been read - wait for final dialog with library manager.
         badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             print "library_manager, getwork mover dialog, ",\
                   "pre-recv error:", errno.errorcode[badsock]
-        done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+        done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
         badsock = control_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if badsock != 0 :
             print "library_manager, getwork mover dialog, ",\
                   "post-recv error:", errno.errorcode[badsock]
         control_socket.close()
         if done_ticket["status"] != "ok" :
-            raise errorcode[EPROTO],"lmc.getwork: "\
+            raise errno.errorcode[EPROTO],"lmc.getwork: "\
                   +"2nd (post-work-read) library manger callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
@@ -115,8 +114,15 @@ class LibraryManagerClient :
         return self.send({'work':'alive'})
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import pprint
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"

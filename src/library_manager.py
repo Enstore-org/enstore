@@ -1,13 +1,11 @@
-import sys
 import os
-from SocketServer import *
-from configuration_client import *
+from SocketServer import UDPServer, TCPServer
+from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
-from callback import *
+import callback
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from udp_client import UDPClient
-import pprint
 
 pending_work = []       # list of read or write work tickets
 
@@ -94,10 +92,10 @@ def next_work_any_volume(csc) :
                 continue
             # width not exceeded, ask volume clerk for a new volume.
             vc = VolumeClerkClient(csc)
-	    first_found = 0
+            first_found = 0
             v = vc.next_write_volume (w["library"], w["size_bytes"],\
                                       w["file_family"], vol_veto_list,\
-				      first_found)
+                                      first_found)
             # If the volume clerk has no volumes and our veto list was empty,
             # then we have run out of space for this file family == error
             if (len(vol_veto_list) == 0 and v["status"] != "ok") :
@@ -196,8 +194,6 @@ class LibraryManagerMethods(DispatchingWorker) :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             work_awaiting_bind.remove(w)
             w['mover'] = mticket['mover']
-            #print "awaiting work"
-            #pprint.pprint(w)
             work_at_movers.append(w)
             return
 
@@ -207,8 +203,6 @@ class LibraryManagerMethods(DispatchingWorker) :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.remove(w)
             w['mover'] = mticket['mover']
-            #print "next work"
-            #pprint.pprint(w)
             work_at_movers.append(w)
 
 
@@ -250,7 +244,7 @@ class LibraryManagerMethods(DispatchingWorker) :
             # work and no volume available
             # so bounce. status is already bad...
             pending_work.remove(w)
-            send_to_user_callback(w)
+            callback.send_to_user_callback(w)
 
 
     # what is going on
@@ -276,11 +270,12 @@ class LibraryManagerMethods(DispatchingWorker) :
     # get a port for the data transfer
     # tell the user I'm your library manager and here's your ticket
     def get_user_sockets(self, ticket) :
-        library_manager_host,library_manager_port,listen_socket =get_callback()
+        library_manager_host, library_manager_port, listen_socket =\
+                              callback.get_callback()
         listen_socket.listen(4)
         ticket["library_manager_callback_host"] = library_manager_host
         ticket["library_manager_callback_port"] = library_manager_port
-        self.control_socket = user_callback_socket(ticket)
+        self.control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
@@ -290,8 +285,14 @@ class LibraryManager(LibraryManagerMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"
@@ -337,3 +338,4 @@ if __name__ == "__main__" :
     lm =  LibraryManager( (keys['host'], keys['port']), methods)
     lm.set_csc(csc)
     lm.serve_forever()
+

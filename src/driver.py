@@ -1,10 +1,10 @@
 import sys
-from errno import *
+import errno
 import pprint
 import posix
 try:
     import ETape
-except:
+except  ImportError:
     print "ETape unavailable!"
 
 
@@ -120,7 +120,7 @@ class  RawDiskDriver(GenericDriver) :
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
-	self.rd_access = self.rd_access+1
+        self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
         self.left_to_read = self.pastbyte - self.firstbyte
@@ -141,7 +141,7 @@ class  RawDiskDriver(GenericDriver) :
 
     def open_file_write(self):
         # we cannot auto sense a floppy, so we must trust the user
-	self.wr_access = self.wr_access+1
+        self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
 
@@ -168,7 +168,7 @@ class  RawDiskDriver(GenericDriver) :
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
         if len(data) > self.remaining_bytes :
-            raise errorcode[ENOSPC], NoSpace
+            raise errno.errorcode[ENOSPC], NoSpace
         self.remaining_bytes = (self.remaining_bytes-len(data))
         self.df.write(data)
         self.df.flush()
@@ -178,8 +178,12 @@ class  RawDiskDriver(GenericDriver) :
 
 if __name__ == "__main__" :
     import getopt
-    import socket
     import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     status = 0
 

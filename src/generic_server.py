@@ -1,6 +1,10 @@
 # Generic server class for enstore
 
-import socket
+# Import SOCKS module if it exists, else standard socket module socket
+try:
+    import SOCKS; socket = SOCKS
+except ImportError:
+    import socket
 
 class GenericServer:
 

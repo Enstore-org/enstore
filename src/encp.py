@@ -1,16 +1,15 @@
 import os
-import string
-from callback import *
-from configuration_client import configuration_client
-from dict_to_a import *
-from udp_client import UDPClient, TRANSFER_MAX
-import pnfs
 import stat
 import time
-from errno import *
+import errno
 import pprint
 import pwd
 import grp
+import pnfs
+import dict_to_a
+import callback
+from configuration_client import configuration_client
+from udp_client import UDPClient, TRANSFER_MAX
 
 # Import SOCKS module if it exists, else standard socket module socket
 try:
@@ -38,7 +37,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     rminor = 0
     fsize = statinfo[stat.ST_SIZE]
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-        raise errorcode[EPERM],"encp.write_to_hsm: "\
+        raise errno.errorcode[EPERM],"encp.write_to_hsm: "\
               +unixfile+" is not a regular file"
     tinfo["filecheck"] = time.time() - t1
     if list:
@@ -50,14 +49,14 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
-        raise errorcode[EINVAL],"encp.write_to_hsm: "\
+        raise errno.errorcode[EINVAL],"encp.write_to_hsm: "\
               +pnfsfile+" is an invalid pnfs filename "\
               " or maybe NO read access to file"
     if p.exists == pnfs.exists :
-        raise errorcode[EEXIST],"encp.write_to_hsm: "\
+        raise errno.errorcode[EEXIST],"encp.write_to_hsm: "\
               +pnfsfile+" already exists"
     if p.writable != pnfs.enabled :
-        raise errorcode[EACCES],"encp.write_to_hsm: "\
+        raise errno.errorcode[EACCES],"encp.write_to_hsm: "\
               +pnfsfile+", NO write access to directory"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
@@ -85,7 +84,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     t1 = time.time()
     if list:
         print "Requesting callback ports"
-    host, port, listen_socket = get_callback()
+    host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
@@ -123,7 +122,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if ticket['status'] != "ok" :
-        raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
+        raise errno.errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
               +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
@@ -146,7 +145,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         if badsock != 0 :
             print "encp write, mover call back, pre-recv error:",\
                   errno.errorcode[badsock]
-        new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+        new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "encp write, mover call back, post-recv error:",\
@@ -159,11 +158,11 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
             control_socket.close()
     ticket = new_ticket
     if ticket["status"] != "ok" :
-        raise errorcode[EPROTO],"encp.write_to_hsm: "\
+        raise errno.errorcode[EPROTO],"encp.write_to_hsm: "\
               +"1st (pre-file-send) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
-    data_path_socket = mover_callback_socket(ticket)
+    data_path_socket = callback.mover_callback_socket(ticket)
 
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and send the file on that port.
@@ -205,7 +204,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     if badsock != 0 :
         print "encp write, mover final dialog, pre-recv error:",\
                   errno.errorcode[badsock]
-    done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+    done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
         print "encp write, mover final dialog, post-recv error:",\
@@ -250,7 +249,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
             #print done_formatted
 
     else :
-        raise errorcode[EPROTO],"encp.write_to_hsm: "\
+        raise errno.errorcode[EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
@@ -268,7 +267,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.exists != pnfs.exists :
-        raise errorcode[ENOENT],"encp.read_from_hsm: "\
+        raise errno.errorcode[ENOENT],"encp.read_from_hsm: "\
               +pnfsfile+" does not exist"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
@@ -285,7 +284,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
-        raise errorcode[EACCES],"encp.read_from__hsm: "\
+        raise errno.errorcode[EACCES],"encp.read_from__hsm: "\
               +outfile+", NO write access to directory"
     f = open(outfile,"w")
     tinfo["filecheck"] = time.time() - t1
@@ -314,7 +313,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     t1 = time.time()
     if list:
         print "Requesting callback ports"
-    host, port, listen_socket = get_callback()
+    host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
@@ -346,7 +345,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Sending ticket to file clerk"
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
-        raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
+        raise errno.errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
               +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     tinfo["send_ticket"] = time.time() - t1
@@ -369,7 +368,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         if badsock != 0 :
             print "encp read, mover callback, pre-recv error:",\
                   errno.errorcode[badsock]
-        new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+        new_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
         badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "encp read, mover callback, post-recv error:",\
@@ -382,11 +381,11 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
             control_socket.close()
     ticket = new_ticket
     if ticket["status"] != "ok" :
-        raise errorcode[EPROTO],"encp.read_from_hsm: "\
+        raise errno.errorcode[EPROTO],"encp.read_from_hsm: "\
               +"1st (pre-file-read) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
-    data_path_socket = mover_callback_socket(ticket)
+    data_path_socket = callback.mover_callback_socket(ticket)
 
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and read the file on that port.
@@ -422,7 +421,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     if badsock != 0 :
         print "encp read, mover final dialog, pre-recv error:",\
               errno.errorcode[badsock]
-    done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
+    done_ticket = dict_to_a.a_to_dict(control_socket.recv(TRANSFER_MAX))
     badsock = control_socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
     if badsock != 0 :
         print "encp read, mover final dialog, post-recv error:",\
@@ -441,7 +440,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         done_ticket["MB_per_S"] = 0.0
 
     if done_ticket["status"] != "ok" :
-        raise errorcode[EPROTO],"encp.read_from_hsm: "\
+        raise errno.errorcode[EPROTO],"encp.read_from_hsm: "\
               +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
@@ -457,7 +456,9 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 ##############################################################################
 
 if __name__  ==  "__main__" :
+    import sys
     import getopt
+    import string
 
     # defaults
     #config_host = "localhost"

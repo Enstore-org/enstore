@@ -1,18 +1,14 @@
-#! /usr/products/IRIX/python/x1_5/bin/python
-
 #########################################################################
 #                                                                       #
 # Media Changer client.                                                 #
 # Media Changer access methods                                          #
-#  $Id$                                                                #
+#  $Id$  #
+#                                                                       #
 #########################################################################
 
 
-import sys
-import os
-from configuration_client import *
+from configuration_client import configuration_client
 from udp_client import UDPClient
-import pprint
 
 class MediaLoaderClient:
     def __init__(self, configuration_client, name) :
@@ -44,8 +40,15 @@ class MediaLoaderClient:
         return self.send({'work':'alive'})
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import pprint
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"
