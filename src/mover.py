@@ -580,24 +580,33 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._state_lock.release()
 
     # check if we are known to be down (offline) in the outage file
+    # this still uses rsh to avoid a race condition with the mover starting before the
+    # inquisitor
     def check_sched_down(self):
-	self.inq = inquisitor_client.Inquisitor(self.csc)
-	# this gets the dictionary with the servers that are known down
-	ticket = self.inq.show()
-	if enstore_functions.is_ok(ticket):
-	    # check if we are listed
-	    offline_d = ticket["offline"]
-	    if offline_d.has_key(self.name):
-		return 1
-	else:
+	inq = self.csc.get('inquisitor')
+	host = inq.get('host')
+	dir = inq.get('html_file')
+	file = enstore_constants.OUTAGEFILE
+	if not host:
+	    return 0
+	cmd = 'enrsh -n %s cat %s/%s ' % (host, dir, file)
+	p = os.popen(cmd, 'r')
+	r = p.read()
+	s = p.close()
+	if s:
 	    Trace.log(e_errors.ERROR, 
 		      "error getting outage file : %s"%(enstore_functions.get_status(ticket)))
+	lines = string.split(r,'\n')
+	for line in lines:
+	    if line[0:7] == "offline":
+		if string.find(line, self.name) != -1:
+		    return 1
 	return 0
 
     # set ourselves to be known down in the outage file
     def set_sched_down(self):
 	self.inq = inquisitor_client.Inquisitor(self.csc)
-	ticket = self.inq.down(self.name, "set by mover")
+	ticket = self.inq.down(self.name, "set by mover", 15)
 	if not enstore_functions.is_ok(ticket):
 	    Trace.log(e_errors.ERROR, 
 		      "error setting %s as known down in outage file : %s"%(self.name,
