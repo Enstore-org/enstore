@@ -257,7 +257,9 @@ class DispatchingWorker(udp_server.UDPServer):
                         host_address = hostaddr.allow(addr)
                     except IndexError, detail:
                         Trace.log(e_errors.ERROR, "hostaddr failed with %s Req.= %s, addr= %s"%(detail,req, addr))
-                        raise IndexError
+                        request = None
+                        #raise IndexError
+                    
                     if not host_address:
                         Trace.log(e_errors.ERROR, "attempted connection from disallowed host %s" % (addr[0],))
                         request = None
