@@ -913,7 +913,7 @@ static char Win32find_dev[] = "";
 */
 #define EXB_MAX_BLKSIZE  245760
 #define IRIX_MAX_BLKSIZE 131072
-#define SUN_MAX_BLKSIZE   65534
+#define SUN_MAX_BLKSIZE   EXB_MAX_BLKSIZE
 #define WIN_MAX_BLKSIZE  120000
 #ifdef NICE_WORLD
 #define LINUX_MAX_BLKSIZE 65536
