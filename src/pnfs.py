@@ -220,7 +220,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             mount = "/"
             for dir in string.split(self.mount_point, "/")[1:]:
                 mount = os.path.join(mount, dir)
-                print mount
                 if os.path.ismount(mount):
                     mount_points = [mount]
                     break
