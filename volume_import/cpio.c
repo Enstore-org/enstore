@@ -115,7 +115,6 @@ cpio_read_file(char *read_buffer, int nbytes){
     }
     
     if (!early_checksum_done){
-	printf("1:early checksum %d\n", early_checksum);
 	if (file_bytes_read+bytes_read >= early_checksum_size){
 	    /* finish early checksum */
 	    early_checksum = adler32(early_checksum, read_buffer,
@@ -124,7 +123,6 @@ cpio_read_file(char *read_buffer, int nbytes){
 	} else {
 	    early_checksum = adler32(early_checksum, read_buffer, nbytes);
 	}
-	printf("2:early checksum %d\n", early_checksum);
     }
     checksum = adler32(checksum, read_buffer, nbytes);
     file_bytes_read += bytes_read;
