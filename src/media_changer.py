@@ -82,6 +82,10 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
+        stk_query_command = "rsh " + keys['acls_host'] + " -l " + \
+                            keys['acls_uname'] + " 'echo query drive " + \
+                            tape_drive + \
+                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
         # call mount command
         logc.send(log_client.INFO, 4, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
@@ -93,12 +97,19 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
             if string.find(line, "mounted") != -1 :
                 out_ticket = {"status" : "ok"}
                 break
+
         # log the work
-        logc.send(log_client.INFO, 2, "Mnt :"+stk_mount_command)
+        for line in returned_message:
+                logc.send(log_client.INFO, 8, "Mnt sts:"+line)
+        logc.send(log_client.INFO, 2, "Mnt returned:"+stk_mount_command)
         if out_ticket["status"] != "ok" :
             logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
             for line in returned_message:
-                logc.send(log_client.ERROR, 1, "Mnt sts:"+line)
+                logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
+
+        returned_message  = os.popen(stk_query_command, "r").readlines()
+        for line in returned_message:
+                logc.send(log_client.INFO, 16, "Mnt qry:"+line)
         # send reply to caller
         self.reply_to_caller(out_ticket)
 
@@ -111,6 +122,11 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
+        stk_query_command = "rsh " + keys['acls_host'] + " -l " + \
+                            keys['acls_uname'] + " 'echo query drive " + \
+                            tape_drive + \
+                            " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+
         # call dismount command
         logc.send(log_client.INFO, 4, "UMnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
@@ -118,16 +134,23 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
         # analyze the return message
         for line in returned_message:
-            if list: logc.send(log_client.INFO, 8, "UMnt trc:"+stk_mount_command)
+            if list: logc.send(log_client.INFO, 4, "UMnt trc:"+stk_mount_command)
             if string.find(line, "dismount") != -1 :
                 out_ticket = {"status" : "ok"}
                 break
         # log the work
-        logc.send(log_client.INFO, 4, "UMnt ok:"+stk_mount_command)
+        logc.send(log_client.INFO, 2, "UMnt ok:"+stk_mount_command)
+        for line in returned_message:
+                logc.send(log_client.INFO, 8, "UMnt sts:"+line)
         if out_ticket["status"] != "ok" :
             logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command,1)
             for line in returned_message:
-                logc.send(log_client.ERROR, 1, "UMnt sts:"+line)
+                logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
+
+        returned_message  = os.popen(stk_query_command, "r").readlines()
+        for line in returned_message:
+                logc.send(log_client.INFO, 16, "Umnt qry:"+line)
+
         self.reply_to_caller(out_ticket)
 
 # STK media loader server

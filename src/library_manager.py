@@ -15,6 +15,9 @@ pending_work = []       # list of read or write work tickets
 
 # here is where we setup priority for work that needs to get done
 def priority(ticket) :
+#     priority set to 5 in encp for a retry 
+    if ticket.has_key("priority") :
+        return ticket["priority"]
     if ticket["work"] == "write_to_hsm" :
         #return 10
         return 1

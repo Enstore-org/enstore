@@ -133,7 +133,7 @@ class Mover :
         self.external_label = ticket["external_label"]
         vticket = vcc.inquire_vol(self.external_label)
         if vticket["status"] != "ok" :
-            self.unilateral_unbind_next()
+            self.unilateral_unbind_next(ticket)
             return
         self.vticket = vticket
 
@@ -162,7 +162,7 @@ class Mover :
             #     new mover before the old volume was given back to the library
             if lmticket["status"] == "media_in_another_device" :
                 time.sleep (10)
-            self.unilateral_unbind_next()
+            self.unilateral_unbind_next(ticket)
             return
 
         # we have the volume - load it
@@ -253,14 +253,14 @@ class Mover :
                 sanity_size)
             file_cookie = self.driver.close_file_write()
         except:
-            self.logc.send(log_client.ERROR,1,"Error writing "+ticket["external_label"])
             self.logc.send(log_client.ERROR,1,
-                       repr(sys.exc_info()[0])+repr(sys.exc_info()[1]))
+              "Error writing "+str(ticket) )
+            self.logc.send(log_client.ERROR,1,
+              str(sys.exc_info()[0])+str(sys.exc_info()[1]))
             media_error = 1 # I don't know what else to do right now
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
 
         # we've read the file from user, shut down data transfer socket
-        print "socket.close",media_error
         self.data_socket.close()
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         
@@ -269,7 +269,7 @@ class Mover :
             vcc.update_counts(ticket["external_label"],
                               wr_err,rd_err,wr_access,rd_access)
             vcc.set_system_readonly(ticket["external_label"])
-            self.unilateral_unbind_next()
+            self.unilateral_unbind_next(ticket)
             msg = "Volume "+repr(ticket["external_label"])
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
@@ -381,7 +381,7 @@ class Mover :
         # if media error, mark volume readonly, unbind it & tell user to retry
         if media_error :
             vcc.set_system_readonly(ticket["external_label"])
-            self.unilateral_unbind_next()
+            self.unilateral_unbind_next(ticket)
             msg = "Volume "+repr(ticket["external_label"])
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
@@ -389,7 +389,7 @@ class Mover :
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_error :
             vcc.set_hung(ticket["external_label"])
-            self.unilateral_unbind_next()
+            self.unilateral_unbind_next(ticket)
             msg = "Volume "+repr(ticket["external_label"])
             self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
             #since we will kill ourselves, tell the library manager now....
@@ -442,7 +442,8 @@ class Mover :
 
 
     # create ticket that says we need to unbind volume x
-    def unilateral_unbind_next(self):
+    def unilateral_unbind_next(self,ticket):
+        self.unbind_volume(ticket)
         self.next_libmgr_request = {"work"           : "unilateral_unbind",
                                     "external_label" : self.external_label,
                                     "mover"          : self.name }
@@ -500,5 +501,7 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\
                      "mover move_forever continuing"
+            csc = configuration_client.configuration_client(self.config_host,self.config_port)
+            logc = log_client.LoggerClient(self.csc, 'MOVER', 'logserver', 0)
             logc.send(log_client.ERROR, 1, format)
             continue

@@ -271,7 +271,8 @@ class VolumeClerkMethods(DispatchingWorker) :
             # supposed to return first blank volume found?
             if first_found:
                 v["file_family"] = file_family
-                print "Assigning blank volume",label,"to",library,file_family
+                logc.send(log_client.INFO,2, 
+                  "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = "ok"
                 self.reply_to_caller(v)
@@ -286,8 +287,8 @@ class VolumeClerkMethods(DispatchingWorker) :
         if len(vol) != 0:
             label = vol['external_label']
             vol["file_family"] = file_family
-            print "Assigning blank volume",label,"to family",file_family,\
-                  "in",library,"library"
+            logc.send(log_client.INFO,2, 
+                  "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = "ok"
             self.reply_to_caller(vol)
@@ -295,16 +296,16 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # nothing was available at all
         ticket["status"] = "Volume Clerk: no new volumes available"
-        pprint.pprint(ticket)
+        logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
         self.reply_to_caller(ticket)
         return
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-         pprint.pprint(ticket)
-         self.reply_to_caller(ticket)
-         return
+        ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+        logc.send(log_client.ERROR,1, str(ticket) )
+        self.reply_to_caller(ticket)
+        return
 
 
     # update the database entry for this volume

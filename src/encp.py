@@ -105,7 +105,6 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
 
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
-              "retry"              : 0,
               "library"            : p.library,
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,
@@ -120,7 +119,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
               "unique_id"          : time.time()
               }
 
-    retry = 2
+    maxretry = 2
+    retry = maxretry
     while retry:
         # ask configuration server what port the right library manager is using
         t1 = time.time()
@@ -199,7 +199,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     	    print "Error with encp EXfer - continueing";traceback.print_exc()
             ticket = {
               "work"               : "write_to_hsm",
-              "retry"              : retry,
+              "priority"           : 5,
               "library"            : p.library,
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,

@@ -1,6 +1,5 @@
 import sys
 import errno
-import pprint
 import posix
 import string
 try:
@@ -52,7 +51,9 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
-
+#    Error handling - the ET routines return a NULL pointer to an  object
+#    and throw an ETape.error exception which is passed to our caller.
+#
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.blocksize = 65536
@@ -71,13 +72,11 @@ class  FTTDriver(GenericDriver) :
         move = loc - self.position
         if move < 0 :
            move = move-1
-        print self.device,"open read",loc,size,self.position,self.eod
         self.ETdesc = ETape.ET_OpenRead(self.device, move, loc, self.blocksize)
         self.position = loc
 
     def close_file_read(self) :
         self.position = self.position + 1
-        print self.device,"close read",self.position,self.eod
         stats = ETape.ET_CloseRead(self.ETdesc)
    
         if stats[1] != "Invalid":
@@ -92,7 +91,6 @@ class  FTTDriver(GenericDriver) :
         self.bod = self.eod
         self.ETdesc = ETape.ET_OpenWrite(self.device, self.eod-self.position, self.blocksize)
         self.position = self.eod
-        print self.device,"open write",self.position,self.eod,self.bod
 
     def close_file_write(self):
         stats = ETape.ET_CloseWrite(self.ETdesc)
@@ -107,9 +105,10 @@ class  FTTDriver(GenericDriver) :
           self.wr_err = string.atoi(stats[2])
         else :
           self.wr_err = 0;
-        print self.device,"close write",self.position,self.eod,self.bod,stats[3]
         return `(self.bod, stats[3])`
 
+#      This does not realy write a "block" but puts data into a buffer
+#      which is writtenb when the buffer is a full tape block.
     def write_block(self, data):
        ETape.ET_WriteBlock(self.ETdesc, data)
 
@@ -181,6 +180,8 @@ class  RawDiskDriver(GenericDriver) :
 
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
+        print "write error"
+        raise "write error"
         if len(data) > self.remaining_bytes :
             format="NoSpace Len "+repr(len(data))+ \
                      "Remain "+repr(self.remaining_bytes)
@@ -310,7 +311,6 @@ if __name__ == "__main__" :
     if list:
         print "EOD cookie:",rdd.get_eod_cookie()
         print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
-        pprint.pprint(rdd.__dict__)
 
     for k in cookie.keys() :
         rdd.open_file_read(cookie[k])
