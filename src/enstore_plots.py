@@ -22,6 +22,7 @@ TOTAL = "total"
 READS = "reads"
 WRITES = "writes"
 CTR = "ctr"
+USE_SUBDIR = "use_subdir"
 DRIVE_ID = "drive_id"
 LARGEST = "largest"
 SMALLEST = "smallest"
@@ -184,12 +185,6 @@ class EnPlot(enstore_files.EnFile):
                 # move these files somewhere
                 os.system("mv %s %s;mv %s* %s"%(self.gnufile, pts_dir,
                                                 self.ptsfile, pts_dir))
-
-class BpdMoverDataFile(EnPlot):
-
-    def __init__(self, dir, mover):
-	EnPlot.__init__(self, dir, "%s-%s"%(enstore_constants.BPD_FILE, mover))
-
 
 class MphGnuFile(enstore_files.EnFile):
 
@@ -618,6 +613,20 @@ class BpdMoverGnuFile(enstore_files.EnFile):
 			    )
 
 
+class BpdMoverDataFile(EnPlot):
+
+    def __init__(self, dir, mover):
+	EnPlot.__init__(self, dir, "%s-%s"%(enstore_constants.BPD_FILE, mover))
+
+    def install(self, dir, use_subdir):
+	# see if there is a subdir to 'dir' that is bpd_per_mover.  if so, install
+	# our files there. only do this is told to.
+	if use_subdir:
+	    new_dir = enstore_functions.get_bpd_subdir(dir)
+	else:
+	    new_dir = dir
+	EnPlot.install(self, new_dir)
+
 class BpdDataFile(EnPlot):
 
     def __init__(self, dir):
@@ -651,10 +660,10 @@ class BpdDataFile(EnPlot):
     def sum_movers(self, mover_d):
 	drive_id = mover_d[DRIVE_ID]
 	if not self.movers_d.has_key(drive_id):
-	    self.movers_d[drive_id] = {TOTAL : 0.0, CTR : 0}
+	    self.movers_d[drive_id] = {TOTAL : 0.0, CTR : 0, USE_SUBDIR : NO}
 	drive_id_d = self.movers_d[drive_id]
 	for date in mover_d.keys():
-	    if date in [TOTAL, CTR, DRIVE_ID]:
+	    if date in [TOTAL, CTR, DRIVE_ID, USE_SUBDIR]:
 		continue
 	    # now we have only dates
 	    if not drive_id_d.has_key(date):
@@ -689,7 +698,8 @@ class BpdDataFile(EnPlot):
 	    else:
 		self.movers_d[mover] = {adate : [0.0, 0.0],
 					TOTAL : 0.0, CTR : 0,
-					DRIVE_ID : drive_id}
+					DRIVE_ID : drive_id,
+					USE_SUBDIR : YES}
 
 	    if type == WRITE:
 		day[WRITES] = day[WRITES] + fypt
@@ -762,7 +772,7 @@ class BpdDataFile(EnPlot):
 
 	# now make the plots for bytes/day/mover
 	for mover in self.per_mover_files_d.keys():
-	    self.per_mover_files_d[mover].install(dir)
+	    self.per_mover_files_d[mover].install(dir, self.movers_d[mover][USE_SUBDIR])
 
 	#filer = string.replace(self.name, enstore_constants.BPD_FILE,
 	#		       enstore_constants.BPD_FILE_R)

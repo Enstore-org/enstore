@@ -194,6 +194,13 @@ def is_media_changer(server):
 def get_name(server):
     return string.split(server, ".")[0]
 
+def get_bpd_subdir(dir):
+    new_dir = "%s/%s"%(dir, enstore_constants.BPD_SUBDIR)
+    if not os.path.exists(new_dir):
+	# doesn't exist, use the old one
+	new_dir = dir
+    return new_dir
+
 # return true if the passed server name is one of the following -
 #   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
 #   server, event_relay

@@ -29,6 +29,7 @@ XFER_FILE = "%s%s"%(FILE_PREFIX, XFER)
 XFERLOG_FILE = "%s%s"%(XFER_FILE, LOG)
 UTIL_FILE = "_%s"%(UTIL,)
 SG_FILE = "%s%s"%(FILE_PREFIX, SG)
+BPD_SUBDIR = "bpd_per_mover"
 # ratekeeper generated plot data files
 NULL_RATES = "null_rates"
 REAL_RATES = "real_rates"
