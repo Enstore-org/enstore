@@ -115,7 +115,7 @@ if __name__ == "__main__" :
 
     if intf.alive:
         ticket = alc.alive(intf.alive_rcv_timeout, intf.alive_retries)
-        print repr(ticket)
+        #print repr(ticket)
 
     elif intf.resolve:
         ticket = alc.resolve(intf.resolve)
