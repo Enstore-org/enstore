@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-######################################################################
-# src/$RCSfile$   $Revision$
 #
-
-
+# $Id$
+#
 
 # system imports
 import sys
@@ -23,11 +21,10 @@ import signal
 import random
 
 # enstore modules
-
 import setpath 
-
 import Trace
 import pnfs
+import pnfs_hack #TEMPORARY
 import callback
 import log_client
 import configuration_client
@@ -487,18 +484,12 @@ def check_load_balance(mode, dest):
         recv_rate = recv_rate/weight
         send_rate = send_rate/weight
         if mode==1: #writing
-            choose.append((send_rate, interface))
+            #If rates are equal on different interfaces, randomize!
+            choose.append((send_rate, -weight, random.random(), interface))
         else:
-            choose.append((recv_rate, interface))
-    tmp = choose[:]
-    choose = []
-    while tmp:
-        item = random.choice(tmp)
-        choose.append(item)
-        tmp.remove(item)
-    Trace.log(e_errors.INFO, "interface: choose = %s" % (choose,))
-    choose.sort()
-    rate, interface = choose[0]
+            choose.append((recv_rate, -weight, random.random(), interface))
+    choose.sort() 
+    rate, junk1, junk2, interface = choose[0]
     Trace.log(e_errors.INFO, "chose interface %s, %s rate=%s" % (
         interface, {0:"recv",1:"send"}.get(mode,"?"), rate))
     interface_details = interface_dict[interface]
@@ -528,7 +519,11 @@ def check_load_balance(mode, dest):
 def write_to_hsm(input_files, output, output_file_family='',
                  verbose=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
-                 t0=0, bytecount=None):
+                 t0=0,
+                 bytecount=None, #Test mode only
+                 storage_info=None, #DCache only
+                 dcache=0,
+                 ):
     if t0==0:
         t0 = time.time()
 
@@ -586,6 +581,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # check the input unix files. if files don't exits, 
     # we bomb out to the user
+    if dcache: #XXX
+        input_files = [input_files]
+        
     inputlist, file_size = inputfile_check(input_files, bytecount)
     if (len(inputlist)>1) and (delayed_dismount == 0):
         delayed_dismount = 1
@@ -604,6 +602,9 @@ def write_to_hsm(input_files, output, output_file_family='',
         print "Checking output pnfs files:",output, "   cumt=", time.time()-t0
     t1 = time.time() #--------------------------------------------Start
 
+    if dcache:
+        output = [pnfs_hack.filename_from_id(output)]
+        
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
     outputlist = outputfile_check(inputlist,output)
@@ -1804,7 +1805,7 @@ def read_hsm_files(listen_socket, submitted, requests,
 def read_from_hsm(input_files, output,
                   verbose=0, chk_crc=0, 
                   pri=1, delpri=0, agetime=0,
-                  delayed_dismount=None, t0=0):
+                  delayed_dismount=None, t0=0, dcache=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"read_from_hsm input_files=%s output=%s verbose=%s  chk_crc=%s t0=%s"%
@@ -1823,14 +1824,18 @@ def read_from_hsm(input_files, output,
     t1 =  time.time() #---------------------------------------------------Start
 
     #check the input unix files. if files don't exits, we bomb out to the user
+    if dcache: #XXX
+        input_files = [pnfs_hack.filename_from_id(input_files)]
+        output = [output]
+        
     (inputlist, file_size) = inputfile_check(input_files)
+        
     ninput = len(inputlist)
     status, info = pnfs_information(inputlist,write=0)
     if status[0] != e_errors.OK:
         print_error(status[0], status[1])
         #XXX data_access_layer?
         quit()
-
         
     (bfid,junk,junk,junk,junk,junk,pinfo,p)= info
 
@@ -2059,7 +2064,12 @@ def read_from_hsm(input_files, output,
             error = 1
 
     # we are done transferring - close out the listen socket
-    listen_socket.close()
+    try:
+        listen_socket.close()
+    except:
+        if verbose:
+            print "Error closing socket"
+
 
     # Calculate an overall rate: all bytes, all time
     tf=tinfo["total"] = time.time()-t0
@@ -2072,9 +2082,14 @@ def read_from_hsm(input_files, output,
     else:
         done_ticket["MB_per_S"] = 0.0
 
-    msg ="Complete: %s bytes in %s files in %s sec.  Overall rate = %s MB/sec" % (
-        total_bytes,ninput,tf-t0,done_ticket["MB_per_S"])
 
+    if error == 0:
+        msg ="Complete: %s bytes in %s files in %s sec.  Overall rate = %s MB/sec" % (
+            total_bytes,ninput,tf-t0,done_ticket["MB_per_S"])
+    else:
+        msg ="Error after transferring %s bytes in %s files in %s sec.  Overall rate = %s MB/sec" % (
+            total_bytes,ninput,tf-t0,done_ticket["MB_per_S"])
+        
     if verbose:
         print msg
 
@@ -2083,7 +2098,7 @@ def read_from_hsm(input_files, output,
         pprint.pprint(done_ticket)
 
     Trace.trace(6,"read_from_hsm "+msg)
-    sys.exit(error)
+    quit(error)
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
@@ -2108,9 +2123,12 @@ class encp(interface.Interface):
 
         self.bytes = None
         self.test_mode = 0
+        self.put_cache = self.get_cache = 0 #Special options for operation with a disk cache layer
+        self.storage_info = None # Ditto
+        
         interface.Interface.__init__(self)
-
         # parse the options
+
         self.parse_options()
 
     ##########################################################################
@@ -2119,6 +2137,7 @@ class encp(interface.Interface):
         return self.config_options()+[
             "verbose=","crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
+#            "get-cache", "put-cache", "storage-info=",
             "data-access-layer"] + self.help_options()
     
     ##########################################################################
@@ -2195,7 +2214,7 @@ def main():
     t0 = time.time()
     Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
-    
+
     # use class to get standard way of parsing options
     e = encp()
     if e.test_mode:
@@ -2207,8 +2226,28 @@ def main():
     if e.data_access_layer:
         data_access_layer_requested.set()
 
+    #Special handling for use with dcache - not yet enabled
+    if e.get_cache:
+        pnfs_id = sys.argv[-2]
+        local_file = sys.argv[-1]
+        read_from_hsm(pnfs_id, local_file, 
+                      e.verbose, e.chk_crc,
+                      e.priority, e.delpri,
+                      e.age_time,
+                      e.delayed_dismount, t0,
+                      dcache=1)
+        
+    elif e.put_cache:
+        pnfs_id = sys.argv[-2]
+        local_file = sys.argv[-1]
+        write_to_hsm(local_file, pnfs_id, e.output_file_family,
+                     e.verbose, e.chk_crc,
+                     e.priority, e.delpri, e.age_time,
+                     e.delayed_dismount, t0, e.bytes,
+                     dcache=1, storage_info=e.storage_info)
+        
     ## have we been called "encp unixfile hsmfile" ?
-    if e.intype=="unixfile" and e.outtype=="hsmfile" :
+    elif e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
                      e.verbose, e.chk_crc,
                      e.priority, e.delpri, e.age_time,
@@ -2227,6 +2266,7 @@ def main():
         print_error('USERERROR', emsg)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+        quit()
 
     ## have we been called "encp hsmfile hsmfile?
     elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
@@ -2234,6 +2274,7 @@ def main():
         print_error('USERERROR', emsg)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+        quit()
 
     else:
         emsg = "ERROR: Can not process arguments %s"%(e.args,)
