@@ -1,29 +1,3 @@
-aik@FNAL.GOV
-alcorn@FNAL.GOV
-baisley@FNAL.GOV
-bakken@FNAL.GOV
-berg@FNAL.GOV
-berman@FNAL.GOV
-djholm@FNAL.GOV
-ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
-genser@FNAL.GOV
-george@FNAL.GOV
-huangch@FNAL.GOV
-ivm@FNAL.GOV
-jonest@FNAL.GOV
-kennedy@FNAL.GOV
-moibenko@FNAL.GOV
-neilsen@FNAL.GOV
-oleynik@FNAL.GOV
-petravic@FNAL.GOV
-podstvkv@FNAL.GOV
-ron@FNAL.GOV
-timur@FNAL.GOV
-tlevshin@FNAL.GOV
-tvrdik@FNAL.GOV
-vsergeev@FNAL.GOV
-wellner@FNAL.GOV
-zalokar@FNAL.GOV
 host/rip1.fnal.gov@FNAL.GOV
 host/rip2.fnal.gov@FNAL.GOV
 host/rip3.fnal.gov@FNAL.GOV
@@ -51,14 +25,11 @@ host/d0enmvr4a.fnal.gov@FNAL.GOV
 host/d0enmvr5a.fnal.gov@FNAL.GOV
 host/d0enmvr6a.fnal.gov@FNAL.GOV
 host/d0enmvr7a.fnal.gov@FNAL.GOV
-host/d0enmvr8a.fnal.gov@FNAL.GOV
 host/d0enmvr9a.fnal.gov@FNAL.GOV
 host/d0enmvr10a.fnal.gov@FNAL.GOV
 host/d0enmvr11a.fnal.gov@FNAL.GOV
 host/d0enmvr12a.fnal.gov@FNAL.GOV
-host/d0enmvr13a.fnal.gov@FNAL.GOV
 host/d0enmvr14a.fnal.gov@FNAL.GOV
-host/d0enmvr15a.fnal.gov@FNAL.GOV
 host/d0enmvr16a.fnal.gov@FNAL.GOV
 host/d0enmvr17a.fnal.gov@FNAL.GOV
 host/d0enmvr18a.fnal.gov@FNAL.GOV
@@ -97,6 +68,14 @@ host/d0enmvr50a.fnal.gov@FNAL.GOV
 host/d0enmvr51a.fnal.gov@FNAL.GOV
 host/d0enmvr52a.fnal.gov@FNAL.GOV
 host/d0enmvr53a.fnal.gov@FNAL.GOV
+host/d0enmvr54a.fnal.gov@FNAL.GOV
+host/d0enmvr55a.fnal.gov@FNAL.GOV
+host/d0enmvr56a.fnal.gov@FNAL.GOV
+host/d0enmvr57a.fnal.gov@FNAL.GOV
+host/d0enmvr58a.fnal.gov@FNAL.GOV
+host/d0enmvr59a.fnal.gov@FNAL.GOV
+host/d0enmvr60a.fnal.gov@FNAL.GOV
+host/d0enmvr61a.fnal.gov@FNAL.GOV
 host/d0enout1a.fnal.gov@FNAL.GOV
 host/d0enout2a.fnal.gov@FNAL.GOV
 host/cmspnfs1.fnal.gov@FNAL.GOV
@@ -170,8 +149,36 @@ host/cdfenmvr28a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, d0ensrv1, `enstore/cd/d0dca.fnal.gov@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, d0ensrv1, `enstore/cd/d0dcam.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca2a.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca3a.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV', `dnl')
+aik@FNAL.GOV
+alcorn@FNAL.GOV
+baisley@FNAL.GOV
+bakken@FNAL.GOV
+berg@FNAL.GOV
+berman@FNAL.GOV
+djholm@FNAL.GOV
+ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
+genser@FNAL.GOV
+george@FNAL.GOV
+huangch@FNAL.GOV
+ivm@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
+jonest@FNAL.GOV
+kennedy@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
+moibenko@FNAL.GOV
+neilsen@FNAL.GOV
+oleynik@FNAL.GOV
+petravic@FNAL.GOV
+podstvkv@FNAL.GOV
+ron@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
+timur@FNAL.GOV
+tlevshin@FNAL.GOV
+tvrdik@FNAL.GOV
+vsergeev@FNAL.GOV
+wellner@FNAL.GOV
+zalokar@FNAL.GOV
