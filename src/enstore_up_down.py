@@ -42,6 +42,10 @@ ALIVE_INTERVAL = 10
 LOW_CAPACITY = 0
 SUFFICIENT_CAPACITY = 1
 
+REMEDY_TYPE_D = { 'st' : "STK Enstore",
+                  'd0' : "D0 Enstore",
+                  'cd' : "CDF Enstore" }
+
 def sortit(adict):
     keys = adict.keys()
     keys.sort()
@@ -670,12 +674,17 @@ def do_real_work():
 	if summary_d[log.format_name] == enstore_constants.UP and \
 	   summary_d[alarm.format_name] == enstore_constants.UP and \
 	   summary_d[cs.format_name] == enstore_constants.UP:
+            # determine remedy type based on config node
+            remedy_type = REMEDY_TYPE_D.get(cs.config_host[0:2], cs.config_host)
 	    # the following line will set the alarm function
 	    alc = alarm_client.AlarmClient((cs.config_host, cs.config_port))
 	    Trace.init("Enstore_Up_Down")
 	    Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
-	    Trace.alarm(e_errors.INFO, "this is a test ticket, eileen will clear, however, please page as normal",
-                        {'Reason':repr(reason)}, "test", "TestAlarm") 
+            print "%s - Ticket Generated %s, %s, %s"%(e_errors.ENSTOREBALLRED,
+                                                      {'Reason':repr(reason)}, "RedBall",
+                                                      remedy_type)
+	    Trace.alarm(e_errors.INFO, "%s - Ticket Generated"%(e_errors.ENSTOREBALLRED,),
+                        {'Reason':repr(reason)}, "RedBall", remedy_type) 
     else:
 	stat = "UP"
 	rtn = 0
