@@ -2187,6 +2187,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # reply to the vol_assert client
     def volume_assert(self, ticket):
         self.volume_assert_list.append(ticket)
+        ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlock
 
     # remove volume from suspect volume list
