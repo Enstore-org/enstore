@@ -471,7 +471,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options()+[
-                "clear=", "backup", "vols","next","vol=","check=","add=",
+                "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
                 "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib="]
