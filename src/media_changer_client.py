@@ -65,8 +65,8 @@ class MediaChangerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() +\
-               ["verbose=", "config_file=", "alive","alive_rcv_timeout=","alive_retries="] +\
-               self.help_options()
+               ["verbose=", "config_file="] +\
+               self.alive_options()+self.help_options()
 
     #  define our specific help
     def help_line(self):

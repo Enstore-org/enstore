@@ -147,8 +147,8 @@ class FileClerkClientInterface(interface.Interface):
     def options(self):
         Trace.trace(16,"{}options")
         return self.config_options()+\
-               ["verbose=","bfids","bfid=","alive","backup","alive_rcv_timeout=","alive_retries="] +\
-               self.help_options()
+               ["verbose=","bfids","bfid=","backup"] +\
+               self.alive_options()+self.help_options()
 
 
 

@@ -115,9 +115,9 @@ class AdminClerkClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options() +\
-               ["verbose=", "alive","alive_rcv_timeout=","alive_retries=","dbname=", "faccess=",
+               ["verbose=", "dbname=", "faccess=",
                 "laccess=","declared=","capacity=","rem_bytes=",] +\
-               self.help_options()
+               self.alive_options()+self.help_options()
 
     # define the single character options
     def charopts(self):

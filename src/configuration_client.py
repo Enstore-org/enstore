@@ -218,8 +218,8 @@ class ConfigurationClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() +\
-	       ["config_file=","verbose=","get_keys","dict","load","alive","alive_rcv_timeout=","alive_retries="] + \
-	       self.help_options()
+	       ["config_file=","verbose=","get_keys","dict","load"] + \
+	       self.alive_options()+self.help_options()
 
 if __name__ == "__main__":
     import sys

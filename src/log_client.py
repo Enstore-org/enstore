@@ -146,8 +146,8 @@ class LoggerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() +\
-               ["verbose=", "config_file=", "test", "logit=", "alive","alive_rcv_timeout=","alive_retries="] +\
-               self.help_options()
+               ["verbose=", "config_file=", "test", "logit="] +\
+               self.alive_options()+self.help_options()
 
     # our help stuff
     def help_line(self):

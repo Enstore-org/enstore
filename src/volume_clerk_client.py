@@ -302,9 +302,9 @@ class VolumeClerkClientInterface(interface.Interface):
     def options(self):
         Trace.trace(20,'{}options')
         return self.config_options() +\
-               ["verbose=", "alive","alive_rcv_timeout=","alive_retries=","clrvol", "backup" ] +\
+               ["verbose=", "clrvol", "backup" ] +\
                ["vols","nextvol","vol=","addvol","delvol" ] +\
-               self.help_options()
+               self.alive_options()+self.help_options()
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
