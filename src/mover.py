@@ -339,7 +339,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         except KeyError:
             Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
             return
-        output_dict = driver_object.OCS_stats(self.driveStatistics[action])
+        output_dict = self.driveStatistics[action]
         output_dict['DEVNAME'] = self.mvr_config['mc_device']
         output_dict['VSN'] = self.vol_info['external_label']
         
