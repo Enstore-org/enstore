@@ -30,10 +30,6 @@ class LibraryManagerClient :
         return self.send(ticket)
 
 
-    def printwork(self):
-        return self.send({"work" : "printwork"} )
-
-
     def getwork(self,list) :
         # get a port to talk on and listen for connections
         host, port, listen_socket = get_callback()
@@ -55,7 +51,6 @@ class LibraryManagerClient :
         # and make sure that is it calling _us_ back, and not some sort of old
         # call-back to this very same port. It is dicey to time out, as it
         # is probably legitimate to wait for hours....
-
         while 1 :
             control_socket, address = listen_socket.accept()
             new_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
@@ -73,16 +68,16 @@ class LibraryManagerClient :
                   +"ticket[\"status\"]="+ticket["status"]
 
         # If the system has called us back with our own  unique id, call back
-        # the libray manager on the library manager's port and read the
+        # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = library_manager_callback_socket(ticket)
-        l = 0
+        workmsg = ""
         while 1:
             buf = data_path_socket.recv(65536*4)
-            l = l + len(buf)
             if len(buf) == 0 : break
-            print buf
+            workmsg = workmsg+buf
         data_path_socket.close()
+        worklist = a_to_dict(workmsg)
 
         # Work has been read - wait for final dialog with library manager.
         done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
@@ -95,7 +90,7 @@ class LibraryManagerClient :
         if list :
             print "done"
 
-        return done_ticket
+        return worklist
 
 
 if __name__ == "__main__" :
@@ -109,11 +104,10 @@ if __name__ == "__main__" :
     config_list = 0
     list = 0
     getwork = 0
-    printwork = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
-               ,"config_list","getwork","printwork","list","help"]
+               ,"config_list","getwork","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -124,8 +118,6 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--getwork" :
             getwork = 1
-        elif opt == "--printwork" :
-            printwork = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -153,9 +145,6 @@ if __name__ == "__main__" :
 
     if  getwork:
         ticket = lmc.getwork(list)
-
-    elif printwork:
-        ticket = lmc.printwork()
 
     if ticket["status"] != "ok"  :
         print "BAD status returned"

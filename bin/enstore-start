@@ -7,7 +7,7 @@ set -u  # force better programming and ability to use check for not set
 
 libraries="activelibrary red50library"
 media_changers="STK.media_changer RDD.media_changer"
-movers="fd0.mover stk0.mover"
+movers="fd0.mover fd1.mover stk0.mover stk1.mover"
 
 # ok, this is terrible - but let's start always start up in the etc area so files are created there
 place=`pwd`
@@ -39,7 +39,7 @@ echo $! >> `uname -n`-file_clerk_pids
 
 # library manager
 for i in $libraries; do
-  echo "Starting library manager: $i"
+  echo "Starting $i library manager"
   python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port $i &
   echo $! >> `uname -n`-library_manager_pids
 done

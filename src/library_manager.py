@@ -7,6 +7,7 @@ from callback import *
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from udp_client import UDPClient
+import pprint
 
 # Read write work lists
 # set up and manipulate the list of requests to read or write
@@ -199,6 +200,9 @@ class LibraryManagerMethods(DispatchingWorker) :
         if w :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             work_awaiting_bind.remove(w)
+            w['mover'] = mticket['mover']
+	    #print "awaiting work"
+            #pprint.pprint(w)
             work_at_movers.append(w)
             return
 
@@ -207,6 +211,9 @@ class LibraryManagerMethods(DispatchingWorker) :
         if w["status"] == "ok" :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.remove(w)
+            w['mover'] = mticket['mover']
+	    #print "next work"
+            #pprint.pprint(w)
             work_at_movers.append(w)
 
 
@@ -250,27 +257,21 @@ class LibraryManagerMethods(DispatchingWorker) :
             pending_work.remove(w)
             send_to_user_callback(w)
 
-    # what is going on
-    def printwork(self,ticket) :
-        ticket["status"] = "ok"
-        rticket = {}
-        rticket["status"] = "ok"
-        rticket["at movers"] = work_at_movers
-        rticket["awaiting volume bind"] = work_awaiting_bind
-        rticket["pending_work"] = pending_work
-        self.reply_to_caller(rticket)
 
     # what is going on
     def getwork(self,ticket) :
         ticket["status"] = "ok"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            return
         self.get_user_sockets(ticket)
         rticket = {}
         rticket["status"] = "ok"
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work
-        rticket["ticket"] = repr(ticket)
         self.data_socket.send(repr(rticket))
         self.data_socket.close()
         self.control_socket.send(dict_to_a(ticket))
@@ -278,20 +279,13 @@ class LibraryManagerMethods(DispatchingWorker) :
 
 
     # get a port for the data transfer
-    # tell the user I'm your mover and here's your ticket
+    # tell the user I'm your library manager and here's your ticket
     def get_user_sockets(self, ticket) :
-        library_manager_host,library_manager_port,listen_socket = get_callback()
+        library_manager_host,library_manager_port,listen_socket =get_callback()
         listen_socket.listen(4)
         ticket["library_manager_callback_host"] = library_manager_host
         ticket["library_manager_callback_port"] = library_manager_port
         self.control_socket = user_callback_socket(ticket)
-
-        # we expect a prompt call-back here, and should protect
-        # against users not getting back to us. The best protection
-        # would be to kick off if the user dropped the control_socket,
-        # but I am at home and am not able to find documentation
-        # on select...
-
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()

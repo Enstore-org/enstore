@@ -27,7 +27,21 @@ configdict['fd0.mover'] = { 'status'  : 'ok', \
                             'library_device' : '1', \
                             'media_changer' : 'RDD.media_changer' }
 
+configdict['fd1.mover'] = { 'status'  : 'ok', \
+                            'device'  : './file.fake', \
+                            'library' : 'activelibrary', \
+                            'driver'  : 'RawDiskDriver', \
+                            'library_device' : '1', \
+                            'media_changer' : 'RDD.media_changer' }
+
 configdict['stk0.mover'] = { 'status'  : 'ok', \
+                            'device'  : './redwood.fake', \
+                            'library' : 'red50library', \
+                            'driver'  : 'RawDiskDriver', \
+                            'library_device' : '0,0,9,1', \
+                            'media_changer' : 'STK.media_changer' }
+
+configdict['stk1.mover'] = { 'status'  : 'ok', \
                             'device'  : './redwood.fake', \
                             'library' : 'red50library', \
                             'driver'  : 'RawDiskDriver', \
