@@ -22,8 +22,9 @@ def extract_file_family(volume_family):
     vf = string.split(volume_family,'.')
     if len(vf) > 2:
         file_family = vf[1]
-        if len(vf) == 3:
-            file_family = string.join((file_family, vf[2]), '.')
+        
+        #if len(vf) == 3:
+        #    file_family = string.join((file_family, vf[2]), '.')
     else: file_family = 'none'
     return file_family
 
@@ -36,3 +37,7 @@ def extract_storage_group(volume_family):
         storage_group = vf[0]
     else: storage_group = 'none'
     return storage_group
+
+# combine volume family
+def make_volume_family(storage_group, file_family, wrapper):
+    return string.join((storage_group, file_family, wrapper), '.')

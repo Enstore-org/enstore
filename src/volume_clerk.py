@@ -22,11 +22,8 @@ import Trace
 import e_errors
 import configuration_client
 import bfid_db
+import volume_family
 
-# This file is a total disaster.  Look at how next_write_volume and find_matching_volume
-# interact.  The former calls the latter, but they both return to caller!  Either this is
-# completely erroneous, or, if correct, it's so confusing as to be unmaintainable.
-# Somebody clean this shit up!
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -52,7 +49,7 @@ MY_NAME = "volume_clerk"
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
-    # check if volume is full and if is set it to full
+    # check if volume is full
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
         ret = ""
@@ -182,7 +179,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              
              new_label = string.replace(cur_rec['external_label'], '.deleted', '')
              if not self.dict.has_key(new_label):
-                 import volume_family
                  cur_rec['exrenal_label'] = new_label
                  cur_rec['volume_family'] = string.join((volume_family.extract_storage_group(cur_rec['volume_family']),
                                                                                             'none'),'.')
@@ -276,7 +272,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # mandatory keys
         for key in  ['external_label','media_type', 'library',
-                     'eod_cookie', 'remaining_bytes', 'capacity_bytes']:
+                     'eod_cookie', 'storage_group', 'file_family',
+                     'wrapper', 'remaining_bytes', 'capacity_bytes']:
             try:
                 record[key] = ticket[key]
             except KeyError, detail:
@@ -296,10 +293,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                       % (ticket['library'],))
 
         # form a volume family
-        # if file family has a dotted notation then wrapper is
-        # already defined and follws a "."
-        record['volume_family'] = string.join((ticket['storage_group'],
-                                               ticket['file_family']), '.')
+        record['volume_family'] = volume_family.make_volume_family(ticket['storage_group'],
+                                               ticket['file_family'], ticket['wrapper'])
         # optional keys - use default values if not specified
         record['last_access'] = ticket.get('last_access', -1)
         record['first_access'] = ticket.get('first_access', -1)
@@ -529,13 +524,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                       record['user_inhibit'][1] == 'full'):
                     ret_stat = (record['user_inhibit'][1], None)
                 else:
-                    vf = string.split(ticket['volume_family'],'.')
+                    ff = volume_family.extract_file_family(ticket['volume_family'])
                     Trace.trace(35, "is_vol_available: ticket %s, record %s" %
                                 (ticket['volume_family'],record['volume_family']))
 
                     #XXX deal with 2-tuple vs 3-tuple...
                     if (hack_match(ticket['volume_family'],record['volume_family']) or
-                        vf[1] == 'ephemeral'):
+                        ff == 'ephemeral'):
                         ret = self.is_volume_full(record,ticket['file_size'])
                         if not ret:
                             ret_stat = (e_errors.OK,None)
@@ -549,18 +544,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
 
     # find volume that matches given volume family
-    def find_matching_volume(self, library, volume_family, pool,
+    def find_matching_volume(self, library, vol_fam, pool,
                              wrapper, vol_veto_list, first_found,
                              min_remaining_bytes, exact_match=1):
 
-        tok = string.split(volume_family, ".")
-        
-        
         # go through the volumes and find one we can use for this request
         vol = {}
 
         Trace.trace(20,  "volume family %s pool %s wrapper %s veto %s exact %s" %
-                    (volume_family, pool,wrapper, vol_veto_list, exact_match))
+                    (vol_fam, pool,wrapper, vol_veto_list, exact_match))
 
         lc = self.dict.inx['library'].cursor()          # read only
         vc = self.dict.inx['volume_family'].cursor()
@@ -601,25 +593,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # supposed to return first volume found?
             # do not return blank volume at this point yet
             if first_found:
-                if exact_match:
-                    v["status"] = (e_errors.OK, None)
-                    self.reply_to_caller(v)
-                    c.close()
-                    return None
-                else:
-                    # volume family may contain storage group+file family
-                    # or none.none
-                    vf =string.split(volume_family, '.')
-                    if vf[1] == 'ephemeral':
-                        volume_family = string.join((vf[0], label, wrapper), '.')
-                    v['volume_family'] = volume_family
-                    Trace.log(e_errors.INFO, "Assigning blank volume "+label+" to "+library+" "+volume_family)
-                    c.close()
-                    self.dict[label] = v  
-                    v["status"] = (e_errors.OK, None)
-                    self.reply_to_caller(v)
-                    return None
-                    
+                v["status"] = (e_errors.OK, None)
+                c.close()
+                return v
             # if not, is there an "earlier" volume that we have already found?
             if len(vol) == 0:
                 vol = v  
@@ -637,67 +613,63 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # get the criteria for the volume from the user's ticket
         min_remaining_bytes = ticket["min_remaining_bytes"]
         library = ticket["library"]
-        volume_family = ticket['volume_family']
+        vol_fam = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
 
         Trace.trace(20, "next_write_volume %s" % ticket)
         # go through the volumes and find one we can use for this request
         # first use exact match
-        Trace.trace(20, "next_write_volume %s %s" % (volume_family, volume_family))
-        vol = self.find_matching_volume(library, volume_family, volume_family,
+        sg = volume_family.extract_storage_group(vol_fam)
+        ff = volume_family.extract_file_family(vol_fam)
+        Trace.trace(20, "next_write_volume %s %s" % (vol_fam, vol_fam))
+        pool = vol_fam
+        vol = self.find_matching_volume(library, vol_fam, pool,
                                         wrapper_type, vol_veto_list,
-                                        first_found, min_remaining_bytes,1)
+                                        first_found, min_remaining_bytes,exact_match=1)
         Trace.trace(20, "find matching volume returned %s" % vol)
 
-        # return what we found
-        if vol and len(vol) != 0:
-            vol["status"] = (e_errors.OK, None)
-            self.reply_to_caller(vol)
-            return
+        if not vol or len(vol) == 0:
+            # nothing was available - see if we can assign a blank from a
+            # given storage group and file family.
+            pool = volume_family.make_volume_family(sg, ff, 'none')
+        
+            Trace.trace(20, "next_write_volume %s %s" % (vol_fam, pool))
+            vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
+                                            vol_veto_list, first_found,
+                                            min_remaining_bytes,exact_match=0)
+        
+            Trace.trace(20, "find matching volume returned %s" % vol)
 
-        # nothing was available - see if we can assign a blank from a
-        # given storage group.
-        vf = string.split(volume_family,'.')
-        pool = string.join((vf[0],'none'), '.')
+        if not vol or len(vol) == 0:
+            # nothing was available - see if we can assign a blank from a
+            # given storage group
+            pool = volume_family.make_volume_family(sg, 'none', 'none')
         
-        Trace.trace(20, "next_write_volume %s %s" % (volume_family, pool))
-        vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
-                                        vol_veto_list, first_found, min_remaining_bytes,0)
+            Trace.trace(20, "next_write_volume %s %s" % (vol_fam, pool))
+            vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
+                                            vol_veto_list, first_found,
+                                            min_remaining_bytes,exact_match=0)
         
-        Trace.trace(20, "find matching volume returned %s" % vol)
+            Trace.trace(20, "find matching volume returned %s" % vol)
                     
+        if not vol or len(vol) == 0:
+            # nothing was available - see if we can assign a blank from a
+            # common pool
+            pool = 'none.none.none'
+            Trace.trace(20, "next_write_volume %s %s" % (vol_fam, pool))
+            vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
+                                            vol_veto_list, first_found,
+                                            min_remaining_bytes, exact_match=0)
+            Trace.trace(20, "find matching volume returned %s" % vol)
         # return blank volume we found
         if vol and len(vol) != 0:
             label = vol['external_label']
-
-            vf =string.split(volume_family, '.')
-            if vf[1] == 'ephemeral':
-                volume_family = string.join((vf[0], label, wrapper_type), '.')
-            vol['volume_family'] = volume_family
+            if ff == 'ephemeral':
+                vol_fam = volume_family.make_volume_family(sg, label, wrapper_type)
+            vol['volume_family'] = vol_fam
             Trace.log(e_errors.INFO, "Assigning blank volume %s from storage group %s to library %s, volume family %s"
-                      % (label, pool, library, volume_family))
-            self.dict[label] = vol  
-            vol["status"] = (e_errors.OK, None)
-            self.reply_to_caller(vol)
-            return
-        # nothing was available - see if we can assign a blank one.
-        pool = 'none.none'
-        Trace.trace(20, "next_write_volume %s %s" % (volume_family, pool))
-        vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
-                                        vol_veto_list, first_found, min_remaining_bytes, 0)
-        Trace.trace(20, "find matching volume returned %s" % vol)
-                    
-        # return blank volume we found
-        if vol and len(vol) != 0:
-            label = vol['external_label']
-
-            vf =string.split(volume_family, '.')
-            if vf[1] == 'ephemeral':
-                volume_family = string.join((vf[0], label, wrapper_type), '.')
-            vol['volume_family'] = volume_family
-            Trace.log(e_errors.INFO,
-                      "Assigning blank volume "+label+" to "+library+" "+volume_family)
+                      % (label, pool, library, vol_fam))
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
@@ -717,7 +689,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      try:
          min_remaining_bytes = ticket["min_remaining_bytes"]
          library = ticket["library"]
-         volume_family = ticket["volume_family"]
+         vol_fam = ticket["volume_family"]
          external_label = ticket["external_label"]
      except KeyError, detail:
          msg="Volume Clerk: key %s is missing"%(detail,)
@@ -732,7 +704,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
          ticket["status"] = (e_errors.OK,'None')
          if (v["library"] == library and
-             (v["volume_family"] == volume_family) and
+             (v["volume_family"] == vol_fam) and
              v["user_inhibit"][0] == "none" and
              v["user_inhibit"][1] == "none" and
              v["system_inhibit"][0] == "none" and

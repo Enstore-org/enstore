@@ -100,6 +100,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                                              # 1:"none" | "readonly" | "full"
             ):
         Trace.trace( 6, 'add label=%s'%(external_label,))
+        if storage_group == 'none':
+            # the rest must be 'none' only
+            file_family = 'none'
+        if file_family == 'none':
+            # the rest must be 'none' only
+            wrapper = 'none'
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'storage_group'   : storage_group,
@@ -123,8 +129,15 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'non_del_files'   : non_del_files,
                    'system_inhibit'  : system_inhibit
                    }
-        x = self.send(ticket)
-        return x
+        # no '.' are allowed in storage_group, file_family and wrapper
+        for item in ('storage_group', 'file_family', 'wrapper'):
+            if '.' in ticket[item]:
+                print "No '.' allowed in %s"%(item,)
+                break
+        else:
+            x = self.send(ticket)
+            return x
+        return {'status':(e_errors.NOTALLOWED, "No '.' allowed in %s"%(item,))}
 
     def modify(self,ticket):
         ticket['work']='modifyvol'
@@ -494,7 +507,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         print "   new_library arguments: volume_name"
 
     def print_add_args(self):
-        print "   add arguments: volume_name library file_family storage_group"\
+        print "   add arguments: volume_name library storage_group file_family wrapper"\
               +" media_type volume_byte_capacity remaining_capacity"
 
     def print_clear_args(self):
@@ -572,12 +585,14 @@ def do_work(intf):
                                    ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
-        library, file_family, storage_group, media_type, capacity, remaining = intf.args[:6]
+        library, storage_group, file_family, wrapper, media_type, capacity, remaining = intf.args[:7]
         capacity, remaining = my_atol(capacity), my_atol(remaining)
-        if media_type == 'null': #media type
-            wrapper = "null"
-        else:
-            wrapper = "cpio_odc"
+        # if wrapper is empty create a default one
+        if not wrapper:
+            if media_type == 'null': #media type
+                wrapper = "null"
+            else:
+                wrapper = "cpio_odc"
         ticket = vcc.add(library,
                          file_family,
                          storage_group,

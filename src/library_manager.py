@@ -837,6 +837,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    
         ticket["status"] = (e_errors.OK, None)
 
+        for item in ('storage_group', 'file_family', 'wrapper'):
+            if ticket['vc'].has_key(item) and '.' in ticket['vc'][item]:
+                ticket['status'] = (e_errors.USERERROR,"No '.' allowed in %s"%(item,))
+                self.reply_to_caller(ticket)
+                return
+
         # check if work is in the at mover list before inserting it
 	for wt in self.work_at_movers.list:
             # 2 requests cannot have the same output file names
@@ -1001,9 +1007,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['times']['lm_dequeued'] = time.time()
         # set the correct volume family for write request
         if w['work'] == 'write_to_hsm' and w['vc']['file_family'] == 'ephemeral':
-            w['vc']['volume_family'] = string.join((w['vc']['storage_group'],
+            w['vc']['volume_family'] = volume_family.make_volume_family(w['vc']['storage_group'],
                                                     w['fc']['external_label'],
-                                                    w['vc']['wrapper']), '.')
+                                                    w['vc']['wrapper'])
         w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
         Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
         self.udpc.send_no_wait(w, mticket['address'])
