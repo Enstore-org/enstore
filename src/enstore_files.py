@@ -341,6 +341,27 @@ class HtmlAlarmFile(EnFile):
 	    doc.body(data)
             self.filedes.write(str(doc))
 
+class HTMLPatrolFile(EnFile):
+
+    # we need to save both the file name passed to us and the one we will
+    # write to.  we will create the temp one and then move it to the real
+    # one.
+    def __init__(self, name):
+        EnFile.__init__(self, name+TMP)
+        self.real_file_name = name
+
+    # we need to close the open file and move it to the real file name
+    def close(self):
+        EnFile.close(self)
+        os.rename(self.file_name, self.real_file_name)
+
+    # format the file name and write it to the file
+    def write(self, data):
+        if self.filedes:
+	    doc = enstore_html.EnPatrolPage()
+	    doc.body(data)
+            self.filedes.write(str(doc))
+
 class EnAlarmFile(EnFile):
 
     # open the file, if no mode is passed in, try opening for append and

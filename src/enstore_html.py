@@ -4,6 +4,7 @@ import string
 import calendar
 import time
 import HTMLgen
+import types
 
 import enstore_status
 
@@ -827,7 +828,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR()
 	for hdr in ["Key", "Time", "Node", "PID", "User", "Severity", 
 		    "Process", "Error", "Additional Information"]:
-	    tr.append(HTMLgen.TH(HTMLgen.Font(hdr, size="+2", color=BRICKRED)))
+	    tr.append(self.make_th(hdr))
 	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
 	i = 0
@@ -865,4 +866,24 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
+	self.append(table)
+
+class EnPatrolPage(EnBaseHtmlDoc):
+
+    def __init__(self, refresh=600):
+	EnBaseHtmlDoc.__init__(self, refresh)
+	self.title = "ENSTORE Patrol"
+	self.script_title_gif = "en_patrol.gif"
+	self.description = "Link to the Patrol web page. This page is created by the Inquisitor."
+
+    def body(self, data):
+	table = self.table_top()
+	# the data will be of 1 of 2 forms.  either text to output if there
+	# is no url available, or the url to link to.
+	if type(data) == types.StringType:
+	    # no url, just output the string
+	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(data, size="+1"))))
+	else:
+	    # make the url
+	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(data[0], data[1]))))
 	self.append(table)

@@ -62,6 +62,7 @@ CONFIG_DICT_TOUT = "can't get config dict"
 
 LOGFILE_DIR = "logfile_dir"
 LOGHTMLFILE_NAME = "enstore_logs.html"
+PATROL_FILE = "en_patrol.html"
 
 DID_IT = 0
 TIMED_OUT = 1
@@ -239,6 +240,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
 	return ret
+
+    # create the patrol page that has the patrol url on it. the url comes from
+    # the configuration file
+    def make_patrol_html_file(self, pdir):
+	self.patrolhtmlfile.open()
+	if pdir:
+	    msg = (pdir, "Patrol")
+	else:
+	    msg = "No patrol_dir key found in inquisitor part of config file."
+	self.patrolhtmlfile.write(msg)
+	self.patrolhtmlfile.close()
 
     # create an html file that has a link to all of the current log files
     def make_log_html_file(self, log_dirs):
@@ -465,7 +477,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_inquisitor(self, key, time):
 	# get info on the inquisitor
 	try:
-	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
+	    t = self.csc.get_uncached(key, self.alive_rcv_timeout, 
+				      self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
@@ -502,6 +515,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # update the configuration file web page
         self.make_config_html_file()
+
+	# update the page that has a link to patrol (if we have one)
+	self.make_patrol_html_file(t.get("patrol_file", ""))
         
     # only change the status of the inquisitor on the system status page to
     # timed out, then exit.
@@ -1105,6 +1121,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.confightmlfile_orig = config_file
         self.mischtmlfile = enstore_files.HTMLMiscFile(misc_file+SUFFIX)
         self.mischtmlfile_orig = misc_file
+	self.patrolhtmlfile = enstore_files.HTMLPatrolFile("%s/%s"%(self.html_dir, PATROL_FILE))
 
 	# get the interval for each of the servers from the configuration file.
 	self.last_update = {}
