@@ -441,14 +441,14 @@ def check(f):
 
 def start_check(line):
     line = line.strip()
-    
+    """
     import profile
     import pstats
     profile.run("check(line)", "/tmp/scanfiles_profile")
     p = pstats.Stats("/tmp/scanfiles_profile")
     p.sort_stats('cumulative').print_stats(100)
-    
-    #check(line)
+    """
+    check(line)
 
 if __name__ == '__main__':
 
