@@ -1046,48 +1046,53 @@ class EnPlotPage(EnBaseHtmlDoc):
 	if pss:
 	    ps_file = string.replace(jpg_file, enstore_constants.JPG,
 				     enstore_constants.PS)
-	    if ps_file in pss:
-		# found it
-		pss.remove(ps_file)
-		ps = 1
+	    for ps in pss:
+		if ps_file == ps[0]:
+		    # found it
+		    pss.remove(ps)
+		    ps = 1
+		    break
 	return (ps, ps_file)
 
-    def add_stamp(self, jpgs, stamps, pss, trs, trps):
+    def add_stamp(self, jpgs, stamps, pss, trs, trps, trps2):
 	# for each stamp add it to the row.  if there is a corresponding large
 	# jpg file, add it as a link from the stamp.  also see if there is a
 	# postscript file associated with it and add it in the following row.
 	# if there is no postscript file, then put a message saying this.
 	if stamps:
 	    stamp = stamps.pop(0)
-	    jpg_file = string.replace(stamp, enstore_constants.STAMP, "")
+	    jpg_file = string.replace(stamp[0], enstore_constants.STAMP, "")
 	    # see if there is a corresponding jpg file
 	    url = 0
-	    if jpgs:
-		if jpg_file in jpgs:
+	    for jpg in jpgs:
+		if jpg_file == jpg[0]:
 		    # found it
-		    jpgs.remove(jpg_file)
+		    jpgs.remove(jpg)
 		    url = 1
+		    break
 	    # see if there is a corresponding ps file
 	    (ps, ps_file) = self.find_ps_file(jpg_file, pss)
 	    if url:
 		# we have a jpg file associated with this stamp file
-		td = HTMLgen.TD(HTMLgen.Href(jpg_file, HTMLgen.Image(stamp)))
+		td = HTMLgen.TD(HTMLgen.Href(jpg_file, HTMLgen.Image(stamp[0])))
 	    else:
-		td = HTMLgen.TD(HTMLgen.Image(stamp))
+		td = HTMLgen.TD(HTMLgen.Image(stamp[0]))
 	    trs.append(td)
-	    label = self.find_label(stamp)
-	    td = HTMLgen.TD("%s%s"%(label, NBSP*2) , html_escape='OFF')
+	    trps.append(HTMLgen.TD("%s (%s)%s"%(self.find_label(stamp[0]),
+						enstore_status.format_time(stamp[1]), 
+						NBSP*2) , html_escape='OFF'))
 	    if ps:
 		# we have a corresponding ps file
-		td.append(HTMLgen.Href(ps_file, POSTSCRIPT))
-	    trps.append(td)
+		trps2.append(HTMLgen.TD(HTMLgen.Href(ps_file, POSTSCRIPT)))
+	    else:
+		trps2.append(self.empty_data())
 
     def add_leftover_jpgs(self, table, jpgs, pss):
 	while jpgs:
 	    tr = HTMLgen.TR()
 	    for i in [1, 2, 3]:
 		if jpgs:
-		    jpg_file = jpgs.pop(0)
+		    jpg_file, mtime = jpgs.pop(0)
 		    # see if there is a corresponding ps file
 		    (ps, ps_file) = self.find_ps_file(jpg_file, pss)
 		    td = HTMLgen.TD(HTMLgen.Href(jpg_file, jpg_file))
@@ -1103,7 +1108,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    tr = HTMLgen.TR()
 	    for i in [1, 2, 3]:
 		if pss:
-		    ps_file = pss.pop(0)
+		    ps_file, mtime = pss.pop(0)
 		    td = HTMLgen.TD(HTMLgen.Href(ps_file, ps_file))
 		    tr.append(td)
 	    else:
@@ -1118,11 +1123,13 @@ class EnPlotPage(EnBaseHtmlDoc):
 	while stamps:
 	    trs = HTMLgen.TR()
 	    trps = HTMLgen.TR()
+	    trps2 = HTMLgen.TR()
 	    for i in [1, 2, 3]:
-	        self.add_stamp(jpgs, stamps, pss, trs, trps)
+	        self.add_stamp(jpgs, stamps, pss, trs, trps, trps2)
 	    else:
                 plot_table.append(trs)
                 plot_table.append(trps)
+		plot_table.append(trps2)
 	        plot_table.append(empty_row(3))
 	# look for anything leftover to add at the bottom
 	if jpgs or pss:

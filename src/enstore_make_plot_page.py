@@ -1,5 +1,6 @@
 import os
 import string
+import stat
 
 import enstore_plots
 import enstore_html
@@ -19,11 +20,12 @@ def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
     # when we add the found file to the list of files, we need to add the
     # directory that it was found in to the name
     for file in tjpgs:
-        jpgs.append("%s%s/%s"%(url, dir, file))
+	# add the last modification time of the file
+        jpgs.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
     for file in tstamps:
-        stamps.append("%s%s/%s"%(url, dir, file))
+        stamps.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
     for file in tpss:
-        pss.append("%s%s/%s"%(url, dir, file))
+        pss.append(("%s%s/%s"%(url, dir, file), file[1]))
 
 def do_the_walk(input_dir, url):
     # walk the directory tree structure and return a list of all jpg, stamp
@@ -36,8 +38,8 @@ def do_the_walk(input_dir, url):
         input_dir = "%s/"%(input_dir,)
     if url[-1] != "/":
         url = "%s/"%(url,)
-    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, input_dir,
-                                             url))
+    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, 
+					     input_dir, url))
     jpgs.sort()
     stamps.sort()
     pss.sort()

@@ -7,6 +7,7 @@ import string
 import os
 import time
 import calendar
+import stat
 
 # enstore imports
 import enstore_status
@@ -34,7 +35,7 @@ def sort_stamp_files(tmp_stamps):
     i = 0
     num_stamps = len(tmp_stamps)
     while i < num_stamps:
-	if string.find(tmp_stamps[i], enstore_constants.MPH_FILE) == -1:
+	if string.find(tmp_stamps[i][0], enstore_constants.MPH_FILE) == -1:
 	    # this is not an mph stamp 
 	    jpg_stamp_files.append(tmp_stamps.pop(i))
 	    num_stamps = num_stamps - 1
@@ -47,7 +48,7 @@ def sort_stamp_files(tmp_stamps):
     jpg_stamp_files = jpg_stamp_files + tmp_stamps
     return (jpg_stamp_files)
 
-def find_files(files):
+def find_files(files, dir):
     # find all files with ".jpg" in them. fill
     # in the lists above with those files with and without the "_stamp" 
     # string from this group. also find the ps files
@@ -59,12 +60,14 @@ def find_files(files):
 	    # this file has '.jpg' in it
 	    if not string.find(file, STAMP_JPG) == -1:
 		# this is a postage stamp file
-		tmp_stamps.append(file)
+		tmp_stamps.append((file, 
+				   os.stat("%s/%s"%(dir, file))[stat.ST_MTIME]))
 	    else:
-		jpg_files.append(file)
+		jpg_files.append((file,
+				  os.stat("%s/%s"%(dir, file))[stat.ST_MTIME]))
 	elif not string.find(file, enstore_constants.PS) == -1:
 	    # this file has '.ps' in it
-            ps_files.append(file)
+            ps_files.append(file, os.stat("%s/%s"%(dir, file))[stat.ST_MTIME])
     return (jpg_files, tmp_stamps, ps_files)
 
 def find_jpg_files(dir):
@@ -72,7 +75,7 @@ def find_jpg_files(dir):
     # in the lists above with those files with and without the "_stamp" 
     # string from this group. also find the ps files
     files = os.listdir(dir)
-    jpg_files, stamp_files, ps_files = find_files(files)
+    jpg_files, stamp_files, ps_files = find_files(files, dir)
     jpg_files.sort()
     ps_files.sort()
     jpg_stamp_files = sort_stamp_files(stamp_files)
