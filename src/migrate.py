@@ -831,6 +831,10 @@ if __name__ == '__main__':
 		usage()
 		sys.exit(0)
 
+	# log command line
+	cmd = string.join(sys.argv)
+	log("COMMAND LINE:", cmd)
+
 	if sys.argv[1] == "--vol":
 		icheck = False
 		for i in sys.argv[2:]:
