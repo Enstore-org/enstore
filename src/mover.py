@@ -768,8 +768,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         header_size = self.wrapper.header_size(b0)
                     except ValueError, msg:
-                        Trace.log("Invalid header %s" %(b0[:self.wrapper.min_header_size]))
-                        self.transfer_failed(e_errors.E_PROTO, "Invalid file header", error_source=TAPE)
+                        Trace.log(e_errors.ERROR,"Invalid header %s" %(b0[:self.wrapper.min_header_size]))
+                        self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
                         break
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
