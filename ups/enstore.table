@@ -39,10 +39,10 @@ QUALIFIERS=cahen
 
 
 FLAVOR=ANY
-QUALIFIERS=buffalo
+QUALIFIERS=rain
         ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, buffalo.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/buffalo.conf)
+                envSet(ENSTORE_CONFIG_HOST, 131.225.84.1)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/water.conf)
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
