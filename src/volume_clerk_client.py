@@ -251,18 +251,18 @@ class VolumeClerkClient(generic_client.GenericClient,
                 print "No '.' allowed in %s"%(item,)
                 break
         else:
-            return self.send(ticket)
+            return self.send(ticket,30,1)
         return {'status':(e_errors.NOTALLOWED, "No '.' allowed in %s"%(item,))}
 
     def modify(self,ticket):
         ticket['work']='modifyvol'
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # remove a volume entry in volume database
     def rmvolent(self, external_label):
         ticket= { 'work'           : 'rmvolent',
                   'external_label' : external_label}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # delete a volume from the stockpile
     def restore(self, external_label, restore=0):
@@ -271,7 +271,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket= { 'work'           : 'restorevol',
                   'external_label' : external_label,
                   "restore"         : restore_vm}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
@@ -285,7 +285,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "not"           : not_cond}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket)
+        ticket = self.send(ticket,30,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.get_vols: sending ticket: %s'%(ticket,) )
@@ -367,7 +367,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "callback_addr" : (host, port)}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket)
+        ticket = self.send(ticket,30,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        'vcc.get_vol_liat: sending ticket: %s'%(ticket,) )
@@ -410,61 +410,61 @@ class VolumeClerkClient(generic_client.GenericClient,
     def inquire_vol(self, external_label):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # update the last_access time
     def touch(self, external_label):
         ticket= { 'work'           : 'touch',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # trim obsolete fields if necessary
     def check_record(self, external_label):
         ticket= { 'work'           : 'check_record',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # show_quota() -- show quota
     def show_quota(self):
         ticket = {'work': 'show_quota'}
-	return self.send(ticket)
+	return self.send(ticket,30,1)
 
     # move a volume to a new library
     def new_library(self, external_label,new_library):
         ticket= { 'work'           : 'new_library',
                   'external_label' : external_label,
                   'new_library'    : new_library}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # we are using the volume
     def set_writing(self, external_label):
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # we are using the volume
     def set_system_readonly(self, external_label):
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # mark volume as not allowed 
     def set_system_notallowed(self, external_label):
         ticket= { 'work'           : 'set_system_notallowed',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # mark volume as noaccess
     def set_system_noaccess(self, external_label):
         ticket= { 'work'           : 'set_system_noaccess',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # set system inhibit to none
     def set_system_none(self, external_label):
         ticket= { 'work'           : 'set_system_none',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label,what=None, pos=0):
@@ -472,26 +472,26 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label,
                   'inhibit'        : what,
                   'position'       : pos}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # decrement the file count on a tape
     def decr_file_count(self,external_label, count=1):
         ticket= { 'work'           : 'decr_file_count',
                   'external_label' : external_label,
                   'count'          : count }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # we are using the volume
     def set_hung(self, external_label):
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # this many bytes left - read the database
     def get_remaining_bytes(self, external_label):
         ticket= { 'work'            : 'get_remaining_bytes',
                   'external_label'  : external_label }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,bfid=None):
@@ -501,7 +501,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'remaining_bytes' : remaining_bytes,
                   'eod_cookie'      : eod_cookie,
                   'bfid'            : bfid }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # update the counts in the database
     def update_counts(self, external_label, wr_err=0, rd_err=0,wr_access=0,rd_access=0,mounts=0):
@@ -513,7 +513,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'rd_access'       : rd_access,
                   'mounts'          : mounts
                   }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # Check if volume is available
     def is_vol_available(self, work, external_label, family=None, size=0):
@@ -523,7 +523,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'file_size'           : size,
                    'external_label'      : external_label
                    }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
         
         
     # which volume can we use for this library, bytes and file family and ...
@@ -544,7 +544,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'mover'               : mover,
                    'use_exact_match'     : exact_match}
 
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
@@ -555,70 +555,70 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'volume_family'         : volume_family,
                    'external_label'       : external_label }
 
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     # clear the pause flag for the LM and all LMs that relate to the Media Changer
     def clear_lm_pause(self, library_manager):
         ticket = { 'work'    :'clear_lm_pause',
                    'library' : library_manager
                    }
-        return  self.send(ticket)
+        return  self.send(ticket,30,1)
 
     def rename_volume(self, old, new):
         ticket = {'work': 'rename_volume',
                   'old' : old,
                   'new' : new }
-        return self.send(ticket)
+        return self.send(ticket,30,1)
         
     def delete_volume(self, vol):
         ticket = {'work': 'delete_volume',
                   'external_label': vol}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def erase_volume(self, vol):
         ticket = {'work': 'erase_volume',
                   'external_label': vol}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def restore_volume(self, vol):
         ticket = {'work': 'restore_volume',
                   'external_label': vol}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def recycle_volume(self, vol):
         ticket = {'work': 'recycle_volume',
                   'external_label': vol}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def set_ignored_sg(self, sg):
         ticket = {'work': 'set_ignored_sg',
                   'sg': sg}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def clear_ignored_sg(self, sg):
         ticket = {'work': 'clear_ignored_sg',
                   'sg': sg}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def clear_all_ignored_sg(self):
         ticket = {'work': 'clear_all_ignored_sg'}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def list_ignored_sg(self):
         ticket = {'work': 'list_ignored_sg'}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def set_comment(self, vol, comment):
         ticket = {'work': 'set_comment',
                   'vol': vol,
                   'comment': comment}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
     def assign_sg(self, vol, sg):
         ticket = {'work': 'reassign_sg',
                   'external_label': vol,
                   'storage_group': sg}
-        return self.send(ticket)
+        return self.send(ticket,30,1)
 
 
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
@@ -1219,10 +1219,12 @@ def do_work(intf):
             ipos = string.atoi(intf.args[1])-1
         except:
             ipos = -1
-        if nargs == 2 and (intf.args[0] in ["system_inhibit",
+        if nargs == 0:
+            ticket = vcc.clr_system_inhibit(intf.clear)
+        elif nargs == 2 and (intf.args[0] in ["system_inhibit",
             "system-inhibit", "user_inhibit", "user-inhibit"]) and \
             (ipos == 0 or ipos == 1):
-                ticket = vcc.clr_system_inhibit(intf.clear, intf.args[0], ipos)
+                ticket = vcc.clr_system_inhibit(intf.clear, string.replace(intf.args[0], '-', '_'), ipos)
         else:
             print "usage: enstore vol --clear <vol> system_inhibit|user_inhibit 1|2"
             ticket = {'status':(e_errors.OK, None)}
