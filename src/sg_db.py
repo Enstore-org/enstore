@@ -9,6 +9,8 @@
 import sys, os
 import string
 import errno
+import Trace
+import e_errors
 
 verbose=0
 
@@ -63,11 +65,26 @@ class SGDb:
                 count = count + increment
                 f.seek(0)
             except IOError:
-                f = open(fname, 'w+')
+                try:
+                    f = open(fname, 'w+')
+                except IOError, detail:
+                    detmsg = "%s"%(detail,)
+                    Trace.alarm(e_errors.ERROR,"IOError", {'IOError':detmsg,
+                                                           'library': library,
+                                                           'storage_group': storage_group,
+                                                           'file': fname})
+                    return
                 count = increment
-            f.seek(0)
-            f.write(repr(count)+"\n")
-            f.close()
+            try:
+                f.seek(0)
+                f.write(repr(count)+"\n")
+                f.close()
+            except IOError, detail:
+                detmsg = "%s"%(detail,)
+                Trace.alarm(e_errors.ERROR,"IOError", {'IOError':detmsg,
+                                                       'library': library,
+                                                       'storage_group': storage_group,
+                                                       'file': fname})
         else:
             count = -1
         return count
