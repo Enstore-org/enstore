@@ -34,8 +34,8 @@ def try_a_port(host, port) :
     return 1 , sock
 
 # get an unused tcp port for communication
-def get_callback() :
-    Trace.trace(16,"{get_callback")
+def get_callback_port(start,end):
+    Trace.trace(16,"{get_callback_port")
     (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
@@ -44,32 +44,38 @@ def get_callback() :
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
     lockf = open ("/var/lock/hsm/lockfile", "w")
-    Trace.trace(20,"get_callback - trying to get lock")
+    Trace.trace(20,"get_callback_port - trying to get lock")
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
-    Trace.trace(20,"get_callback - got the lock - hunting for port")
+    Trace.trace(20,"get_callback_port - got the lock - hunting for port")
 
     # now check for a port we can use
     while  1:
         # remember, only person with lock is pounding  hard on this
-        port1 = 7600
-        port2 = 7650
-        for port in range (port1,port2) :
+        for port in range (start,end) :
             success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
                 lockfile.unlock(lockf)
                 lockf.close()
-                Trace.trace(16,"}get_callback host="+repr(host)+\
+                Trace.trace(16,"}get_callback_port host="+repr(host)+\
                             " port="+repr(port)+" mysocket="+repr(mysocket))
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
         sleeptime = 1
-        msg = "get_callback: all ports from "+repr(port1)+' to '+repr(port2)+\
+        msg = "get_callback_port: all ports from "+repr(port1)+' to '+repr(port2)+\
               " used. waiting"+repr(sleeptime)+" seconds"
         print msg
         Trace.trace(2,msg)
         time.sleep (sleeptime)
 
+
+# get an unused tcp port for control communication
+def get_callback():
+    return get_callback_port( 7600, 7640 )
+
+# get an unused tcp port for data communication - called by mover
+def get_data_callback():
+    return get_callback_port( 7640, 7650 )
 
 # return a mover tcp socket
 def mover_callback_socket(ticket) :

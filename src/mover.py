@@ -509,10 +509,10 @@ class Mover:
     # data transfer takes place on tcp sockets, so get ports & call user
     def get_user_sockets(self, ticket):
 	try:
-	    host, port, listen_socket = callback.get_callback()
+	    host, port, listen_socket = callback.get_data_callback()
 	    self.callback_addr = (host,port)
 	    listen_socket.listen(4)
-	    mover_ticket = {"callback_addr" : self.callback_addr}
+	    mover_ticket = {"callback_addr":self.callback_addr}
 	    ticket["mover"] = mover_ticket
 
 	    # call the user and tell him I'm your mover and here's your ticket
