@@ -800,6 +800,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 	ntries=0
 	jonflag=0
         # async message start with a date:  2001-12-20 07:33:17     0    Drive   0, 0,10,12: Cleaned.
+        # unfortunately, not just async messages start with a date.  Alas, each message has to be parsed.
         async_date=re.compile("20\d\d-\d\d-\d\d \d\d:\d\d:\d\d")  
         while nlines<19 and ntries<3:
 	  ntries=ntries+1
@@ -820,26 +821,23 @@ class stk_MediaLoader(MediaLoaderMethods):
 	  nl=0
 	  for l in resp:
             if async_date.match(l):
-               if self.DEBUG:
-	          print "ASYNC DELETED:", l
-	       jonflag=1
-	    elif string.find(l,'Place cartridges in CAP') != -1 or \
-	       string.find(l,'Remove cartridges from CAP') != -1 or \
-	       string.find(l,'Library error, LSM offline') != -1 or \
-	       string.find(l,'Library error, Transport failure') != -1 or \
-	       string.find(l,'LMU Recovery Complete') != -1 or \
-	       string.find(l,': Offline.') != -1 or \
-	       string.find(l,': Online.') != -1 or \
-	       string.find(l,'Clean drive') != -1 or \
-	       string.find(l,'Cleaned') != -1:
-	       if self.DEBUG:
-	          print "DELETED:", l
-	       jonflag=1
-	    else:
-	       if self.DEBUG:
-	          print    "response line =",nl, l
-               response.append(l)
-	       nl=nl+1
+              if string.find(l,'Place cartridges in CAP') != -1 or \
+                 string.find(l,'Remove cartridges from CAP') != -1 or \
+                 string.find(l,'Library error, LSM offline') != -1 or \
+                 string.find(l,'Library error, Transport failure') != -1 or \
+                 string.find(l,'LMU Recovery Complete') != -1 or \
+                 string.find(l,': Offline.') != -1 or \
+                 string.find(l,': Online.') != -1 or \
+                 string.find(l,'Clean drive') != -1 or \
+                 string.find(l,'Cleaned') != -1:
+                if self.DEBUG:
+                  print "DELETED:", l
+                jonflag=1
+                continue
+	    if self.DEBUG:
+              print    "response line =",nl, l
+            response.append(l)
+	    nl=nl+1
           nlines=len(response)
 
 	  nl=0
