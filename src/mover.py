@@ -1366,7 +1366,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        fc_ticket = {  'location_cookie': loc_to_cookie(self.last_seek),
+        fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
@@ -1738,7 +1738,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
-        self.last_seek = self.current_location
         if after_function and not failed:
             Trace.trace(10, "seek calling after function %s" % (after_function,))
             after_function()
