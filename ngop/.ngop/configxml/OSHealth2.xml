@@ -1,0 +1,122 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+  <System ID="OSHealth" Cluster="stkensrv0">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv0"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv0"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv0"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv0"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv0"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv0"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv0"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv1">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv1"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv1"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv1"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv1"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv2">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv2"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv2"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv2"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv2"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv3">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv3"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv3"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv3"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv3"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv4">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv4"/> 
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv4"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv4"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv4"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv4"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv4"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv4"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr1a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr1a"/> 
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr1a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr1a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr1a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr1a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr1a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr1a"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr2a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr2a"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr2a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr2a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr2a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr2a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr2a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr2a"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr3a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr3a"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr3a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr3a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr3a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr3a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr3a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr3a"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr4a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr4a"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr4a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr4a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr4a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr4a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr4a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr4a"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr5a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr5a"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr5a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr5a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr5a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr5a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr5a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr5a"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkenmvr6a">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkenmvr6a"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkenmvr6a"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkenmvr6a"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkenmvr6a"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkenmvr6a"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkenmvr6a"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkenmvr6a"/>
+  </System>
+  <System ID="OSHealth" Cluster="rip9">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="rip9"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="rip9"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="rip9"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="rip9"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="rip9"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="rip9"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="rip9"/>
+  </System>
+  <System ID="OSHealth" Cluster="rip10">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="rip10"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="rip10"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="rip10"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="rip10"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="rip10"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="rip10"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="rip10"/>
+  </System>
+</NGOPConfig>
+
