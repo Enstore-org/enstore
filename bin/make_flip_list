@@ -64,7 +64,7 @@ while /bin/true; do
   /bin/echo -n "Enter starting date in format YYYY-MM-DD " 
   read when
   rm -f $flip_list
-  python $ENSTORE_DIR/src/readonly_volumes.py $when | egrep -v 'shelf|samm2|sammam|samlto|migrated' >$flip_list
+  python $ENSTORE_DIR/src/readonly_volumes.py $when | egrep -v 'shelf|samm2|sammam|samlto' >$flip_list
   if [ $? -eq 0 ]; then break; fi
   echo ERROR. Again...
 done
