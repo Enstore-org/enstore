@@ -30,7 +30,7 @@ class TimerTask:
     def timerTaskGetRequest( self ):
 	t0 = time.time()
 	req, client_address = self.orig_get_request()
-	if req == '':			# same test in handle_request
+	if (req == ''):      # same test in handle_request
 	    self.rcv_timeout = self.timerTask_rcv_timeout
 	    for key in timerTaskDict.keys():
 		timerTaskDict[key]['time'] = timerTaskDict[key]['time'] - self.timerTask_rcv_timeout
@@ -68,18 +68,22 @@ def msg_cancel( func, *args ):
     return None
 
 def msg_cancel_tr( func, *args ):
+    found = 0
     for key in timerTaskDict.keys():
-	if string.find(key, str(func)+str(args)) != -1:
-	    break
-    try:
-	a= key
-        if 0: print a #lint fix
-    except:
-	return None
-    try:
-	del timerTaskDict[key]
-    except:
-	pass
+	if string.find(key, str(func)) != -1:
+	    if string.find(key, str(args[1])) != -1:
+		found = 1
+		break
+    if found:
+	try:
+	    a= key
+	    if 0: print a #lint fix
+	except:
+	    return None
+	try:
+	    del timerTaskDict[key]
+	except:
+	    pass
     return None
 
     
