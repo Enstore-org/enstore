@@ -206,8 +206,9 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             encp.close_descriptors(out_fd, data_path_socket)
             return work_ticket
 
-        #Combine these tickets
-        work_ticket = encp.combine_dict(mover_result_dict, work_ticket)
+        #Combine these tickets.
+        work_ticket = encp.combine_dict(mover_done_ticket, mover_result_dict,
+                                        work_ticket)
         
         #Check the crc.  Note: done_ticket has any error status set to it by
         # check_crc.
@@ -232,23 +233,28 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         return work_ticket
         
 def set_metadata(ticket, intf):
-    pass
+
+    #Set these now so the metadata can be set correctly.
+    ticket['wrapper']['fullname'] = ticket['outfile']
+    ticket['wrapper']['pnfsFilename'] = ticket['infile']
+    ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
+
     #Create the pnfs file.
     encp.create_zero_length_files(ticket['infile'])
 
-    ticket['wrapper']['fullname'] = ticket['outfile']
-    ticket['wrapper']['pnfsFilename'] = ticket['infile']
-
+    Trace.message(10, "SETTING METADATA WITH:")
+    Trace.message(10, pprint.pformat(ticket))
+    
     #Set the metadata for this new file.
     encp.set_pnfs_settings(ticket, intf)
 
-    delete_at_exit.unregister(ticket['infile'])
-
-    if e_errors.is_ok(ticket):
-        msg = "Metadata update failed for %s." % ticket['infile']
+    if not e_errors.is_ok(ticket):
+        msg = "Metadata update failed for %s: %s" % (ticket['infile'],
+                                                     ticket['status'])
         Trace.message(5, msg)
         Trace.log(e_errors.INFO, msg)
     else:
+        delete_at_exit.unregister(ticket['infile']) #Don't delete good file.
         msg = "Successfully updated %s metadata." % ticket['infile']
         Trace.message(5, msg)
         Trace.log(e_errors.INFO, msg)
@@ -411,6 +417,9 @@ def main(e):
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
+            #Trace.message(1, "DONE_TICKET (get_single_file):")
+            #Trace.message(1, pprint.pformat(done_ticket))
+
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
                 #Tell the user what happend.
@@ -441,11 +450,13 @@ def main(e):
                     request['completion_status'] = SUCCESS
 
                 #Set the metadata if it has not already been set.
-                if request.get('bfid', None) == None:
+                try:
+                    p = pnfs.Pnfs(request['infile'])
+                    pnfs_bfid = p.get_bit_file_id()
+                except (IOError, OSError):
                     Trace.message(5, "Updating metadata for %s." %
                                   request['infile'])
                     set_metadata(request, e)
-                    delete_at_exit.unregister(request['outfile'])
 
                 #Store these changes back into the master list.
                 requests_per_vol[e.volume][index] = request
