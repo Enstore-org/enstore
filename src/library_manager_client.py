@@ -219,7 +219,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.getlist("get_suspect_volumes")
 
     def remove_work(self, id):
-        print "ID", id
         return self.send({"work":"remove_work", "unique_id": id})
 
     def change_lm_state(self, state):
@@ -304,7 +303,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.alive_rcv_timeout = 0
         self.get_susp_vols = 0
         self.get_susp_vols = 0
-        self.delete_work = 0
+        self.delete_work = ''
         self.priority = -1
         self.get_asserts = None
         self.get_queue = None
@@ -315,6 +314,8 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.storage_groups = 0
         self.rm_suspect_vol = 0
         self.rm_active_vol = 0
+        self.unique_id = ''
+        
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -346,7 +347,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                             "the pending queue",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
-                            option.VALUE_LABEL:"unique_id",
                             option.USER_LEVEL:option.ADMIN},
         option.GET_ASSERTS:{option.HELP_STRING:
                                 "print sorted lists of pending volume asserts",
@@ -453,15 +453,15 @@ def do_work(intf):
         if e_errors.is_ok(ticket):
             print ticket['suspect_volumes']
     elif intf.delete_work:
-        ticket = lmc.remove_work(intf.work_to_delete)
+        ticket = lmc.remove_work(intf.delete_work)
         if e_errors.is_ok(ticket):
             print ticket
     elif intf.rm_suspect_vol:
         ticket = lmc.remove_suspect_volume(intf.rm_suspect_vol)
     elif intf.rm_active_vol:
         ticket = lmc.remove_active_volume(intf.rm_active_vol)
-    elif not intf.priority == -1:
-        ticket = lmc.priority(intf.args[1], intf.priority)
+    elif intf.priority != -1:
+        ticket = lmc.priority(intf.unique_id, intf.priority)
         if e_errors.is_ok(ticket):
             print ticket
     elif intf.vols:
