@@ -211,7 +211,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 
 if __name__  ==  "__main__" :
 
-    # register as a udp clien
+    # register as a udp client
     csc = configuration_server_client()
     u = UDPClient()
 
@@ -228,9 +228,15 @@ if __name__  ==  "__main__" :
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
         write_to_hsm(sys.argv[1], sys.argv[2], u, csc, list)
+        if list > 1 :
+            p=pnfs.pnfs(sys.argv[2],1)
+            p.dump()
 
     # have we been called "encp hsmfile unixfile" ?
     elif p1==0 and p2==-1 :
+        if list > 1 :
+            p=pnfs.pnfs(sys.argv[1],1)
+            p.dump()
         read_from_hsm(sys.argv[1], sys.argv[2], u, csc, list)
 
     # have we been called "encp unixfile unixfile" ?
