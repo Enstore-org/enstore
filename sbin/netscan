@@ -22,6 +22,7 @@ setup enstore
 # . Check that there are less than N processes running on the node
 # . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
 # . Check that web servers are running on right nodes and not elsewhere
+# . Check that rc.local contains boot_cleanup
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -110,14 +111,15 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
                fi
              }
 
-croncheck() { if [ `$EGREP -c "$1" /var/spool/cron/root` -ne 1 ]; then
-                msg="/var/spool/cron/root is missing $1 or it is misconfigured"
+filecheck() { thefile=${2:-/var/spool/cron/root}
+              if [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
+                msg="$thefile is missing $1 or it is misconfigured"
                 logit "$msg"
                 if [ $ALARM -eq 1 ]; then
                   enstore alarm --raise --severity "A" --root-error "$msg"
                 fi
               elif [ $QUIET -ne 1 ]; then
-                logit  "$1 crontab ok"
+                logit  "$1 $thefile ok"
               fi
             }
 
@@ -391,11 +393,12 @@ elif [ $QUIET -ne 1 ]; then
    logit  "/etc/watchdog_reset, ok"
 fi
 
-# check that we special jobs are running in crontab
-croncheck "check_watchdog_reset.py"
-croncheck "ntpset"
-croncheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
-croncheck "ekill -v -9"
+# check that we special jobs are running in crontab, or other files
+filecheck "check_watchdog_reset.py"
+filecheck "ntpset"
+filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
+filecheck "ekill -v -9"
+filecheck "boot_cleanup -x" /etc/rc.d/rc.local
 
 # check that ipmisrv is running without watchdog timer
 if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
