@@ -19,6 +19,7 @@ class NullDriver(driver.Driver):
         self._rate = 0
         self._last_rate = 0
         self_start_time = None
+        self._active_time = 0
         self._total_time = 0
         self._bytes_transferred = 0L
         self.verbose = 0
@@ -36,6 +37,7 @@ class NullDriver(driver.Driver):
             raise ValueError, ("illegal mode", mode)
         self.device = device
         self.mode = mode
+        self._active_time = 0 #time actually spent in read or write call
         if self.fd < 0:
             self.fd = os.open(device, mode)
         self._rate = self._last_rate = self._bytes_transferred = 0L
@@ -84,6 +86,7 @@ class NullDriver(driver.Driver):
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
+            self._active_time = now - self._start_time
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
             Trace.log(e_errors.ERROR, "read error on null device")
@@ -103,6 +106,7 @@ class NullDriver(driver.Driver):
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
+            self._active_time = now - self._start_time
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
             Trace.log(e_errors.ERROR,  "write error on null device")
@@ -132,5 +136,7 @@ class NullDriver(driver.Driver):
         else:
             return e_errors.OK, None
     
+    def tape_transfer_time(self):
+        return self._active_time
             
         
