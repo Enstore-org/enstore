@@ -491,12 +491,9 @@ def return_or_exit( self, origin_addr, status ):
 # Info is added to ticket
 def get_user_sockets( self, ticket ):
     try:
-	print "000000000"
 	host, port, listen_socket = callback.get_data_callback()
-	print "111111111"
 	self.callback_addr = (host,port)
 	listen_socket.listen(4)
-	print "222222222"
 	mover_ticket = {"callback_addr":self.callback_addr}
 	ticket["mover"] = mover_ticket
 	
@@ -515,13 +512,9 @@ def get_user_sockets( self, ticket ):
 	# home and am not able to find documentation on select...
 	
 	self.net_driver.data_socket, address = listen_socket.accept()
-	print "3333333333"
 	listen_socket.close()
-	print "44444444444"
 	return "ok"
     except:
-	#print "get_user_sockets error ",str(sys.exc_info()[0]),\
-        #             str(sys.exc_info()[1])
 	return "error"
 
 # create ticket that says we are idle
