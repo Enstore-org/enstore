@@ -126,6 +126,7 @@ class Interface:
 
     def missing_parameter(self, param):
         Trace.trace(13,"ERROR: missing parameter %s"%(param,))
+        print "ERROR: missing parameter %s"%(param,)
 
     def parameters(self):
 	return " "
@@ -333,6 +334,10 @@ class Interface:
                 self.enable = int(value)
             elif opt == "--max_work":
                 self.max_work = int(value)
+            elif opt == "--mount" :
+                self.mount = 1
+            elif opt == "--dismount" :
+                self.dismount = 1
             elif opt == "--refresh":
                 self.refresh = int(value)
             elif opt == "--get_refresh":
