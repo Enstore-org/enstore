@@ -3,8 +3,6 @@
 #  $Id$
 #
 CC=`grep '^CC=' $(PYTHONLIB)/config/Makefile | sed -e 's/CC=[       ]*//'`
-TCFLAGS=-I. -I $(FTT_DIR)/ftt_lib -g $(WARN) `cat $(FTT_DIR)/ftt_lib/local/flags`
-FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt `cat $(FTT_DIR)/ftt_lib/local/libs`
 all:	 Trace adler32.a Makefile.modules Modules tape_copy  
 
 # The target Makefile.modules generates a file Makefile.modules
@@ -58,9 +56,7 @@ adler32.a: adler32.c
 	$(CC) -c adler32.c
 	ar cr adler32.a adler32.o
 
-TCFLAGS=-I. -I $(FTT_DIR)/ftt_lib -g $(WARN) `cat $(FTT_DIR)/ftt_lib/local/flags`
-FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt `cat $(FTT_DIR)/ftt_lib/local/libs`
-tape_copy: tape_copy.c libftt_test.a $(FTT_DIR)/lib/libftt.a 
+tape_copy: tape_copy.c
 	$(CC) -I. -I $(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt
 installpyc:
