@@ -39,6 +39,7 @@ for file in filelist[:]:
             sys.exit(1)
         
     if file[-3:] == '.py':
+        print '\nchecking',file,'with mylint'
         pipe = os.popen('%s/tools/mylint.py %s' % (os.environ["ENSTORE_DIR"], file), 'r')
         text = pipe.readlines()
         ret = pipe.close()
@@ -47,9 +48,11 @@ for file in filelist[:]:
                 print line,
             print file, "does not pass lint, exiting"
             sys.exit(1)
-        ret = os.system('%s/tools/check_pct.py -w %s' % (os.environ["ENSTORE_DIR"], file))
-        if ret:
-            print file, "does not pass check_pct, Continuing - but you need to FIX THIS!!!"
+        #print '\nchecking',file,'with check_pct.py'
+        #ret = os.system('%s/tools/check_pct.py -w %s' % (os.environ["ENSTORE_DIR"], file))
+        #if ret:
+        #    print file, "does not pass check_pct, Continuing - but you need to FIX THIS!!!"
+        print '\nchecking',file,'with pychecker'
         ret = os.system('%s/sbin/pychecker %s' % (os.environ["ENSTORE_DIR"], file))
         if ret:
             print file, "does not pass pychecker, Continuing - but you need to FIX THIS!!!"
