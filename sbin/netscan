@@ -62,8 +62,7 @@ ALLOW_SRV5="$ALLOW_BASE
        LISTEN,conserver,:console,TCP,x
        LISTEN,conserver,:listen,TCP,x
        LISTEN,conserver,:nterm,TCP,x
-       LISTEN,conserver,:1024,TCP,x
-       LISTEN,conserver,:1027,TCP,x
+       LISTEN,conserver,:,TCP,/usr/local/bin/conserver -d
        LISTEN,X,:6000,TCP,x
        UDP,portmap,:sunrpc,UDP,x
        TCP,conserver,:nterm,TCP,x
