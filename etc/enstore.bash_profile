@@ -8,6 +8,10 @@ elif [ -r /usr/local/etc/fermi.profile ] ; then
    set -u
 fi
 
+if [ -r /usr/local/bin/ENSTORE_HOME ] ; then
+   source /usr/local/bin/ENSTORE_HOME
+fi
+
 if [ -d /home/enstore/pgsql/bin ] ; then
    PATH=/home/enstore/pgsql/bin:`echo $PATH | sed s=/home/enstore/pgsql/bin:==`
 fi
