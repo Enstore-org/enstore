@@ -450,7 +450,9 @@ def handle_messages(display, intf):
                 command = string.join(commands_file.readline().split()[5:])
             except IOError:
                 commands_file.close()
-                commands_file = open(intf.commands_file, "r")
+                display.stopped = 1
+                stop_now = 1
+                #commands_file = open(intf.commands_file, "r")
                 continue
             #Don't overwhelm the display thread.
             time.sleep(0.03)
@@ -493,12 +495,13 @@ def handle_messages(display, intf):
         Trace.trace(1, command)
         display.queue_command(command)
 
-        #If necessary, handle resubsribing.
-        now = time.time()
-        if now - start > TEN_MINUTES:
-            # resubscribe
-            erc.subscribe()
-            start = now
+        #If necessary, handle resubscribing.
+        if not intf.commands_file:
+            now = time.time()
+            if now - start > TEN_MINUTES:
+                # resubscribe
+                erc.subscribe()
+                start = now
 
     #End nicely.
     if not intf.commands_file:
