@@ -526,52 +526,62 @@ def pnfs_information(filelist,write=1):
 ############################################################################
 
 #Args:
-# Takes in a dictionary of lists of transfer requests sorted by volume.
-#Rerturns:
-# None
+# Takes a list of request tickets.
+#Returns:
+#None
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
+def verify_write_request_consistancy(request_list):
 
-def verify_request_consistancy(requests_per_vol):
+    for request in request_list:
 
-    vols = requests_per_vol.keys()
-    vols.sort()
-    for vol in vols:
-        #Retreive request list sorted by volumes.
-        request_list = requests_per_vol[vol]
-        for request in request_list:
-
-            #Consistancy check for valid pnfs tag values.
-            #for key in request['pnfs'].keys():
-            #    #check for values that contain letters, digits and _.
-            #    if not charset.is_in_charset(str(request['pnfs'][key])):
-            #        msg="Pnfs tag, %s, contains invalid characters." % (key,)
-            #        request['status'] = (e_errors.USERERROR, msg)
-            #
-            #        print_data_access_layer_format(request['infile'],
-            #                                       request['outfile'],
-            #                                       request['file_size'],
-            #                                       request)
-            #        quit() #Harsh, but necessary.
-
-            #Verify that the file family width is in fact a non-
-            # negitive integer.
-            try:
-                expression = int(request['pnfs']['file_family_width']) < 0
-                if expression:
-                    raise ValueError,(e_errors.USERERROR,
-                                      request['pnfs']['file_family_width'])
-            except ValueError:
-                msg="Pnfs tag, %s, requires a non-negitive integer value."\
-                     % ("file_family_width",)
+        #Consistancy check for valid pnfs tag values.
+        for key in request['pnfs'].keys():
+            #check for values that contain letters, digits and _.
+            if not charset.is_in_charset(str(request['pnfs'][key])):
+                msg="Pnfs tag, %s, contains invalid characters." % (key,)
                 request['status'] = (e_errors.USERERROR, msg)
-                
+
                 print_data_access_layer_format(request['infile'],
                                                request['outfile'],
                                                request['file_size'],
                                                request)
                 quit() #Harsh, but necessary.
 
+        #Verify that the file family width is in fact a non-
+        # negitive integer.
+        try:
+            expression = int(request['pnfs']['file_family_width']) < 0
+            if expression:
+                raise ValueError,(e_errors.USERERROR,
+                                  request['pnfs']['file_family_width'])
+        except ValueError:
+            msg="Pnfs tag, %s, requires a non-negitive integer value."\
+                 % ("file_family_width",)
+            request['status'] = (e_errors.USERERROR, msg)
+
+            print_data_access_layer_format(request['infile'],
+                                           request['outfile'],
+                                           request['file_size'],
+                                           request)
+            quit() #Harsh, but necessary.
+
+
+#Args:
+# Takes in a dictionary of lists of transfer requests sorted by volume.
+#Rerturns:
+# None
+#Verifies that various information in the tickets are correct, valid, spelled
+# correctly, etc.
+def verify_read_request_consistancy(requests_per_vol):
+    
+    vols = requests_per_vol.keys()
+    vols.sort()
+    for vol in vols:
+
+        #Retreive request list sorted by volumes.
+        request_list = requests_per_vol[vol]
+        for request in request_list:
             
             #Consistancy check with respect to wrapper and driver.  If
             # they don't match everything gets confused and breaks.
@@ -1131,21 +1141,10 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 def create_write_request(input_file, output_file,
                        file_size, library, file_family,
                        ff_wrapper, width, storage_group,
-                       pinfo, p, client, file_clerk_address,
+                       pinfo, pnfs, client, file_clerk_address,
                        volume_clerk_address, library_manager_address,
                        callback_addr, chk_crc, tinfo,
                        pri=1, delpri=0, agetime=0, delayed_dismount=0):
-
-    # if old ticket exists, that means we are retrying
-    #    then just bump priority and change unique id
-    #if work_ticket:
-    #    #These change...
-    #    oldpri = work_ticket["encp"]["basepri"]
-    #    work_ticket["encp"]["basepri"] = oldpri + 4
-    #    work_ticket["unique_id"] = generate_unique_id()
-    #    #work_ticket["retry"] = work_ticket["retry"] + 1 #Handle elsewhere
-    #
-    #    return
 
     ## quick fix to check HiPri functionality
     admpri = -1
@@ -1191,6 +1190,12 @@ def create_write_request(input_file, output_file,
     for key in client['uinfo'].keys():
         wrapper[key] = client['uinfo'][key]
 
+    pnfs.get_file_family()
+    pnfs.get_file_family_width()
+    pnfs.get_file_family_wrapper()
+    pnfs.get_library()
+    pnfs.get_storage_group()
+
     volume_clerk = {"library"            : library,
                     "file_family"        : file_family,
                     # technically width does not belong here,
@@ -1203,7 +1208,6 @@ def create_write_request(input_file, output_file,
     library_manager = {'address':library_manager_address}
 
     work_ticket = {}
-    
     work_ticket['callback_addr'] = callback_addr
     work_ticket['client_crc'] = chk_crc
     work_ticket['encp'] = encp
@@ -1213,6 +1217,11 @@ def create_write_request(input_file, output_file,
     work_ticket['infile'] = input_file
     work_ticket['lm'] = library_manager
     work_ticket['outfile'] = output_file
+    work_ticket['pnfs'] = {'file_family':pnfs.file_family,
+                           'file_family_width':pnfs.file_family_width,
+                           'file_family_wrapper':pnfs.file_family_wrapper,
+                           'library':pnfs.library,
+                           'storge_group':pnfs.storage_group}
     work_ticket['retry'] = 0 #retry,
     work_ticket['times'] = times
     work_ticket['unique_id'] = generate_unique_id()
@@ -1582,12 +1591,15 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
                            ff_wrapper[i], width[i], storage_group[i],
                            pinfo[i], p, client, file_clerk_address,
                            volume_clerk_address, library_manager_address,
-                           callback_addr, chk_crc, tinfo, pri=1, delpri=0,
-                           agetime=0, delayed_dismount=0)
+                           callback_addr, chk_crc, tinfo, pri, delpri,
+                           agetime, delayed_dismount)
 
         if verbose > 4:
             print "WORK_TICKET"
             pprint.pprint(work_ticket)
+
+        #This will halt the program if everything isn't consistant.
+        verify_write_request_consistancy([work_ticket])
         
         if verbose > 1:
             print "Sending ticket to %s.library manager,  elapsed=%s" % \
@@ -2262,12 +2274,12 @@ def read_from_hsm(input_files, output, client, verbose=0, chk_crc=1, pri=1,
                                             file_clerk_address,
                                             volume_clerk_address, client,
                                             tinfo, chk_crc, bfid,
-                                            pinfo, p, verbose, pri=1,
-                                            delpri=0, agetime=0,
-                                            delayed_dismount=0,)
+                                            pinfo, p, verbose, pri,
+                                            delpri, agetime,
+                                            delayed_dismount,)
 
     #This will halt the program if everything isn't consistant.
-    verify_request_consistancy(requests_per_vol)
+    verify_read_request_consistancy(requests_per_vol)
     
     if (len(requests_per_vol) == 0):
         quit()
