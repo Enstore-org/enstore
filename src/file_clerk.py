@@ -318,6 +318,43 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'restore_file %s'%(ticket,))
         return
 
+    # restore specified file
+    def restore_file2(self, ticket):
+        try:
+            bfid = ticket["bfid"]
+        except KeyError, detail:
+            msg =  "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            record = self.dict[bfid]
+        except:
+            ticket["status"] = "ENOENT", "File %s not found"%(bfid,)
+            Trace.log(e_errors.INFO, "%s"%(ticket,))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
+            return
+
+        if string.find(value["external_label"],'.deleted') !=-1:
+            ticket["status"] = "EACCES", "volume %s is deleted"%(value["external_label"],)
+            Trace.log(e_errors.INFO, "%s"%(ticket,))
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"restore_file %s"%(ticket["status"],))
+
+        if record.has_key('pnfs_mapname'):
+            map = pnfs.Pnfs(record['pnfs_mapname'])
+            status = map.restore_from_volmap('no')
+        else:
+            status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
+
+        ticket["status"] = status
+        self.reply_to_caller(ticket)
+        Trace.trace(12,'restore_file %s'%(ticket,))
+        return
+
     def get_user_sockets(self, ticket):
         file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -626,7 +663,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         for bfid in bfids:
             record = self.dict[bfid]
             map = pnfs.Pnfs(record["pnfs_mapname"])
-            status = map.restore_from_volmap(restore_dir)
+            status = map.restore_from_volmap("no")
         Trace.log(e_errors.INFO, 'all files of volume %s are restored'%(vol))
         return
 
