@@ -451,6 +451,7 @@ profile_function(  PyObject	*self
 	    if (!get_msg(args,msg))
 		return (raise_exception("profile_function - parse error"));
 	if (!have_dpth) depth = get_depth();
+	if (depth > 31) depth=31;
 	/* printing is slow, but we need to make it slower by checking ??? */
 	printf( "%5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
 	       , trc_pid
