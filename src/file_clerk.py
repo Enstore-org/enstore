@@ -50,7 +50,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         Trace.trace(10,"new_bit_file "+str(sys.exc_info()[0])+\
+         Trace.trace(10,"new_bit_file "+str(sys.exc_info()[0])+
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
@@ -67,7 +67,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket["fc"][key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -96,7 +96,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -138,7 +138,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -166,7 +166,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -229,7 +229,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if 0: print address # quiet lint
         self.data_socket = data_socket
         listen_socket.close()
-        Trace.trace(16,"get_user_sockets host="+repr(file_clerk_host)+\
+        Trace.trace(16,"get_user_sockets host="+repr(file_clerk_host)+
                     " file_clerk_port="+repr(file_clerk_port))
 
     # return all the bfids in our dictionary.  Not so useful!
@@ -245,27 +245,17 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
      self.get_user_sockets(ticket)
      ticket["status"] = (e_errors.OK, None)
-     callback.write_tcp_socket(self.data_socket,ticket,
-                                  "file_clerk get bfids, controlsocket")
-     msg=""
+     callback.write_tcp_obj(self.data_socket,ticket)
      dict.cursor("open")
      key,value=dict.cursor("first")
      while key:
-        msg=msg+repr(key)+","
-        if len(msg) >= 16384:
-           callback.write_tcp_buf(self.data_socket,msg,
-                                  "file_clerk get bfids, datasocket")
-           msg=""
-	print "KEY", key
-	print "VALUE", value
-        key,value=dict.cursor("next")
+         callback.write_tcp_raw(self.data_socket,repr(key))
+         key,value=dict.cursor("next")
+     callback.write_tcp_raw(self.data_socket,"")
      dict.cursor("close")
-     msg=msg[:-1]
-     callback.write_tcp_buf(self.data_socket,msg,
-                                  "file_clerk get bfids, datasocket")
+     callback.write_tcp_raw(self.data_socket,"")
      self.data_socket.close()
-     callback.write_tcp_socket(self.control_socket,ticket,
-                                  "file_clerk get bfids, controlsocket")
+     callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
      return
 
@@ -279,7 +269,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -290,7 +280,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -310,7 +300,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="external_label"
             external_label = finfo[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -318,7 +308,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # ask the volume clerk server which library has "external_label" in it
-        Trace.trace(11,"bfid_info inquiring about volume="+\
+        Trace.trace(11,"bfid_info inquiring about volume="+
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
         if vticket["status"][0] != e_errors.OK:
@@ -354,7 +344,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -365,7 +355,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             finfo = copy.deepcopy(dict[bfid])
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid "+repr(bfid)+" not found")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -397,7 +387,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             key="bfid"
             bfid = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -435,7 +425,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    key = "restore"
 	    restore_volmap = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
+            ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
@@ -508,9 +498,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          return
      # get a user callback
      self.get_user_sockets(ticket)
-     callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
+     callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
-
+     callback.write_tcp_raw(self.data_socket,ticket)
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
      key,value=dict.cursor("first")
@@ -525,29 +515,26 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                  deleted = "unknown"
              if not value.has_key('pnfs_name0'):
                  value['pnfs_name0'] = "unknown"
-             msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+             msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
-             if len(msg) >= 16384:
-                 #print "sending len(msg)"
-                 callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list, datasocket")
-                 msg=""
+             callback.write_tcp_raw(self.data_socket, msg)
          key,value=dict.cursor("next")
      dict.cursor("close")
-     callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list(2), datasocket")
+     callback.write_tcp_raw(self.data_socket, "")
      self.data_socket.close()
-     callback.write_tcp_socket(self.control_socket,ticket, "file_clerk tape_list, controlsocket")
+     callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
      return
 
     def start_backup(self,ticket):
         dict.start_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
+        self.reply_to_caller({"status" : (e_errors.OK, None),
                 "start_backup"  : 'yes' })
 
     def stop_backup(self,ticket):
         dict.stop_backup()
-        self.reply_to_caller({"status" : (e_errors.OK, None),\
+        self.reply_to_caller({"status" : (e_errors.OK, None),
                 "stop_backup"  : 'yes' })
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
@@ -560,7 +547,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
 	keys = self.csc.get(MY_NAME)
-	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
 	                                              keys['port']))
 
 
