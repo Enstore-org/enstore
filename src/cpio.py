@@ -118,29 +118,27 @@ class Cpio :
         size = len(header)
 
 	if self.fast_write==1:
-	    try:
-		# it is assumed that the data size will be greater than sanity_bytes
-		# the header is passed thru ETape
-		(dat_bytes,dat_crc,san_crc) = EXfer.to_HSM( self.read_driver, self.write_driver,
-							    self.crc_fun, sanity_bytes, header )
-		# sanity_bytes will be dat_bytes when dat_bytes is less than
-		# sanity_bytes.
-		if dat_bytes < sanity_bytes:
-		    san_bytes = dat_bytes
-		    san_crc = dat_crc
-		else:
-		    san_bytes = sanity_bytes
-		size = size + dat_bytes
+	    # it is assumed that the data size will be greater than sanity_bytes
+	    # the header is passed thru ETape
+	    (dat_bytes,dat_crc,san_crc) = EXfer.to_HSM( self.read_driver, self.write_driver,
+							self.crc_fun, sanity_bytes, header )
+	    # sanity_bytes will be dat_bytes when dat_bytes is less than
+	    # sanity_bytes.
+	    if dat_bytes < sanity_bytes:
+		san_bytes = dat_bytes
+		san_crc = dat_crc
+	    else:
+		san_bytes = sanity_bytes
+		pass
+	    size = size + dat_bytes
 
-                # need to subtract off these bytes from remaining count if disk driver
-                # ftt driver has method that just returns since the byte count is
-                #        updated in hardware at end transfer
-                self.write_driver.xferred_bytes(size)
+	    # need to subtract off these bytes from remaining count if disk driver
+	    # ftt driver has method that just returns since the byte count is
+	    #        updated in hardware at end transfer
+	    self.write_driver.xferred_bytes(size)
                 
             # partial tape block will be in ETape buffer????
-	    except:
-		print "Error with EXfer - continuing";traceback.print_exc()
-
+	    
 	else:
 	    self.write_driver.write_block(header,)
 
