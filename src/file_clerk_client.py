@@ -92,6 +92,9 @@ class FileClient(generic_client.GenericClient,
         r = self.send(ticket)
         return r
 
+    def show_state(self):
+        return self.send({'work':'show_state'})
+
     def set_pnfsid(self, ticket):
         ticket['work'] = "set_pnfsid"
         r = self.send(ticket)
@@ -603,6 +606,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.show_bad = 0
         self.add = None
         self.modify = None
+        self.show_state = None
         self.dont_try_this_at_home_erase = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -664,6 +668,12 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.USER},
+        option.SHOW_STATE:{option.HELP_STRING:
+                       "show internal state of the server",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -716,6 +726,16 @@ def do_work(intf):
         ticket = fcc.start_backup()
         ticket = fcc.backup()
         ticket = fcc.stop_backup()
+
+    elif intf.show_state:
+        ticket = fcc.show_state()
+        w = 0
+        for i in ticket['state'].keys():
+            if len(i) > w:
+                w = len(i)
+        fmt = "%%%ds = %%s"%(w)
+	for i in ticket['state'].keys():
+            print fmt%(i, ticket['state'][i])
 
     elif intf.deleted and intf.bfid:
 	try:

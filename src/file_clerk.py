@@ -175,6 +175,15 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(12,'set_pnfsid %s'%(ticket,))
         return
 
+    # show_state -- show internal configuration values
+    def show_state(self, ticket):
+        ticket['state'] = {}
+        for i in self.__dict__.keys():
+            ticket['state'][i] = `self.__dict__[i]`
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     #### DONE
     def get_crcs(self, ticket):
         try:

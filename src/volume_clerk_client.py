@@ -308,6 +308,9 @@ class VolumeClerkClient(generic_client.GenericClient,
             return self.send(ticket,timeout,retry)
         return {'status':(e_errors.NOTALLOWED, "No '.' allowed in %s"%(item,))}
 
+    def show_state(self):
+        return self.send({'work':'show_state'})
+
     def modify(self,ticket, timeout=60, retry=5):
         ticket['work']='modifyvol'
         return self.send(ticket,timeout,retry)
@@ -872,6 +875,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.ls_active = None
         self.recycle = None
         self.export = None
+        self.show_state = None
         self._import = None
         self.ignore_storage_group = None
         self.forget_ignored_storage_group = None
@@ -975,6 +979,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         ]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.SHOW_STATE:{option.HELP_STRING:
+                       "show internal state of the server",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
@@ -1222,6 +1232,15 @@ def do_work(intf):
         ticket = vcc.start_backup()
         ticket = vcc.backup()
         ticket = vcc.stop_backup()
+    elif intf.show_state:
+        ticket = vcc.show_state()
+        w = 0
+        for i in ticket['state'].keys():
+            if len(i) > w:
+                w = len(i)
+        fmt = "%%%ds = %%s"%(w)
+	for i in ticket['state'].keys():
+            print fmt%(i, ticket['state'][i])
     elif intf.vols:
         # optional argument
         nargs = len(intf.args)

@@ -75,7 +75,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.keys = self.csc.get(MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
         self.dict = None
-        self.bfid_db = None
         self.sgdb = None
         self.paused_lms = {}
         self.ignored_sg_file = None
@@ -89,6 +88,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
 
+    # show_state -- show internal configuration values
+    def show_state(self, ticket):
+        ticket['state'] = {}
+        for i in self.__dict__.keys():
+            ticket['state'][i] = `self.__dict__[i]`
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
