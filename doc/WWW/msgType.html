@@ -1,0 +1,550 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="Generator" CONTENT="Microsoft Word 97">
+   <META NAME="Template" CONTENT="C:\PROGRAM FILES\MICROSOFT OFFICE\OFFICE\html.dot">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.08 [en] (X11; I; Linux 2.2.10 i686) [Netscape]">
+   <TITLE>msgType</TITLE>
+</HEAD>
+<BODY BGCOLOR="#CCFFFF" LINK="#0000FF" VLINK="#800080">
+
+<CENTER><B><FONT FACE="Courier New"><FONT COLOR="#FF0000"><FONT SIZE=+4>'MSG_TYPE'
+Error Messages</FONT></FONT></FONT></B>
+<P><FONT SIZE=+1>Here is a partial listing of many msg_types error messages
+that you may grep on or use to search for the string character sequence
+in a program. All messages that users pass to the ENSTORE program will
+have a 'MSG_TYPE' appended to the end of the message. The user can also
+pass their own 'MSG_TYPE' if so desired. This is to make it easier for
+them to find a log entry. '<B>Device</B>' or '<B>server</B>' are in small
+letters to show that it changes. In reality it will be upper case of the
+device or server that is being affected. I.e. ADD_LIST_SUC_<B>AITLBM</B>.</FONT>
+<P><A NAME="TOL"></A><FONT FACE="Courier New">[<A HREF="#A">A</A>] [B]
+[C] [<A HREF="#D">D</A>] [<A HREF="#E">E</A>] [<A HREF="#F">F</A>] [<A HREF="#G">G</A>]
+[H] [<A HREF="#I">I</A>] [J] [K] [L] [<A HREF="#M">M</A>]</FONT>
+<P><FONT FACE="Courier New">[<A HREF="#N">N</A>] [O] [P] [<A HREF="#Q">Q</A>]
+[<A HREF="#R">R</A>] [<A HREF="#S">S</A>] [T] [<A HREF="#U">U</A>] [<A HREF="#V">V</A>]
+[<A HREF="#W">W</A>] [<A HREF="#X">X</A>] [Y] [Z]</FONT></CENTER>
+
+<CENTER><TABLE BORDER CELLPADDING=6 WIDTH="811" >
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="106"><A NAME="A"></A><FONT FACE="Courier New"><FONT SIZE=+1>ADD_LIST_'server'</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>ADD_LIST_SUC_'server' </FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="106"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+<FONT COLOR="#330000">ADD_LIST_SUC_MVR</FONT>.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>A job request was added to the
+Library Manager work list.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="28"><FONT FACE="Courier New"><FONT SIZE=+1>ALARM_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="28"><FONT FACE="Courier New"><FONT SIZE=+1>There
+was an '<B>ALARM</B>' of some type.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>I.e. ALARM_ENCP</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="58"><A NAME="D"></A><FONT FACE="Courier New"><FONT SIZE=+1>DISM_CHECK_'device'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>DISM_CHECK_SUC_'device'&nbsp;</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="58"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_CHECK_DC11MV. Dismount checks are to see if a tape is still in a tape
+drive.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="28"><FONT FACE="Courier New"><FONT SIZE=+1>DISM_ERR_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="28"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_ERR_ADICR1. An error occurred when the tape was being dismounted.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="75"><FONT FACE="Courier New"><FONT SIZE=+1>DISM_INFO_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="75"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_INFO_ADITOM. The message is general in nature and there wasn't enough
+information to determine what type of message it was.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="42"><FONT FACE="Courier New"><FONT SIZE=+1>DISM_REQ_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="42"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_REQ_ADICR1. A tape dismount was requested.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="45"><FONT FACE="Courier New"><FONT SIZE=+1>DISM_START_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="45"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_START_DC11MV. The device started doing the request of a tape dismount.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="33"><FONT FACE="Courier New"><FONT SIZE=+1>DISM_SUC_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="33"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+DISM_SUC_ADICR1. The dismount command was completed successfully.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="57"><A NAME="E"></A><FONT FACE="Courier New"><FONT SIZE=+1>ERR_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="57"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+ERR_DM07MV. We try to account for all errors, but there are so many that
+we may not have found them all. This message is a general error message
+for items that weren't accounted for. <B>YOU MAY WANT TO NOTE THE ERROR
+AND REPORT IT SO THAT IT CAN BE ADDED IN LATER.</B></FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="155"><FONT FACE="Courier New"><FONT SIZE=+1>EXCEPTION_'type'_'server'</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="155"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+EXCEPTION_ALARM_VOLSRV. An exception occurred. Here other examples:</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>EXCEPTION_ERR_CS</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>Exception occurred while reporting
+an error</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>EXCEPTION_INFO_INQSRV</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>General exception informational
+message</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>EXCEPTION_REQ_AITLBM</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>Exception occurred during a
+request</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="42"><A NAME="F"></A><FONT FACE="Courier New"><FONT SIZE=+1>FILEDB_OPEN_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>FILEDB_SUC_'server'&nbsp;</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="42"><FONT FACE="Courier New"><FONT SIZE=+1>FILEDB_OPEN_FILSRV,
+FILEDB_SUC_FILSRV</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>The file database was opened.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="79"><FONT FACE="Courier New"><FONT SIZE=+1>FILE_START_BU
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT><FONT FACE="Courier New"><FONT SIZE=-2></FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>FILE_START_CP</FONT></FONT><FONT FACE="Courier New"><FONT SIZE=+1></FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>FILE_SUC_BU</FONT></FONT><FONT FACE="Courier New"><FONT SIZE=+1></FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>FILE_SUC_CP</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="79"><FONT FACE="Courier New"><FONT SIZE=+1>BU
+= BACKUP</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>CP = CHECKPOINT</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>Started backing up file or started
+a checkpoint on a file. The third and fourth messages say that the operation
+completed with no errors.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="38"><A NAME="G"></A><FONT FACE="Courier New"><FONT SIZE=+1>GET_MVR_LST_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="38"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+GET_MVR_LST_AITLBM. Mover list was requested.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="38"><FONT FACE="Courier New"><FONT SIZE=+1>GET_SUS_VOL_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="38"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+GET_SUS_VOL_DLTLBM. When a tape drive can't read a tape, it is noted as
+a suspect vol until the Library Manager can determine if the tape is bad
+or the tape drive. This message is saying to use this suspect tape in a
+different drive. If the drive can read it, the other drive was bad. If
+this drive can't read it then the tape is probably bad.&nbsp;</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="40"><FONT FACE="Courier New"><FONT SIZE=+1>GET_WORK_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="40"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+GET_WORK_AITLBM. Get next job for mover.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="83"><A NAME="I"></A><FONT FACE="Courier New"><FONT SIZE=+1>INFO_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="83"><FONT FACE="Courier New"><FONT SIZE=+1>A
+general all purpose informational message type. Again, there are so many
+messages that don't mean much and don't have any errors. These MSG_TYPE's
+report them. It's like a default msg_type generator - this is what you
+see when no other msg_type applies. Other types are:</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>INFO_BU</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>INFO_ENCP</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="11"><FONT FACE="Courier New"><FONT SIZE=+1>INSERT_INFO_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>INSERT_REQ_'server'</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>INSERT_SUC_'server'</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="11"><FONT FACE="Courier New"><FONT SIZE=+1>Information
+about an INSERT command.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>A job was requested to be inserted
+into the server.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>The inserted job was added to
+server successfully.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="M"></A><FONT FACE="Courier New"><FONT SIZE=+1>MOUNT_ERR_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+MOUNT_ERR_DC11MV. There was an error while mounting a tape into device.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>MOUNT_INFO_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+MOUNT_INFO_DM05MC. Informational message about mount request.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>MOUNT_REQ_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+MOUNT_REQ_ADICR1. A tape mount was requested on device.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>MOUNT_SUC_'device'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+MOUNT_SUC_ADICR1. The tape mount on device was successful.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="N"></A><FONT FACE="Courier New"><FONT SIZE=+1>NEXT_WORK_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+NEXT_WORK_AITLBM. Library manager is telling mover what to do next.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="Q"></A><FONT FACE="Courier New"><FONT SIZE=+1>QUIT_'errCond'_'server'&nbsp;</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+QUIT_ALARM_INQSRV.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>Examples of errCond:</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>ALARM, ERR, INFO, WARNING, etc.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>A process is exiting.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="R"></A><FONT FACE="Courier New"><FONT SIZE=+1>READ_ERR_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+READ_ERR_ENCP. A read error occurred from the server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>RESTART_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>RESTART_ERR_'server'&nbsp;</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>RESTART_AS</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>RESTART_ERR_INQ_CHILD</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>A restart command was given to
+the named server. You must look closely, if you see 'ERR' in message, and
+error occurred while trying to do the restart.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="S"></A><FONT FACE="Courier New"><FONT SIZE=+1>START_'process'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>STOP_'process'&nbsp;</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+START_BU, STOP_BU - where BU is backup, CP = checkpoint.&nbsp;</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>The message says a start or stop
+command was given.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>SUC_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+SUC_DLTLBM. A general 'success' message. There wasn't sufficient information
+in the message to determine anything else.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>SVR_DIED_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+SVR_DIED_INQ_CHILD. Server died.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="U"></A><FONT FACE="Courier New"><FONT SIZE=+1>UCI_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+UCI_DC11MV. UPD = Update Client Information.&nbsp;</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>UML_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+UML_AITLBM. Updated the MOVER LIST for server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>UNBIND_START_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+UNBIND_START_DC11MV. Job or task was removed.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>UNBIND_VOL_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+UNBIND_VOL_AITLBM. Unbind volume.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>USERERR_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+USERERR_FILSRV. General purpose severity code of USERERR occurred</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="V"></A><FONT FACE="Courier New"><FONT SIZE=+1>VOLDB_OPEN_'server'</FONT><FONT SIZE=-2>
+[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOLDB_SUC_'server'</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOLDB_OPEN_VOLSRV</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOLDB_SUC_VOLSRV</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>The volume database was opened
+on server.</FONT></FONT>
+<BR><FONT FACE="Courier New"><FONT SIZE=+1>The volume database command
+completed successfully.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_BUSY_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_BUSY_DLTLBM. Volume was busy.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_ERR_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_ERR_VC. A volume error occurred.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_INFO_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_INFO_FILSRV. General information on volume on device.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_NEXT_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.
+e. VOL_NEXT_DLTLBM. Next volume work to be done on server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_RESTART_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_RESTART_VC. Restart volume on server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_BU
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_CP</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_'server'&nbsp;</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_BU
+= Start backup</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_CP = Start checkpoint</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>VOL_START_'server' = On server
+'server'</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_STOP_'process'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_STOP_BU. Stop backup</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="36"><FONT FACE="Courier New"><FONT SIZE=+1>VOL_SUC_'process'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="36"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+VOL_SUC_BU. Process was successful</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=+1>BU = backup, CP = checkpoint</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="W"></A><FONT FACE="Courier New"><FONT SIZE=+1>WARNING_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WARNING_AITLBM. General warning that happened on server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_ERR_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_ERR_MVR. Error was reported while writing to server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_FILE_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_FILE_DC11MV. Wrote a file to device.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_HSM_'errCond'_'server'</FONT></FONT>
+<P><FONT FACE="Courier New"><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_HSM_ALARM_ENCP. HSM = Hierarchical Storage Media. While writing to
+HSM the error 'errCond' occurred (ALARM, ERR, WARNING, ETC.) on server
+'server'</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_HSM_NEXT_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_HSM_NEXT_AITLBM. HSM = Hierarchical Storage Media. The next work
+to be done for HSM server 'server'</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_HSM_START_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_HSM_START_AITLBM. HSM = Hierarchical Storage Media. Write starting
+for HSM server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_HSM_SUC_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_HSM_SUC_ENCP. HSM = Hierarchical Storage Media. Write HSM server
+was successful.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_HSM_UML_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_HSM_UML_ENCP. HSM = Hierarchical Storage Media. HSM UPDATE MOVER
+LIST</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_INFO_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_INFO_VOLSRV. General information reported on a write to server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_QUEUED_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_QUEUED_AITLBM. The write was queued to await being processed.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_SUC_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_SUC_DC11MV. The write was successful.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>WRITE_WRAP_'device'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+WRITE_WRAP_DC11MV. Wrapper written to device.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><A NAME="X"></A><FONT FACE="Courier New"><FONT SIZE=+1>XFER_REQ_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+XFER_REQ_ENCP. A data transfer was requested to server.</FONT></FONT></TD>
+</TR>
+
+<TR>
+<TD VALIGN=TOP WIDTH="40%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>XFER_SUC_'server'
+</FONT><FONT SIZE=-2>[<A HREF="#TOL">TOL</A>]</FONT></FONT></TD>
+
+<TD VALIGN=TOP WIDTH="60%" HEIGHT="19"><FONT FACE="Courier New"><FONT SIZE=+1>I.e.
+XFER_SUC_ENCP. A data transfer was completed successfully.</FONT></FONT></TD>
+</TR>
+</TABLE></CENTER>
+
+</BODY>
+</HTML>
