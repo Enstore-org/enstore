@@ -1208,6 +1208,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
+                import ftt
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
                 # bail out gracefuly
