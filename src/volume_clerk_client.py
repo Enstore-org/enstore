@@ -20,22 +20,23 @@ import e_errors
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"
 
+
+#turn byte count into a nicely formatted string
 def capacity_str(x):
-    x=1.0*x
-    neg=x<0
-    x=abs(x)
+    x=1.0*x    ## make x floating-point
+    neg=x<0    ## remember the sign of x
+    x=abs(x)   ##  make x positive so that "<" comparisons work
         
     for suffix in ('B ', 'KB', 'MB', 'GB'):
-        if 0<x<1024:
+        if x <= 1024:
             break
         x=x/1024
-    if neg:
+    if neg:    ## if x was negative coming in, restore the - sign  
         x = -x
     return "%6.2f%s"%(x,suffix)
 
-    
 
-class VolumeClerkClient(generic_client.GenericClient,\
+class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
     def __init__( self, csc, servr_addr=None ):
