@@ -13,17 +13,18 @@ fi
 set -u  # force better programming and ability to use check for not set
 
 rm -f read_list*
-rm -f reader.out
+rm -f *.out
 
 read_list=./reader_list.$$
 
 while /bin/true; do
+    rm -fr read_list*
     if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
-    rm -fr $read_list
     find $base/ -type f -print >> $read_list
     cat $read_list | while read f; do
         if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
-        rm -f reader.out
-        ecmd encp $f reader.out
+        fb=`basename $f`
+        ecmd encp $f $fb.out
+        rm -f $fb.out
     done
 done
