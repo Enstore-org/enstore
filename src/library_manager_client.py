@@ -42,10 +42,12 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def getwork(self) :
 	return self.getlist("getwork")
 
-    def get_queue(self, node=None):
+    def get_queue(self, node=None, lm=None):
+        if not lm: lmname = "library_manager"
+        else: lmname = lm
         keys = self.csc.get_keys()
         for key in keys['get_keys']:
-            if string.find(key, "library_manager") != -1:
+            if string.find(key, lmname) != -1:
                self.name = key
                lst = self.getwork()
                pw_list = lst["pending_work"]
@@ -247,7 +249,15 @@ def do_work(intf):
 	ticket = lmc.poll()
 	print repr(ticket)
     elif intf.queue_list:
-	ticket = lmc.get_queue(intf.host)
+        if len(intf.args) >= 1:
+            host = intf.args[0]
+            if len(intf.args) == 2:
+                lm = intf.args[1]
+            else: lm = None
+        else:
+            host = None
+            lm = None
+	ticket = lmc.get_queue(host, lm)
 	print repr(ticket)
 	
     else:
