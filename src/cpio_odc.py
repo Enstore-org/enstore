@@ -91,19 +91,11 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
 	fname = fname[1:]
     dev = makedev(major, minor)
     rdev = makedev(rmajor, rminor)
-    header = \
-	   "070707" +\
-	   "%06o"   % (dev & 0xffff) +\
-	   "%06lo"  % (inode & 0xffff) +\
-	   "%06lo"  % (jonmode & 0xffff) +\
-	   "%06lo"  % (uid & 0xffff) +\
-	   "%06lo"  % (gid & 0xffff) +\
-	   "%06lo"  % (nlink & 0xffff) +\
-	   "%06o"   % (rdev & 0xffff) +\
-	   "%011lo" % mtime +\
-	   "%06lo"  % ((int(len(fname)+1)) & 0xffff) +\
-	   "%011lo" % fsize +\
-	   "%s\0" % fname
+    header =  "070707%06o%06lo%06lo%06lo%06lo%06lo%06o%011lo%06lo%011lo%s\0" % \
+             (dev & 0xffff, inode & 0xffff, jonmode & 0xffff,
+              uid & 0xffff, gid & 0xffff, nlink & 0xffff,
+              rdev & 0xfff, mtime, (len(fname)+1)&0xffff,
+              fsize, fname)
     return header
 
 

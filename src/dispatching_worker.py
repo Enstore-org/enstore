@@ -54,9 +54,9 @@ def collect_children():
             Trace.trace(21,"collect_children reaped pid="+repr(pid)+' '+repr(status))
     except os.error, msg:
         if msg.errno != errno.ECHILD:
-            Trace.trace(6,"collect_children %s"%msg)
+            Trace.trace(6,"collect_children %s"%(msg,))
             raise os.error, msg
-    Trace.trace(20,"collect_children count=%s"%count)
+    Trace.trace(20,"collect_children count=%s"%(count,))
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -153,7 +153,7 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket]
         r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
-        Trace.trace(20,'get_request select r=%s'%r)
+        Trace.trace(20,'get_request select r=%s'%(r,))
         
         if r:
             # if input is ready from server process pipe, handle it first
@@ -163,7 +163,7 @@ class DispatchingWorker:
                     try:
                         bytecount = string.atoi(msg)
                     except:
-                        Trace.trace(20,'get_request_select: bad bytecount %s' % repr(msg))
+                        Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
                         break
                     msg = ""
                     while len(msg)<bytecount:
@@ -252,8 +252,8 @@ class DispatchingWorker:
             function = getattr(self,function_name)
         except (KeyError, AttributeError):
             ticket = {'status' : (e_errors.KEYERROR, 
-				  "cannot find requested function `%s'"%function_name)}
-            Trace.trace(6,"process_request "+repr(ticket)+repr(function_name))
+				  "cannot find requested function `%s'"%(function_name,))}
+            Trace.trace(6,"process_request %s %s"%(ticket,function_name))
             self.reply_to_caller(ticket)
             return
 

@@ -73,8 +73,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    try:
 	        tmp = os.environ[tmp];
 	    except:
-	        Trace.log(12, "log_file_path '%s' configuration ERROR"\
-                          %keys["log_file_path"])
+	        Trace.log(12, "log_file_path '%s' configuration ERROR"
+                          %(keys["log_file_path"]))
 	        sys.exit(1)
 	    self.logfile_dir_path = tmp
 	else:
@@ -90,7 +90,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    try:
 		self.logfile = open(logfile_name, 'w')
 	    except:
-	        Trace.trace(12, "Can not open log %s"%logfile_name)
+	        Trace.trace(12, "Can not open log %s"%(logfile_name,))
 		os._exit(1)
             Trace.trace(13, "opened for write")
 
@@ -143,7 +143,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         tm = time.localtime(time.time()) # get the local time
         if message == self.last_message:
             self.repeat_count=self.repeat_count+1
-            Trace.trace(12, "last message repeated %d times"%self.repeat_count)
+            Trace.trace(12, "last message repeated %d times"%(self.repeat_count,))
             return
         elif self.repeat_count:
             self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
@@ -160,7 +160,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         Trace.trace(12, message)
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        Trace.trace(12, "%s"%res)
+        Trace.trace(12, "%s"%(res,))
 
     def serve_forever(self):                      # overrides UDPServer method
         self.repeat_count=0

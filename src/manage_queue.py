@@ -17,7 +17,7 @@ class LM_Queue:
 	key,value=self.dict.cursor("first")
 	while key:
 	    self.queue.append(value)
-            Trace.log(e_errors.INFO, "restoring LM pending work %s "%repr(value))
+            Trace.log(e_errors.INFO, "restoring LM pending work %s "%(value,))
 	    key,value=self.dict.cursor("next")
 	self.dict.cursor("close")
 

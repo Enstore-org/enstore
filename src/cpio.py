@@ -136,7 +136,7 @@ def headers( format,            # either "new" or "CRC"
             head = "070701" + string.join(map(hex8,
                                               [inode,jonmode,uid,gid,nlink,mtime,
                                                fsize,major,minor,rmajor,rminor,
-                                               len(fname)+1, crc]), '') + "%s\0" % fname
+                                               len(fname)+1, crc]), '') + "%s\0" % (fname,)
 
             pad = (4-(len(head)%4)) %4
             heads.append(head + "\0"*int(pad))

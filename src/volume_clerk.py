@@ -126,7 +126,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     os.rmdir(vm_dir)
 	     # remove current record from the database
 	     del self.dict[external_label]
-	     Trace.log(e_errors.INFO, "volume removed %s"%external_label)
+	     Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
 	     return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
@@ -228,8 +228,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # "shelf" library is a special case
         if ticket['library']!='shelf' and not llm.has_key(ticket['library']):
             Trace.log(e_errors.INFO,
-                      " vc.addvol: Library Manager does not exist: %s " \
-                      % ticket['library'])
+                      " vc.addvol: Library Manager does not exist: %s " 
+                      % (ticket['library'],))
 
         # optional keys - use default values if not specified
         record['last_access'] = ticket.get('last_access', -1)
@@ -331,8 +331,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 					external_label+".deleted")
 	    ticket["status"] = status
 	    if status[0] == e_errors.OK:
-		Trace.log(e_errors.INFO,"Volume %s is deleted"%external_label)
-		Trace.trace(10,'delvol ok '+repr(external_label))
+		Trace.log(e_errors.INFO,"Volume %s is deleted"%(external_label,))
 
         self.reply_to_caller(ticket)
         return
@@ -346,11 +345,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    key="restore"
 	    restore_vm = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "Volume Clerk: "+key+" key is missing")
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "Volume Clerk: %s key is missing"%(key,))
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(8,"restorevol "+repr(ticket["status"]))
             return
 
         # get the current entry for the volume
@@ -358,12 +356,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record = self.dict[cl]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "Volume Clerk: volume "+cl\
-                               +" no such volume")
+            ticket["status"] = (e_errors.KEYERROR, 
+                                "Volume Clerk: volume %s: no such volume"%(cl,))
+
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
-            Trace.trace(8,"restorevol "+repr(ticket["status"]))
             return
 
 	status = self.rename_volume(cl, external_label, restore_vm)
@@ -375,8 +372,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		record["non_del_files"] = len(record["bfids"])
 	    self.dict[external_label] = record
 
-	    Trace.log(e_errors.INFO,"Volume %s is restored"%external_label)
-	    Trace.trace(10,'restorevol ok '+repr(external_label))
+	    Trace.log(e_errors.INFO,"Volume %s is restored"%(external_label,))
 
         self.reply_to_caller(ticket)
         return
@@ -1020,7 +1016,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def get_media_changer_state(self, lib, volume, m_type):
         m_changer = self.csc.get_media_changer(lib + ".library_manager")
         if not m_changer:
-            Trace.trace(8," vc.get_media_changer_state: ERROR: no media changer found %s" % volume)
+            Trace.trace(8," vc.get_media_changer_state: ERROR: no media changer found %s" % (volume,))
             return 'unknown'
             
         import media_changer_client
@@ -1209,16 +1205,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 else:
                     bytes_left = value['remaining_bytes']*1./1024./1024./1024.
                     formatted_string="%-10s  %-6.2gGB %-12s  %-12s %-12s %-12s %-12s"%\
-                                      (key,bytes_left,value['at_mover'][0],\
-                                       value['system_inhibit'],\
-                                       value['user_inhibit'],value['library'],\
+                                      (key,bytes_left,value['at_mover'][0],
+                                       value['system_inhibit'],
+                                       value['user_inhibit'],value['library'],
                                        value['file_family'])
                     if msg: msg = msg+","+formatted_string
-                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s"%\
-                                ("label","avail.","mount state",\
-                                 "sys_inhibit","usr_inhibit",\
-                                 "library","file_fam")+\
-                                ","+formatted_string
+                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s, %s"%\
+                                ("label","avail.","mount state",
+                                 "sys_inhibit","usr_inhibit",
+                                 "library","file_fam", formatted_string)
 
                 key,value=self.dict.cursor("next")
             callback.write_tcp_raw(self.data_socket,msg)
@@ -1232,7 +1227,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             exc, msg, tb = sys.exc_info()
             print exc, msg
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"get_vols child %s"%status)
+            Trace.log(e_errors.ERROR,"get_vols child %s"%(status,))
         os._exit(0)
 
 
@@ -1241,7 +1236,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def get_user_sockets(self, ticket):
         try:
             volume_clerk_host, volume_clerk_port, listen_socket = callback.get_callback()
-            Trace.trace(16,'get_user_sockets='+repr((volume_clerk_host,volume_clerk_port)))
+            Trace.trace(16,'get_user_sockets= %s %s'%(volume_clerk_host,volume_clerk_port))
             listen_socket.listen(4)
             ticket["volume_clerk_callback_host"] = volume_clerk_host
             ticket["volume_clerk_callback_port"] = volume_clerk_port
@@ -1253,7 +1248,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc, msg, tb = sys.exc_info()
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"get_user_sockets %s"%status)
+            Trace.log(e_errors.ERROR,"get_user_sockets %s"%(status,))
 
     def start_backup(self,ticket):
         try:
@@ -1265,7 +1260,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc, msg, tb = sys.exc_info()
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"start_backup %s"%status)
+            Trace.log(e_errors.ERROR,"start_backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
 
@@ -1279,7 +1274,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc,msg,tb=sys.exc_info()
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"stop_backup %s"%status)
+            Trace.log(e_errors.ERROR,"stop_backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
@@ -1293,7 +1288,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc, msg, tb = sys.exc_info()
             status = str(exc), str(msg)
-            Trace.log(e_errors.ERROR,"backup %s"%status)
+            Trace.log(e_errors.ERROR,"backup %s"%(status,))
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
@@ -1333,7 +1328,7 @@ if __name__ == "__main__":
     # get the interface
     intf = VolumeClerkInterface()
     vc = VolumeClerk((intf.config_host, intf.config_port))
-    Trace.log(e_errors.INFO, '%s' % sys.argv)
+    Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
     while 1:
         try:

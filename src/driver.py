@@ -334,7 +334,7 @@ class  FTTDriver(GenericDriver) :
 	    cur_bloc = string.atoi( ss['bloc_loc'] )
 	    if abs(cur_bloc-block_loc) < cur_bloc:
 		# closer to eod (could already be there
-		Trace.trace( 19, 'sw_mount going to eod bloc (%s)'%block_loc )
+		Trace.trace( 19, 'sw_mount going to eod bloc (%s)'%(block_loc,) )
 		FTT.locate( block_loc )
 		self.cur_loc_cookie = int2loc( self, (part,block_loc,filenum) )
 	    else:
@@ -538,7 +538,7 @@ class  FTTDriver(GenericDriver) :
 		if skip < 0: FTT.skip_fm( 1 )
 		ss = FTT.get_stats()  # update block_loc if we can
 		if ss['bloc_loc'] != None:
-		    Trace.trace( 19, 'after seek: bloc_loc=%s'%ss['bloc_loc'] )
+		    Trace.trace( 19, 'after seek: bloc_loc=%s'%(ss['bloc_loc'],) )
 		    # THE FOLLOWING 'if block_loc" CODE GOES ALONG WITH AN
 		    # "and 0" INSERTED IN THE "if block_loc" STATEMENT
 		    # ABOVE; IF THERE IS NO "and 0" IN THE "if block_loc"
@@ -699,7 +699,7 @@ if __name__ == "__main__" :
     import os				# unlink, stat
     import stat				# stat.ST_SIZE
 
-    Usage = "Usage: %s [--in=file] [--disk_out=file] [--tape_out=dev]" % sys.argv[0]
+    Usage = "Usage: %s [--in=file] [--disk_out=file] [--tape_out=dev]" % (sys.argv[0],)
 
     #--------------------
     # default, get, and process args
@@ -768,7 +768,7 @@ if __name__ == "__main__" :
                 buf_loc[buf]=do.tell()
 		print '     buf',buf,'loc is',buf_loc[buf]
 		
-		print "     stats - %s"%do.get_stats()
+		print "     stats - %s"%(do.get_stats(),)
 		print '     write buf', buf, "pos b4 write is",do.tell()
 		do.write( buf_str[buf])
 
@@ -776,7 +776,7 @@ if __name__ == "__main__" :
 		crc = do.fd_xfer( fd, fsize, 1)
 		os.close(fd)
 		print '     the crc is',crc
-		print "     stats - %s"%do.get_stats()
+		print "     stats - %s"%(do.get_stats(),)
 	    
 		do.writefm()
 
@@ -792,12 +792,12 @@ if __name__ == "__main__" :
 		print '     seek to buf',buf,'location',buf_loc[buf]
 		do.seek( buf_loc[buf])
 	    
-		print "     stats - %s"%do.get_stats()
+		print "     stats - %s"%(do.get_stats(),)
 		print '     read buf', buf, "pos b4 read is",do.tell()
 		xx = do.read( len(buf_str[buf]))
 
 		print '     pos after read is',do.tell()
-		print "     stats - %s"%do.get_stats()
+		print "     stats - %s"%(do.get_stats(),)
 
                 if xx != buf_str[buf]:
 		    print '      XX  error reading buf',buf,'xx is',xx

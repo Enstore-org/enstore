@@ -49,7 +49,7 @@ def backup_dbase(dbHome):
     
     ret=os.system(cmd)
     if ret !=0 :
-	logthis(e_errors.INFO, "Failed: %s"%repr(cmd))
+	logthis(e_errors.INFO, "Failed: %s"(cmd,))
 	sys.exit(1)	
     for name in os.popen("db_archive  -h"+dbHome).readlines():
 	os.system("rm "+name[:-1])
@@ -75,14 +75,14 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)	
 	if ret !=0 :
-	   logthis(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
 	   sys.exit(1)
     else :
 	cmd="rsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
 	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
-	   logthis(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
 	   sys.exit(1)
 
         # try to compress the tared file
@@ -96,11 +96,11 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
-           logthis(e_errors.INFO,"Failed: %s"%cmd)
+           logthis(e_errors.INFO,"Failed: %s"%(cmd,))
 	   sys.exit(1)
 	ret=os.system("rm *.tar*")
 	if ret !=0 :
-	   logthis(e_errors.INFO, "Failed: %s"%cmd)
+	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
 	   sys.exit(1)		   
  
     
@@ -118,7 +118,7 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
 	   logthis(e_errors.INFO, repr(cmd))
 	   ret=os.system(cmd)
 	   if ret !=0 :
-		 logthis(e_errors.INFO, "Failed: %s"%cmd)
+		 logthis(e_errors.INFO, "Failed: %s"%(cmd,))
     else :
 	remcmd="find "+bckHome+" -type d -mtime +"+repr(ago)
 	cmd="rsh "+hst_bck+" "+"'"+remcmd+"'"
@@ -132,7 +132,7 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
 		      logthis(e_errors.INFO, repr(cmd))
 		      ret=os.system(cmd)
 		      if ret != 0 :
-			logthis(e_errors.INFO, "Command %s failed"%cmd)
+			logthis(e_errors.INFO, "Command %s failed"%(cmd,))
 		
 if __name__=="__main__":
     import string

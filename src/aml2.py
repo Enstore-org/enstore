@@ -235,7 +235,7 @@ def insert(ticket, classTicket):
     # do insert command...
     bigVolList = []
     for area in areaList:
-	Trace.trace(e_errors.INFO, 'aml2 InsertVol IOarea: %s' % area)
+	Trace.trace(e_errors.INFO, 'aml2 InsertVol IOarea: %s' % (area,))
 	result = aci.aci_insert(area)   # aci insert command
 	res = result[0]
 	media_code = result[-1]
@@ -248,7 +248,7 @@ def insert(ticket, classTicket):
             status = aci.cvar.d_errno
             if status > len(status_table):  #invalid error code
                 status = derrno.EDASINT
-            Trace.trace(e_errors.ERROR, 'aml2 insert failed %s' % status_table[status][1])
+            Trace.trace(e_errors.ERROR, 'aml2 insert failed %s' % (status_table[status][1],))
 	for strList in volser_ranges:
 	    pieces = string.split(strList,', ')
 	    for vol_label in pieces:
@@ -262,10 +262,10 @@ def insert(ticket, classTicket):
         if not info[1]:
             ret = vcc.new_library(info[0],ticket["newlib"])
 	    if ret['status'][0] != 'ok':
-                Trace.trace(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % vol_label)
+                Trace.trace(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % (vol_label,))
                 status = 38
 	    else:
-                Trace.trace(e_errors.INFO, 'aml2 NewLib-InsertVol sucessful %s' % vol_label)
+                Trace.trace(e_errors.INFO, 'aml2 NewLib-InsertVol sucessful %s' % (vol_label,))
 
     return status_table[status][0], status, status_table[status][1]
 
@@ -311,7 +311,7 @@ def eject(ticket, classTicket):
         Trace.trace(e_errors.INFO, 'aml2 aci_eject: %s' % (volser_range))
         res = aci.aci_eject(IOarea_name, volser_range, media_code)
         if res:
-            Trace.trace(e_errors.ERROR, 'aml2 aci_eject: %i' % res)
+            Trace.trace(e_errors.ERROR, 'aml2 aci_eject: %i' % (res,))
             status = aci.cvar.d_errno
             if status > len(status_table):  #invalid error code
                 status = derrno.EDASINT

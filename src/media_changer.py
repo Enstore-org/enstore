@@ -212,7 +212,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
                     return
         else:
-            Trace.log(e_errors.INFO, 'REQUESTED  %s'%ticket['function'])
+            Trace.log(e_errors.INFO, 'REQUESTED  %s'%(ticket['function'],))
 	#put cleaningCyles on cleaning list
 	if ticket['function'] == "cleanCycle":
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
@@ -265,7 +265,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                               (ticket['function'],ticket['vol_ticket']['external_label'],
                                ticket['drive_id']))
                 else:
-                    Trace.log(e_errors.INFO, 'mcDoWork>>> %s'%ticket['function'])
+                    Trace.log(e_errors.INFO, 'mcDoWork>>> %s'%(ticket['function'],))
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
@@ -306,7 +306,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
                 msg = repr(('0','0',ticket))
-                bytecount = "%08d" % len(msg)
+                bytecount = "%08d" % (len(msg),)
                 os.write(pipe[1], bytecount)
                 os.write(pipe[1], msg)
                 os.close(pipe[1])
@@ -332,7 +332,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, 'FINISHED %s %s %s' %
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
         else:
-            Trace.log(e_errors.INFO, 'FINISHED %s'%ticket['function'])
+            Trace.log(e_errors.INFO, 'FINISHED %s'%(ticket['function']),)
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 	self.robotNotAtHome = 1
@@ -486,7 +486,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             status = rt[1]
             if status != 0:      # dismount returned error
                 return status_table[status][0], status, status_table[status][1]
-            Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt))
+            Trace.log(e_errors.INFO,"AML2 Clean returned %s"%(rt,))
  
         retTicket = vcc.get_remaining_bytes(v['external_label'])
         remaining_bytes = retTicket['remaining_bytes']-1
@@ -527,11 +527,11 @@ class Manual_MediaLoader(MediaLoaderMethods):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
     def loadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
-            os.system("mc_popup 'Please load %s'"%ticket['vol_ticket']['external_label'])
+            os.system("mc_popup 'Please load %s'"%(ticket['vol_ticket']['external_label'],))
         return MediaLoaderMethods.loadvol(self,ticket)
     def unloadvol(self, ticket):
         if ticket['vol_ticket']['external_label']:
-            os.system("mc_popup 'Please unload %s'"%ticket['vol_ticket']['external_label'])
+            os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
         return MediaLoaderMethods.unloadvol(self,ticket)
 
     
@@ -648,9 +648,8 @@ class Shelf_MediaLoader(MediaLoaderMethods):
     def checkRemoteConnection(self):
 	"check to see if remote host is there"
         fnstatus = 'OK'
-        command = self.cmdPrefix + "echo $(hostname) ; echo $?" \
-	          + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf cRC Cmd=%s" % command )
+        command = self.cmdPrefix + "echo $(hostname) ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "Shelf cRC Cmd=%s" % (command, ))
         pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRPipe'
@@ -671,9 +670,8 @@ class Shelf_MediaLoader(MediaLoaderMethods):
     def checkOCSalive(self):
 	"check to see if OCS is alive"
         fnstatus = 'OK'
-        command = self.cmdPrefix + "ocs_left_allocated -l 0 ; echo $?" \
-	          + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf cOa Cmd=%s" % command )
+        command = self.cmdPrefix + "ocs_left_allocated -l 0 ; echo $?"  + self.cmdSuffix
+        Trace.log(e_errors.INFO, "Shelf cOa Cmd=%s" % (command,) )
         pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRPipe'
@@ -694,9 +692,8 @@ class Shelf_MediaLoader(MediaLoaderMethods):
     def allocateOCSdrive(self, drive):
 	"allocate an OCS managed drive"
 	fnstatus = 'OK'
-	command = self.cmdPrefix + "ocs_allocate -T " + drive + \
-	          " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf aOd Cmd=%s" % command )
+	command = self.cmdPrefix + "ocs_allocate -T " + drive + " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "Shelf aOd Cmd=%s" % (command,) )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRAloPip'
@@ -717,7 +714,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
          	    pos=string.find(retstring," ")
 		    if pos != -1 :
 		        wrongdrive=string.strip(retstring[pos+1:])
-                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=%s" % wrongdrive )
+                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=%s" % (wrongdrive,) )
 		    fnstatusR = self.deallocateOCSdrive(drive)
                     return fnstatus
 	else :
@@ -730,7 +727,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	fnstatus = 'OK'
 	command = self.cmdPrefix + "ocs_request -t " + drive + \
 	          " -v " + external_label + " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf mOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf mOd Cmd=%s" % (command,) )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRReqPip'
@@ -760,7 +757,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	else :
 	    command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
 	              " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf dOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf dOd Cmd=%s" % (command,) )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstatus = 'ERRDeaPip'
@@ -786,7 +783,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	fnstatus = 'OK'
 	command = self.cmdPrefix + "ocs_dismount -t " + drive + \
 	          " ; echo $?" + self.cmdSuffix
-        Trace.log(e_errors.INFO, "Shelf uOd Cmd=%s" % command )
+        Trace.log(e_errors.INFO, "Shelf uOd Cmd=%s" % (command,) )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
 	    fnstat = 'ERRDsmPip'
@@ -821,7 +818,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
 	"unload a tape"
 	fnstatusTmp = self.unmountOCSdrive(drive)
      	fnstatus = self.deallocateOCSdrive(drive)
-        Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % fnstatus)
+        Trace.log(e_errors.INFO, "Shelf unload deallocate exit fnstatus=%s" % (fnstatus,))
 	if fnstatusTmp != 'OK' :
             Trace.log(e_errors.ERROR, "ERROR:Shelf unload deall exit fnst= %s %s" %
                       (fnstatus, self.status_message(fnstatus)))
@@ -869,7 +866,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__" :
     Trace.init("MEDCHANGER")
-    Trace.trace( 6, "media changer called with args: %s"%sys.argv )
+    Trace.trace( 6, "media changer called with args: %s"%(sys.argv,) )
 
     # get an interface
     intf = MediaLoaderInterface()
@@ -891,11 +888,13 @@ if __name__ == "__main__" :
 
     mc = eval(mc_type+"("+repr(intf.name)+","+repr(intf.maxwork)+",("+\
               repr(intf.config_host)+","+repr(intf.config_port)+"))")
+              ##XXX There must be a better way! 
+    
     while 1:
         try:
             #Trace.init(intf.name[0:5]+'.medc')
-            Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%\
-                      intf.name)
+            Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%
+                      (intf.name,))
             mc.serve_forever()
         except:
 	    mc.serve_forever_error("media changer")

@@ -59,7 +59,7 @@ def call_function(executable, argv):
         str = "%s %s"%(str, arg)
     # check to see if we need to setup the environment a little
     if not os.environ.has_key("ENSTORE_DIR"):
-        str = ". /usr/local/etc/setups.sh; setup enstore; %s"%str
+        str = ". /usr/local/etc/setups.sh; setup enstore; %s"%(str,)
     return os.system(str)
 
 def get_farmlet(default):
@@ -210,7 +210,7 @@ class EnstoreInterface(UserOptions):
 
     def find_server_match(self, servers):
         total_matches = 0
-        pattern = "^%s"%sys.argv[1]
+        pattern = "^%s"%(sys.argv[1],)
         for server in servers:
             match = re.match(pattern, server, re.I)
             if not match is None:
@@ -222,13 +222,13 @@ class EnstoreInterface(UserOptions):
         servers = self.get_valid_servers()
         print "\nERROR: Allowed servers/commands are : "
         for server in servers:
-            print "\t%s"%server
+            print "\t%s"%(server,)
 
     def print_valid_options(self, server):
         opts = self.get_valid_options()
         print "\nERROR: Allowed options for %s are : "
         for opt in opts:
-            print "\t%s"%opt
+            print "\t%s"%(opt,)
 
     def print_usage_line(self, server, intf):
         if self.user_mode:
@@ -241,17 +241,17 @@ class EnstoreInterface(UserOptions):
         cmd = "enstore"
         if not self.user_mode:
             call_function("pnfsa", "")
-            print "\n%s start   [--just server --ping --asynch --nocheck]"%cmd
-            print   "%s stop    [--just server --xterm server]"%cmd
-            print   "%s restart [--just server --xterm server]"%cmd
-            print   "%s ping    [timeout_seconds]"%cmd
-            print   "%s qping   [timeout_seconds]"%cmd
-            print   "%s ps                 (list enstore related processes)"%cmd
-            print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%cmd
-            print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
-            print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
-            print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
-            print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%cmd
+            print "\n%s start   [--just server --ping --asynch --nocheck]"%(cmd,)
+            print   "%s stop    [--just server --xterm server]"%(cmd,)
+            print   "%s restart [--just server --xterm server]"%(cmd,)
+            print   "%s ping    [timeout_seconds]"%(cmd,)
+            print   "%s qping   [timeout_seconds]"%(cmd,)
+            print   "%s ps                 (list enstore related processes)"%(cmd,)
+            print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%(cmd,)
+            print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%(cmd,)
+            print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%(cmd,)
+            print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%(cmd,)
+            print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%(cmd,)
         else:
             call_function("pnfs", "")            
         print "\n"
@@ -369,7 +369,7 @@ class Enstore(EnstoreInterface):
             if not self.get_config_from_server() and \
                not self.get_config_from_file():
                 self.node = DEFAULT_AML2_NODE
-            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%self.node
+            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%(self.node,)
             rtn = os.system(cmd)
         elif not self.user_mode and arg1 == "EPS":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"

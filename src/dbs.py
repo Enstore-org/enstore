@@ -34,14 +34,14 @@ def send_dbs_cmd(intf, farmlet, db):
     # build the command and send it to the correct node
     cmd = "enstore database --nocheck"
     if intf.status:
-	    cmd = "%s --status "%cmd
+	    cmd = "%s --status "%(cmd,)
     if intf.dump:
-	    cmd = "%s --dump "%cmd
+	    cmd = "%s --dump "%(cmd,)
     if intf.restore_all:
-	    cmd = "%s --restore_all "%cmd
+	    cmd = "%s --restore_all "%(cmd,)
 	    db = ""
     if intf.all:
-            cmd = "%s --all "%cmd
+            cmd = "%s --all "%(cmd,)
     cmd = "%s %s %s%s"%(CMD1, cmd, string.join(db), CMD2)
     # we need just the node name part of the host name
     node = string.split(farmlet, ".", 1)
@@ -189,7 +189,7 @@ def send_inquisitor_cmd(csc, cmd):
     # find out the node the inquisitor is on
     (inq_node, this_node) = get_nodes(csc, "inquisitor")
     if is_same_node(inq_node, this_node):
-	os.system("enstore %s --just inquisitor"%cmd)
+	os.system("enstore %s --just inquisitor"%(cmd,))
     else:
 	os.system("enstore E%s %s --just inquisitor"%(cmd, inq_node))
 

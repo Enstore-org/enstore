@@ -25,9 +25,9 @@ if __name__== '__main__':
 # a message type will have MSG_DEFAULT appended.
 MSG_TYPE = "MSG_TYPE="
 MSG_DEFAULT = ""
-MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
-MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
-MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
+MSG_ENCP_XFER = "%sENCP_XFER "%(MSG_TYPE,)
+MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%(MSG_TYPE,)
+MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
 
 logname = ""
 alarm_func = None
@@ -53,7 +53,7 @@ def alarm( severity, root_error, rest={} ):
     rest['root_error'] = root_error
     if alarm_func:
         alarm_func(
-            time.time, os.getpid(), logname, ("root_error:%s"%rest['root_error'], rest ))
+            time.time, os.getpid(), logname, ("root_error:%s"%(rest['root_error'],), rest ))
     log(severity, root_error)
         
 def set_alarm_func( func ):

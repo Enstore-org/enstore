@@ -89,5 +89,5 @@ class GenericServer(generic_client.GenericClient):
          exc,msg,tb=sys.exc_info()
          t["status"] = (str(exc),str(msg))
          self.reply_to_caller(t)
-         Trace.trace(7,"send_reply %s"%t)
+         Trace.trace(7,"send_reply %s"%(t,))
          return

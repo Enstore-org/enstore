@@ -26,9 +26,9 @@ MSG_DICT = "MSG_DICT:"
 MSG_TYPE_DFLT = ""
 MSG_TYPE = "MSG_TYPE="
 
-MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
-MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
-MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
+MSG_ENCP_XFER = "%sENCP_XFER "%(MSG_TYPE,)
+MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%(MSG_TYPE,)
+MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
 
 # define some short-cuts, for efficiency.  (I may wish to use
 # "from Ptrace import *)
@@ -76,7 +76,7 @@ def alarm( severity, root_error, rest={} ):
 	rest['severity'] = e_errors.sevdict.get(severity, 
 						e_errors.sevdict[e_errors.MISC])
     rest['root_error'] = root_error
-    trace( e_errors.ALARM, "%s"%rest, rest )
+    trace( e_errors.ALARM, "%s"%(rest,), rest )
     return None
 
 def set_alarm_func( func ):

@@ -125,7 +125,7 @@ class Interface:
 	return nopts
 
     def missing_parameter(self, param):
-        Trace.trace(13,"ERROR: missing parameter %s"%param)
+        Trace.trace(13,"ERROR: missing parameter %s"%(param,))
 
     def parameters(self):
 	return " "
@@ -184,7 +184,7 @@ class Interface:
             optlist,self.args=getopt.getopt(argv,self.charopts(),
                                             self.options())
         except getopt.error, detail:
-            Trace.trace(9, "ERROR: getopt error %s"%detail)
+            Trace.trace(9, "ERROR: getopt error %s"%(detail,))
             print "error: ", detail
             self.print_help()
 	    sys.exit(1)

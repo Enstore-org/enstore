@@ -31,12 +31,12 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             f = open(configfile,'r')
         except:
             msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config %s: does not exist"%
-                   configfile)
+                   (configfile,))
             Trace.log( e_errors.ERROR, msg[1] )
             return msg
         code = string.join(f.readlines(),'')
         Trace.trace(9, "Configuration Server read_config: loading enstore configuration from %s"%
-                    configfile)
+                    (configfile,))
         configdict={};
         del configdict # Lint hack, otherwise lint can't see where configdict is defined.
         try:

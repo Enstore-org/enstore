@@ -109,8 +109,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # send the work ticket to the library manager
         ticket = self.send(ticket, self.send_to,self.send_tries)
         if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc."+work+": sending ticket"\
-                  +repr(ticket)
+            raise errno.errorcode[errno.EPROTO],"lmc.%s sending ticket %s"%(work,ticket)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -124,8 +123,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                 listen_socket.close()
                 break
             else:
-                Trace.trace(9,"lmc.%s: imposter called us back, trying again"\
-                            %work)
+                Trace.trace(9,"lmc.%s: imposter called us back, trying again" %(work,))
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:

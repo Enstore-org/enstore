@@ -124,7 +124,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # see if the server is really alive not just busy.  we must
                     # keep track of the fact that we forked off so the next
                     # time we find the server dead we do not fork again.
-                    Trace.trace(8,"Inquisitor forking to restart %s"%key)
+                    Trace.trace(8,"Inquisitor forking to restart %s"%(key,))
                     self.forked[key] = 1
 		    pid = self.fork()
                     if not pid:
@@ -164,7 +164,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 						    alarm_info)
 				    else:
 					Trace.log(e_errors.ERROR,
-						  "%s died and will not be restarted"%key)
+						  "%s died and will not be restarted"%(key,))
 				else:
 				    # we should try to restart the server.  try 3X
 				    i = 0
@@ -175,7 +175,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				    # we need just the node name part of the host name
 				    node = string.split(host, ".", 1)
 				    while i < 3:
-					Trace.trace(7, "Server restart: try %s"%i)
+					Trace.trace(7, "Server restart: try %s"%(i,))
 					os.system('enstore Erestart %s "--just %s"'%(node[0], key))
 					# check if alive
 					ret = self.alive_status(client,
@@ -183,7 +183,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 								prefix, time, key)
 					if ret == DID_IT:
 					    Trace.log(e_errors.INFO,
-						      "Restarted %s"%key)
+						      "Restarted %s"%(key,))
 					    break
 					else:
 					    i = i + 1
@@ -195,7 +195,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 							alarm_info)
 					else:
 					    Trace.log(e_errors.ERROR,
-                                                  "Can't restart %s"%key)
+                                                  "Can't restart %s"%(key,))
 			    del client.u
 			    if not key == CONFIG_S:
 				del self.csc.u
@@ -514,7 +514,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if logfile and os.path.exists(logfile):
             encpfile = enstore_status.EnDataFile(logfile,
                                                  parsed_file+".encp",
-                                                 "-e %s"%Trace.MSG_ENCP_XFER,
+                                                 "-e %s"%(Trace.MSG_ENCP_XFER,),
                                                  "", "|sort -r")
             encpfile.open('r')
             encplines = encpfile.read(self.max_encp_lines)
@@ -535,7 +535,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
 	        encpfile2 = enstore_status.EnDataFile(logfile2,
                                                   parsed_file+".encp2",
-                                                  "-e %s"%Trace.MSG_ENCP_XFER,
+                                                  "-e %s"%(Trace.MSG_ENCP_XFER,),
 	                                          "", "|sort -r")
 	        encpfile2.open('r')
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
@@ -712,9 +712,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 	            # make sure we support this type of server first
 	            if InquisitorMethods.__dict__.has_key(inq_func):
-	                if type(InquisitorMethods.__dict__[inq_func]) == \
-                           types.FunctionType:
-	                    exec("self.%s(key, ctime)"%inq_func)
+	                if type(InquisitorMethods.__dict__[inq_func]) == types.FunctionType:
+	                    exec("self.%s(key, ctime)"%(inq_func,))
                             # we just updated the server info so record the
                             # current time as the last time updated.
 	                    self.last_update[key] = ctime
@@ -809,13 +808,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # spill our guts
     def dump(self, ticket):
         ticket["status"] = (e_errors.OK, None)
-        Trace.trace(11, "last_update - %s"%self.last_update)
-	Trace.trace(11, "last_alive - %s"%self.last_alive)
-	Trace.trace(11, "intervals  - %s"%self.intervals)
-	Trace.trace(11, "server_keys - %s"%self.server_keys)
-	Trace.trace(11, "reset       - %s"%self.reset)
-	Trace.trace(11, "htmlfile_orig - %s"%self.htmlfile_orig)
-	Trace.trace(11, "encpfile_orig - %s"%self.encpfile_orig)
+        Trace.trace(11, "last_update - %s"%(self.last_update,))
+	Trace.trace(11, "last_alive - %s"%(self.last_alive,))
+	Trace.trace(11, "intervals  - %s"%(self.intervals,))
+	Trace.trace(11, "server_keys - %s"%(self.server_keys,))
+	Trace.trace(11, "reset       - %s"%(self.reset,))
+	Trace.trace(11, "htmlfile_orig - %s"%(self.htmlfile_orig,))
+	Trace.trace(11, "encpfile_orig - %s"%(self.encpfile_orig,))
 	self.send_reply(ticket)
 
     # set the select timeout
@@ -946,10 +945,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line.
-	encpfile = enstore_status.EnEncpDataFile(enstore_status.LOG_PREFIX+\
-	                                         "* /dev/null",
+	encpfile = enstore_status.EnEncpDataFile(enstore_status.LOG_PREFIX+"* /dev/null",
 	                                         ofn,
-                                                 "-e %s"%Trace.MSG_ENCP_XFER,
+                                                 "-e %s"%(Trace.MSG_ENCP_XFER,),
                                                  lfd)
 
 	# only extract the information from the newly created file that is

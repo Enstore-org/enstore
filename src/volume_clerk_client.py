@@ -65,7 +65,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
             non_del_files = 0,     # non-deleted files
             system_inhibit = "none" # "none" | "readonly" | "NOACCESS"
             ):
-        Trace.trace( 6, 'add label=%s'%external_label )
+        Trace.trace( 6, 'add label=%s'%(external_label,))
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -126,9 +126,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
-		       'vcc.get_vols: sending ticket: %s'%ticket )
-            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
-                  +str(ticket)
+		       'vcc.get_vols: sending ticket: %s'%(ticket,) )
+            raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -200,9 +199,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
-		       'vcc.remove_deleted_vols: sending ticket: %s'%ticket )
-            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket"\
-                  +str(ticket)
+		       'vcc.remove_deleted_vols: sending ticket: %s'%(ticket,) )
+            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -602,7 +600,7 @@ def do_work(intf):
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
-    Trace.trace( 6, 'vcc called with args: %s'%sys.argv )
+    Trace.trace( 6, 'vcc called with args: %s'%(sys.argv,) )
 
     # fill in the interface
     intf = VolumeClerkClientInterface()

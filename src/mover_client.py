@@ -73,8 +73,8 @@ class MoverClient(generic_client.GenericClient):
                 listen_socket.close()
                 break
             else:
-                Trace.trace(9,"mvc.%s: imposter called us back, trying again"\
-                            %work)
+                Trace.trace(9,"mvc.%s: imposter called us back, trying again"
+                            %(work,))
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:

@@ -63,7 +63,7 @@ def get_interface_file_name(verbose=0):
     hostname, junk, junk = gethostinfo()
     if '.' in hostname:
         hostname=string.split(hostname,'.')[0]
-    filename = "%s.interface.conf"%hostname
+    filename = "%s.interface.conf"%(hostname,)
     trydirs = []
     for envvar in "ENSTORE_DIR", "ENCP_DIR":
         if envvar in os.environ.keys():

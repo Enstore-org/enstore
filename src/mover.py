@@ -273,23 +273,23 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass
 
 	# child or single process???
-	Trace.log(e_errors.INFO,'UNBIND start %s'%ticket)
+	Trace.log(e_errors.INFO,'UNBIND start %s'%(ticket,))
 	    
 	# do any driver level rewind, unload, eject operations on the device
         clean_drive = 0
 	if self.mvr_config['do_eject'] == 'yes':
-	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%str(self.mvr_config['device']))
+	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%(self.mvr_config['device'],))
 	    self.hsm_driver.offline(self.mvr_config['device'])
             self.store_statistics('dismount', self.hsm_driver)
             if self.driveStatistics['dismount']['cleaning_bit'] == '1': clean_drive = 1
-	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%str(self.mvr_config['device']))
+	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%(self.mvr_config['device'],))
 	    pass
 	# now ask the media changer to unload the volume
 	Trace.log(e_errors.INFO,"Requesting media changer unload")
 	rr = self.mcc.unloadvol( self.vol_info, self.mvr_config['name'], 
                                  self.mvr_config['mc_device'],
                                 self.vol_vcc[self.vol_info['external_label']] )
-	Trace.log(e_errors.INFO,"Media changer unload status %s"%str(rr['status']))
+	Trace.log(e_errors.INFO,"Media changer unload status %s"%(rr['status'],))
 	if rr['status'][0] != "ok":
 	    self.return_or_update_and_exit( self.vol_info['from_lm'], e_errors.UNMOUNT )
 	    pass
@@ -299,7 +299,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if clean_drive:
             try:
                 rr = self.mcc.doCleaningCycle(self.mvr_config)
-                Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
+                Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%(rr['status'],))
             except:
                 e_errors.handle_error()
         self.return_or_update_and_exit(self.vol_info['from_lm'], e_errors.OK )
@@ -333,7 +333,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             Trace.trace(19,"%s statistics %s"%(action,repr(self.driveStatistics[action])) )
            
         except KeyError:
-            Trace.log(e_errors.ERROR,"%s statistics malformed."%action)
+            Trace.log(e_errors.ERROR,"%s statistics malformed."%(action,))
         try:
             path = self.mvr_config['statistics_path']
         except KeyError:
@@ -349,7 +349,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, "IOError: "+str(msg))
             return
         try:
-            fd.write("%s\n"%action)
+            fd.write("%s\n"%(action,))
             fd.write(repr(output_dict))
             fd.write('\n')
             fd.close()
@@ -375,13 +375,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
         return self.offline_drive(error_info )
 
     def offline_drive( self, error_info ):	# call directly for READ_ERROR
-        Trace.log( e_errors.ERROR, "MOVER OFFLINE %s"%str(error_info))
+        Trace.log( e_errors.ERROR, "MOVER OFFLINE %s"%(error_info,))
         self.state = 'offline'
         return self.unilateral_unbind_next(error_info )
 
 
     def fatal_enstore( self, error_info ):
-        Trace.log( e_errors.ERROR, "FATAL ERROR - MOVER - %s"%str(error_info))
+        Trace.log( e_errors.ERROR, "FATAL ERROR - MOVER - %s"%(error_info,))
         ticket = {'work'          :"unilateral_unbind",
                   'external_label':self.vol_info['external_label'],
                   'status'        :error_info}
@@ -473,10 +473,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # is in the midst of a cleaning cycle.-- tgj
             if self.mvr_config['do_eject'] == 'yes':
                 Trace.log(e_errors.INFO,'Performing precautionary offline/eject of device%s'%
-                          str(self.mvr_config['device']))
+                          (self.mvr_config['device'],))
                 self.hsm_driver.offline(self.mvr_config['device'])
                 Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device %s'%
-                          str(self.mvr_config['device']))
+                          (self.mvr_config['device'],))
                 pass
 
             self.vol_info['read_errors_this_mover'] = 0	
@@ -537,12 +537,12 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     ##This only happens if there was a read error, which is
                     ##OK for a brand-new tape
                     if driver_object.is_bot(tmp_vol_info['eod_cookie']):
-                        infomsg="New tape, labelling %s"%external_label
+                        infomsg="New tape, labelling %s"%(external_label,)
                         if debug_paranoia:
                             print infomsg
                         Trace.log(e_errors.INFO, infomsg)
                     else:  #read error on tape, but eod!=bot
-                        Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%external_label)
+                        Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%(external_label,))
                         return 'VOL1_READ_ERR'
                 elif header_type == 'VOL1':
                     if header_label != external_label:
@@ -628,7 +628,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass
         else:
             # child or single process???
-            Trace.log(e_errors.INFO,'WRITE_TO_HSM start %s'%ticket)
+            Trace.log(e_errors.INFO,'WRITE_TO_HSM start %s'%(ticket,))
 
             self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
@@ -690,9 +690,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 # tapes) so it can save data between pre and post
                 wrapper=wrapper_selector.select_wrapper(ticket['wrapper']['type'])
                 if wrapper == None:
-                    raise errno.errorcode[errno.EINVAL], "Invalid wrapper %s"%ticket['wrapper']['type']
+                    raise errno.errorcode[errno.EINVAL], "Invalid wrapper %s"%(ticket['wrapper']['type'],)
 
-                Trace.log(e_errors.INFO,"WRAPPER.WRITE %s"%self.vol_info['external_label'])
+                Trace.log(e_errors.INFO,"WRAPPER.WRITE %s"%(self.vol_info['external_label'],))
                 t0 = time.time()
                 self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
                 wrapper.blocksize = self.vol_info['blocksize']
@@ -808,7 +808,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.vol_info.update( ticket['vc'] )
 
 
-            Trace.log(e_errors.INFO,"WRITE DONE %s"%ticket)
+            Trace.log(e_errors.INFO,"WRITE DONE %s"%(ticket,))
 
             Trace.trace( 11, 'b4 send_user_done' )
             self.send_user_done( ticket, e_errors.OK )
@@ -832,7 +832,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if self.mvr_config['do_fork'] and self.pid != 0:
             pass
         else:
-            Trace.log(e_errors.INFO,"READ_FROM_HSM start %s"%ticket)
+            Trace.log(e_errors.INFO,"READ_FROM_HSM start %s"%(ticket,))
 
             self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
@@ -895,7 +895,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     if wrapper == None:
                         raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
-                Trace.log(e_errors.INFO,"WRAPPER.READ %s"%ticket['fc']['external_label'])
+                Trace.log(e_errors.INFO,"WRAPPER.READ %s"%(ticket['fc']['external_label'],))
                 if ticket['fc']['sanity_cookie'][1] == None:# when reading...
                     crc_flag = None
                 else: crc_flag = self.crc_flag
@@ -903,7 +903,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 Trace.trace(11,'calling read_pre_data')
                 self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
                 wrapper.read_pre_data( driver_object, ticket )
-                Trace.trace(11,'calling fd_xfer -sanity size=%s'%ticket['fc']['sanity_cookie'][0])
+                Trace.trace(11,'calling fd_xfer -sanity size=%s'%(ticket['fc']['sanity_cookie'][0],))
                 self.hsm_driver.user_state_set( forked_state.index('data') )
                 san_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
                                       ticket['fc']['sanity_cookie'][0],
@@ -1015,7 +1015,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             ticket['vc'] = self.vol_info
             ticket['vc']['current_location'] = ticket['fc']['location_cookie']
 
-            Trace.log(e_errors.INFO,'READ DONE %s'%ticket)
+            Trace.log(e_errors.INFO,'READ DONE %s'%(ticket,))
 
             self.send_user_done( ticket, e_errors.OK )
             self.return_or_update_and_exit( self.lm_origin_addr, e_errors.OK )
@@ -1157,7 +1157,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.reply_to_caller( {'status': (e_errors.INPROGRESS, "Mover is busy")} )
                 return {}
 	# child or single process???
-	Trace.log(e_errors.INFO,'CLEAN start %s'%ticket)
+	Trace.log(e_errors.INFO,'CLEAN start %s'%(ticket,))
         
         control_socket, data_socket = self.get_user_sockets(ticket)
         rt =self.mcc.doCleaningCycle(self.mvr_config)
@@ -1204,7 +1204,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     def quit(self,ticket):		# override dispatching_worker -
 	#  method which does not clean up
-        Trace.trace(10,"quit address=%s"%str(self.server_address))
+        Trace.trace(10,"quit address=%s"%(self.server_address,))
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
@@ -1364,13 +1364,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 # CHANGE THIS TO Trace.alarm???
                 Trace.log( e_errors.ERROR,
                            'FATAL ENSTORE - libm gave busy or offline move work %s'%
-                           rsp_ticket['work'] )
+                           (rsp_ticket['work'],) )
                 if self.mvr_config['execution_env'][0:5] == 'devel':
                     Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
                     print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
                     self.state = 'crazed'
                 Trace.log( e_errors.ERROR, 'mover changing work %s to "nowork"'%
-                           rsp_ticket['work'] )
+                           (rsp_ticket['work'],) )
                 rsp_ticket['work'] = 'nowork'
                 pass
             # Exceptions are caught (except block) in dispatching_worker.py.
@@ -1379,7 +1379,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             except KeyError:
                 # CHANGE THIS TO Trace.alarm???
                 Trace.log( e_errors.ERROR,
-                           'FATAL ENSTORE - invalid rsp from libm: %s'%rsp_ticket )
+                           'FATAL ENSTORE - invalid rsp from libm: %s'%(rsp_ticket,) )
                 if self.mvr_config['execution_env'][0:5] == 'devel':
                     Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
                     print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
@@ -1388,7 +1388,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 client_function = 'nowork'
             method = getattr(self,client_function,None)
             if not method:
-                Trace.log( e_errors.ERROR, "mover: cannot dispatch request %s"%client_function)
+                Trace.log( e_errors.ERROR, "mover: cannot dispatch request %s"%(client_function,))
             next_req_to_lm = method( rsp_ticket )
             # note: order of check is important to avoid KeyError exception
             if  self.summoned_while_busy and not next_req_to_lm:
@@ -1536,7 +1536,7 @@ class MoverInterface(generic_server.GenericServerInterface):
 #############################################################################
 
 def sigterm( sig, stack ):
-    print '%d sigterm called'%os.getpid()
+    print '%d sigterm called'%(os.getpid(),)
     if mvr_srvr.pid:
 	print 'attempt kill of mover subprocess', mvr_srvr.pid
 	os.kill( mvr_srvr.pid, signal.SIGTERM )
@@ -1553,9 +1553,9 @@ def sigterm( sig, stack ):
     try: msg = mvr_srvr.hsm_driver.msg
     except: pass
     print 'deleting sem (id=%d) and msg (id=%d)'%(sem,msg)
-    try: del mvr_srvr.hsm_driver.sem; print '%d deleted sem'%os.getpid()
+    try: del mvr_srvr.hsm_driver.sem; print '%d deleted sem'%(os.getpid(),)
     except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.hsm_driver.msg; print '%d deleted msg'%os.getpid()
+    try: del mvr_srvr.hsm_driver.msg; print '%d deleted msg'%(os.getpid(),)
     except: pass			# wacky things can happen with forking
     #print '%d sigterm exiting'%os.getpid()
     sys.exit( 0 )   # anything other than 0 causes traceback

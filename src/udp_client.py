@@ -100,7 +100,7 @@ def protocolize( self, text ):
     # lcl_number = self.number + 1
     # note: do str here; elsewhere causes problems (precision is 1ms -
     # this should be OK)
-    lcl_number = "%.6f"%time.time()
+    lcl_number = "%.6f"%(time.time(),)
 
     # CRC text
     body = `(self.ident, lcl_number, text)`
@@ -286,6 +286,6 @@ if __name__ == "__main__" :
         status = status|1
 
     else:
-	Trace.trace(10, "Read back:\n%s"%back)
+	Trace.trace(10, "Read back:\n%s"%(back,))
 
     sys.exit(status)

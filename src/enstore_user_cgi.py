@@ -18,7 +18,7 @@ def append_from_key(argv, value_text_key, form, alt_name=""):
     else:
         # no text was entered, if there should have been text, the parsing
         # of the command itself will pick this up and give an error
-        argv.append("--%s"%alt_name)
+        argv.append("--%s"%(alt_name,))
     return argv
         
 def append_from_value(argv, value, server, form, alt_name=""):
@@ -30,7 +30,7 @@ def print_keys(keys, form):
         try:
             print "%s = %s"%(key, form[key].value)
         except AttributeError:
-            print "No value for %s"%key
+            print "No value for %s"%(key,)
 
 def go():
     # first print the two lines for the header
@@ -63,7 +63,7 @@ def go():
 	os.environ['ENSTORE_CONFIG_PORT'] = config_port
 
         # look for any of the possibly multiple checkbox info
-        main_cbox_key = "%s_cbox"%server
+        main_cbox_key = "%s_cbox"%(server,)
         if form.has_key(main_cbox_key):
             main_cbox = form[main_cbox_key]
             if type(main_cbox) is type([]):
@@ -78,7 +78,7 @@ def go():
                                             form, value)
 
         # get the main option field value
-        main_opt_key = "%s_opts"%server
+        main_opt_key = "%s_opts"%(server,)
         if form.has_key(main_opt_key):
             main_opt = form[main_opt_key].value
         else:
@@ -91,7 +91,7 @@ def go():
         an_argv = append_from_key(an_argv, main_opt, form)
 
         # get any additional parameters if they exist
-        main_opt_text_key = "%s_p"%main_opt
+        main_opt_text_key = "%s_p"%(main_opt,)
         if form.has_key(main_opt_text_key):
             main_opt_text = form[main_opt_text_key].value
             an_argv = an_argv + string.split(main_opt_text)

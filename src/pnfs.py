@@ -334,10 +334,10 @@ class Pnfs:
                         self.pstat = os.stat(self.dir)
                         self.exists = DIREXISTS
                     except:
-                        self.pstat = (ERROR,str(msg),"directory: %s"%self.dir)
+                        self.pstat = (ERROR,str(msg),"directory: %s"%(self.dir,))
                         self.exists = INVALID
                 else:
-                    self.pstat = (ERROR,str(msg),"file: %s"%self.pnfsFilename)
+                    self.pstat = (ERROR,str(msg),"file: %s"%(self.pnfsFilename,))
                     self.exists = INVALID
                     self.major,self.minor = (0,0)
 
@@ -786,8 +786,7 @@ class Pnfs:
 		status = "ENOENT", None
 	    if status[0] != e_errors.OK:
 		Trace.log(e_errors.INFO,
-			  "restore_from_volmap: directory %s does not exist"%\
-			  dir)
+			  "restore_from_volmap: directory %s does not exist"%(dir,))
 		return status
         # create the original entry and set its size
         orig = Pnfs(self.origname)
@@ -802,7 +801,7 @@ class Pnfs:
                 value=value+inlayer[e]
                 orig.writelayer(layer,value)
 	Trace.log(e_errors.INFO, 
-		  "file %s restored from volmap"%self.origname)
+		  "file %s restored from volmap"%(self.origname,))
 	return e_errors.OK, None
       except:
 	  exc, val, tb = e_errors.handle_error()

@@ -408,15 +408,14 @@ class EnStatus:
                 f_out = 0
                 got_vol = 1
 	    elif ticket["mode"] == "w":
-	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
-                    " bytes to Enstore"
+	        m = " writing %s bytes to Enstore"%(ticket["bytes_to_xfer"],)
                 vol_info = self.get_eod_cookie(ticket, spacing)
                 f_in = 0
                 f_out = 1
                 got_vol = 1
             elif ticket["mode"] == "u":
                 got_vol = 0
-                m = " dismounting volume %s"%ticket['tape']
+                m = " dismounting volume %s"%(ticket['tape'],)
             else:
                 got_vol = 0
                 m = " "
@@ -468,7 +467,7 @@ class EnFile:
     def open(self, mode='w'):
 	try:
             self.filedes = open(self.file_name, mode)
-            Trace.trace(10,"%s open "%self.file_name)
+            Trace.trace(10,"%s open "%(self.file_name,))
         except IOError:
             self.filedes = 0
             Trace.log(e_errors.WARNING,
@@ -540,7 +539,7 @@ class EnHTMLFile:
 
     # close the file
     def close(self):
-        Trace.trace(12,"close %s"%self.file_name)
+        Trace.trace(12,"close %s"%(self.file_name,))
         if self.filedes:
             self.filedes.write(self.trailer)
             self.filedes.close()

@@ -43,7 +43,7 @@ def try_a_port(host, port) :
             sock.close()
         except:
             pass
-        Trace.trace(16,'try_a_port FAILURE %s'%detail)
+        Trace.trace(16,'try_a_port FAILURE %s'%(detail,))
         return (0 , 0)
     return 1 , sock
 
@@ -146,9 +146,9 @@ def write_tcp_raw(sock,msg):
     try:
         l = len(msg)
         ptr=0
-        sock.send("%08d"%len(msg))
+        sock.send("%08d"%(len(msg),))
         salt=random.randint(11,99)
-        sock.send("ENSTOR%s"%salt)
+        sock.send("ENSTOR%s"%(salt,))
         while ptr<l:
             nwritten=sock.send(msg[ptr:ptr+max_pkt_size])
             if nwritten<=0:
@@ -156,7 +156,7 @@ def write_tcp_raw(sock,msg):
             ptr = ptr+nwritten
         sock.send(hex8(checksum.adler32(salt,msg,l)))
     except socket.error, detail:
-        Trace.trace(6,"write_tcp_raw: socket.error %s"%detail)
+        Trace.trace(6,"write_tcp_raw: socket.error %s"%(detail,))
         ##XXX Further sends will fail, our peer will notice incomplete message
 
 
@@ -172,11 +172,11 @@ def read_tcp_raw(sock):
     except:
         bytecount = None
     if len(tmp)!=8 or bytecount is None:
-        Trace.trace(6,"read_tcp_raw: bad bytecount %s"%tmp)
+        Trace.trace(6,"read_tcp_raw: bad bytecount %s"%(tmp,))
         return ""
     tmp = sock.recv(8) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        Trace.trace(6,"read_tcp_raw: invalid signature %s"%tmp)
+        Trace.trace(6,"read_tcp_raw: invalid signature %s"%(tmp,))
         return ""
     salt=string.atoi(tmp[6:])
     msg = ""
