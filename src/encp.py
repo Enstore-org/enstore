@@ -51,6 +51,10 @@ import volume_clerk_client
 import file_clerk_client
 import enstore_constants
 import enstore_functions2
+import accounting_client
+
+# forward declaration. It is assigned in get_clerks()
+acc = None
 
 #Constants for the max file size.  Currently this assumes the max for the
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
@@ -1131,6 +1135,8 @@ def file_check(e):
 
 def get_clerks(bfid=None):
 
+    global acc
+
     #Snag the configuration server client for the system that contains the
     # file clerk where the file was stored.  This is determined based on
     # the bfid's brand.
@@ -1149,6 +1155,9 @@ def get_clerks(bfid=None):
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
                         e_errors.NET_ERROR)
+
+    # we only have the correct crc now
+    acc = accounting_client.accClient(csc, logname = 'ENCP')
 
     return vcc, fcc
 
@@ -2573,6 +2582,42 @@ def calculate_rate(done_ticket, tinfo):
         Trace.message(DONE_LEVEL, print_format % print_values)
 
         Trace.log(e_errors.INFO, log_format % log_values, Trace.MSG_ENCP_XFER )
+
+	if network_time != 0:
+		net_rate = done_ticket['file_size']/network_time
+	else:
+		net_rate = 0
+
+	if drive_time != 0:
+		drive_rate = done_ticket['file_size']/drive_time
+	else:
+		drive_rate = 0
+
+	if done_ticket['work'] == "read_from_hsm":
+		rw = 'r'
+	else:
+		rw = 'w'
+
+	acc.log_encp_xfer(None,
+			done_ticket['infile'],
+			done_ticket['outfile'],
+			done_ticket['file_size'],
+			done_ticket["fc"]["external_label"],
+			done_ticket['file_size']/complete_time,
+			net_rate,
+			drive_rate,
+			done_ticket["mover"]["name"],
+			done_ticket["mover"]["product_id"],
+			done_ticket["mover"]["serial_num"],
+			time.time() - tinfo["encp_start_time"],
+			done_ticket["mover"].get("media_changer", e_errors.UNKNOWN),
+			done_ticket["mover"].get('data_ip', done_ticket["mover"]['host']),
+			done_ticket["mover"]["driver"],
+			sg,
+			done_ticket["encp_ip"],
+			done_ticket['unique_id'],
+			rw)
+			
 
 ############################################################################
 
