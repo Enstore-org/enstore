@@ -165,7 +165,7 @@ case $cmd in
     ;;
 
   Estop)
-    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"    
+    if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"    
     stat=$?
     ;;
 

@@ -6,7 +6,7 @@ if [ -z "${1-}" ] ; then echo usage $0 pid-file; exit 1; fi
 
 if [ ! -r $1 ] ; then exit; fi
 
-#echo Stopping `basename $1 | sed -e 's/_pids$//'`
+echo Stopping `basename $1 | sed -e 's/_pids$//'`
 
 cat $1 | while read pid; do
     if [ `ps $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
