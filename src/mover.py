@@ -246,7 +246,7 @@ class MoverClient:
 
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
 	self.crc_func = ECRC.ECRC
-	self.local_mover_enable = 0
+	self.local_mover_enable =1
 
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
@@ -403,6 +403,7 @@ def do_fork( self, ticket, mode ):
 						 ticket['vc']['address'] )
     self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
     ticket['mover'] = self.config
+    ticket['mover']['local_mover'] = 0	# potentially changed in get_usr_driver
     self.hsm_driver._bytes_clear()
     self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
@@ -668,6 +669,12 @@ def forked_read_from_hsm( self, ticket ):
 
 	    logc.send(log_client.INFO,2,'done with read fd_xfers')
 	    
+	    if ticket['mover']['local_mover']:
+		# give the file to the user
+		posix.chown( ticket['mover']['lcl_fname'],
+			     ticket['wrapper']['uid'],ticket['wrapper']['gid'] )
+		pass
+
 	    if     self.crc_func != None \
 	       and ticket['fc']['complete_crc'] != None \
 	       and user_file_crc != ticket['fc']['complete_crc']:
@@ -758,13 +765,20 @@ def return_or_update_and_exit( self, origin_addr, status ):
 # Info is added to ticket
 def get_usr_driver( self, ticket ):
     self.hsm_driver.user_state_set( forked_state.index('encp check') )
-    ticket['mover']['local_mover'] = 0
     try:
 	if self.local_mover_enable and ticket['wrapper']['machine']==os.uname():
-	    if ticket['work'] == 'read_from_hsm': mode = 'w'
-	    else:                                 mode = 'r'
+	    if ticket['work'] == 'read_from_hsm':
+		mode = 'w'
+		fname = ticket['wrapper']['fullname']+'.'+ticket['unique_id']
+		# do not worry about umask!?!
+		ticket['mover']['lcl_fname'] = fname# to chwon after exfer
+		pass
+	    else:
+		mode = 'r'
+		fname = ticket['wrapper']['fullname']
+		pass
 	    try:
-		self.usr_driver = open( ticket['wrapper']['fullname'], mode )
+		self.usr_driver = open( fname, mode )
 		ticket['mover']['local_mover'] = 1
 	    except: pass
 	    pass
@@ -775,8 +789,9 @@ def get_usr_driver( self, ticket ):
 	# The user expects the ticket to contain the following fields:
 	#           ['unique_id'] == id sent by the user
 	#           ['status'] == 'ok'
-	#           ['mover']['callback_addr']   set above
+	#           ['mover']['callback_addr']
 	if ticket['mover']['local_mover']:
+	    ticket['mover']['callback_addr'] = None# to appease encp verbose
 	    self.control_socket = callback.user_callback_socket( ticket )
 	else:
 	    host, port, listen_socket = callback.get_data_callback()

@@ -416,14 +416,12 @@ def write_to_hsm(input, output, output_file_family='',
                        +repr(address)+", failed to setup transfer: "\
                        +"ticket[\"status\"]="+repr(ticket["status"]),2)
 		pass
-	    if not ticket['mover']['local_mover']:
-		data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-----------------------------Lap-End
             if verbose>1:
-                print " ",ticket["mover"]["callback_addr"][0],\
-                      ticket["mover"]["callback_addr"][1],\
+		# NOTE: callback can be "None" if local_mover
+                print " ",ticket["mover"]["callback_addr"],\
                       "cum:",tinfo1["tot_to_mover_callback"+repr(i)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
 
@@ -436,6 +434,7 @@ def write_to_hsm(input, output, output_file_family='',
 
 	    if not ticket['mover']['local_mover']:
 		# Call back mover on mover's port and send file on that port
+		data_path_socket = callback.mover_callback_socket(ticket)
 		in_file = open(inputlist[i], "r")
 		mycrc = 0
 		bufsize = 65536*4
@@ -1214,7 +1213,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
     files_left = ninput
     bytes = 0
     control_socket_closed = 0
-    data_path_socket_closed = 0
+    data_path_socket_closed = 1
     
     for waiting in range(0,submitted):
         if verbose>1:
@@ -1290,130 +1289,120 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		requests[j]['retry'] = requests[j]['retry']+1
 	    continue
 
-        data_path_socket = callback.mover_callback_socket(ticket)
-
         tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
         dt = time.time() - t2 #-------------------------------------Lap-End
         if verbose>1:
-            print " ",ticket["mover"]["callback_addr"][0],\
-                  ticket["mover"]["callback_addr"][1],\
+	    # NOTE: callback can be "None" if local_mover
+            print " ",ticket["mover"]["callback_addr"],\
                   "cum:",tinfo["tot_to_mover_callback"+repr(j)]
             print "  dt:",dt,"   cumt=",time.time()-t0
 
-        if verbose:
-            print "Receiving data for file ", requests[j]['outfile'],\
-                  "   cumt=",time.time()-t0
-        t2 = time.time() #----------------------------------------Lap-Start
+        if verbose: print "Receiving data for file ", requests[j]['outfile'],\
+	   "   cumt=",time.time()-t0
 
-        # open file that corresponds to the mover call back and read file
-        # crc the data if user has request crc check
-        l = 0
-        mycrc = 0
-        bufsize = 65536*4
+
 	tempname = requests[j]['outfile']+'.'+requests[j]['unique_id']
-        f = open(tempname,"w")
-        Trace.trace(8,"read_hsm_files: reading data to  file="+\
-                    requests[j]['infile']+" socket="+repr(data_path_socket)+\
-                    " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
+	if not ticket['mover']['local_mover']:
+	    t2 = time.time() #----------------------------------------Lap-Start
 
-	# someone should catch the exceptions fd_xfer throws, for possible
-	# retry
-	try:
-	    if chk_crc != 0: crc_fun = ECRC.ECRC
-	    else:            crc_fun = None
-	    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
-			       requests[j]['file_size'], bufsize, crc_fun )
-	except (EXfer.error), err_msg:
-	    Trace.trace(0,"read_from_hsm EXfer error:"+\
-			str(sys.argv)+" "+\
-			str(sys.exc_info()[0])+" "+\
-			str(sys.exc_info()[1]))
-	    if verbose > 1:
-		traceback.print_exc()
-	    if err_msg.args[0] == "fd_xfer - read EOF unexpected":
-		data_path_socket.close()
-		try:
-		    done_ticket = callback.read_tcp_socket(control_socket,
+	    l = 0
+	    mycrc = 0
+	    bufsize = 65536*4
+
+	    data_path_socket = callback.mover_callback_socket(ticket)
+	    data_path_socket_closed = 0
+	    # open file that corresponds to the mover call back
+	    _f_ = open(tempname,"w")
+	    Trace.trace(8,"read_hsm_files: reading data to  file="+\
+			requests[j]['infile']+" socket="+repr(data_path_socket)+\
+			" bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
+
+	    # read file, crc the data if user has request crc check
+	    try:
+		if chk_crc != 0: crc_fun = ECRC.ECRC
+		else:            crc_fun = None
+		mycrc = EXfer.fd_xfer( data_path_socket.fileno(), _f_.fileno(),
+				       requests[j]['file_size'], bufsize, crc_fun )
+            except (EXfer.error), err_msg:
+		Trace.trace(0,"read_from_hsm EXfer error:"+\
+			    str(sys.argv)+" "+\
+			    str(sys.exc_info()[0])+" "+\
+			    str(sys.exc_info()[1]))
+		if verbose > 1: traceback.print_exc()
+		if err_msg.args[0] == "fd_xfer - read EOF unexpected":
+		    data_path_socket.close()
+		    try:
+			done_ticket = callback.read_tcp_socket(control_socket,
 							       "red_from_hsm, error dialog")
-		except:
-		    # assume network error...
-		    # no done_ticket!
-		    # exit here
-		    jraise(errno.errorcode[errno.EPROTO],
-			   " encp._read_from_hsm: network problem or mover crash "+\
+		    except:
+			# assume network error...
+			# no done_ticket!
+			# exit here
+			jraise(errno.errorcode[errno.EPROTO],
+			       " encp._read_from_hsm: network problem or mover crash "+\
 			       str(err_msg))
-		    pass
-		control_socket.close()
-
-		print_data_access_layer_format(  requests[j]['infile'],  
-						 requests[j]['outfile'], 
-						 requests[j]['file_size'], 
-						 done_ticket )
+			pass
+		    control_socket.close()
+		    print_data_access_layer_format(  requests[j]['infile'],  
+						     requests[j]['outfile'], 
+						     requests[j]['file_size'], 
+						     done_ticket )
 		
-		"""
-		if not e_errors.is_retriable(done_ticket["status"][0]):
-		    # exit here
-		    jraise(errno.errorcode[errno.EPROTO],
-			   " encp.read_from_hsm: 2nd (post-file-send)"+\
-			   "mover callback on socket "+\
-			   +repr(address)+", failed to transfer: "+\
-			   "done_ticket[\"status\"]="+\
-			   repr(done_ticket["status"]))
+		    """
+		    if not e_errors.is_retriable(done_ticket["status"][0]):
+		        # exit here
+			jraise(errno.errorcode[errno.EPROTO],
+			" encp.read_from_hsm: 2nd (post-file-send)"+\
+			"mover callback on socket "+\
+			+repr(address)+", failed to transfer: "+\
+			"done_ticket[\"status\"]="+\
+			repr(done_ticket["status"]))
+			pass
+		    """
+
+		    if not e_errors.is_retriable(ticket["status"][0]):
+			del(requests[j])
+			if files_left > 0: files_left = files_left - 1
+			print_error (errno.errorcode[errno.EPROTO],
+				     " encp.read_from_hsm: 2nd (post-file-send)"+\
+				     "mover callback on socket "+\
+				     +repr(address)+", failed to transfer: "+\
+				     "done_ticket[\"status\"]="+\
+				     repr(done_ticket["status"]))
+			continue
+
+		    print_error(errno.errorcode[errno.EPROTO],
+				" encp.read_from_hsm:2nd (post-file-send)"+\
+				"mover callback on socket "+\
+				repr(address)+", failed to transfer: "+\
+				"done_ticket[\"status\"]="+\
+				repr(done_ticket["status"]))
 		    pass
-		"""
 
-		if not e_errors.is_retriable(ticket["status"][0]):
+		if ticket['retry_cnt'] >= maxretry:
 		    del(requests[j])
-		    if files_left > 0:
-			files_left = files_left - 1
-		    print_error (errno.errorcode[errno.EPROTO],
-				 " encp.read_from_hsm: 2nd (post-file-send)"+\
-				 "mover callback on socket "+\
-				 +repr(address)+", failed to transfer: "+\
-				 "done_ticket[\"status\"]="+\
-				 repr(done_ticket["status"]))
-		    continue
+		    if files_left > 0: files_left = files_left - 1
+		    pass
+		else:
+		    requests[j]['retry'] = requests[j]['retry']+1
+		    print "retrying",requests[j]['retry'] 
+		    pass
+		continue
 
-		print_error(errno.errorcode[errno.EPROTO],
-			    " encp.read_from_hsm:2nd (post-file-send)"+\
-			    "mover callback on socket "+\
-			    repr(address)+", failed to transfer: "+\
-			    "done_ticket[\"status\"]="+\
-			    repr(done_ticket["status"]))
+	    # if no exceptions, fsize is file_size[j]
+	    fsize = requests[j]['file_size']
+	    # fd_xfer does not check for EOF after reading the specified
+	    # number of bytes.
+	    buf = data_path_socket.recv(bufsize)# there should not be any more
+	    fsize = fsize + len(buf)
+	    if not data_path_socket_closed:
+		data_path_socket.close()
+		_f_.close()
+		data_path_socket_closed = 1 
+		pass
 
-	    if ticket['retry_cnt'] >= maxretry:
-		del(requests[j])
-		if files_left > 0:
-		    files_left = files_left - 1
-	    else:
-		requests[j]['retry'] = requests[j]['retry']+1
-		print "retrying",requests[j]['retry'] 
-	    continue
-	    print done_ticket, "retrying"
+	    pass	       # done with not ticket['mover']['local_mover']:
 
-	# if no exceptions, fsize is file_size[j]
-	fsize = requests[j]['file_size']
-	# fd_xfer does not check for EOF after reading the specified
-	# number of bytes.
-	buf = data_path_socket.recv(bufsize)# there should not be any more
-	fsize = fsize + len(buf)
-        if not data_path_socket_closed:
-            data_path_socket.close()
-            f.close()
-            data_path_socket_closed = 1 
-
-        tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
-        if verbose>1:
-            if tinfo["recvd_bytes"+repr(j)]!=0:
-                rdrate = 1.*fsize/1024./1024./tinfo["recvd_bytes"+repr(j)]
-            else:
-                rdrate = 0.0
-            print "  bytes:",fsize, " Socket read Rate = ",rdrate," MB/S"
-            print "  dt:",tinfo["recvd_bytes"+repr(j)],\
-                  "   cumt=",time.time()-t0
-        if verbose>1:
-            print "Waiting for final mover dialog",\
-                  "   cumt=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
 
         # File has been read - wait for final dialog with mover.
@@ -1423,8 +1412,6 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                       "encp read_from_hsm, mover final dialog")
         control_socket.close()
 	control_socket_closed = 1
-	data_path_socket_closed = 1
-	data_path_socket.close()
         Trace.trace(8,"read_hsm_files final dialog recieved")
 
         # make sure the mover thinks the transfer went ok
@@ -1466,6 +1453,10 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    else:
 		requests[j]['retry'] = requests[j]['retry']+1
 	    continue
+
+	if ticket['mover']['local_mover']:
+	    statinfo = os.stat( tempname ); fsize = statinfo[stat.ST_SIZE]
+	    pass
 
         # verify that the crc's match
         if chk_crc != 0 :
@@ -1557,9 +1548,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    print "Done"
 	    pprint.pprint(done_ticket)
     
-    if not data_path_socket_closed:
-	data_path_socket.close()
-	f.close()
+    if not data_path_socket_closed: data_path_socket.close(); _f_.close()
     if not control_socket_closed: control_socket.close()
     Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
     return files_left, bytes
