@@ -310,7 +310,7 @@ class DispatchingWorker:
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
-	Trace.log( e_errors.INFO, 'QUITTING... via os_exit python call' )
+	Trace.log( e_errors.INFO, 'QUITTING... via sys_exit python call' )
         self.reply_to_caller(ticket)
         sys.exit(0)
 
