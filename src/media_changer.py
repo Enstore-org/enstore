@@ -911,6 +911,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                  string.find(l,'LMU Recovery Complete') != -1 or \
                  string.find(l,': Offline.') != -1 or \
                  string.find(l,': Online.') != -1 or \
+                 string.find(l,': Enter operation ') != -1 or \
                  string.find(l,'Clean drive') != -1 or \
                  string.find(l,'Cleaned') != -1:
                 if self.DEBUG:
