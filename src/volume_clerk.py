@@ -257,6 +257,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to rename volume %s to %s from %s"%(old, new, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
+            self.reply_to_caller(ticket)
+            return
+
         ticket['status'] = self.__rename_volume(old, new)
         self.reply_to_caller(ticket)
         return
@@ -304,6 +313,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             msg =  "Volume Clerk: key %s is missing"  % (detail)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to erase volume %s from %s"%(vol, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
             self.reply_to_caller(ticket)
             return
 
@@ -421,6 +439,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # delete_volume(vol) -- server version of __delete_volume()
 
     def delete_volume(self, ticket):
+
         try:
             vol = ticket['external_label']
         except KeyError, detail:
@@ -430,20 +449,38 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        # ticket['status'] = self.__delete_volume(vol)
-        ticket['status'] = (e_errors.INFO, "reply_address: %s server_address: %s"%(`self.reply_address`, `self.server_address`))
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to delete volume %s from %s"%(vol, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = self.__delete_volume(vol)
         self.reply_to_caller(ticket)
         return
 
     # recycle_volume(vol) -- server version of __delete_volume(vol, 1)
 
     def recycle_volume(self, ticket):
+
         try:
             vol = ticket['external_label']
         except KeyError, detail:
             msg =  "Volume Clerk: key %s is missing"  % (detail)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to recycle volume %s from %s"%(vol, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
             self.reply_to_caller(ticket)
             return
 
@@ -507,6 +544,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             msg =  "Volume Clerk: key %s is missing"  % (detail)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # This is a restricted service
+        status = self.restricted_access()
+        if status:
+            msg = "attempt to restore volume %s from %s"%(vol, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = status
             self.reply_to_caller(ticket)
             return
 
