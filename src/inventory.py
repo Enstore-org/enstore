@@ -432,7 +432,7 @@ def process_out_string(short_list, fd):
 
 def parse_time(seconds):
     hour = int(seconds) / 60 / 60
-    min = int(seconds) / 60
+    min = int(seconds) / 60 % 60
     sec = int(seconds) % 60
 
     out_string = ""
