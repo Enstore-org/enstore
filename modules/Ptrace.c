@@ -44,7 +44,34 @@ PyString_AsString_Safe(PyObject *s){
 	return "NULL";
     } else return PyString_AsString(s);
 }
+/* This is somewhat subtle.  Tracing an __init__ can cause repr
+functions to get called before the object is fully initialized, which
+can in some cases trigger an exception, which is very hard to debug,
+since the Python traceback doesn't point to "Trace"  */
 
+static char * 
+PyObject_ReprAsString_Safe(PyObject *obj)
+{
+    PyObject *err; PyObject *rep; 
+    char *r;
+
+    err = PyErr_Occurred(); /*we are tracing  an exception */
+
+    rep = PyObject_Repr(obj);
+    if (PyErr_Occurred() && !err){  /* a new error just occurred */
+	PyErr_Clear();
+	return "<repr failed>";
+    }
+    if (!rep || !PyString_Check(rep)){
+	return "NULL";
+    } else {
+	r = PyString_AsString(rep);
+	Py_XDECREF(rep);
+	return r;
+    }
+}
+    
+    
 static PyObject *
 raise_exception(  char		*method_name )
 {							/* @-Public-@ */
@@ -60,10 +87,7 @@ raise_exception(  char		*method_name )
 void
 print_type( PyObject *obj )
 {
-    PyObject *repr_o;
-    repr_o = PyObject_Repr(PyObject_Type(obj));
-    printf("%s\n", PyString_AsString_Safe(repr_o));
-    Py_XDECREF(repr_o);
+    printf("%s\n", PyObject_ReprAsString_Safe(PyObject_Type(obj)));
 }
 
 /******************************************************************************
@@ -248,18 +272,14 @@ code_args_as_string(PyFrameObject *frame,
     char *varname;
     char *value;
     int i,wlen;
-    PyObject *varname_o;
-    PyObject *value_o;
 
     buf[0] = '\0';
     
     nargs = code->co_argcount;
     for (i=0;i<nargs;++i){
 	
-        varname_o = PyObject_Repr(PyTuple_GetItem(code->co_varnames,i));
-	varname = PyString_AsString_Safe(varname_o);
-	value_o = PyObject_Repr(frame->f_localsplus[i]);
-	value = PyString_AsString_Safe(value_o);
+        varname = PyObject_ReprAsString_Safe(PyTuple_GetItem(code->co_varnames,i));
+	value = PyObject_ReprAsString_Safe(frame->f_localsplus[i]);
         wlen = strlen(varname)+strlen(value)+1;
 
         if (pos)
@@ -275,12 +295,8 @@ code_args_as_string(PyFrameObject *frame,
             pos+=wlen;
         } else {
 	    strcat(buf,"...");
-	    Py_XDECREF(varname_o);
-	    Py_XDECREF(value_o);
 	    break;
 	}
-	Py_XDECREF(varname_o);
-	Py_XDECREF(value_o);
     }
     return nargs;
 }
@@ -327,7 +343,7 @@ get_msg(  PyObject	*args
 	char            buf[201];
 	int             nargs;
 	char            *cp;
-	PyObject        *repr_o;
+
 
     sts = PyArg_ParseTuple( args, "OsO", &arg_frame, &arg_event, &arg_arg );
 
@@ -372,11 +388,9 @@ get_msg(  PyObject	*args
 		  from_source_file, from_line_no);
 	break;
     case 'r':
-	repr_o = PyObject_Repr(arg_arg);
 	sprintf(  msg, "ret  %.50s.%.50s %.500s", module_name, 
 		  function_name, 
-		  PyString_AsString_Safe(repr_o));
-	Py_XDECREF(repr_o);
+		  PyObject_ReprAsString_Safe(arg_arg));
 	break;
     case 'e':
 	sprintf(  msg, "exc  %.50s.%.50s at %.50s:%d", 
