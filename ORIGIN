@@ -1,0 +1,44 @@
+-------------------------------------------------------------------------
+    FermiTools Software Origin Information - January 1, 1997
+-------------------------------------------------------------------------
+
+Software
+
+    Name: ftt
+    Version: v1_6
+
+Authors
+
+    Marc Mengel -- Fermilab User Applications Support Group
+    Margaret Votava -- Fermilab Online Systems Support Group
+    Dorota Genser -- Fermilab Farms & Clustered Systems Group
+    Fermi National Accelerator Laboratory - Mail Station 369
+    P.O Box 500
+    Batavia, IL 60510
+    Internet: ftt_support@fnal.fnal.gov
+
+Fermilab Standard Government Sponsorship Notice
+
+    This work was performed at Fermi National Accelerator Laboratory,
+    which is operated by Universities Research Association, Inc., under
+    contract DE-AC02-76CHO3000 with the U.S. Department of Energy.
+
+Acknowledgements
+
+    We acknowledge the contributions of the following groups and
+    people to this software:
+
+	Thanks to the entire IOP committee at Fermilab, for valuable
+	input to the requirements, and constructive reviews of the design
+	and implementation.
+
+	Thanks to the folks at DEC for writing the excellent _Writing
+	Device Drivers for the SCSI/CAM Architecture Interfaces_ book.
+
+	Thanks to the unnamed people who wrote _Writing a Device Driver 
+	for AIX Version 3.2_ at IBM.
+
+	Thanks to the unnamed people who wrote the SunOS example code.
+
+	Thanks to the unnamed people who wrote the IRIX dslib(3) example 
+	code.

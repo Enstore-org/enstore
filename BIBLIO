@@ -1,0 +1,36 @@
+The ftt product is described in online documentation at:
+	http://www.fnal.gov/docs/products/ftt/
+and in the following documents:
+
+_FTT Requirements_ , by Chuck Debaun, Stephan Lammel, Marc Mengel, Gene Oleynik,
+Marilyn Schweitzer, Matt Wicks, and Mararet Votava.  
+
+_FTT Design_ , by Chuck Debaun, Stephan Lammel, Marc Mengel, Gene Oleynik,
+Marilyn Schweitzer, and Mararet Votava.  
+
+_The Fermi Tape Tools Users Guide_, by Marc Mengel and Margaret Votava;
+with contributions from Chuck Debuan, Marilyn Schweitzer, and Gene Oleynik.
+http://www.fnal.gov/docs/products/ftt/user_guide_book.ps
+
+_The Fermi Tape Tools Porting Guide_, by Marc Mengel.
+http://www.fnal.gov/docs/products/ftt/porting_guide_book.ps
+
+Related documents:
+
+_Device Drivers for the SCSI/CAM Architecture Interface_
+Digital Electronics Corp. #AA-PS3GB-TE
+
+_DLT2000 Series Magnetic Tape Product Manual_
+Digital Electronics Corp. #EK-TH4XX-IM.A01
+
+_DLT4000 Series Magnetic Tape Product Manual_
+Quantum Corp.   #???
+
+_EXB-8200 8mm Cartridge Tape Subsystem Interface User's Manual_
+Exabyte Corp. #???
+
+_EXB-8505 8mm Cartridge Tape Subsystem User's Manual_
+Exabyte Corp. #510503-002
+
+"dslib(3)" manual page, _SGI IRIX 5.2 Programmers Reference Manual_
+Silicon Graphics Corp.
