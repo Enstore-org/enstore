@@ -41,8 +41,9 @@ def pnfsRate(mountpoint,db,sleeptime,once):
                 message = message + "ERROR: Does the database exist?\n %s", emess
                 return message
 
-        f = open(mountpoint+'/.(get)(counters)('+db+')','r')
-        while 1:
+	if string.find(line[0],"enabled") != 0:
+           f = open(mountpoint+'/.(get)(counters)('+db+')','r')
+           while 1:
                 counter = counter + 1L
                 message=""
                 f.seek(0)
