@@ -14,7 +14,7 @@ case $node in
           NODES="stkensrv0: stkensrv1: stkensrv2: stkensrv3: stkensrv4: \
                  stkenmvr1a: stkenmvr1b: stkenmvr2a: stkenmvr2b: stkenmvr3a: stkenmvr3b: \
                  stkenmvr4a: stkenmvr4b: stkenmvr5a: stkenmvr5b: stkenmvr6a: stkenmvr6b: \
-		 stkenmvr7a: stkenmvr8a: \
+		 stkenmvr7a: stkenmvr8a: stkenmvr9a: \
 		 stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -75,6 +75,8 @@ add*)
 
     /sbin/route add -host stkenmvr7a eth0
     /sbin/route add -host stkenmvr8a eth0
+    /sbin/route add -host stkenmvr9a eth0
+
     
     x=1
     while [ $x -le 22 ]; do
@@ -150,6 +152,7 @@ del*)
 
     /sbin/route del stkenmvr7a
     /sbin/route del stkenmvr8a
+    /sbin/route del stkenmvr9a
 
     x=1
     while [ $x -le 22 ]; do
