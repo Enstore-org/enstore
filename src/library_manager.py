@@ -1222,7 +1222,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                     "encp version too old: %s. Must be not older than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
                 return
-
+        fsize = ticket['wrapper'].get('size_bytes',0L)
+        if fsize > self.max_file_size:
+                ticket['status'] = (e_errors.USERERROR,
+                                    "file size %s more than max. %s"%(fsize, self.max_file_size))
+                self.reply_to_caller(ticket)
+                return
+            
         ########################
         # The following is a hack to not let sdss use encp
         # older than 2_14
