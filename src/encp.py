@@ -941,7 +941,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
             in_file = open(inputlist[i], "r")
             mycrc = 0
-            bufsize = 65536*4
+            bufsize = 65536*4 #XXX CGW Investigate this
 
             Trace.trace(7,"write_to_hsm: sending data to EXfer file=%s, socket=%s bufsize=%s chk_crc=%s"
                         %(inputlist[i],data_path_socket,bufsize,chk_crc))
@@ -1510,7 +1510,7 @@ def read_hsm_files(listen_socket, submitted, requests,
 
         l = 0
         mycrc = 0
-        bufsize = 65536*4
+        bufsize = 65536*4 #XXX CGW Investigate this
         mover_addr = ticket['mover']['callback_addr']
         #set up any special network load-balancing voodoo
         interface=check_load_balance(mode=0, dest=mover_addr[0])
