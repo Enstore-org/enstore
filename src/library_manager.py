@@ -1415,6 +1415,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
         self.max_suspect_movers = self.keys.get('max_suspect_movers',3) # maximal number of movers in the suspect volume list
         self.max_suspect_volumes = self.keys.get('max_suspect_volumes', 100) # maximal number of suspected volumes for alarm generation
+        self.blank_error_increment = self.keys.get('blank_error_increment', 5) # this + max_suspect_movers shuold not be more than total number of movers 
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
@@ -2237,9 +2238,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # go NOACCESS in such a case.
                 ftt_eblank_error = (mticket['status'][0] == e_errors.READ_ERROR
                                     and mticket['status'][1] and
-                                    mticket['status'][1] == 'FTT_EBLANK') 
+                                    ((mticket['status'][1] == 'FTT_EBLANK') or mticket['status'][1] == 'FTT_SUCCESS'))
                 if ((len(vol['movers']) >= self.max_suspect_movers and not ftt_eblank_error) or
-                    (len(vol['movers']) >= self.max_suspect_movers + 5 and ftt_eblank_error)):
+                    (len(vol['movers']) >= self.max_suspect_movers + self.blank_error_increment and ftt_eblank_error)):
 
                     if w:
                         w['status'] = (e_errors.NOACCESS, None)
