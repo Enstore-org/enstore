@@ -720,6 +720,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"volume_name",
                        option.USER_LEVEL:option.ADMIN},
+        option.IGNORE_STORAGE_GROUP:{option.HELP_STRING:
+                      "ignore a storage group",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"storage_group",
+                      option.USER_LEVEL:option.ADMIN},
         option.IMPORT:{option.HELP_STRING:
                        "import an exported volume onject",
                        option.DEFAULT_TYPE:option.STRING,
@@ -1097,6 +1103,7 @@ def do_work(intf):
                 
         ticket = vcc.clr_system_inhibit(intf.clear, what, pos)  # name of this volume
     elif intf.decr_file_count:
+        print `type(intf.decr_file_count)`
         ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
         Trace.trace(12, repr(ticket))
     elif intf.read_only:
