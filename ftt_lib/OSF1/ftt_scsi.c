@@ -208,7 +208,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ccb.cam_ch.cam_path_id    = open_devs[(int)n].id;
     ccb.cam_ch.cam_target_id  = open_devs[(int)n].targid;
     ccb.cam_ch.cam_target_lun = open_devs[(int)n].lun;
-    ccb.cam_ch.cam_flags = (iswrite ? CAM_DIR_OUT : CAM_DIR_IN);
+    ccb.cam_ch.cam_flags = nRdWr? (iswrite ? CAM_DIR_OUT : CAM_DIR_IN) : 
+				  CAM_DIR_NONE;
 
     ccb.cam_data_ptr = pcRdWr;
     ccb.cam_dxfer_len = nRdWr;
@@ -242,7 +243,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	    return res;
 	}
 	if ((ccb.cam_ch.cam_status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
-	    DEBUG2(stderr, "cam_status is not completed\n");
+	    DEBUG2(stderr, "cam_status is not completed status=%x\n",
+                    ccb.cam_ch.cam_status);
 	    /* try to unfreeze the queue */
 	    if (ccb.cam_ch.cam_status & CAM_SIM_QFRZN) {
 	        DEBUG3(stderr, "unfreezing queue!\n");
