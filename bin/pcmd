@@ -13,6 +13,32 @@ p_use()     { uj="Usage:  p_use filename [container number]"
 pcat()      { eval cat  `p_use $@` ; }
 pmore()     { eval more `p_use $@` ; }
 
+pbfid()     { pcat $@ 1 ; }
+pxref()     { pcat $@ 4 ; }
+
+pinfo()     { bfid=`pbfid $@`
+              xref=`pxref $@`
+              volume=`echo $xref | cut -d: -f1`
+              cookie=`echo $xref | cut -d: -f2`
+              file_family=`echo $xref | cut -d: -f3`
+              orig_name=`echo $xref | cut -d: -f4`
+              if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
+                   `echo $SHELL | grep -c /sh`   -ne 0 -o \
+                   `echo $SHELL | grep -c /ksh`  -ne 0 -o \
+                   `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
+              echo "bfid=$bfid;
+volume=$volume;
+cookie=$cookie;
+file_family=$file_family;
+orig_name=$orig_name;"
+              else
+              echo "set bfid=$bfid;
+set volume=$volume;
+set cookie=$cookie;
+set file_family=$file_family;
+set orig_name=$orig_name;"
+               fi; }
+
 pls()       { eval ls -alsF `p_use $@` ; }
 
 pecho()     { uj="Usage:  pecho text file [container number]"
@@ -105,4 +131,3 @@ shift
 eval $cmd $@
 stat=$?
 exit $stat
-
