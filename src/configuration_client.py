@@ -144,14 +144,18 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
 
     config_options = {
         option.SHOW:{option.HELP_STRING:"print the current configuration",
-                     option.DEFAULT_TYPE:option.INTEGER},
+                     option.DEFAULT_TYPE:option.INTEGER,
+		     option.USER_LEVEL:option.ADMIN},
         option.LOAD:{option.HELP_STRING:"load a new configuration",
-                     option.DEFAULT_TYPE:option.INTEGER},
+                     option.DEFAULT_TYPE:option.INTEGER,
+		     option.USER_LEVEL:option.ADMIN},
         option.SUMMARY:{option.HELP_STRING:"summary for saag",
-                        option.DEFAULT_TYPE:option.INTEGER},
+                        option.DEFAULT_TYPE:option.INTEGER,
+			option.USER_LEVEL:option.ADMIN},
         option.CONFIG_FILE:{option.HELP_STRING:"config file to load",
                             option.VALUE_USAGE:option.REQUIRED,
-                            option.DEFAULT_TYPE:option.STRING},
+                            option.DEFAULT_TYPE:option.STRING,
+			    option.USER_LEVEL:option.ADMIN},
          }
 
     # parse the options like normal but make sure we have other args

@@ -306,6 +306,7 @@ class LoggerInterface(generic_server.GenericServerInterface):
                             "specifies the configuration file to use",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
+			    option.USER_LEVEL:option.ADMIN
                             }
         }
     

@@ -1474,10 +1474,12 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 	    option.LOG:{option.HELP_STRING:"",
 			option.VALUE_USAGE:option.REQUIRED,
 			option.VALUE_TYPE:option.STRING,
+			option.USER_LEVEL:option.ADMIN
 			},
 	    option.MAX_WORK:{option.HELP_STRING:"",
 			     option.VALUE_USAGE:option.REQUIRED,
 			     option.VALUE_TYPE:option.INTEGER
+			     option.USER_LEVEL:option.ADMIN
 			     },
 	    }
 

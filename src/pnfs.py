@@ -1049,6 +1049,7 @@ class PnfsInterface(option.Interface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"filename",
                      option.FORCE_SET_DEFAULT:option.FORCE,
+		     option.USER_LEVEL:option.USER
                      },
         option.CAT:{option.HELP_STRING:"see --layer",
                     option.DEFAULT_VALUE:option.DEFAULT,
@@ -1074,6 +1075,7 @@ class PnfsInterface(option.Interface):
                      option.DEFAULT_NAME:"duplicate",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
+		     option.USER_LEVEL:option.USER,
                      option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
                                            option.DEFAULT_NAME:"file",
                                            option.DEFAULT_TYPE:option.STRING,
@@ -1101,6 +1103,7 @@ class PnfsInterface(option.Interface):
                          option.VALUE_NAME:"directory",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
+                         option.USER_LEVEL:option.USER,
                          option.FORCE_SET_DEFAULT:option.FORCE,
                      },
         option.FILE_FAMILY:{option.HELP_STRING:"gets file family tag, " \
@@ -1109,6 +1112,7 @@ class PnfsInterface(option.Interface):
                        option.DEFAULT_NAME:"file_family",
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_TYPE:option.STRING,
+                       option.USER_LEVEL:option.USER,
                        option.VALUE_USAGE:option.OPTIONAL,
                    },
         option.FILE_FAMILY_WIDTH:{option.HELP_STRING:"gets file family " \
@@ -1117,6 +1121,7 @@ class PnfsInterface(option.Interface):
                              option.DEFAULT_NAME:"file_family_width",
                              option.DEFAULT_TYPE:option.INTEGER,
                              option.VALUE_TYPE:option.STRING,
+                             option.USER_LEVEL:option.USER,
                              option.VALUE_USAGE:option.OPTIONAL,
                    },
         option.FILE_FAMILY_WRAPPER:{option.HELP_STRING:"gets file family " \
@@ -1125,6 +1130,7 @@ class PnfsInterface(option.Interface):
                                option.DEFAULT_NAME:"file_family_wrapper",
                                option.DEFAULT_TYPE:option.INTEGER,
                                option.VALUE_TYPE:option.STRING,
+                               option.USER_LEVEL:option.USER,
                                option.VALUE_USAGE:option.OPTIONAL,
                    },
 
@@ -1136,12 +1142,14 @@ class PnfsInterface(option.Interface):
                  option.VALUE_NAME:"volume_tape",
                  option.VALUE_TYPE:option.STRING,
                  option.VALUE_USAGE:option.REQUIRED,
+                 option.USER_LEVEL:option.USER,
                  option.FORCE_SET_DEFAULT:option.FORCE,
                    },
 	option.FILESIZE:{option.HELP_STRING:"print out real filesize",
 			 option.VALUE_NAME:"file",
 			 option.VALUE_TYPE:option.STRING,
 			 option.VALUE_LABEL:"file",
+                         option.USER_LEVEL:option.USER,
 			 option.VALUE_USAGE:option.REQUIRED,
 			 },
         option.LAYER:{option.HELP_STRING:"lists the layer of the file",
@@ -1170,6 +1178,7 @@ class PnfsInterface(option.Interface):
                    option.DEFAULT_NAME:"library",
                    option.DEFAULT_TYPE:option.INTEGER,
                    option.VALUE_TYPE:option.STRING,
+                   option.USER_LEVEL:option.USER,
                    option.VALUE_USAGE:option.OPTIONAL,
                    },
         option.PNFS_STATE:{option.HELP_STRING:"lists whether pnfs is " \
@@ -1180,6 +1189,7 @@ class PnfsInterface(option.Interface):
                       option.VALUE_NAME:"directory",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.USER,
                       option.FORCE_SET_DEFAULT:option.FORCE,
                       },
         option.STORAGE_GROUP:{option.HELP_STRING:"gets storage group tag, " \
@@ -1188,6 +1198,7 @@ class PnfsInterface(option.Interface):
                          option.DEFAULT_NAME:"storage_group",
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_TYPE:option.STRING,
+                         option.USER_LEVEL:option.ADMIN,
                          option.VALUE_USAGE:option.OPTIONAL,
                    },
         option.TAGS:{option.HELP_STRING:"lists tag values and permissions",
@@ -1195,6 +1206,7 @@ class PnfsInterface(option.Interface):
                 option.DEFAULT_NAME:"tags",
                 option.DEFAULT_TYPE:option.INTEGER,
                 option.VALUE_USAGE:option.IGNORED,
+                option.USER_LEVEL:option.USER,
                 option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
                                       option.DEFAULT_NAME:"directory",
                                       option.DEFAULT_TYPE:option.STRING,
@@ -1232,6 +1244,7 @@ class PnfsInterface(option.Interface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"filename",
+                     option.USER_LEVEL:option.USER,
                      option.FORCE_SET_DEFAULT:option.FORCE,
                 },
         }

@@ -428,11 +428,13 @@ class Interface:
                  VALUE_USAGE:REQUIRED,
                  VALUE_TYPE:INTEGER,
                  VALUE_LABEL:"seconds",
+		 USER_LEVEL:ADMIN,
                  FORCE_SET_DEFAULT:NORMAL},
         RETRIES:{HELP_STRING:"number of attempts to resend alive requests",
                  VALUE_NAME:"alive_retries",
                  VALUE_USAGE:REQUIRED,
                  VALUE_TYPE:INTEGER,
+		 USER_LEVEL:ADMIN,
                  FORCE_SET_DEFAULT:NORMAL}
         }
 
@@ -443,6 +445,7 @@ class Interface:
                             VALUE_TYPE:INTEGER,
                             VALUE_NAME:"alive",
                             VALUE_USAGE:IGNORED,
+			    USER_LEVEL:ADMIN,
                             SHORT_OPTION:"a",
                             FORCE_SET_DEFAULT:NORMAL
                             }
@@ -460,26 +463,32 @@ class Interface:
         DO_PRINT:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
                   HELP_STRING:"turns on more verbose output",
+		  USER_LEVEL:ADMIN,
                   FORCE_SET_DEFAULT:NORMAL},
         DONT_PRINT:{VALUE_USAGE:REQUIRED,
                     VALUE_TYPE:RANGE,
                     HELP_STRING:"turns off more verbose output",
+		    USER_LEVEL:ADMIN,
                     FORCE_SET_DEFAULT:NORMAL},
         DO_LOG:{VALUE_USAGE:REQUIRED,
                 VALUE_TYPE:RANGE,
                 HELP_STRING:"turns on more verbose logging",
+		USER_LEVEL:ADMIN,
                 FORCE_SET_DEFAULT:NORMAL},
         DONT_LOG:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
                   HELP_STRING:"turns off more verbose logging",
+		  USER_LEVEL:ADMIN,
                   FORCE_SET_DEFAULT:NORMAL},
         DO_ALARM:{VALUE_USAGE:REQUIRED,
                   VALUE_TYPE:RANGE,
                   HELP_STRING:"turns on more alarms",
+		  USER_LEVEL:ADMIN,
                   FORCE_SET_DEFAULT:NORMAL},
         DONT_ALARM:{VALUE_USAGE:REQUIRED,
                     VALUE_TYPE:RANGE,
                     HELP_STRING:"turns off more alarms",
+		    USER_LEVEL:ADMIN,
                     FORCE_SET_DEFAULT:NORMAL}
         }
 

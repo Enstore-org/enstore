@@ -477,9 +477,10 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
     monitor_options = {
         option.HOST:{option.HELP_STRING:"selects a single host",
-                option.VALUE_NAME:"hostip",
-                option.VALUE_USAGE:option.REQUIRED,
-                },
+		     option.VALUE_NAME:"hostip",
+		     option.VALUE_USAGE:option.REQUIRED,
+		     option.USER_LEVEL:option.ADMIN
+		     },
         option.SUMMARY:{option.HELP_STRING:"summary for saag",},
         option.HTML_GEN_HOST:{option.HELP_STRING:
                               "ip/hostname of the html server",

@@ -18,7 +18,6 @@ import errno
 # enstore imports
 import dispatching_worker
 import generic_server
-import option
 import Trace
 import e_errors
 import hostaddr
