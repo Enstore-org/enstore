@@ -80,6 +80,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# turn on/off the debugging
 	def debug(self, ticket):
 		self.debug = ticket.get('level', 0)
+		print 'debug =', self.debug
 
 	# These need confirmation
 	def quit(self, ticket):
