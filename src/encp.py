@@ -701,6 +701,20 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     global __csc
     global __vcc
 
+    #There is no volume.
+    if not volume:
+        #If not already cached, get the default.
+        if __csc == None:
+            # Get the configuration server.
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+            __csc = csc
+
+        #Regardless, return the csc.
+        return __csc
+
     #First check that the cached version knows about the volume.
     if __vcc != None:
         volume_info = __vcc.inquire_vol(volume, 5, 20)
@@ -776,7 +790,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
 
     #There is no brand, since the file is too old.
     if not brand:
-        #If not already known, return 
+        #If not already cached, get the default. 
         if __csc == None:
             # Get the configuration server.
             config_host = enstore_functions2.default_host()
@@ -910,8 +924,9 @@ def get_csc(parameter=None):
         return __csc
     
     elif type(parameter) == types.DictType: #If passed a ticket with bfid.
-        bfid = parameter.get('fc', {}).get("bfid", "")
-        volume = parameter.get('volume', "")
+        bfid = parameter.get('fc', {}).get("bfid", None)
+        volume = parameter.get('fc', {}).get('external_label',
+                                             parameter.get('volume', None))
 
     elif is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
@@ -937,25 +952,26 @@ def get_fcc(parameter = None):
     global __fcc
     global __csc
 
-    if not parameter and __fcc != None: #No bfid, but have cached fcc.
-        return __fcc
-
-    elif not parameter and __fcc == None: #No bfid and no cached fcc.
-        #Get the csc to use.
-        if __csc != None:
-            csc = __csc
+    if not parameter:
+        if __fcc != None: #No bfid, but have cached fcc.
+            return __fcc
         else:
-            config_host = enstore_functions2.default_host()
-            config_port = enstore_functions2.default_port()
-            csc = configuration_client.ConfigurationClient((config_host,
-                                                            config_port))
-            
-        #Now that we have the csc, we can get the fcc.
-        __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
-        return __fcc
+            #Get the csc to use.
+            if __csc == None:
+                config_host = enstore_functions2.default_host()
+                config_port = enstore_functions2.default_port()
+                csc = configuration_client.ConfigurationClient((config_host,
+                                                                config_port))
+            else:
+                csc = __csc
+
+            #Now that we have the csc, we can get the fcc.
+            __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5,
+                                                 rcv_tries=2)
+            return __fcc
     
     elif type(parameter) == types.DictType: #If passed a ticket with bfid.
-        bfid = parameter.get('fc', {}).get("bfid", "")
+        bfid = parameter.get('fc', {}).get("bfid", None)
 
     elif is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
@@ -1040,27 +1056,28 @@ def get_fcc(parameter = None):
 def get_vcc(parameter = None):
     global __vcc
     global __csc
-
-    if not parameter and __vcc != None: #No bfid, but have cached fcc.
-        return __vcc
-
-    elif not parameter and __vcc == None: #No bfid and no cached fcc.
-        #Get the csc to use.
-        if __csc != None:
-            csc = __csc
+    print type(parameter), parameter
+    if not parameter:
+        if __vcc != None: #No volume, but have cached vcc.
+            return __vcc
         else:
-            config_host = enstore_functions2.default_host()
-            config_port = enstore_functions2.default_port()
-            csc = configuration_client.ConfigurationClient((config_host,
-                                                            config_port))
-            
-        #Now that we have the csc, we can get the vcc.
-        __vcc = volume_clerk_client.VolumeClerkClient(csc, rcv_timeout=5,
-                                                      rcv_tries=2)
-        return __vcc
+            #Get the csc to use.
+            if __csc == None:
+                config_host = enstore_functions2.default_host()
+                config_port = enstore_functions2.default_port()
+                csc = configuration_client.ConfigurationClient((config_host,
+                                                                config_port))
+            else:
+                csc = __csc
+
+            #Now that we have the csc, we can get the vcc.
+            __vcc = volume_clerk_client.VolumeClerkClient(csc, rcv_timeout=5,
+                                                          rcv_tries=2)
+            return __vcc
     
     elif type(parameter) == types.DictType: #If passed a ticket with volume.
-        volume = parameter.get('volume', "")
+        volume = parameter.get('fc', {}).get('external_label',
+                                             parameter.get('volume', None))
 
     elif is_volume(parameter):  #If passed a volume.
         volume = parameter
