@@ -905,7 +905,7 @@ class EnAlarmFile(EnFile):
     # write the alarm to the file
     def write(self, alarm):
         if self.filedes:
-            line = repr(alarm)
+            line = repr(alarm)+"\n"
             try:
                 self.filedes.write(line)
             except IOError:
