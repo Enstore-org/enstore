@@ -83,7 +83,8 @@ class GenericClient:
             server_address = (ticket['hostip'], ticket['port'])
             return server_address
         except KeyError, detail:
-            sys.stderr.write("Unknown server %s (no %s in config)\n" % ( MY_SERVER, detail))
+            sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
+                             ( MY_SERVER, detail, os.environ.get('ENSTORE_CONFIG_HOST','')))
             os._exit(1)
 
     def send(self, ticket, rcv_timeout=0, tries=0):
