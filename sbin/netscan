@@ -49,6 +49,8 @@ ACTIVE=/root/CRON/netscanACTIVE
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
              $PS >> $LOG 2>&1
+             $ECHO orig ps >>$LOG 2>&1
+             $ECHO "${PSfirst:-}"  >>$LOG 2>&1
           fi
           $ECHO "$1"
         }
