@@ -9,7 +9,7 @@ export IFS
 . /usr/local/etc/setups.sh
 
 # allow the user to specify a different enstore rather than the current one
-if [ "${ENSTORE_SETUP:-'42'}" = "42" ];
+if [ "${ENSTORE_SETUP:-42}" = "42" ];
 then
    ENSTORE_SETUP="enstore"
 fi
