@@ -297,8 +297,8 @@ if __name__ == '__main__':
 			check(i, v2)
 			te_count = te_count + e_count
 
-		print 'deleting', v2, '...'
 		if te_count == 0:
+			print 'deleting', v2, '...'
 			for i in bfids:
 				delete(i)
 
