@@ -296,8 +296,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def make_log_html_file(self, log_dirs):
         # add the web host to the dict of log directories if not already there
         for key in log_dirs.keys():
-            if not log_dirs[key][0:5] == "http:" and \
-               not log_dirs[key][0:5] == "file:":
+	    if log_dirs[key][0:5] not in ["http:", "file:"]:
                 log_dirs[key] = self.www_host+log_dirs[key]
 
         # first get a list of all of the log files and their sizes
