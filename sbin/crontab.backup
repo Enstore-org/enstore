@@ -1,2 +1,1 @@
 10 * * * * sh -c 'DIR=/tmp;OUT=$DIR/backup.log;rm -f $OUT; . /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup enstore 1>>$OUT 2>&1; ecmd backup 1>>$OUT 2>&1;'
-
