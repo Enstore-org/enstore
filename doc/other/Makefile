@@ -8,7 +8,17 @@ SHELL = /bin/sh
 #
 
 .IGNORE:
-.SUFFIXES: .ps .gif  .dtim  .Wtim .html .obj 
+.SUFFIXES: .py .ps .gif  .dtim  .Wtim .html .obj
+
+.py.ps :
+	python $<  > $@.tmp
+	mv $@.tmp $@
+	if [ ! -z  "$(CONVERT)" ] ; then  $(CONVERT) ps:$@ ../WWW/$*.gif ; fi
+
+drawings : any_unmount.ps write_badmount.ps write_error.ps write_tapebusy.ps \
+write.ps write_drivebusy.ps write_notape.ps read_error.ps
+
+ 
 
 SBIN=../../bin
 
@@ -41,13 +51,13 @@ PIC_FILES = \
 # Mechanism: in the "all' target, Use "hash" to sense if the processor 
 # is present, then define a  make macro to be either the processor or to 
 # be "/bin/true" whcih functions as a no-op. 
-all: 
+all:
 	$(MAKE) \
 	TGIF=`if hash tgif 2>/dev/null ; then echo tgif ; else echo true ; fi`\
 	DOT=`if hash dot 2>/dev/null ; then echo dot ; else echo true ; fi`\
         CONVERT=`if hash convert 2>/dev/null ; then echo convert ; else echo true ; fi ` rest
 
-rest: pics ../obj.ps other
+rest: drawings pics ../obj.ps other
 
 ../obj.ps:
 	./mk_inherit
@@ -67,6 +77,11 @@ install :
 clean :
 	@ $(SBIN)/enstoreClean
 	@ rm -rf $(PIC_FILES) obj.dot
+	@ rm -f *.pyc
+	@ rm -f *.tmp
+	@ rm -f *.ps
+
+
 
 
 
