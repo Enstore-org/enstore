@@ -7,7 +7,7 @@ import exceptions
 from errno import *
 import sys
 
-TRANSFER_MAX=8192
+TRANSFER_MAX=16384
 
 # see if we can allocate a specific port on a specific host
 def try_a_port(host, port) :

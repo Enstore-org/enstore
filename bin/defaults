@@ -9,7 +9,7 @@ config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
 enstore_libraries="activelibrary.library_manager red50library.library_manager"
 enstore_media_changers="STK.media_changer RDD.media_changer"
-enstore_movers="fd0.mover fd1.mover stk0.mover stk1.mover"
+enstore_movers="fd0.mover stk0.mover"
 
 # if the user has environmental variable set, use them - or else use the defaults
 
