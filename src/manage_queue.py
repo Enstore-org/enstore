@@ -326,7 +326,7 @@ class Queue:
     # for write requests it is file size
     def get(self,label='',location=''):
          # label is either a volume label or file family
-        Trace.trace(23, 'Queue.get: Queue list %s'% (self.sprint(),))
+        #Trace.trace(23, 'Queue.get: Queue list %s'% (self.sprint(),))
         if not label: return None
         if not self.queue.has_key(label):
             Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
@@ -385,7 +385,7 @@ class Queue:
     def get_next(self, label=''):
         # label is either a volume label or volume family
         Trace.trace(23, 'Queue.get_next: label %s'% (label,))
-        Trace.trace(23, 'Queue.get_next: list %s'% (self.sprint(),))
+        #Trace.trace(23, 'Queue.get_next: list %s'% (self.sprint(),))
 
         if not label: return None
         Trace.trace(23, "Queue.get_next: keys %s"%(self.queue.keys(),))
@@ -393,7 +393,7 @@ class Queue:
             Trace.trace(23,"Queue.get_next: label %s is not in the queue"%(label,))
             return None
         sublist = self.queue[label]['opt']
-        Trace.trace(23,"Queue.get_next: sublist %s"%(sublist.sprint(),))
+        #Trace.trace(23,"Queue.get_next: sublist %s"%(sublist.sprint(),))
         return sublist.get_next()
         
 
