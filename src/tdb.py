@@ -6,34 +6,53 @@ import sys
 import tdb
 import linecache
 import pdb
-import thread
-import os
 import bdb
 
 Quit = "tdb.Quit"
 Help = "tdb.Help"
 
-MODE_OFF = 0
 MODE_TRACE_ALL = 1
 MODE_TRACE_CALL  = 2
 MODE_PDB = 3
 
 
-#
-# This class alters the behavoir of the PDB.  We overrrrrride teh thing that
-# is seen directly by  sys.stetrace() in order to catch the bdbQuit excetion
+    
+tdb.mode = MODE_TRACE_ALL
+
+def setmode(newmode):
+    tdb.mode = newmode
+
+def saver(frame, type, arg) :
+    if 0 : print type, arg #quiet the linter
+    if tdb.mode is MODE_TRACE_ALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
+        return saver
+    elif tdb.mode is MODE_TRACE_CALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }       
+        return None
+    elif tdb.mode is MODE_PDB :
+        Tdb().set_trace()
+        return None
+    else :
+       print "impossible mode"
+
+def install():
+    sys.settrace(saver)
+
+
+# This class alters the behavoir of the PDB.  We overide the thing that
+# is seen directly by  sys.settrace() in order to catch the bdbQuit exception
 # which is generted when the user types "Q' or Quit.  WE re-install the 
-# saver.  WE still need to 
+# saver.  We still need to 
 #  1) communicate this back to the telnet thread
 #  2) restore stdin and stdout "back"  (right now, they are subverted
 #     by the PDB item in the telnet thread.  Maybe that is not the
-#     rgth place for the code.
-#  3) See if >1 user can eith see teh debug session or particiapt in it,
+#     right place for the code.
+#  3) See if >1 user can either see the debug session or participate in it,
 
-class Hackpdb(pdb.Pdb) :
+class Tdb(pdb.Pdb) :
     def __init__(self):
         pdb.Pdb.__init__(self)
-
 
     def trace_dispatch(self, frame, event, arg) :
 	try:
@@ -41,8 +60,8 @@ class Hackpdb(pdb.Pdb) :
 	except bdb.BdbQuit:
 	   pass
         # now, "all " have to do is to notify the telnet thread...
+        install()
 	tdb.mode = MODE_TRACE_ALL
-	install()
 	return None	
 
 # WARNING VOODOO Code around:
@@ -66,28 +85,7 @@ class Hackio:
         self.outFile.write(text)
         self.outFile.flush()
 
-def saver(frame, type, u) :
-    if tdb.mode is MODE_TRACE_ALL :
-        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
-        return saver
-    elif tdb.mode is MODE_TRACE_CALL :
-        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }       
-        return None
-    elif tdb.mode is MODE_PDB :
-        Hackpdb().set_trace()
-        return None
-    else :
-       print "impossible mode"
-
-def install():
-    sys.settrace(saver)
-    
-tdb.mode = MODE_TRACE_ALL
-
-def setmode(newmode):
-    tdb.mode = newmode
-
-class Tdb(threading.Thread) :
+class TdbMonitor(threading.Thread) :
     inFile = sys.stdin
     outFile = sys.stdout
 
@@ -206,6 +204,7 @@ class Tdb(threading.Thread) :
             self.writeln(m)
 
     def cmd_pdb(self, args):
+        if len(args) is not 0 : raise Help
 	h = Hackio()
 	h.outFile = self.outFile
 	sys.stdout = h
@@ -239,7 +238,7 @@ class Tdb(threading.Thread) :
         
 class TdbListener(threading.Thread):
     host =  "localhost"
-    port = 9998
+    port = 9997
     
     def __init__(self) :
         threading.Thread.__init__(self)
@@ -252,10 +251,10 @@ class TdbListener(threading.Thread):
         while  1 :
             ns, who = s.accept()
             if 0 : print who # for the linter
-            tdb = Tdb()
-            tdb.inFile = ns.makefile('r')
-            tdb.outFile  = ns.makefile('w')
-            tdb.start()
+            tm = TdbMonitor()
+            tm.inFile = ns.makefile('r')
+            tm.outFile  = ns.makefile('w')
+            tm.start()
             ns.close()
 
 if __name__ == "__main__":
@@ -272,7 +271,7 @@ if __name__ == "__main__":
 
         while 1:
             I = 1
-            print "visit me at localhost 9998        !!!! "
+            print "visit me at localhost 9997        !!!! "
             time.sleep(I)
             am_here()
             time.sleep(I)
