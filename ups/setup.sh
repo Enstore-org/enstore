@@ -25,7 +25,7 @@ export ENSTORE_CONFIG_PORT
 ENSTORE_CONFIG_HOST=pcfarm9.fnal.gov
 export ENSTORE_CONFIG_HOST
 
-TRACE_KEY=$ENSTORE_DIR/etc
+TRACE_KEY=$ENSTORE_DIR/etc/trace.`hostname`
 export TRACE_KEY
 
 . $ENSTORE_DIR/etc/defaults

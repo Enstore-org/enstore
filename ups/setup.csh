@@ -19,6 +19,6 @@ setenv ENSTORE_CONFIG_FILE $ENSTORE_DIR/etc/willow.conf
 setenv ENSTORE_CONFIG_PORT 7510
 setenv ENSTORE_CONFIG_HOST pcfarm9.fnal.gov
 
-setenv TRACE_KEY $ENSTORE_DIR/etc
+setenv TRACE_KEY $ENSTORE_DIR/etc/trace.`hostname`
 
 #source $ENSTORE_DIR/etc/defaults
