@@ -1,0 +1,19 @@
+#!/usr/bin/env expect
+spawn telnet adic2
+expect login:
+send enstore\r
+expect password:
+send "Adic 1stk\r"
+expect \[<adic2>-C:\\\]
+send "cd das\r"
+expect \[<adic2>-C:\\das\]
+send "cd bin\r"
+expect \[<adic2>-C:\\das\\bin\]
+send "amulog\r"
+while 1 {
+    expect \r
+}
+
+
+
+
