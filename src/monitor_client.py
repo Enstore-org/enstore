@@ -656,17 +656,22 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
             continue
         if not summary:
             print "Trying", host
-        msc = MonitorServerClient(
-            (config_host, config_port),
-            (ip,                      enstore_constants.MONITOR_PORT),
-            (config['html_gen_host'], enstore_constants.MONITOR_PORT),
-            config['html_dir'],
-            config['refresh'],
-            config['default_timeout'],
-            config['block_size'],
-            config['block_count'],
-            summary
-            )
+        try:
+            msc = MonitorServerClient(
+                (config_host, config_port),
+                (ip,                      enstore_constants.MONITOR_PORT),
+                (config['html_gen_host'], enstore_constants.MONITOR_PORT),
+                config['html_dir'],
+                config['refresh'],
+                config['default_timeout'],
+                config['block_size'],
+                config['block_count'],
+                summary
+                )
+        except KeyError, detail:
+            # usae this for debugging purposes
+            print config
+            raise KeyError, detail
 
         
         #Test rate sending from the server.  The rate info for read time
