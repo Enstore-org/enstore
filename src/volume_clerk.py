@@ -102,17 +102,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          fcc = file_clerk_client.FileClient(self.csc)
          # get volume map name
          bfid_list = self.bfid_db.get_all_bfids(old_label)
-         fcc.bfid = bfid_list[0]
-         vm_ticket = fcc.get_volmap_name()
-         old_vol_map_name = vm_ticket["pnfs_mapname"]
-         (old_vm_dir,file) = os.path.split(old_vol_map_name)
-         new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
-         # rename map files
-         Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
-                   (old_vm_dir, new_vm_dir))
-         os.rename(old_vm_dir, new_vm_dir)
-         Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
-                   (old_vm_dir, new_vm_dir))
+         if bfid_list:
+             fcc.bfid = bfid_list[0]
+             vm_ticket = fcc.get_volmap_name()
+             old_vol_map_name = vm_ticket["pnfs_mapname"]
+             (old_vm_dir,file) = os.path.split(old_vol_map_name)
+             new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
+             # rename map files
+             Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
+                       (old_vm_dir, new_vm_dir))
+             os.rename(old_vm_dir, new_vm_dir)
+             Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
+                       (old_vm_dir, new_vm_dir))
          # replace file clerk database entries
          for bfid in bfid_list:
              ret = fcc.rename_volume(bfid, new_label, 
@@ -526,6 +527,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                              wrapper, vol_veto_list, first_found,
                              min_remaining_bytes, exact_match=1):
 
+        tok = string.split(volume_family, ".")
+        
+        
         # go through the volumes and find one we can use for this request
         vol = {}
 
@@ -1022,11 +1026,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
         Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
-        #        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
-        # setting volume to NOACCESS has proven to be disastrous
-        # it is better to let 1 volume fail than give out all remaining tapes
-        # in cases like media changer failure
-        return self.set_system_inhibit(ticket, "none")
+        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
 
     # flag that the current volume is marked as not allowed
     def set_system_notallowed(self, ticket):
