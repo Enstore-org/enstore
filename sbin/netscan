@@ -28,7 +28,7 @@ setup enstore
 
 # Known vunerabilities:
 # . I know I don't check everything!
-# . Only check for LISTEN, igorning TCP and UDP for now.
+# . Only check for LISTEN, ignoring TCP and UDP for now.
 #        TCP could be done, but UDP seems very hard (sh, mt... open lots of sockets!).
 # . Require connection to live across a ps, so I can get the process name for later checks
 # . Depend on installed version of os (grep, lsof...)
@@ -60,10 +60,9 @@ EGREP="/bin/egrep"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"
-CAT="/bin/cat"
 SORT="/bin/sort"
 UNIQ="/usr/bin/uniq"
-if [ -r /usr/bin/cut ]; then 
+if [ -r /usr/bin/cut ]; then
   CUT="/usr/bin/cut"
 elif [ -r /bin/cut ]; then
   CUT="/bin/cut"
@@ -103,27 +102,27 @@ ACTIVE=/root/CRON/netscanACTIVE
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
-             $ECHO "${PSfirst:-}"  >>$LOG 2>&1
+             $ECHO "${PSfirst:-}" >>$LOG 2>&1
           fi
           $ECHO "$1"
         }
 
 # function to compare files and complain if they are not the same
 right_file() { if [ ! -r $1 -o ! -r $2 ]; then
-                  msg1="BAD CONFIGURATION: $1 $2  do not both exist"
+                  msg1="BAD CONFIGURATION: $1 $2 do not both exist"
                   logit "$msg1"
                   if [ $ALARM -eq 1 ]; then
                     enstore alarm --raise --severity "A" --root-error "$msg1"
                   fi
                elif ! $CMP $1 $2 2>/dev/null; then
-                  msg1="BAD CONFIGURATION: $1 $2  do not match"
+                  msg1="BAD CONFIGURATION: $1 $2 do not match"
                   logit "$msg1"
                   if [ $ALARM -eq 1 ]; then
                     enstore alarm --raise --severity "A" --root-error "$msg1"
                   fi
                else
                   if [ $QUIET -ne 1 ]; then
-                    logit  "Matching version of $1, ok"
+                    logit "Matching version of $1, ok"
                   fi
                fi
              }
@@ -136,33 +135,32 @@ filecheck() { thefile=${2:-/var/spool/cron/root}
                   enstore alarm --raise --severity "A" --root-error "$msg"
                 fi
               elif [ $QUIET -ne 1 ]; then
-                logit  "$1 $thefile ok"
+                logit "$1 $thefile ok"
               fi
             }
-
 
 # function to check for allowed services and complain if not allowed
 allow() { tt=$1
           for i in $ALLOW; do
             t=`$ECHO $i | $CUT -f1 -d,`
-	    if [ -z ${t-} ]; then echo $i; fi
+            if [ -z ${t-} ]; then echo $i; fi
             if [ $t != $tt ]; then continue; fi
             a=`$ECHO $i | $CUT -f2 -d,`
             b=`$ECHO $i | $CUT -f3 -d,`
             c=`$ECHO $i | $CUT -f4 -d,`
             p=`$ECHO $i | $CUT -f5 -d,`
-            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
+            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"` -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
                  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
-		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
-		    logit "Swapped out $node $tt $command $pid $rest -> $psline"
-		    return 0
+                 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
+                    logit "Swapped out $node $tt $command $pid $rest -> $psline"
+                    return 0
                  elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
                     logit "$msg1"
                     logit "$psline" "ps"
                     if [ $ALARM -eq 1 ]; then
-                      enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
+                      enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
                     fi
                     return 2
                  fi
@@ -170,7 +168,7 @@ allow() { tt=$1
                 p=""
               fi
               if [ $QUIET -ne 1 ]; then
-                logit "Allowing $node $c $tt $a $b $p,  ok"
+                logit "Allowing $node $c $tt $a $b $p, ok"
               fi
               return 0
             fi
@@ -180,7 +178,7 @@ allow() { tt=$1
           logit "$msg1"
           logit "$psline" "ps"
           if [ $ALARM -eq 1 ]; then
-            enstore alarm --raise --severity "A" --root-error "$msg1  $psline"
+            enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
          fi
           return 1
          }
@@ -199,7 +197,7 @@ ALLOW_BASE="
        LISTEN,xinetd,:klogin,TCP,x
        LISTEN,xinetd,:eklogin,TCP,x
        LISTEN,xinetd,:netperf,TCP,x
-       LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src|/home/petravic/Zope|inquisitor|ftpcp.py
+       LISTEN,python,:,TCP,/home/enstore/enstore/(bin|src)|/home/petravic/Zope|inquisitor|ftpcp.py
        LISTEN,dccp,:,TCP,x
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
@@ -209,21 +207,20 @@ ALLOW_BASE="
        LISTEN,sort,inet,TCP,MSG_TYPE|enstore
        LISTEN,ALARM_CLIENT,inet,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
-       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py|/home/enstore/enstore/src/volume_assert.py
+       UDP,python,:,UDP,/home/enstore/enstore/(bin/encp|src/(monitor_server|volume_assert|mover).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py
        UDP,xntpd,:ntp,UDP,x
        UDP,tee,:UDP,tee /dev/tty
        TCP,klogind,:eklogin,TCP,x
-       TCP,xemacs,:6000,TCP,x
+       TCP,xemacs,:x11,TCP,x
        TCP,rsh,:kshell,TCP,x
        TCP,rsh,:,TCP,/usr/krb5/bin/rsh
        TCP,kshd,:kshell,TCP,x
        TCP,kshd,:,TCP,kshd kshd -5c
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
-       TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+       TCP,python,:,TCP,/home/enstore/enstore/(bin/encp|src/monitor_server|mover).py
        TCP,netserver,TCP,:netperf,x
 "
 #       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
-
 
 # Extra for srv5
 ALLOW_SRV5="$ALLOW_BASE
@@ -231,8 +228,8 @@ ALLOW_SRV5="$ALLOW_BASE
        LISTEN,conserver,:console,TCP,x
        LISTEN,conserver,:listen,TCP,x
        LISTEN,conserver,:nterm,TCP,x
-       LISTEN,conserver,:,TCP,/usr/local/bin/conserver -d
-       LISTEN,X,:6000,TCP,x
+       LISTEN,conserver,:,TCP,conserver -d
+       LISTEN,X,:x11,TCP,x
        UDP,portmap,:sunrpc,UDP,x
        TCP,conserver,:nterm,TCP,x
        TCP,netscape-,:http,TCP,x
@@ -242,9 +239,9 @@ ALLOW_SRV5="$ALLOW_BASE
 
 # Extra for srv3
 ALLOW_SRV3="$ALLOW_SRV5
-       LISTEN,rpc.mount,:635,TCP,x
+       LISTEN,rpc.mount,:,TCP,rpc.mountd
        LISTEN,rpc.nfsd,:2049,TCP,x
-       LISTEN,perl,mirror everything:adic2.fnal.gov,TCP,/home/enstore/CRON/aml2.mirror
+       LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror everything:adic2.fnal.gov
        UDP,rpc.mount,:mount,UDP,x
        UDP,rpc.nfsd,:nfs,UDP,x
 "
@@ -254,13 +251,6 @@ ALLOW_SRV2="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
        LISTEN,sendmail,:smtp,TCP,x
 "
-
-# Extra for d0ensrv4 - portmapper is needed for adic calls
-ALLOW_DSRV4="$ALLOW_BASE
-       LISTEN,portmap,:sunrpc,TCP,x
-       LISTEN,dasadmin,:,TCP,x
-"
-
 
 # Extra for srv1
 ALLOW_SRV1="$ALLOW_BASE
@@ -275,11 +265,22 @@ ALLOW_SRV0="$ALLOW_BASE
        LISTEN,postmaste,:postgres,TCP,x
 "
 
-# Extra for stkensrv4
-ALLOW_SSRV4="$ALLOW_BASE
-       LISTEN,rsh,TCP,fntt -l acsss echo,x
+# Extra for d0ensrv4 - portmapper is needed for adic calls
+ALLOW_DSRV4="$ALLOW_BASE
+       LISTEN,portmap,:sunrpc,TCP,x
+       LISTEN,dasadmin,:663,TCP,x
+       LISTEN,rsh,:1015,TCP,fntt -l acsss echo
 "
 
+# Extra for stkensrv4
+ALLOW_SSRV4="$ALLOW_BASE
+       LISTEN,rsh,:1015,TCP,fntt -l acsss echo
+"
+
+# Extra for cdfensrv4
+ALLOW_CSRV4="$ALLOW_BASE
+       LISTEN,rsh,:1015,TCP,fntt2 -l acsss echo
+"
 
 # Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
@@ -298,14 +299,14 @@ case $node in
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
        *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
        *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
-   stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
     d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
+   stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
+   cdfensrv4)      ALLOW=$ALLOW_CSRV4; logit "Comparing to cdfensrv4";;
  *srv5|*srv7)      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
        *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
            *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
 esac
-
 
 
 # try to start - but if one netscan already running, then exit
@@ -343,7 +344,6 @@ else
 fi
 
 
-
 # check these files
 right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
 right_file /home/enstore/enstore/sbin/routes /root/routes
@@ -368,7 +368,7 @@ elif [ -r "/etc/xinetd.conf" ]; then
     right_file /home/enstore/enstore/etc/klogin /etc/xinetd.d/klogin
     right_file /home/enstore/enstore/etc/kshell /etc/xinetd.d/kshell
     right_file /home/enstore/enstore/etc/telnet /etc/xinetd.d/telnet
-else 
+else
     # neither file existed, this is a problem
     enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
 fi
@@ -377,11 +377,9 @@ right_file /home/enstore/enstore/etc/enstore.bash_profile /home/enstore/.bash_pr
 right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 
 
-
 # check that no rpm binaries have been tampered with
 # disabled... we made changes, check is not robust.
 #rpm -Va | $EGREP bin | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
-
 
 
 # check that eth1 is working, fix if not
@@ -391,26 +389,25 @@ if [ `tail -n 10 /var/log/messages | grep -c "$eth1_err"` -gt 0 ]; then
     if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "$eth1_err"
     fi
-    $IFDOWN eth1  >>$LOG 2>&1
-    $IFUP   eth1  >>$LOG 2>&1
+    $IFDOWN eth1 >>$LOG 2>&1
+    $IFUP   eth1 >>$LOG 2>&1
 else
   if [ $QUIET -ne 1 ]; then
-    logit  "No eth1 errors found in messages, ok"
+    logit "No eth1 errors found in messages, ok"
   fi
 fi
-
 
 
 # check that ntp is working, fix if not, complain if down more than once
 # check only in this job.  Separate cronjob sets time if needed.
 msg=`/home/enstore/enstore/sbin/ntpset -a -c 2>&1`
 if [ $QUIET -ne 1 ]; then
-   logit  "$msg"
+   logit "$msg"
 fi
 
 
 # check that we have two processors running
-#if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
+#if [ `$EGREP -c '^processor' /proc/cpuinfo` -ne 2 ]; then
 #   if [ "$node" = "stkensrv5" ]; then
 #      if [ $QUIET -ne 1 ]; then
 #         logit  "One processor found, ok"
@@ -458,7 +455,7 @@ if [ $IPMI -eq 1 ]; then
          enstore alarm --raise --severity "A" --root-error "$msg"
       fi
    elif [ $QUIET -ne 1 ]; then
-      logit  "/etc/watchdog_reset, ok"
+      logit "/etc/watchdog_reset, ok"
    fi
 fi
 
@@ -479,12 +476,12 @@ if [ $IPMI -eq 1 ]; then
          enstore alarm --raise --severity "A" --root-error "$msg"
       fi
    elif [ $QUIET -ne 1 ]; then
-      logit  "ipmisrv running, ok"
+      logit "ipmisrv running, ok"
    fi
 
    # check that watchdog timer action is to do nothing
    ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
-   if [  $ACTION != "00"  ];then
+   if [ $ACTION != "00" ];then
       msg="watchdog action is $ACTION. Should be 00"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
@@ -493,7 +490,7 @@ if [ $IPMI -eq 1 ]; then
       # disable the action
       /home/enstore/ipmi/dogdisarm
    elif [ $QUIET -ne 1 ]; then
-      logit  "watchdog action, ok"
+      logit "watchdog action, ok"
    fi
 fi
 
@@ -503,9 +500,9 @@ NPROC=`$PS axu|wc -l | $SED -e 's/ //g'`
 if [ `$ECHO $node | $EGREP -c dca` -eq 1 ]; then
     maxproc=300  # disk cache
 elif [ `$ECHO $node | $EGREP -c mvr` -eq 1 ]; then
-    maxproc=100  #movers
-else 
-    maxproc=200  #servers
+    maxproc=100  # movers
+else
+    maxproc=200  # servers
 fi
 
 if [ $NPROC -ge $maxproc ]; then
@@ -515,7 +512,7 @@ if [ $NPROC -ge $maxproc ]; then
      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
 elif [ $QUIET -ne 1 ]; then
-   logit  "$NPROC processes, ok"
+   logit "$NPROC processes, ok"
 fi
 
 
@@ -529,16 +526,16 @@ if [ `$PS axuwww|$EGREP python|$EGREP -v 'grep'|$EGREP -c 'file_clerk.py|volume_
          enstore alarm --raise --severity "A" --root-error "$msg"
        fi
      elif [ $QUIET -ne 1 ]; then
-       logit  "$need running, ok"
+       logit "$need running, ok"
      fi
    done
 elif [ $QUIET -ne 1 ]; then
-  logit  "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
+  logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
 fi
 
 # web servers need to be running on certain nodes.
 case $node in
-  rip7|cdfensrv2|d0ensrv2|stkensrv2|cdfendca3|stkendca3a)
+  rip7|d0ensrv2|stkensrv2|cdfensrv2|d0endca3a|stkendca3a)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -eq 0 ]; then
        msg="httpd Web server not running"
        logit "$msg"
@@ -546,7 +543,7 @@ case $node in
          enstore alarm --raise --severity "A" --root-error "$msg"
        fi
     elif [ $QUIET -ne 1 ]; then
-       logit  "httpd web server running, ok"
+       logit "httpd web server running, ok"
     fi
     ;;
   *)
@@ -557,7 +554,7 @@ case $node in
          enstore alarm --raise --severity "A" --root-error "$msg"
        fi
     elif [ $QUIET -ne 1 ]; then
-       logit  "httpd web server not running, ok"
+       logit "httpd web server not running, ok"
     fi
     ;;
 esac
@@ -575,12 +572,12 @@ netscan_n2=/tmp/netscan_n2
 rm -f $netscan_n1
 rm -f $netscan_n2
 #N1=`$LSOF -i TCP -i UDP`
-$LSOF -i TCP -i UDP> $netscan_n1
-PSfirst=`$PS wwwwfaxu`
+$LSOF -i TCP -i UDP > $netscan_n1
+PSfirst=`$PS afxuwwww`
 #N2=`$LSOF -i TCP -i UDP`
 $LSOF -i TCP -i UDP > $netscan_n2
 #N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
-N=`$CAT $netscan_n1 $netscan_n2|$SORT|$UNIQ -d`
+N=`$SORT $netscan_n1 $netscan_n2 | $UNIQ -d`
 
 
 # scan open files and check if allowed
@@ -600,7 +597,6 @@ $ECHO "$N" | while read command pid rest; do
 done
 
 
-
 #+++++++++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
 
 # check that farmlets match
@@ -609,10 +605,9 @@ if [ $gang != "rip" ]; then
   if [ $? -ne 0 ]; then
      logit "$msg"
   elif [ $QUIET -ne 1 ]; then
-     logit  "$msg"
+     logit "$msg"
   fi
 fi
-
 
 
 logit "netscan finished"
