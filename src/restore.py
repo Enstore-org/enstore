@@ -181,15 +181,17 @@ if __name__ == "__main__":		# main
 	print "cd "+dbHome
 
 	# save the current (bad?) database
+	print "Save current (bad?) database files ..."
 	for i in dbs:
 		cmd = "mv "+i+" "+i+".saved"
-		try:	# if doesn't succeed, never mind
+		try:	# if it doesn't succeed, never mind
 			os.system(cmd)
 			print cmd
 		except:
 			pass
 
 	# save all log.* files
+	print "Save current (bad?) log files"
 	cmd = "ls -1 log.*"
 	logs = os.popen(cmd).readlines()
 	for i in logs:
@@ -200,7 +202,7 @@ if __name__ == "__main__":		# main
 
 	# get the database file from the backup
 
-	print "Getting database file from backup"
+	print "Retriving database file from backup ("+bckHost+":"+bckHome+")"
 	cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
 	print cmd
 	os.system(cmd)
@@ -218,7 +220,7 @@ if __name__ == "__main__":		# main
 	os.chdir(jouHome)
 	print "cd "+jouHome
 
-	print "Retriving journal files"
+	print "Retriving journal files from backup ("+bckHost+":"+bckHome+")"
 	for i in dbs:
 		cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/"+i+\
 			".tar bs=20b | tar xvBfb - 20 '"+i+".jou*'"
