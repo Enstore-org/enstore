@@ -22,7 +22,7 @@ class GenericAlarm:
         self.timedate = time.time()
         self.host = ""
         self.pid = -1
-        self.uid = -1
+        self.uid = ""
         self.source = "None"
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
@@ -64,7 +64,7 @@ class GenericAlarm:
                                 self.short_text(), "\n"))
         else:    
             return string.join((repr(self.timedate), \
-                                self.host, repr(self.pid), repr(self.uid), \
+                                self.host, repr(self.pid), self.uid, \
                                 e_errors.sevdict[self.severity], self.source, \
                                 self.root_error, rest, "\n"))
 
@@ -119,7 +119,7 @@ class AsciiAlarm(GenericAlarm):
         self.timedate = string.atof(fields[0])
         self.host = fields[1]
         self.pid = string.atoi(fields[2])
-        self.uid = string.atoi(fields[3])
+        self.uid = fields[3]
         keys = e_errors.sevdict.keys()
         for key in keys:
             if e_errors.sevdict[key] == fields[4]:
