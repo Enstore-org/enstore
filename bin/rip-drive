@@ -27,10 +27,10 @@ case $drive in
   dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
   dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5n $command 2>&1; echo \$?'" ;;
   dc12) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d6n $command 2>&1; echo \$?'" ;;
-  de13) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
-  de15) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d3n $command 2>&1; echo \$?'" ;;
-  de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d4n $command 2>&1; echo \$?'" ;;
+  de13) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d1n $command 2>&1; echo \$?'" ;;
+  de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d2n $command 2>&1; echo \$?'" ;;
+  de15) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d3n $command 2>&1; echo \$?'" ;;
+  de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps0d4n $command 2>&1; echo \$?'" ;;
 esac
 cmd2="x=\"\`$cmd\`\""
 echo $cmd
