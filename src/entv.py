@@ -431,59 +431,75 @@ def handle_messages(display, intf):
     global stop_now
 
     # we will get all of the info from the event relay.
-    if intf.movers_file:
-        erc = event_relay_client.EventRelayClient(event_relay_host="localhost")
+    if intf.commands_file:
+        #erc = event_relay_client.EventRelayClient(event_relay_host="localhost")
+        commands_file = open(intf.commands_file, "r")
     else:
         erc = event_relay_client.EventRelayClient()
-    erc.start([event_relay_messages.ALL,])
-    erc.subscribe()
+        erc.start([event_relay_messages.ALL,])
+        erc.subscribe()
 
     start = time.time()
     count = 0
 
     while not display.stopped and not stop_now:
 
-        #test whether there is a command ready to read, timeout in
-        # 1 second.
-        try:
-            readable, junk, junk = select.select([erc.sock], [], [], 1)
-        except select.error:
-            exc, msg, tb = sys.exc_info()
-            if msg.args[0] == errno.EINTR:
-                erc.unsubscribe()
-                erc.sock.close()
-                sys.stderr.write("Exiting early.\n")
-                sys.exit(1)
+        # If commands are listed, use 'canned' version of entv.
+        if intf.commands_file:
+            try:
+                command = string.join(commands_file.readline().split()[5:])
+            except IOError:
+                commands_file.close()
+                commands_file = open(intf.commands_file, "r")
+                continue
+        else:
+            #test whether there is a command ready to read, timeout in
+            # 1 second.
+            try:
+                readable, junk, junk = select.select([erc.sock], [], [], 1)
+            except select.error:
+                exc, msg, tb = sys.exc_info()
+                if msg.args[0] == errno.EINTR:
+                    erc.unsubscribe()
+                    erc.sock.close()
+                    sys.stderr.write("Exiting early.\n")
+                    sys.exit(1)
 
-        #If nothing received for 60 seconds, resubscribe.
-        if count > 60:
-            erc.subscribe()
-            count = 0
-        count = count + 1            
-        if not readable:
-            continue
+            #If nothing received for 60 seconds, resubscribe.
+            if count > 60:
+                erc.subscribe()
+                count = 0
+            #Update counts and do it again.
+            count = count + 1          
+            if not readable:
+                continue
 
-        now = time.time()
-        for fd in readable:
+            #for fd in readable:
             msg = enstore_erc_functions.read_erc(erc)
+            #Take the message from (either from file or event relay).
             if msg and not getattr(msg, "status", None):
                 command="%s %s" % (msg.type, msg.extra_info)
-                Trace.trace(1, command)
-                display.queue_command(command)
-
             ##If read_erc is valid it is a EventRelayMessage instance. If
             # it gets here it is a dictionary with a status field error.
             elif getattr(msg, "status", None):
-                    Trace.trace(1, msg["status"])
+                Trace.trace(1, msg["status"])
 
+
+        #Process the command.
+        Trace.trace(1, command)
+        display.queue_command(command)
+
+        #If necessary, handle resubsribing.
+        now = time.time()
         if now - start > TEN_MINUTES:
             # resubscribe
             erc.subscribe()
             start = now
 
     #End nicely.
-    erc.unsubscribe()
-    erc.sock.close()
+    if not intf.commands_file:
+        erc.unsubscribe()
+        erc.sock.close()
 
 #########################################################################
 #  Interface class
@@ -504,6 +520,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         self.dont_show = ""
         self.verbose = 0
         self.movers_file = ""
+        self.commands_file = ""
         generic_client.GenericClientInterface.parse_options(self)
         
         #Setup the necessary cache global variables.
@@ -515,6 +532,12 @@ class EntvClientInterface(generic_client.GenericClientInterface):
             Trace.do_print(x)
     
     entv_options = {
+        option.COMMANDS_FILE:{option.HELP_STRING:
+                              "use 'canned' version of entv",
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_LABEL:"commands_file",
+                              option.USER_LEVEL:option.ADMIN,},
         option.DONT_SHOW:{option.HELP_STRING:"don't display the movers that"
                           " belong to the specified library manager(s).",
                           option.VALUE_USAGE:option.REQUIRED,

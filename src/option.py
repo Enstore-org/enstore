@@ -136,6 +136,7 @@ CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume
 CLEAN_DRIVE = "clean-drive"                  #mover
 CLEAR = "clear"                              #volume
+COMMANDS_FILE = "commands-file"              #entv
 CONFIG_FILE = "config-file"                  #configuration(c&s)
 CONST = "const"                              #pnfs
 COUNTERS = "counters"                        #pnfs
@@ -312,7 +313,8 @@ TEST = "test"                                #option
 valid_option_list = [
     ADD, ALIVE, ALL, ASSIGN_SG,
     BACKUP, BFID, BFIDS, BYPASS_LABEL_CHECK,
-    CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
+    CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR,
+    COMMANDS_FILE, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
