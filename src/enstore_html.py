@@ -16,7 +16,6 @@ import e_errors
 import enstore_constants
 import mover_constants
 import volume_family
-import safe_dict
 
 import rexec
 _rexec = rexec.RExec()
@@ -352,7 +351,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
     # generate the body of the file
     def body(self, data_dict):
 	# this is the data we will output
-	self.data_dict = safe_dict.SafeDict(data_dict)
+	self.data_dict = data_dict
 	# create the outer table and its rows
 	table = self.table_top()
 	table.append(empty_row())
@@ -501,8 +500,8 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
 	moverd = self.data_dict.get(mover, {})
 	if moverd:
 	    # we may have gotten an error when trying to get it, 
-	    # so look for a piece of it.  
-	    if moverd.has_key(enstore_constants.STATE) or \
+	    # so look for a piece of it.  (efb used to be 'or')
+	    if moverd.has_key(enstore_constants.STATE) and \
 	       moverd[enstore_constants.STATE]:
 		# get the first word of the mover state, we will use this to
 		# tell if this is a bad state or not
@@ -597,7 +596,7 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
     # generate the body of the file
     def body(self, data_dict):
 	# this is the data we will output
-	self.data_dict = safe_dict.SafeDict(data_dict)
+	self.data_dict = data_dict
 	# create the outer table and its rows
 	table = self.table_top()
 	table.append(empty_row())
@@ -649,7 +648,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	self.ff = {}
 	# additional pending elements for a vol in r_vols
 	self.vols = {}
-        if not self.data_dict[enstore_constants.WORK]:
+	if not self.data_dict.has_key(enstore_constants.WORK) or \
+	   not self.data_dict[enstore_constants.WORK]:
             # nothing to do
             return
 	# parse work at movers queue
@@ -667,19 +667,20 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 			self.w_ff.append(self.write_q_list(mover))
 			self.ff[mover[enstore_constants.FILE_FAMILY]] = []
 	# parse the pending read queue
-	for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.READ]:
-	    if self.vols.has_key(mover[enstore_constants.DEVICE]):
-		self.vols[mover[enstore_constants.DEVICE]].append(self.read_q_list(mover))
-	    else:
-		self.r_vols.append(self.read_q_list(mover))
-		self.vols[mover[enstore_constants.DEVICE]] = []
-	# parse the write pending queue
-	for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.WRITE]:
-	    if self.ff.has_key(mover[enstore_constants.FILE_FAMILY]):
-		self.ff[mover[enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
-	    else:
-		self.w_ff.append(self.write_q_list(mover))
-		self.ff[mover[enstore_constants.FILE_FAMILY]] = []
+	if self.data_dict.has_key(enstore_constants.PENDING):
+	    for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.READ]:
+		if self.vols.has_key(mover[enstore_constants.DEVICE]):
+		    self.vols[mover[enstore_constants.DEVICE]].append(self.read_q_list(mover))
+		else:
+		    self.r_vols.append(self.read_q_list(mover))
+		    self.vols[mover[enstore_constants.DEVICE]] = []
+	    # parse the write pending queue
+	    for mover in self.data_dict[enstore_constants.PENDING][enstore_constants.WRITE]:
+		if self.ff.has_key(mover[enstore_constants.FILE_FAMILY]):
+		    self.ff[mover[enstore_constants.FILE_FAMILY]].append(self.write_q_list(mover))
+		else:
+		    self.w_ff.append(self.write_q_list(mover))
+		    self.ff[mover[enstore_constants.FILE_FAMILY]] = []
 
     def read_row(self, elem, print_device=0):
 	tr = HTMLgen.TR()
@@ -855,7 +856,8 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 						   colspan=LM_COLS)))
 
     def other_vol_info(self, table):
-	if not self.data_dict[enstore_constants.ACTIVE_VOLUMES]:
+	if not self.data_dict.has_key(enstore_constants.ACTIVE_VOLUMES) or \
+	   not self.data_dict[enstore_constants.ACTIVE_VOLUMES]:
 	    # nothing to do
 	    return
 	other_mv = {}
@@ -907,7 +909,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Suspect%sVolumes%s:%s"%(NBSP,
 							     NBSP, NBSP), html_escape='OFF'),
 						color=BRICKRED, size="+1")))
-	vols = self.data_dict[enstore_constants.SUSPECT_VOLS]
+	vols = self.data_dict.get(enstore_constants.SUSPECT_VOLS, ['None'])
 	if vols == ['None'] or vols == {}:
 	    pass
 	else:
@@ -941,7 +943,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
     # generate the body of the file
     def body(self, data_dict):
 	# this is the data we will output
-	self.data_dict = safe_dict.SafeDict(data_dict)
+	self.data_dict = data_dict
 	# create the outer table and its rows
 	table = self.table_top(cols=LM_COLS)
 	table.cellpadding=3
@@ -970,7 +972,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
     # create the suspect volume row - it is a separate table
     def suspect_volume_row(self):
 	# format the suspect volumes, 3 to a row
-	vols = self.data_dict[enstore_constants.SUSPECT_VOLS]
+	vols = self.data_dict.get(enstore_constants.SUSPECT_VOLS, ['None'])
 	vol_str = ""
 	ctr = 0
 	if vols == ['None'] or vols == {}:
@@ -1366,7 +1368,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # information
     def generic_server_rows(self, table):
 	for server in enstore_constants.GENERIC_SERVERS:
-	    if self.data_dict[server]:
+	    if self.data_dict.has_key(server) and self.data_dict[server]:
 		if self.not_being_monitored(server):
 		    self.unmonitored_servers.append(self.server_row(server))
 		else:
@@ -1478,6 +1480,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	extra_write_rows = []
 	filename = "%s_%s.html"%(lm, enstore_constants.PENDING)
 	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
+	qlen = 0
 	# do the read queue first
 	if the_work and type(the_work) == types.DictionaryType:
 	    if not the_work[enstore_constants.READ] == []:
@@ -1533,10 +1536,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	table_rows = []
 	cols = 5
 	# first the alive information
-	lm_d = self.data_dict[lm]
+	lm_d = self.data_dict.get(lm, {})
 	# if we are updating the web page faster that receiving the new
 	# info, then we already have a correct status
-	if string.find(lm_d[enstore_constants.STATUS][0], NBSP) == -1:
+	if lm_d and string.find(lm_d[enstore_constants.STATUS][0], NBSP) == -1:
 	    if lm_d.has_key(enstore_constants.LMSTATE) and \
 	       lm_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		# append the lm state to the status information
@@ -1594,7 +1597,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     def mover_row(self, server):
 	# this is a mover. output its info
-	mover_d = self.data_dict[server]
+	mover_d = self.data_dict.get(server, {})
 	name = self.server_url(server, enstore_functions.get_mover_status_filename(),
 			       server)
 	if mover_d.has_key(enstore_constants.STATE) and \
@@ -1657,7 +1660,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # generate the body of the file
     def body(self, data_dict):
 	# this is the data we will output
-	self.data_dict = safe_dict.SafeDict(data_dict)
+	self.data_dict = data_dict
 	# create the outer table and its rows
 	table = self.table_top()
 	table.append(HTMLgen.TR(HTMLgen.TD(self.shortcut_table())))

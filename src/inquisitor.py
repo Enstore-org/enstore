@@ -30,7 +30,6 @@ import enstore_files
 import enstore_functions
 import enstore_constants
 import www_server
-import safe_dict
 import volume_family
 import option
 
@@ -548,7 +547,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lib_man, time):
 	try:
-	    state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
+	    state = lib_man.client.get_suspect_volumes()
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
 								   detail)
@@ -690,7 +689,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
 	try:
-	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getworks_sorted())
+	    self.lm_queues[lib_man.name] = lib_man.client.getworks_sorted()
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -719,8 +718,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager active_volumes and output it
     def active_volumes(self, lib_man, time):
 	try:
-	    ticket = safe_dict.SafeDict(lib_man.client.get_active_volumes(self.alive_rcv_timeout,
-									  self.alive_retries))
+	    ticket = lib_man.client.get_active_volumes(self.alive_rcv_timeout,
+						       self.alive_retries)
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -748,8 +747,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
 	try:
-	    state = safe_dict.SafeDict(lib_man.client.get_lm_state(self.alive_rcv_timeout,
-								   self.alive_retries))
+	    state = lib_man.client.get_lm_state(self.alive_rcv_timeout,
+						self.alive_retries)
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -788,8 +787,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the mover
     def update_mover(self, mover):
-        self.mover_state[mover.name] = safe_dict.SafeDict(mover.client.status(self.alive_rcv_timeout, 
-						       self.alive_retries))
+        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout, 
+							   self.alive_retries)
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "get new state from %s"%(mover.name,))
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
