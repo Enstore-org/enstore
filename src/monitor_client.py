@@ -29,11 +29,16 @@ import log_client
 MY_NAME = "MNTR_CLI"
 MY_SERVER = "monitor"
 
+SEND_TO_SERVER = "send_to_server"
+SEND_FROM_SERVER = "send_from_server"
+
 class MonitorServerClient(generic_client.GenericClient):
 
     def __init__( self, csc,
                   monitor_server_addr,
                   html_server_addr,
+                  html_dir,
+                  refresh,
                   timeout,
                   block_size,
                   block_count,
@@ -41,6 +46,8 @@ class MonitorServerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
         self.monitor_server_addr = monitor_server_addr
         self.html_server_addr = html_server_addr
+        self.html_dir = html_dir
+        self.refresh = refresh
         self.timeout = timeout
         self.block_size = block_size
         self.block_count = block_count
@@ -85,10 +92,10 @@ class MonitorServerClient(generic_client.GenericClient):
             write_measurement = self.u.recv_deferred(send_id, timeout = 30)
 
             #Since the direction data is being sent influences which rate
-            # we care about, pick the correct one.
-            if transfer == "send_to_server":
+            # we care about, pick the correct one. (The other is bogus anyway.)
+            if transfer == SEND_TO_SERVER:
                 reply = write_measurement
-            elif transfer == "send_from_server":
+            elif transfer == SEND_FROM_SERVER:
                 reply = read_measurment
             else:
                 reply['status'] = ('INVALIDACTION', "failed to simulate encp")
@@ -103,7 +110,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
     # ping a server like ENCP would
     def _simulate_encp_transfer(self, ticket):
-        reply = {'status'     : ('ok', None),
+        reply = {'status'     : (None, None),
                  'block_size' : ticket['block_size'],
                  'block_count': ticket['block_count']}
         
@@ -128,7 +135,7 @@ class MonitorServerClient(generic_client.GenericClient):
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         #Since we are recieving the data, recording the time is important.
-        if ticket['transfer'] == "send_from_server":
+        if ticket['transfer'] == SEND_FROM_SERVER:
             data=data_socket.recv(1)
             if not data:
                 raise "Server closed connection"
@@ -141,17 +148,16 @@ class MonitorServerClient(generic_client.GenericClient):
                 bytes_received=bytes_received+len(data)
             reply['elapsed']=time.time()-t0
         #When sending, the time isn't important.
-        elif ticket['transfer'] == "send_to_server":
+        elif ticket['transfer'] == SEND_TO_SERVER:
             sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
                 data_socket.send(sendstr)
             reply['elapsed'] = -1
 
-        #Set the ticket info into a variable in the class.  The return
-        # value is left for future uses, even though the value is returned
-        # to nowwhere.  Hence, storing it inside self.measurement so it is
-        # still accessable.        
-        self.measurement = reply
+        #If we get here, the status is ok.
+        reply['status'] = ('ok', None)
+
+        #Return the reply.
         return reply
 
     #Take the elapsed time and the amount of data sent/recieved and calculate
@@ -183,16 +189,12 @@ class MonitorServerClient(generic_client.GenericClient):
         #pack the info.
         ticket = {
             'work' : 'recieve_measurement',
-            
+            'refresh' : self.refresh,
             'measurement': (
             enstore_functions.format_time(time.time()),
             enstore_functions.strip_node(callback_addr),
             enstore_functions.strip_node(remote_addr),
-#            self.block_count,
-#            self.block_size,
-#            "%.4g" % (read_measurement['elapsed'],),
             "%.4g" % (read_measurement['rate'],),
-#            "%.4g" % (write_measurement['elapsed'],),
             "%.4g" % (write_measurement['rate'],)
             )}
 
@@ -202,7 +204,9 @@ class MonitorServerClient(generic_client.GenericClient):
     def flush_measurements(self):
         reply = self._send_measurement (
             {
-            'work' : 'flush_measurements'
+            'work'   : 'flush_measurements',
+            'dir'    : self.html_dir,
+            'refresh': self.refresh
             }
             )
 
@@ -345,8 +349,10 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
                 print "Trying", host, 
             msc = MonitorServerClient(
                 (config_host, config_port),
-                (ip,                      config['port']),
-                (config['html_gen_host'], config['port']),
+                (ip,                      enstore_constants.MONITOR_PORT),
+                (config['html_gen_host'], enstore_constants.MONITOR_PORT),
+                config['html_dir'],
+                config['refresh'],
                 config['default_timeout'],
                 config['block_size'],
                 config['block_count'],
@@ -356,15 +362,23 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             #Test rate sending from the server.  The rate info for read time
             # information is stored in msc.measurement.
             read_measurement = msc.monitor_one_interface(
-                (ip, config['port']),"send_from_server")
-            read_rate = msc.calculate_rate(msc.measurement)
+                (ip, enstore_constants.MONITOR_PORT), SEND_FROM_SERVER)
+            if read_measurement['status'] == ('ok', None):
+                read_rate = msc.calculate_rate(read_measurement)
+            else:
+                read_rate = {'elapsed':0, 'rate':0,
+                             'status':('READ_ERROR', None)}
         
             #Test rate sending to the server.  Since, the time is recorded on
             # the other end use the value returned, and not the one stored
             # in msc.measurement (which is for read info).
             write_measurement = msc.monitor_one_interface(
-                (ip, config['port']),"send_to_server")
-            write_rate = msc.calculate_rate(write_measurement)
+                (ip, enstore_constants.MONITOR_PORT), SEND_TO_SERVER)
+            if write_measurement['status'] == ('ok', None):
+                write_rate = msc.calculate_rate(write_measurement)
+            else:
+                write_rate = {'elapsed':0, 'rate':0,
+                             'status':('WRITE_ERROR', None)}
 
             #Send the information to the html server node.
             msc.send_measurement(read_rate, write_rate)
@@ -375,27 +389,21 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
             
         if msc:
             msc.flush_measurements()
-
+            msc.c_socket.close()
+            
         # add the name of the html file that will be created
         summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
     else:
         # there was nothing about the monitor server in the config file
         summary_d = {}
 
-    #Should close the socket opened in __init__ to listen for the
-    # TCP/IP SOCK_STREAM connections the rate tests use.
-    try:
-        msc.c_socket.close()
-    except:
-        pass
-    
     return summary_d
 
 # we need this in order to be called by the enstore.py code
 def do_work(intf):
     #First create an instance that can handle generic commands.
     msc = MonitorServerClient((intf.config_host, intf.config_port),
-                              None, None, None, None, None, None)
+                              None, None, None, None, None, None, None, None)
     #If there are no generic commands, then do real work.
     if not msc.handle_generic_commands(intf.name, intf):
         do_real_work(intf.summary, intf.config_host, intf.config_port,

@@ -11,7 +11,6 @@ import socket
 import traceback
 import pprint
 import time
-import enstore_functions
 
 # enstore imports
 import dispatching_worker
@@ -27,6 +26,7 @@ import enstore_files
 import configuration_client
 import timeofday
 import enstore_constants
+import enstore_functions
 import udp_client
 
 """
@@ -54,9 +54,12 @@ IP address stored in the configuration item "html_gen_host"
 
 MY_NAME = "MNTR_SRV"
 
+SEND_TO_SERVER = "send_to_server"
+SEND_FROM_SERVER = "send_from_server"
+
 class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
-    def __init__(self, csc, html_dir, html_refresh_time):
+    def __init__(self, csc):
 	self.running = 0
 	self.print_id = MY_NAME
         print "Monitor Server at %s %s" %(csc[0], csc[1])
@@ -64,8 +67,6 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             "Monitor Server at %s %s" %(csc[0], csc[1]))
         dispatching_worker.DispatchingWorker.__init__(self, csc)
 
-        self.html_dir = html_dir
-        self.html_refresh_time = html_refresh_time
 	self.running = 1
 
         # always nice to let the user see what she has
@@ -73,10 +74,14 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.page = None
 
     def simulate_encp_transfer(self, ticket):
+        reply = {'status'     : (None, None),
+                 'block_size' : ticket['block_size'],
+                 'block_count': ticket['block_count']}
+        
         #simulate mover connecting on callback and a read_from_HSM transfer
         data_ip = ticket['remote_interface'] ## XXX this is a silly name
-                                                                  ## because it's not "remote" on this end
-                                                                  ## Sigh...
+                                             ## because it's not "remote"
+                                             ## on this end.  Sigh...
 
         localhost, localport, listen_sock = callback.get_callback(ip=data_ip)
         listen_sock.listen(1)
@@ -98,13 +103,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         #When sending, the time isn't important.
-        if ticket['transfer'] == "send_from_server":
+        if ticket['transfer'] == SEND_FROM_SERVER:
             sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
                 data_sock.send(sendstr)
-            ticket['elapsed'] = -1
+            reply['elapsed'] = -1
         #Since we are recieving the data, recording the time is important.
-        elif ticket['transfer'] == "send_to_server":
+        elif ticket['transfer'] == SEND_TO_SERVER:
             data=data_sock.recv(1)
             if not data:
                 raise "Server closed connection"
@@ -115,33 +120,31 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                 if not data: #socket is closed
                     raise "Server closed connection"
                 bytes_received=bytes_received+len(data)
-            ticket['elapsed']=time.time()-t0
+            reply['elapsed']=time.time()-t0
 
-        ticket['status'] = ('ok', None)
-        self.reply_to_caller(ticket)
+        reply['status'] = ('ok', None)
+        self.reply_to_caller(reply)
         data_sock.close()
 
-    def _become_html_gen_host(self):
+    def _become_html_gen_host(self, ticket):
         #setup for HTML output if we are so stimulated by a client
         #self.page is None if we have not setup.
         if not self.page:
             self.page = enstore_html.EnActiveMonitorPage(
                 ["Time", "user IP", "Enstore IP",
-#                 "Blocks", "Bytes/Block", "Read Time", "Write Time",
-                 "Read Rate (MB/S)", "Write Rate (MB/S)"],
-                self.html_refresh_time)
+                 "Read Rate (MB/S)", "Write Rate (MB/S)"], ticket['refresh'])
         else:
             pass #have already set up
 
     def recieve_measurement(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
-        self._become_html_gen_host() #setup for making html
+        self._become_html_gen_host(ticket) #setup for making html
         self.page.add_measurement(ticket["measurement"])
 
     def flush_measurements(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
-        self._become_html_gen_host()
-        file = enstore_files.EnFile("%s/%s"%(self.html_dir, 
+        self._become_html_gen_host(ticket)
+        file = enstore_files.EnFile("%s/%s"%(ticket['dir'], 
 					     enstore_constants.NETWORKFILE))
         file.open()
         file.write(str(self.page))
@@ -168,20 +171,9 @@ if __name__ == "__main__":
     import sys
 
     intf = MonitorServerInterface()
-    csc = configuration_client.ConfigurationClient((intf.config_host,
-                                                    intf.config_port))
-    config = csc.get('monitor')
 
-    #If the command line is specified, then
-    if intf.html_dir:
-        html_directory = intf.html_dir
-    else:
-        html_directory = config['html_dir']
+    ms = MonitorServer(('', enstore_constants.MONITOR_PORT))
 
-    ms = MonitorServer(('', config['port']),
-                       html_directory,
-                       config['refresh']
-                       )
     ms.handle_generic_commands(intf)
 
     while 1:
