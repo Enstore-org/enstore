@@ -40,6 +40,7 @@ class MonitoredServer:
 	self.start_time = time.time()
 	self.restart_failed = 0
 	self.did_restart_alarm = 0
+        self.state = NO_TIMEOUT
 	if not self.config.has_key(enstore_constants.ALIVE_INTERVAL):
 	    self.alive_interval = DEFAULT_ALIVE_INTERVAL
 	else:

@@ -472,8 +472,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		    break
 	return rtn
 
-    def ping_event_relay(self):
-	if self.event_relay.sent_own_alive == 2 or self.all_servers_timed_out():
+    def ping_event_relay(self, servers_timed_out):
+        if self.event_relay.sent_own_alive >= 2 or servers_timed_out:
 	    # we have sent several alive messages to the event relay and have gotten
 	    # nothing back.  mark it as dead
 	    self.mark_event_relay(DEAD)
@@ -490,8 +490,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     # maybe nothing else is running
     def check_event_message(self):
 	now = time.time()
-	if self.event_relay.doPing():
-	    self.ping_event_relay()
+        mongo_time_out = self.all_servers_timed_out()
+	if self.event_relay.doPing() or mongo_time_out:
+	    self.ping_event_relay(mongo_time_out)
 
     # examine each server we are monitoring to see if we have received an alive from
     # it recently (via the event relay)
