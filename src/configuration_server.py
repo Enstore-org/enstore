@@ -74,10 +74,22 @@ class ConfigurationDict(DispatchingWorker) :
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket) :
         self.config_exists()
-        try :
-            out_ticket = self.configdict[ticket["lookup"]]
+        # everything is based on lookup - make sure we have this
+        try:
+            key="lookup"
+            lookup = ticket[key]
         except KeyError:
-            out_ticket = {"status" : "Configuration Server: nosuchname"}
+            ticket["status"] = "Configuration Server: "+key+" key is missing"
+            pprint.pprint(ticket)
+            self.reply_to_caller(ticket)
+            return
+
+        # look up in our dictionary the lookup key
+        try :
+            out_ticket = self.configdict[lookup]
+        except KeyError:
+            out_ticket = {"status" : "Configuration Server: no such name: "\
+                          +repr(lookup)}
         self.reply_to_caller(out_ticket)
 
     # return a dump of the dictionary back to the user
