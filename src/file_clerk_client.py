@@ -173,7 +173,9 @@ class FileClient(generic_client.GenericClient, \
         workmsg=""
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk client tape_list, reading worklist")
+          #print msg
           if len(msg)==0:
+              #print "break"
               break
           workmsg = workmsg+msg
         worklist = ticket
@@ -236,7 +238,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 if __name__ == "__main__" :
     import sys
     Trace.init("FC client")
-    Trace.trace(1,"fcc called with args "+repr(sys.argv))
+    Trace.trace(6,"fcc called with args "+repr(sys.argv))
 
     # fill in interface
     intf = FileClerkClientInterface()
