@@ -1378,6 +1378,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     x = {'status' : (e_errors.TIMEDOUT, msg)}
                                     if addr == self.udp_control_address:
                                         # break a connection with get
+                                        self.nowork({})
                                         self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                                 else:
                                     x = {'status' : (str(exc), str(msg))}
@@ -2852,13 +2853,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         if encp_gone:
             self.current_location = self.tape_driver.tell()
             self.dismount_time = time.time() + self.delay
-            self.state = HAVE_BOUND
-            if self.maybe_clean():
-                Trace.trace(26,"cleaned")
-                self.state = IDLE
-                self.log_state()
-                self.tr_failed = 0
-                return
+            if self.state == IDLE:
+                pass
+            else:
+                self.state = HAVE_BOUND
+                if self.maybe_clean():
+                    Trace.trace(26,"cleaned")
+                    self.state = IDLE
+                    self.log_state()
+                    self.tr_failed = 0
+                    return
                 
         self.send_error_msg(error_info = (exc, msg),error_source=error_source)
         if not ftt_eio:
@@ -3819,6 +3823,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.current_volume:
                 vol = self.current_volume
                 vol_info = self.vol_info
+
                 self.dismount_volume(after_function=self.idle)
                 #self.unload_volume(self.vol_info, after_function=self.idle)
             else:
