@@ -165,7 +165,6 @@ if [ `echo $node | grep -c mvr` -eq 0 ]; then
   #now copy everything over to the cache
   echo enrcp $SPECIALE $CACHE/$d.`basename $SPECIALE`
        enrcp $SPECIALE $CACHE/$d.`basename $SPECIALE`
-  done
 
 fi
 
