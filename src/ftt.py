@@ -34,7 +34,9 @@ def raise_ftt():
     err=ftt_low.ftt_get_error()
     if err[1]!=0:
         raise FTTError(err)
-    
+    else:
+        raise FTTError(("Unspecified error", 0))
+
 def check(r, e=-1):
     if type(e) is not type(()):
         e=(e,)
