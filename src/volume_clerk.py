@@ -778,7 +778,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if use_exact_match:
             if not vol or len(vol) == 0:
                 # nothing was available at all
-                msg="Volume Clerk: no new volumes available"
+                msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
+								       vol_fam)
                 ticket["status"] = (e_errors.NOVOLUME, msg)
                 Trace.log(e_errors.ERROR,msg)
                 self.reply_to_caller(ticket)
@@ -853,7 +854,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # nothing was available at all
-        msg="Volume Clerk: no new volumes available"
+        msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
+							       vol_fam)
         ticket["status"] = (e_errors.NOVOLUME, msg)
         Trace.log(e_errors.ERROR,msg)
         self.reply_to_caller(ticket)
