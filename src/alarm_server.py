@@ -5,6 +5,7 @@ import os
 import string
 
 # enstore imports
+import setpath
 import dispatching_worker
 import interface
 import enstore_files
