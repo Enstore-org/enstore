@@ -21,7 +21,7 @@ Makefile.modules: Setup
 	if  [ "$(STK_DIR)"x = x ];  then grep -v STK Setup > x; mv x Setup; fi ;\
 	cp $(PYTHONLIB)/config/Makefile.pre.in . ; \
 	make -f Makefile.pre.in boot                    ; \
-        cp Makefile ../Makefile.modules
+	cp Makefile ../Makefile.modules
 
 Modules:
 	@echo "MAKING MODULES ================================"
