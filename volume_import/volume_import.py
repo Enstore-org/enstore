@@ -147,7 +147,7 @@ if __name__=="__main__":
         declared = first_access
         sum_wr_err = 0
         sum_rd_err = 0
-        sum_wr_access = nfiles+1
+        non_del_files = sum_wr_access = nfiles+1
         sum_rd_access = 0
         wrapper = vol["format"]
         blocksize = string.atoi(vol["blocksize"])
@@ -171,7 +171,8 @@ if __name__=="__main__":
                                   sum_wr_access,
                                   sum_rd_access,
                                   wrapper,
-                                  blocksize)
+                                  blocksize,
+                                  non_del_files)
 
         status = done_ticket["status"]
         if status[0] != "ok":
