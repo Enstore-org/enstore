@@ -1808,7 +1808,7 @@ def submit_one_request(ticket):
 
 #mode should only contain two values, "read", "write".
 def open_local_file(filename, e):
-    if e.mmap_io or e.ecrc:
+    if e.mmap_io:
         #If the file descriptor will be memory mapped, we need both read and
         # write permissions on the descriptor.
         #If (for reads only) the file is to have the crc rechecked, we
@@ -1818,8 +1818,13 @@ def open_local_file(filename, e):
         if e.outtype == "hsmfile": #writes
             flags = os.O_RDONLY
         else: #reads
-            flags = os.O_WRONLY
-
+            #Setting the local fd to read/write access on reads from enstore
+            # (writes to local file) should be okay.  The file is initially
+            # created with 0644 permissions and is not set to original file
+            # permissions until after everything else is set.  The read
+            # permissions might be needed later (i.e. --ecrc).
+            flags = os.O_RDWR
+    
     #On systems where O_DIRECT does exist we must set the value directly.
     # This must be done when the file is opened.  It doesn't work if it
     # is set by fcntl() later on.
