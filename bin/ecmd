@@ -67,56 +67,56 @@ case $cmd in
     ;;
 
   encp)
-    python $ENSTORE_DIR/src/encp.py                   --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/encp.py                   --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 
   config|econ)
-    python $ENSTORE_DIR/src/configuration_client.py   --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/configuration_client.py   --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 
   fcc)
-    python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
   bfids)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$config_host --config_port=$config_port --bfids $@
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --bfids $@
     stat=$?
     ;;
   bfid)
-    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$config_host --config_port=$config_port --bfid=$@
+    python $ENSTORE_DIR/src/file_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --bfid=$@
     stat=$?
     ;;
 
   vcc)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
   addvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$config_host --config_port=$config_port --addvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --addvol $@
     stat=$?
     ;;
   delvol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$config_host --config_port=$config_port --delvol $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --delvol $@
     stat=$?
     ;;
   vols)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$config_host --config_port=$config_port --vols $@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --vols $@
     stat=$?
     ;;
   vol)
-    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$config_host --config_port=$config_port --vol=$@
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$enstore_config_host --config_port=$enstore_config_port --vol=$@
     stat=$?
     ;;
 
   lmc)
-    python $ENSTORE_DIR/src/library_manager_client.py --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 
   mcc)
-    python $ENSTORE_DIR/src/media_changer_client.py --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/media_changer_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 
@@ -128,7 +128,7 @@ case $cmd in
 
 
   rddt|rawdriver-test)
-    python $ENSTORE_DIR/src/driver.py --config_host=$config_host --config_port=$config_port $@
+    python $ENSTORE_DIR/src/driver.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 

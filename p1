@@ -7,4 +7,4 @@ export ENSTORE_DIR=/bakken/bakken/enstore
 
 export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/willow.conf
 export ENSTORE_CONFIG_PORT=7510
-export ENSTORE_CONFIG_HOST=localhost
+export ENSTORE_CONFIG_HOST=pcfarm4.fnal.gov
