@@ -27,12 +27,46 @@ int main(int argc, char **argv)
     unsigned int crc;           /*used to hold the crc as it is updated*/
     long nb, rest, i;           /*loop control variables*/
     struct stat sb;             /*used with fstat()*/
-    int f;                      /*the file descriptor*/
+    int fd;                     /*the file descriptor*/
     char buf[BUF_SIZE];         /*the data buffer*/
     char abspath[PATH_MAX + 1]; /*used to hold program name*/
+    int c;                      /*used with getopt(3)*/
+    unsigned int adler32_seed = 0U; /*adler32 enstore seed value is zero*/
+    int use_hex = 0;            /*use hex output if true, otherwise decimal*/
+    int verbose = 0;            /*print out extra information*/
 
+    /* Loop through the options looking for valid switches. */
+    while((c = getopt(argc, argv, "01dhv")) != EOF)
+    {
+       switch(c)
+       {
+	  /* -0   This switch is to use 0 seed for adler32. (Enstore uses) */
+	  case '0':
+	     adler32_seed = 0U;
+	     break;
+	  /* -1   This switch is to use 1 seed for adler32. (standard) */
+	  case '1':
+	     adler32_seed = 1U;
+	     break;
+	  /* -d  This switch is to use decimal output for crc. */
+	  case 'd':
+	     use_hex = 0;
+	     break;
+	  /* -h  This switch is to use hexadecimal output for crc. */
+	  case 'h':
+	     use_hex = 1;
+	     break;
+	  /* -v  This switch is to display extra information. */
+	  case 'v':
+	     verbose = 1;
+	     break;
+	  default:
+	     break;
+       }
+    }
+    
     /*Make sure the user entered a file to check.*/
-    if( (argc < 1) || (!argv[1]) )
+    if(optind >= argc)
     {
         strncpy(abspath, argv[0], PATH_MAX);
 	printf("Usage %s <file_name>\n", basename(abspath));
@@ -40,14 +74,14 @@ int main(int argc, char **argv)
     }
     
     /*Check the file.*/
-    if((f = open(argv[1], O_RDONLY)) < 0)
+    if((fd = open(argv[optind], O_RDONLY)) < 0)
     {
-        printf("Unable to open file %s: %s\n", argv[1], strerror(errno));
+        printf("Unable to open file %s: %s\n", argv[optind], strerror(errno));
 	exit(1);
     }
-    if(fstat(f, &sb) < 0)
+    if(fstat(fd, &sb) < 0)
     {
-        printf("Unable to stat file %s: %s\n", argv[1], strerror(errno));
+        printf("Unable to stat file %s: %s\n", argv[optind], strerror(errno));
 	exit(1);
     }
     if(!(S_ISREG(sb.st_mode)))
@@ -59,24 +93,42 @@ int main(int argc, char **argv)
     /*Initialize values used looping through reading in the file.*/
     nb = sb.st_size / buf_size;
     rest = sb.st_size % buf_size;
-    crc = 0;
+    crc = adler32_seed;
 
     /*Print a begin message with relavent information.*/
-    printf("size %lld buf_size %ld blocks %ld rest %ld\n",
-	   (long long)sb.st_size, buf_size, nb, rest);
-
-    /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
-    for (i = 0;i < nb; i++){
-	read(f, buf, buf_size);
-	crc = adler32(crc, buf, buf_size);
-    }
-    if (rest){
-	read(f, buf, rest);
-	crc = adler32(crc, buf,rest);
+    if(verbose)
+    {
+       printf("size %lld buf_size %ld blocks %ld rest %ld\n",
+	      (long long)sb.st_size, buf_size, nb, rest);
     }
     
+    /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
+    for (i = 0; i < nb; i++){
+        if(read(fd, buf, buf_size) < 0)
+	{
+	    printf("Error reading file: %s\n", strerror(errno));
+	    exit(1);
+	}
+	crc = adler32(crc, buf, buf_size);
+    }
+    if (rest)
+    {
+        if(read(fd, buf, rest) < 0)
+	{
+	    printf("Error reading file: %s\n", strerror(errno));
+	    exit(1);
+	}
+	crc = adler32(crc, buf, rest);
+    }
+
+    /*Cleanup.*/
+    close(fd);
+    
     /*Print the caclulated CRC.*/
-    printf("CRC %u\n", crc);
+    if(use_hex)
+       printf("CRC %-x\n", crc);
+    else
+       printf("CRC %u\n", crc);
 
     return 0;
 }
