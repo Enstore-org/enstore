@@ -147,8 +147,8 @@ if __name__ == "__main__":		# main
 
 	# find backup host and path
 	backup_config = configuration_client.ConfigurationClient(
-		(interface.default_host(),
-		interface.default_port())).get('backup')
+		(intf.config_host,
+		intf.config_port)).get('backup')
 
 	local_host = socket.gethostname()
 	try:
