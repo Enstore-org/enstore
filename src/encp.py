@@ -38,12 +38,12 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
     command="if test -r "+unixfile+"; then echo ok; else echo no; fi"
     readable = os.popen(command,'r').readlines()
     if "ok\012" != readable[0] :
-        jraise(errno.errorcode[errno.EACCES],"encp.write_to__hsm: "\
+        jraise(errno.errorcode[errno.EACCES]," encp.write_to__hsm: "\
                +unixfile+", NO read access to file")
     statinfo = os.stat(unixfile)
     fsize = statinfo[stat.ST_SIZE]
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-        jraise(errno.errorcode[errno.EPERM],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EPERM]," encp.write_to_hsm: "\
                +unixfile+" is not a regular file")
     tinfo["filecheck"] = time.time() - t1
     if list:
@@ -55,18 +55,18 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
         print "Checking",pnfsfile, "   cum=",time.time()-t0
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
-        jraise(errno.errorcode[errno.EINVAL],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EINVAL]," encp.write_to_hsm: "\
                +pnfsfile+" is an invalid pnfs filename "\
                +" or maybe NO read access to file")
     if p.exists == pnfs.exists :
-        jraise(errno.errorcode[errno.EEXIST],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EEXIST]," encp.write_to_hsm: "\
                +pnfsfile+" already exists")
     if p.writable != pnfs.enabled :
-        jraise(errno.errorcode[errno.EACCES],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "\
                +pnfsfile+", NO write access to directory")
     running = p.check_pnfs_enabled()
     if running != pnfs.enabled :
-        jraise(errno.errorcode[errno.EACCES],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "\
                +"system disabled"+running)
     tinfo["pnfscheck"] = time.time() - t1
     if list:
@@ -148,7 +148,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
         tinfo["tot_to_send_ticket"] = t1 -t0
         ticket = u.send(ticket, (vticket['host'], vticket['port']))
         if ticket['status'] != "ok" :
-            jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: from "\
+            jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: from "\
                    +"u.send to " +p.library+" at "\
                    +vticket['host']+"/"+repr(vticket['port'])\
                    +", ticket[\"status\"]="+ticket["status"])
@@ -178,7 +178,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"] != "ok" :
-            jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
+            jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    +"1st (pre-file-send) mover callback on socket "\
                +repr(address)+", failed to setup transfer: "\
                +"ticket[\"status\"]="+ticket["status"],2)
@@ -303,7 +303,7 @@ def write_to_hsm(input, output, u, csc, logc, list, chk_crc) :
                               time.time()-t0)
 
     else :
-        jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
+        jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                +"2nd (post-file-send) mover callback on socket "\
                +repr(address)+", failed to transfer: "\
                +"done_ticket[\"status\"]="+done_ticket["status"])
@@ -319,79 +319,150 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    pnfsfile = input[0]
-    outfile = output[0]
-
-    # first check the input pnfs file - this will also provide the bfid
-    t1 =  time.time()
-    if list:
-        print "Checking",pnfsfile, "   cum=",time.time()-t0
-    p = pnfs.pnfs(pnfsfile)
-    if p.exists != pnfs.exists :
-        jraise(errno.errorcode[errno.ENOENT],"encp.read_from_hsm: "\
-               +pnfsfile+" does not exist")
-    running = p.check_pnfs_enabled()
-    if running != pnfs.enabled :
-        jraise(errno.errorcode[errno.EACCES],"encp.read_from_hsm: "\
-               +"system disabled"+running)
-    tinfo["pnfscheck"] = time.time() - t1
+    # create internal list of input files even if just 1 file passed in
     try:
-        (parked_node,parked_name) = eval(p.lastparked)
-        if list:
-            print "  Last parked on ",parked_node,parked_name
-    except:
+        ninput = len(input)
+        inputlist = input
+    except TypeError:
+        inputlist = [input]
+        ninput = 1
+
+    # can only handle 1 input file  copied to 1 output file
+    #  or      multiple input files copied to 1 output directory
+    # this is just the current policy - nothing fundamental about it
+    try:
+        noutput = len(output)
+        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+               "can not handle multiple output files: "+output)
+    except TypeError:
         pass
-        #print sys.exc_info()[0],sys.exc_info()[1]
-        #print p.lastparked
+
+    # if user specified multiple input files, then output must be a directory
+    outputlist = []
+    if ninput!=1:
+        try:
+            statinfo = os.stat(output[0])
+        except os.error:
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   "multiple input files can not be copied to non-existant "\
+                   +"directory "+output[0])
+        if not stat.S_ISDIR(statinfo[stat.ST_MODE]) :
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   "multiple input files must be copied to a directory, not "\
+                   +output[0])
+
+    bfid = []
+    file_size = []
+    pinfo = []
+    finfo = []
+    vinfo = []
+    volume = []
+
+    # first check the input pnfs files and get all info from pnfs that is needed
+    # if files don't exits, we bomb out to the user
+    if list:
+        print "Checking input files:",inputlist, "   cum=",time.time()-t0
+    t1 =  time.time()
+    for i in range(0,ninput):
+
+        # on reads, the file must exist in pnfs
+        p = pnfs.pnfs(input[i])
+        if p.exists != pnfs.exists :
+            jraise(errno.errorcode[errno.ENOENT]," encp.read_from_hsm: "\
+                   +inputlist[i]+" does not exist")
+
+        # input files can't be directories
+        if not stat.S_ISREG(p.pstat[stat.ST_MODE]) :
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   +input[i]+" is not a regular file")
+
+        # get the most important info and store into separate lists
+        bfid.append(p.bit_file_id)
+        file_size.append(p.file_size)
+
+        # get all the required pnfs info for the ticket
+        pinf = {}
+        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
+                   'major','minor','rmajor','rminor',\
+                   'mode','pstat' ] :
+            exec("pinf["+repr(k)+"] = p."+k)
+        pinfo.append(pinf)
+
+        # we need to check (just ?) once that the system is running
+        if i==0:
+            running = p.check_pnfs_enabled()
+            if running != pnfs.enabled :
+                jraise(errno.errorcode[errno.EACCES]," encp.read_from_hsm: "\
+                       +"system disabled"+running)
+
+    tinfo["pnfscheck"] = time.time() - t1
     if list:
         print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 
-    # Make sure we can open the unixfile. If we can't, we bomb out to user
-    # Note that the unix file remains open
-    t1 = time.time()
+
+    # Make sure we can open the unixfiles. If we can't, we bomb out to user
     if list:
-        print "Checking",outfile, "   cum=",time.time()-t0
-    try:
-        statinfo = os.stat(outfile)
-        itsthere = 1
-    except:
-        itsthere = 0
-    (machine, fullname, dir, basename) = fullpath(outfile)
-    if itsthere:
-        jraise(errno.errorcode[errno.EEXIST],"encp.read_to_hsm: "\
-               +fullname+" already exists")
-    command="if test -w "+dir+"; then echo ok; else echo no; fi"
-    writable = os.popen(command,'r').readlines()
-    if "ok\012" != writable[0] :
-        jraise(errno.errorcode[errno.EACCES],"encp.read_from__hsm: "\
-               +outfile+", NO write access to directory")
-    #f = open(outfile,"w")<-----------------------------------------------------moved later
+        print "Checking outputput files:",output, "   cum=",time.time()-t0
+    t1 = time.time()
+    for i in range(0,ninput):
+        outputlist.append(output[0])
+
+        # see if output file exists
+        try:
+            statinfo = os.stat(outputlist[i])
+            itexists = 1
+
+        # if output doesn't exist, then at least directory must exist
+        except os.error:
+            itexists = 0
+            (omachine, ofullname, odir, obasename) = fullpath(outputlist[i])
+            try:
+                statinfo = os.stat(odir)
+            except os.error:
+                jraise(errno.errorcode[errno.EEXIST]," encp.read_to_hsm: "\
+                       "base directory doesn't exist for "+outputlist[i])
+
+        # if output file exists, then it must be a directory
+        # note: removed from try block itexist=1 try block to isolate errors
+        if itexists:
+            if stat.S_ISDIR(statinfo[stat.ST_MODE]) :
+                (omachine, ofullname, odir, obasename) = fullpath(outputlist[i])
+                (imachine, ifullname, idir, ibasename) = fullpath(inputlist[i])
+                # take care of missing filenames (just directory)
+                if obasename=='.' or len(obasename)==0:
+                    outputlist[i] = odir+'/'+ibasename
+                else:
+                    outputlist[i] = ofullname+'/'+ibasename
+                (omachine, ofullname, odir, obasename) = fullpath(outputlist[i])
+            else:
+                jraise(errno.errorcode[errno.EEXIST]," encp.read_to_hsm: "\
+                       +outputlist[i]+" already exists")
+
+        # need to check that directory is writable
+        # since all files go to one output directory, one check is enough
+        if i==0:
+            command="if test -w "+odir+"; then echo ok; else echo no; fi"
+            writable = os.popen(command,'r').readlines()
+            if "ok\012" != writable[0] :
+                jraise(errno.errorcode[errno.EACCES]," encp.read_from__hsm: "\
+                       +" NO write access to directory"+odir)
     tinfo["filecheck"] = time.time() - t1
     if list:
+        print " ",outputlist
         print "  dt:",tinfo["filecheck"], "   cum=",time.time()-t0
 
     # store some local information as part of ticket
-    t1 = time.time()
     if list:
         print "Storing local info   cum=",time.time()-t0
 
-    # make the pnfs dictionary that will be part of the ticket
-    pinfo = {}
-    for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
-               'major','minor','rmajor','rminor',\
-               'mode','pstat' ] :
-        exec("pinfo["+repr(k)+"] = p."+k)
-
-    # let's save who's talking to us
+    t1 = time.time()
     uinfo = {}
     uinfo['uid'] = os.getuid()
-    uinfo['euid'] = os.geteuid()
     uinfo['gid'] = os.getgid()
-    uinfo['egid'] = os.getegid()
     uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
     uinfo['machine'] = os.uname()
-    uinfo['fullname'] = (machine,fullname)
+    uinfo['fullname'] = outputlist[0]
 
     tinfo["localinfo"] = time.time() - t1
     if list:
@@ -405,14 +476,14 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
-        print "  ",host,port,"dt:",tinfo["get_callback"], \
-              "   cum=",time.time()-t0
+        print " ",host,port
+        print "  dt:",tinfo["get_callback"], "   cum=",time.time()-t0
 
     # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
-              "pnfs_info"          : pinfo,
+              "pnfs_info"          : pinfo[0],
               "user_info"          : uinfo,
-              "bfid"               : p.bit_file_id,
+              "bfid"               : bfid[0],
               "sanity_size"        : 5000,
               "user_callback_port" : port,
               "user_callback_host" : host,
@@ -430,21 +501,39 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
         print "  ",fticket["host"],fticket["port"],"dt:",\
               tinfo["get_fileclerk"], "   cum=",time.time()-t0
 
-    # send work ticket to file clerk who sends it to right library manger
+    # call file clerk and get file info about each bfid
+    if list:
+        print "Calling file clerk for file info", "   cum=",time.time()-t0
     t1 = time.time()
+    for i in range(0,ninput):
+        binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
+                        (fticket['host'],fticket['port']))
+        if binfo['status']!='ok':
+            pprint.pprint(binfo)
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from__hsm: "\
+                   +" can not get info on bfid"+repr(bfid[i]))
+        vinfo.append(binfo['volume_clerk'])
+        finfo.append(binfo['file_clerk'])
+        volume.append(binfo['file_clerk']['external_label'])
+    tinfo['file_clerk'] =  time.time() - t1
+    if list:
+        print "  dt:",tinfo["file_clerk"], "   cum=",time.time()-t0
+
+    # send work ticket to file clerk who sends it to right library manger
     if list:
         print "Sending ticket to file clerk", "   cum=",time.time()-t0
+    t1 = time.time()
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
-        jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: from"\
+        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: from"\
                +"u.send to file_clerk at "+fticket['host']+"/"\
                +repr(fticket['port']) +", ticket[\"status\"]="\
                +ticket["status"])
     tinfo["send_ticket"] = time.time() - t1
     if list :
-        print "  Q'd:",p.pnfsFilename, ticket["bfid"], \
-              "bytes:",p.file_size, "on",\
-              ticket["external_label"],ticket["bof_space_cookie"],\
+        print "  Q'd:",inputlist[0], bfid[0], \
+              "bytes:",file_size[0], "on",\
+              finfo[0]["external_label"],finfo[0]["bof_space_cookie"],\
               "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
 
 
@@ -467,7 +556,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             control_socket.close()
     ticket = new_ticket
     if ticket["status"] != "ok" :
-        jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
+        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                +"1st (pre-file-read) mover callback on socket "\
                +repr(address)+", failed to setup transfer: "\
                +"ticket[\"status\"]="+ticket["status"])
@@ -488,7 +577,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
         print "Receiving data", "   cum=",time.time()-t0
     l = 0
     mycrc = 0
-    f = open(outfile,"w")
+    f = open(outputlist[0],"w")
     while 1:
         buf = data_path_socket.recv(65536*4)
         l = l + len(buf)
@@ -524,15 +613,16 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
 
         t1 = time.time()
-        if list:
-            print "Updating pnfs last parked", "   cum=",time.time()-t0
-        try:
-            p.set_lastparked(repr(uinfo['fullname']))
-        except:
-            print "Failed to update last parked info"
-        tinfo["last_parked"] = time.time()-t1
-        if list:
-            print "  dt:",tinfo["last_parked"], "   cum=",time.time()-t0
+        if 0:
+            if list:
+                print "Updating pnfs last parked", "   cum=",time.time()-t0
+            try:
+                p.set_lastparked(repr(uinfo['fullname']))
+            except:
+                print "Failed to update last parked info"
+            tinfo["last_parked"] = time.time()-t1
+            if list:
+                print "  dt:",tinfo["last_parked"], "   cum=",time.time()-t0
 
         tinfo["total"] = time.time()-t0
         done_ticket["tinfo"] = tinfo
@@ -543,7 +633,7 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             done_ticket["MB_per_S"] = 0.0
 
         if list:
-            print outfile, ":",fsize,"bytes",\
+            print outputlist[0], ":",fsize,"bytes",\
                   "copied from", done_ticket["external_label"], \
                   "in ",tinfo["total"],"seconds",\
                   "at",done_ticket["MB_per_S"],"MB/S", \
@@ -553,14 +643,14 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
 
         format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
                      "%s MB/S  requestor:%s     cum= %f"
-        logc.send(log_client.INFO, 2, format, p.pnfsFilename,
+        logc.send(log_client.INFO, 2, format, inputlist[0],
                               uinfo["fullname"], fsize,
                               done_ticket["external_label"], tinfo["total"],
                               done_ticket["MB_per_S"], uinfo["uname"],
                               time.time()-t0)
 
     else :
-        jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
+        jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                +"2nd (post-file-read) mover callback on socket "\
                +repr(address)+", failed to transfer: "\
                +"done_ticket[\"status\"]="+done_ticket["status"])
@@ -587,9 +677,15 @@ def fullpath(filename):
     command="(cd "+dir+";pwd)"
     try:
         dir = regsub.sub("\012","",os.popen(command,'r').readlines()[0])
-        return (machine, dir+"/"+file, dir, file)
+        filename = dir+"/"+file
     except:
-        return (machine, filename, dir, file)
+        pass
+
+    filename = regsub.sub("//","/",filename)
+    dir = regsub.sub("//","/",dir)
+    file = regsub.sub("//","/",file)
+
+    return (machine, filename, dir, file)
 
 ##############################################################################
 
@@ -650,34 +746,11 @@ if __name__  ==  "__main__" :
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)
 
     # get fullpaths to the files
-    machine = []
-    fullname = []
-    dir = []
-    basename = []
     p = []
     for i in range(0,arglen):
-        (xmachine, xfullname, xdir, xbasename) = fullpath(args[i])
-        machine.append(xmachine)
-        fullname.append(xfullname)
-        dir.append(xdir)
-        basename.append(xbasename)
-        args[i] = dir[i]+'/'+basename[i]
-        p.append(string.find(dir[i],"/pnfs/"))
-
-    # if in out syntax used, fix up output if basename missing or if '.'
-    if arglen==2:
-        if basename[1]=='.' or len(basename[1])==0:
-            basename[1] = basename[0]
-        else:
-            try:
-                statinfo = os.stat(args[1])
-                if stat.S_ISDIR(statinfo[stat.ST_MODE]) :
-                    dir[1] = dir[1]+'/'+basename[1]
-                    basename[1] = basename[0]
-            except:
-                pass
-        args[1] = dir[1]+'/'+basename[i]
-        p[1] = string.find(dir[1],"/pnfs/")
+        (machine, fullname, dir, basename) = fullpath(args[i])
+        args[i] = dir+'/'+basename
+        p.append(string.find(dir,"/pnfs/"))
 
     # all files on the hsm system have /pnfs/ as the 1st part of their name
     # scan input files for /pnfs - all have to be the same
@@ -694,8 +767,7 @@ if __name__  ==  "__main__" :
             sys.exit(1)
         else:
             input.append(args[i])
-    print input
-    print output
+
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
         write_to_hsm(input, output, u, csc, logc, list, chk_crc)
