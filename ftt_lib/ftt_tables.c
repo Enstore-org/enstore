@@ -733,6 +733,16 @@ static char LINUXfind[] =
 	fi; \
        done";
 
+static char LINUXrmtfind[] =
+    "IFS=\" \t\n\";\
+     PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
+     cat /proc/scsi/scsi | while read a b c d e f g h; do \
+        if [ \"$b\" = \"scsi%d\" -a \"$f\" = \"%02d\" ] ; then \
+	    read a b c d e f g h ;\
+	    echo $d; exit; \
+	fi; \
+       done";
+
 static char AIXfind[] =
     "IFS=\" \t\n\";\
      PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
@@ -841,6 +851,93 @@ static char Win32find_dev[] = "";
 
 
 ftt_dev_entry devtable[] = {
+    {"Linux", "DLT4", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "rmt/tps%dd%dn",    5,  0, 0x1A, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Other Densities */
+       { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    3,  0, 0x18, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    2,  0, 0x17, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    1,  0, 0x16, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    0,  0, 0x0A, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "DLT2", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Other Densities */
+       { "rmt/tps%dd%dn",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    0,  0, 0x0A, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    3,  0, 0x18, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    2,  0, 0x17, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    1,  0, 0x16, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "EXB-82", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "rmt/tps%dd%dn",     0,  0,  0,  0,  0,      0,    1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,      0,    1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%dn", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "EXB-85", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/tps%dd%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%dn", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
+       "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "rmt/tps%dd%dn",     0,  0,  0,  0,  0,  0,        1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,  0,        1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
     {"Linux", "DLT4", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
