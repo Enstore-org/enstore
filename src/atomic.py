@@ -4,6 +4,7 @@
 #
 
 import os
+import sys
 import stat
 import errno
 import delete_at_exit
@@ -32,14 +33,30 @@ def _open1(pathname,mode=0666):
 
 def _open2(pathname,mode=0666):
 
-    #tmpname = "%s-%s-%s" % (pathname, os.uname()[1], os.getpid())
+    #Create a unique temporary filename.
     tmpname = "%s_%s_%s_%s_%s_%s_%s_lock" % (
         os.uname()[1], os.getpid(), os.getuid(), os.getgid(),
         os.geteuid(), os.getegid(), time.ctime(time.time()).replace(" ", "_"))
     tmpname = os.path.join(os.path.dirname(pathname), tmpname)
-    
+
+    #Record encp to delete this temporary file on (failed) exit.
     delete_at_exit.register(tmpname)
-    fd_tmp = os.open(tmpname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
+
+    #Create and open the temporary file.
+    try:
+        fd_tmp = os.open(tmpname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
+    except OSError:
+        exc, msg, tb = sys.exc_info()
+        #If the newly created file exists, try opening it without the
+        # exclusive create.  This is probably a symptom of the O_EXCL
+        # race condition mentioned above.  Since, this is a unique filename
+        # two encps can not be attempting to create the temporary file
+        # simultaniously.  Thus, this error should be ignored; though any
+        # errors from this os.open() are real.
+        if hasattr(msg, "errno") and msg.errno == errno.EEXIST:
+            fd_tmp = os.open(tmpname, os.O_RDWR)
+        else:
+            raise exc, msg, tb
 
     ok = 0
     s = None #initalize
