@@ -305,6 +305,14 @@ class DispatchingWorker:
         self.reply_to_caller(ticket)
         Trace.trace(10,"}alive")
 
+    # quit instead of being killed
+    def quit(self,ticket):
+        Trace.trace(10,"{quit address="+repr(self.server_address))
+        ticket['address'] = self.server_address
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        os._exit(0)
+
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
         Trace.trace(20,'{done_cleanup '+repr(ticket))
