@@ -2075,6 +2075,9 @@ class File:
 
 	# set_size() -- set size in pnfs
 	def set_size(self):
+		if not self.exists():
+			# do nothing if it doesn't exist
+			return
 		real_size = os.stat(self.path)[stat.ST_SIZE]
 		if real_size == self.size:	# do nothing
 			return
