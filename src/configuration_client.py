@@ -134,9 +134,10 @@ class configuration_client(generic_client_server.GenericClientServer) :
 
 
 if __name__ == "__main__" :
-    Trace.init("config cli")
     import sys
     import pprint
+    Trace.init("config cli")
+    Trace.trace(1,"conf called with args "+repr(sys.argv))
 
     # fill in defaults
     csc = configuration_client()

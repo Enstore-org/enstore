@@ -18,11 +18,10 @@ import udp_client
 import db
 import Trace
 
-
-class FileClerkMethods(dispatching_worker.DispatchingWorker) :
+class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # we need a new bit field id for each new file in the system
-    def new_bit_file(self, ticket) :
+    def new_bit_file(self, ticket):
      Trace.trace(10,'{new_bit_file')
      # input ticket is a file clerk part of the main ticket
      try:
@@ -59,7 +58,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
     # To read from the hsm, we need to verify that the bit file id is ok,
     # call the volume server to find the library, and copy to the work
     # ticket the salient information
-    def read_from_hsm(self, ticket) :
+    def read_from_hsm(self, ticket):
      Trace.trace(8,"{read_from_hsm")
      try:
         # everything is based on bfid - make sure we have this
@@ -76,7 +75,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
         # look up in our dictionary the request bit field id
         try:
             finfo = copy.deepcopy(dict[bfid])
-        except KeyError :
+        except KeyError:
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
             # unusual error - no id, but it is there
@@ -87,7 +86,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
                 print "found on retry!!!!"
                 Trace.trace(0,"read_from_hsm found on retry")
                 pprint.pprint(finfo)
-            except KeyError :
+            except KeyError:
                 print "not found on retry either!"
                 Trace.trace(0,"read_from_hsm not found on retry either")
             self.reply_to_caller(ticket)
@@ -118,7 +117,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
         Trace.trace(9,"read_from_hsm inquiring about volume="+\
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
-        if vticket["status"] != "ok" :
+        if vticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
             Trace.trace(0,"read_from_hsm "+ticket["status"])
@@ -133,7 +132,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
         vmticket = csc.get(library+".library_manager")
         Trace.trace(10,"write_to_hsm."+ library+".library_manager at host="+\
                     repr(vmticket["host"])+" port="+repr(vmticket["port"]))
-        if vmticket["status"] != "ok" :
+        if vmticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vmticket)
             Trace.trace(0,"read_from_hsm "+ticket["status"])
@@ -155,7 +154,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
          Trace.trace(0,"read_from_hsm "+ticket["status"])
          return
 
-    def get_user_sockets(self, ticket) :
+    def get_user_sockets(self, ticket):
         Trace.trace(16,"{get_user_sockets")
         file_clerk_host, file_clerk_port, listen_socket =\
                            callback.get_callback()
@@ -170,7 +169,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
                     " file_clerk_port="+repr(file_clerk_port))
 
     # return all the bfids in our dictionary.  Not so useful!
-    def get_bfids(self,ticket) :
+    def get_bfids(self,ticket):
      Trace.trace(10,"{get_bfids  R U CRAZY?")
      ticket["status"] = "ok"
      try:
@@ -187,7 +186,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
                                   "file_clerk get bfids, controlsocket")
      msg=""
      key=dict.next()
-     while key :
+     while key:
         msg=msg+repr(key)+","
         key=dict.next()
         if len(msg) >= 16384:
@@ -208,7 +207,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
 
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
-    def bfid_info(self, ticket) :
+    def bfid_info(self, ticket):
      Trace.trace(10,'{bfid_info')
      try:
         # everything is based on bfid - make sure we have this
@@ -225,7 +224,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
         # look up in our dictionary the request bit field id
         try:
             finfo = copy.deepcopy(dict[bfid])
-        except KeyError :
+        except KeyError:
             ticket["status"] = "File Clerk: bfid "+repr(bfid)+" not found"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
@@ -255,7 +254,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
         Trace.trace(11,"bfid_info inquiring about volume="+\
                     repr(external_label))
         vticket = vcc.inquire_vol(external_label)
-        if vticket["status"] != "ok" :
+        if vticket["status"] != "ok":
             pprint.pprint(ticket)
             self.reply_to_caller(vticket)
             Trace.trace(0,"bfid_info "+ticket["status"])
@@ -283,12 +282,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
-    def unique_bit_file_id(self) :
+    def unique_bit_file_id(self):
      Trace.trace(10,'}unique_bit_file_id')
      try:
         bfid = time.time()
         bfid = long(bfid)*100000
-        while dict.has_key(repr(bfid)) :
+        while dict.has_key(repr(bfid)):
             bfid = bfid + 1
         Trace.trace(10,'}unique_bit_file_id bfid='+repr(bfid))
         return repr(bfid)
@@ -316,10 +315,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker) :
 
 class FileClerk(FileClerkMethods,
                 generic_server.GenericServer,
-                SocketServer.UDPServer) :
+                SocketServer.UDPServer):
     pass
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     Trace.init("file clerk")
     import sys
     import getopt
@@ -343,14 +342,14 @@ if __name__ == "__main__" :
     options = ["config_host=","config_port="\
                ,"config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
+    for (opt,value) in optlist:
+        if opt == "--config_host":
             config_host = value
-        elif opt == "--config_port" :
+        elif opt == "--config_port":
             config_port = value
-        elif opt == "--config_list" :
+        elif opt == "--config_list":
             config_list = 1
-        elif opt == "--help" :
+        elif opt == "--help":
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
@@ -361,7 +360,7 @@ if __name__ == "__main__" :
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
-    if config_list :
+    if config_list:
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client.configuration_client(config_host,config_port)
     csc.connect()
