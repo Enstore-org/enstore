@@ -211,6 +211,20 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep data`" ];then
     /bin/rm -f $PID_DIR/db_deadlock   # nothing in this file - delete or else db_deadlock   won't start again
 fi
 
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep rate`" ];then
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep rate |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
+    turnoff "$PID_DIR/`uname -n`-ratekeeper*pids"      "ratekeeper"
+fi
+
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mon`" ];then
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep mon |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
+    turnoff "$PID_DIR/`uname -n`-monitor*pids"         "monitor"
+fi
+
 #   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
 
 # let's do a PS just to show user what is still running
