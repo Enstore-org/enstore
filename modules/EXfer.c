@@ -318,7 +318,8 @@ EXto_HSM(  PyObject	*self
 	switch (msgbuf_s.mtype)
 	{
 	case WrtSiz:
-	    if (fd_a[To_])
+#	    ifndef NO_WRITE
+	    if (fd_a[To_]) /* if fd ... else fp */
 	    {
 		if (   (to_Func_p[To_])( fd_a[To_], shmaddr+(inc_size*ahead_idx)
 					,msgbuf_s.data)
@@ -332,6 +333,7 @@ EXto_HSM(  PyObject	*self
 		    != msgbuf_s.data)
 		    perror( "write" );
 	    }
+#	    endif
 	    *filesize_p += msgbuf_s.data;
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
