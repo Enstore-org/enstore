@@ -7,8 +7,6 @@ import os
 import sys
 import string
 
-cursor_open = 0
-
 # similar to db.DbTable, without automatic journaling and backup up.
 
 class DbTable(db.DbTable):

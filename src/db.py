@@ -16,7 +16,6 @@ import libtpshelve
 
 JOURNAL_LIMIT=1000
 backup_flag=1
-cursor_open=0
 
 class DbTable:
   def __init__(self,dbname, db_home, jou_home, indlst=None, auto_journal=1):
@@ -25,6 +24,7 @@ class DbTable:
     self.auto_journal = auto_journal
     self.dbHome = db_home
     self.jouHome = jou_home
+    self.cursor_open = 0
 
 #    try:
 #	self.dbHome=configuration_client.ConfigurationClient(\
@@ -58,20 +58,20 @@ class DbTable:
   def cursor(self,action,KeyOrValue=None):
     global c
     global t
-    global cursor_open
-    if not cursor_open and action !="open":
+
+    if not self.cursor_open and action !="open":
       self.cursor("open")
 
     if action=="open":
       t=self.db.txn()
       c=self.db.cursor(t)
-      cursor_open=1
+      self.cursor_open=1
       return
 
     if action=="close":
       c.close()
       t.commit()
-      cursor_open=0
+      self.cursor_open=0
       return
 
     if action=="first":
@@ -220,7 +220,7 @@ class DbTable:
   def close(self):
      if self.auto_journal:
         self.jou.close()
-     if cursor_open==1:
+     if self.cursor_open==1:
 	self.cursor("close")
      self.db.close()
 

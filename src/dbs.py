@@ -289,8 +289,6 @@ class DBS(generic_client.GenericClient):
 	# mainly we want to get the config client and log client.
 	generic_client.GenericClient.__init__(self, csc, "DBS")
 
-cursor_open = 0
-
 # similar to db.DbTable, without automatic journaling and backup up.
 class DbTable(db.DbTable):
 
