@@ -22,7 +22,7 @@ import event_relay_client
 import event_relay_messages
 import Trace
 import mover_client
-import entv
+#import entv  #Don't ever import this from enstore_display.
 import configuration_client
 import e_errors
 
