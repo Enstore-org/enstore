@@ -74,6 +74,9 @@ QUALIFIERS = ""
         envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
         envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
 
+	# now setup the product with the python support for HTML
+	setupRequired("HTMLgen")
+
         # control where the trace file goes
         execute("whoami", NO_UPS_ENV, meme)
 	envSet(ENSTORE_TMP,"/tmp/enstore/$meme")
