@@ -14,7 +14,7 @@ import socket
 import select
 import errno
 import fcntl, FCNTL
-
+import re
 # enstore imports
 import setpath
 
@@ -1296,7 +1296,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     (storage_group, host, max_permitted))
         for w in self.work_at_movers.list:
             if (w['vc']['storage_group'] == storage_group and
-                w['wrapper']['machine'][1] == host):
+                re.search(host, w['wrapper']['machine'][1])):
                 active = active + 1
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
