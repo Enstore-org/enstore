@@ -4,7 +4,11 @@
     contacting Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
     */
 
+#ifndef NO_READ
+# include <sys/stat.h>		/* fstat, struct stat */
+#endif
 #include <sys/types.h>		/* read/write */
+#include <sys/wait.h>		/* waitpid */
 #include <stdio.h>		/* fread/fwrite */
 #include <unistd.h>		/* read/write, fork, nice, close */
 #include <sys/ipc.h>		/* shmxxx */
@@ -129,6 +133,7 @@ EXto_HSM(  PyObject	*self
 	int		ahead_idx = 0;
 	int		writing_flg=1;
 	int             rd_ahead=50;    /* arbitrary default */
+	pid_t		pid;
 
 
     /*  Parse the arguments */
@@ -149,7 +154,7 @@ EXto_HSM(  PyObject	*self
 	    else
 		to_Func_p[idx] = write;
 	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
-	    printf( "EXfer p%d class is Mover, fd=%d\n", idx+1, fd_a[idx] );
+	    /*printf( "EXfer p%d class is Mover, fd=%d\n", idx+1, fd_a[idx] );*/
 	}
 	else if (strcmp(str,"FTTDriver") == 0)
 	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "ETdesc" );
@@ -159,9 +164,9 @@ EXto_HSM(  PyObject	*self
 		frmFunc_p[idx] = ftt_read;
 	    else
 		to_Func_p[idx] = ftt_write;
-	    printf(  "EXfer p%d class is FTTDriver, devname=%s, block_size=%d\n", idx+1
+	    /*printf(  "EXfer p%d class is FTTDriver, devname=%s, block_size=%d\n", idx+1
 		   , *(char **)((struct s_ETdesc *)fd_a[idx])->ftt_desc
-		   , ((struct s_ETdesc *)fd_a[idx])->block_size );
+		   , ((struct s_ETdesc *)fd_a[idx])->block_size );*/
 	    if (idx == To_)  inc_size = ((struct s_ETdesc *)fd_a[idx])->block_size;
 	    fd_a[idx] = (int)((struct s_ETdesc *)fd_a[idx])->ftt_desc;
 	    filesize_p[idx] = &((struct s_ETdesc *)fd_a[idx])->filesize;
@@ -174,7 +179,7 @@ EXto_HSM(  PyObject	*self
 	    else
 		to_Func_p[idx] = (void(*))fwrite;
 	    filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
-	    printf( "EXfer p%d class is RawDiskDriver, fd=%d\n", idx+1, fd_a[idx] );
+	    /*printf( "EXfer p%d class is RawDiskDriver, fd=%d\n", idx+1, fd_a[idx] );*/
 	}
 	else
 	{
@@ -182,7 +187,7 @@ EXto_HSM(  PyObject	*self
 	}
     }
 
-    printf( "EXfer sanity_byts=%d\n", sanity_byts );
+    /*printf( "EXfer sanity_byts=%d\n", sanity_byts );*/
 
     /* create private (to be inherited by child) shm seg */
     /* there does not seem to be a 4M size limitation */
@@ -190,9 +195,9 @@ EXto_HSM(  PyObject	*self
     assert( inc_size < 0x400000 );
     rd_ahead = 0x400000 / inc_size;
     shmid = shmget( IPC_PRIVATE, inc_size*rd_ahead, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
-    printf( "EXfer to_HSM shmid=%d (size=inc*%d=%d bytes)\n", shmid, rd_ahead, inc_size*rd_ahead );
+    /*printf( "EXfer to_HSM shmid=%d (size=inc*%d=%d bytes)\n", shmid, rd_ahead, inc_size*rd_ahead );*/
     shmaddr = shmat( shmid, 0, 0 );	/* no addr hint, no flags */
-    printf( "EXfer shmaddr=%p\n", shmaddr );
+    /*printf( "EXfer shmaddr=%p\n", shmaddr );*/
     if (shmaddr == (char *)-1)
 	perror( "shmat" );
 
@@ -256,6 +261,7 @@ EXto_HSM(  PyObject	*self
 
 	    /* do crc here -- snd answer as last msg */
 	    /* ref. python.../Modules/binascii.c:binascii_crc_hqx */
+#          ifndef NO_CRC
 	    attrObj_p = PyObject_CallFunction( obj_pa[Crc], "s#i", crc_p, dat_byts, dat_crc );
 	    dat_crc = PyInt_AsLong( attrObj_p );
 	    if (run_san_byts < sanity_byts)
@@ -281,6 +287,7 @@ EXto_HSM(  PyObject	*self
 		    san_crc = PyInt_AsLong( attrObj_p );
 		}
 	    }    
+#          endif
 
 	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    shm_byts = dat_byts = 0;	/* the same from now on */
@@ -328,12 +335,14 @@ EXto_HSM(  PyObject	*self
 	    san_crc = msgbuf_s.data;
 	    break;
 	case DatCrc:
-	    printf( "EXfer crc is %d\n", msgbuf_s.data );
+	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
 	    dat_crc = msgbuf_s.data;
 	    break;
 	default:		/* assume DatByt */
 	    dat_byts = msgbuf_s.data;
 	    writing_flg = 0;	/* DONE! */
+	    if (waitpid(pid,&sts,0) == -1)
+		perror( "EXfer usrTo_ waitpid" );
 	    break;
 	}
     }
@@ -389,6 +398,10 @@ EXusrTo_(  PyObject	*self
 	int		ahead_idx = 0;
 	int		writing_flg=1;
 	int             rd_ahead=50;    /* arbitrary default */
+	pid_t		pid;
+#      ifndef NO_READ
+	struct stat	stat_s;
+#      endif
 
 
     printf( "EXfer.usrTo_ --- \n" );
@@ -440,7 +453,7 @@ EXusrTo_(  PyObject	*self
     sops_wr_wr2rd.sem_op  = idx;	/* restore to saved */
 
     /* fork off read (from) */
-    if (fork() == 0)
+    if ((pid=fork()) == 0)
     {   /* child - does the reading */
 	int	read_byts, shm_byts, just_red_byts;
 	char	*crc_p;
@@ -453,6 +466,10 @@ EXusrTo_(  PyObject	*self
 	shm_byts = 0;
 	crc_p = shmaddr;
 	dat_byts = 0;
+#      ifndef NO_READ
+	if (fstat(fd_a[Frm],&stat_s) != 0)
+	    perror( "EXfer usrTo_ fstat" );
+#      endif
 	while (!eof_flg)
 	{
 	    /* gain access to *blk* of shared mem */
@@ -460,9 +477,16 @@ EXusrTo_(  PyObject	*self
 
 	    while (shm_byts < inc_size)
 	    {   read_byts = inc_size - shm_byts;
+#              ifndef NO_READ
 		just_red_byts = (frmFunc_p[Frm])(  fd_a[Frm]
 						  , shmaddr+(inc_size*ahead_idx)+shm_byts
 						  , read_byts );
+#              else
+		if (dat_byts+inc_size <= stat_s.st_size)/* if "space" for full read */
+		    just_red_byts = inc_size;
+		else
+		    just_red_byts = stat_s.st_size - dat_byts; /* this will be 0 next time thru */
+#              endif
 		if (just_red_byts <= 0)
 		{   eof_flg = 1;
 		    break;	/* manual break out for eof */
@@ -526,6 +550,8 @@ EXusrTo_(  PyObject	*self
 	default:		/* assume DatByt */
 	    dat_byts = msgbuf_s.data;
 	    writing_flg = 0;	/* DONE! */
+	    if (waitpid(pid,&sts,0) == -1)
+		perror( "EXfer usrTo_ waitpid" );
 	    break;
 	}
     }
