@@ -2699,10 +2699,58 @@ formatted log files.
 Basically, these messages are transactional records.
 Log files are labeled by dates.
 At midnight each day, the currently opened log file gets closed and another
-one is opened.
-<p>
-Additionally it is expected that a trace module will be developed.
+one is opened. Below is excerpt from the log file:
+<pre>
+10:03:42 sphinx.fnal.gov 006849 moibenko I FILC  File Clerk (re)starting
+10:03:46 sphinx.fnal.gov 006849 moibenko I HLIBM  Library Manager sphinxdisk.lib
+rary_manager(re)starting
+10:03:50 sphinx.fnal.gov 006849 moibenko I HMC  Media Changersphinxdisk.media_ch
+anger(re) starting
+10:03:55 sphinx.fnal.gov 006849 moibenko I HMOV  Mover starting - contacting lib
+man
+10:03:59 sphinx.fnal.gov 006849 moibenko I ADMC  Admin Clerk (re)starting
+10:09:34 sphinx.fnal.gov 006849 moibenko I HLIBM  read Q'd /pnfs/enstore/sphinx/
+t1/mover.py -> '/usr/hppc_home/moibenko/enstore_test/enstore/src/tst/mover.py' :
+ vol=flop1 bfid=91546995800000L requester:moibenko
+10:09:34 sphinx.fnal.gov 006849 moibenko I HLIBM  read_from_hsm work on vol=flop1
+mover=sphinxdisk.mover requester:moibenko
+10:09:34 sphinx.fnal.gov 006849 moibenko I HMOV  READ_FROM_HSM start{'times': {'
+t0': 915725367.144, 'in_queue': 0.0595669746399}, ......
+.....
 
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Performing precautionary offlin
+e/eject of device./sphinxdisk.fake
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Completed  precautionary offlin
+e/eject of device./sphinxdisk.fake
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Requesting media changer load {
+'first_access': 915469958.425, 'sum_rd_err': 0, 'last_access': 915488183.702, 'm
+edia_type': 'diskfile', 'capacity_bytes': 1400000L, 'blocksize': 512, 'library':
+ 'sphinxdisk', 'file_family': 'sphinx', 'sum_wr_access': 0, 'sum_rd_access': 0, 
+'remaining_bytes': 1291968L, 'wrapper': 'cpio', 'sum_wr_err': 0, 'external_label
+': 'flop1'.....
+......
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Media changer load status('ok',
+ None)
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Requesting software mount flop1
+ ./sphinxdisk.fake
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  Software mount complete flop1 .
+/sphinxdisk.fake
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  WRAPPER.READ
+........
+10:09:35 sphinx.fnal.gov 006849 moibenko I HMOV  READ DONE{'unique_id': 'sphinx.
+fnal.gov-915725374.048321-1071', 'retry_cnt': 0, 'mover': {'config_port': 7500, 
+'media_changer': 'sphinxdisk.media_changer', 'port': 7508, 'device': './sphinxdi
+</pre>
+Fields in a log file are:
+<ul>
+<li>time
+<li>node name
+<li>user id
+<li>user name
+<li>severety indicator (I - information, E - Error)
+<li>client abbreviation
+<li>arbitrary message
+</ul>
 <hr>
 <h3><a name="media_changer">
 1.3.7 Media Changer
