@@ -2164,6 +2164,8 @@ class EnPlotPage(EnBaseHtmlDoc):
 	self.mount_label = mount_label
 	self.links_l = links_l
 	self.nav_link = nav_link
+        # this will be set in the child class
+        self.outofdate = 0
 
     def find_label(self, text):
         # compare the passed text with the files listed in PLOT_INFO. if there
@@ -2240,9 +2242,13 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    else:
 		td = HTMLgen.TD(HTMLgen.Image(stamp[0]))
 	    trs.append(td)
-	    trps.append(HTMLgen.TD("%s (%s)%s"%(self.find_label(stamp[0]),
-					    enstore_functions2.format_time(stamp[1]), 
-						NBSP*2) , html_escape='OFF'))
+            text = "%s (%s)%s"%(self.find_label(stamp[0]),
+                                enstore_functions2.format_time(stamp[1]), 
+                                NBSP*2)
+            if self.outofdate and stamp[1] < self.yesterday::
+                trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA), html_escape='OFF'))
+            else:
+                trps.append(text, html_escape='OFF'))
 	    if ps:
 		# we have a corresponding ps file
 		trps2.append(HTMLgen.TD(HTMLgen.Href(ps_file, POSTSCRIPT)))
