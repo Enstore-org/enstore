@@ -6,10 +6,11 @@ import sys
 import errno
 import pprint
 import types
-import os				# for os.environ for "default" config*
-import string				# atoi for os.environ of config port
+import os
+import string
 
 #enstore imports
+import setpath
 import Trace
 import e_errors
 import interface
