@@ -1234,8 +1234,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             ticket = callback.read_tcp_socket(control_socket,\
                          "encp read_from_hsm, mover call back")
             if verbose > 3:
-                print "ENCP:read_from_hsm MV called back with", 
-		ticket
+                print "ENCP:read_from_hsm MV called back with", ticket
             callback_id = ticket['unique_id']
             forus = 0
             for j in range(0,ninput):
