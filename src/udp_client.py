@@ -51,7 +51,7 @@ def get_client() :
         for port in range (port1, port2) : # range (7600, 7600) has 0 members...
             success, sockt = try_a_port (host, port)
             if success :
-                Trace.trace(20,'{get_client '+repr((host,port))+" "+repr(sockt))
+                Trace.trace(20,'{get_client '+repr((host,port))+" "+repr(sockt)+" "+repr(hostname,ha,hi))
                 return host, port, sockt
         Trace.trace(0,'{get_client sleeping for 10 - all ports used '+\
                     repr((port1, port2)))
@@ -66,6 +66,7 @@ def empty_socket( sock ):
         try:
             f = sock.fileno()
             r, w, x = select.select([f],[],[f],0)
+            Trace.trace(20,'empty_socket select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
             #generic_cs.enprint("empty socket "+repr(sock))
 	    #generic_cs.enprint(sock.__dict__, generic_cs.PRETTY_PRINT)
 	    #generic_cs.enprint(repr(f)+" "+repr(xcount)+" "+repr(r)+" "+\
@@ -96,6 +97,7 @@ def empty_socket( sock ):
                     Trace.trace(0,"empty pre recv, clearout error "+\
                                 repr(errno.errorcode[badsock]))
                 reply , server = sock.recvfrom(TRANSFER_MAX)
+                Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 refused = 1
                 while badsock==errno.ECONNREFUSED and refused<25:
@@ -103,6 +105,7 @@ def empty_socket( sock ):
                     Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
                     #generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
                     reply , server = sock.recvfrom(TRANSFER_MAX)
+                    Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
                     badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock != 0:
                     Trace.trace(0,"empty post recv, clearout error"+\
@@ -167,6 +170,7 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     f = sock.fileno()
     r, w, x = select.select( [f], [], [f], rcv_timeout )
+    Trace.trace(20,'wait_rsp select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
 
     # exception mean trouble
     if x:
@@ -248,6 +252,7 @@ class UDPClient:
         self.where_sent = {}
 	try:
 	    x = os.environ['ENSTORE_UDP_PP']
+            Trace.trace(20,'ENSTORE_UDP_PP found in environment'+repr(x))
 	    self.pp = 1
 	except:
 	    self.pp = 0
@@ -316,6 +321,7 @@ class UDPClient:
 		except exceptions.ValueError :
 		    Trace.trace(0,'send GOOFY TEST FEATURE')
 		    ident, number,  out, time  = eval(reply)
+                    Trace.trace(20,'goofy test:'+repr(ident,number,out,time))
 
 		# now (after receive), check...
 		if number != self.number :
@@ -323,7 +329,8 @@ class UDPClient:
 		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+repr(self.number))
-		    #generic_cs.enprint(msg+" resending to "+repr(address)+message)
+                    if 0:
+                        generic_cs.enprint(msg+" resending to "+repr(address)+message)
 
 	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
                 Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
