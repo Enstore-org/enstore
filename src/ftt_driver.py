@@ -191,9 +191,9 @@ class FTTDriver(driver.Driver):
         else:
             try:
                 self.ftt.skip_fm(target-current-1)
-                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
+                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current-1,))
                 self.ftt.skip_fm(1)
-                Trace.log(e_errors.INFO, "skip_fm %s"%(target-current,))
+                Trace.log(e_errors.INFO, "skip_fm %s"%(1,))
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt_driver:skip_fm: %s %s" % (detail, detail.value))
                 raise ftt.FTTError, detail
