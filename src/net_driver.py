@@ -61,7 +61,7 @@ class NetDriver(driver.Driver):
                                   
     def write(self, buf, offset, nbytes):
         t0 = time.time()
-        r = strbuffer.buf_send(self.fileno(), buf, offset, nbytes)
+        r = strbuffer.buf_send_dontwait(self.fileno(), buf, offset, nbytes)
         if r > 0:
             now = time.time()
             self._last_rate = r/(now - t0)
