@@ -198,43 +198,24 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              return 'EEXIST', "volume %s already exists"%(new)
 
          fcc = file_clerk_client.FileClient(self.csc)
-         # get volume map name
-         bfid_list = self.bfid_db.get_all_bfids(old_label)
-         if bfid_list:
-             fcc.bfid = bfid_list[0]
-             vm_ticket = fcc.get_volmap_name()
-             if vm_ticket.has_key('pnfs_mapname'):
-                 old_vol_map_name = vm_ticket["pnfs_mapname"]
-                 (old_vm_dir,file) = os.path.split(old_vol_map_name)
-                 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
-                 # rename map files
-                 Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%
-                           (old_vm_dir, new_vm_dir))
-                 os.rename(old_vm_dir, new_vm_dir)
-                 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
-                       (old_vm_dir, new_vm_dir))
-         # replace file clerk database entries
-         for bfid in bfid_list:
-             ret = fcc.rename_volume(bfid, new_label, 
-                                     set_deleted, restore, restore_dir)
-             if ret["status"][0] != e_errors.OK:
-                 Trace.log(e_errors.ERROR, "rename_volume failed: "+repr(ret))
-                 
-         # create new record in the database
-         cur_rec['declared'] = time.time()
-         self.dict[new_label] = cur_rec
-         # remove current record from the database
-         del self.dict[old_label]
-         # update the bitfile id database too
+
+         # have file clerk to rename the volume information for the files
+
+         r = fcc.rename_volume2(old, new)
+         if r['status'][0] == e_errors.OK:
+             # modify the volume record
+             # should we update other infromation?
+             self.dict[new] = record
+             del self.dict[old]
+         else:
+             Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
+             return r['status']
+
          self.bfid_db.rename_volume(old_label,new_label)
          Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
                                                            new_label))
          return e_errors.OK, None
-     # even if there is an error - respond to caller so he can process it
-     except:
-         exc, val, tb = Trace.handle_error()
-         return str(exc), str(val)
-     
+
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
      try:
