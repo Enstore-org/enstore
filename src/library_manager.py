@@ -74,7 +74,7 @@ class AtMovers:
         # volume_family
         # work (read/write)
         # current location
-        Trace.trace(11,"put: %s" % (mover_info,))
+        Trace.trace(13,"put: %s" % (mover_info,))
         if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
@@ -90,7 +90,7 @@ class AtMovers:
         Trace.trace(13, "AtMovers delete. before: %s" % (self.at_movers,))
         mover = mover_info['mover']
         if self.at_movers.has_key(mover):
-            Trace.trace(11, "MOVER %s" % (self.at_movers[mover],))
+            Trace.trace(13, "MOVER %s" % (self.at_movers[mover],))
             storage_group = volume_family.extract_storage_group(self.at_movers[mover]['volume_family'])
             vol_family = self.at_movers[mover]['volume_family']
             self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
@@ -105,6 +105,7 @@ class AtMovers:
         if not  self.sg_vf.vf.has_key(volume_family_name):
             return vols, write_enabled
         # look in the list of work_at_movers
+        Trace.trace(13,"busy_volumes: sg_vf %s" % (self.sg_vf,))
         for rec in self.sg_vf.vf[volume_family_name]:
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]): ### DBG: REMOVE

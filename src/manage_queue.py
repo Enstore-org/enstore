@@ -126,12 +126,12 @@ class SortedList:
             if rescan_list:
                 # temporarily remove records that have changed priorities
                 for record in rescan_list:
-                    Trace.trace(13,"SortedList.update: delete Pri%s Ticket %s"%
+                    Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
                                 (record.pri, record.ticket))
                     self.delete(record)
                 # put them pack according to new priority
                 for record in rescan_list:
-                    Trace.trace(13,"SortedList.update: reinsert Pri%s Ticket %s"%
+                    Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
                                 (record.pri, record.ticket))
                     self.put(record)
             self.last_aging_time = time_now
@@ -145,11 +145,11 @@ class SortedList:
         else: output_file_name = None
         # check if request is already in the list
         res, stat = self.test(request.unique_id,output_file_name)
-        Trace.trace(13,"SortedList.put: test returned res %s stat %s"%
+        Trace.trace(23,"SortedList.put: test returned res %s stat %s"%
                     (res, stat))
         if not res:
             # put in the list
-            Trace.trace(13,"SortedList.put: put %s %s"%
+            Trace.trace(23,"SortedList.put: put %s %s"%
                         (request.pri, request.ticket))
             self.ids.append(request.unique_id)
             if output_file_name: self.of_names.append(output_file_name)
@@ -162,7 +162,7 @@ class SortedList:
     def get(self, pri=0):
         if not self.sorted_list: return None    # list is empty
         self.update()
-        Trace.trace(13,"SortedList.get: pri %s, u_f %s"%
+        Trace.trace(23,"SortedList.get: pri %s, u_f %s"%
                     (pri, self.update_flag))
         # update flag is maeaningful only for write list
         if self.update_flag and not pri:
@@ -173,7 +173,7 @@ class SortedList:
             rq = Request(pri, pri, {})
             index = self.sorted_list.bisect(rq)
         if index < len(self.sorted_list):
-            Trace.trace(13,"SortedList.get: index %s"%(index,))
+            Trace.trace(23,"SortedList.get: index %s"%(index,))
             record = self.sorted_list[index]
             record.ticket['at_the_top'] = record.ticket['at_the_top']+1
             self.current_index = index
@@ -195,7 +195,7 @@ class SortedList:
     
     # remove a request fro m the list (no updates)
     def rm(self,record,key=''):
-        Trace.trace(13,"SortedList.rm: %s %s"%(record.pri, record.ticket))
+        Trace.trace(23,"SortedList.rm: %s %s"%(record.pri, record.ticket))
         if record in self.sorted_list:
             self.sorted_list.remove(record)
         if record.unique_id in self.ids: self.ids.remove(record.unique_id)
@@ -245,7 +245,7 @@ class Queue:
 
     # put requests into the queue
     def put(self, ticket, time=0):
-        Trace.trace(13,"Queue.put: %s"%(ticket,))
+        Trace.trace(23,"Queue.put: %s"%(ticket,))
         # set type of the queue
         if not self.queue_type:
             self.queue_type = ticket['work']
@@ -286,7 +286,7 @@ class Queue:
         # label is either a volume label or file family
         if not label: return None
         if not self.queue.has_key(label):
-            Trace.trace(13,"Queue.get: label %s is not in the queue"%(label,))
+            Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
             return None
         sublist = self.queue[label]['opt']
        
@@ -297,7 +297,7 @@ class Queue:
         else:
             if self.queue_type == 'read_from_hsm': record = sublist.get()
             else: record = self.queue[label]['by_priority'].get()
-        Trace.trace(13,"Queue.get: %s"%(repr(record),))
+        Trace.trace(23,"Queue.get: %s"%(repr(record),))
         return record
 
     # find key depending on wok type
@@ -318,7 +318,7 @@ class Queue:
             Trace.log(e_errors.INFO,"manage_queue.delete: no such key %s" %(key,))
             return
         # remove opt entry
-        Trace.trace(13,"Queue.delete: opt %s %s"%(key, request.ticket))
+        Trace.trace(23,"Queue.delete: opt %s %s"%(key, request.ticket))
         
         self.queue[key]['opt'].delete(request)
         self.queue[key]['by_priority'].delete(request)
@@ -341,7 +341,7 @@ class Queue:
         # label is either a volume label or volume family
         if not label: return None
         if not self.queue.has_key(label):
-            Trace.trace(13,"Queue.get: label %s is not in the queue"%(label,))
+            Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
             return None
         sublist = self.queue[label]['opt']
         return sublist.get_next()
@@ -465,7 +465,7 @@ class Request_Queue:
         # where request went
         #hp_rq = queue.get(key)
         #if hp_rq and rq != hp_rq:
-        Trace.trace(14,"put: calling update %s"%(rq,)) ## REMOVE THIS
+        Trace.trace(24,"put: calling update %s"%(rq,)) ## REMOVE THIS
         self.update(rq,key)
         rc = rq, e_errors.OK
         #else: rc = None, e_errors.UNKNOWN
@@ -550,9 +550,9 @@ class Request_Queue:
             # the tags queue
             if next:
                 for r in self.tags.sorted_list:
-                    Trace.trace(11, "TAG %s" % (r,))
+                    Trace.trace(21, "TAG %s" % (r,))
                 rq = self.tags.get_next()
-                Trace.trace(11,"NEXT %s" % (rq,))
+                Trace.trace(21,"NEXT %s" % (rq,))
             else: rq = self.tags.get()
             if rq:
                 if rq.work == 'write_to_hsm':
