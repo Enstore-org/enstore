@@ -1992,7 +1992,7 @@ class File:
 					self.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
-					self.drive = "missing"
+					self.drive = "unknown:unknown"
 					
 				# if self.p_path != self.path:
 				#	raise 'DIFFERENT_PATH'
@@ -2059,7 +2059,7 @@ class File:
 			# do nothing if it doesn't exist
 			return
 		real_size = os.stat(self.path)[stat.ST_SIZE]
-		if real_size == self.size:	# do nothing
+		if long(real_size) == long(self.size):	# do nothing
 			return
 		size = str(self.size)
 		if size[-1] == 'L':
@@ -2068,7 +2068,7 @@ class File:
 		f = open(fname, "w")
 		f.close()
 		real_size = os.stat(self.path)[stat.ST_SIZE]
-		if real_size != self.size:
+		if long(real_size) != long(self.size):
 			# oops, have to reset it again
 			f = open(fname, "w")
 			f.close()
