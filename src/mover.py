@@ -1511,7 +1511,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.notify("transfer %s %s %s network" % (self.shortname, -self.bytes_written, self.bytes_to_write))
 
         if self.tr_failed:
-            break
+            return
         
         Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
         if failed: return
