@@ -101,15 +101,11 @@ class FileClient(generic_client.GenericClient, \
         data_path_socket = callback.file_server_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
                   +"client get_bfids, fc final dialog")
-        workmsg=""
-        while 1:
+        while 1: ##XXX warning read_tcp_buf can over-read
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk "+"client get_bfids, reading worklist")
           if len(msg)==0:
-	        generic_cs.enprint(workmsg)
                 break
-          workmsg = workmsg+msg
-	  generic_cs.enprint(workmsg[:string.rfind( workmsg,',',0)])
-          workmsg=msg[string.rfind(msg,',',0)+1:]
+	  generic_cs.enprint(msg)
         worklist = ticket
         data_path_socket.close()
 
@@ -171,7 +167,7 @@ class FileClient(generic_client.GenericClient, \
         ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
                   +"client tape_list, fc final dialog")
         workmsg=""
-        while 1:
+        while 1: ## XXX warning read_tcp_buf can over-read
           msg=callback.read_tcp_buf(data_path_socket,"file  clerk client tape_list, reading worklist")
           #print msg
           if len(msg)==0:
