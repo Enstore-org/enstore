@@ -215,7 +215,7 @@ while 1:
            beagle_mb = beagle_mb + long(mb)
            beagle_v[v] = 1
            beagle.write('%s\n' % (ol,))
-    elif l in ['D0-9940B', 'CDF-9940B', '9940B']:
+    elif l in ['D0-9940B', 'CDF-9940B', 'CD-9940B']:
        #all_9940b_mb = all_9940_mb + long(mb)
        all_9940b_v[v] = 1
        ALL_9940B.write('%s\n' % (ol,))
@@ -261,7 +261,7 @@ for g in group_fd.keys():
     if QUOTAS.has_key(g):
         (wv,bv,su, l) = QUOTAS[g]
         
-        if l in ['D0-9940B', 'CDF-9940B', '9940B']:
+        if l in ['D0-9940B', 'CDF-9940B', 'CD-9940B']:
           _9940b_wv = _9940b_wv + int(wv)
           _9940b_bv = _9940b_bv + int(bv)
           su = float(su.split("G")[0])
