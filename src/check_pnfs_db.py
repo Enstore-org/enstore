@@ -6,7 +6,7 @@ import string
 import time
 import getopt
 
-tdir = ''
+tdir = 'enstore/tape_inventory'
 OK = 0
 FAIL = 1
 
@@ -21,7 +21,6 @@ def CleanJunk(msg):
 def generate_volume_list(volume_file, library):
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     url = "http://%s/%s"%(host, volume_file)
-    print "URL",url
     # copy to this file first
     # as wget may intemix the data with diagnistics at stdout
     ofile = "VOLS%s"%(int(time.time()),)
@@ -104,7 +103,18 @@ def check_volume(label,selected_library=""):
     vinfo={}
     ferrname = label+".err" 
     
-    f=open(tdir+label,'r')
+    host = os.environ.get('ENSTORE_CONFIG_HOST', '')
+    url = "http://%s/%s/%s"%(host, tdir, label)
+    # copy to this file first
+    # as wget may intemix the data with diagnistics at stdout
+    ofile = label
+    try:
+        os.system("wget -o wget.log -O %s %s"%(ofile, url,))
+        f = open(ofile, 'r')
+    except:
+        exc, msg, tb = sys.exc_info()
+        print "exception: %s %s" % (str(exc), str(msg))
+        return None
     ferr = open(ferrname,'w')
     
     lines=f.readlines()
