@@ -498,6 +498,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # add the mover information for this library manager
     def mv_rows(self, lm, table):
 	movers = self.data_dict[lm][enstore_status.MOVERS]
+	movers.sort()
 	for mover in movers:
 	    moverd = self.data_dict[mover]
 	    # mark this mover as not being an orphan, so we can easily find the
