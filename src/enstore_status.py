@@ -140,11 +140,12 @@ class EncpLine:
 		# get the dictionary at the end
 		self.dict = get_dict(tmp2)
                 # pull out the name of the media changer
-                self.mc = self.dict.get(enstore_constants.MEDIA_CHANGER, QUESTION)
-		self.interface = self.dict.get(enstore_constants.MOVER_INTERFACE,
-					       QUESTION)
-		# get rid of .fnal.gov
-		self.interface = enstore_functions.strip_node(self.interface)
+		if self.dict:
+		    self.mc = self.dict.get(enstore_constants.MEDIA_CHANGER, QUESTION)
+		    self.interface = self.dict.get(enstore_constants.MOVER_INTERFACE,
+						   QUESTION)
+		    # get rid of .fnal.gov
+		    self.interface = enstore_functions.strip_node(self.interface)
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]
