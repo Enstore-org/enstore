@@ -342,7 +342,7 @@ class EnEncpDataFile(EnDataFile):
     # pull out the plottable data from each line
     def parse_data(self, mcs):
 	for line in self.lines:
-	    encp_line = EncpLine(line)
+	    encp_line = enstore_status.EncpLine(line)
 	    if encp_line.valid:
 		if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
 		    etime = enstore_functions.strip_file_dir(encp_line.time)
