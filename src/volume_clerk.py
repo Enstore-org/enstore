@@ -175,6 +175,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              import file_clerk_client
              fcc = file_clerk_client.FileClient(self.csc)
              bfid_list = self.bfid_db.get_all_bfids(external_label)
+             vm_dir = ''
              for bfid in bfid_list:
                  fcc.bfid = bfid
                  vm_ticket = fcc.get_volmap_name()
@@ -182,7 +183,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  (vm_dir,file) = os.path.split(vol_map_name)
                  ret = fcc.del_bfid()
                  os.remove(vol_map_name)
-             os.rmdir(vm_dir)
+             if vm_dir:
+                 os.rmdir(vm_dir)
              # remove current record from the database
              del self.dict[external_label]
              # update the bfid database too
