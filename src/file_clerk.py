@@ -419,7 +419,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      # get a user callback
      self.get_user_sockets(ticket)
      callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
-     msg=""
+     msg="     label            bfid       size        location_cookie delflag original_name\n"
 
      # now get a cursor so we can loop on the database quickly:
      dict.cursor("open")
