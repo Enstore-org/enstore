@@ -366,6 +366,8 @@ class Interface:
     option_list = []
     args = []
     parameters = []
+    some_args = []
+    some_args[:] = sys.argv[1:] #Used to find the next extra value.
     
     alive_rcv_options = {
         TIMEOUT:{HELP_STRING:"number of seconds to wait for alive response",
@@ -899,8 +901,6 @@ class Interface:
 
         #Get a copy of the command line with values specified with equal
         # signs seperated.
-        self.some_args = []
-        self.some_args[:] = sys.argv[1:]
         self.split_on_equals(self.some_args)
 
         #Get the next option after the option passed in.
