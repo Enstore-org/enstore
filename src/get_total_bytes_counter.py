@@ -43,10 +43,14 @@ def go(system, vq_file_name, vq_output_file):
 	    bytes = string.strip(bytes)
 	    total_bytes = total_bytes + float(bytes)
     else:
+	# translate total bytes into terabytes 
+	# divide by 1024x1024x1024x1024
+	total_bytes = total_bytes/1099510000000.0
+
 	# output the file that has the number of bytes in it.
 	vq_file.close()
 	output_file = open(vq_output_file, 'w')
-	output_file.write("%s Bytes\n"%(total_bytes,))
+	output_file.write("%.3f TB\n"%(total_bytes,))
 	output_file.close()
 
 
