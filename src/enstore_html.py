@@ -687,11 +687,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
 class EnEncpStatusPage(EnBaseHtmlDoc):
 
+    error_text = {"USER ERROR" : "STATUS=USERERROR"}
+
     def __init__(self, refresh = 120):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Encp History"
 	self.script_title_gif = "encph.gif"
 	self.description = "%s%sHistory of the most recent Encp commands. This page is created by the Inquisitor."%(NBSP, NBSP)
+	self.error_keys = self.error_text.keys()
 
     # create the body of the page. the data is a list of lists.  each outer list element
     # is a list of the encp data i.e. - 
@@ -725,8 +728,19 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(row[2]))
 		num_errors = num_errors + 1
 		errors.append(row[3])
+		# we need to check the error text.  if it contains certain strings (specified
+		# in error_text), then we will output a different string pointing to the
+		# actual error message at the bottom of the page.
+		for ekey in self.error_keys:
+		    if string.find(row[3], self.error_text[ekey]) != -1:
+			# found a match
+			etxt = ekey
+			break
+		else:
+		    # this is the default
+		    etxt = "ERROR"
 		tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(num_errors),
-						  HTMLgen.Bold("ERROR (%s)"%(num_errors,))),
+						  HTMLgen.Bold("%s (%s)"%(etxt, num_errors,))),
 				     colspan=(num_headings-3)))
 	    en_table.append(tr)
 	table.append(HTMLgen.TR(HTMLgen.TD(en_table)))
