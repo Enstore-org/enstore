@@ -15,7 +15,7 @@ setup enstore
 # . Check that eth1 is working (if present)
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
-# . Check that root's crontab has reset of watchdog. 
+# . Check that root's crontab has reset of watchdog, ntpset and netscan running.
 # . Check that ipmisrv is running and has NO_DOG option
 # . Check that watchdog action is to do nothing
 
@@ -356,6 +356,16 @@ if [ `$EGREP -c ntpset /var/spool/cron/root` -ne 1 ]; then
    fi
 elif [ $QUIET -ne 1 ]; then
    logit  "ntpset crontab, ok"
+fi
+
+# check that we have a netscan running in the crontab:
+if [ `$EGREP -c "netscan -a -q" /var/spool/cron/root` -ne 1 ]; then
+   msg="/var/spool/cron/root is missing netscan or misconfigured" 
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "netscan crontab, ok"
 fi
 
 # check that ipmisrv is running without watchdog timer
