@@ -872,7 +872,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(ticket)
             Trace.notify("client %s %s" % (ticket['callback_addr'], self.lm_lock))
             return
-	    
+
+        # check file family width
+        ff_width = ticket["vc"].get("file_family_width", 0)
+        if ff_width <= 0:
+            ticket["status"] = (e_errors.USERERROR, "wrong file family width %s" % (ff_width,))
+            self.reply_to_caller(ticket)
+            Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
+            return
+            
         ticket["status"] = (e_errors.OK, None)
 
         for item in ('storage_group', 'file_family', 'wrapper'):
