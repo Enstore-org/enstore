@@ -10,7 +10,7 @@ raise_alarm() {
     item_to_override=$2
     error_code=$3
 ###    enstore alarm --raise --severity "A" --root-error "$msg"
-    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail bakken@fnal.gov
+    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail bakken@fnal.gov,berman@fnal.gov
 ###    enstore sched --override $item_to_override --saagstatus red --time="$msg"
 ###    enstore sched --override enstore    --saagstatus red --time="$msg"
     exit $error_code
@@ -34,9 +34,9 @@ do_transfer() {
     progress_file=$3
     while [ $stat -ne 0 -a $try -lt $maxtry ]; do
 	try=`expr $try + 1`
-###	rm -f $xfer_file
+	rm -f $xfer_file
 	echo `date` Try $try of $maxtry: $xfer
-###	                                 $xfer
+	                                 $xfer
 	stat=$?
 	if [ $stat -eq 0 ]; then 
 	    rm -f $progress_file
@@ -69,7 +69,7 @@ dccp_test() {
 
 # file comparison
 
-###    cmp $test_file $read_back
+    cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "Ball Red: $dcache dcache cmp failed" $dcache_saag 3
     fi
@@ -98,7 +98,7 @@ kftp_test() {
     fi
 
 # kftp passive readback file comparison
-###    cmp $test_file $read_back
+    cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "Ball Red: $dcache dcache passive kftp cmp failed" $dcache_saag 3
     fi
@@ -125,7 +125,7 @@ kftp_test() {
 
 # kftp active readback file comparison
 
-###    cmp $test_file $read_back
+    cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "Ball Red: $dcache dcache kftp active cmp failed" $dcache_saag 3
     fi
@@ -165,7 +165,7 @@ ftp.quit()
 
 # ftp readback file comparison
 
-###    cmp $test_file $read_back
+    cmp $test_file $read_back
     if [ $? -ne 0 ]; then
 	raise_alarm "Ball Red: $dcache dcache ftp cmp failed" $dcache_saag 3
     fi
@@ -175,7 +175,7 @@ ftp.quit()
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-gang=stken ###efb
+
 # N will have a leading 0 (if < 100) unless we pipe it to sed.
 N=`date +"%j"|sed -e 's%^0%%'` #day of year
 N1=`expr $N - 1`
@@ -232,7 +232,7 @@ fi
 if [ "$gang" == "stken" ];
 then
     if [ -z "${KFTP_DIR:-}" ]; then
-###	setup kftp
+	setup kftp
 	if [ $? -gt 0 ]; then
 	    echo `date` ERROR: unable to setup kftp.
 	    exit 8
@@ -240,7 +240,7 @@ then
     fi
 fi
 if [ -z "${DCAP_DIR:-}" ]; then
-###    setup dcap
+    setup dcap
     if [ $? -gt 0 ]; then
 	echo `date` ERROR: unable to setup dcap.
 	exit 8
@@ -273,7 +273,7 @@ case $gang in
     stken)
 	dccp_test
 	kftp_test
-###	ftp_test $wa
+	ftp_test $wa
 	;;
 esac
 
