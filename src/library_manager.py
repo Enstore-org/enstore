@@ -170,7 +170,13 @@ def busy_vols_in_family (vc, family_name, verbose):
 	 if mv["file_family"] == family_name:
 	     vol_info = vc.inquire_vol(mv["external_label"])
 	     if vol_info['at_mover'][0] != 'unmounted':
-		 vols.append(mv["external_label"])
+		 vol_found = 0
+		 for vol in vols:
+		     if vol == mv["external_label"]:
+			 vol_found = 1
+			 break
+		 if not vol_found:
+		     vols.append(mv["external_label"])
 	     # check if this mover can do the work
 	     if vol_info['at_mover'][0] == 'mounted':
 		 if mv['state'] == 'idle_mover':
