@@ -12,6 +12,8 @@ import sys
 import string
 import socket
 import select
+import errno
+import fcntl, FCNTL
 
 # enstore imports
 import setpath
@@ -314,6 +316,23 @@ class LibraryManagerMethods:
         else:
             return self.sg_limits['limits'].get(storage_group, self.sg_limits['default'])
         
+    def del_udp_client(self, udp_client):
+        if not udp_client: return
+        # tell server we're done - this allows it to delete our unique id in
+        # its dictionary - this keeps things cleaner & stops memory from growing
+        try:
+            pid = udp_client._os.getpid()
+            tsd = udp_client.tsd.get(pid)
+            if not tsd:
+                return
+            for server in tsd.send_done.keys() :
+                try:
+                    tsd.socket.close()
+                except:
+                    pass
+        except:
+            pass
+            
     # send a regret
     def send_regret(self, ticket):
         # fork off the regret sender
@@ -321,12 +340,47 @@ class LibraryManagerMethods:
             return
         try:
             Trace.trace(11,"send_regret %s" % (ticket,))
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(ticket['callback_addr'])
-            callback.write_tcp_obj(sock,ticket)
-            sock.close()
+            control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
+            # the following insertion is for antispoofing
+            host = ticket['wrapper']['machine'][1]
+            if ticket.has_key('route_selection') and ticket['route_selection']:
+                ticket['mover_ip'] = host
+                # bind control socket to data ip
+                control_socket.bind((host, 0))
+                u = udp_client.UDPClient()
+                Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
+                try:
+                    x= u.send(ticket,ticket['routing_callback_addr'] , 15, 3)
+                except errno.errorcode[errno.ETIMEDOUT]:
+                    Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                              (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                    self.del_udp_client(u)
+                    return
+                if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
+                Trace.trace(10, "encp replied with %s"%(x,))
+                self.del_udp_client(u)
+            Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
+	    try:
+		control_socket.connect(ticket['callback_addr'])
+	    except socket.error, detail:
+		Trace.log(e_errors.ERROR, "%s %s" %
+			  (detail, ticket['callback_addr']))
+		#We have seen that on IRIX, when the connection succeds, we
+		# get an ISCONN error.
+		if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
+		    pass
+		#The TCP handshake is in progress.
+		elif detail[0] == errno.EINPROGRESS:
+		    pass
+		else:
+		    Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
+			      (ticket['callback_addr'], os.strerror(detail)))
+            
+            callback.write_tcp_obj(control_socket,ticket)
+            control_socket.close()
 
-            Trace.trace(13,"send_regret ")
         except:
             exc,msg,tb=sys.exc_info()
             Trace.log(1,"send_regret %s %s %s"%(exc,msg,ticket))
