@@ -5,14 +5,12 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile conf.sh $  $Revision$
 # returns servers configured for a node
 
-USAGE="`basename $0` <node>"
+USAGE="`basename $0` [node]"
 if [ ! "${1-}" ];then 
-    echo "$USAGE"
-    exit 1
+    host=""
+else
+    host=$1
 fi
-
-host=$1
-
 python -c '
 import configuration_client
 intf=configuration_client.ConfigurationClientInterface()
@@ -23,8 +21,9 @@ servers = t["server_list"]
 for key in servers.keys():
     try:
         ahost,ip,port = servers[key]
-        if ahost == "'$host'":
-            print "%s:%s" % (key,port)
+	#print key,ahost,ip,port
+	if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="admin_clerk" or key=="logserver":
+            print "%s:%s:%s" % (key,ahost,port)
     except:
         pass
 del csc.u
