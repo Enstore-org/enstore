@@ -48,19 +48,6 @@ def timestamp2time(s):
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
-
-# from a dictionary, get field name and values
-def get_fields_and_values(s):
-	keys = s.keys()
-	fields = ""
-	values = ""
-	for i in keys[:-1]:
-		fields = fields+i+', '
-		values = values+str_value(s[i])+', '
-	fields = fields+keys[-1]
-	values = values+str_value(s[keys[-1]])
-	return fields, values
-
 # from two dictionaries, get the difference based on the second one
 def diff_fields_and_values(s1, s2):
 	d = {}
@@ -86,6 +73,19 @@ def str_value(v):
 		return v[0]+'('+args+')'
 	else:
 		return `v`
+
+# from a dictionary, get field name and values
+def get_fields_and_values(s):
+	keys = s.keys()
+	fields = ""
+	values = ""
+	for i in keys[:-1]:
+		fields = fields+i+', '
+		values = values+str_value(s[i])+', '
+	fields = fields+keys[-1]
+	values = values+str_value(s[keys[-1]])
+	return fields, values
+
 
 # This is the base DbTable class
 #
