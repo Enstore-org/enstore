@@ -38,31 +38,31 @@ def inq_file_name():
     return "enstore_system.html"
 
 def default_inq_file():
-    return default_dir+inq_file_name()
+    return "%s%s"%(default_dir, inq_file_name())
 
 def encp_html_file_name():
-    return "encp_"+inq_file_name()
+    return "encp_%s"%(inq_file_name(),)
 
 def default_encp_html_file():
-    return default_dir+encp_html_file_name()
+    return "%s%s"%(default_dir, encp_html_file_name())
 
 def config_html_file_name():
-    return "config_"+inq_file_name()
+    return "config_%s"%(inq_file_name(),)
 
 def default_config_html_file():
-    return default_dir+config_html_file_name()
+    return "%s%s"%(default_dir, config_html_file_name())
 
 def misc_html_file_name():
-    return "misc_"+inq_file_name()
+    return "misc_%s"%(inq_file_name(),)
 
 def default_misc_html_file():
-    return default_dir+misc_html_file_name()
+    return "%s%s"%(default_dir, misc_html_file_name())
 
 def status_html_file_name():
-    return "status_"+inq_file_name()
+    return "status_%s"%(inq_file_name(),)
 
 def default_status_html_file():
-    return default_dir+status_html_file_name()
+    return "%s%s"%(default_dir, status_html_file_name())
 
 class EnFile:
 
@@ -73,14 +73,14 @@ class EnFile:
     def open(self, mode='w'):
 	try:
             self.filedes = open(self.file_name, mode)
-            Trace.trace(10,"%s open "%self.file_name)
+            Trace.trace(10,"%s open "%(self.file_name,))
         except IOError:
             self.filedes = 0
             Trace.log(e_errors.WARNING,
                       "%s not openable for %s"%(self.file_name, mode))
 
     def close(self):
-	Trace.trace(10,"enfile close "+self.file_name)
+	Trace.trace(10,"enfile close %s"%(self.file_name,))
 	if self.filedes:
 	    self.filedes.close()
 	    self.filedes = 0
@@ -105,7 +105,7 @@ class EnStatusFile(EnFile):
 
     # open the file
     def open(self):
-        Trace.trace(12,"open "+self.file_name)
+        Trace.trace(12,"open %s"%(self.file_name,))
         # try to open status file for append
         EnFile.open(self, 'a')
         if not self.filedes:
@@ -198,14 +198,14 @@ class EnDataFile(EnFile):
 	if not indir:
 	    cdcmd = " "
 	else:
-	    cdcmd = "cd "+indir+";"
+	    cdcmd = "cd %s;"%(indir,)
 	try:
 	    os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
 	except:
 	    self.file_name = ""
             exc, msg, tb=sys.exc_info()
 	    format = "%s: inquisitor plot system error: %s" % (sys.argv,msg)
-	    Trace.trace(9,"__init__ "+format)
+	    Trace.trace(9,"__init__ %s"%(format,))
 
     def read(self, max_lines):
 	i = 0
