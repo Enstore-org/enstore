@@ -17,11 +17,19 @@ event_relay_port = 55510
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
-configdict = eval (os.popen("enstore config --show", 'r').read())
+def get_config():
+    pipe = os.popen("enstore config --show", 'r') #run the command and give us
+                                                                           ## a way to access to its output
+    data = pipe.read() #get the output of the command (will be a string)
+    configdict = eval(data) # Turn the string back into a Python object
 
 
+## TODO: write "get_mover_status" which works the same way, running
+    ## enstore mover --status <whatever>.mover
+    
 def get_movers():
     movers = []
+    configdict = get_config()
     for item, value in configdict.items():
         if endswith(item, '.mover') and string.find(item, 'null')<0:
             mover = item[:-6]
