@@ -114,8 +114,9 @@ COMMON:
                 setupOptional("gnuplot v3_6")
 
                 # we use the pylint tool in the gadfly product
-                setupRequired("gadfly v1_0")
-
+                # setupRequired("gadfly v1_0") # old style
+                envSet(GADFLY_GRAMMAR,`${UPS_PROD_DIR}/ups/what_is gadfly`)
+                addAlias(pylint, 'python ${GADFLY_GRAMMAR}/kjpylint.py %s')
                 # ftt is Fermi tape tools
                 ###setupRequired("ftt v2_6")
                 setupRequired("ftt v2_7")
@@ -172,8 +173,8 @@ COMMON:
                 envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
 
                 # now setup the product with the python support for HTML
-                setupRequired("HTMLgen")
-
+                # setupRequired("HTMLgen") # old style
+                envAppend(PYTHONPATH,`${UPS_PROD_DIR}/ups/what_is HTMLgen`)
                 # get the output right away, no buffering
                 envSet(PYTHONUNBUFFERED, "x")
 
