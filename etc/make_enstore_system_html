@@ -22,6 +22,7 @@ fi
 
 if [ "${ENSTORE_DIR:-x}" = "x" ];
 then
+    set +u
     if [ -f /fnal/ups/etc/setups.sh ];
     then
        . /fnal/ups/etc/setups.sh
@@ -33,6 +34,7 @@ then
     else
        print_error "ERROR: Cannot find UPS to setup enstore, set it up first."
     fi
+    set -u
 fi
 
 real_output="$ENSTORE_DIR/etc/enstore_system.html"
