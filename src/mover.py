@@ -105,13 +105,11 @@ class Buffer:
 
     def reset(self):
         self._lock.acquire()
-
-        #notify anybody who is waiting on this? - cgw
         self.read_ok.set()
         self.write_ok.clear()
         
         self._buf = []
-        self._freelist = [] 
+##        self._freelist = []   keep this around to save on malloc's
         self._buf_bytes = 0
         self._reading_block = None
         self._writing_block = None
@@ -517,9 +515,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self._in_setup: #HACK XXX FIXME!
             inhibit = 1
         
-        if state in (CLEANING, DRAINING, OFFLINE, ERROR, SEEK, MOUNT_WAIT, DISMOUNT_WAIT):
-            if state == self._last_state:
-                return
         if reset_timer:
             self.reset_interval_timer()
 
