@@ -5250,6 +5250,21 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(number_of_files):
 
+        # The following if...elif...else... statement needs to declare a set
+        # of variables withing each branch to be used in constructing the
+        # ticket later on.  They are:
+        #
+        # 1) ifullname - The full path of the input file.
+        # 2) ofullname - The full path of the output file.
+        # 3) file_size - The amount of bytes expected to transfer.  None if
+        #                the number is unkown for some volume transfers (get).
+        # 4) read_work
+        # 5) fc_reply - The file data base entry for the file.  For some
+        #               volume reads (get) fields maybe empty.
+        # 6) vc_reply - Exception: Done before the loop on all volume reads.
+        # 7) p - pnfs.Pnfs class instance
+        # 8) bfid - The bfid of the transfer.
+
         #### VOLUME #######################################################
         #If the user specified a volume to read.
         if e.volume:
@@ -5263,7 +5278,11 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if getattr(e, "list", None):
                 #Get the number and filename for the next line on the file.
                 number, filename = list_of_files[i].split()[:2]
-                #Massage  the two values.
+                #Massage the file posistion (aka file number) of the current
+                # file on the tape and the name it will have.
+                #These two variables should only be used withing the e.volume
+                # if statement.  After that their use would break usability
+                # with the other read method type branches.
                 number = int(number)
                 filename = os.path.basename(filename)
             
@@ -5342,9 +5361,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                 'status' : (e_errors.OK, None)
                                 }
 
-                    Trace.message(TRANSFER_LEVEL,
-                          "Preparing file number %s for transfer." %
-                          (extract_file_number(fc_reply['location_cookie']),))
+                #Get the file posistion (aka file number) of the current
+                # file on the tape and the name it will have.
+                #These two variables should only be used withing the e.volume
+                # if statement.  After that their use would break usability
+                # with the other read method type branches.
+                number = int(extract_file_number(fc_reply['location_cookie']))
+                filename = os.path.basename(fc_reply['pnfs_name0'])
+
+                Trace.message(TRANSFER_LEVEL,
+                              "Preparing file number %s (%s) for transfer." %
+                              (number, filename))
 
             #Check to make sure that this file is not marked
             # as deleted.  If so, print error and exit.
