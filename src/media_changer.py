@@ -21,6 +21,7 @@ import os
 import configuration_client
 import dispatching_worker
 import generic_server
+import interface
 import log_client
 import traceback
 import string
@@ -31,6 +32,25 @@ import e_errors
 list = 0
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
+
+    def __init__(self, medch, csc=0, list=0, host=interface.default_host(), \
+	         port=interface.default_port()):
+        Trace.trace(10, '{__init__')
+        # get the config server
+        configuration_client.set_csc(self, csc, host, port, list)
+        #   pretend that we are the test system
+        #   remember, in a system, there is only one bfs
+        #   get our port and host from the name server
+        #   exit if the host is not this machine
+        keys = self.csc.get(medch)
+        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+                                                      keys['port']))
+        # get a logger
+        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+                                            'logserver', 0)
+        Trace.trace(10, '}__init__')
+
+
 
     # load volume into the drive
     def load(self,
@@ -189,82 +209,70 @@ class FTT_MediaLoader(FTT_MediaLoaderMethods,
                       generic_server.GenericServer) :
     pass
 
+class MediaLoaderInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{mlsi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+	self.list = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}mlsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+["config_list","list","log="] +\
+               self.help_options()
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" media_changer"
+
+    # parse the options like normal but make sure we have a library manager
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # bomb out if we don't have a media_changer
+        if len(self.args) < 1 :
+            self.print_help(),
+            sys.exit(1)
+        else:
+            self.name = self.args[0]
+
+
 if __name__ == "__main__" :
     import sys
-    import getopt
     import socket
     import time
     import timeofday
     Trace.init("medchanger")
     Trace.trace(1,"media changer called with args "+repr(sys.argv))
 
-    # defaults
-    #config_host = "localhost"
-    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_host = ci[0]
-    config_port = "7500"
-    config_file = ""
-    config_list = 0
-
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
-               ,"config_list","list","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--list" :
-            list = 1
-        elif opt == "--log" :
-            list = value
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options, "media changer"
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    # bomb out if we don't have a media changer
-    if len(args) < 1 :
-        print "python ",sys.argv[0], options, "media changer"
-        print "   do not forget the '--' in front of each option"
-        sys.exit(1)
-
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    config_list)
-
-    mc_config = csc.get(args[0])
-
+    # get an interface
+    intf = MediaLoaderInterface()
 
     # here we need to define what is the class of the media changer
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
-    if args[0] == 'STK.media_changer' :
-        mc =  STK_MediaLoader((mc_config['hostip'], mc_config['port']))
-    elif args[0] == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader((mc_config['hostip'], mc_config['port']))
+    if intf.name == 'STK.media_changer' :
+        mc =  STK_MediaLoader(intf.name, 0, intf.config_list, \
+	                      intf.config_host, intf.config_port)
+    elif intf.name == 'FTT.media_changer' :
+        mc =  FTT_MediaLoader(intf.name, 0, intf.config_list, \
+	                      intf.config_host, intf.config_port)
     else :
-        mc =  RDD_MediaLoader((mc_config['hostip'], mc_config['port']))
-    mc.set_csc(csc)
-
-    # create a log client
-    logc = log_client.LoggerClient(csc, mc_config["logname"], 'logserver', 0)
-    mc.set_logc(logc)
+        mc =  RDD_MediaLoader(intf.name, 0, intf.config_list, \
+	                      intf.config_host, intf.config_port)
 
     while 1:
         try:
-            Trace.init(args[0][0:5]+'.medc')
-            logc.send(log_client.INFO, 1, "Media Changer"+args[0]+"(re) starting")
+            Trace.init(intf.name[0:5]+'.medc')
+            mc.logc.send(log_client.INFO, 1, "Media Changer"+intf.name+"(re) starting")
             mc.serve_forever()
         except:
             traceback.print_exc()
@@ -274,7 +282,8 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[1])+" "+\
                      "media changer serve_forever continuing"
             print format
-            logc.send(log_client.ERROR, 1, format)
+            mc.logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
             continue
     Trace.trace(1,"Media Changer finished (impossible)")
+
