@@ -248,7 +248,7 @@ class EnstoreInterface(UserOptions):
     def print_help(self):
         cmd = "enstore"
         if not self.user_mode:
-            call_function("pnfs", "")
+            call_function("pnfsa", "")
             print "\n%s start   [--just server --ping]"%cmd
             print   "%s stop    [--just server --xterm server]"%cmd
             print   "%s restart [--just server --xterm server]"%cmd
@@ -260,6 +260,8 @@ class EnstoreInterface(UserOptions):
             print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
             print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
             print "\n%s emass              (lists current mount state & queue list on emass robot)"%cmd
+        else:
+            call_function("pnfs", "")            
         print "\n"
         servers = self.get_valid_servers()
         for server in servers:
@@ -383,6 +385,8 @@ class Enstore(EnstoreInterface):
         elif arg1 == "ps":
             rtn = call_function("EPS", sys.argv[2:])
         elif not self.user_mode and arg1 == "pnfs": 
+            rtn = call_function("pnfsa", sys.argv[2:])
+        elif arg1 == "pnfs": 
             rtn = call_function("pnfs", sys.argv[2:])
         else:
             if arg1 == "help" or arg1 == "--help" or arg1 == '': 
