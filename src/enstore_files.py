@@ -548,6 +548,7 @@ class HtmlSaagFile(EnFile):
     def __init__(self, name, system_tag=""):
         EnFile.__init__(self, name+TMP, system_tag)
         self.real_file_name = name
+	self.enstore_ball = ""
 
     def write(self, enstore_contents, network_contents, media_contents, 
               alarm_contents, node_contents, outage, offline, 
