@@ -441,6 +441,16 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'new' : new }
         return self.send(ticket)
         
+    def delete_volume(self, vol):
+        ticket = {'work': 'delete_volume',
+                  'external_label': vol}
+        return self.send(ticket)
+
+    def restore_volume(self, vol):
+        ticket = {'work': 'restore_volume',
+                  'external_label': vol}
+        return self.send(ticket)
+
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
