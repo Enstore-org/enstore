@@ -35,5 +35,4 @@ while /bin/true; do
             exit 2
         fi
     done
-    exit 2
 done
