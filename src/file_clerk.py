@@ -344,16 +344,22 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             Trace.trace(10,"restore_file %s"%(ticket["status"],))
 
+        if record.has_key('deleted'):
+            if record['deleted'] != 'yes':
+                ticket["status"] = "ENOTDELETED", "File %s is not deleted"%(bfid)
+                Trace.log(e_errors.INFO, "%s"%(ticket))
+                self.reply_to_caller(ticket)
+                Trace.trace(10,"restore_file %s"%(ticket["status"],))
+
         if record.has_key('pnfs_mapname'):
             map = pnfs.Pnfs(record['pnfs_mapname'])
             status = map.restore_from_volmap('no')
+            if status[0] == e_errors.OK:
+                # clear the deleted status
+                record['deleted'] = 'no'
+                self.dict[bfid] = record
         else:
             status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
-
-        if status[0] == e_errors.OK:
-            # reset the deleted status
-            record['deleted'] = 'no'
-            self.dict[bfid] = record
 
         ticket["status"] = status
         self.reply_to_caller(ticket)
