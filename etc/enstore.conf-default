@@ -1,10 +1,10 @@
 configdict = {}
 
-configdict['file_clerk']   = { 'host':'pcfarm9', 'port':7590, 'logname':'FILC'}
-configdict['volume_clerk'] = { 'host':'pcfarm9', 'port':7591, 'logname':'VOLC'}
-configdict['admin_clerk']  = { 'host':'pcfarm9', 'port':7592, 'logname':'ADMC'}
-configdict['logserver']    = { 'host':'pcfarm9', 'port':7593, 'log_file_path':'/usr/home/berman/work/enstore/etc'}
-configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7594, \
+configdict['file_clerk']   = { 'host':'pcfarm9', 'port':7511, 'logname':'FILC'}
+configdict['volume_clerk'] = { 'host':'pcfarm9', 'port':7512, 'logname':'VOLC'}
+configdict['admin_clerk']  = { 'host':'pcfarm9', 'port':7513, 'logname':'ADMC'}
+configdict['logserver']    = { 'host':'pcfarm9', 'port':7514, 'log_file_path':'/usr/home/berman/work/enstore/etc'}
+configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7515, \
    'logname':'INQC', 'timeout':10, 'alive_rcv_timeout': 5, 'alive_retries':1, \
    'ascii_file':'/bakken/bakken/enstore_db/inq.txt', \
    'html_file':'/products/www_pages/enstore/inq.html', \
