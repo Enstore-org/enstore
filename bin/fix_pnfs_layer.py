@@ -130,7 +130,6 @@ if __name__ == "__main__":
     except getopt.GetoptError:
         usage()
         sys.exit(-1)
-    print options, args
     interactive = 1
     for option in options:
         if '-q' in option:
@@ -138,7 +137,6 @@ if __name__ == "__main__":
     if len(args) != 1:
         usage()
         sys.exit(-1)
-    print args
     # this program must run on the node where pnfs is mounted and as root
     if os.getuid():
         print "You must be root to run this this program"
