@@ -102,7 +102,7 @@ start_db_daemons()
         echo "`date` Starting database checkpoint daemon  on `hostname`"
 	cmd="db_checkpoint -h $enstore_db  -p 5 `output $out`"
 	eval "$cmd &"
-        echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
+        echo $! >> $PID_DIR/`uname -n`-db_checkpoint_pids	
 	date >> $out  # db_checkpoint doesn't usually write to this file. send something so we don't start twice on same node
     fi
 
@@ -114,7 +114,7 @@ start_db_daemons()
         echo "`date` Starting database deadlock daemon  on `hostname`"
         cmd="db_deadlock -h $enstore_db  -t 1 `output $out`"
         eval "$cmd &"
-        echo $! >> $PID_DIR/`uname -n`-db_daemons_pids	
+        echo $! >> $PID_DIR/`uname -n`-db_deadlock_pids	
 	date >> $out  # db_deadlock doesn't usually write to this file. send something so we don't start twice on same node
      fi
 }
