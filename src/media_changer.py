@@ -30,14 +30,11 @@ import Trace
 import e_errors
 
 list = 0
-mc_config = {}
-logc = 0				# will be an object
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
 
     def __init__(self, medch, csc=0, list=0, host=interface.default_host(), \
 	         port=interface.default_port()):
-	global mc_config, logc
         Trace.trace(10, '{__init__')
         # get the config server
         configuration_client.set_csc(self, csc, host, port, list)
@@ -45,11 +42,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
         #   exit if the host is not this machine
-        mc_config = self.csc.get(medch)
-        dispatching_worker.DispatchingWorker.__init__(self, (mc_config['hostip'], \
-                                                      mc_config['port']))
+        self.mc_config = self.csc.get(medch)
+        dispatching_worker.DispatchingWorker.__init__(self, \
+	                 (self.mc_config['hostip'], self.mc_config['port']))
         # get a logger
-        logc = log_client.LoggerClient(self.csc, mc_config["logname"], \
+        self.logc = log_client.LoggerClient(self.csc, \
+	                                    self.mc_config["logname"], \
                                             'logserver', 0)
         Trace.trace(10, '}__init__')
 
@@ -59,9 +57,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
     def load(self,
              external_label,    # volume external label
              drive) :           # drive id
-	if 'delay' in mc_config.keys() and mc_config['delay']:
+	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    print "make sure tape",external_label,"is in drive",drive
-	    time.sleep( mc_config['delay'] )
+	    time.sleep( self.mc_config['delay'] )
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
@@ -69,9 +67,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
     def unload(self,
                external_label,  # volume external label
                drive) :         # drive id
-	if 'delay' in mc_config.keys() and mc_config['delay']:
+	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    print "remove tape",external_label,"from drive",drive
-	    time.sleep( mc_config['delay'] )
+	    time.sleep( self.mc_config['delay'] )
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
@@ -116,13 +114,13 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
     # load volume into the drive
     def load(self, external_label, tape_drive) :
       # form mount command to be executed
-      stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " + \
-                            mc_config['acls_uname'] + " 'echo mount " + \
+      stk_mount_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
+                            self.mc_config['acls_uname'] + " 'echo mount " + \
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-      stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
-                            mc_config['acls_uname'] + " 'echo query drive " + \
+      stk_query_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
+                            self.mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
       count=2
@@ -130,7 +128,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
       while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
         count = count - 1
         # call mount command
-        logc.send(log_client.INFO, 2, "Mnt cmd:"+stk_mount_command)
+        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
 
@@ -142,29 +140,29 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
         # log the work
         if out_ticket["status"][0] != e_errors.OK:
-            logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
+            self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
             for line in returned_message:
-                logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
+                self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
             returned_message  = os.popen(stk_query_command, "r").readlines()
             for line in returned_message:
-                logc.send(log_client.INFO, 1, "Mnt qry:"+line)
+                self.logc.send(log_client.INFO, 1, "Mnt qry:"+line)
         else :
-            logc.send(log_client.INFO, 4, "Mnt returned ok")
+            self.logc.send(log_client.INFO, 4, "Mnt returned ok")
             for line in returned_message:
-                logc.send(log_client.INFO, 8, "Mnt ok:"+line)
+                self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
         # send reply to caller
         self.reply_to_caller(out_ticket)
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
       # form dismount command to be executed
-      stk_umnt_command = "rsh " + mc_config['acls_host'] + " -l " +\
-                            mc_config['acls_uname'] + " 'echo dismount " +\
+      stk_umnt_command = "rsh " + self.mc_config['acls_host'] + " -l " +\
+                            self.mc_config['acls_uname'] + " 'echo dismount " +\
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-      stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
-                            mc_config['acls_uname'] + " 'echo query drive " + \
+      stk_query_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
+                            self.mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
@@ -174,7 +172,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
       while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
         count = count - 1
         # call dismount command
-        logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_umnt_command)
+        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_umnt_command)
         returned_message = os.popen(stk_umnt_command, "r").readlines()
 
         # analyze the return message
@@ -184,16 +182,16 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 break
         # log the work
         if out_ticket["status"][0] != e_errors.OK:
-            logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command)
+            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command)
             for line in returned_message:
-                logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
+                self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
             returned_message  = os.popen(stk_query_command, "r").readlines()
             for line in returned_message:
-                logc.send(log_client.INFO, 1, "Umnt qry:"+line)
+                self.logc.send(log_client.INFO, 1, "Umnt qry:"+line)
         else:
-            logc.send(log_client.INFO, 4, "UMnt returned ok:")
+            self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
             for line in returned_message:
-                logc.send(log_client.INFO, 8, "UMnt ok:"+line)
+                self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
         
       self.reply_to_caller(out_ticket)
 
@@ -235,7 +233,7 @@ class MediaLoaderInterface(interface.Interface):
     def help_line(self):
         return interface.Interface.help_line(self)+" media_changer"
 
-    # parse the options like normal but make sure we have a library manager
+    # parse the options like normal but make sure we have a media changer
     def parse_options(self):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a media_changer
