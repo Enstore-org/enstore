@@ -235,7 +235,7 @@ class ConfigurationServer(ConfigurationDict,\
         cd =  ConfigurationDict()
 
         # default socket initialization - ConfigurationDict handles requests
-        SocketServer.TCPServer.__init__(self, server_address, cd)
+        SocketServer.UDPServer.__init__(self, server_address, cd)
 
         # now (and not before,please) load the config file user requested
         self.load_config(configfile,list)
