@@ -388,7 +388,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 # aml2 robot loader server
 class AML2_MediaLoader(MediaLoaderMethods):
 
-    def __init__(self, medch, max_work=10, csc=None):
+    def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self, medch, max_work, csc)
 
         # robot choices are 'R1', 'R2' or 'Both'
@@ -712,7 +712,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
-    def __init__(self, medch, max_work=10, csc=None):
+    def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
             self.driveCleanTime = self.mc_config['DriveCleanTime']
@@ -1100,7 +1100,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-        self.max_work=10
+        self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
