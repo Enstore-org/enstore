@@ -440,6 +440,8 @@ class LibraryManagerMethods:
 
         # look in pending work queue for reading or writing work
         rq=self.pending_work.get()
+        if rq:
+            if not self.tmp_rq: self.tmp_rq = rq
         while rq:
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
