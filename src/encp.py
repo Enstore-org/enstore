@@ -31,6 +31,7 @@ import Trace
 import pnfs
 import callback
 import log_client
+import alarm_client
 import configuration_client
 import udp_server
 import EXfer
@@ -607,34 +608,79 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 
 #######################################################################
 
-# get the configuration client and udp client and logger client
-# return some information about who we are so it can be used in the ticket
-
-def clients(config_host,config_port):
-    # get a configuration serverg432
-    #csc = configuration_client.ConfigurationClient((config_host,config_port))
-    csc = get_csc()
+def check_server(csc, server_name):
 
     # send out an alive request - if config not working, give up
-    rcv_timeout = 20
-    alive_retries = 10
+    rcv_timeout = 5
+    alive_retries = 5
+    
     try:
-        stati = csc.alive(configuration_client.MY_SERVER,
-                          rcv_timeout, alive_retries)
+        stati = csc.alive(server_name, rcv_timeout, alive_retries)
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
     except:
+        #exc, msg, tb = sys.exc_info()
+        #print exc, msg
         stati={}
-        stati["status"] = (e_errors.CONFIGDEAD,"Config at %s port=%s"%
-                           (config_host, config_port))
-    if not e_errors.is_ok(stati['status']):
-        print_data_access_layer_format("","",0, stati)
-        quit()
+        stati["status"] = (e_errors.CONFIGDEAD,
+                           "Server %s is not responding." % server_name)
+
+    #Quick translation for TIMEDOUT error.  The description part of the
+    # error is None by default, this puts something there.
+    if stati['status'][0] == e_errors.TIMEDOUT:
+        stati['status'] = (e_errors.TIMEDOUT,
+                           "Unable to contact %s." % server_name)
+
+    return stati
+
+# get the configuration client and udp client and logger client
+# return some information about who we are so it can be used in the ticket
+
+def clients(config_host,config_port):
+
+    # get a configuration server client
+    csc = get_csc()
+
+    #This group of servers must be running to allow the transfer to
+    # succed.  The library manager is not checked (now anyway) because we
+    # don't know which one it is.
+    for server in [configuration_client.MY_SERVER,
+                   volume_clerk_client.MY_SERVER,
+                   file_clerk_client.MY_SERVER]:
+        Trace.message(CONFIG_LEVEL, "Contacting %s." % server)
+
+        ticket = check_server(csc, server)
+
+        #Handle the fatal error.
+        if not e_errors.is_ok(ticket['status']):
+            Trace.alarm(e_errors.ERROR, ticket['status'][0], ticket)
+            print_data_access_layer_format("", "", 0, ticket)
+            quit()
+
+        Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
+                      (server, ticket['address']))
+
+    #While these servers are important, we should not fail the transfer
+    # over them.
+    for server in [log_client.MY_SERVER, alarm_client.MY_SERVER]:
+
+        Trace.message(CONFIG_LEVEL, "Contacting %s." % server)
+
+        ticket = check_server(csc, server)
+
+        #Handle the fatal error.
+        if not e_errors.is_ok(ticket['status']):
+            Trace.alarm(e_errors.WARNING, ticket['status'][0], ticket)
+            quit()
+
+        Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
+                      (server, ticket['address']))
+    
     
     # get a logger client
     logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
-   
+
     #global client #should not do this
     client = {}
     client['csc']=csc
@@ -3308,32 +3354,48 @@ def get_clerks_info(vcc, fcc, bfid):
 
     if not e_errors.is_ok(fc_ticket['status'][0]):
         raise EncpError(None,
-                        "Failed to obtain information for bfid %s" % bfid,
+                        "Failed to obtain information for bfid %s." % bfid,
                         e_errors.EPROTO, fc_ticket)
     if not fc_ticket.get('external_label', None):
         raise EncpError(None,
-                        "Failed to obtain information for bfid %s" % bfid,
+                        "Failed to obtain information for bfid %s." % bfid,
                         e_errors.EPROTO, fc_ticket)
 
     vc_ticket = vcc.inquire_vol(fc_ticket['external_label'])
+
+    if not e_errors.is_ok(vc_ticket['status'][0]):
+        raise EncpError(None,
+                        "Failed to obtain information for external label %s." %
+                        fc_ticket['external_label'],
+                        e_errors.EPROTO, vc_ticket)
+    if not vc_ticket.get('system_inhibit', None):
+        raise EncpError(None,
+                        "Volume %s did not contain system_inhibit information."
+                        % fc_ticket['external_label'],
+                        e_errors.EPROTO, vc_ticket)
+    if not vc_ticket.get('user_inhibit', None):
+        raise EncpError(None,
+                        "Volume %s did not contain user_inhibit information."
+                        % fc_ticket['external_label'],
+                        e_errors.EPROTO, vc_ticket)
     
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         raise EncpError(None,
-                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                        "Volume %s is marked %s."%(fc_ticket['external_label'],
                                                   inhibit),
                         inhibit, vc_ticket)
 
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         raise EncpError(None,
-                        "volume %s is marked %s"%(fc_ticket['external_label'],
+                        "Volume %s is marked %s."%(fc_ticket['external_label'],
                                                   inhibit),
                         inhibit, vc_ticket)
 
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
-                        "file %s is marked %s"%(fc_ticket['pnfs_name0'],
+                        "File %s is marked %s."%(fc_ticket['pnfs_name0'],
                                                   e_errors.DELETED),
                         e_errors.DELETED, vc_ticket)
 
@@ -4067,7 +4129,7 @@ def main():
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
 
-        #If verbosity is turned on get the user name(s).
+    #If verbosity is turned on get the user name(s).
     try:
         user_name = pwd.getpwuid(os.geteuid())[0]
     except (OSError, KeyError):
@@ -4133,11 +4195,11 @@ def main():
 
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
-    Trace.message(CONFIG_LEVEL, id_line)
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
     client = clients(e.config_host, e.config_port)
+    #Report on the success of getting the csc and logc.
     Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'], 'csc'))
     Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
 
