@@ -359,7 +359,10 @@ class LibraryManagerMethods:
         # ok passed criteria. Get request by file location
         if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
             rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
-
+            if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
+                self.continue_scan = 1
+                key_to_check = self.fair_share(rq)
+                return rq,key_to_check 
         ########################################################
         ### from old idle_mover
         # check if the volume for this work had failed on this mover
