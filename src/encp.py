@@ -891,7 +891,8 @@ def outputfile_check(inputlist, outputlist, dcache):
                 elif access_check(os.path.dirname(outputlist[i]), os.W_OK):
                     outputlist.append(outputlist[i])
                 else:
-                    raise EncpError(errno.EACCES,outputlist[i],e_errors.USERERROR)
+                    raise EncpError(errno.EACCES,outputlist[i],
+                                    e_errors.USERERROR)
                 
             #File exists when run by a normal user.
             elif access_check(outputlist[i], os.F_OK) and not dcache:
@@ -904,7 +905,8 @@ def outputfile_check(inputlist, outputlist, dcache):
                     raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
                                     "Filesystem is corrupt.", e_errors.OSERROR)
                 else:
-                    raise EncpError(errno.ENOENT,outputlist[i],e_errors.USERERROR)
+                    raise EncpError(errno.ENOENT,outputlist[i],
+                                    e_errors.USERERROR)
 
             #The file exits, as it should, for a dache transfer.
             elif access_check(outputlist[i], os.F_OK) and dcache:
@@ -912,10 +914,11 @@ def outputfile_check(inputlist, outputlist, dcache):
                 if access_check(outputlist[i], os.W_OK):
                     outputlist.append(outputlist[i])
                 else:
-                    raise EncpError(errno.EACCES,outputlist[i],e_errors.USERERROR)
+                    raise EncpError(errno.EACCES,outputlist[i],
+                                    e_errors.USERERROR)
             else:
                 raise EncpError(None,
-                                "Failed outputfile check for: %s" % outputlist[i],
+                             "Failed outputfile check for: %s" % outputlist[i],
                                 e_errors.UNKNOWN)
 
             #Make sure the output file system can handle a file as big as
@@ -2134,7 +2137,7 @@ def verify_write_request_consistancy(request_list, e):
 
 ############################################################################
 
-def set_pnfs_settings(ticket):
+def set_pnfs_settings(ticket, intf_encp):
 
     # create a new pnfs object pointing to current output file
     Trace.trace(20,"write_to_hsm adding to pnfs "+ ticket['outfile'])
@@ -2215,8 +2218,11 @@ def set_pnfs_settings(ticket):
 
     # file size needs to be the LAST metadata to be recorded
     try:
-        # set the file size
-        p.set_file_size(ticket['file_size'])
+        #The dcache sets the file size.  If encp tries to set it again, pnfs
+        # sets the size to zero.  Thus, only do this for normal transfers.
+        if not intf_encp.put_cache:
+            # set the file size
+            p.set_file_size(ticket['file_size'])
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
@@ -2528,10 +2534,10 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Update the last access and modification times respecively.
         update_times(done_ticket['infile'], done_ticket['outfile'])
-            
+        
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
-        set_pnfs_settings(done_ticket)
+        set_pnfs_settings(done_ticket, e)
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
