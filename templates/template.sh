@@ -1,6 +1,6 @@
 #!/bin/sh
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# bin/template.sh  $Revision$
+# bin/$RCSfile template.sh $  $Revision$
 # Description...
