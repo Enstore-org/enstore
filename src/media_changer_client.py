@@ -15,12 +15,15 @@ from udp_client import UDPClient
 
 
 class MediaLoaderClient:
-    def __init__(self, configuration_client) :
+    def __init__(self, configuration_client, name) :
 	self.csc = configuration_client
 	self.u = UDPClient()
+	self.media_changer = name
+	print "media loader client :" + self.media_changer
+
     # send the request to the Media Loader server and then send answer to user
     def send (self, ticket) :
-        vticket = self.csc.get("STK.media_changer")
+        vticket = self.csc.get(self.media_changer)
 	print 'host' + "(vticket['host'])"
 	print 'port' + "(vticket['port'])"
 	print 'sending ticket' #+ ticket
@@ -80,7 +83,7 @@ if __name__ == "__main__" :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
 
-    mlc = MediaLoaderClient(csc)
+    mlc = MediaLoaderClient(csc, "STK.media_changer")
 #    ticket = mlc.loadvol('000007', '0,0,9,1')
 #    print 'load returned:' + ticket['status']
     ticket = mlc.unloadvol('000007', '0,0,9,1')

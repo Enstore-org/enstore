@@ -44,13 +44,17 @@ echo $! >> `uname -n`-library_manager_pids
 
 # stk media changer
 echo "Starting STK media changer"
-python $ENSTORE_DIR/src/media_changer.py --config_host $config_host --config_port $config_port &
+python $ENSTORE_DIR/src/media_changer.py --config_host $config_host --config_port $config_port STK.media_changer &
 echo $! >> `uname -n`-media_changer_pids
 
 # mover: raw disk mover
-echo "Starting Raw Disk Mover"
-python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
-echo $! >> `uname -n`-mover_pids
+#echo "Starting Raw Disk Mover"
+#python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
+#echo $! >> `uname -n`-mover_pids
+
+# mover: STK mover
+echo "Starting STK Tape Library Mover"
+python $ENSTORE_DIR/src/mover.py  --config_host $config_host --config_port $config_port stk0.mover & 
 
 # really need to add a check to make sure they are working
 sleep 1

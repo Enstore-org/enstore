@@ -8,6 +8,7 @@ from udp_client import UDPClient
 from callback import *
 from dict_to_a import *
 from driver import RawDiskDriver
+from media_changer_client import *
 
 #csc = configuration_client()
 #u = UDPClient()
@@ -57,6 +58,7 @@ class Mover :
                 self.driver_name = mconfig["driver"]
                 self.device = mconfig["device"]
                 self.library = mconfig["library"]
+		self.media_changer = mconfig["media_changer"]
 
                 # now get info asssociated with our volume manager
                 self.csc = configuration_client(self.config_host,self.config_port)
@@ -82,7 +84,9 @@ class Mover :
                                   `vticket["remaining_bytes"]` +
                                         ")")
 
-                ml = MediaLoaderClient(self.library + ".media_loader")
+		print "Mover's name is " + self.name
+		print "creating meadia loader client: " + self.meadia_changer
+		ml = MediaLoaderClient(self.csc, self.meadia_changer)
                 lmticket = ml.load(self.external_label, self.library_device)
                 if lmticket["status"] != "ok" :
                         if lmticket["status"] == "media_in_another_device" :
@@ -103,7 +107,7 @@ class Mover :
 
         def unbind_volume(self, ticket) :
 
-                ml = MediaLoaderClient(self.library + ".media_loader")
+		ml = MediaLoaderClient(self.csc, self.meadia_changer)
                 #
                 # do any rewind unload or eject operations on the device
                 #
@@ -313,20 +317,6 @@ class Mover :
                         "mover" : self.name
                         }
 
-class MediaLoaderClient :
-
-                def __init__(self, library) :
-                        self.nload = 0
-                        pass
-
-                def load(self, external_label, drive) :
-                        self.nload = self.nload + 1
-                        if self.nload % 10 == 0 :
-                                return {"status" : "media_in_another_device"}
-                        return {"status" : "ok"}
-
-                def unload(self, external_label, drive) :
-                        return {"status" : "ok"}
 
 if __name__ == "__main__" :
     import getopt
@@ -371,3 +361,7 @@ if __name__ == "__main__" :
     while (1) :
         mv = Mover(config_host,config_port)
         mv.move_forever (args[0])
+
+
+
+

@@ -27,9 +27,9 @@ configdict['fd0.mover'] = { 'status'  : 'ok', \
                             'library_device' : '1'}
 
 configdict['stk0.mover'] = { 'status'  : 'ok', \
-                            'device'  : 'specifyme', \
+                            'device'  : './redwood.fake', \
                             'library' : 'red50library', \
-                            'driver'  : 'specifyme', \
+                            'driver'  : 'RawDisDriver', \
                             'library_device' : '1', \
                             'media_changer' : 'STK.media_changer' }
 

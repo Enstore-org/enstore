@@ -166,9 +166,16 @@ if __name__ == "__main__" :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
 
-    keys = csc.get("STK.media_changer")
-    print keys
-    mls =  STK_MediaLoader((keys['host'], keys['port']), STK_MediaLoaderMethods)
+    keys = csc.get(args[0])
+    # here we would need to define what is the class of the media changer
+    # and create an object of that class based on the value of args[0]
+    # for now there is just one possibility
+    if args[0] == 'STK.media_changer' :
+	mls =  STK_MediaLoader((keys['host'], keys['port']), 
+			       STK_MediaLoaderMethods)
+    else :
+	raise "Unknown media loader type"
+        sys.exit(1)
     mls.set_csc(csc)
     #mls.loadvol('VSN001', '0,0,9,1')
     #mls.unloadvol('VSN001', '0,0,9,1')
