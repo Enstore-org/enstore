@@ -440,7 +440,8 @@ class XferDataFile(EnPlot):
     def __init__(self, dir, bpdfile):
 	self.bpdfile = bpdfile
 	EnPlot.__init__(self, dir, enstore_constants.XFER_FILE)
-	self.logfile = enstore_constants.XFERLOG_FILE+enstore_constants.PS
+	self.logfile = "%s/%s%s"%(dir, enstore_constants.XFERLOG_FILE,
+				  enstore_constants.PS)
 
     # make the file with the plot points in them
     def plot(self, data):
