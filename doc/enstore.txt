@@ -153,7 +153,7 @@ A physical library can be thought of as consisting of
 	- a media changer
 	- one of more media export/import slots
 	- one of more drives (tape, cdrom, disk, etc.)
-	- volumes (tape cartridges, cdroms, etc.) 
+	- volumes (tape cartridges, cdroms, etc.)
 
 Virtual Library -- A virtual library contains one and only kind of
 media. For example, we are constrained to divid an STK powderhorn
@@ -467,45 +467,72 @@ More Detailed Block Diagram   (see also tgif drawings)
                        # = data
                        ! = control
 
-                              ! #         !        ! #         !        ! #
-______________________________!_#_________!________!_#_________!________!_#____
-Enstore                       ! #         !        ! #         !        ! #
-         ^                    ! #         !        ! #         !        ! #
-         ! various            ! #         !        ! #         !        ! #
-         ! connections        ! #         !        ! #         !        ! #
-         v                   +-----+      !       +-----+      !       +-----+
-  +--------+                 |mover|      !       |mover|      !       |mover|
-  |cnfg.srv|                 +-----+      !       +-----+      !       +-----+
-  +--------+\                   # ! \     !      / ! #         !      / ! #
-  +--------+ \                  # !  \+--------+/  ! #     +--------+/  ! #
-  |vol.clrk|  \                 # !   |lib.mngr|   ! #     |lib.mngr|   ! #
-  +--------+   \                # !   +--------+   ! #     +--------+   ; #
-                } <--->         # !                ; #                 /  #
-  +--------+   / various        #  \              /  #                /   #
-  |fil.clrk|  / connections     #   \+----------+/   #               /    #
-  +--------+ /                  #    |media chgr|----#--------------'     #
-  +--------+/                   #    +----------+    #                    #
-  |log.srvr|                    #         !          #                    #
-  +--------+                    #         !          #                    #
-                                #         !          #                    #
-________________________________#_________!__________#____________________#____
-Library                         v      	  v    	     v 	       	       	  v
-                                #     +--------+     #                    #
-                                #     |lib.ctlr|-----#-------------.      #
-                                #     +--------+     #              \     #
-                             +-----+ /          \ +-----+            \ +-----+
-                             |drive|'            `|drive|             `|drive|
-			     +-----+              +-----+              +-----+
+                            ! #         !         ! #         !         ! #
+____________________________!_#_________!____ ____!_#_________!_________!_#___
+Enstore                     ! #         !         ! #         !         ! #
+        ^                   ! #         !         ! #         !         ! #
+        ! various           ! #         !         ! #         !         ! #
+        ! connections       ! #         !         ! #         !         ! #
+        v                  +-----+      !        +-----+      !        +-----+
+ +--------+                |mover|      !        |mover|      !        |mover|
+ |cnfg.srv|                +-----+      !        +-----+      !        +-----+
+ +--------+\                  # ! \     !       / ! #   .*    !       / ! #
+ +--------+ \                 # !  \+---------+/  ! #    .+---------+/  ! #
+ |vol.clrk|  \                # !   |lib.mngrA|   ! #     |lib.mngrB|   ! #
+ +--------+   \               # !   +---------+   ! #     +---------+   ; #
+               } <--->        # !                 ; #                  /  #
+ +--------+   / various       #  \               /  #                 /   #
+ |fil.clrk|  / connections    #   \+-----------+/   #                /    #
+ +--------+ /                 #    |media chngr|----#---------------'     #
+ +--------+/                  #    +-----------+    #                     #
+ |log.srvr|                   #         !           #                     #
+ +--------+                   #         !           #                     #
+                              #         !           #                     #
+______________________________#_________!___________#_____________________#___
+Library                       v         v           v                     v
+                              #     +---------+     #                     #
+                              #     |lib.ctlr |-----#--------------.      #
+                              #     +---------+     #               \     #
+                           +-----+ /           \ +-----+             \ +-----+
+                           |drive|'             `|drive|              `|drive|
+                           +-----+               +-----+               +-----+
+
+
+* A mover, which is associated with one drive, gets a list of library managers
+to service.  This has two benefits.
+
+First, since a library manager handles only one type of media, a drive which
+handles multiple types of media (i.e. different capacity media) can be shared
+without a static partitioning of the system.
+
+Second, if we are partitioning resources in a library, we can assign a library
+manager to each type of use.  For example, suppose D0 and CDF want to share
+the capacity of a library.  (lib.mngrA and B may then control same media type.
+
+
+Suppose half the tapes belong to CDF and half to D0. We want to gaurantee that
+CDF have one third of the tape drives, D0 have one third, and the last third
+be shared.  We can configure the movers to do this.  And with some slight
+changes, this is how we can gaurantee resources to data acquisition.
+
+The configuration is dynamic in the sense that each mover reads a new
+configuration when it dismounts a tape.
 
 
 
 
-TCP notes.
+
+
+TCP test notes.
+
+When the one side closes a tcp connection, the other side goes to a
+"TIME WAIT" state.  This state lasts for several 10's of seconds and unless
+these ports get reused, a system (node) can run out of resources.
 
 
+                 netstat lines vs. time      (no throttling)
 
-
-   1000 ++-----+------+-----+------+------+------+------+-----+------+-----++
+   1000 ++-----+------+-----+------+------+------+------+-----+------+-----++
         +      +      +     +      +      +      +      +     +      +      +
     900 ++       AAA                                       "net.count"  A  ++
         |       AA A                                                        |
@@ -529,8 +556,14 @@ TCP notes.
       0 ++-----+------+-----+------+------+------+------+--AAAAAAAAAAAAAA--++
         0     20     40    60     80     100    120    140   160    180    200
 
+                                   Time (seconds)
 
-  130 ++-----+------+-----+------+------+------+------+-----+------+-----++
+
+
+                  netstat lines vs. time      (no more than 100 ports active)
+
+
+    130 ++-----+------+-----+------+------+------+------+-----+------+-----++
         AAA    +A     +     +      +      +      +      +     +      +      +
     120 AAA    AAA                                         "lines.out"  A  ++
         | A   AA A  A                                A              AAA     |
@@ -553,3 +586,10 @@ TCP notes.
         +      +      +     +      +      +      +      +     +      +      +
      30 ++-----+------+-----+------+------+------+------+-----+------+-----++
         0     200    400   600    800   1000   1200   1400  1600   1800   2000
+
+                                   Time (seconds)
+
+
+
+
+
