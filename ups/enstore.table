@@ -73,10 +73,14 @@ QUALIFIERS = ""
 
         # control where the trace file goes
         execute("whoami", NO_UPS_ENV, meme)
-        execute("mkdir -p /tmp/enstore/$meme", NO_UPS_ENV)
+	envSet(ENSTORE_TMP,"/tmp/enstore/$meme")
+        execute("mkdir -p $ENSTORE_TMP", NO_UPS_ENV)
 	execute('sh -c "chmod 777 /tmp/enstore 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
+	envSet(ENSTORE_LM_DB,"$ENSTORE_TMP/lm_db")
+        execute("mkdir -p $ENSTORE_LM_DB", NO_UPS_ENV)
+	execute('sh -c "chmod 777 $ENSTORE_LM_DB 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
 	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
-        envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$tracehost")
+        envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
         envUnset(tracehost)
         envUnset(meme)
 	
