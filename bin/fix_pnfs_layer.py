@@ -78,7 +78,7 @@ def compare_all(bfinfo, l4):
 
 def fix_pnfs_layers(file, bfid):
     # replace pnfs with pnfs/fs/usr
-    #file = change_file_name(file)
+    file = change_file_name(file)
     l4 = get_l4(file)
     value = (10*"%s\n")%(l4['external_label'],
                          l4['location_cookie'],
@@ -127,6 +127,16 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         usage()
         sys.exit(-1)
+    # this program must run on the node where pnfs is mounted and as root
+    if os.getuid():
+        print "You must be root to run this this program"
+        sys.exit(-1)
+    try:
+        os.stat('pnfs/fs/usr')
+    except os.error, msg:
+        if msg.errno == errno.ENOTDIR:
+            print "This program must run on the pnfs server node"
+            sys.exit(-1)
     host = os.environ.get('ENSTORE_CONFIG_HOST', 0)
     port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
     port = int(port)
@@ -141,13 +151,14 @@ if __name__ == "__main__":
         if msg.errno == errno.ENOENT:
             print "file %s does not exist"%(bfinfo['pnfs_name0'],)
             sys.exit(-1)
-    l1 = readlayer(bfinfo['pnfs_name0'], 1)[0]
+    file = change_file_name(bfinfo['pnfs_name0'])
+    l1 = readlayer(file, 1)[0]
     if bfinfo['bfid'] != l1:
         print "l1 %s bfid %s"%(l1,bfinfo['bfid']) 
         fix_it =  raw_input("fix? [y/n]")
         if fix_it == 'y':
             try:
-                write_layer(bfinfo['pnfs_name0'], 1, bfinfo['bfid'])
+                write_layer(file, 1, bfinfo['bfid'])
                 print "Layer 1 fixed"        
             except:
                 exc, msg, tb = sys.exc_info()
@@ -155,10 +166,10 @@ if __name__ == "__main__":
         else:
             sys.exit(0)
     print "Layer 1 OK"        
-    l4 = get_l4(bfinfo['pnfs_name0'])
+    l4 = get_l4(file)
     if not compare_all(bfinfo, l4):
         # find what is a file family
-        ff = readtag(bfinfo['pnfs_name0'],'file_family')
+        ff = readtag(file,'file_family')
         print "l4 %s bfinfo %s"%(l4, bfinfo)
         print "file family",ff
         fix_it =  raw_input("fix? [y/n]")
@@ -175,7 +186,8 @@ if __name__ == "__main__":
                                      bfinfo['bfid'],
                                      bfinfo['drive'])
                 print "NEW REC",value
-                write_layer(bfinfo['pnfs_name0'], 4,value)
+                write_layer(file, 4,value)
+                print "Layer 4 fixed"
             except:
                 exc, msg, tb = sys.exc_info()
                 print "exception: %s %s" % (str(exc), str(msg))
