@@ -9,7 +9,7 @@ import traceback
 import checksum
 import sys
 import socket
-import os
+import signal
 import string
 import fcntl
 import FCNTL
@@ -21,6 +21,7 @@ import cleanUDP
 import Trace
 import e_errors
 
+MAX_CHILDREN = 64 #Do not allow forking more than this many child processes
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -47,6 +48,9 @@ class DispatchingWorker:
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
         self.is_child = 0
+        self.n_children = 0
+        self.kill_list = []
+        
         self.server_socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
         self.custom_error_handler = None
@@ -55,9 +59,9 @@ class DispatchingWorker:
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.server_bind()
 
-    def add_interval_func(self, func, interval):
-        self.interval_funcs[func] = [interval, 0]
-        self.rcv_timeout = min(interval, self.rcv_timeout)
+    def add_interval_func(self, func, interval, one_shot=0):
+        now = time.time()
+        self.interval_funcs[func] = [interval, now, one_shot]
 
     def set_interval_func(self, func,interval):
         #Backwards-compatibilty
@@ -83,18 +87,49 @@ class DispatchingWorker:
 
     # check for any children that have exited (zombies) and collect them
     def collect_children(self):
+        while self.n_children > 0:
+            try:
+                pid, status = os.waitpid(0, os.WNOHANG)
+                if pid==0:
+                    break
+                self.n_children = self.n_children - 1
+                if pid in self.kill_list:
+                    self.kill_list.remove(pid)
+                Trace.trace(6, "collect_children: collected %d, nchildren = %d" % (pid, self.n_children))
+            except os.error, msg:
+                if msg.errno == errno.ECHILD: #No children to collect right now
+                    break
+                else: #Some other exception
+                    Trace.trace(6,"collect_children %s"%(msg,))
+                    raise os.error, msg
+
+    def kill(self, pid, signal):
+        if pid not in self.kill_list:
+            return
+        Trace.trace(6, "killing process %d with signal %d" % (pid,signal))
         try:
-            pid, status = os.waitpid(0, os.WNOHANG)
+            os.kill(pid, signal)
         except os.error, msg:
-            if msg.errno != errno.ECHILD:
-                Trace.trace(6,"collect_children %s"%(msg,))
-                raise os.error, msg
+            Trace.log(e_errors.ERROR, "kill %d: %s" %(pid, msg))
         
-    def fork(self):
+    def fork(self, ttl=300):
         """Fork off a child process.  Use this instead of os.fork for safety"""
+        if self.n_children >= MAX_CHILDREN:
+            Trace.log(e_errors.ERROR, "Too many child processes!")
+            return os.getpid()
+        if self.is_child: #Don't allow double-forking
+            Trace.log(e_errors.ERROR, "Cannot fork from child process!")
+            return os.getpid()
+        
+        self.n_children = self.n_children + 1
+        Trace.trace(6,"fork: n_children = %d"%(self.n_children,))
         pid = os.fork()
         
         if pid != 0:  #We're in the parent process
+            if ttl is not None:
+                self.kill_list.append(pid)
+                self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGTERM: self.kill(pid,sig), ttl, one_shot=1)
+                self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGKILL: self.kill(pid,sig), ttl+5, one_shot=1)
             self.is_child = 0
             return pid
         else:
@@ -138,9 +173,12 @@ class DispatchingWorker:
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
-            interval, last_called = time_data
+            interval, last_called, one_shot = time_data
             if now - last_called > interval:
-                self.interval_funcs[func] = [interval, now]
+                if one_shot:
+                    del self.interval_funcs[func]
+                else: #record last call time
+                    self.interval_funcs[func][1] =  now
                 func()
 
         if request == '':
@@ -201,7 +239,7 @@ class DispatchingWorker:
             if self.interval_funcs:
                 now = time.time()
                 for func, time_data in self.interval_funcs.items():
-                    interval, last_called = time_data
+                    interval, last_called, one_shot = time_data
                     rcv_timeout = min(rcv_timeout, interval - (now - last_called))
 
                 rcv_timeout = max(rcv_timeout, 0)
