@@ -487,7 +487,7 @@ class FTTDriver(driver.Driver):
 
             return e_errors.OK, None
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "reading VOL1 label: %s %s" % (exc, msg))
             return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], "Traceback"
         
