@@ -174,7 +174,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
-                os.write(pipe[1], repr(('0','0',ticket) ))
+                msg = repr(('0','0',ticket))
+                bytecount = "%08d" % len(msg)
+                os.write(pipe[1], bytecount)
+                os.write(pipe[1], msg)
                 os.close(pipe[1])
                 os._exit(0)
 
