@@ -367,6 +367,15 @@ done
 
 
 # check that we have a check_watchdog_reset.py running in the crontab:
+if [ ! -r /etc/watchdog_reset ]; then 
+   msg="/etc/watchdog_reset is missing"
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "/etc/watchdog_reset, ok"
+fi
+
 if [ `$EGREP -c check_watchdog_reset.py /var/spool/cron/root` -ne 1 ]; then
    msg="/var/spool/cron/root is missing check_watchdog_reset.py or it is misconfigured"
    if [ $ALARM -eq 1 ]; then
