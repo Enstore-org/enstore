@@ -138,14 +138,21 @@ class Index:
 		# check to see if the index file exists?
 		if os.path.isfile("%s/%s"%(self.dbHome, self.idxFile)):
 			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
+			Trace.log(e_errors.INFO, "Index %s opened"%(self.idxFile))
 		else:	# build index file here
+			Trace.log(e_errors.INFO, "Building index %s ..."%(self.idxFile))
 			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
+			count = 0
 			t = self.primary_db.txn()
 			c = self.primary_db.cursor(t)
 			key, val = c.first()
 			while val != None:
 				self.db[(val[field], t)] = key
 				key, val = c.next()
+				count = count + 1
+				if count / 100 * 100 == count:
+					Trace.log(e_errors.INFO, "%d entries have been inserted"%(count))
+			Trace.log(e_errors.INFO, "%d entries in total"%(count))
 			c.close()
 			t.commit()
 
