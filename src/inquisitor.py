@@ -71,6 +71,12 @@ class EventRelay:
 	self.state = enstore_constants.NEVER_ALIVE
 	self.start = time.time()
 
+    def __repr__(self):
+	import pprint
+	print "event_relay : ",
+	pprint.pprint(self.__dict__)
+	print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
     def alive(self, now):
 	self.last_alive = now
 	self.sent_own_alive = 0
@@ -459,8 +465,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     def all_servers_timed_out(self):
 	rtn = 1
-	for server in self.servers:
-	    if server.check_recent_alive() == monitored_server.NO_TIMEOUT:
+	for server in self.server_d.keys():
+	    if self.server_d[server].check_recent_alive() == monitored_server.NO_TIMEOUT:
 		rtn = 0
 		break
 	return rtn
@@ -569,6 +575,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	for skey in keys:
 	    server = self.server_d[skey]
 	    print repr(server)
+	print self.event_relay
 	if self.plot_thread and self.plot_thread.isAlive():
 	    print "plot thread is alive"
 	print ""
