@@ -1572,7 +1572,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.MALFORMED,
                                 "ticket does not have a mandatory key %s"%(key,))
             self.reply_to_caller(ticket)
-        return
+            return
             
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
@@ -1744,7 +1744,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.MALFORMED,
                                 "ticket does not have a mandatory key %s"%(key,))
             self.reply_to_caller(ticket)
-        return
+            return
         method = ticket.get('method', None)
         if method and method == 'read_next': # this request must go directly to mover
             ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
