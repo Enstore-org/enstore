@@ -79,7 +79,8 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
     # assumes volume is in drive
     def load(self, external_label, drive) :
-        os.system("mt -t " + drive + " rewind")
+	print "media changer rewind"
+        #os.system("mt -t " + drive + " rewind")
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
     # assumes volume is in drive and leave it there for testing
@@ -92,16 +93,20 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, tape_drive) :
-        # form mount command to be executed
-        stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " + \
+      # form mount command to be executed
+      stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " + \
                             mc_config['acls_uname'] + " 'echo mount " + \
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
+      stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
                             mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
+      count=2
+      out_ticket = {"status" : (e_errors.MOUNTFAILED, "dismount_failed")}
+      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
+        count = count - 1
         # call mount command
         logc.send(log_client.INFO, 2, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
@@ -130,22 +135,25 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
-
-        # form dismount command to be executed
-        stk_mount_command = "rsh " + mc_config['acls_host'] + " -l " +\
+      # form dismount command to be executed
+      stk_umnt_command = "rsh " + mc_config['acls_host'] + " -l " +\
                             mc_config['acls_uname'] + " 'echo dismount " +\
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
+      stk_query_command = "rsh " + mc_config['acls_host'] + " -l " + \
                             mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
+      # retry dismount once if it fails
+      count=2
+      out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
+      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
+        count = count - 1
         # call dismount command
-        logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_mount_command)
-        returned_message = os.popen(stk_mount_command, "r").readlines()
-        out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
+        logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_umnt_command)
+        returned_message = os.popen(stk_umnt_command, "r").readlines()
 
         # analyze the return message
         for line in returned_message:
@@ -164,8 +172,8 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
             logc.send(log_client.INFO, 4, "UMnt returned ok:")
             for line in returned_message:
                 logc.send(log_client.INFO, 8, "UMnt ok:"+line)
-
-        self.reply_to_caller(out_ticket)
+        
+      self.reply_to_caller(out_ticket)
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods,
