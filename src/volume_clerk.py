@@ -168,7 +168,6 @@ class VolumeClerkMethods(DispatchingWorker) :
         # go through the volumes and find one we can use for this request
         vol = {}
         for k in dict.keys() :
-            print "k=",k
             v = dict[k]
             if v["library"] != library :
                 continue
