@@ -67,24 +67,30 @@ case $node in
           stk_qv()       { /usr/bin/rsh fntt -l acsss "echo query vol    ${1:-VOLUME}                      |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null ; }
           stk_mount()    { /usr/bin/rsh fntt -l acsss "echo mount ${1:-VOLUME} `nospaces "${2:-DRIVE}"`    |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null ; }
           stk_dismount() { /usr/bin/rsh fntt -l acsss "echo dismount VOLUME `nospaces "${1:-DRIVE}"` force |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null;  }
-	  stk_msg()      { /usr/bin/rsh fntt -l acsss "tail -${1:-50} log/acsss_event.log" | awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' }
+	  stk_msg()      { /usr/bin/rsh fntt -l acsss "tail -${1:-50} log/acsss_event.log" | awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' ; }
 	  stk_log_get()  { /usr/bin/rcp acsss@fntt:log/acsss_event.log . ;}
 	  stk_log()      { /usr/bin/rsh -l acsss fntt 'tail -175 log/acsss_event.log ' | more ;}
 
           ;;
   cdfen*) gang=cdfen
           V  ()    { enstore lib --vols cdf.library_manager
-                     enstore med --get_work cdfstk.media_changer
+                     enstore med --get_work stk.media_changer
                      stk_qd| grep "9940"
                      enstore lib --status cdf.library_manager
                      if [ -n "${1-}" ]; then enstore lib --get_queue "" cdf.library_manager; fi
+                   }
+          VT ()    { enstore lib --vols test.library_manager
+                     enstore med --get_work stk.media_changer
+                     stk_qd| grep "9940"
+                     enstore lib --status test.library_manager
+                     if [ -n "${1-}" ]; then enstore lib --get_queue "" test.library_manager; fi
                    }
           nospaces()     { echo "$1" | sed -e 's/ //g' ; }
           stk_qd()       { /usr/bin/rsh fntt2 -l acsss "echo query drive  `nospaces "${1:-all}"`            |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null ; }
           stk_qv()       { /usr/bin/rsh fntt2 -l acsss "echo query vol    ${1:-VOLUME}                      |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null ; }
           stk_mount()    { /usr/bin/rsh fntt2 -l acsss "echo mount ${1:-VOLUME} `nospaces "${2:-DRIVE}"`    |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null ; }
           stk_dismount() { /usr/bin/rsh fntt2 -l acsss "echo dismount VOLUME `nospaces "${1:-DRIVE}"` force |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null;  }
-	  stk_msg()      { /usr/bin/rsh fntt2 -l acsss "tail -${1:-50} log/acsss_event.log" | awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' }
+	  stk_msg()      { /usr/bin/rsh fntt2 -l acsss "tail -${1:-50} log/acsss_event.log" | awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' ; }
 	  stk_log_get()  { /usr/bin/rcp acsss@fntt2:log/acsss_event.log . ;}
 	  stk_log()      { /usr/bin/rsh -l acsss fntt2 'tail -175 log/acsss_event.log ' | more ;}
 
