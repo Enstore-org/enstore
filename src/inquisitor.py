@@ -433,7 +433,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.make_server_status_html_file()
 	# Don't fear the reaper!!
 	Trace.trace(10, "exiting inquisitor due to request")
-	erc.unsubscribe()
+	self.erc.unsubscribe()
 	os._exit(exit_code)
 
     # update any encp information from the log files
