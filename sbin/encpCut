@@ -92,8 +92,8 @@ if [ -z "${ENSTORE_DIR-}" ] ; then
   check_status 1 "You need enstore to be setup before using ${product}Cut"
 fi
 cd $ENSTORE_DIR
-FLAVOR=`echo $SETUP_ENSTORE | cut -d" " -f4` # potentially troublesome - not very robust if the setup_enstore line changes
-
+#FLAVOR=`echo $SETUP_ENSTORE | cut -d" " -f4` # potentially troublesome - not very robust if the setup_enstore line changes
+FLAVOR=`echo $SETUP_ENSTORE | sed -e 's/.*-f //' -e 's/ .*//'`
 if [ -d CVS ] ; then
    Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
 fi
@@ -183,7 +183,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
    case `uname -n` in
       airedale*) INSTALLDIR=/home/products/$product;;
       pcfarm9*)  INSTALLDIR=/products/$product;;
-      hpcc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
+      hppc*)     INSTALLDIR=/usr/products/IRIX+6/$product;;
       *)         INSTALLDIR=/p/`uname`/$product;;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
