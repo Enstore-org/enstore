@@ -187,10 +187,12 @@ class MoverClient:
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
+	self.fc = ticket['fc']
 	return forked_write_to_hsm( self, ticket )
 	
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm( self, ticket ):
+	self.fc = ticket['fc']
 	return forked_read_from_hsm( self, ticket )
 
     pass
@@ -259,7 +261,7 @@ def forked_write_to_hsm( self, ticket ):
 	self.state = 'busy'
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
-	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
+	pass
     else:
 	logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
 
@@ -388,7 +390,7 @@ def forked_read_from_hsm( self, ticket ):
 	self.state = 'busy'
     if mvr_config['do_fork'] and self.pid != 0:
         #self.net_driver.data_socket.close()# parent copy??? opened in get_user_sockets
-	self.vol_info['external_label'] = ticket['fc']['external_label']# assume success
+	pass
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
 
@@ -545,7 +547,7 @@ def unilateral_unbind_next( self, error_info ):
     next_req_to_lm = {'work'           : "unilateral_unbind",
 		      'mover'          : self.config['name'],
 		      'address'        : (self.config['hostip'],self.config['port']),
-		      'external_label' : self.vol_info['external_label'],
+		      'external_label' : self.fc['external_label'],
 		      'status'         : (error_info,None)}
     return next_req_to_lm
 
