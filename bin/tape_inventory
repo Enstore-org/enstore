@@ -19,11 +19,13 @@ if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
 
 # get all the volumes that have been defined
 vols=`enstore volume --vols | cut -f1 -d\ | grep -v label`
-#echo $vols
+number=`echo "$vols" | wc -l`
 
 # now loop over them and save the output
+count=0
 for vol in $vols; do
-  echo $vol
+  count=`expr $count + 1`
+  echo "$vol  volume $count of $number"
   finfo=`enstore file --list=$vol`
   vinfo=`enstore volume --vol=$vol`
   la=`echo "$vinfo" | awk '($1 ~ /last_access/) {print $2}'`
@@ -42,5 +44,4 @@ for vol in $vols; do
   echo "$finfo"                    >>$out
   echo                             >>$out
   echo "$vinfo"                    >>$out
-  exit
 done
