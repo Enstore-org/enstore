@@ -6,6 +6,7 @@ import re
 import string
 import errno
 import stat
+import time
 
 import option
 import delete_at_exit
@@ -18,6 +19,7 @@ import volume_clerk_client
 import volume_family
 import atomic
 import charset
+import Trace
 
 
 #def quit(exit_code=1):
@@ -156,6 +158,9 @@ def move_file(input_filename, output_filename):
                     "File size information does not match.")
         sys.exit(1)
     elif p.origff != volume_family.extract_file_family(db_volume_family):
+        #Note: Due to automigration the file family check in encp has been
+        # removed.  We keep it here because changing the metadata while
+        # the automigration is proceding is a bad idea.
         print_error(e_errors.CONFLICT,
                     "File family information does not match.")
         sys.exit(1)
@@ -183,6 +188,35 @@ def move_file(input_filename, output_filename):
         sys.exit(1)
 
 
+    #Log the current information in case something goes wrong.
+
+    #Record the input -> output file.
+    Trace.message(1, "Moving %s to %s." % (input_filename, output_filename))
+    Trace.log(e_errors.INFO,
+              "Moving %s to %s." % (input_filename, output_filename))
+    #List the input file's metadata.
+    file_information = ("Old File Name: %s" % input_filename,
+                        "Volume: %s" % p.volume,
+                        "Location Cookie: %s" % p.location_cookie,
+                        "Size: %s" % p.size,
+                        "File Family: %s" % p.origff,
+                        "PNFS ID: %s" % p.pnfsid_file,
+                        "BFID: %s" % p.bfid,
+                        "Original Drive: %s" % p.origdrive,
+                        "CRC: %s" % file_info['complete_crc'],
+                        "UID: %s" % p.pstat[stat.ST_UID],
+                        "GID: %s" % p.pstat[stat.ST_GID],
+                        "Permissions: %s (%s)" %
+                 (enstore_functions2.bits_to_rwx(p.pstat[stat.ST_MODE]),
+                  p.pstat[stat.ST_MODE]),
+                        "Last Access: %s (%s)" %
+                 (time.ctime(p.pstat[stat.ST_ATIME]), p.pstat[stat.ST_ATIME]),
+                        "Last Modification: %s (%s)" %
+                 (time.ctime(p.pstat[stat.ST_MTIME]), p.pstat[stat.ST_MTIME]))
+    Trace.message(5, ("%s\n" * len(file_information) % file_information))
+    Trace.log(e_errors.INFO,
+              ("%s  " * len(file_information) % file_information))
+                        
     try:
         #Attempt to rename the file.  This can work if the input and
         # output targets are under the same mount point.
@@ -229,6 +263,13 @@ def move_file(input_filename, output_filename):
 
     new_p = pnfs.Pnfs(output_filename)
 
+    #List the output file's metadata.
+    file_information = ("New File Name: %s" % output_filename,
+                        "PNFS ID: %s" % new_p.get_id())
+    Trace.message(5, ("%s\n" * len(file_information) % file_information))
+    Trace.log(e_errors.INFO,
+              ("%s  " * len(file_information) % file_information))
+
     #Create new pnfs values.
     new_volume = p.volume
     new_location_cookie = p.location_cookie
@@ -250,10 +291,12 @@ def move_file(input_filename, output_filename):
 
     #Create new file clerk values.
     fc_ticket = {}
-    fc_ticket["fc"] = file_info.copy()
-    fc_ticket["fc"]["pnfsid"] = new_pnfsid
-    fc_ticket["fc"]["pnfs_name0"] = output_filename
-    fc_ticket["fc"]["drive"] = new_drive
+    fc_ticket['fc'] = file_info.copy()
+    fc_ticket['fc']['pnfsid'] = new_pnfsid
+    fc_ticket['fc']['pnfs_name0'] = output_filename
+    #fc_ticket['fc']['drive'] = new_drive
+    fc_ticket['fc']['uid'] = p.pstat[stat.ST_UID]
+    fc_ticket['fc']['gid'] = p.pstat[stat.ST_GID]
 
     try:
         #Update file's layer 1 information.
@@ -356,8 +399,11 @@ def move_file(input_filename, output_filename):
                     (input_filename, str(msg)))
         sys.exit(1)
 
+    Trace.message(1, "File successfully moved.")
+
 class EnmvInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
+        self.verbose = 0           # higher the number the more is output
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -386,10 +432,22 @@ class EnmvInterface(option.Interface):
     parameters = ["<source file> <destination file>"]
 
     enmv_options = {
+        option.VERBOSE:{option.HELP_STRING:"Print out information.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
         }
 
 
 def main(intf):
+
+    #Initialize the Trace module.
+    Trace.init("ENMV")
+    for x in xrange(6, intf.verbose + 1):
+        Trace.do_print(x)
+    for x in xrange(1, intf.verbose + 1):
+        Trace.do_message(x)
+
 
     for item in intf.input:
         if not pnfs.is_pnfs_path(item):
@@ -424,6 +482,6 @@ def do_work(intf):
 if __name__ == '__main__':
     delete_at_exit.setup_signal_handling()
 
-    intf = EnmvInterface(sys.argv, 0) # zero means admin
+    enmv_intf = EnmvInterface(sys.argv, 0) # zero means admin
 
-    do_work(intf)
+    do_work(enmv_intf)
