@@ -256,6 +256,7 @@ class Mover:
               "Error writing "+str(ticket) )
             self.logc.send(log_client.ERROR,1,
               str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+	    traceback.print_exc()
             media_error = 1 # I don't know what else to do right now
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
 
@@ -538,12 +539,12 @@ class Mover:
 
     # create ticket that says we have bound volume x
     def have_bound_volume_next(self):
-        self.next_libmgr_request = {  "work"   : "have_bound_volume"
-                                    , "mover"  : self.name 
-				    , "address": self.address }
-        # copy volume information about the volume to our ticket
-        for k in self.vticket.keys():
-            self.next_libmgr_request[k] = self.vticket[k]
+        # ticket is to be volume information plus next "command" information
+	self.next_libmgr_request = self.vticket
+        self.next_libmgr_request['work']    = "have_bound_volume"
+        self.next_libmgr_request['state']   = "idle"
+        self.next_libmgr_request['mover']   = self.name
+        self.next_libmgr_request['address'] = self.address
 
 
     # create ticket that says we need to unbind volume x
