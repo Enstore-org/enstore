@@ -35,7 +35,7 @@
 <li><a href="#encp">1.2 <em>Encp</em></a></li>
 <li><a href="#encp_options">1.2.1 <em>Encp</em> command line options</a></li>
 <li><a href="#encp_throttle">1.2.2 Throttling in <em>encp</em></a></li>
-<li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
+<li><a href="#encp_ist_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
 <li><a href="#encp_queue">1.2.4 <em>Encp</em> Transfer Lists</a>
 <li><a href="#encp_errors">1.2.5 <em>Encp</em> Return Status</a>
 <li><a href="#encp_client">1.2.6 <em>Encp</em> Client Installation</a>
@@ -1996,6 +1996,7 @@ The Volume Clerk does the following operations:
 <li>show volume information
 <li>add a volume
 <li>delete a volume
+<li>restore a volume
 <li>find an appropriate volume on which to write the file
 <li>change the number of remaining bytes on the volume
 <li>set the number of read/write errors
@@ -2024,6 +2025,12 @@ command.<p>
 <tr>
 <td valign=top>delete a volume
 <td valign=top>ecmd vcc --delvol volume_name
+<tr>
+<td valign=top>restore a volume (do not restore files)
+<td valign=top>ecmd vcc --restorevol volume_name
+<tr>
+<td valign=top>restore a volume (restore files)
+<td valign=top>ecmd vcc --all --restorevol volume_name
 <tr>
 <td valign=top>find an appropriate volume on which to write the file
 <td valign=top>ecmd vcc --nextvol library_name minimal_remaining_bytes file_family
@@ -2093,6 +2100,7 @@ The File Clerk supports the following requests:
 <li>show file information
 <li>start/stop backup of file journals
 <li>assist in processing file read requests
+<li>delete/restore files
 </ul>
 
 <h4><a name="file_clerk_cmds">
@@ -2113,6 +2121,15 @@ command.
 <tr>
 <td valign=top>start/stop backup of volume journals
 <td valign=top>ecmd fcc --backup
+<tr>
+<td valign=top>declare file deleted/undeleted
+<td valign=top>ecmd fcc --bfid=BFID --deleted={yes/no}
+<tr>
+<td valign=top>restore file by name
+<td valign=top>ecmd fcc --restore="file_name"
+<tr>
+<td valign=top>restore file by name and restore a path
+<td valign=top>ecmd fcc --r --restore="file_name"
 </table></center><p>
 <hr>
 <h3><a name="library_manager">
