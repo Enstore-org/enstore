@@ -227,7 +227,7 @@ class GenericDriver:
                 typ,val=None, None
             else:
                 typ=label[:4]
-                label=string.split(label[4:])[0]
+                val=string.split(label[4:])[0]
         except:
             typ,val=None, None
         if debug_paranoia:  print "check_header: return",typ,val
