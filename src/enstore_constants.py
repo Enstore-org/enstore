@@ -11,6 +11,7 @@ MPD = "mpd_total"
 LOG = ".log"
 LOG_PREFIX = "LOG-"
 
+# used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
 MLAT_FILE = "%s%s"%(FILE_PREFIX, MLAT)
@@ -24,9 +25,6 @@ JPG = ".jpg"
 PS = ".ps"
 STAMP = "_stamp"
 
-READ = 1
-WRITE = READ + 1
-
 PID = "pid"
 UID = "uid"
 SOURCE = "source"
@@ -34,13 +32,26 @@ ALARM = "alarm"
 ANYALARMS = "alarms"
 URL = "url"
 
-# sever names used in enstore_up_down
+ALIVE_INTERVAL = "alive_interval"
+DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
+CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
+
+# server names used in enstore_up_down
 LOGS = "Logger"
 ALARMS = "Alarm Server"
 CONFIGS = "Configuration Server"
 FILEC = "File Clerk"
 INQ = "Inquisitor"
 VOLC = "Volume Clerk"
+
+# server names used in config file
+LOG_SERVER = "log_server"
+ALARM_SERVER = "alarm_server"
+FILE_CLERK = "file_clerk"
+VOLUME_CLERK = "volume_clerk"
+INQUISITOR = "inquisitor"
+CONFIG_SERVER = "config_server"  # included for use by inquisitor
+WWW_SERVER = "www_server"
 
 OUTAGEFILE = "enstore_outage.py"
 SAAGHTMLFILE = "enstore_saag.html"
@@ -108,6 +119,5 @@ NO_PENDING = "No pending work"
 LIBRARY_MANAGER = "library_manager"
 MOVER = "mover"
 MEDIA_CHANGER = "media_changer"
-GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
-		   "inquisitor", "log_server", "volume_clerk"]
-
+GENERIC_SERVERS = [ ALARM_SERVER, CONFIG_SERVER, FILE_CLERK, INQUISITOR,
+		    LOG_SERVER, VOLUME_CLERK]
