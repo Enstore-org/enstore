@@ -445,7 +445,7 @@ def do_work(intf):
     elif intf.rm_suspect_vol:
         ticket = lmc.remove_suspect_volume(intf.rm_suspect_vol)
     elif intf.rm_active_vol:
-        ticket = lmc.remove_active_volume(intf.active_volume)
+        ticket = lmc.remove_active_volume(intf.rm_active_vol)
     elif not intf.priority == -1:
         ticket = lmc.priority(intf.args[1], intf.priority)
         if enstore_functions.is_ok(ticket):
