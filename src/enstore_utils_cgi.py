@@ -67,6 +67,7 @@ def pgrep_html(pat, files):
     regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP)
     patr = regex.compile(pat)
     for file in files:
+	print "<H3>%s</H3><BR>"%file
 	lineno = 1
 	for line in open(file, 'r').readlines():
 	    if patr.search(line) >=0:

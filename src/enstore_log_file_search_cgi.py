@@ -55,7 +55,7 @@ def go():
 	if logfile_names == []:
 	    # there were no matches
 	    print cmd
-	    print "<BR><P><HR><P>"
+	    print "<BR><P>"
 	    print "There were no log files that matched the entered description."
 	else:
 	    # put the files in alphabetical order
