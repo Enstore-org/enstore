@@ -22,12 +22,14 @@ import posixpath
 import getopt
 import sys
 
-paramdict = {}
-resultdict = {}
-testdict = {}
-tstseqdict = {}
-tempresltdict = {}
-testList = []
+paramdict = {}      # HOLDS THE FLAG PARAMETERS FOR THE PROGRAM
+resultdict = {}     # HOLDS THE FINAL RESULT TIME FOR THE TESTS PERFORMED
+testdict = {}       # HOLDS THE CHILD PID IN CASE THE TEST 'HANGS'
+tstseqdict = {}     # HOLDS THE SEQUENCE IN WHICH THE NODES ARE TO BE TESTED IN
+tempresltdict = {}  # HOLDS THE STRING FROM THE TEST. IT IS NEEDED IN CASE THE CHILD TEST HANGS - THE PROGRAM WON'T HANG
+testList = []       # HOLDS THE LIST OF NODES TO BE TESTED
+cuTime = 5          # CLEAN UP TIME. A DELAY THAT ALLOWS THE SYSTEM TO FINISH UP TESTING. IF YOU SET THIS VALUE TO 3 OR
+                    # LESS, THE SYSTEM WILL GET MORE SLOW OR HUNG (-1) INDICATIONS THAN IT NORMALLY SHOULD 
 TRUE = 1
 FALSE = 0
 
@@ -160,13 +162,13 @@ def testNodes():
     
     seqLen = len(tstseqdict[grpSeqNum])
     if paramdict['oFlg']:
-        testTime = 2 * numTstGrps * string.atoi(paramdict['testtime']) + 5
+        testTime = 2 * numTstGrps * string.atoi(paramdict['testtime']) + cuTime
         if seqLen % 2 == 1:
             toTest = seqLen / 2 + 1
         else:
             toTest = seqLen / 2
     else:
-        testTime = numTstGrps * string.atoi(paramdict['testtime']) + 5
+        testTime = numTstGrps * string.atoi(paramdict['testtime']) + cuTime
         toTest = seqLen
 
     if paramdict['fFlg']:
@@ -392,7 +394,7 @@ if __name__ == "__main__":
     testNodes()
     sys.stdout.write("\nSystem cleanup and looking for hung devices. . .")
     sys.stdout.flush()
-    time.sleep(5)
+    time.sleep(cuTime)
     tstHung()
     sys.stdout.write("\n\n")
     printResults()
