@@ -1630,6 +1630,9 @@ class Tag:
                     raise exc, msg, tb
             fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
 
+        #Make sure this is the full file path of the tag.
+        fname = fullpath(fname)[1]
+
         #If directory is empty indicating the current directory, prepend it.
         #if not os.path.dirname(self.dir):
         #    try:
@@ -1665,6 +1668,9 @@ class Tag:
                 else:
                     raise exc, msg, tb
             fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
+
+        #Make sure this is the full file path of the tag.
+        fname = fullpath(fname)[1]
             
         #If directory is empty indicating the current directory, prepend it.
         #if not os.path.dirname(self.dir):
@@ -1981,12 +1987,16 @@ class Tag:
 
     # get the tape library
     def get_library(self, directory=None):
-        if directory:
-            library = self.readtag("library", directory)[0].strip()
-        else:
-            library = self.readtag("library")[0].strip()
-            self.library = library
-
+        try:
+            if directory:
+                library = self.readtag("library", directory)[0].strip()
+            else:
+                library = self.readtag("library")[0].strip()
+                self.library = library
+        except IndexError:
+            #Only OSError and IOError should be raised.
+            raise IOError(errno.EIO, "Library tag is empty.")
+        
         return library
     
     ##########################################################################
@@ -2003,12 +2013,16 @@ class Tag:
 
     # get the file family
     def get_file_family(self, directory=None):
-        if directory:
-            file_family = self.readtag("file_family", directory)[0].strip()
-        else:
-            file_family = self.readtag("file_family")[0].strip()
-            self.file_family = file_family
-
+        try:
+            if directory:
+                file_family = self.readtag("file_family", directory)[0].strip()
+            else:
+                file_family = self.readtag("file_family")[0].strip()
+                self.file_family = file_family
+        except IndexError:
+            #Only OSError and IOError should be raised.
+            raise IOError(errno.EIO, "File family tag is empty.")
+        
         return file_family
 
     ##########################################################################
@@ -2025,14 +2039,18 @@ class Tag:
 
     # get the file family
     def get_file_family_wrapper(self, directory=None):
-        if directory:
-            file_family_wrapper = self.readtag("file_family_wrapper",
-                                               directory)[0].strip()
-        else:
-            file_family_wrapper = self.readtag(
-                "file_family_wrapper")[0].strip()
-            self.file_family_wrapper = file_family_wrapper
-
+        try:
+            if directory:
+                file_family_wrapper = self.readtag("file_family_wrapper",
+                                                   directory)[0].strip()
+            else:
+                file_family_wrapper = self.readtag(
+                    "file_family_wrapper")[0].strip()
+                self.file_family_wrapper = file_family_wrapper
+        except IndexError:
+            #Only OSError and IOError should be raised.
+            raise IOError(errno.EIO, "File family wrapper tag is empty.")
+        
         return file_family_wrapper
 
     ##########################################################################
@@ -2050,13 +2068,18 @@ class Tag:
 
     # get the file family width
     def get_file_family_width(self, directory=None):
-        if directory:
-            file_family_width = self.readtag("file_family_width",
-                                                      directory)[0].strip()
-        else:
-            file_family_width = self.readtag("file_family_width")[0].strip()
-            self.file_family_width = file_family_width
-
+        try:
+            if directory:
+                file_family_width = self.readtag("file_family_width",
+                                                 directory)[0].strip()
+            else:
+                file_family_width = self.readtag(
+                    "file_family_width")[0].strip()
+                self.file_family_width = file_family_width
+        except IndexError:
+            #Only OSError and IOError should be raised.
+            raise IOError(errno.EIO, "File family width tag is empty.")
+        
         return file_family_width
 
     ##########################################################################
@@ -2074,12 +2097,17 @@ class Tag:
 
     # get the storage group
     def get_storage_group(self, directory=None):
-        if directory:
-            storage_group = self.readtag("storage_group", directory)[0].strip()
-        else:
-            storage_group = self.readtag("storage_group")[0].strip()
-            self.storage_group = storage_group
-
+        try:
+            if directory:
+                storage_group = self.readtag("storage_group",
+                                             directory)[0].strip()
+            else:
+                storage_group = self.readtag("storage_group")[0].strip()
+                self.storage_group = storage_group
+        except IndexError:
+            #Only OSError and IOError should be raised.
+            raise IOError(errno.EIO, "Storage group tag is empty.")
+        
         return storage_group
 
     ##########################################################################
