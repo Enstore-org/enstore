@@ -247,7 +247,7 @@ class EnstoreInterface(UserOptions):
             print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
             print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
             print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
-            print "\n%s enaml2             (lists current mount state & queue list on aml2 robot)"%cmd
+            print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%cmd
         else:
             call_function("pnfs", "")            
         print "\n"
@@ -355,7 +355,7 @@ class Enstore(EnstoreInterface):
             command="%s enstore-start %s%s"%(CMD1, get_argv3(), dbs.CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
-        elif not self.user_mode and arg1 == "enaml2":
+        elif not self.user_mode and arg1 == "aml2":
             # find the node to rsh to.  this node is the one associated with
             # the media changer of type "AML2_MediaLoader"
             #   if the configuration server is running, get the information
@@ -365,7 +365,7 @@ class Enstore(EnstoreInterface):
             if not self.get_config_from_server() and \
                not self.get_config_from_file():
                 self.node = DEFAULT_AML2_NODE
-            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;enaml2\'"'%self.node
+            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%self.node
             rtn = os.system(cmd)
         elif not self.user_mode and arg1 == "Esys":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
