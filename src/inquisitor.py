@@ -21,6 +21,7 @@ import errno
 import string
 import types
 import os
+import stat
 
 # enstore imports
 import timeofday
@@ -142,7 +143,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         if not key == ALARM_S:
                             self.alarmc.u = udp_client.UDPClient()
                         # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 180
+                        self.alive_rcv_timeout = 5
                         self.alive_retries = 2
                         ret = self.alive_status(client, (t['host'], t['port']),
                                                 prefix, time, key)
@@ -245,7 +246,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # pull out the log files and get their sizes
             for file in files:
                 if file[0:4] == enstore_status.LOG_PREFIX:
-                    logfiles[file] = os.stat('%s/%s'%(self.logc.log_dir,file))[6]
+                    logfiles[file] = os.stat('%s/%s'%(self.logc.log_dir,file))[stat.ST_SIZE]
             if logfiles:
                 # create the new log listing file.  create it with a different
                 # extension than the real one, we will mv the new one to the
@@ -277,6 +278,34 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         else:
             self.confightmlfile.close()
             self.move_file(1, self.confightmlfile_orig)
+
+    # update the miscellaneous status file.  the input dict is of the form -
+    #            { filename : (command_to_do, text) , ... }
+    def make_misc_html_file(self, cmds_to_do):
+        self.mischtmlfile.open()
+        if cmds_to_do:
+            cmd_keys = cmds_to_do.keys()
+            cmd_keys.sort()
+            for hfile in cmd_keys:
+                # we need to add some info for this command to the html file
+                # and we need to execute the command.  if the filename is
+                # 'NONE', then, do not add a link to the file.  if the
+                # command is 'NONE', then do not execute anything.
+                if not cmds_to_do[hfile] == "NONE":
+                    rtn = os.system("%s > %s/%s 2>&1"%(cmds_to_do[hfile],
+                                                       self.html_dir, hfile))
+                    # now get the mod time of the file to tell the user so it
+                    # can be seen if the system call is really failing
+                    try:
+                        mod_time = os.stat("%s/%s"%(self.html_dir, hfile))[stat.ST_MTIME]
+                    except os.error:
+                        # the file does not exist
+                        pass
+
+                if not hfile == "NONE":
+                    self.mischtmlfile.write(hfile, cmds_to_do[hfile])
+        self.mischtmlfile.close()
+        self.move_file(1, self.mischtmlfile_orig)
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
@@ -445,6 +474,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # update the web page that lists all the current log files
         self.make_log_html_file()
 
+        # if our dictionary contains a list of commands to do when we update
+        # the inquisitor, do the commands, if there are any
+        self.make_misc_html_file(t.get('update_commands', {}))
+
 	# we need to update the dict of servers that we are keeping track of.
 	# however we cannot do it now as we may be in the middle of a loop
 	# reading the keys of this dict.  so we just record the fact that this
@@ -471,7 +504,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             t = self.logc.get_logfile_name(self.alive_rcv_timeout,
                                            self.alive_retries)
         except errno.errorcode[errno.ETIMEDOUT]:
-            pass
+            Trace.trace(8,"update_encp - ERROR, getting log file name timed out")
+            return
 	logfile = t.get('logfile_name', "")
         # create the file which contains the encp lines from the most recent
         # log file.
@@ -493,7 +527,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 t = self.logc.get_last_logfile_name(self.alive_rcv_timeout,
                                                     self.alive_retries)
             except errno.errorcode[errno.ETIMEDOUT]:
-                pass
+                Trace.trace(8,"update_encp - ERROR, getting last log file name timed out")
+                t = {}
 	    logfile2 = t.get('last_logfile_name', "")
 	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
 	        encpfile2 = enstore_status.EnDataFile(logfile2,
@@ -1053,11 +1088,14 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                             enstore_status.encp_html_file_name()
 	        config_file = self.html_dir+"/"+\
                             enstore_status.config_html_file_name()
+	        misc_file = self.html_dir+"/"+\
+                            enstore_status.misc_html_file_name()
 	    else:
 	        self.html_dir = enstore_status.default_dir
 	        html_file = enstore_status.default_status_html_file()
 	        encp_file = enstore_status.default_encp_html_file()
 	        config_file = enstore_status.default_config_html_file()
+	        misc_file = enstore_status.default_misc_html_file()
 
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
@@ -1082,6 +1120,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.confightmlfile = enstore_status.HTMLConfigFile(config_file+SUFFIX,
                                                             refresh)
         self.confightmlfile_orig = config_file
+        self.mischtmlfile = enstore_status.HTMLMiscFile(misc_file+SUFFIX,
+                                                        refresh)
+        self.mischtmlfile_orig = misc_file
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}

@@ -72,6 +72,12 @@ def config_html_file_name():
 def default_config_html_file():
     return default_dir+config_html_file_name()
 
+def misc_html_file_name():
+    return "misc_"+inq_file_name()
+
+def default_misc_html_file():
+    return default_dir+misc_html_file_name()
+
 def status_html_file_name():
     return "status_"+inq_file_name()
 
@@ -791,6 +797,31 @@ class HTMLConfigFile(EnHTMLFile, EnStatusFile):
                 else:
                     self.filedes.write(self.HTML_LINE%("&nbsp;", key, dict[key]))
                     
+class HTMLMiscFile(EnHTMLFile, EnStatusFile):
+
+    html_header1 = "<title>Enstore Miscellaneous Status</title>\n"+\
+                   "<meta http-equiv=\"Refresh\" content=\""
+    html_header2 = "\">\n"+\
+                   "<body bgcolor=\""+BG_COLOR+"\">\n"+\
+                   "<H1>ENSTORE Miscellaneous Status</H1>\n"
+
+    def __init__(self, file, refresh):
+	EnStatusFile.__init__(self, file)
+	EnHTMLFile.__init__(self, refresh)
+	self.trailer = "</body>\n"
+
+    # open the file and write the header to the file
+    def open(self):
+        Trace.trace(12,"open "+self.header)
+	EnStatusFile.open(self)
+        if self.filedes:
+            self.filedes.write(self.header)
+
+    # format the file name and write it to the file
+    def write(self, filename, text):
+        if self.filedes:
+            self.filedes.write('<A HREF="%s">%s</A><BR><BR>'%(filename, text))
+
 class EnDataFile(EnFile):
 
     # make the data file by grepping the inFile.  fproc is any further
