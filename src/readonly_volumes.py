@@ -68,4 +68,4 @@ if __name__ == '__main__':
 				else:
 					t = 0
 				if t >= last:
-					print i, vol['system_inhibit'][1], time.ctime(t)
+					print i, vol['system_inhibit'][1], vol['library'], time.ctime(t)
