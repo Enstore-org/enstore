@@ -112,23 +112,12 @@ class DispatchingWorker:
     def handle_request(self):
         """Handle one request, possibly blocking."""
         Trace.trace(5,"{handle_request")
-        req, client_address = self.get_request()
-	if req == '':
+        # request is a "(idn,number,ticket)"
+        request, client_address = self.get_request()
+	if request == '':
 	    # nothing returned, must be timeout
 	    self.handle_timeout()
 	    return
-        exec("request, inCRC="+req)
-        # calculate CRC
-        crc = ECRC.ECRC(request, 0)
-        if (crc != inCRC) :
-            Trace.trace(0,"handle_request - bad CRC inCRC="+repr(inCRC)+\
-                        " calcCRC="+repr(crc))
-            self.enprint("BAD CRC")
-            self.enprint("received:")
-            self.enprint("request: "+request)
-            self.enprint("CRC: "+repr(inCRC))
-            self.enprint("calculated CRC: "+repr(crc))
-            return
 	try:
 	    self.process_request(request, client_address)
 	except KeyboardInterrupt:
@@ -139,49 +128,78 @@ class DispatchingWorker:
 	    self.handle_error(request, client_address)
         Trace.trace(5,"}handle_request")
 
+    server_fds = []    # fds that the worker/server also wants watched with select
+
+    # a server can add an fd to the server_fds list
+    def add_select_fd(self,fd):
+        self.server_fds.append(fd)
+
     def get_request(self):
+        # returns  (string, socket address)
+        #      string is a stringified ticket, after CRC is removed
+        # There are three cases:
+        #   read from socket where crc is stripped and return address is valid
+        #   read from pipe where there is no crc and no r.a.     
+        #   time out where there is no string or r.a.
+
         Trace.trace(5,"{get_request")
-	b = ""
-	addr = ()
-	req = (b,addr)
-	f = self.socket.fileno()
-	#self.enprint("select")
-	r, w, x = select.select([f],[],[f], self.rcv_timeout)
-	
-	if r:
-	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+
+        f = self.server_fds + [self.socket.fileno()]
+        r, w, x = select.select(f,[],f, self.rcv_timeout)
+        
+        if r:
+            # if input is ready from server process pipe, handle it first
+            if len(self.server_fds):                        # if there are svr procs
+               for fd in self.server_fds:                   #    got thru them
+                   if fd in r:                              #        and see if there is any input
+                       request= (os.read(fd,999),())        #             if so read it
+                       os.close(fd)
+                       self.server_fds.remove(fd)
+                       return request
+            # else the input is on the udp socket
+            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             refused = 1
             while badsock==errno.ECONNREFUSED and refused<25:
                 refused = refused+1
                 Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-	    if badsock != 0 :
-		self.enprint("DispatchingWorked get_request, pre-recvfrom error: "+\
-		             errno.errorcode[badsock])
-		Trace.trace(0,"DispatchingWorker get_request pre-recv error "+\
+            if badsock != 0 :
+                self.enprint("DispatchingWorked get_request, pre-recvfrom error: "+\
+                        errno.errorcode[badsock])
+                Trace.trace(0,"DispatchingWorker get_request pre-recv error "+\
                         repr(errno.errorcode[badsock]))
-		#return 0
-	    else:
-		pass
-	
-	    req = self.socket.recvfrom(self.max_packet_size)
-	    #self.enprint(req, generic_cs.PRETTY_PRINT)
-	    #self.enprint("P3")
-	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+            else:
+                pass
+
+            # req is (string,address) where string has CRC
+            req = self.socket.recvfrom(self.max_packet_size)
+            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             refused = 1
             while badsock==errno.ECONNREFUSED and refused<25:
                 refused = refused+1
                 Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR get_request")
-		#self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR get_request")
                 req = self.socket.recvfrom(self.max_packet_size)
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-	    if badsock != 0 :
-		self.enprint("DispatchingWorker get_request, post-recvfrom error:"+\
-		             repr(errno.errorcode[badsock]))
-		Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
-			    repr(errno.errorcode[badsock]))
-		Trace.trace(5,"}get_request"+repr(req))
-	return req
+            if badsock != 0 :
+                self.enprint("DispatchingWorker get_request, post-recvfrom error:"+\
+                             repr(errno.errorcode[badsock]))
+                Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
+                     repr(errno.errorcode[badsock]))
+                Trace.trace(5,"}get_request"+repr(req))
+            exec("request, inCRC="+req[0])
+            # calculate CRC
+            crc = ECRC.ECRC(request, 0)
+            if (crc != inCRC) :
+                Trace.trace(0,"handle_request - bad CRC inCRC="+repr(inCRC)+\
+                        " calcCRC="+repr(crc))
+                self.enprint("BAD CRC request: "+request)
+                self.enprint("CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
+                request=""
+        else:
+            # on time out
+            req = ("",())
+            request = ""
+        return (request, req[1])
 
     def handle_timeout(self):
 	# override this method for specific timeout hadling
@@ -352,3 +370,17 @@ class DispatchingWorker:
                           repr(address)+"\n"+str(sys.exc_info()[0])+"\n"+\
 	                  str(sys.exc_info()[1]))
                 time.sleep(3)
+
+    # for requests that are not handled serialy reply_address, current_id, and client_number
+    # number must be reset.  In the forking media changer these are in the forked child
+    # and passed back to us
+    def reply_with_address(self,ticket):
+        self.reply_address = ticket["ra"][0] 
+        self.client_number = ticket["ra"][1]
+        self.current_id    = ticket["ra"][2]
+        reply = (self.client_number, ticket, time.time())
+        Trace.trace(19,"}reply_with_address "+ \
+                   repr(self.reply_address)+" "+ \
+                   repr(self.current_id)+" " + \
+                   repr(self.client_number))
+        self.reply_to_caller(ticket)
