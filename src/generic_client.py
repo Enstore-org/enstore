@@ -62,22 +62,13 @@ class GenericClient:
     def __init__(self, csc, name, server_address=None, flags=0, logc=None,
                  alarmc=None, rcv_timeout=0, rcv_tries=0, server_name=None):
 
-        #Remember this if passed in.  self.server_name used by _is_csc().
-        self._server_name = server_name
-        
 	if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
 	    self.u = udp_client.UDPClient()
 
-        #If this generic client is a configuration client, then don't set
-        # self.csc.  Doing so would create a circular reference that creates
-        # resource leaks.  Instead, for the duration of __init__() just use
-        # csc.  Outside of __init__() use self._get_csc().
-        if self._is_csc():
+        if self.__dict__.get('is_config', 0):
             # this is the configuration client, we don't need this other stuff
-            csc = self
+            self.csc = self
             #return
-        #else:
-            #self.csc = self
 
 	# get the configuration client
 	if not flags & enstore_constants.NO_CSC:
@@ -114,7 +105,7 @@ class GenericClient:
 	else:
 	    if not flags & enstore_constants.NO_LOG:
 		import log_client
-		self.logc = log_client.LoggerClient(csc, self.log_name,
+		self.logc = log_client.LoggerClient(self.csc, self.log_name,
 						    'log_server', 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
@@ -127,47 +118,16 @@ class GenericClient:
 	else:
 	    if not flags & enstore_constants.NO_ALARM:
 		import alarm_client
-		self.alarmc = alarm_client.AlarmClient(csc, 
+		self.alarmc = alarm_client.AlarmClient(self.csc, 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
 
-    def __del__(self):
-        try:
-            del self.u
-        except AttributeError:
-            pass
-        try:
-            del self.logc
-        except AttributeError:
-            pass
-        try:
-            del self.alarmc
-        except AttributeError:
-            pass
-
-    def _is_csc(self):
-        #If the server requested is the configuration server,
-        # do something different.
-        if self._server_name == enstore_constants.CONFIGURATION_SERVER or \
-           self.__dict__.get('is_config', 0):
-            return 1
-        else:
-            return 0
-
-    def _get_csc(self):
-        #If the server address requested is the configuration server,
-        # do something different.
-        if self._is_csc():
-            return self
-        else:
-            return self.csc
-
     def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
         #If the server address requested is the configuration server,
         # do something different.
-        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER or \
-           self.__dict__.get('is_config', 0):
+        #if self.__dict__.get('is_config', 0):
+        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER:
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
             hostip = socket.gethostbyname(host)
             port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
@@ -214,11 +174,7 @@ class GenericClient:
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
         #Get the address information from config server.
-        csc = self._get_csc()
-        try:
-            t = csc.get(server)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            return {'status' : (e_errors.TIMEDOUT, None)}
+        t = self.csc.get(server, rcv_timeout, tries)
         
         #Check for errors.
         if t['status'] == (e_errors.TIMEDOUT, None):
@@ -241,9 +197,8 @@ class GenericClient:
 
 
     def trace_levels(self, server, work, levels):
-        csc = self._get_csc()
         try:
-            t = csc.get(server)
+            t = self.csc.get(server)
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT, None)}
         try:
