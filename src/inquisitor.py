@@ -192,8 +192,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 							   self.get_hung_to(key))
 			    self.alive_retries = t.get("hung_retries", 
 						       self.get_hung_retries(key))
-			    print self.alive_rcv_timeout
-			    print  self.alive_retries
 			    ret = self.alive_status(client, (t['host'], t['port']),
 						    time, key)
 			    if ret == TIMED_OUT:
