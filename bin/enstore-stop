@@ -35,14 +35,17 @@ fi
 timeout=1
 tries=10
 
+echo "`date` Calling configuration server to get list of servers to stop"
 nodeplus_servers=`conf.sh $local_host 3 2`
-
 # check if Configuration Server is up
 if [ $? -ne 0 ] ; then
     config_running=0
+    echo "`date` ...configuration server does not seem to be running"
 else
     config_running=1
+    echo "`date` ...configuration server returned"
 fi
+echo "`date` ...configuration server returned"
 
 # now just isolate the servers for this node
 node_servers=`echo "$nodeplus_servers" | grep :$local_host: | sed -e "s/:$local_host//"`
@@ -54,12 +57,15 @@ if [ ! "$node_servers" ];then
     else
         hh=`nslookup $local_host | sed -e '/Name.*/ !d' -e 's/Name: *//'`
     fi
+    echo "`date` Calling configuration server to get list of servers to stop (alternate host specification)"
     nodeplus_servers=`conf.sh $hh 3 2`
     # check if Configuration Server is up
     if [ $? -ne 0 ] ; then
        config_running=0
+       echo "`date` ...configuration server does not seem to be running"
     else
        config_running=1
+       echo "`date` ...configuration server returned"
     fi
 
     node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
@@ -76,26 +82,20 @@ turnoff_s() { for pid in $1; do
                 pidkill_s $pid
             done; }
 
-#if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-#    if [ $config_running -eq 1 ] ; then
-#      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
-#    fi
-#    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
-##    turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
-#fi
-
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
     fi
     turnoff "$PID_DIR/`uname -n`-inquisitor*pids"      "inquisitor"
 fi
+
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep fil |sed -e 's/.*://'` $timeout --work quit >/dev/null
     fi
     turnoff "$PID_DIR/`uname -n`-file_clerk*pids"      "file_clerk"
 fi
+
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep vol |sed -e 's/.*://'` $timeout --work quit >/dev/null
@@ -165,12 +165,15 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
 fi
 
 if [ "${opt_just-}" = "" ];then
-    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
+    turnoff_s "$PID_DIR/`uname -n`-db_checkpoint_pids*" "db_checkpoint"
+    turnoff   "$PID_DIR/`uname -n`-db_deadlock_pids*"   "db_deadlock"
     /bin/rm -f $PID_DIR/db_checkpoint # nothing in this file - delete or else db_checkpoint won't start again
     /bin/rm -f $PID_DIR/db_deadlock   # nothing in this file - delete or else db_deadlock   won't start again
 fi
 
 #   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
-exit
 
+# let's do a PS just to show user what is still running
+EPS
 
+exit 0
