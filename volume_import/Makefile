@@ -52,6 +52,10 @@ time.o: time.c $(HDRS)
 
 dump_db.o: dump_db.c
 	$(CC) -c dump_db.c
+
+global_data.o: global_data.c
+	$(CC) -c global_data.c
+
 clean:
 	rm -f *.o $(PROGS)
 
