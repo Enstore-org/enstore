@@ -955,7 +955,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 #If the volmap directory hasn't been found, keep trying.
                 if not os.path.exists(test_dir):
                     raise errno.ENOENT
-                self.volume_filepath = os.path.join(test_dir, ff, vol, lc)
+                test_dir2 = os.path.join(test_dir, ff, vol, lc)
+                if not os.path.exists(test_dir2):
+                    raise errno.ENOENT
+                self.volume_filepath = test_dir2
                 return self.volume_filepath
             except:
                 pass
@@ -1149,7 +1152,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.volmap_filepath(self.file_family,  intf.volume_tape)
 
         #If this wasn't set, then it wasn't found.
-        if not self.volume_filepath: #set by self.volmap_filepath()
+        #set by self.volmap_filepath()
+        if not self.volume_filepath or self.volume_filepath == UNKNOWN:
             return
 
         #Note: contains the file names, but since the names of the file are
