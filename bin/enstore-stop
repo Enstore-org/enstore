@@ -48,7 +48,8 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
     turnoff "$PID_DIR/`uname -n`-volume_clerk*pids"    "volume_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
-    host=`expr $(hostname) : '\([^.]*\)'`
+    theMachine=`hostname`
+    host=`expr $theMachine : '\([^.]*\)'`
     movers=`conf.sh "" 2 2 | grep "mover:$host"`
     if [ "$movers" ];then
         for ll in $movers;do
