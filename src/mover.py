@@ -2295,10 +2295,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except errno.errorcode[errno.ETIMEDOUT]:
                     Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
                               (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                    del(u)
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
-                    
+
+                del(u)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
 		control_socket.connect(ticket['callback_addr'])
