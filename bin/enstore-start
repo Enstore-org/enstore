@@ -75,15 +75,16 @@ check_server()
       xport=$ENSTORE_CONFIG_PORT
     fi
     if [ -n "${2-}" ] ; then
-       echo Checking $1 on $xnode $xport
+       echo Checking $1 on $xnode $xport $local_host
     fi  
     alv=`udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries`
     if [ $? -ne 0 ] ; then
         echo "   ...$1 not reachable..."
         exit 1
-    elif [ -n "${2-}" -a `echo $local_host | grep -ic $xport` -ne 0 ]; then 
+    elif [ -n "${2-}" -a `echo $local_host | grep -ic $xnode` -ne 0 ]; then 
        # put the pid (maybe more than once, doesn't matter) into pid file
        echo $alv | sed -e 's/.*pid.: //' -e 's/,.*//'  >> $2
+       echo $alv
     fi
 }
 
