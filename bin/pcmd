@@ -218,9 +218,22 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
               fi
             }
 
+#pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
+#              for i in $1/*; do
+#                eval `pcmd info $i`
+#                if [ $filename != "NO_SUCH_FILE" ]; then
+#                  ls -l $filename
+#                else
+#                  a=`ls -l $map_file`
+#                  echo $a $filename
+#                fi
+#              done; }
+
 pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
               for i in $1/*; do
-                eval `pcmd info $i`
+	        a=`pcmd cat $i 4`
+		pnfsid=`echo $a | awk '{print $7}'`
+		filename=`pcmd path $pnfsid`
                 if [ $filename != "NO_SUCH_FILE" ]; then
                   ls -l $filename
                 else
