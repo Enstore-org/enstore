@@ -39,7 +39,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      bfid = self.unique_bit_file_id()
      record["bfid"] = bfid
      # record it to the database
-     self.dict[bfid] = record ## was deepcopy
+     self.dict[bfid] = record 
      
      ticket["fc"]["bfid"] = bfid
      ticket["status"] = (e_errors.OK, None)
@@ -81,7 +81,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            record = self.dict[bfid] ## was deepcopy
+            record = self.dict[bfid] 
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR,"File Clerk: bfid %s not found"%(bfid,))
             Trace.log(e_errors.INFO, "%s"%(ticket,))
@@ -101,7 +101,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             pass
 
         # record our changes
-        self.dict[bfid] = record ## was deepcopy
+        self.dict[bfid] = record 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_pnfsid %s'%(ticket,))
@@ -113,7 +113,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      try:
         # look up in our dictionary the request bit field id
         try:
-            record = self.dict[bfid] ## was deepcopy
+            record = self.dict[bfid] 
         except KeyError:
             status = (e_errors.KEYERROR, 
 		      "File Clerk: bfid %s not found"%(bfid,))
@@ -163,7 +163,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    return status, None, None 
 
         # record our changes
-        self.dict[bfid] = record ## was deepcopy
+        self.dict[bfid] = record 
 
         Trace.log(e_errors.INFO,
                   "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
@@ -181,6 +181,46 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	 exc, val, tb = e_errors.handle_error()
          status = (str(exc), str(val))
 
+    def get_crcs(self, ticket):
+        try:
+            bfid  =ticket["bfid"]
+            record=self.dict[bfid]
+            complete_crc=record["complete_crc"]
+            sanity_cookie=record["sanity_cookie"]
+        except KeyError, key:
+            ticket["status"]=(e_errors.KEYERROR,
+                              "File Clerk: key %s is missing"%key)
+            Trace.log(e_errors.INFO, "%s"%(ticket,))
+            self.reply_to_caller(ticket)
+        ticket["status"]=(e_errors.OK, None)
+        ticket["complete_crc"]=complete_crc
+        ticket["sanity_cookie"]=sanity_cookie
+        self.reply_to_caller(ticket)
+
+    def set_crcs(self, ticket):
+        try:
+            bfid  =ticket["bfid"]
+            complete_crc=ticket["complete_crc"]
+            sanity_cookie=ticket["sanity_cookie"]
+            record=self.dict[bfid]
+        except KeyError, key:
+            ticket["status"]=(e_errors.KEYERROR,
+                              "File Clerk: key %s is missing"%key)
+            Trace.log(e_errors.INFO, "%s"%(ticket,))
+            self.reply_to_caller(ticket)
+        record["complete_crc"]=complete_crc
+        record["sanity_cookie"]=sanity_cookie
+        #record our changes to the database
+        self.dict[bfid] = record
+        ticket["status"]=(e_errors.OK, None)
+        #reply to caller with updated database values
+        record=self.dict[bfid]
+        ticket["complete_crc"]=record["complete_crc"]
+        ticket["sanity_cookie"]=record["sanity_cookie"]
+        self.reply_to_caller(ticket)
+
+
+        
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
         # everything is based on bfid - make sure we have this
@@ -326,7 +366,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = self.dict[bfid] ## was deepcopy
+            finfo = self.dict[bfid] 
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid %s not found"%(bfid,))
@@ -391,7 +431,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = self.dict[bfid] ## was deepcopy
+            finfo = self.dict[bfid] 
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid %s not found"%(bfid,))
@@ -455,7 +495,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"rename_volume %s"%(ticket["status"],))
             return
 
-	record = self.dict[bfid] ## was deepcopy
+	record = self.dict[bfid] 
 	# replace old volume name with new one
 	record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
 						record["external_label"], 
@@ -474,7 +514,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 		self.reply_to_caller(ticket)
 		Trace.log(e_errors.ERROR,'rename_volume failed %s'%(ticket,))
 		return
-	self.dict[bfid] = record ## was deepcopy
+	self.dict[bfid] = record 
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
@@ -543,64 +583,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      self.control_socket.close()
      return
 
-    # This is a backup for previous implementation
-
-    def tape_list2(self,ticket):
-     # everything is based on external_label - make sure we have this
-     try:
-         key="external_label"
-         external_label = ticket[key]
-         ticket["status"] = (e_errors.OK, None)
-         self.reply_to_caller(ticket)
-     except KeyError:
-         ticket["status"] = (e_errors.KEYERROR,"File Clerk: %s key is missing"%(key,))
-         Trace.log(e_errors.INFO, "%s"%(ticket,))
-         self.reply_to_caller(ticket)
-         Trace.trace(10,"tape_list %s"%(ticket["status"],))
-         return
-
-     if self.fork() != 0:
-         return
-     # get a user callback
-     self.get_user_sockets(ticket)
-     callback.write_tcp_obj(self.data_socket,ticket)
-     msg="     label            bfid       size        location_cookie delflag original_name\n"
-     callback.write_tcp_raw(self.data_socket, msg)
-     # now get a cursor so we can loop on the database quickly:
-     self.dict.cursor("open")
-     key,value=self.dict.cursor("first")
-     while key:
-         if value['external_label'] == external_label:
-             if value.has_key('deleted'):
-                 if value['deleted']=="yes":
-                     deleted = "deleted"
-                 else:
-                     deleted = " active"
-             else:
-                 deleted = "unknown"
-             if not value.has_key('pnfs_name0'):
-                 value['pnfs_name0'] = "unknown"
-             msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
-                                                      value['size'],value['location_cookie'],
-                                                      deleted,value['pnfs_name0'])
-             callback.write_tcp_raw(self.data_socket, msg)
-         key,value=self.dict.cursor("next")
-     self.dict.cursor("close")
-     callback.write_tcp_raw(self.data_socket, "")
-     self.data_socket.close()
-     callback.write_tcp_obj(self.control_socket,ticket)
-     self.control_socket.close()
-     return
-
-#    def start_backup(self,ticket):
-#        dict.start_backup()
-#        self.reply_to_caller({"status" : (e_errors.OK, None),
-#                "start_backup"  : 'yes' })
-#
-#    def stop_backup(self,ticket):
-#        dict.stop_backup()
-#        self.reply_to_caller({"status" : (e_errors.OK, None),
-#                "stop_backup"  : 'yes' })
 
     def start_backup(self,ticket):
         try:
