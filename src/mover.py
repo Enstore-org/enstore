@@ -781,7 +781,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                after_function=self.position_media)
 
     def error(self, msg, err=e_errors.ERROR):
-        self.status = (err, msg)
+        self.status = (str(err), str(msg))
         Trace.log(e_errors.ERROR, msg+ "state=ERROR")
         self.state = ERROR
         
