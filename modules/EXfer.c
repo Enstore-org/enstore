@@ -2859,15 +2859,14 @@ int main(int argc, char **argv)
      flags_in |= O_RDONLY;
 
   /* Determine the flags for the output file descriptor. */
-  if(mmap_io_out && direct_io_out)
-     flags_out |= O_RDWR | O_DIRECT | O_CREAT | O_TRUNC;
-  else if(mmap_io_out)
-     flags_out |= O_RDWR | O_CREAT | O_TRUNC;
-  else if(direct_io_out)
-     flags_out |= O_WRONLY | O_DIRECT | O_CREAT | O_TRUNC;
+  flags_out |= O_CREAT | O_TRUNC;
+  if(direct_io_out)
+     flags_out |= O_DIRECT;
+  if(mmap_io_out || ecrc)
+     flags_out |= O_RDWR;
   else
-     flags_out |= O_WRONLY | O_CREAT | O_TRUNC;
-
+     flags_out |= O_WRONLY;
+  
   /* Check the number of arguments from the command line. */
   if(argc < 3)
   {
