@@ -83,7 +83,7 @@ extern void		ftt_first_supported(int *);
 extern ftt_descriptor	ftt_next_supported(int *);
 
 extern int      ftt_inquire(ftt_descriptor d);
-extern int      ftt_format_ait(ftt_descriptor d);
+extern int      ftt_format_ait(ftt_descriptor d,int onoff);
 extern int      ftt_modesense(ftt_descriptor d);
 extern int      ftt_logsense(ftt_descriptor d);
 

@@ -157,6 +157,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
     char *p;
     int keep_errno;   /* errno when we started */
     int guess_errno;  /* best guess so far */
+    int keep_res = res;
 
     keep_errno = errno;
 
@@ -173,7 +174,7 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	terrno = ENOMEM;
         guess_errno = d->errortrans[opn][terrno];
 	errno = keep_errno;
-        return ftt_describe_error(d, opn, op, res, what, recoverable);
+        return ftt_describe_error(d, opn, op, keep_res, res, what, recoverable);
     }
 
     if (keep_errno >= MAX_TRANS_ERRNO) {
@@ -184,11 +185,6 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
 
     guess_errno = d->errortrans[opn][terrno];
-
-    /* mystery OSF1 error... */
-    if (EADDRINUSE == keep_errno) {
-	guess_errno = FTT_EBUSY;
-    }
 
     if (0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS)) {
 	DEBUG2(stderr, "translate_error: Verifying an eof...\n");
@@ -261,13 +257,17 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	guess_errno = FTT_EIO;
     }
 
+    /* 
+    ** in case any calls we made messed with errno, we put it back 
+    ** and we take our best guess to be ftt_errno.
+    */
     errno = keep_errno;
     ftt_errno = guess_errno;
-    return ftt_describe_error(d, opn, op, res, what, recoverable);
+    return ftt_describe_error(d, opn, op, keep_res, res, what, recoverable);
 }
 
 int
-ftt_describe_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
+ftt_describe_error(ftt_descriptor d, int opn, char *op, int keep_res, int res, char *what, int recoverable) {
 
     if (0 <= res) {
 	ftt_errno = FTT_SUCCESS;
@@ -275,13 +275,13 @@ ftt_describe_error(ftt_descriptor d, int opn, char *op, int res, char *what, int
     }
     ftt_eprintf( "\
 %s: doing %s on %s returned %d,\n\
-	errno %d, => ftt error %s(%d), meaning \n\
+	errno %d, => result %d, ftt error %s(%d), meaning \n\
 	%s\n%s",
 
 	what, op,  (d->which_is_open >= 0 ? 
 				d->devinfo[d->which_is_open].device_name :
 				d->basename),
-	res, errno, ftt_ascii_error[ftt_errno], ftt_errno,
+	keep_res, errno, res, ftt_ascii_error[ftt_errno], ftt_errno,
 	messages[ftt_errno], recoverable ? "": messages[FTT_EUNRECOVERED] );
 
     DEBUG2(stderr, "ftt_translate_error -- message is:\n%s", ftt_eprint_buf);

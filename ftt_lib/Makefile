@@ -25,7 +25,8 @@ HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \
 OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
 	ftt_open.o ftt_rdwr.o ftt_tables.o ftt_skip.o ftt_stats.o ftt_info.o \
 	ftt_label.o ftt_higher.o ftt_async.o ftt_find.o \
-	ftt_partition.o ftt_version.o
+	ftt_partition.o ftt_version.o $(EXTRAOBJ)
+
 
 CFLAGS=-I. -Ilocal -g  $(WARN) `cat local/flags`
 
@@ -63,6 +64,9 @@ includes: \
 fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs
 
 install: all dirs includes fttlib $(BINDIR)/ftt_suid
+
+dmalloc/malloc.o: dmalloc/malloc.c dmalloc/malloc.h dmalloc/debugmalloc.h
+	cd dmalloc; $(CC) $(CFLAGS) -c malloc.c
 
 $(LIBDIR)/libftt.a: libftt.a
 	cp libftt.a $(LIBDIR)/
@@ -106,6 +110,7 @@ local:
 	else \
 		ln -s GENERIC local;\
 	fi
+	cd dmalloc; ln -s ../local local
 
 testtables:
 	rm -f ftt_error.o
@@ -128,7 +133,7 @@ ftt_checktable: ftt_checktable.c $(LIB)
 # this is shotgunning, crude but effective :-)
 $(OBJ): $(HDR)
 
-$(LIB): $(OBJ)
+$(LIB): $(OBJ) 
 	rm -f $(LIB)
 	if [ `uname` = Linux ];then opts=qvs;else opts=qv;fi; ar $$opts $(LIB) $(OBJ)
 

@@ -9,7 +9,13 @@ extern "C" {
 #include <ftt_voidtypes.h>
 #include <ftt_common.h>
 
+#ifdef DEBUGMALLOC
+#include "../ftt_lib/dmalloc/debugmalloc.h"
+#endif
+
 #ifdef __cplusplus
 }
 #endif
+
+
 #endif

@@ -360,7 +360,7 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
 	locate_cmd[5] = (blockno >> 8)  & 0xff; 
 	locate_cmd[6] = blockno & 0xff;
 	res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
-	res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+	res = ftt_describe_error(d,0,"a SCSI pass-through call", res, res,"Locate", 0);
 
     }
     return res;

@@ -58,7 +58,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
 				(unsigned char*)buf, length, 60, 0);
-	res = ftt_describe_error(d, FTT_OPN_READ, "ftt_read", res, "a read SCSI command", 1);
+	res = ftt_describe_error(d, FTT_OPN_READ, "ftt_read", res, res, "a read SCSI command", 1);
     
 	} else {
 	
@@ -143,7 +143,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	}
 	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
 				(unsigned char *)buf, length, 60,1);
-	res = ftt_describe_error(d, FTT_OPN_WRITE, "ftt_write", res, "a write SCSI command", 0);
+	res = ftt_describe_error(d, FTT_OPN_WRITE, "ftt_write", res, res, "a write SCSI command", 0);
     } else {
 		DEBUG4(stderr,"System Call\n");
 		if (0 != (d->last_operation &(FTT_OP_READ)) &&
