@@ -367,6 +367,10 @@ class Interface:
                 self.logfile_dir = value
             elif opt == "--max-encp-lines":
                 self.max_encp_lines = int(value)
+            elif opt == "--max-retry":
+                self.max_retry = int(value)
+            elif opt == "--max-resubmit":
+                self.max_resubmit = int(value)
             elif opt == "--max-work":
                 self.max_work = int(value)
             elif opt == "--mc":
