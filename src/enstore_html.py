@@ -877,13 +877,12 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 					   html_escape='OFF')))
         table.append(empty_row(LM_COLS)) 
 	# add the suspect volumes
-	str1 = HTMLgen.Font("Suspect%sVolumes%s:"%(NBSP, NBSP), size="+1", html_escape='OFF')
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Suspect%sVolumes%s:%s"%(NBSP,
 							     NBSP, NBSP), html_escape='OFF'),
 						color=BRICKRED, size="+1")))
 	vols = self.data_dict[enstore_constants.SUSPECT_VOLS]
 	if vols == ['None'] or vols == {}:
-	    tr.append(empty_data(4))
+	    pass
 	else:
 	    for vol in vols:
 		txt = "%s%s-%s"%(str(HTMLgen.Href("tape_inventory/%s"%(vol[0],), vol[0])),
@@ -897,7 +896,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 		tr.append(td)
 		table.append(tr)
 		tr = HTMLgen.TR(empty_data())
-        table.append(empty_row(LM_COLS)) 
+	table.append(empty_row(LM_COLS)) 
 	self.parse_queues()
 	# add the read queue elements
 	table.append(self.read_header_row())
@@ -943,26 +942,30 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 
     # create the suspect volume row - it is a separate table
     def suspect_volume_row(self):
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect%sVolumes"%(NBSP,), 
-						color=BRICKRED, 
-						html_escape='OFF')))
 	# format the suspect volumes, 3 to a row
 	vols = self.data_dict[enstore_constants.SUSPECT_VOLS]
 	vol_str = ""
 	ctr = 0
-	for vol in vols:
-	    if vol_str:
-		# separate the new volume from the old ones
-		if ctr == 3:
-		    vol_str = "%s,  <BR>"%(vol_str,)
-		    ctr = 0
-		else:
-		    vol_str = "%s,  "%(vol_str,)
-	    ctr = ctr + 1
-	    vol_str = "%s %s - %s"%(vol_str, vol[0],
-				    enstore_functions.print_list(vol[1]))
-	tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4, 
-			     html_escape='OFF'))
+	if vols == ['None'] or vols == {}:
+	    tr = None
+	else:
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect%sVolumes"%(NBSP,), 
+						    color=BRICKRED, 
+						    html_escape='OFF')))
+	    for vol in vols:
+		if vol_str:
+		    # separate the new volume from the old ones
+		    if ctr == 3:
+			vol_str = "%s,  <BR>"%(vol_str,)
+			ctr = 0
+		    else:
+			vol_str = "%s,  "%(vol_str,)
+		ctr = ctr + 1
+		vol_str = "%s %s - %s"%(vol_str, vol[0],
+					enstore_functions.print_list(vol[1]))
+	    else:
+		tr.append(HTMLgen.TD(vol_str, align="LEFT", colspan=4, 
+				     html_escape='OFF'))
 	return tr
 
     def priorities_row(self, qelem):
@@ -1167,7 +1170,9 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	    lm_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
 					 align="LEFT", bgcolor=YELLOW, 
 					 width="100%")
-	    lm_table.append(self.suspect_volume_row())
+	    tr = self.suspect_volume_row()
+	    if tr:
+		lm_table.append(tr)
 	    lm_table.append(empty_row(cols))
 	    rows = self.work_at_movers_row(cols)
 	    for row in rows:
