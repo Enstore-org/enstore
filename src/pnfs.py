@@ -5,8 +5,6 @@
 import sys
 import os
 import copy
-import posix
-import posixpath
 import errno
 import stat
 import pwd
@@ -14,7 +12,7 @@ import grp
 import string
 import time
 import fcntl
-import regsub
+
 
 # enstore imports
 import Trace
@@ -274,7 +272,7 @@ class Pnfs:
             f = open(self.dir+'/.(id)('+self.file+')','r')
             i = f.readlines()
             f.close()
-            self.id = regsub.sub("\012","",i[0])
+            self.id = string.replace(i[0],'\012','')
         else:
             self.id = UNKNOWN
 
@@ -472,12 +470,12 @@ class Pnfs:
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
-                self.volume          = regsub.sub("\012","",xinfo[0])
-                self.location_cookie = regsub.sub("\012","",xinfo[1])
-                self.size            = regsub.sub("\012","",xinfo[2])
-                self.origff          = regsub.sub("\012","",xinfo[3])
-                self.origname        = regsub.sub("\012","",xinfo[4])
-                self.mapfile         = regsub.sub("\012","",xinfo[5])
+                self.volume          = string.replace(xinfo[0],'\012','')
+                self.location_cookie = string.replace(xinfo[1],'\012','')
+                self.size            = string.replace(xinfo[2],'\012','')
+                self.origff          = string.replace(xinfo[3],'\012','')
+                self.origname        = string.replace(xinfo[4],'\012','')
+                self.mapfile         = string.replace(xinfo[5],'\012','')
             except:
                 self.volume          = UNKNOWN
                 self.location_cookie = UNKNOWN
@@ -668,7 +666,7 @@ class Pnfs:
             if 0:
                 # this is horrible --- PLATFORM DEPENDENT ----------------------------------------------------------<--
                 machtypelf = os.popen('uname','r').readlines()
-                machtype = regsub.sub("\012","",machtypelf[0])
+                machtype = string.replace(machtypelf[0],'\012','')
                 if machtype=="AIX":
                     k = ""
                     item = "7"
@@ -695,7 +693,7 @@ class Pnfs:
                 mountpoints = os.popen(command,'r').readlines()
                 mpchoose = ""
                 for mplf in mountpoints:
-                    mp = regsub.sub("\012","",mplf)
+                    mp = string.replace(mplf,'\012','')
                     if string.find(self.dir,mp) == 0:
                         if len(mp)>len(mpchoose):
                             mpchoose = mp
@@ -723,24 +721,24 @@ class Pnfs:
             #     allow for 100 GB offsets
             self.volume_file = self.voldir+'/'+cookie
 
-            self.voldir      = regsub.sub("//","/",self.voldir)
-            self.volume_file = regsub.sub("//","/",self.volume_file)
+            self.voldir      = string.replace(self.voldir,"//","/")
+            self.volume_file = string.replace(self.volume_file,"//","/")
         else:
             self.volume_file = UNKNOWN
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
         if self.volume_file!=UNKNOWN:
-            if posixpath.exists(self.voldir) == 0:
+            if os.path.exists(self.voldir) == 0:
                 dir = ""
                 dir_elements = string.split(self.voldir,'/')
                 for element in dir_elements:
                     dir=dir+'/'+element
                     #Trace.log(e_errors.INFO, dir)
-                    if posixpath.exists(dir) == 0:
+                    if os.path.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
-                        dir = regsub.sub("//","/",dir)
+                        dir = string.replace(dir,"//","/")
                         Trace.trace(11,'dir='+repr(dir)+" voldir="+repr(self.voldir))
                         os.mkdir(dir)
                         # we already written to the user's file space, let everyone write to directory
@@ -802,11 +800,11 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
     tape = os.popen(command,'r').readlines()
     if len(tape) == 0:
         return ("","")
-    voldir = regsub.sub("\012","",tape[0])
+    voldir = string.replace(tape[0],'\012','')
 
     # get the list of files in the volume directory
     #   note that files are they are lexically sortable
-    volfiles = posix.listdir(voldir)
+    volfiles = os.listdir(voldir)
     volfiles.sort()
 
     # create a sorted list of file number requests
