@@ -51,6 +51,8 @@ if [ -z "${2-}"  ]; then
 else
      edcmd=$2
 fi
+export EDITOR=$edcmd # probably not needed, just did it so it is set
+export VISUAL=$edcmd # needed for cvs check in 
 
 # make sure we are using the latest config from the repository
 echo "doing cvs update on $config"
