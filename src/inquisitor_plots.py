@@ -88,7 +88,7 @@ class InquisitorPlots:
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
-	# the file at the beginning of the line.
+	# the file at the beginning of the line. do not count any null moves.
 	encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
 						"* /dev/null",
 						ofn,
