@@ -38,6 +38,7 @@ case $mvr in
   *MAM*) rate=2.8  ;;
   *AIT*) rate=2.7  ;;
   *stk*) rate=11.0 ;;
+ *null*) rate=8.5  ;;
       *) rate=100. ;;
 esac
 
@@ -75,19 +76,17 @@ while 1==1:
       wr_rate = written/dt/1024./1024.
       rd_rate = readten/dt/1024./1024.
       blocksize=102400
-      if wr_rate*1.05 < '$rate':
+      if wr_rate*1.05 < '$rate' and wr_rate>0:
         if left2write>blocksize:
           if dt < 4.75:
             condition = "TAPE TLOW"
           else:
             condition = "TAPE SLOW"
-        elif left2write!=0:
+        else:
           if dt < 4.75:
             condition = "USER TLOW"
           else:
             condition = "USER SLOW"
-        else:
-          condition = "         "
       else:
         condition = "         "
       print "%s %s wr=%.2f rr=%.2f w=%.10i r=%.10i l2w=%.10i dt=%.1f %8.8s %i %s %s %i" %\
