@@ -50,10 +50,10 @@ QUALIFIERS = ""
 
         # "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/enstore.conf-default)
-        envSet(ENSTORE_CONFIG_PORT, 7510)
+        envSet(ENSTORE_CONFIG_PORT, 7500)
         envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
         envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
 
-        # the next one controls where the trace file goes
-	#envSet( TRACE_KEY, ${UPS_PROD_DIR}/etc/trace.`hostname` )
-	envSet( TRACE_KEY, /tmp/trace.`hostname` )
+        # controls where the trace file goes
+        execute("mkdir -p /tmp/enstore/$(whoami)", NO_UPS_ENV, JUNK)
+	envSet(TRACE_KEY, /tmp/enstore/$(whoami)"/trace.`hostname`)
