@@ -291,24 +291,42 @@ def set_route(dest, interface_ip):
     else:
 	return
 
+    #Attempt to set the route.
     err=enroute.routeAdd(dest, gateway)
-    if err == 5: #Return code if route selection is not supported.
+
+    if err == 1: #Not called from encp/enstore.  (should never see this)
+        raise OSError(errno.EPERM, "Routing:" + os.strerror(errno.EPERM))
+    elif err == 2: #Not supported.
+        raise OSError(errno.ENOPROTOOPT,
+                      "Routing:" + os.strerror(errno.ENOPROTOOPT))
+    elif err == 3: #Not permitted.
+        raise OSError(errno.EACCES, "Routing:" + os.strerror(errno.EACCES))
+    elif err == 4: #Not valid parameters.
+        raise OSError(errno.EINVAL, "Routing:" + os.strerror(errno.EINVAL))
+    elif err == 5: #Return code if route selection is not supported.
         pass
-    elif err:
-        Trace.log(e_errors.ERROR,
-		  "set_route(%s, %s) failed"%(dest, interface_ip))
+        #raise OSError(errno.ENOSYS, "Routing:" + os.strerror(errno.ENOSYS))
 
 def unset_route(dest):
     config = get_config()
     if not config:
         return
 
+    #Attempt to remove the route.
     err=enroute.routeDel(dest)
-    if err == 5: #Return code if route selection is not supported.
+
+    if err == 1: #Not called from encp/enstore.  (should never see this)
+        raise OSError(errno.EPERM, "Routing:" + os.strerror(errno.EPERM))
+    elif err == 2: #Not supported.
+        raise OSError(errno.ENOPROTOOPT,
+                      "Routing:" + os.strerror(errno.ENOPROTOOPT))
+    elif err == 3: #Not permitted.
+        raise OSError(errno.EACCES, "Routing:" + os.strerror(errno.EACCES))
+    elif err == 4: #Not valid parameters.
+        raise OSError(errno.EINVAL, "Routing:" + os.strerror(errno.EINVAL))
+    elif err == 5: #Return code if route selection is not supported.
         pass
-    elif err:
-        Trace.log(e_errors.ERROR,
-		  "unset_route(%s) failed"%(dest,))
+        #raise OSError(errno.ENOSYS, "Routing:" + os.strerror(errno.ENOSYS))
 
 ##############################################################################
 # The following three functions select an interface based on various criteria.

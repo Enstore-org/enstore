@@ -31,7 +31,8 @@ import pnfs
 import callback
 import log_client
 import configuration_client
-import udp_client
+#import udp_client
+import udp_server
 import EXfer
 import interface
 import e_errors
@@ -54,7 +55,7 @@ import enstore_functions
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
 # that fits in signed integer variables.
 ONE_G = 1024 * 1024 * 1024
-TWO_G = long(ONE_G) - 1     #Used in int32()
+TWO_G = 2 * long(ONE_G) - 1     #Used in int32()
 MAX_FILE_SIZE = long(ONE_G) * 2 - 1    # don't get overflow
 
 #############################################################################
@@ -80,6 +81,8 @@ data_access_layer_requested = 0
 
 #Initial seed for generate_unique_id().
 _counter = 0
+#Initial seed for generate_unique_msg_id().
+_msg_counter = 0
 
 # int32(v) -- if v > 2^31-1, make it long
 #
@@ -181,6 +184,11 @@ def print_error(errcode,errmsg):
     format = "ERROR: "+format
     sys.stderr.write(format)
     sys.stderr.flush()
+
+def generate_unique_msg_id():
+    global _msg_counter
+    _msg_counter = _msg_counter + 1
+    return _msg_counter
 
 def generate_unique_id():
     global _counter
@@ -598,9 +606,10 @@ def clients(config_host,config_port):
 
 ##############################################################################
 
-def get_callback_addr(e):
+def get_callback_addr(encp_intf):
     # get a port to talk on and listen for connections
-    (host, port, listen_socket) = callback.get_callback(verbose=e.verbose)
+    (host, port, listen_socket) = callback.get_callback(
+        verbose=encp_intf.verbose)
     callback_addr = (host, port)
     listen_socket.listen(4)
 
@@ -609,6 +618,17 @@ def get_callback_addr(e):
                   callback_addr)
 
     return callback_addr, listen_socket
+
+def get_routing_callback_addr(encp_intf):
+    # get a port to talk on and listen for connections
+    udps = udp_server.UDPServer(None, receive_timeout=encp_intf.mover_timeout)
+    route_callback_addr = (udps.server_address[0], udps.server_address[1])
+    
+    Trace.message(CONFIG_LEVEL,
+                  "Waiting for mover(s) to send route back on (%s, %s)." %
+                  route_callback_addr)
+
+    return route_callback_addr, udps
 
 ##############################################################################
 
@@ -995,6 +1015,7 @@ def get_clerks(bfid=None):
     return vcc, fcc
 
 ############################################################################
+############################################################################
 
 def get_dinfo():
     #If the environmental variable exists, send it to the lm.
@@ -1107,6 +1128,53 @@ def get_einfo(e):
     return encp_el
 
 ############################################################################
+############################################################################
+
+def open_routing_socket(route_server, unique_id_list, encp_intf):
+    start_time = time.time()
+    route_ticket = None
+
+    if not route_server:
+        return
+
+    while(time.time() - start_time < encp_intf.mover_timeout):
+        try:
+            route_ticket = route_server.process_request()
+        except socket.error, msg:
+            Trace.log(e_errors.ERROR, str(msg))
+            raise EncpError(msg.errno, "Unable to obtain route information.",
+                            e_errors.NET_ERROR)
+
+        #If route_server.process_request() fails it returns None.
+        if route_ticket == type({}) and \
+           route_ticket['unique_id'] not in unique_id_list:
+            continue
+    else:
+        raise EncpError(errno.ETIMEDOUT,
+                        "Mover did not call back.", e_errors.TIMEDOUT)
+        
+    #Determine if reading or writing.  This only has importance on
+    # mulithomed machines were an interface needs to be choosen based
+    # on reading and writing usages/rates of the interfaces.
+    if encp_intf.output == "hsmfile":
+        mode = 1 #write
+    else:
+        mode = 0 #read
+    #set up any special network load-balancing voodoo
+    interface=host_config.check_load_balance(mode=mode)
+    #load balencing...
+    if interface:
+        ip = interface.get('ip')
+        if ip and route_ticket.get('mover_ip', None):
+            try:
+                #This is were the interface selection magic occurs.
+                host_config.setup_interface(route_ticket['mover_ip'], ip)
+            except (OSError, IOError, socket.error), msg:
+                raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+
+    route_server.reply_to_caller(route_ticket)
+
+##############################################################################
 
 def open_control_socket(listen_socket, mover_timeout):
 
@@ -1152,28 +1220,18 @@ def open_control_socket(listen_socket, mover_timeout):
     
 ##############################################################################
 
-def open_data_socket(mover_addr, mode):
+def open_data_socket(mover_addr, interface_ip):
     data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
                 flags | FCNTL.O_NONBLOCK)
 
-    #set up any special network load-balancing voodoo
-    interface=host_config.check_load_balance(mode=mode)
-    #load balencing...
-    if interface:
-        ip = interface.get('ip')
-        if ip:
-            try:
-                #This is were the interface selection magic occurs.
-                host_config.setup_interface(mover_addr[0], ip)
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR, "setup interface: %s %s" % (ip, msg))
-            try:
-                data_path_socket.bind((ip, 0))
-                Trace.log(e_errors.INFO, "bind %s" % (ip,))
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR, "bind: %s %s" % (ip, msg))
+    try:
+        data_path_socket.bind((interface_ip, 0))
+        Trace.log(e_errors.INFO, "bind %s" % (interface_ip,))
+    except socket.error, msg:
+        Trace.log(e_errors.ERROR, "bind: %s %s" % (interface_ip, msg))
+        
 
     try:
         data_path_socket.connect(mover_addr)
@@ -1226,30 +1284,55 @@ def open_data_socket(mover_addr, mode):
 #Returns:
 # (control_socket, 
 
-def mover_handshake(listen_socket, work_tickets, mover_timeout):
+def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
+    unique_id_list = []
+    for work_ticket in work_tickets:
+        unique_id_list.append(work_ticket['unique_id'])
+        
     ##19990723:  resubmit request after 15minute timeout.  Since the
     # unique_id is unchanged the library manager should not get
     # confused by duplicate requests.
     #timedout=0
     while 1:  ###not (timedout or reply_read):
-        #Attempt to get the control socket connected with the mover.
-        try:
-            control_socket, mover_address, ticket = open_control_socket(
-                listen_socket, mover_timeout)
 
-        except (socket.error, EncpError), detail:
+        #Attempt to get the routing socket before opening the others
+        try:
+            #There is no need to do this on a non-multihomed machine.
+            if host_config.get_config():
+                open_routing_socket(route_server, unique_id_list, encp_intf)
+        except (EncpError,), detail:
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             elif hasattr(msg, "type"):
                 ticket = {'status':(msg.type, msg.strerror)}                
             else:
-                ticket = {'status':(e_errors.NET_ERROR, msg.strerror)}
+                ticket = {'status':(e_errors.NET_ERROR, str(msg))}
                 
             #Since an error occured, just return it.
             return None, None, ticket
 
-        Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE")
+        Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (ROUTING)")
+        Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
+
+        #Attempt to get the control socket connected with the mover.
+        try:
+            control_socket, mover_address, ticket = open_control_socket(
+                listen_socket, encp_intf.mover_timeout)
+
+        except (socket.error, EncpError):
+            exc, msg, tb = sys.exc_info()
+            if msg.errno == errno.ETIMEDOUT:
+                ticket = {'status':(e_errors.RESUBMITTING, None)}
+            elif hasattr(msg, "type"):
+                ticket = {'status':(msg.type, msg.strerror)}                
+            else:
+                ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+                
+            #Since an error occured, just return it.
+            return None, None, ticket
+
+        Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL)")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
         #verify that the id is one that we are excpeting and not one that got
@@ -1288,17 +1371,10 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout):
                 ticket['status'] = (str(exc), str(msg))
             return None, None, ticket
 
-        #Determine if reading or writing.  This only has importance on
-        # mulithomed machines were an interface needs to be choosen based
-        # on reading and writing usages/rates of the interfaces.
-        if ticket['outfile'][:5] == "/pnfs":
-            mode = 1
-        else:
-            mode = 0
-
         #Attempt to get the data socket connected with the mover.
         try:
-            data_path_socket = open_data_socket(mover_addr, mode)
+            data_path_socket = open_data_socket(mover_addr,
+                                                ticket['callback_addr'][0])
 
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
@@ -1322,7 +1398,8 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout):
         #ticket['status'] = (e_errors.NET_ERROR, "because I closed them")
 
         return control_socket, data_path_socket, ticket
-
+    
+############################################################################
 ############################################################################
 
 def submit_one_request(ticket):
@@ -1392,8 +1469,6 @@ def open_local_file(filename, mode):
 def receive_final_dialog(control_socket):
     # File has been sent - wait for final dialog with mover. 
     # We know the file has hit some sort of media.... 
-    # when this occurs. Create a file in pnfs namespace with
-    #information about transfer.
     
     try:
         done_ticket = callback.read_tcp_obj(control_socket)
@@ -1424,11 +1499,34 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
                                  e.bufsize, crc_flag, 0)
         EXfer_ticket = {'status':(e_errors.OK, None)}
     except EXfer.error, msg:
+        #The exception raised can have two forms.  Both share the same values
+        # for the first four positions in the msg.args tuple.
+        # [0] text message
+        # [1] errno
+        # [2] strerror
+        # [3[ pid
+        #It is also possible to have the following extra elements:
+        # [4] bytes left untransfered
+        # [5] filename of error
+        # [6] line number that the error occured on
         if msg.args[1] == errno.ENOSPC: #This should be non-retriable.
-            EXfer_ticket = {'status':(e_errors.NOSPACE, str(msg))}
+            error_type = e_errors.NOSPACE
         else:
-            EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
-        Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
+            error_type = e_errors.IOERROR
+            
+        EXfer_ticket = {'status': (error_type,
+                         "[ Error %d ] %s: %s" % (msg.args[1], msg.args[2],
+                                                  msg.args[0]))}
+        #If this is the longer form, add these values to the ticket.
+        if len(msg.args) >= 7:
+            EXfer_ticket['bytes_not_transfered'] = msg.args[4]
+            EXfer_ticket['filename'] = msg.args[5]
+            EXfer_ticket['line_number'] = msg.args[6]
+            
+        Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" %
+                  (str(msg),))
+        Trace.message(TRANSFER_LEVEL,"EXfer file transfer error. elapsed=%s"
+                  % (time.time() - tinfo['encp_start_time'],))
 
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
@@ -2075,7 +2173,7 @@ def set_pnfs_settings(ticket):
 #Functions for writes.
 ############################################################################
 
-def create_write_requests(callback_addr, e, tinfo):
+def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
     request_list = []
 
@@ -2108,8 +2206,6 @@ def create_write_requests(callback_addr, e, tinfo):
         elif len(e.input) == 1 and os.path.isdir(ofullname):
             ofullname = os.path.join(ofullname, ibasename)
             omachine, ofullname, odir, obasename = fullpath(ofullname)
-
-        
 
         file_size = get_file_size(ifullname)
 
@@ -2177,6 +2273,11 @@ def create_write_requests(callback_addr, e, tinfo):
                         "storage_group"      : storage_group,}
         file_clerk = {"address" : fcc.server_address}
 
+        if host_config.get_config():
+            route_selection = 1
+        else:
+            route_selection = 0
+
         work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
@@ -2187,6 +2288,8 @@ def create_write_requests(callback_addr, e, tinfo):
         work_ticket['infile'] = ifullname
         work_ticket['outfile'] = ofullname
         work_ticket['retry'] = 0 #retry,
+        work_ticket['routing_callback_addr'] = routing_addr
+        work_ticket['route_selection'] = route_selection
         work_ticket['times'] = tinfo.copy() #Only info now in tinfo needed.
         work_ticket['unique_id'] = generate_unique_id()
         work_ticket['vc'] = volume_clerk
@@ -2236,7 +2339,7 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 ############################################################################
 
 
-def write_hsm_file(listen_socket, work_ticket, tinfo, e):
+def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
     #Loop around in case the file transfer needs to be retried.
     while work_ticket.get('retry', 0) <= e.max_retry:
@@ -2249,7 +2352,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         #Open the control and mover sockets.
         control_socket, data_path_socket, ticket = mover_handshake(
-            listen_socket, [work_ticket], e.mover_timeout)
+            listen_socket, route_server, [work_ticket], e)
 
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
@@ -2440,10 +2543,12 @@ def write_to_hsm(e, tinfo):
 
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = get_callback_addr(e)
+    #Get an ip and port to listen for the mover address for routing purposes.
+    routing_addr, udp_server = get_routing_callback_addr(e)
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
-    request_list = create_write_requests(callback_addr, e, tinfo)
+    request_list = create_write_requests(callback_addr, routing_addr, e, tinfo)
 
     #If this is the case, don't worry about anything.
     if len(request_list) == 0:
@@ -2489,21 +2594,25 @@ def write_to_hsm(e, tinfo):
             continue
 
         #Send (write) the file to the mover.
-        done_ticket = write_hsm_file(listen_socket, work_ticket, tinfo, e)
+        done_ticket = write_hsm_file(listen_socket, udp_server,
+                                     work_ticket, tinfo, e)
 
         Trace.message(TICKET_LEVEL, "DONE WRITTING TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+
+        #Set the value of bytes to the number of bytes transfered before the
+        # error occured.
+        bytes = bytes + done_ticket['file_size']
+        bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
+
+        tstring = '%s_elapsed_finished' % done_ticket['unique_id']
+        tinfo[tstring] = time.time() - lap_start #-------------------------End
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
         if done_ticket['status'][0] != e_errors.OK:
             exit_status = 1
             continue
-
-        bytes = bytes + done_ticket['file_size']
-
-        tstring = '%s_elapsed_finished' % done_ticket['unique_id']
-        tinfo[tstring] = time.time() - lap_start #-------------------------End
 
         # calculate some kind of rate - time from beginning 
         # to wait for mover to respond until now. This doesn't 
@@ -2794,7 +2903,7 @@ def verify_file_size(ticket):
 #Functions for reads.
 #######################################################################
 
-def create_read_requests(callback_addr, tinfo, e):
+def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
     nfiles = 0
     requests_per_vol = {}
@@ -2897,6 +3006,12 @@ def create_read_requests(callback_addr, tinfo, e):
                 {'status':(detail.type, detail.strerror)})
             quit()
 
+        #There is no need to deal with routing on non-multihomed machines.
+        if host_config.get_config():
+            route_selection = 1
+        else:
+            route_selection = 0
+
         request = {}
         request['bfid'] = bfid
         request['callback_addr'] = callback_addr
@@ -2908,6 +3023,8 @@ def create_read_requests(callback_addr, tinfo, e):
         request['infile'] = ifullname
         request['outfile'] = ofullname
         request['retry'] = 0
+        request['routing_callback_addr'] = routing_addr
+        request['route_selection'] = route_selection
         request['times'] = tinfo.copy() #Only info now in tinfo needed.
         request['unique_id'] = generate_unique_id()
         request['vc'] = vc_reply
@@ -2977,7 +3094,8 @@ def submit_read_requests(requests, tinfo, encp_intf):
 #   did not succed.  bytes is the total running sum of bytes transfered
 #   for this encp.
 
-def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
+def read_hsm_files(listen_socket, route_server, submitted,
+                   request_list, tinfo, e):
 
     for rq in request_list: 
         Trace.trace(17,"read_hsm_files: %s"%(rq['infile'],))
@@ -2998,9 +3116,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         # listen for a mover - see if id corresponds to one of the tickets
         #   we submitted for the volume
         control_socket, data_path_socket, request_ticket = mover_handshake(
-            listen_socket,
-            request_list,
-            e.mover_timeout)
+            listen_socket, route_server, request_list, e)
 
         done_ticket = request_ticket #Make sure this exists by this point.
         result_dict = handle_retries(request_list, request_ticket,
@@ -3088,6 +3204,7 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         #These functions write errors/warnings to the log file and put an
         # error status in the ticket.
         bytes = bytes + verify_file_size(done_ticket) #Verify size is the same.
+        bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
 
         #Verfy that the file transfered in tacted.
@@ -3206,9 +3323,12 @@ def read_from_hsm(e, tinfo):
 
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = get_callback_addr(e)
+    #Get an ip and port to listen for the mover address for routing purposes.
+    routing_addr, udp_server = get_routing_callback_addr(e)
 
     #Create all of the request dictionaries.
-    requests_per_vol = create_read_requests(callback_addr, tinfo, e)
+    requests_per_vol = create_read_requests(callback_addr, routing_addr,
+                                            tinfo, e)
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
@@ -3247,7 +3367,7 @@ def read_from_hsm(e, tinfo):
             # also be passed so read_hsm_files knows how many elements of
             # request_list are valid.
             requests_failed, brcvd, data_access_layer_ticket = read_hsm_files(
-                listen_socket, submitted, request_list, tinfo, e)
+                listen_socket, udp_server, submitted, request_list, tinfo, e)
 
             Trace.message(TRANSFER_LEVEL,
                           "Files read for volume %s   elapsed=%s" %

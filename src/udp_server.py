@@ -20,6 +20,7 @@ import rexec
 #enstore imports
 import hostaddr
 import cleanUDP
+import udp_common
 import Trace
 import e_errors
 
@@ -33,7 +34,22 @@ class UDPServer:
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
-        self.server_address = server_address
+        #If an address was not specified.
+        try:
+            if type(server_address) == type(()) and len(server_address) == 2 \
+               and type(server_address[0]) == type("") and server_address[0] \
+               and type(server_address[1]) == type(0) and server_address[1]:
+                ip, port, self.server_socket = udp_common.get_callback(
+                    server_address[0], server_address[1])
+                self.server_address = (ip, port)
+            else:
+                ip, port, self.server_socket = udp_common.get_default_callback()
+                self.server_address = (ip, port)
+                #If an address was specified.
+        except socket.error:
+            self.server_address = ("", 0)
+            self.server_socket = None
+            
         try:
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 socket.gethostbyname_ex(
@@ -42,16 +58,16 @@ class UDPServer:
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 self.server_address[0], [], [self.server_address[0]]
 
-        self.request_dict = {} # used to recognize UDP retries
-        self.request_dict_ttl = 1800 # keep requests in request dict for this many seconds
+        # used to recognize UDP retries
+        self.request_dict = {}
+        # keep requests in request dict for this many seconds
+        self.request_dict_ttl = 1800
         
-        self.server_socket = cleanUDP.cleanUDP (self.address_family,
-                                    self.socket_type)
         self.rexec = rexec.RExec()
         
         # set this socket to be closed in case of an exec
-        fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
-        self.server_bind()
+        fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD,
+                    FCNTL.FD_CLOEXEC)
 
     def __del__(self):
         self.server_socket.close()
@@ -88,16 +104,16 @@ class UDPServer:
         #   read from socket where crc is stripped and return address is valid
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
-
+        print "111111111111111", self.server_address
         request, addr = '',()
         r = [self.server_socket]
-
+        print "222222222222"
         rcv_timeout = self.rcv_timeout
         r, w, x, remaining_time = cleanUDP.Select(r, [], [], rcv_timeout)
-
+        print "333333333333333"
         if not r + w:
             return ('',()) #timeout
-
+        print "44444444444444"
         for fd in r:
             if fd == self.server_socket:
                 req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
@@ -130,7 +146,9 @@ class UDPServer:
     def process_request(self):
         # ref udp_client.py (i.e. we may wish to have a udp_client method
         # to get this information)
+
         request, client_address = self.get_message()
+
         if not request:
             return None
         self.reply_address = client_address
@@ -143,7 +161,7 @@ class UDPServer:
         self.client_number = number
         self.current_id = idn
 
-        
+
         if self.request_dict.has_key(idn):
 
             # UDPClient resends messages if it doesn't get a response

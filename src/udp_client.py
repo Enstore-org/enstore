@@ -22,25 +22,13 @@ import setpath
 import e_errors
 import checksum
 import cleanUDP
+import udp_common
 import hostaddr
 import host_config
 
 UDPError = "UDP Error"
 
 TRANSFER_MAX=16384
-
-
-# try to get a port from a range of possibilities
-def get_client() :
-    #Pick an interface based on the current load of the system.
-    #host = host_config.check_load_balance()['ip']
-    #host = host_config.choose_interface()['ip']
-    host = host_config.get_default_interface()['ip']
-    sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((host, 0))
-    host, port = sock.getsockname()
-    return host, port, sock
-
 
 def wait_rsp( sock, address, rcv_timeout ):
 
@@ -76,7 +64,7 @@ class UDPClient:
         pid = self._os.getpid()
         tsd = Container()
         self.tsd[pid] = tsd
-        tsd.host, tsd.port, tsd.socket = get_client()
+        tsd.host, tsd.port, tsd.socket = udp_common.get_callback()
         tsd.txn_counter = 0L
         tsd.reply_queue = {}
         tsd.ident = self._mkident(tsd.host, tsd.port, pid)
