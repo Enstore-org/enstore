@@ -1971,22 +1971,11 @@ associated with the destination directory, identifies
      requested file as well as the Library Manager associated with this file.
      Then encp sends read request to this Library Manager.
 <dt>Inquiries
-<dd>Currently there is only one kind of such a request allowing to observe requests queued in the Library Manager queues. Below is an output of a query request. This command asks the Library Manager to provide information about all current requests from user node sphinx.fnal.gov. The output format is: <br>
+<dd>Currently there is only one kind of such a request allowing to observe
+     requests queued in the Library Manager queues. This command asks the Library Manager to provide information about all current requests from user node sphinx.fnal.gov. The output format is: <br>
 [user node] [user name] [input file] [output file] [request status]
      request status can be either P (pending) or M (at Mover)<br>
-[enter command] ecmd encp --queue sphinx.fnal.gov<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/callback.pyc /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/callback.pyc P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/alarm_server.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/alarm_server.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/mover.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/mover.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk_client.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/admin_clerk_client.pyc /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/admin_clerk_client.pyc P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/backup.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/backup.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/backup_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/backup_client.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/callback.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/callback.py P<br>
-sphinx.fnal.gov moibenko /pnfs/enstore/sphinx/t1/alarm_client.py /usr/hppc_home/moibenko/enstore_test/enstore/src/tst/alarm_client.py P<br>
- 
-
+     The exmple of the output is given in 1.2.4
 </dl>
 <p>
 Work can be prioritized.
