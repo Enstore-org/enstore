@@ -228,7 +228,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # we catch any exception from the thread as we do not want it to
             # escape from this area and start executing the main loop of the
             # inquisitor code.  we will output an error and then exit.
-            e_errors.handle_error()
+            Trace.handle_error()
             self.serve_forever_error(prefix)
 
     # this restarting may be overridden in the config file on a per server basis.
@@ -403,7 +403,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lib_man, time):
-        state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
+	try:
+	    state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
+	except (socket.error, "TCP connection closed"), detail:
+	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
+								   detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
+
         Trace.trace(enstore_constants.INQSERVERDBG,
 		    "get new suspect vol list from %s"%(lib_man.name,))
         self.serverfile.output_suspect_vols(state, lib_man.name)
@@ -416,7 +423,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
-        state = safe_dict.SafeDict(lib_man.client.getwork())
+	try:
+	    state = safe_dict.SafeDict(lib_man.client.getwork())
+	except (socket.error, "TCP connection closed"), detail:
+	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
+
         Trace.trace(enstore_constants.INQSERVERDBG,
 		    "get new work queue from %s"%(lib_man.name,))
         self.serverfile.output_lmqueues(state, lib_man.name)
@@ -429,7 +442,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
-        state = safe_dict.SafeDict(lib_man.client.get_lm_state())
+	try:
+	    state = safe_dict.SafeDict(lib_man.client.get_lm_state())
+	except (socket.error, "TCP connection closed"), detail:
+	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    return
         Trace.trace(enstore_constants.INQSERVERDBG,
 		    "get new state from %s"%(lib_man.name,))
         self.serverfile.output_lmstate(state, lib_man.name)
@@ -984,7 +1002,7 @@ if __name__ == "__main__":
                 # is not running, then exit fer sure.
                 inq.update_exit(exit_code)
             except:
-                e_errors.handle_error()
+                Trace.handle_error()
                 inq.serve_forever_error(inq.log_name)
                 inq.do_dump()
             continue

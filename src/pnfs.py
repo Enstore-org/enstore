@@ -688,7 +688,7 @@ class Pnfs:
                 os.makedirs(dir_path, mod)
             return e_errors.OK, None
         except:
-            exc, val, tb = e_errors.handle_error()
+            exc, val, tb = Trace.handle_error()
             return e_errors.ERROR, (str(exc), str(val))
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
@@ -757,7 +757,7 @@ class Pnfs:
                       "file %s restored from volmap"%(self.origname,))
             return e_errors.OK, None
         except:
-            exc, val, tb = e_errors.handle_error()
+            exc, val, tb = Trace.handle_error()
             return e_errors.ERROR, (str(exc), str(val))
 
     def log_err(self,func_name):

@@ -4,8 +4,6 @@
 
 import sys
 import string
-import Trace
-import traceback
 
 OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
@@ -43,6 +41,8 @@ RETRY="RETRY"
 TOO_MANY_RETRIES="TOO MANY RETRIES"
 BROKEN="BROKEN"
 EPROTO="PROTOCOL_ERROR"
+IOERROR = "IO ERROR"
+
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
 #       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
@@ -272,17 +272,3 @@ def is_retriable(e):
         return 0
     return 1
 
-# log traceback info
-def handle_error(exc=None, value=None, tb=None):
-
-    # store traceback info
-    if not exc:
-	exc, value, tb = sys.exc_info()
-    # log it
-    for l in traceback.format_exception( exc, value, tb ):
-	#print l[0:len(l)-1]
-	# why was the following line done like this????
-	# it produces a message with a single character on each line
-	#Trace.log( ERROR, string.join(l,'\n'), Trace.MSG_DEFAULT, "TRACEBACK")
-	Trace.log( ERROR, l, Trace.MSG_DEFAULT, "TRACEBACK")
-    return exc, value, tb

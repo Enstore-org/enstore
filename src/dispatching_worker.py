@@ -359,7 +359,7 @@ class DispatchingWorker:
         Trace.log(e_errors.INFO,
                   'Exception during request from %s, request=%s'%
                   (client_address, request))
-        e_errors.handle_error(exc, msg, tb)
+        Trace.handle_error(exc, msg, tb)
         Trace.log(e_errors.INFO,'-'*40)
         if self.custom_error_handler:
             self.custom_error_handler(exc,msg,tb)

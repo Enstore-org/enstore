@@ -264,7 +264,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
                         return
                 except:
-                    e_errors.handle_error()
+                    Trace.handle_error()
                     Trace.log(e_errors.ERROR, "ERROR %s"%(i,))
                     
         else:
@@ -455,7 +455,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
                 else:
                     break
             except:
-                exc,val,tb = e_errors.handle_error()
+                exc,val,tb = Trace.handle_error()
                 return "ERROR", 37, str(val)   #XXX very ad-hoc!
                                  ## this is "command error" in aml2.py
         return sts
@@ -648,7 +648,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         try:
             seq=string.atoi(sequence)
         except:
-            exc,val,tb = e_errors.handle_error()
+            exc,val,tb = Trace.handle_error()
             seq=0
         seq = seq + 1
         if seq > 0xFFFE:
@@ -683,7 +683,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                 else:
                     break
             except:
-                exc,val,tb = e_errors.handle_error()
+                exc,val,tb = Trace.handle_error()
                 return str(exc),0,""
         return sts
     

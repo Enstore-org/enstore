@@ -157,7 +157,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
-         exc, val, tb = e_errors.handle_error()
+         exc, val, tb = Trace.handle_error()
          return str(exc), str(val)
      
     # remove deleted volume and all information about it
@@ -196,7 +196,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
-         exc, val, tb = e_errors.handle_error()
+         exc, val, tb = Trace.handle_error()
          return str(exc), str(val)
          
     # remove deleted volume(s)
@@ -246,7 +246,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.control_socket.close()
         except:
             c.close()
-            e_errors.handle_error()
+            Trace.handle_error()
         return
             
 
@@ -1382,7 +1382,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.control_socket.close()
         except:
             exc, msg, tb = sys.exc_info()
-            e_errors.handle_error(exc,msg,tb)
+            Trace.handle_error(exc,msg,tb)
         return
 
     # get a port for the data transfer
@@ -1413,7 +1413,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg, tb = sys.exc_info()
-            e_errors.handle_error(exc,msg,tb)
+            Trace.handle_error(exc,msg,tb)
         return 1
     
     def start_backup(self,ticket):
@@ -1424,7 +1424,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg, tb = sys.exc_info()
-            e_errors.handle_error(exc,msg,tb)
+            Trace.handle_error(exc,msg,tb)
             status = str(exc), str(msg)
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
@@ -1438,7 +1438,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # catch any error and keep going. server needs to be robust
         except:
             exc,msg,tb=sys.exc_info()
-            e_errors.handle_error(exc,msg,tb)
+            Trace.handle_error(exc,msg,tb)
             status = str(exc), str(msg)
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
@@ -1452,7 +1452,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg, tb = sys.exc_info()
-            e_errors.handle_error(exc,msg,tb)
+            Trace.handle_error(exc,msg,tb)
             status = str(exc), str(msg)
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })

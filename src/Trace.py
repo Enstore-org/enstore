@@ -10,6 +10,7 @@
 
 import sys				
 import e_errors				
+import traceback
 import os				
 import pwd				
 import time
@@ -192,5 +193,17 @@ def default_log_func( time, pid, name, args ):
     return None
 
 set_log_func(default_log_func)
+
+# log traceback info
+def handle_error(exc=None, value=None, tb=None):
+
+    # store traceback info
+    if not exc:
+	exc, value, tb = sys.exc_info()
+    # log it
+    for l in traceback.format_exception( exc, value, tb ):
+	log( ERROR, l, MSG_DEFAULT, "TRACEBACK")
+    return exc, value, tb
+
 
 

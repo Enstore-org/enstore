@@ -195,7 +195,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # if there is an error - log and return it
         except:
-            exc, val, tb = e_errors.handle_error()
+            exc, val, tb = Trace.handle_error()
             status = (str(exc), str(val))
 
     def get_crcs(self, ticket):
