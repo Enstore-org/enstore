@@ -34,6 +34,9 @@ do_output = 0
 SYSTEM = 'system'
 ALLOWED_DOWN = 'allowed_down'
 TRIES = 1
+NOUPDOWN = "noupdown"
+TRUE = 1
+FALSE = 0
 
 def sortit(adict):
     keys = adict.keys()
@@ -100,8 +103,16 @@ class EnstoreServer:
 	if cs:
 	    self.csc = cs.csc
 	    self.config_host = cs.config_host
+	    # we need to see if this server should be monitored by up_down.  this 
+	    # info is in the config file.
+	    config_d = self.csc.get(name, self.timeout, self.tries);
+	    if config_d.has_key(NOUPDOWN):
+		self.noupdown = TRUE
+	    else:
+		self.noupdown = FALSE
 	else:
 	    self.csc = None
+	    self.noupdown = FALSE
 
     def is_really_down(self):
         rc = 0
@@ -152,21 +163,21 @@ class EnstoreServer:
 	    enprint("%s NOT RESPONDING"%(self.format_name,))
 	    self.set_status(enstore_constants.DOWN)
 	    self.writemail("%s is not alive. Down counter %s"%(self.format_name, 
-                                                               self.seen_down_d[self.format_name]))
+							       self.seen_down_d[self.format_name]))
 	elif ticket['status'][0] == e_errors.OK:
 	    self.is_alive()
 	else:
 	    if ticket['status'][0] == e_errors.TIMEDOUT:
 		enprint("%s NOT RESPONDING"%(self.format_name,))
 		self.set_status(enstore_constants.DOWN)
-                self.writemail("%s is not alive. Down counter %s"%(self.format_name, 
-                                                                   self.seen_down_d[self.format_name]))
+		self.writemail("%s is not alive. Down counter %s"%(self.format_name, 
+								   self.seen_down_d[self.format_name]))
 	    else:
 		enprint("%s  BAD STATUS %s"%(self.format_name, ticket['status']))
 		self.set_status(enstore_constants.DOWN)
 		self.writemail("%s  BAD STATUS %s. Down counter %s"%(self.format_name,
-                                                                     ticket['status'],
-                                                                     self.seen_down_d[self.format_name]))
+								     ticket['status'],
+								     self.seen_down_d[self.format_name]))
 
     def known_down(self):
 	self.status = enstore_constants.DOWN
@@ -183,6 +194,13 @@ class EnstoreServer:
 	else:
 	    return state
 
+    def handle_general_exception(self):
+	exc, msg, tb = sys.exc_info()
+	EnstoreServer.check(self, {'status': (str(exc), str(msg))})
+	if self.event: self.event.set()
+	raise exc, msg
+
+
 class LogServer(EnstoreServer):
 
     def __init__(self, csc, offline_d, seen_down_d, allowed_down_d):
@@ -192,12 +210,15 @@ class LogServer(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.lcc = log_client.LoggerClient(self.csc, "LOG_CLIENT", self.name)
-	    EnstoreServer.check(self, self.lcc.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.lcc = log_client.LoggerClient(self.csc, "LOG_CLIENT", self.name)
+		EnstoreServer.check(self, self.lcc.alive(self.name, self.timeout, self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except :
+	    self.handle_general_exception()
 
 class AlarmServer(EnstoreServer):
 
@@ -208,12 +229,15 @@ class AlarmServer(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.acc = alarm_client.AlarmClient(self.csc, self.timeout, self.tries)
-	    EnstoreServer.check(self, self.acc.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.acc = alarm_client.AlarmClient(self.csc, self.timeout, self.tries)
+		EnstoreServer.check(self, self.acc.alive(self.name, self.timeout, self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class ConfigServer(EnstoreServer):
 
@@ -231,11 +255,14 @@ class ConfigServer(EnstoreServer):
 									    self.config_port),))
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    EnstoreServer.check(self, self.csc.alive(self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		EnstoreServer.check(self, self.csc.alive(self.timeout, self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class FileClerk(EnstoreServer):
 
@@ -246,12 +273,16 @@ class FileClerk(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.fcc = file_clerk_client.FileClient(self.csc, 0)
-	    EnstoreServer.check(self, self.fcc.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.fcc = file_clerk_client.FileClient(self.csc, 0)
+		EnstoreServer.check(self, self.fcc.alive(self.name, self.timeout, 
+							 self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class Inquisitor(EnstoreServer):
 
@@ -262,12 +293,16 @@ class Inquisitor(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.ic = inquisitor_client.Inquisitor(self.csc)
-	    EnstoreServer.check(self, self.ic.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.ic = inquisitor_client.Inquisitor(self.csc)
+		EnstoreServer.check(self, self.ic.alive(self.name, self.timeout, 
+							self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class VolumeClerk(EnstoreServer):
 
@@ -278,12 +313,16 @@ class VolumeClerk(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-	    EnstoreServer.check(self, self.vcc.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+		EnstoreServer.check(self, self.vcc.alive(self.name, self.timeout, 
+							 self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class LibraryManager(EnstoreServer):
 
@@ -314,17 +353,21 @@ class LibraryManager(EnstoreServer):
     # we know it is alive and we have the status.  if it does not answer, it is not alive
     # and the state is DOWN.
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.lmc = library_manager_client.LibraryManagerClient(self.csc, self.format_name)
-	    try:
-		ticket = self.lmc.get_lm_state(self.timeout, self.tries)
-	    except errno.errorcode[errno.ETIMEDOUT]:
-		ticket = {'state': {}}
-	    self.lstate = ticket.get('state', 'unknown')
-	    EnstoreServer.check(self, ticket)
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.lmc = library_manager_client.LibraryManagerClient(self.csc, 
+								       self.format_name)
+		try:
+		    ticket = self.lmc.get_lm_state(self.timeout, self.tries)
+		except errno.errorcode[errno.ETIMEDOUT]:
+		    ticket = {'state': {}}
+		self.lstate = ticket.get('state', 'unknown')
+		EnstoreServer.check(self, ticket)
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class MediaChanger(EnstoreServer):
 
@@ -335,12 +378,17 @@ class MediaChanger(EnstoreServer):
         self.event = None
 
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.mcc = media_changer_client.MediaChangerClient(self.csc, self.format_name)
-	    EnstoreServer.check(self, self.mcc.alive(self.name, self.timeout, self.tries))
-	else:
-	    self.known_down()
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.mcc = media_changer_client.MediaChangerClient(self.csc, 
+								   self.format_name)
+		EnstoreServer.check(self, self.mcc.alive(self.name, self.timeout, 
+							 self.tries))
+	    else:
+		self.known_down()
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class Mover(EnstoreServer):
 
@@ -375,22 +423,25 @@ class Mover(EnstoreServer):
     # we know it is alive and we have the status.  if it does not answer, it is not alive
     # and the state is DOWN. 'rtn' records if the mover is available for work.
     def check(self):
-	if not self.offline_d.has_key(self.format_name):
-	    self.mvc = mover_client.MoverClient(self.csc, self.format_name)
-	    try:
-		mstatus = (self.mvc.status(self.timeout, self.tries),)
-	    except errno.errorcode[errno.ETIMEDOUT]:
-		mstatus = ({},)
-	    self.mstate = mstatus[0].get('state', {})
-	    EnstoreServer.check(self, mstatus[0])
-	else:
-	    self.known_down()
-	# we need to return 1 if this is a bad mover (bad, bad mover).
-	if self.status == enstore_constants.UP:
-	    self.check_result = 0
-	else:
-	    self.check_result = 1
-	if self.event: self.event.set()
+	try:
+	    if not self.offline_d.has_key(self.format_name):
+		self.mvc = mover_client.MoverClient(self.csc, self.format_name)
+		try:
+		    mstatus = (self.mvc.status(self.timeout, self.tries),)
+		except errno.errorcode[errno.ETIMEDOUT]:
+		    mstatus = ({},)
+		self.mstate = mstatus[0].get('state', {})
+		EnstoreServer.check(self, mstatus[0])
+	    else:
+		self.known_down()
+	    # we need to return 1 if this is a bad mover (bad, bad mover).
+	    if self.status == enstore_constants.UP:
+		self.check_result = 0
+	    else:
+		self.check_result = 1
+	    if self.event: self.event.set()
+	except:
+	    self.handle_general_exception()
 
 class UpDownInterface(generic_client.GenericClientInterface):
  
@@ -435,17 +486,22 @@ def do_real_work():
     library_managers = sortit(lib_man_d)
 
     meds = {}
-    total_servers = [cs, lcc, acc, ic, fcc, vcc]
+    total_servers = []
+    # do not start threads for servers that have the noupdown keyword in the config file
+    for server in (cs, lcc, acc, ic, fcc, vcc):
+	if server.noupdown == FALSE:
+	    total_servers.append(server)
 
     libs = {}
     total_movers = []
     for lm in library_managers:
 	lm_name = lib_man_d[lm]['name']
         lmc = LibraryManager(cs, lm_name, offline_d, seen_down_d, allowed_down_d)
-        total_servers.append(lmc) 
+	if lmc.noupdown == FALSE:
+	    total_servers.append(lmc) 
         libs[lm_name] = {}
         libs[lm_name]['client'] = lmc
-	#total_servers.append(lmc)
+        #total_servers.append(lmc)
 
 	# no duplicates in dict
 	meds[cs.csc.get_media_changer(lm_name, lmc.timeout, lmc.tries)] = 1 
@@ -458,27 +514,31 @@ def do_real_work():
         mover_events = []
         for mov in movers:
             mvc = Mover(cs, mov, offline_d, seen_down_d, allowed_down_d)
-            mvc.event = threading.Event()
-            mover_objects.append(mvc)
-            mover_events.append(mvc.event)
+	    if mvc.noupdown == FALSE:
+		mvc.event = threading.Event()
+		mvc.event.name = mvc.name
+		mover_objects.append(mvc)
+		mover_events.append(mvc.event)
         libs[lm_name]['objects'] = mover_objects
         libs[lm_name]['events'] = mover_events
         libs[lm_name]['bad_movers'] = 0
         libs[lm_name]['total_movers'] = len(movers)
         total_movers = total_movers + mover_objects
             
-
     media_changers = sortit(meds)
 
     for med in media_changers:
 	if med:
-	    total_servers.append(MediaChanger(cs, med, offline_d, seen_down_d, allowed_down_d))
+	    mc = MediaChanger(cs, med, offline_d, seen_down_d, allowed_down_d)
+	    if mc.noupdown == FALSE:
+		total_servers.append(mc)
 
 
     # create events
     server_events = []
     for server in total_servers:
         server.event = threading.Event()
+	server.event.name = server.name
         server_events.append(server.event)
 
     total_servers = total_servers + total_movers
@@ -499,11 +559,12 @@ def do_real_work():
     # event loop
     # wait for events
     cnt = 0
+    wait_time = 0.1
     while cnt < thread_count:
         got_it = 0
         # check server events
         for event in server_events:
-            event.wait(1.)
+            event.wait(wait_time)
             if event.isSet():
                 got_it = 1
                 break
@@ -512,11 +573,11 @@ def do_real_work():
             server_events.remove(event)
             cnt = cnt + 1
 
-        # chek mover events
+        # check mover events
         for lib in libs.keys():
             got_it = 0
             for event in libs[lib]['events']:
-                event.wait(1.)
+                event.wait(wait_time)
                 if event.isSet():
                     got_it = 1
                     break
@@ -533,15 +594,16 @@ def do_real_work():
                 cnt = cnt + 1
 
     for lib in libs.keys():
-        if libs[lib]['bad_movers']*2 > libs[lib]['total_movers']:
-	    enprint("LOW CAPACITY: Found, %s of %s not responding"%(libs[lib]['bad_movers'], libs[lib]['total_movers']))
-            libs[lib]['client'].writemail("Found LOW CAPACITY movers for %s"%(lib,))
-	    libs[lib]['client'].status = enstore_constants.WARNING
-	    summary_d[lm_name] = enstore_constants.WARNING
-	elif libs[lib]['bad_movers'] != 0:
-	    enprint("Sufficient capacity of movers for %s, %s of %s responding"%(lib, 
-									  libs[lib]['total_movers'],
-                                                                          libs[lib]['total_movers']- libs[lib]['bad_movers']))
+        if libs[lib]['client'] in total_servers:
+            if libs[lib]['bad_movers']*2 > libs[lib]['total_movers']:
+                enprint("LOW CAPACITY: Found, %s of %s not responding"%(libs[lib]['bad_movers'], libs[lib]['total_movers']))
+                libs[lib]['client'].writemail("Found LOW CAPACITY movers for %s"%(lib,))
+                libs[lib]['client'].status = enstore_constants.WARNING
+                summary_d[lm_name] = enstore_constants.WARNING
+            elif libs[lib]['bad_movers'] != 0:
+                enprint("Sufficient capacity of movers for %s, %s of %s responding"%(lib, 
+                                                                              libs[lib]['total_movers'],
+                                                                              libs[lib]['total_movers']- libs[lib]['bad_movers']))
     # rewrite the schedule file as we keep track of how many times something has been down
     if sfile:
         # refresh data
