@@ -276,7 +276,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
             self.tape_driver.open(self.device, 0)
-            self.tape_driver.verbose = verbose 
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
@@ -306,6 +305,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
             
+        #pass our verbosity level to the driver object
+        self.tape_driver.verbose = verbose
+        
 ##        # check for tape in drive
 ##        # if no vol one labels, I can only eject. -- tape maybe left in bad
 ##        # state.
@@ -342,7 +344,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 if verbose: print "handle error: calling transfer failed",
                 if verbose: print "str(msg)=", str(msg)
-                self.transfer_failed(msg)
+                self.transfer_failed((exc, msg))
             except:
                 pass
                 
@@ -463,11 +465,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             ##    return
             ## this will be an exception instead
             self.bytes_read = self.bytes_read + bytes_read
+            if self.bytes_read > self.bytes_to_transfer: #this is OK, we read a CPIO trailer or something
+                self.bytes_read = self.bytes_to_transfer
             if not driver.ready_to_read():
                 if verbose>1: print "tape driver not ready to read more data"
                 break 
             
-        if self.bytes_read==self.bytes_to_transfer or not self.buffer.low():
+        if self.bytes_read == self.bytes_to_transfer or not self.buffer.low():
             if verbose>1: print "enabling write cli"
             self.add_select_fd(self.net_driver, WRITE, self.write_client)
 
