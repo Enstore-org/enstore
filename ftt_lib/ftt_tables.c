@@ -862,10 +862,10 @@ ftt_dev_entry devtable[] = {
     /* Default, passthru  */
        { "sc/sc%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Other Densities */
-       { "rmt/tps%dd%dn",    6,  1, 0x85, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    6,  1, 0x85, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%dn",    5,  0, 0x1A, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",    5,  0, 0x1A, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
@@ -971,10 +971,10 @@ ftt_dev_entry devtable[] = {
     /* Default, passthru  */
        { "dev/sg%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Other Densities */
-       { "dev/nst%d",    6,  1, 0x85, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    6,  1, 0x85, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
-       { "dev/nst%d",    5,  0, 0x1A, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    5,  0, 0x1A, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
@@ -1641,10 +1641,10 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
     /* Other Densities */
         { "dev/rmt%d.5",        4,  0, 0x80, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        4,  1, 0x81, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.5",        5,  0, 0x1A, 0,  0,                          0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.5",        5,  0, 0x1A, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        5,  0, 0x82, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        5,  1, 0x83, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.5",        6,  1, 0x85, 0,  0,                          0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.5",        6,  1, 0x85, 0,  0,                          0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  0, 0x0A, 0,  0,                   FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  0, 0x16, 0,  0,                   FTT_RDNW, 0, EXB_MAX_BLKSIZE},
     /* Variable useable */
