@@ -45,7 +45,7 @@ int write_eot1_header(int);
 int set_variable_blocksize(void);
 int write_eof_marks(int);
 int skip_eof_marks(int);
-int backward_record(int); 
+int skip_records(int); 
 int close_tape(void);
 int read_tape_label(char *, int*, int*);
 int cpio_start(char *);

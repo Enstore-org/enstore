@@ -91,10 +91,17 @@ skip_eof_marks(int n){
 } 
 
 int
-backward_record(int n){ /*XXX better name!*/
-    verbage("%s: skipping %d records backward on %s\n", progname,
-			n, tape_device);
-    return check_tape_ioctl(MTBSR, n, "skip record backward");
+skip_records(int n){
+    if (n==0)
+	return 0;
+    if (n<0){
+	verbage("%s: skipping %d records backward on %s\n", progname,
+		-n, tape_device);
+	return check_tape_ioctl(MTBSR, -n, "skip record backward");
+    } else {
+	verbage("%s: skipping %d records on %s\n", progname, n, tape_device);
+	return check_tape_ioctl(MTFSR, n, "skip record");
+    }
 } 
 
 int
@@ -208,7 +215,7 @@ write_eot1_header(int fileno)
 	return -1;
     }
     verbage("positioning tape\n");
-    return backward_record(1);
+    return skip_records(-1);
 }
 
 int 
