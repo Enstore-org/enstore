@@ -863,6 +863,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.rcv_timeout = 10 # set receive timeout
 
     def write_to_hsm(self, ticket):
+        # data for Trace.notify
+        host = ticket['wrapper']['machine'][1]
+        work = 'write'
+        ff = ticket['vc']['file_family']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
         if self.lm_lock in ('locked', 'ignore', 'pause'):
             if self.lm_lock == 'locked':
@@ -870,7 +874,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             else:
                 ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
-            Trace.notify("client %s %s" % (ticket['callback_addr'], self.lm_lock))
+            Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
             return
 
         # check file family width
@@ -878,7 +882,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ff_width <= 0:
             ticket["status"] = (e_errors.USERERROR, "wrong file family width %s" % (ff_width,))
             self.reply_to_caller(ticket)
-            Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
+            Trace.notify("client %s %s %s %s" % (host, work, ff, 'rejected'))
             return
             
         ticket["status"] = (e_errors.OK, None)
@@ -919,7 +923,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                              ticket["vc"]["library"],
                                              ticket["vc"]["file_family"],
                                              ticket["wrapper"]["uname"]))
-            Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
+            Trace.notify("client %s %s %s %s" % (host, work, ff, 'rejected'))
             return
 
         if status == e_errors.OK:
@@ -933,10 +937,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                              ticket["vc"]["file_family"],
                                              ticket["wrapper"]["uname"],
                                              ticket['vc']["volume_family"]))
-            Trace.notify("client %s %s" % (ticket['callback_addr'], 'queued'))
+            Trace.notify("client %s %s %s %s" % (host, work, ff, 'queued'))
             
 
     def read_from_hsm(self, ticket):
+        # data for Trace.notify
+        host = ticket['wrapper']['machine'][1]
+        work = 'read'
+        vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
         if self.lm_lock in ('locked', 'ignore', 'pause'):
             if self.lm_lock == 'locked':
@@ -944,7 +952,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             else:
                 ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
-            Trace.notify("client %s %s" % (ticket['callback_addr'], self.lm_lock))
+            Trace.notify("client %s %s %s %s" % (host, work, vol, self.lm_lock))
             return
         # check if this volume is OK
         v = self.vcc.inquire_vol(ticket['fc']['external_label'])
@@ -959,7 +967,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                               ticket['fc']['external_label'],
                                               ticket["status"][0]))
             Trace.trace(11,"read_from_hsm: volume has no access")
-            Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
+            Trace.notify("client %s %s %s %s" % (host, work, vol, 'rejected'))
             return
 
         if not ticket.has_key('lm'):
@@ -979,7 +987,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rq, status = self.pending_work.put(ticket)
             if status == e_errors.INPROGRESS:
                 ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-                Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
+                Trace.notify("client %s %s %s %s" % (host, work, vol, 'rejected'))
             else: ticket['status'] = (status, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if status == e_errors.OK:
@@ -1003,7 +1011,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                              ticket["vc"]["library"],
                                              ticket["vc"]["volume_family"],
                                              ticket["wrapper"]["uname"]))
-            Trace.notify("client %s %s" % (ticket['callback_addr'], 'queued'))
+            Trace.notify("client %s %s %s %s" % (host, work, vol, 'queued'))
 
     # mover is idle - see what we can do
     def mover_idle(self, mticket):
