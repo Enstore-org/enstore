@@ -603,12 +603,12 @@ class Pnfs:
         self.major = code_dict["Major"]
         self.minor = code_dict["Minor"]
 
-        command="if test -w "+self.dir+"; then echo ok; else echo no; fi"
-        writable = os.popen(command,'r').readlines()
-        if "ok\012" == writable[0]:
+        if os.access(self.dir,os.W_OK):
             self.writable = ENABLED
         else:
-            self.writable = DISABLED
+            self.writable = DISABLED            
+
+
 
     ##########################################################################
 
@@ -814,12 +814,13 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
               filenumberlist):              # list of files wanted (count from 0)
                                             #  zB: [1,2,3] or [8,45,31] or 19
     # use a unix find command to determine the volume directory
-    command="%find %s -mindepth 1 -maxdepth 2 -name %s -print" %(
-        os.path.join(mainpnfsdir,'volmap'),label)
+    command="find %s -mindepth 1 -maxdepth 2 -name %s -print" %(
+        os.path.join(mainpnfsdir,'volmap'),
+        label)
     tape = os.popen(command,'r').readlines()
     if len(tape) == 0:
         return ("","")
-    voldir = string.strip(tape[0],'\012','')
+    voldir = string.strip(tape[0])
 
     # get the list of files in the volume directory
     #   note that files are they are lexically sortable
