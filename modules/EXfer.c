@@ -73,6 +73,8 @@
 #define MADV_WILLNEED -1
 #endif
 
+#define ECRC_READBACK_BUFFER_SIZE (1024*1024)
+
 /***************************************************************************
  definitions
 **************************************************************************/
@@ -1205,6 +1207,96 @@ int thread_collect(int tid, time_t wait_time)
       return EINTR;
   }
   return errno;
+}
+
+/***************************************************************************/
+/***************************************************************************/
+
+/* Take the file descriptor of a file and return the files CRC. */
+unsigned int ecrc_readback(int fd)
+{
+  int buffer_size=ECRC_READBACK_BUFFER_SIZE;/*buffer size for the data blocks*/
+  char buffer[ECRC_READBACK_BUFFER_SIZE];   /*the data buffer*/
+  unsigned int crc = 0;       /*used to hold the crc as it is updated*/
+  long nb, rest, i;           /*loop control variables*/
+  struct stat stat_info;      /*used with fstat()*/
+  int sts;                    /*system call return status*/
+  int rtn;                    /*system call return status*/
+  int rtn_fcntl;              /*fcntl() system call return status*/
+
+  if(fstat(fd, &stat_info) < 0)   /* To get the filesize. */
+     /*return(raise_exception("fd_ecrc - file fstat failed"));*/
+     return 0;
+  if(!S_ISREG(stat_info.st_mode))
+  {
+     errno = EINVAL;
+     return 0;
+  }
+  if(lseek(fd, 0, SEEK_SET) != 0) /* Set to beginning of file. */
+     /*return(raise_exception("fd_ecrc - file lseek failed"));*/
+     return 0;
+
+#ifdef O_DIRECT
+  /* If O_DIRECT was used on the file descriptor, we need to turn it off.
+   It seems that (on Linux anyway) writing a file with direct i/o then
+   rewinding and rereading the file causes the reads to return the wrong
+   data. On an IRIX machine, rewinding an O_DIRECT opened file and rereading
+   results in an EINVAL error. */
+  
+  /*Get the current file descriptor flags.*/
+  if((rtn_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
+     /*return(raise_exception("fd_ecrc - file fcntl(F_GETFL) failed"));*/
+     return 0;
+  sts = rtn_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
+  /*Set the new file descriptor flags.*/
+  if(fcntl(fd, F_SETFL, sts) < 0)
+     /*return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));*/
+     return 0;
+#endif
+
+  /*Initialize values used looping through reading in the file.*/
+  nb = stat_info.st_size / buffer_size;
+  rest = stat_info.st_size % buffer_size;
+
+  /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
+  for (i = 0; i < nb; i++)
+  {
+    if((rtn = read(fd, buffer, buffer_size)) < 0)   /* test for error */
+       /*return(raise_exception("fd_ecrc - file read failed"));*/
+       return 0;
+    else if(rtn != buffer_size)                     /* test for amount read */
+    {
+       errno = EIO;
+       /*return(raise_exception("fd_ecrc - partial buffer read"));*/
+       return 0;
+    }
+    
+    crc = adler32(crc, buffer, buffer_size);  /* calc. the crc */
+  }
+  if (rest)
+  {
+    if((rtn = read(fd, buffer, rest)) < 0)          /* test for error */
+       /*return(raise_exception("fd_ecrc - file read failed"));*/
+       return 0;
+    else if(rtn != rest)                            /* test for amount read */
+    {
+       errno = EIO;
+       /*return(raise_exception("fd_ecrc - partial buffer read"));*/
+       return 0;
+    }
+    
+    crc = adler32(crc, buffer, rest);  /* calc. the crc */
+  }
+
+#ifdef O_DIRECT
+  /*Set the original file descriptor flags.*/
+  if(fcntl(fd, F_SETFL, rtn_fcntl) < 0)
+     /*return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));*/
+     return 0;
+#endif
+
+  /*return PyLong_FromUnsignedLong((unsigned long)crc);*/
+  return (unsigned long)crc;
 }
 
 /***************************************************************************/
@@ -2450,72 +2542,22 @@ raise_exception2(struct transfer *rtn_val)
 static PyObject *
 EXfd_ecrc(PyObject *self, PyObject *args)
 {
-  int buffer_size=1024*1024;  /*buffer size for the data blocks*/
-  unsigned int crc = 0;       /*used to hold the crc as it is updated*/
-  long nb, rest, i;           /*loop control variables*/
-  struct stat stat_info;      /*used with fstat()*/
   int fd;                     /*the file descriptor*/
-  char buffer[buffer_size];   /*the data buffer*/
-  int sts;                    /*system call return status*/
-  int rtn;
-  int rtn_fcntl;
-
+  unsigned int crc;
+  int sts;
+  
   /* Get the parameter. */
   sts = PyArg_ParseTuple(args, "i", &fd);
   if (!sts)
-    return(raise_exception("fd_ecrc - invalid parameter"));
+     return(raise_exception("fd_ecrc - invalid parameter"));
 
-  if(fstat(fd, &stat_info) < 0)   /* To get the filesize. */
-    return(raise_exception("fd_ecrc - file fstat failed"));
-  if(lseek(fd, 0, SEEK_SET) != 0) /* Set to beginning of file. */
-    return(raise_exception("fd_ecrc - file lseek failed"));
-
-#ifdef O_DIRECT
-  /* If O_DIRECT was used on the file descriptor, we need to turn it off.
-   It seems that (on Linux anyway) writing a file with direct i/o then
-   rewinding and rereading the file causes the reads to return the wrong
-   data. */
+  errno = 0;
+  crc = (unsigned long)ecrc_readback(fd);
   
-  /*Get the current file descriptor flags.*/
-  if((rtn_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
-    return(raise_exception("fd_ecrc - file fcntl(F_GETFL) failed"));
-  sts = rtn_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
-  /*Set the new file descriptor flags.*/
-  if(fcntl(fd, F_SETFL, sts) < 0)
-    return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
-#endif
-
-  /*Initialize values used looping through reading in the file.*/
-  nb = stat_info.st_size / buffer_size;
-  rest = stat_info.st_size % buffer_size;
-
-  /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
-  for (i = 0;i < nb; i++)
-  {
-    if((rtn = read(fd, buffer, buffer_size)) < 0)   /* test for error */
-      return(raise_exception("fd_ecrc - file read failed"));
-    else if(rtn != buffer_size)                     /* test for amount read */
-      return(raise_exception("fd_ecrc - partial buffer read"));
-    
-    crc = adler32(crc, buffer, buffer_size);  /* calc. the crc */
-  }
-  if (rest)
-  {
-    if((rtn = read(fd, buffer, rest)) < 0)          /* test for error */
-      return(raise_exception("fd_ecrc - file read failed"));
-    else if(rtn != rest)                            /* test for amount read */
-      return(raise_exception("fd_ecrc - partial buffer read"));
-
-    crc = adler32(crc, buffer, rest);  /* calc. the crc */
-  }
-
-#ifdef O_DIRECT
-  /*Set the original file descriptor flags.*/
-  if(fcntl(fd, F_SETFL, rtn_fcntl) < 0)
-    return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
-#endif
-
-  return PyLong_FromUnsignedLong((unsigned long)crc);
+  if(errno == 0)
+     return PyLong_FromUnsignedLong(crc);
+  else
+     return raise_exception("fd_ecrc - error");
 }
 
 static PyObject *
@@ -2703,6 +2745,7 @@ int main(int argc, char **argv)
   int          direct_io = 0;
   int          mmap_io= 0;
   int          threaded_transfer = 0;
+  int          ecrc = 0;
   struct transfer reads;
   struct transfer writes;
   char abspath[PATH_MAX + 1];
@@ -2716,18 +2759,22 @@ int main(int argc, char **argv)
   int second_file_optind = 0;
   int i;
 
-  /* The + for the first character in optstring is need on Linux machines
-     to tell getopt to use the posix compliant version of getopt(). */
+  
   opterr = 0;
   while(optind < argc)
   {
-    while(((opt = getopt(argc, argv, "+vtmda:b:l:")) != -1))
+    /* The + for the first character in optstring is need on Linux machines
+     to tell getopt to use the posix compliant version of getopt(). */
+    while(((opt = getopt(argc, argv, "+evtmda:b:l:")) != -1))
     {
       switch(opt)
       {
       case 'v':
 	verbose = 1; /* print out extra information. */
 	break;
+      case 'e':
+	ecrc = 1;
+        break;
       case 't':  /* threaded transfer */
 	threaded_transfer = 1;
 	break;
@@ -2823,13 +2870,15 @@ int main(int argc, char **argv)
   /* Check the number of arguments from the command line. */
   if(argc < 3)
   {
-    printf("Usage: test_disk [-dmtva:b:l:] <source_file> [-dm] <dest_file>\n");
+    printf("Usage: %s [-edmtva:b:l:] <source_file> [-dm] <dest_file>\n",
+	    argv[0]);
     return 1;
   }
 
   if(verbose)
   {
      printf("Threaded: %s\n", ON_OFF(threaded_transfer));
+     printf("Ecrc: %s\n", ON_OFF(ecrc));
      printf("Block size: %d\n", block_size);
      printf("Array size: %d\n", array_size);
      printf("Mmap size: %d\n", mmap_size);
@@ -2986,11 +3035,23 @@ int main(int argc, char **argv)
   else
   {
      if(verbose)
-	printf("Read time: %f  Write time: %f  Size: %lld\n",
-	       reads.transfer_time, writes.transfer_time, size);
+	printf("Read time: %f  Write time: %f  Size: %lld  CRC: %u\n",
+	       reads.transfer_time, writes.transfer_time, size, writes.crc_ui);
      printf("Read rate: %f MB/s Write rate: %f MB/s\n",
 	    size/(1024*1024)/reads.transfer_time,
 	    size/(1024*1024)/writes.transfer_time);
+  }
+
+  if(ecrc)
+  {
+     errno = 0;
+     crc_ui = ecrc_readback(writes.fd);
+     if((crc_ui == 0) && (errno != 0))
+	printf("Error performing ecrc readback check: %s\n", strerror(errno));
+     else
+	if(crc_ui != writes.crc_ui)
+	   printf("CRC mismatch: original: %u  readback: %u\n",
+		  writes.crc_ui, crc_ui);
   }
   
   return 0;
