@@ -906,7 +906,6 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
                     wrapper[key] = pinfo[i][key]
 
 	    if verbose > 1: print "RETRY_CNT=", retry[i]
-
             # generate the work ticket
             work_ticket = {"work"              : "read_from_hsm",
                            "wrapper"           : wrapper,
@@ -1009,8 +1008,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             ticket = callback.read_tcp_socket(control_socket,\
                          "encp read_from_hsm, mover call back")
             if verbose > 3:
-                print "ENCP:read_from_hsm MV called back with"
-                pprint.pprint(ticket)
+                print "ENCP:read_from_hsm MV called back with", 
+		ticket
             callback_id = ticket['unique_id']
             forus = 0
             for j in range(0,ninput):
@@ -1049,14 +1048,14 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                    +"ticket[\"status\"]="+repr(ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
-		inputlist.remove(inputlist[j])
-		outputlist.remove(outputlist[j])
-		file_size.remove(file_size[j])
-		pinfo.remove(pinfo[j])
-		finfo.remove(finfo[j])
-		vinfo.remove(vinfo[j])
-		unique_id.remove(unique_id[j])
-		retry.remove(retry[j])
+		del(inputlist[j])
+		del(outputlist[j])
+		del(file_size[j])
+		del(pinfo[j])
+		del(finfo[j])
+		del(vinfo[j])
+		del(unique_id[j])
+		del(retry[j])
 		if files_left > 0:
 		    files_left = files_left - 1
 	    else:
@@ -1091,10 +1090,37 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 
 	# someone should catch the exceptions fd_xfer throws, for possible
 	# retry
-	if chk_crc != 0: crc_fun = ECRC.ECRC
-	else:            crc_fun = None
-	mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
+	try:
+	    if chk_crc != 0: crc_fun = ECRC.ECRC
+	    else:            crc_fun = None
+	    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
 			       file_size[j], bufsize, crc_fun )
+	except:
+	    Trace.trace(0,"write_to_hsm EXfer error:"+\
+			str(sys.argv)+" "+\
+			str(sys.exc_info()[0])+" "+\
+			str(sys.exc_info()[1]))
+	    print "Error with encp EXfer trying to get %d bytes - continuing"%file_size[j]
+	    traceback.print_exc()
+
+
+	    if ticket['retry_cnt'] >= maxretry:
+		del(inputlist[j])
+		del(outputlist[j])
+		del(file_size[j])
+		del(pinfo[j])
+		del(finfo[j])
+		del(vinfo[j])
+		del(unique_id[j])
+		del(retry[j])
+		if files_left > 0:
+		    files_left = files_left - 1
+	    else:
+		retry[j] = retry[j]+1
+	    continue
+	    print done_ticket, "retrying"
+
+
 	# if no exceptions, fsize is file_size[j]
 	fsize = file_size[j]
 	# fd_xfer does not check for EOF after reading the specified
@@ -1147,14 +1173,14 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                    +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
-		inputlist.remove(inputlist[j])
-		outputlist.remove(outputlist[j])
-		file_size.remove(file_size[j])
-		pinfo.remove(pinfo[j])
-		finfo.remove(finfo[j])
-		vinfo.remove(vinfo[j])
-		unique_id.remove(unique_id[j])
-		retry.remove(retry[j])
+		del(inputlist[j])
+		del(outputlist[j])
+		del(file_size[j])
+		del(pinfo[j])
+		del(finfo[j])
+		del(vinfo[j])
+		del(unique_id[j])
+		del(retry[j])
 		if files_left > 0:
 		    files_left = files_left - 1
 	    else:
@@ -1243,14 +1269,14 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	if (done_ticket["status"][0] == e_errors.OK):
 	    os.rename(tempname, outputlist[j])
 	    bytes = bytes+file_size[j]
-	    inputlist.remove(inputlist[j])
-	    outputlist.remove(outputlist[j])
-	    file_size.remove(file_size[j])
-	    pinfo.remove(pinfo[j])
-	    finfo.remove(finfo[j])
-	    vinfo.remove(vinfo[j])
-	    unique_id.remove(unique_id[j])
-	    retry.remove(retry[j])
+	    del(inputlist[j])
+	    del(outputlist[j])
+	    del(file_size[j])
+	    del(pinfo[j])
+	    del(finfo[j])
+	    del(vinfo[j])
+	    del(unique_id[j])
+	    del(retry[j])
 	    if files_left > 0:
 		files_left = files_left - 1
 
