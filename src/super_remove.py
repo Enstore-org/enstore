@@ -11,7 +11,7 @@ import string
 import option
 
 class Interface(generic_client.GenericClientInterface):
-	def __init__(self, args=sys.argv, user_mode=1):
+	def __init__(self, args=sys.argv, user_mode=0):
 		self.delete = None
 		self.force = 0
 		self.skip_pnfs = 0
