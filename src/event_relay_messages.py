@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 import string
 import types
 
@@ -27,6 +35,9 @@ MSG_FIELD_SEPARATOR = " "
 def decode_type(msg):
     return string.split(msg, MSG_FIELD_SEPARATOR, 1)
 
+#There is a lot of overriding of the encode() function in each of the
+# sub-classes of EventRelayMsg.  Thus, turn off this check for this module.
+__pychecker__ = "no-override"
 
 class EventRelayMsg:
 

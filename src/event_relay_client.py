@@ -337,6 +337,10 @@ class EventRelayClientInterface:
     # since we do not use the Interface class, the 2 args are place
     # holders only.
     def __init__(self, args=None, user_mode=None):
+        # Since we do not use the Interface class, the 2 args are place
+        # holders only.
+        __pychecker__ = "no-argsused"
+        
         if "--%s"%(event_relay_messages.DUMP,) in sys.argv:
             self.dump = 1
         else:
