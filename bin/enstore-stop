@@ -1,7 +1,24 @@
 #!/bin/sh
-
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$   $Revision$
+# stop enstore processes on the current node
+
+# NOTE: xterm is currently provided just for restart (compatible with start)
+opts_w_args='xterm|just'
+USAGE="`basename $0`: [--$opts_w_args <arg>]"
+while opt=`expr "${1-}" : '--\(.*\)'`;do
+    shift
+    eval "case \$opt in
+    \\?) echo \"$USAGE\"; exit 0;;
+    $opts_w_args)
+        if [ $# = 0 ];then echo option $opt requires argument; exit 1; fi
+        eval opt_\$opt=\"'\$1'\";shift ;;
+    *)  echo \"invalid option: \$opt\"; exit 1;;
+    esac"
+done
+
 
 . $ENSTORE_DIR/etc/defaults
 
@@ -10,22 +27,32 @@ turnoff() { for pid in $1; do
                 pidkill $pid
             done; }
 
-turnoff "$enstore_db/`uname -n`-db_*_pids"            "databases"
-turnoff "$enstore_db/`uname -n`-admin*pids"           "admin"
-turnoff "$enstore_db/`uname -n`-file_clerk*pids"      "file_clerk"
-turnoff "$enstore_db/`uname -n`-volume_clerk*pids"    "volume_clerk"
-turnoff "$enstore_db/`uname -n`-mover*pids"           "movers"
-turnoff "$enstore_db/`uname -n`-media_changer*pids"   "media_changers"
-turnoff "$enstore_db/`uname -n`-library_manager*pids" "library manager"
-turnoff "$enstore_db/`uname -n`-configuration*pids"   "configuration server"
-turnoff "$enstore_db/`uname -n`-log_server*pids"      "log server"
-turnoff "$enstore_db/`uname -n`-*pids"                "what else"
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
+    turnoff "$enstore_db/`uname -n`-db_*_pids"            "databases"
+    turnoff "$enstore_db/`uname -n`-admin*pids"           "admin"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
+    turnoff "$enstore_db/`uname -n`-file_clerk*pids"      "file_clerk"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
+    turnoff "$enstore_db/`uname -n`-volume_clerk*pids"    "volume_clerk"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
+    turnoff "$enstore_db/`uname -n`-mover*pids"           "movers"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
+    turnoff "$enstore_db/`uname -n`-media_changer*pids"   "media_changers"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
+    turnoff "$enstore_db/`uname -n`-library_manager*pids" "library manager"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
+    turnoff "$enstore_db/`uname -n`-configuration*pids"   "configuration server"
+fi
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
+    turnoff "$enstore_db/`uname -n`-log_server*pids"      "log server"
+fi
 
+#    turnoff "$enstore_db/`uname -n`-*pids"                "what else"
 
-
-
-#for pid in $enstore_db/`uname -n`-*_pids; do
-#    if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
-#    pidkill $pid
-#done
 exit

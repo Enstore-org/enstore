@@ -71,12 +71,12 @@ case $cmd in
     stat=$?
     ;;
   stop|enstore-stop)
-    $ENSTORE_DIR/bin/enstore-stop
+    $ENSTORE_DIR/bin/enstore-stop "$@"
     stat=$?
     ;;
   restart)
-    $ENSTORE_DIR/bin/enstore-stop
-    $ENSTORE_DIR/bin/enstore-start
+    $ENSTORE_DIR/bin/enstore-stop "$@"
+    $ENSTORE_DIR/bin/enstore-start "$@"
     ;;
 
   encp)
