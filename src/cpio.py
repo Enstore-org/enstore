@@ -272,7 +272,7 @@ def encrc( buffer ):
         data_offset =data_offset + (4-(data_offset%4))%4
         # We have switched to 32 bit crcs.
         # We are using Python long integers to represent them so they don't go negative
-        crc = string.atol("0x"+buffer[data_offset:data_offset+8])
+        crc = string.atol(buffer[data_offset:data_offset+8],16)
         return crc
 
 ###############################################################################
