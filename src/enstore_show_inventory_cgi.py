@@ -24,6 +24,7 @@ special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS',
 
 if cluster == "d0en":
 	special.append('NOACCESS')
+	special.append('CLEANING')
 	special.append('AML2-VOLUMES.html')
 elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
