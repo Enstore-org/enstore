@@ -183,7 +183,9 @@ class MoverClient:
 	    self.hsm_driver.offline(mvr_config['device'])
 
 	# now ask the media changer to unload the volume
+	logc.send(log_client.INFO,2,"Requesting media changer unload")
 	rr = mcc.unloadvol( self.vol_info, self.config['mc_device'] )
+	logc.send(log_client.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
 	    raise "media loader cannot unload my volume"
 
@@ -233,8 +235,10 @@ def bind_volume( self, external_label ):
 	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
 	self.vol_info['read_errors_this_mover'] = 0
+	logc.send(log_client.INFO,2,"Requesting media changer load "+str(tmp_vol_info)+" "+str(self.config['mc_device']))
 	rsp = mcc.loadvol( tmp_vol_info,
 			   self.config['mc_device'] )
+	logc.send(log_client.INFO,2,"Media changer load status"+str(rsp['status']))
 	if rsp['status'][0] != "ok":
 	    # it is possible, under normal conditions, for the system to be
 	    # in the following race condition:
