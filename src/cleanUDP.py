@@ -36,17 +36,16 @@ import e_errors
 
 def Select (R, W, X, timeout) :
 
-# we have an error under linux where we get an error, and
-# r and x are set, but there is no data. If the error is a spurious error, 
-# we must delete the object from all lists.
-#
-
+## we have an error under linux where we get an error, and
+## r and x are set, but there is no data. If the error is a spurious error, 
+## we must delete the object from all lists.
+##
 	cleaned_r = []
 	while 1 :
 		t0 = time.time()
 		r, w, x = select.select(R, W, X, timeout)
 		timeout = timeout - (time.time() - t0)
-		timeout = max (0, timeout)
+		timeout = max(0, timeout)
 
 		if r == cleaned_r :
 			# all except FD's as the same as not scrubbed
