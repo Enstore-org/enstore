@@ -1593,7 +1593,9 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     seek_time = time_ticket.get('seek_time', 0)
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
-    #unique_id = ticket.get('unique_id', "")
+    unique_id = ticket.get('unique_id', "")
+    vc_ticket = ticket.get('vc', {})
+    storage_group = vc_ticket.get('storage_group', "")
     now = time.time()
     total = now - time_ticket.get('encp_start_time', now)
     sts =  ticket.get('status', ('Unknown', None))
@@ -1623,8 +1625,16 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         inputfile = ticket['infile']
     if not outputfile and ticket.get('outfile', None):
         outputfile = ticket['outfile']
-    if not filesize and ticket.get('filesize', None):
+    if filesize == None and ticket.get('filesize', None):
         filesize = ticket['filesize']
+    #These three values work out better if they are empty strings rather than
+    # None when the information is not known.
+    if inputfile == None:
+        inputfile = ""
+    if outputfile == None:
+        outputfile = ""
+    if filesize == None:
+        filesize = ""
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
@@ -1686,10 +1696,10 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         sys.stderr.write("cannot log error message %s\n" % (errmsg,))
         sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
-    #acc = get_acc()
-    #acc.log_encp_error(inputfile, outputfile, filesize,
-    #                   unique_id, encp_client_version(),
-    #                   status, msg)
+    acc = get_acc()
+    acc.log_encp_error(inputfile, outputfile, filesize, storage_group,
+                       unique_id, encp_client_version(),
+                       status, msg)
 
 #######################################################################
 
@@ -1915,7 +1925,7 @@ def filesystem_check(work_ticket):
                "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
         if getattr(msg, "errno", None) == errno.EINVAL:
-            sys.stderr.write("WARNING: %s  Continuing." % (msg2,))
+            sys.stderr.write("WARNING: %s  Continuing.\n" % (msg2,))
             return  #Nothing to test, user needs to be carefull.
         else:
             raise EncpError(getattr(msg, "errno", None), msg2,
@@ -7827,8 +7837,8 @@ def final_say(intf, done_ticket):
             
         Trace.log(e_errors.INFO, msg_str)
 
-        ifilename = done_ticket.get("infile", None)
-        ofilename = done_ticket.get("outfile", None)
+        ifilename = done_ticket.get("infile", "")
+        ofilename = done_ticket.get("outfile", "")
         if not ifilename and not ofilename:
             ifilename = intf.input
             ofilename = intf.output
@@ -7840,7 +7850,7 @@ def final_say(intf, done_ticket):
             # be printed here, encp never got to the point of submitting
             # requests to the library manager.
             print_data_access_layer_format(ifilename, ofilename,
-                                           done_ticket.get('file_size', 0),
+                                           done_ticket.get('file_size', None),
                                            done_ticket)
         else:
             #Explaination for the case where the status at this point
@@ -7948,14 +7958,25 @@ def do_work(intf):
     try:
         exit_status = main(intf)
         delete_at_exit.quit(exit_status)
-    except SystemExit:
+    except (SystemExit, KeyboardInterrupt):
         delete_at_exit.quit(1)
-    #except:
-        #exc, msg, tb = sys.exc_info()
-        #sys.stderr.write("%s\n" % (tb,))
-        #sys.stderr.write("%s %s\n" % (exc, msg))
-        #delete_at_exit.quit(1)
-        
+    except:
+        #Get the uncaught exception.
+        exc, msg, tb = sys.exc_info()
+        ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
+                              "%s: %s" % (str(exc), str(msg)))}
+
+        #Print the data access layer and send the information to the
+        # accounting server (if possible).
+        print_data_access_layer_format(None, None, None, ticket)
+        #Send to the log server the traceback dump.  If unsuccessful,
+        # print the traceback to standard error.
+        Trace.handle_error(exc, msg, tb)
+        del tb #No cyclic references.
+        #Remove any zero-length files left haning around.  Also, return
+        # a non-zero exit status to the calling program/shell.
+        delete_at_exit.quit(1)
+
         
 if __name__ == '__main__':
     delete_at_exit.setup_signal_handling()
