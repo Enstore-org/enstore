@@ -21,7 +21,7 @@ class GenericAlarm:
         self.info = info
         self.state = SET
 
-    def raise(self):
+    def GAraise(self):
         # this method needs to get overridden to do something.
         pass
 
