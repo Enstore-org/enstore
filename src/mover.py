@@ -29,7 +29,7 @@ MoverClient:
     knows about the volume it may or may not have control of
         the vol (WRAPPER) info:
 	o   label
-	o   type of voluem - cpio, ansi, ...
+	o   type of volume - cpio, ansi, ...
 	    functions(  new_vol
 	              , file_pos
 		      , pre_data
@@ -44,6 +44,16 @@ MoverClient:
 	    o                                                                      buf = r.read( bytes )
 
 """
+# Note: pass statement used to help emacs formatting.
+#
+#       vcc stands for Volume Clerk Client
+#       fcc stands for File Clerk Client
+#       mcc stands for Media Changer Client
+#
+#    some functions ("methods") are defined outside of classes to not allow
+#    method invocation via dispatching_worker.py (see dispatching_worker.py).
+#
+
 
 # python modules
 import errno
@@ -108,16 +118,9 @@ def sigterm( sig, stack ):
     print '%d sigterm called'%os.getpid()
     if mvr_srvr.client_obj_inst.pid:
 	print 'attempt kill of mover subprocess', mvr_srvr.client_obj_inst.pid
-	# SIGTERM does not seem to get through if encp is ctl-Z'ed
-	# SIGKILL works, but leaves sub-sub process.
-	# try: os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
-	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGHUP )
 	os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
-	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGINT )
-	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGQUIT )
-	#os.waitpid( mvr_srvr.client_obj_inst.pid, 0 ) #os.WNOHANG )
-	#print 'process killed'
 	pass
+
     # ONLY DELETE AFTER FORKED PROCESS IS KILL
     # must just try: b/c may get "AttributeError: hsm_driver" which causes
     # forked process to become server via dispatching working exception handling
@@ -135,9 +138,8 @@ def sigterm( sig, stack ):
     except: pass			# wacky things can happen with forking
     #print '%d sigterm exiting'%os.getpid()
     sys.exit( 0 )   # anything other than 0 causes traceback
-    sys.exit( 0x80 | sig ) # Without this, this process exits, but only - 
-    # after a "select.error: (4, 'Interrupted system call')" exception (with
-    # associated traceback tty output).
+
+    # sys.exit( 0x80 | sig ) # this is the way to indicate exit b/c of a signal
     return None
 
 def sigint( sig, stack ):
@@ -173,8 +175,10 @@ def sigstop( sig, stack ):
     return None
     
 
-def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT --
-    # LIBRARY MANAGER CAN RSP UNBIND??
+# The following function are the result of the enstore error documentation...
+# know it, live it, love it.
+def freeze_tape( self, error_info ):# DO NOT UNLOAD TAPE  (BUT --
+    # LIBRARY MANAGER CAN RSP UNBIND)
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
     Trace.log( e_errors.ERROR,
                'MOVER SETTING VOLUME "SYSTEM NOACCESS" %s %s'%(error_info,
@@ -197,7 +201,9 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 def fatal_enstore( self, error_info ):
     Trace.log( e_errors.ERROR, "FATAL ERROR - MOVER - "+str(error_info) )
     rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, self.lm_origin_addr )
-    while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
+    # Enstore design issue... it has not yet been decided what to do; so for
+    # now I just...
+    while 1: time.sleep( 100 )	 # this does exactly what you think it does!
     return
 
 # MUST SEPARATE SYSTEM AND USER FUNCTIONS - I.E. ERROR MIGHT BE USERGONE
@@ -215,8 +221,7 @@ def send_user_done( self, ticket, error_info ):
 # ticket received.
 #
 class MoverClient:
-    def __init__( self, config, csc ):
-	self.config = config
+    def __init__( self, csc ):
         self.csc = csc
 	self.state = 'idle'
 	# needs to be initialized for status
@@ -243,46 +248,29 @@ class MoverClient:
 	self.crc_flag = 1
 	self.local_mover_enable =1
 
-	if config['device'][0] == '$':
-	    dev_rest=config['device'][string.find(config['device'],'/'):]
-	    if dev_rest[0] != '/':
-		Trace.log(e_errors.INFO, "device '"+config['device']+\
-                          "' configuration ERROR")
-		sys.exit(1)
-		pass
-	    dev_env = config["device"][1:string.find(config['device'],'/')]
-	    try:
-		dev_env = os.environ[dev_env];
-	    except:
-		Trace.log(e_errors.INFO, "device '"+config['device']+\
-                          "' configuration ERROR")
-		sys.exit(1)
-		pass
-	    config['device'] = dev_env + dev_rest
-	    pass
+        mvr_config['device'] = os.path.expandvars( mvr_config['device'] )
 
 	# next line of code is equivalent to:
-	# eval( "driver.%s()"%config['driver'] )  (we do not like to use eval)
-        try: self.hsm_driver = getattr(driver, config['driver']) ()
-        except AttributeError:
-            Trace.log(e_errors.INFO, "No such driver: "+config['driver'])
-            self.hsm_driver = None
-	    pass
-	if self.hsm_driver != None:
-	    do = self.hsm_driver.open( mvr_config['device'], 'a+' )
-	    ss = do.get_stats()
-	    if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
+	# eval( "driver.%s()"%mvr_config['driver'] )  (we do not like to use eval)
 
-	    # check for tape in drive
-	    # if no vol one labels, I can only eject. -- tape maybe left in bad
-	    # state.
-	    if mvr_config['do_eject'] == 'yes':
-		self.hsm_driver.offline( self.config['device'] )
-		# tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
-		#mcc.unloadvol( self.vol_info, self.config['mc_device'] )
-		pass
-	    do.close()
-	    pass
+        try: self.hsm_driver = getattr(driver, mvr_config['driver']) ()
+        except AttributeError:
+            Trace.log(e_errors.INFO, "No such driver: "+mvr_config['driver'])
+            raise
+
+        driver_object = self.hsm_driver.open( mvr_config['device'], 'a+' )
+        ss = driver_object.get_stats()
+        if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
+
+        # check for tape in drive
+        # if no vol one labels, I can only eject. -- tape maybe left in bad
+        # state.
+        if mvr_config['do_eject'] == 'yes':
+            self.hsm_driver.offline( mvr_config['device'] )
+            # tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
+            #mcc.unloadvol( self.vol_info, mvr_config['mc_device'] )
+            pass
+        driver_object.close()
 
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
 	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
@@ -295,10 +283,10 @@ class MoverClient:
 
     def unbind_volume( self, ticket ):
 	if self.vol_info['external_label'] == '': return idle_mover_next( self )
-	if mvr_config['do_fork']: do_fork( self, ticket, 'u' )
-	if mvr_config['do_fork'] and self.pid != 0:
-	    #parent
-	    return {}
+	if mvr_config['do_fork']:
+            do_fork( self, ticket, 'u' )
+            if self.pid != 0: return {} #parent
+            pass
 
 	# child or single process???
 	Trace.log(e_errors.INFO,'UNBIND start'+str(ticket))
@@ -311,12 +299,11 @@ class MoverClient:
 	    pass
 	# now ask the media changer to unload the volume
 	Trace.log(e_errors.INFO,"Requesting media changer unload")
-	rr = self.mcc.unloadvol( self.vol_info, self.config['name'], 
-                                 self.config['mc_device'],
+	rr = self.mcc.unloadvol( self.vol_info, mvr_config['name'], 
+                                 mvr_config['mc_device'],
                                 self.vol_vcc[self.vol_info['external_label']] )
 	Trace.log(e_errors.INFO,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
-	    #return freeze_tape_in_drive( self, e_errors.UNMOUNT )
 	    return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.UNMOUNT )
 	    pass
 
@@ -345,7 +332,7 @@ class MoverClient:
 #########################################################################
 
 # the library manager has told us to bind a volume so we can do some work
-def bind_volume( self, external_label ):
+def bind_volume( object, external_label ):
     #
     # NOTE: external_label is in rsponses from both the vc and fc
     #       for a write:
@@ -359,12 +346,12 @@ def bind_volume( self, external_label ):
     #                                           get stale
     #          then fc adds it's fc-info to encp ticket and sends it to lm
     
-    self.hsm_driver.user_state_set( forked_state.index('bind') )
+    object.hsm_driver.user_state_set( forked_state.index('bind') )
 
-    if self.vol_info['external_label'] == '':
+    if object.vol_info['external_label'] == '':
 
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
-	self.vol_info['err_external_label'] = external_label
+	object.vol_info['err_external_label'] = external_label
 	tmp_vol_info = vcc.inquire_vol( external_label )
 	if tmp_vol_info['status'][0] != 'ok': return 'NOTAPE' # generic, not read or write specific
 
@@ -375,14 +362,15 @@ def bind_volume( self, external_label ):
 	# complete before ejecting.
 	if mvr_config['do_eject'] == 'yes':
             Trace.log(e_errors.INFO,'Performing precautionary offline/eject of device'+str(mvr_config['device']))
-	    self.hsm_driver.offline(mvr_config['device'])
+	    object.hsm_driver.offline(mvr_config['device'])
             Trace.log(e_errors.INFO,'Completed  precautionary offline/eject of device'+str(mvr_config['device']))
+            pass
 
-	self.vol_info['read_errors_this_mover'] = 0
+	object.vol_info['read_errors_this_mover'] = 0
         tmp_mc = ", "+str({"media_changer":mvr_config['media_changer']})
-        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(self.config['mc_device']))
-	try: rsp = self.mcc.loadvol( tmp_vol_info, self.config['name'],
-				self.config['mc_device'], vcc )
+        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(object.config['mc_device']))
+	try: rsp = object.mcc.loadvol( tmp_vol_info, object.config['name'],
+				object.config['mc_device'], vcc )
 	except errno.errorcode[errno.ETIMEDOUT]:
             rsp = { 'status':('ETIMEDOUT',None) }
 	Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status '+\
@@ -401,21 +389,21 @@ def bind_volume( self, external_label ):
 	    else: return 'BADMOUNT'
 	try:
             Trace.log(e_errors.INFO,'Requesting software mount '+str(external_label)+' '+str(mvr_config['device']))
-	    self.hsm_driver.sw_mount( mvr_config['device'],
+	    object.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
 				      external_label,
 				      tmp_vol_info['eod_cookie'] )
             Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
-	do = self.hsm_driver.open( mvr_config['device'], 'a+' )
-	if do.is_bot(do.tell()) and do.is_bot(tmp_vol_info['eod_cookie']):
+	driver_object = object.hsm_driver.open( mvr_config['device'], 'a+' )
+	if driver_object.is_bot(driver_object.tell()) and driver_object.is_bot(tmp_vol_info['eod_cookie']):
 	    # write an ANSI label and update the eod_cookie
-	    ll = do.format_label( external_label )
-	    do.write( ll )
-	    do.writefm()
-	    tmp_vol_info['eod_cookie'] = do.tell()
-	    tmp_vol_info['remaining_bytes'] = do.get_stats()['remaining_bytes']
+	    ll = driver_object.format_label( external_label )
+	    driver_object.write( ll )
+	    driver_object.writefm()
+	    tmp_vol_info['eod_cookie'] = driver_object.tell()
+	    tmp_vol_info['remaining_bytes'] = driver_object.get_stats()['remaining_bytes']
 	    vcc.set_remaining_bytes( external_label,
 				     tmp_vol_info['remaining_bytes'],
 				     tmp_vol_info['eod_cookie'],
@@ -424,12 +412,12 @@ def bind_volume( self, external_label ):
 			 (tmp_vol_info['eod_cookie'],
 			  tmp_vol_info['remaining_bytes']) )
 	    pass
-	do.close()
-	self.vol_info.update( tmp_vol_info )
+	driver_object.close()
+	object.vol_info.update( tmp_vol_info )
 	pass
-    elif external_label != self.vol_info['external_label']:
-	self.vol_info['err_external_label'] = external_label
-	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],external_label) )
+    elif external_label != object.vol_info['external_label']:
+	object.vol_info['err_external_label'] = external_label
+	fatal_enstore( self, "unbind label %s before read/write label %s"%(object.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
     return e_errors.OK  # bind_volume
@@ -437,7 +425,7 @@ def bind_volume( self, external_label ):
 
 def do_fork( self, ticket, mode ):
     global vcc, fcc
-    ticket['mover'] = self.config
+    ticket['mover'] = mvr_config
     if mode == 'w' or mode == 'r':
 	# get vcc and fcc for this xfer
 	fcc = file_clerk_client.FileClient( self.csc, 0,
@@ -471,6 +459,7 @@ def forked_write_to_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
+    
     if mvr_config['do_fork'] and self.pid != 0:
 	# parent
 	pass
@@ -513,12 +502,12 @@ def forked_write_to_hsm( self, ticket ):
 	    # if forked, our eod info is not correct (after previous write)
 	    # WE COULD SEND EOD STATUS BACK, then we could test/check our
 	    # info against the vol_clerks
-            do = self.hsm_driver.open( mvr_config['device'], 'a+' )
+            driver_object = self.hsm_driver.open( mvr_config['device'], 'a+' )
 	    self.no_xfers = self.no_xfers + 1
 	    t0 = time.time()
-	    do.seek( self.vol_info['eod_cookie'] )
+	    driver_object.seek( self.vol_info['eod_cookie'] )
 	    ticket['times']['seek_time'] = time.time() - t0
-	    self.vol_info['eod_cookie'] = do.tell()# vol_info may be 'none'
+	    self.vol_info['eod_cookie'] = driver_object.tell()# vol_info may be 'none'
 
 	    fast_write = 1
 
@@ -533,7 +522,7 @@ def forked_write_to_hsm( self, ticket ):
 	    t0 = time.time()
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
 	    wrapper.blocksize = self.vol_info['blocksize']
-	    wrapper.write_pre_data( do, ticket['wrapper'] )
+	    wrapper.write_pre_data( driver_object, ticket['wrapper'] )
 	    Trace.trace( 11, 'done with pre_data' )
 
 	    # should not be getting this from wrapper sub-ticket
@@ -541,12 +530,12 @@ def forked_write_to_hsm( self, ticket ):
 	    san_bytes = ticket['wrapper']['sanity_size']
 	    if file_bytes < san_bytes: san_bytes = file_bytes
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
-	    san_crc = do.fd_xfer( self.usr_driver.fileno(),
+	    san_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
 				  san_bytes, self.crc_flag, 0 )
 	    Trace.trace( 11, 'done with sanity' )
 	    sanity_cookie = (san_bytes, san_crc)
 	    if file_bytes > san_bytes:
-		file_crc = do.fd_xfer( self.usr_driver.fileno(),
+		file_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
 				       file_bytes-san_bytes, self.crc_flag,
 				       san_crc )
 	    else: file_crc = san_crc
@@ -555,21 +544,21 @@ def forked_write_to_hsm( self, ticket ):
 	    
 	    Trace.trace( 11, 'done with rest of data' )
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
-	    wrapper.write_post_data( do, file_crc )
+	    wrapper.write_post_data( driver_object, file_crc )
 	    Trace.trace( 11, 'done with post_data' )
 	    ticket['times']['transfer_time'] = time.time() - t0
 	    t0 = time.time()
-	    do.writefm()
+	    driver_object.writefm()
 	    ticket['times']['eof_time'] = time.time() - t0
 	    Trace.trace( 11, 'done with fm' )
 
             location_cookie = self.vol_info['eod_cookie']
-	    eod_cookie = do.tell()
+	    eod_cookie = driver_object.tell()
 	    if do.loc_compare(eod_cookie,location_cookie) != 1: raise "bad eod"
 	    t0 = time.time()
-	    stats = do.get_stats()
+	    stats = driver_object.get_stats()
 	    ticket['times']['get_stats_time'] = time.time() - t0
-	    do.close()			# b/c of fm above, this is purely sw.
+	    driver_object.close()			# b/c of fm above, this is purely sw.
 
         #except EWHATEVER_NET_ERROR:
 	except (FTT.error, EXfer.error), err_msg:
@@ -696,11 +685,11 @@ def forked_read_from_hsm( self, ticket ):
         # open the hsm file for reading and read it
         try:
             Trace.trace(11, 'driver_open '+mvr_config['device'])
-            do = self.hsm_driver.open( mvr_config['device'], 'r' )
+            driver_object = self.hsm_driver.open( mvr_config['device'], 'r' )
 	    self.no_xfers = self.no_xfers + 1
 
 	    t0 = time.time()
-	    do.seek( ticket['fc']['location_cookie'] )
+	    driver_object.seek( ticket['fc']['location_cookie'] )
 
 	    ticket['times']['seek_time'] = time.time() - t0
 
@@ -718,10 +707,10 @@ def forked_read_from_hsm( self, ticket ):
 	    t0 = time.time()
             Trace.trace(11,'calling read_pre_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
-            wrapper.read_pre_data( do, None )
+            wrapper.read_pre_data( driver_object, None )
             Trace.trace(11,'calling fd_xfer -sanity size='+str(ticket['fc']['sanity_cookie'][0]))
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
-            san_crc = do.fd_xfer( self.usr_driver.fileno(),
+            san_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
 				  self.crc_flag,
 				  0 )
@@ -732,7 +721,7 @@ def forked_read_from_hsm( self, ticket ):
 		pass
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
                 Trace.trace(11,'calling fd_xfer -rest size='+str(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
-		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
+		user_file_crc = driver_object.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
 					    self.crc_flag, san_crc )
 	    else:
@@ -759,14 +748,14 @@ def forked_read_from_hsm( self, ticket ):
 	    tt = {'data_crc':ticket['fc']['complete_crc']}
             Trace.trace(11,'calling read_post_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, post') )
-            wrapper.read_post_data( do, tt )
+            wrapper.read_post_data( driver_object, tt )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
             Trace.trace(11,'calling get stats')
 	    stats = self.hsm_driver.get_stats()
 	    # close hsm file
             Trace.trace(11,'calling close')
-            do.close()
+            driver_object.close()
             Trace.trace(11,'closed')
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
 	    wr_access,rd_access = 0,1
@@ -852,7 +841,7 @@ def return_or_update_and_exit( self, origin_addr, status ):
 					   'remaining_bytes':self.hsm_driver.remaining_bytes,
 					   'vol_label'      :self.hsm_driver.vol_label,
 					   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
-			   (self.config['hostip'],self.config['port']) )
+			   (mvr_config['hostip'],mvr_config['port']) )
 	sys.exit( m_err.index(status) )
 	pass
     return status_to_request( self, status ) # return_or_update_and_exit
@@ -909,16 +898,16 @@ def get_usr_driver( self, ticket ):
 # create ticket that says we are idle
 def idle_mover_next( self ):
     return {'work'   : 'idle_mover',
-	    'mover'  : self.config['name'],
+	    'mover'  : mvr_config['name'],
 	    'state'  : self.state,
-	    'address': (self.config['hostip'],self.config['port'])}
+	    'address': (mvr_config['hostip'],mvr_config['port'])}
 
 # create ticket that says we have bound volume x
 def have_bound_volume_next( self ):
     next_req_to_lm =  { 'work'   : 'have_bound_volume',
-			'mover'  : self.config['name'],
+			'mover'  : mvr_config['name'],
 			'state'  : self.state,
-			'address': (self.config['hostip'],self.config['port']),
+			'address': (mvr_config['hostip'],mvr_config['port']),
 			'vc'     : self.vol_info }
     return next_req_to_lm
 
@@ -929,9 +918,9 @@ def unilateral_unbind_next( self, error_info ):
     # unilateral_unbind now just means that there was an error.
     # The response to this command can be either 'nowork' or 'unbind'
     next_req_to_lm = {'work'           : 'unilateral_unbind',
-		      'mover'          : self.config['name'],
+		      'mover'          : mvr_config['name'],
 		      'state'          : self.state,
-		      'address'        : (self.config['hostip'],self.config['port']),
+		      'address'        : (mvr_config['hostip'],mvr_config['port']),
 		      'external_label' : self.fc['external_label'],
 		      'state'          : self.state,
 		      'status'         : (error_info,None)}
@@ -982,7 +971,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
             libm_config_dict[lib].update( self.csc.get_uncached(lib) )
             pass        
 
-	self.client_obj_inst = MoverClient( mvr_config, self.csc )
+	self.client_obj_inst = MoverClient( self.csc )
 	self.client_obj_inst.log_name = self.log_name # duplicate for do_fork
 	self.summoned_while_busy = []
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
@@ -1348,3 +1337,6 @@ del intf
 mvr_srvr.serve_forever()
 
 Trace.log(e_errors.INFO, 'ERROR?')
+
+
+
