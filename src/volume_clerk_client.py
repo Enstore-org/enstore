@@ -515,6 +515,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.list = None
         self.list_active = None
         self.recycle = None
+        self.export = None
+        self._import = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -527,7 +529,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle=", "export="]
+                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle=", "export=", "import="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -627,6 +629,10 @@ def do_work(intf):
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
     elif intf.export: # volume export
+        # check for correct syntax
+        if len(sys.argv) != 3:	# wrong number of arguments
+            print "Error! usage: enstore %s --export <vol>"%(sys.argv[0])
+            sys.exit(1)
         # get volume info first
         volume = {}
         volume['vol_name'] = intf.export
@@ -667,6 +673,111 @@ def do_work(intf):
                 else:
                     Trace.log(e_errors.ERROR, "failed to export volume "+intf.export)
                 ticket={'status':status}
+    elif intf._import: # volume import
+
+        # Just to be paranoid, a lot of checking here
+
+        # check for correct syntax
+        if len(sys.argv) != 3:	# wrong number of arguments
+            print "Error! usage: enstore %s --import vol.<vol>.obj"%(sys.argv[0])
+            sys.exit(1)
+
+        # the import file name must be vol.<vol>.obj
+        fname = string.split(intf._import, '.')
+        if len(fname) < 3 or fname[0] != 'vol' or fname[-1] != 'obj':
+            print "Error!", intf._import, "is of wrong type of name"
+            sys.exit(1)
+
+        vname = fname[1]
+
+        # load it up
+        try:
+            f = open(intf._import, 'r')
+        except:
+            print "Error! can not open", intf._import
+            sys.exit(1)
+        try:
+            volume = cPickle.load(f)
+        except:
+            print "Error! can not load", intf._import
+            sys.exit(1)
+
+        # check if it is a real exported volume object
+        if sumup(volume) != 0:
+            print "Error!", intf._import, "is a counterfeit"
+            sys.exit(1)
+
+        # check if volume contains all necessary information
+        for i in ['vol', 'files', 'vol_name', 'key']:
+            if not volume.has_key(i):
+                print 'Error! missing key "'+i+'"'
+                sys.exit(1)
+        # check if file name match the volume name
+        if volume['vol']['external_label'] != vname:
+            print "Error!", intf._import, "does not match external_label"
+            sys.exit(1)
+
+        # check if all files match the external_label
+        bfids = []
+        for i in volume['files']:
+            if i['external_label'] != vname:
+                print "Error!", intf._import, "is corrupted"
+                sys.exit(1)
+            bfids.append(i['bfid'])    # collect all bfids
+
+        # get a fcc here
+        fcc = file_clerk_client.FileClient(vcc.csc)
+
+        # check for file existence
+        result = fcc.exist_bfids(bfids)
+        err = 0
+        j = 0
+        for i in result:
+            if i:
+                print "Error! file %s exists"%(volume['files'][i]['bfid'])
+                err = 1
+            j = j + 1
+        if err:
+            sys.exit(1)
+
+        # check if volume exists
+        v = vcc.inquire_volume(volume['vol']['external_label'])
+        if v['status'][0] == e_errors.OK:	# it exists
+            print "Error! volume %s exists"%(volume['vol']['external_label'])
+            sys.exit(1)
+
+        # now we are getting serious
+        # insert the file records first
+        for i in volume['files']:
+            ticket = fcc.add(i)
+            # handle errors
+            if ticket['status'][0] != e_errors.OK:
+                print "Error! failed to insert file record:", `i`
+                sys.exit(1)
+
+        # insert the volume record
+        ticket = vcc.add(
+                    library = volume['vol']['library'],
+                    file_family = volume['vol']['file_family'],
+                    storage_group = volume['vol']['storage_group'],
+                    media_type = volume['vol']['media_type'],
+                    external_label = volume['vol']['external_label'],
+                    capacity_bytes = volume['vol']['capacity_bytes'],
+                    eod_cookie = volume['vol']['eod_cookie'],
+                    user_inhibit = volume['vol']['user_inhibit'],
+                    error_inhibit = volume['vol']['error_inhibit'],
+                    last_access = volume['vol']['last_access'],
+                    first_access = volume['vol']['first_access'],
+                    declared = volume['vol']['declared'],
+                    sum_wr_err = volume['vol']['sum_wr_err'],
+                    sum_rd_err = volume['vol']['sum_rd_err'],
+                    sum_wr_access = volume['vol']['sum_wr_access'],
+                    sum_rd_access = volume['vol']['sum_rd_access'],
+                    wrapper = volume['vol']['wrapper'],
+                    blocksize = volume['vol']['blocksize'],
+                    non_del_files = volume['vol']['non_del_files'],
+                    system_inhibit = volume['vol']['system_inhibit'])
+     
     elif intf.add:
         print intf.add, repr(intf.args)
         cookie = 'none'
