@@ -56,7 +56,12 @@ class NetDriver(driver.Driver):
 
     def read(self, buf, offset, nbytes):
         t0 = time.time()
-        r =  strbuffer.buf_recv(self.fileno(), buf, offset, nbytes)
+
+        ready, junk, junk= select.select([self.fileno()], [], [], 5*60)
+        if ready:
+            r =  strbuffer.buf_recv(self.fileno(), buf, offset, nbytes)
+        else:
+            r = 0
         
         if r < 0:
             if strbuffer.cvar.errno in (errno.EAGAIN, errno.EINTR):
