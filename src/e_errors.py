@@ -280,5 +280,6 @@ def handle_error(exc=None, value=None, tb=None):
     # log it
     for l in traceback.format_exception( exc, value, tb ):
 	#print l[0:len(l)-1]
-	Trace.log( ERROR, string.join(l,'\n'), Trace.MSG_DEFAULT, "TRACEBACK")
+	#Trace.log( ERROR, string.join(l,'\n'), Trace.MSG_DEFAULT, "TRACEBACK")
+	Trace.log( ERROR, l, Trace.MSG_DEFAULT, "TRACEBACK")
     return exc, value, tb
