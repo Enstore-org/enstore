@@ -256,20 +256,21 @@ class Enstore(EnstoreInterface):
         # check if help was asked for and no server passed in
         if not self.user_mode and \
            arg1 == "start" or arg1 == "enstore-start":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-start", sys.argv)
+            rtn = call_function("$ENSTORE_DIR/bin/enstore-start", sys.argv[2:])
         elif not self.user_mode and arg1 == "ping":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-ping", sys.argv)
+            rtn = call_function("$ENSTORE_DIR/bin/enstore-ping", sys.argv[2:])
         elif not self.user_mode and arg1 == "qping":
-            rtn = call_function("$ENSTORE_DIR/bin/quick-ping", sys.argv)
+            rtn = call_function("$ENSTORE_DIR/bin/quick-ping", sys.argv[2:])
         elif not self.user_mode and \
              arg1 == "stop" or arg1 == "enstore-stop":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv)
+            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv[2:])
         elif not self.user_mode and arg1 == "restart":
-            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv)
+            rtn = call_function("$ENSTORE_DIR/bin/enstore-stop", sys.argv[2:])
             rtn = call_function("$ENSTORE_DIR/bin/enstore-start --nocheck",
-                                sys.argv)
+                                sys.argv[2:])
         elif not self.user_mode and arg1 == "backup":
-            rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv)
+            rtn = call_function("python $ENSTORE_DIR/src/backup.py",
+                                sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
             # the special check for /export/home/bakken if a kludge for node fntt
             bakken = os.path.expanduser("~bakken")
