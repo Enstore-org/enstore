@@ -958,8 +958,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             try:
                 self.bfid_db.add_bfid(external_label, bfid)
             except (bfid_db.BfidDbError, IOError), detail:
-                detmsg = "%s"%(detail,)
-                Trace.alarm(e_errors.ERROR,"%s"%(detail), record)
+                Trace.alarm(e_errors.ERROR, str(detail), record)
                 # this exception does not cause any major problem, hence
                 # returned status is still OK 
             record['non_del_files'] = record['non_del_files'] + 1
