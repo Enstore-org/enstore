@@ -264,7 +264,7 @@ class VolumeClerk(EnstoreServer):
 class LibraryManager(EnstoreServer):
 
     # states of a library manager meaning 'alive but not available for work'
-    BADSTATUS = ['ignore', 'locked', 'pause']
+    BADSTATUS = ['ignore', 'locked', 'pause', 'unknown']
 
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
@@ -294,7 +294,7 @@ class LibraryManager(EnstoreServer):
 		ticket = self.lmc.get_lm_state(self.timeout, self.tries)
 	    except errno.errorcode[errno.ETIMEDOUT]:
 		ticket = {'state': {}}
-	    self.lstate = ticket['state']
+	    self.lstate = ticket.get('state', 'unknown')
 	    EnstoreServer.check(self, ticket)
 	else:
 	    self.known_down()
