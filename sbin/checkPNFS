@@ -1,0 +1,55 @@
+#!/bin/sh
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+case `uname` in
+        IRIX*) loc=/usr/etc
+                ;;
+        Linux*) loc=/usr/sbin
+                ;;
+        *)      loc=/usr/sbin
+                echo "UNKNOWN OS - FIX ME"
+                exit 1
+esac
+
+bang=`echo -e "\041"`
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*|rip9|rip10)
+          gang=stken
+          pnfson=stkensrv1
+          ;;
+   d0en*) gang=d0en
+          pnfson=d0ensrv1
+          ;;
+   rip[1-8])
+          gang=rip
+          pnfson=rip6
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+
+correct_MR="program 100005 version 1 ready and waiting"
+correct_NR="program 100003 version 2 ready and waiting"
+
+D=`date "+%Y-%m-%d-%H:%M:%S"`
+MR=`$loc/rpcinfo -u $pnfson 100005 1 2>&1`
+NR=`$loc/rpcinfo -u $pnfson 100003 2 2>&1`
+
+msg1="$D   MOUNTD: $MR    NFSD: $NR"
+
+if [ "$correct_MR" != "$MR" -o "$correct_NR" != "$NR" ]; then
+        msg2="PROBLEM WITH PNFS ON $pnfson"
+        enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
+        enstore sched --override enstore --saagStatus red
+        /usr/bin/Mail -s "$msg1 $msg2" $ENSTORE_MAIL
+        rc=1
+
+else
+        echo $msg1 >>checkPNFS.output   # where ever it is running
+        rc=0
+fi
+
+exit $rc
