@@ -61,7 +61,7 @@ class DispatchingWorker:
 
     def set_interval_func(self, func,interval):
         #Backwards-compatibilty
-        self.add_interval_func(self, func, interval)
+        self.add_interval_func(func, interval)
         
     def remove_interval_func(self, func):
         del self.interval_funcs[func]
@@ -313,14 +313,7 @@ class DispatchingWorker:
                       
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
-
-        filename = tb.tb_frame.f_code.co_filename
-        if not filename or type(filename)!=type(""):
-            filename="???"
-        lineno = tb.tb_lineno
-        Trace.alarm(e_errors.ERROR,
-            "Exception in file %s at line %s: %s. See system log for details." % (
-            filename, lineno, msg))
+        Trace.trace(6,"handle_error %s %s"%(exc,msg))
         Trace.log(e_errors.INFO,'-'*40)
         Trace.log(e_errors.INFO,
                   'Exception during request from %s, request=%s'%
