@@ -54,7 +54,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
         cmd="python $ENSTORE_DIR/src/configuration_server.py \
             --config_host=$enstore_config_host --config_port=$enstore_config_port --config_file=$enstore_config_file"
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|conf'; then
-            title="Enstore "Config Server"
+            title="Enstore Config Server"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
         else
             eval "$cmd &"
