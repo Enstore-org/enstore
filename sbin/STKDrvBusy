@@ -1,0 +1,84 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*) gang=stken
+          robot="PowderHorn 9310"
+          ;;
+   d0en*) gang=d0en
+          robot=UNKNOWN
+          ;;
+       *) gang=UNKNOWN
+          robot=UNKNOWN
+          ;;
+esac
+
+
+busy=/home/enstore/STK_DRIVE_UTILIZATION
+
+command=${1:-plot}
+getnode=stkensrv4
+plotnode=stkensrv2
+
+now=`date +"%Y-%m-%d:%H:%M:%S"`
+
+case $command in
+    get)
+        if [ $node = $getnode ] ; then
+         dinfo=/tmp/dinfo
+         rm -f $dinfo
+         /usr/bin/rsh fntt -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
+         n9840=`grep " 9840"  $dinfo | grep -c "in use"`
+         n9940=`grep "T9940"  $dinfo | grep -c "in use"`
+         a9840=`grep " 9840"  $dinfo | grep -c "online"`
+         a9940=`grep "T9940"  $dinfo | grep -c "online"`
+         echo "$now $n9840 $a9840 $n9940 $a9940">>$busy
+        else
+         echo \"$0 $command\" can only be run on $getnode because that is the only one that can talk to fntt
+        fi
+        ;;
+    plot)
+        if [ $node = $plotnode ] ; then
+         rcp $getnode:$busy $busy
+         plot9840=/fnal/ups/prd/www_pages/enstore/9840_Utilization
+         plot9940=/fnal/ups/prd/www_pages/enstore/9940_Utilization
+         pltcmd=/tmp/stkdu.gnu
+         rm -f $pltcmd
+         echo "set output \"$plot9840.ps\"
+set terminal postscript color solid
+set title \"STK 9840 Drive Utilization $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%H:M:S\"
+set xdata time
+set xrange [ : ]
+set ylabel \"Bytes\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
+         gnuplot $pltcmd
+         rm -f $pltcmd
+         convert $plot9840.ps $plot9840.gif
+         echo "set output \"$plot9940.ps\"
+set terminal postscript color solid
+set title \"STK 9940 Drive Utilization $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%H:M:S\"
+set xdata time
+set xrange [ : ]
+set ylabel \"Bytes\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"$busy\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
+         gnuplot $pltcmd
+         convert $plot9940.ps $plot9940.gif
+        else
+         echo \"$0 $command\" can only be run on $plotnode because that is the only one that has a web server
+        fi
+        ;;
+esac
