@@ -433,6 +433,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.make_server_status_html_file()
 	# Don't fear the reaper!!
 	Trace.trace(10, "exiting inquisitor due to request")
+	erc.unsubscribe()
 	os._exit(exit_code)
 
     # update any encp information from the log files
@@ -571,9 +572,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.event_relay.alive(now)
 	self.sent_event_relay_alarm = 0  
 	msg = self.erc.read(fd)
-	# ignore messages that originated with us
-        if msg and not msg.server == self.inquisitor.name:
-            if msg.type == event_relay_messages.ALIVE:
+	if msg:
+	    # ignore messages that originated with us
+            if msg.type == event_relay_messages.ALIVE and not msg.server == self.inquisitor.name:
 		# check if this is one of the servers we are watching.
 		if self.server_d.has_key(msg.server):
 		    server = self.server_is_alive(msg.server)
