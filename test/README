@@ -1,0 +1,43 @@
+This is a small, stand alone test of enstore. I imagine that
+it us useful for tesint the servers in a stand-alone fashion
+
+It works with the default data in the file 
+
+../configuration_server.py
+
+
+1) Starting from scratch: 
+
+Use the "newdbs" command to load some data fiules into a file, which
+is acting like a faked up raw disk device. This file is named 
+"file.fake"
+
+lacking pnfs, the files that are loaded, along with a bit file I.D.
+will be listed in the file  files.in
+
+Lacking a proper database behind the 
+	file clerk
+	volume clerk
+A journal files are created,
+	bit_file_server.jou, volume_clerk.jou
+
+2) Starting not from scratch
+
+	Use to "olddbs"  connad, and file.fake is assumed to be 
+	described by  bit_file_server.jou and volume_clerk.jou
+	all of which is consistent with "file.fake"
+
+
+3) RUnning a stress test:
+
+	type beg_loadtest.
+	
+	this runs multiple processes which simulteanously try to read
+	data from the dtabase,and laod up the system.
+
+
+
+
+
+
+
