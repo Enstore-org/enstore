@@ -56,48 +56,72 @@ def check(f):
         msg.append('not in db')
 	return msg
     # volume label
-    if pf.volume != fr['external_label']:
-        msg.append('label(%s, %s)'%(pf.volume, fr['external_label']))
+    try:
+        if pf.volume != fr['external_label']:
+            msg.append('label(%s, %s)'%(pf.volume, fr['external_label']))
+    except:
+        msg.append('no or corrupted external_label')
     # location cookie
-    if pf.location_cookie != fr['location_cookie']:
-        msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
+    try:
+        if pf.location_cookie != fr['location_cookie']:
+            msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
+    except:
+        msg.append('no or corrupted location_cookie')
     # size
-    real_size = os.stat(f)[stat.ST_SIZE]
-    if real_size != eval(pf.size) or fr['size'] != real_size:
-        msg.append('size(%d, %d, %d)'%(eval(pf.size), real_size, fr['size']))
+    try:
+        real_size = os.stat(f)[stat.ST_SIZE]
+        if real_size != eval(pf.size) or fr['size'] != real_size:
+            msg.append('size(%d, %d, %d)'%(eval(pf.size), real_size, fr['size']))
+    except:
+        msg.append('no or corrupted size')
     # file_family
-    if ff.has_key(fr['external_label']):
-        file_family = ff[fr['external_label']]
-    else:
-        vol = vcc.inquire_vol(fr['external_label'])
-        if vol['status'][0] != e_errors.OK:
-            msg.append('missing vol '+fr['external_label'])
-            return msg
-        file_family = volume_family.extract_file_family(vol['volume_family'])
-        ff[fr['external_label']] = file_family
-    if pf.file_family != file_family:
-        msg.append('file_family(%s, %s)'%(pf.file_family, file_family))
+    try:
+        if ff.has_key(fr['external_label']):
+            file_family = ff[fr['external_label']]
+        else:
+            vol = vcc.inquire_vol(fr['external_label'])
+            if vol['status'][0] != e_errors.OK:
+                msg.append('missing vol '+fr['external_label'])
+                return msg
+            file_family = volume_family.extract_file_family(vol['volume_family'])
+            ff[fr['external_label']] = file_family
+        if pf.file_family != file_family:
+            msg.append('file_family(%s, %s)'%(pf.file_family, file_family))
+    except:
+        msg.append('no or corrupted file_family')
     # pnfsid
-    id = pf.get_pnfs_id()
-    if id != pf.pnfs_id or id != fr['pnfsid']:
-        msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, id, fr['pnfsid']))
+    try:
+        id = pf.get_pnfs_id()
+        if id != pf.pnfs_id or id != fr['pnfsid']:
+            msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, id, fr['pnfsid']))
+    except:
+        msg.append('no or corrupted pnfsid')
     # drive
-    if fr.has_key('drive'):	# some do not have this field
-        if pf.drive != fr['drive']:
-            if pf.drive != 'imported' or fr['drive'] != 'unknown:unknown':
-                msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
+    try:
+        if fr.has_key('drive'):	# some do not have this field
+            if pf.drive != fr['drive']:
+                if pf.drive != 'imported' or fr['drive'] != 'unknown:unknown':
+                    msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
+    except:
+        msg.append('no or corrupted drive')
     # path
-    if pf.path != fr['pnfs_name0']:
-        p1 = string.split(pf.path, '/')
-        p2 = string.split(fr['pnfs_name0'], '/')
-        if p1[-1] != p2[-1] or p1[1:4] != p2[1:4]:
-            msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+    try:
+        if pf.path != fr['pnfs_name0']:
+            p1 = string.split(pf.path, '/')
+            p2 = string.split(fr['pnfs_name0'], '/')
+            if p1[-1] != p2[-1] or p1[1:4] != p2[1:4]:
+                msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+    except:
+        msg.append('no or corrupted pnfs_path')
     # path2
     if pf.path != pf.p_path:
         msg.append('path(%s, %s)'%(pf.path, pf.p_path))
     # deleted
-    if fr['deleted'] != 'no':
-        msg.append('deleted(%s)'%(fr['deleted']))
+    try:
+        if fr['deleted'] != 'no':
+            msg.append('deleted(%s)'%(fr['deleted']))
+    except:
+        msg.append('no deleted field')
 
     return msg
 
