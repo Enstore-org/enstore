@@ -81,7 +81,7 @@ def signal_handler(sig, frame):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "x2_6_a  CVS $Revision$ "
+    version_string = "v2_7  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
@@ -1806,7 +1806,8 @@ def create_read_requests(inputlist, outputlist, file_size,
             if vc_reply['status'][0] != e_errors.OK:
                 raise vc_reply['status']
 
-        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
+        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED,
+                e_errors.BROKEN):
             exc, msg, tb = sys.exc_info()
             print_data_access_layer_format(inputlist[i], outputlist[i], 0,
                                            {'status':(exc, msg)})
