@@ -12,6 +12,7 @@
 import sys
 import string
 import types
+import pprint
 
 #enstore imports
 import udp_client
@@ -116,9 +117,9 @@ class MediaChangerClient(generic_client.GenericClient):
 	rt = self.send(ticket,300,10)
         return rt
 
-    def MaxWork(self, maxwork):
-        ticket = {'work'           : 'maxwork',
-                  'maxwork'        : maxwork
+    def max_work(self, max_work):
+        ticket = {'work'           : 'max_work',
+                  'max_work'        : max_work
                  }
         return self.send(ticket)
 
@@ -152,7 +153,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.client_options()+\
-                   ["maxwork=","update=","get_work","import",
+                   ["max_work=","update=","get_work","import",
                     "export","mount","dismount"]
     #  define our specific help
     def parameters(self):
@@ -262,10 +263,10 @@ def do_work(intf):
     elif intf._export:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.max_work  >= 0:
-        ticket=mcc.MaxWork(intf.max_work)
+        ticket=mcc.max_work(intf.max_work)
     elif intf.get_work:
         ticket=mcc.GetWork()
-        #print repr(ticket['worklist'])
+        pprint.pprint(ticket)
     else:
         intf.print_help()
         sys.exit(0)
