@@ -282,7 +282,7 @@ def inputfile_check(input_files, bytecount=None):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
                 print_data_access_layer_format(inputlist[j],'',0,{'status':('USERERROR',
-                                                                            'Duplicate entry %s'%(inputlist[i],))})
+                                                                            'Duplicated entry %s'%(inputlist[i],))})
                 quit()
 
     return (ninput, inputlist, file_size)
