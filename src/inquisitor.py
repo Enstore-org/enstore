@@ -1094,16 +1094,44 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	Trace.trace(12,"{make_bytes_per_day_plot_file ")
 	# initialize the new data hash
 	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
-	# sum the data together based on day boundaries
+	# sum the data together based on day boundaries. also save the largest
+	# smallest and average sizes
+	mean = {}
+	smallest = {}
+	largest = {}
+	ctr = {}
 	for [xpt, ypt] in data:
 	    adate = xpt[0:10]
-	    ndata[adate] = ndata[adate] + string.atof(ypt)
+	    fypt = string.atof(ypt)
+	    if mean.has_key(adate):
+	        mean[adate] = mean[adate] + fypt
+	        ctr[adate] = ctr[adate] + 1
+	    else:
+	        mean[adate] = fypt
+	        ctr[adate] = 1
+	    if largest.has_key(adate):
+	        if ypt > largest:
+	            largest[adate] = fypt
+	    else:
+	        largest[adate] = fypt
+	    if smallest.has_key(adate):
+	        if ypt < smallest:
+	            smallst[adate] = fypt
+	    else:
+	        smallest[adate] = fypt
+	    ndata[adate] = ndata[adate] + fypt
 	# open the file and write out the data points
 	pfile = open(filename, 'w')
 	keys = ndata.keys()
 	keys.sort()
 	for key in keys:
-	    pfile.write(key+" "+repr(ndata[key])+"\n")
+	    if not ndata[key] == 0:
+	        pfile.write(key+" "+repr(ndata[key])+" "+\
+	                            repr(smallest[key])+" "+\
+	                            repr(largest[key])+" "+\
+	                            repr(mean[key]/ctr[key])+"\n")
+	    else:
+	        pfile.write(key+" "+repr(ndata[key])+"\n")
 	pfile.close()
 	Trace.trace(12,"}make_bytes_per_day_plot_file ")
 
