@@ -4561,6 +4561,7 @@ class EncpInterface(option.Interface):
         option.THREADED:{option.HELP_STRING:
                          "Multithread the actual data transfer.",
                          option.DEFAULT_TYPE:option.INTEGER,
+                         option.DEFAULT_NAME:"threaded_exfer",
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.USER,},
         option.VERBOSE:{option.HELP_STRING:"Print out information.",
