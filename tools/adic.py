@@ -10,8 +10,7 @@ def stripdot(astring):
     x1=re.sub('Volser \.*','',x)
     return re.sub('\.*$','',x1)
 
-
-log = os.popen("./adic.exp", 'r')
+log = os.popen("./adic2.exp", 'r')
 
 cmd_dict = {}
 while 1:
@@ -35,13 +34,17 @@ while 1:
             day="%s %s->%s"%(dat,tim0,tim)
         else:
             day="%s %s->%s %s"%(dat0,tim0,dat,tim)
-        print stripdot(string.join(cmd,' ')), rest[0], day
+        command = stripdot(string.join(cmd,' '))
+        if string.find(command,'MONT'):
+            spaces="  "
+        else:
+            spaces=""
+        print command,spaces,rest[0], day
         del cmd_dict[seq]
     
 
 """ Lines look like this. (All times are now correct.)
 
-09-28-00 12:44:01 pm 0 0827     Command 0827: MONT of Volser ..........PRF022 to D22.......<01030>
 
 2000-10-18 17:23:33     6789 <01296> DAS4060 Mount request from client d0ensrv4 - volser PRF025, drive DC22.
 2000-10-18 17:23:33     0796 <01030> RQM requests command: MONT of Volser ..........PRF025 to D22........
@@ -60,4 +63,3 @@ while 1:
 
 
 """
-
