@@ -2365,11 +2365,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.save_state = self.state
         self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
-        self.uid = None
-        self.gid = None
+        self.uid = -1
+        self.gid = -1
         if ticket.has_key('wrapper'):
-            uid = ticket['wrapper'].get('uid', None)
-            gid = ticket['wrapper'].get('gid', None)
+            uid = ticket['wrapper'].get('uid', -1)
+            gid = ticket['wrapper'].get('gid', -1)
             self.uid = uid
             self.gid = gid
         if self.method and self.method == "read_next" and self.udp_control_address:
