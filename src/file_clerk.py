@@ -1294,7 +1294,7 @@ if __name__ == "__main__":
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
     # see if there is an index file
-    if os.access(os.path.join(dbHome, 'file.external_label.index'), os.F_OK):
+    if os.access(os.path.join(dbHome, 'file.external_label.index'), os.F_OK) or os.environ.has_key('FILE_DB_USE_INDEX'):
         print "open with index"
         fc.dict = db.DbTable("file", dbHome, jouHome, ['external_label']) 
     else:
