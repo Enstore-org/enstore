@@ -88,11 +88,19 @@ def is_in_cluster():
 # if possible.
 def check_user():
 
+    #If in a cluster system...
     if is_in_cluster():
+        #First determine if running as root, if so become enstore and restart.
         if os.getegid() == 0:
             os.execvp("su",
                   string.split("su enstore -c \"%s\"" % string.join(sys.argv)))
-        if pwd.getpwuid(os.geteuid()) != "enstore":
+        #Extract the user name.
+	try:
+            name = pwd.getpwuid(os.geteuid())[0]
+	except (KeyError, IndexError):
+	    name = ""
+        #Check if running as user enstore.
+        if name != "enstore":
             print "You should run this as user enstore."
             sys.exit(1)
             
