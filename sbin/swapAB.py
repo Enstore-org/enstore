@@ -153,7 +153,7 @@ def swap(f):
 
 	# does file exist? writable?
 	if not os.access(lf, os.W_OK):
-		error('not writable')
+		error(lf+' not writable')
 		return
 
 	fb = b_path(f)
