@@ -1,0 +1,24 @@
+Options:
+
+--help            lists the command syntax
+--config_host=    allows you to specify the host of the configuration server
+--config_port=    allows you to specify the port of the configuration server
+--config_list=    tells you about which configuration server you've connected to
+--list            commands are generally silent. Use this to get some chatter
+
+General use commands:
+
+encp [--config_host=  --config_port= --config_list --list --help ] inputfilename outputfilename
+	copies input to output
+
+pnfs [--test --status --file= --list --nolist  --help]
+	provides information about a file in pnfs space or runs pnfs tests
+	--test    runs pnfs tests
+	--file    specifies the file you want information about
+
+econ [--config_host= --config_port= --config_file= --config_list --dict --load --help]
+	list/loads configuration server dictionary
+	--dict    dumps the dictionary
+	--load    load the file specified in --config_file
+	--config_file=  the name of the file to be loaded.
+
