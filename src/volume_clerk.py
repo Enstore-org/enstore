@@ -95,7 +95,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                 msize = sizes[ticket['media_type']]
             except :
                 ticket['status'] = "Volume Clerk: "\
-				   +"unknown media type = unknown blocksize"
+                                   +"unknown media type = unknown blocksize"
                 self.reply_to_caller(ticket)
                 return ticket
             record['blocksize'] = msize
@@ -199,7 +199,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         except KeyError:
             record["status"] = "Volume Clerk: no such volume"\
-			       +"- or badly formed ticket"
+                               +"- or badly formed ticket"
 
         self.reply_to_caller(record)
 
@@ -219,6 +219,18 @@ class VolumeClerkMethods(DispatchingWorker) :
             key = ticket["external_label"]
             record = dict[key]
             record ["error_inhibit"] = "writing"
+            dict[key] = record # THIS WILL JOURNAL IT
+            record["status"] = "ok"
+        except KeyError:
+            record["status"] = "Volume Clerk: no such volume"
+        self.reply_to_caller(record)
+        return record
+
+    def set_system_readonly(self, ticket) :
+        try:
+            key = ticket["external_label"]
+            record = dict[key]
+            record ["error_inhibit"] = "readonly"
             dict[key] = record # THIS WILL JOURNAL IT
             record["status"] = "ok"
         except KeyError:

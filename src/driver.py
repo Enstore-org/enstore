@@ -23,19 +23,30 @@ class GenericDriver:
         self.device = device
         self.df = open(device, "a+")
         self.state = STATE_UNLOAD
+        self.wr_err = 0
+        self.rd_err = 0
+        self.wr_mnt = 0
+        self.rd_mnt = 0
 
     def load(self):
         self.state = STATE_LOAD
-        pass
 
     def unload(self):
         self.state = STATE_UNLOAD
-        pass
+
+    # blocksize is volume dependent, iomax is computer dependent
+    def set_sizes(self,blocksize,iomax):
+        self.blocksize = blocksize
+        self.iomax = iomax
 
     # callers are to try to send buffers of iomax,
     #    except for  the last buffer, which may be exact.
     def get_iomax(self) :
         return self.iomax
+
+    def get_error(self) :
+        return (self.wr_err,rd_err,wr_mnt,rd_mnt)
+
 
 
 class  RawDiskDriver(GenericDriver) :
@@ -74,18 +85,17 @@ class  RawDiskDriver(GenericDriver) :
 
     def close_file_read(self) :
         self.state = STATE_CLOSED
-        pass
 
     def read_block(self):
-                # no file marks on a disk, so use the information
-                # in the cookie to bound the file.
-                n_to_read = min(self.iomax, self.left_to_read)
-                if n_to_read == 0 : return ""
-                buf = self.df.read(n_to_read)
-                self.left_to_read = self.left_to_read - len(buf)
-                if self.left_to_read < 0:
-                        raise "assert error"
-                return buf
+        # no file marks on a disk, so use the information
+        # in the cookie to bound the file.
+        n_to_read = min(self.iomax, self.left_to_read)
+        if n_to_read == 0 : return ""
+        buf = self.df.read(n_to_read)
+        self.left_to_read = self.left_to_read - len(buf)
+        if self.left_to_read < 0:
+            raise "assert error"
+        return buf
 
     def open_file_write(self):
         # we cannot auto sense a floppy, so we must trust the user
@@ -97,19 +107,19 @@ class  RawDiskDriver(GenericDriver) :
         first_byte = self.eod
         last_byte = self.df.tell()
 
-	# we don't fill each byte - the next starting place is at the
+        # we don't fill each byte - the next starting place is at the
         # beginning of the next block
-	if last_byte%self.blocksize != 0:
-	    self.eod = last_byte+(self.blocksize-(last_byte%self.blocksize))
+        if last_byte%self.blocksize != 0:
+            self.eod = last_byte+(self.blocksize-(last_byte%self.blocksize))
 
-	    # If the data is being written to a file on a hard drive, the
-	    # file has to be blanked filled to the next blocksize.
-	    # Otherwise, the next open_write doesn't seek to end
-	    empty = self.eod-last_byte    # number of empty bytes to next block
-	    self.first_write_block = 0    # just filling it it 
-	    self.write_block("J"*empty)   # fill it out
-	else:
-	    self.eod = last_byte
+            # If the data is being written to a file on a hard drive, the
+            # file has to be blanked filled to the next blocksize.
+            # Otherwise, the next open_write doesn't seek to end
+            empty = self.eod-last_byte    # number of empty bytes to next block
+            self.first_write_block = 0    # just filling it it
+            self.write_block("J"*empty)   # fill it out
+        else:
+            self.eod = last_byte
 
         self.state = STATE_CLOSED
         return `(first_byte, last_byte)`  # cookie describing the file

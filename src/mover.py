@@ -9,321 +9,378 @@ from callback import *
 from dict_to_a import *
 from driver import RawDiskDriver
 from media_changer_client import *
-
-#csc = configuration_client()
-#u = UDPClient()
+import pprint
 
 class Mover :
-        def __init__(self, config_host="localhost", config_port=7500):
-            self.config_host = config_host
-            self.config_port = config_port
-            self.csc = configuration_client(self.config_host,self.config_port)
-            self.u = UDPClient()
 
-        def move_forever(self, name) :
-                self.name = name
-                self.nowork({})
-                while 1:
-                        ticket = self.send_vol_manager()
-                        try:
-                                function = ticket["work"]
-                        except KeyError:
-                                raise "assert error Bogus stuff from vol mgr"
-                        exec ("self." + function + "(ticket)")
+    def __init__(self, config_host="localhost", config_port=7500):
+        # An administrator can change out configuration on the fly.  This is
+        # useful when a "library" is really one robot with multiple uses, or
+        # when we need to manually load balance movers attached to virtual
+        # library.  So we need to keep track of configuration server.
+        self.config_host = config_host
+        self.config_port = config_port
+        self.csc = configuration_client(self.config_host,self.config_port)
+        self.u = UDPClient()
 
+    # primary serving loop
+    def move_forever(self, name) :
+        self.name = name
 
-        def send_vol_manager(self) :
-                ticket = self.u.send(self.next_volmgr_request,
-                                (self.library_manager_host,
-                                 self.library_manager_port)
-                                )
-                return ticket
+        # we don't have any work when we start - setup
+        self.nowork({})
 
-        def send_user_last(self, ticket):
-                self.control_socket.send(dict_to_a(ticket))
-                self.control_socket.close()
-                #when I have debugged this, blow away any socket exceptions
+        while 1:
+            # ok, here we go. get something to do from library manager
+            ticket = self.send_library_manager()
 
-        def nowork(self, ticket) :
-                sleep(1)
-                # An adminsitrator can change out configuration on the fly.
-                # this is useful when a "library" is really one robot
-                # with multiple uses, or when we need to manually load balance
-                # movers attacke to virtual library....
-                self.csc = configuration_client(self.config_host,self.config_port)
-                mconfig = self.csc.get(self.name)
-                if mconfig["status"] != "ok" :
-                        raise "could not start mover up:" + mconfig["status"]
-                self.library_device = mconfig["library_device"]
-                self.driver_name = mconfig["driver"]
-                self.device = mconfig["device"]
-                self.library = mconfig["library"]
-                self.media_changer = mconfig["media_changer"]
+            try:
+                function = ticket["work"]
+            except KeyError:
+                raise "assert error Bogus stuff from vol mgr"
 
-                # now get info asssociated with our volume manager
-                self.csc = configuration_client(self.config_host,self.config_port)
-                lconfig = self.csc.get_uncached(self.library)
-                self.library_manager_host = lconfig["host"]
-                self.library_manager_port = lconfig["port"]
-
-                # announce ourselves
-                self.idle_mover_next()
+            # we got a job - now do it
+            exec ("self." + function + "(ticket)")
 
 
-        def bind_volume(self, ticket) :
-                self.external_label = ticket["external_label"]
-                ss = VolumeClerkClient(self.csc)
-                vticket = ss.inquire_vol(self.external_label)
-                if vticket["status"] != "ok" :
-                        self.unilateral_unbind_next()
-                        return
-                self.vticket = vticket
-                self.driver = eval(self.driver_name + "('" +
-                                  self.device + "','" +
-                                  vticket["eod_cookie"] + "'," +
-                                  `vticket["remaining_bytes"]` +
-                                        ")")
+    # send a message to our (current) library manager & return its answer
+    def send_library_manager(self) :
+        return  self.u.send(self.next_libmgr_request,
+                             (self.library_manager_host,
+                              self.library_manager_port) )
 
-                #print "Mover's name is " + self.name
-                #print "creating media loader client: " + self.media_changer
-                ml = MediaLoaderClient(self.csc, self.media_changer)
-                #print "external_label",self.external_label
-                #print "library_device",self.library_device
-                lmticket = ml.loadvol(self.external_label, self.library_device)
-                if lmticket["status"] != "ok" :
-                        if lmticket["status"] == "media_in_another_device" :
-                        # it is possible under normal functioning of the
-                        #  system to be in the following race condition
-                        #    "the volume mgr told another mover to unbind.
-                        #    the mover responds promptly, but more work for the
-                        #    volume mgr arrives and is given to a new mover
-                        #    before the old volume was given back to the
-                        #    library
-                                sleep (10)
-                        self.unilateral_unbind_next()
-                        return
-
-                self.driver.load()
-
-                self.have_bound_volume_next()
-
-        def unbind_volume(self, ticket) :
-
-                ml = MediaLoaderClient(self.csc, self.media_changer)
-                #
-                # do any rewind unload or eject operations on the device
-                #
-                self.driver.unload()
-                ticket = ml.unloadvol(self.external_label,
-                                                self.library_device)
-                if ticket["status"] != "ok" :
-                        raise "media loader cannot unload my volume"
-
-                # need to call the driver destructor....
-                self.idle_mover_next()
+    # send a message to our user
+    def send_user_last(self, ticket):
+        self.control_socket.send(dict_to_a(ticket))
+        self.control_socket.close()
 
 
-        def get_user_sockets(self, ticket) :
+    # we don't have any work. setup to see if we can get some
+    def nowork(self, ticket) :
+        sleep(1)
 
-                # get a port for the data transfer
-                # tell the user I'm your mover and here's your ticket
+        # self.csc = configuration_client(self.config_host,self.config_port)
 
-                mover_host, mover_port, listen_socket = get_callback()
-                listen_socket.listen(4)
-                ticket["mover_callback_host"] = mover_host
-                ticket["mover_callback_port"] = mover_port
-                self.control_socket = user_callback_socket(ticket)
+        # get (possibly new) info about the library manager this mover serves
+        mconfig = self.csc.get(self.name)
+        if mconfig["status"] != "ok" :
+            raise "could not start mover up:" + mconfig["status"]
+        self.library_device = mconfig["library_device"]
+        self.driver_name = mconfig["driver"]
+        self.device = mconfig["device"]
+        self.library = mconfig["library"]
+        self.media_changer = mconfig["media_changer"]
 
-                # we expect a prompt call-back here, and should protect
-                # against users not getting back to us. The best protection
-                # would be to kick off if the user dropped the control_socket,
-                # but I am at home and am not able to find documentation
-                # on select...
+        #self.csc = configuration_client(self.config_host,self.config_port)
 
-                data_socket, address = listen_socket.accept()
-                self.data_socket = data_socket
-                listen_socket.close()
+        # get (possibly new) info asssociated with our volume manager
+        lconfig = self.csc.get_uncached(self.library)
+        self.library_manager_host = lconfig["host"]
+        self.library_manager_port = lconfig["port"]
 
-        def write_to_hsm(self, ticket) :
-
-                if ticket["external_label"] != self.external_label :
-                        raise "volume manager and I disagree on volume"
-                ss = VolumeClerkClient(self.csc)
-                vticket = ss.set_writing(self.external_label)
-                if ticket["status"] != "ok" :
-                        raise "volume clerk forgot about this volume"
-
-                # space to where the file will begin and save location
-                # information for where futrure reads will have to
-                # space the drive to.
-
-                self.get_user_sockets(ticket)
+        # set our ticket when we announce ourselves to the library manager
+        self.idle_mover_next()
 
 
-                nb = ticket["size_bytes"]
-                bytes_recvd = 0
-                media_error = 0
-                media_full  = 0
-                drive_error = 0
-                user_send_error = 0
-                anything_written = 0
-                bof_space_cookie = 0
-                self.driver.open_file_write()
-                while 1:
-                        buff = self.data_socket.recv(self.driver.get_iomax())
-                        l = len(buff)
-                        bytes_recvd = bytes_recvd + l
-                        if l == 0 : break
-                        self.driver.write_block(buff)
-                        anything_written = 1
+    # the library manager has told us to bind a volume so we can do some work
+    def bind_volume(self, ticket) :
 
-                self.data_socket.close()
-                file_cookie = self.driver.close_file_write()
-                eod_cookie = self.driver.get_eod_cookie()
-                remaining_bytes = self.driver.get_eod_remaining_bytes()
-                wr_err = 0
-                rd_err = 0
-                wr_mnt = 0
-                rd_mnt = 0
+        # become a volume clerk client first
+        vcc = VolumeClerkClient(self.csc)
 
-                ss = VolumeClerkClient(self.csc)
+        # find out what volume clerk knows about this volume
+        self.external_label = ticket["external_label"]
+        vticket = vcc.inquire_vol(self.external_label)
+        if vticket["status"] != "ok" :
+            self.unilateral_unbind_next()
+            return
+        self.vticket = vticket
 
-                if bytes_recvd != ticket["size_bytes"] :
-                        user_send_error = 1
+        # now invoke the driver, which has the form:
+        #       __init__(self, device, eod_cookie, remaining_bytes):
+        self.driver = eval(self.driver_name + "('" +\
+                           self.device + "','" +\
+                           self.vticket["eod_cookie"] + "'," +\
+                           repr(vticket["remaining_bytes"]) + ")")
 
-                if user_send_error:
-                        self.vticket = ss.set_remaining_bytes(
-                                ticket["external_label"],
-                                remaining_bytes,
-                                eod_cookie,wr_err,rd_err,wr_mnt,rd_mnt)
-                        self.have_bound_volume_next()
-                        self.send_user_last({"status" : "Mover: "\
-                                             +"user_protocol_error"})
-                        return
+        # the blocksize is controlled by the volume
+        blocksize = self.vticket["blocksize"]
+        iomax = blocksize*16      # how do I control this here?
+        self.driver.set_size(blocksize,iomax)
 
-                elif media_full :
-                        ss.set_system_readonly(ticket["external_label"])
-                        self.unilateral_unbind_next()
-                        self.send_user_last({"status" : "Mover: retry"})
-                        return
+        # need a media changer to control (mount/load...) the volume
+        mlc = MediaLoaderClient(self.csc, self.media_changer)
 
-                elif media_error :
-                        ss.set_system_readonly(ticket["external_label"])
-                        self.send_user_last({"status" : "Mover: retry"})
-                        self.unilateral_unbind_next()
-                        return
+        lmticket = mlc.loadvol(self.external_label, self.library_device)
+        if lmticket["status"] != "ok" :
 
-                elif drive_error :
-                        ss.set_hung(ticket["external_label"])
-                        self.send_user_last({"status" : "Mover: retry"})
-                        self.unilateral_unbind_next()
-                        #since we will kill ourselves, tell the volume mgr
-                        #now....
-                        ticket = send_vol_manager()
-                        raise "device panic -- I want to do no harm to media"
-                        return
+            # it is possible, under normal conditions, for the system to be
+            # in the following race condition:
+            #   library manager told another mover to unbind.
+            #   other mover responds promptly,
+            #   more work for library manager arrives and is given to a
+            #     new mover before the old volume was given back to the library
+            if lmticket["status"] == "media_in_another_device" :
+                sleep (10)
+            self.unilateral_unbind_next()
+            return
 
-                # All is well.
-                # Tell volume server
-                self.vticket = ss.set_remaining_bytes(
-                                ticket["external_label"],
-                                remaining_bytes,
-                                eod_cookie,wr_err,rd_err,wr_mnt,rd_mnt)
+        # we have the volume - load it
+        self.driver.load()
+
+        # create a ticket for library manager that says we have bound volume
+        self.have_bound_volume_next()
 
 
-                # tell file clerk server
+    def unbind_volume(self, ticket) :
 
-                fc = FileClerkClient(self.csc)
-                fticket = fc.new_bit_file(
-                        file_cookie,
-                        ticket["external_label"], 0, 0)
+        # do any driver level rewind, unload, eject operations on the device
+        self.driver.unload()
 
-                # really only bfid is needed, but save other useful information for user too
-                ticket["bfid"] = fticket["bfid"]
-                ticket["bof_space_cookie"] = fticket["bof_space_cookie"]
-                ticket["complete_crc"] = fticket["complete_crc"]
-                ticket["sanity_cookie"] = fticket["sanity_cookie"]
-                ticket["device"] = self.device
-                ticket["driver_name"] = self.driver_name
-                ticket["mover_name"] = self.name
-                ticket["library_device"] = self.library_device
-                ticket["capacity_bytes"] = self.vticket["capacity_bytes"]
-                ticket["remaining_bytes"] = self.vticket["remaining_bytes"]
-                ticket["media_type"] = self.vticket["media_type"]
+        # we will be needing a media loader to help unmount/unload...
+        mlc = MediaLoaderClient(self.csc, self.media_changer)
 
-                # tell user
-                self.send_user_last(ticket)
-                # go around for more
-                self.have_bound_volume_next()
+        # now ask the media changer to unload the volume
+        ticket = mlc.unloadvol(self.external_label, self.library_device)
+        if ticket["status"] != "ok" :
+            raise "media loader cannot unload my volume"
 
-        def read_from_hsm(self, ticket) :
-                if ticket["external_label"] != self.external_label :
-                        raise "volume manager and I disagree on volume"
-                ss = VolumeClerkClient(self.csc)
-                vticket = ss.inquire_vol(self.external_label)
-                if ticket["status"] != "ok" :
-                        raise "volume clerk forgot about this volume"
+        # need to call the driver destructor....
 
-                # space to where the file will begin and save location
-                # information for where futrure reads will have to
-                # space the drive to.
-
-                self.get_user_sockets(ticket)
-                media_error = 0
-                media_full  = 0
-                drive_error = 0
-                user_recieve_error = 0
-                bytes_sent = 0
-                self.driver.open_file_read(ticket["bof_space_cookie"])
-                while 1:
-                        buff = self.driver.read_block()
-                        l = len(buff)
-                        if l == 0 : break
-                        self.data_socket.send(buff)
-                        bytes_sent = bytes_sent + l
-                        anything_sent = 1
-                self.data_socket.close()
-
-                if media_error :
-                        ss.set_system_readonly(ticket["external_label"])
-                        self.send_user_last({"status" : "Mover: retry"})
-                        self.unilateral_unbind_next()
-                        return
-
-                elif drive_error :
-                        ss.set_hung(ticket["external_label"])
-                        self.send_user_last({"status" : "Mover: retry"})
-                        self.unilateral_unbind_next()
-                        #since we will kill ourselves, tell the volume mgr
-                        #now....
-                        ticket = send_vol_manager()
-                        raise "device panic -- I want to do no harm to media"
-                        return
-
-                # read has finished correctly
-                # tell user
-                self.send_user_last(ticket)
-                # go around for more
-                self.have_bound_volume_next()
+        # create ticket that says we need more work
+        self.idle_mover_next()
 
 
-        def idle_mover_next(self):
-                self.next_volmgr_request = {"work" : "idle_mover",
-                        "mover" : self.name
-                        }
+    # data transfer takes place on tcp sockets, so get ports & call user
+    def get_user_sockets(self, ticket) :
+        mover_host, mover_port, listen_socket = get_callback()
+        listen_socket.listen(4)
+        ticket["mover_callback_host"] = mover_host
+        ticket["mover_callback_port"] = mover_port
 
-        def have_bound_volume_next(self):
-                self.next_volmgr_request = {}
-                for k in self.vticket.keys() :
-                        self.next_volmgr_request[k] = self.vticket[k]
-                self.next_volmgr_request["work"] = "have_bound_volume"
-                self.next_volmgr_request["mover"] = self.name
+        # call the user and tell him I'm your mover and here's your ticket
+        self.control_socket = user_callback_socket(ticket)
 
-        def unilateral_unbind_next(self):
-                self.next_volmgr_request = {"work" : "unilateral_unbind",
-                        "external_label" : self.external_label,
-                        "mover" : self.name
-                        }
+        # we expect a prompt call-back here, and should protect against users
+        # not getting back to us. The best protection would be to kick off if
+        # the user dropped the control_socket, but I am at home and am not able
+        # to find documentation on select...
+
+        data_socket, address = listen_socket.accept()
+        self.data_socket = data_socket
+        listen_socket.close()
+
+
+    # the library manager has asked us to write a file to the hsm
+    def write_to_hsm(self, ticket) :
+
+        # double check that we are talking about the same volume
+        if ticket["external_label"] != self.external_label :
+            raise "volume manager and I disagree on volume"
+
+        # call the volume clerk and tell him we are going to append to volume
+        vcc = VolumeClerkClient(self.csc)
+        vticket = vcc.set_writing(self.external_label)
+        if ticket["status"] != "ok" :
+            raise "volume clerk forgot about this volume"
+
+        # space to where the file will begin and save location
+        # information for where future reads will have to  space the drive to.
+
+        # call the user and announce that your her mover
+        self.get_user_sockets(ticket)
+
+        # setup values before transfer
+        nb = ticket["size_bytes"]
+        bytes_recvd = 0
+        media_error = 0
+        media_full  = 0
+        drive_error = 0
+        user_send_error = 0
+        anything_written = 0
+        bof_space_cookie = 0
+        sanity_cookie = 0
+        complete_crc = 0
+
+        # open the hsm file for writing
+        self.driver.open_file_write()
+
+        # read the file from the user and write it out
+        while 1:
+            buff = self.data_socket.recv(self.driver.get_iomax())
+            l = len(buff)
+            if l == 0 :
+                break
+            bytes_recvd = bytes_recvd + l
+            self.driver.write_block(buff)
+            anything_written = 1
+
+        # we've read the file from user, shut down data transfer socket
+        self.data_socket.close()
+
+        # close hsm file: get file/eod cookies & remaining bytes & errs & mnts
+        file_cookie = self.driver.close_file_write()
+        eod_cookie = self.driver.get_eod_cookie()
+        remaining_bytes = self.driver.get_eod_remaining_bytes()
+        wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
+
+        vcc = VolumeClerkClient(self.csc)
+
+        # check for errors and inform volume clerk
+        if bytes_recvd != ticket["size_bytes"] :
+            user_send_error = 1
+
+        # mark database and continue on all user errors
+        if user_send_error:
+            self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
+                                                   remaining_bytes,
+                                                   eod_cookie,wr_err,\
+                                                   rd_err,wr_mnt,rd_mnt)
+            # tell mover ready for more - can't undo user error, so continue
+            self.have_bound_volume_next()
+            msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
+                  " but only" +" stored"+repr(bytes_recvd)
+            # tell user we're done, but there has been an error
+            self.send_user_last({"status" : "Mover: Retry: user_error "+msg})
+            return
+
+        # if media full, mark volume readonly, unbind it & tell user to retry
+        elif media_full :
+            vcc.set_system_readonly(ticket["external_label"])
+            self.unilateral_unbind_next()
+            msg = "Volume "+repr(ticket["external_label"])
+            self.send_user_last({"status" : "Mover: Retry: media_full "+msg})
+            return
+
+        # if media error, mark volume readonly, unbind it & tell user to retry
+        elif media_error :
+            vcc.set_system_readonly(ticket["external_label"])
+            self.unilateral_unbind_next()
+            msg = "Volume "+repr(ticket["external_label"])
+            self.send_user_last({"status" : "Mover: Retru: media_error "+msg})
+            return
+
+        # drive errors are bad:  unbind volule it & tell user to retry
+        elif drive_error :
+            vcc.set_hung(ticket["external_label"])
+            self.unilateral_unbind_next()
+            msg = "Volume "+repr(ticket["external_label"])
+            self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
+            #since we will kill ourselves, tell the volume mgr now....
+            ticket = send_library_manager()
+            raise "device panic -- I want to do no harm to media"
+
+        # All is well.
+
+        # Tell volume server
+        self.vticket = vcc.set_remaining_bytes(ticket["external_label"],\
+                                               remaining_bytes,\
+                                               eod_cookie,\
+                                               wr_err,rd_err,wr_mnt,rd_mnt)
+
+
+        # connec to file clerk and get new bit file id
+        fc = FileClerkClient(self.csc)
+        self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],\
+                                       sanity_cookie,complete_crc)
+
+        # only bfid is needed, but save other useful information for user too
+        work = ticket["work"]
+        stat = ticket["status"]
+        for key in self.vticket :
+            ticket[key] = self.vticket[key]
+        for key in self.fticket :
+            ticket[key] = self.fticket[key]
+        ticket["work"] = work
+        ticket["status"] = status
+
+        pprint.pprint(self.__dict__)
+
+        ticket["device"] = self.device
+        ticket["driver_name"] = self.driver_name
+        ticket["mover_name"] = self.name
+        ticket["library_device"] = self.library_device
+
+        # finish up and tell user about the transfer
+        self.send_user_last(ticket)
+
+        # go around for more
+        self.have_bound_volume_next()
+
+
+    def read_from_hsm(self, ticket) :
+        if ticket["external_label"] != self.external_label :
+            raise "volume manager and I disagree on volume"
+        vcc = VolumeClerkClient(self.csc)
+        vticket = vcc.inquire_vol(self.external_label)
+        if ticket["status"] != "ok" :
+            raise "volume clerk forgot about this volume"
+
+        # space to where the file will begin and save location
+        # information for where futrure reads will have to
+        # space the drive to.
+
+        self.get_user_sockets(ticket)
+        media_error = 0
+        media_full  = 0
+        drive_error = 0
+        user_recieve_error = 0
+        bytes_sent = 0
+        self.driver.open_file_read(ticket["bof_space_cookie"])
+        while 1:
+            buff = self.driver.read_block()
+            l = len(buff)
+            if l == 0 : break
+            self.data_socket.send(buff)
+            bytes_sent = bytes_sent + l
+            anything_sent = 1
+        self.data_socket.close()
+
+        if media_error :
+            vcc.set_system_readonly(ticket["external_label"])
+            self.send_user_last({"status" : "Mover: retry"})
+            self.unilateral_unbind_next()
+            return
+
+        elif drive_error :
+            vcc.set_hung(ticket["external_label"])
+            self.send_user_last({"status" : "Mover: retry"})
+            self.unilateral_unbind_next()
+            #since we will kill ourselves, tell the volume mgr now....
+            ticket = send_library_manager()
+            raise "device panic -- I want to do no harm to media"
+            return
+
+        # read has finished correctly
+
+        # tell user
+        self.send_user_last(ticket)
+
+        # go around for more
+        self.have_bound_volume_next()
+
+
+    # create ticket that says we are idle
+    def idle_mover_next(self):
+        self.next_libmgr_request = {"work"  : "idle_mover",
+                                    "mover" : self.name }
+
+
+    # create ticket that says we have bound volume x
+    def have_bound_volume_next(self):
+        self.next_libmgr_request = {}
+        self.next_libmgr_request["work"] = "have_bound_volume"
+        self.next_libmgr_request["mover"] = self.name
+        # copy volume information about the volume to our ticket
+        for k in self.vticket.keys() :
+            self.next_libmgr_request[k] = self.vticket[k]
+
+
+    # create ticket that says we need to unbind volume x
+    def unilateral_unbind_next(self):
+        self.next_libmgr_request = {"work"           : "unilateral_unbind",
+                                    "external_label" : self.external_label,
+                                    "mover"          : self.name }
 
 
 if __name__ == "__main__" :

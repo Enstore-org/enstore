@@ -68,8 +68,7 @@ class VolumeClerkClient :
     # delete a volume from the stockpile
     def delvol(self, external_label) :
         ticket= { 'work'           : 'delvol',
-                  'external_label' : external_label
-                  }
+                  'external_label' : external_label }
         return  self.send(ticket)
 
 
@@ -80,15 +79,19 @@ class VolumeClerkClient :
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label) :
         ticket= { 'work'           : 'inquire_vol',
-                  'external_label' : external_label
-                  }
+                  'external_label' : external_label }
         return  self.send(ticket)
 
     # we are using the volume
     def set_writing(self, external_label) :
         ticket= { 'work'           : 'set_writing',
-                  'external_label' : external_label
-                  }
+                  'external_label' : external_label }
+        return self.send(ticket)
+
+    # we are using the volume
+    def set_system_readonly(self, external_label) :
+        ticket= { 'work'           : 'set_system_readonly',
+                  'external_label' : external_label }
         return self.send(ticket)
 
     # this many bytes left
@@ -101,8 +104,7 @@ class VolumeClerkClient :
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
                   'wr_mnt'          : wr_mnt,
-                  'rd_mnt'          : rd_mnt
-                  }
+                  'rd_mnt'          : rd_mnt }
         return self.send(ticket)
 
     # which volume can we use for this library, bytes and file family and ...
@@ -112,8 +114,7 @@ class VolumeClerkClient :
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'file_family'         : file_family,
-                   'vol_veto_list'       : `vol_veto_list`
-                   }
+                   'vol_veto_list'       : `vol_veto_list` }
         return self.send(ticket)
 
     # check on alive status
