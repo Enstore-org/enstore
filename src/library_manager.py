@@ -1566,6 +1566,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         
     def write_to_hsm(self, ticket):
+        key = encp_ticket.write_request_ok(w_ticket)
+        if key:
+            ticket['status'] = (e_errors.MALFORMED,
+                                "ticket does not have a mandatory key %s"%(key,))
+            self.reply_to_caller(ticket)
+        return
+            
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):
@@ -1731,6 +1738,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
+        key = encp_ticket.read_request_ok(w_ticket)
+        if key:
+            ticket['status'] = (e_errors.MALFORMED,
+                                "ticket does not have a mandatory key %s"%(key,))
+            self.reply_to_caller(ticket)
+        return
         method = ticket.get('method', None)
         if method and method == 'read_next': # this request must go directly to mover
             ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
