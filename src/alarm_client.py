@@ -16,7 +16,7 @@ import e_errors
 MY_NAME = "ALARM_CLIENT"
 MY_SERVER = "alarm_server"
 
-RCV_TIMEOUT = 3
+RCV_TIMEOUT = 5
 RCV_TRIES = 2
 
 class Lock:
