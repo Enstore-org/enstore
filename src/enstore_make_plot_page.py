@@ -31,12 +31,11 @@ def do_the_walk(input_dir, url):
     jpgs = []
     stamps = []
     pss = []
-    # make sure the input directory contains the ending / in it
+    # make sure the input directory and url contain the ending / in them
     if input_dir[-1] != "/":
         input_dir = "%s/"%(input_dir,)
     if url[-1] != "/":
         url = "%s/"%(url,)
-    url = intf.url
     os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, input_dir,
                                              url))
     jpgs.sort()
@@ -57,7 +56,7 @@ class CronPlotPage(enstore_html.EnPlotPage):
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flag=1, opts=[]):
+    def __init__(self, flag=1):
 	# fill in the defaults for the possible options
         self.do_parse = flag
 	self.description = "Graphical representation of the exit status of Enstore cron jobs."
