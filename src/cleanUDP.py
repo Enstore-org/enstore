@@ -51,7 +51,7 @@ def Select (R, W, X, timeout) :
 		if r == cleaned_r :
 			# all except FD's as the same as not scrubbed
 			# previously.
-			return r, w, x
+			return r, w, x, timeout
 		cleaned_r = []
 		for obj in r :
 			try:
@@ -116,20 +116,20 @@ class cleanUDP :
 		return self.socket.recvfrom(bufsize)
 
 
-	def send(self, string) : 
-		return self.socket.send(string)
+	def send(self, s, addr) : 
+		return self.socket.send(s, addr)
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
-	def sendto(self, string, address) : 
+	def sendto(self, data, address) : 
 		self.previous_sendto_address = self.this_sendto_address
 		self.this_sendto_address = address
 
 		for n in range(0, self.retry_max - 1) :
 			try:
-				return self.socket.sendto(string, address)
+				return self.socket.sendto(data, address)
 			except socket.error:
 				self.logerror("sendto", n)
-		return self.socket.sendto(string, address)
+		return self.socket.sendto(data, address)
 		
 	def setblocking(self, flag) :
 		return self.socket.setblocking(flag)
@@ -169,7 +169,7 @@ if __name__ == "__main__" :
 		print "expected select.select behavior on linux, post 2.2 kernel"
 	else:
 		print "***unexpected  behavior on _any_ platform"
-	r, w, x = Select([sout],[sout],[sout],1.0)
+	r, w, x, remaining_time = Select([sout],[sout],[sout], 1.0)
 
 	if not r and not x :
 		print "expected behavior"
