@@ -810,7 +810,9 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             exc, msg, tb = sys.exc_info()
             sys.stderr.write("Sub ticket 'mover' not found.\n")
             sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
-            sys.stderr.write(pprint.pformat(ticket))
+            sys.stderr.write(pprint.pformat(ticket)+"\n")
+            if ticket.get('status', (None, None))[0] == e_errors.OK:
+                ticket['status'] = (str(exc), str(msg))
             return None, None, ticket
 
         #Attempt to get the data socket connected with the mover.
@@ -858,13 +860,16 @@ def submit_one_request(ticket, verbose):
     #Get the library manager info information.
     lmc = library_manager_client.LibraryManagerClient(
         csc, ticket['vc']['library'] + ".library_manager")
-    responce_ticket = lmc.read_from_hsm(ticket)
+    if ticket['infile'][:5] == "/pnfs":
+        responce_ticket = lmc.read_from_hsm(ticket)
+    else:
+        responce_ticket = lmc.write_to_hsm(ticket)
 
     if responce_ticket['status'][0] != e_errors.OK :
         Trace.log(e_errors.NET_ERROR,
-                  "submit_write_request: Write submit failed for %s"
+                  "submit_one_request: Ticket submit failed for %s"
                   " - retrying" % ticket['infile'])
-    
+
     return responce_ticket
 
 ############################################################################
@@ -1131,12 +1136,19 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 # manager and mover don't expect to receive from encp,
                 # these should be removed.
                 for item in ("mover", ):
-                    del req[item]
+                    try:
+                        del req[item]
+                    except KeyError:
+                        pass
 
                 #Since a retriable error occured, resubmit the ticket.
-                submit_one_request(req, verbose)
-            except KeyError:
-                pass
+                lm_responce = submit_one_request(req, verbose)
+                if lm_responce['status'][0] != e_errors.OK:
+                    sys.stderr.write("Error resubmitting.\n")
+                    sys.stderr.write(pprint.pformat(lm_responce))
+            except:
+                exc, msg, tb = sys.exc_info()
+                sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
             
             #Log the intermidiate error as a warning instead as a full error.
             status = (status[0], req.get('unique_id', None))
@@ -1157,14 +1169,21 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Increase the retry count.
             request_dictionary['retry'] = retry + 1
             
-            #Before resubmitting, there are some fields that the library
+            #Before resending, there are some fields that the library
             # manager and mover don't expect to receive from encp,
             # these should be removed.
             for item in ("mover", ):
-                del request_dictionary[item]
+                try:
+                    del request_dictionary[item]
+                except KeyError:
+                    pass
                 
             #Since a retriable error occured, resubmit the ticket.
-            submit_one_request(request_dictionary, verbose)
+            lm_responce = submit_one_request(request_dictionary, verbose)
+            if lm_responce['status'][0] != e_errors.OK:
+                sys.stderr.write("Error resubmitting.\n")
+                sys.stderr.write(pprint.pformat(lm_responce))
+                status = lm_responce['status']
         except KeyError:
             sys.stderr.write("Error processing resubmition of %s.\n" %
                              (request_dictionary['unique_id']))
