@@ -186,6 +186,12 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["file_family"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
+	#tickle mover
+	import udp_client
+	udp_client.UDPClient().send_no_wait(  { "work":"tickle"
+				     ,"address":(keys['hostip'], keys['port'])}
+				  , (keys['hostip'],7523) )
+
 
     def read_from_hsm(self, ticket):
         ticket["status"] = "ok"
@@ -198,6 +204,11 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                    ticket["fc"]["bfid"],
                                    ticket["uinfo"]["uname"])
         queue_pending_work(ticket)
+	#tickle mover
+	import udp_client
+	udp_client.UDPClient().send_no_wait(  { "work":"tickle"
+				     ,"address":(keys['hostip'], keys['port'])}
+				  , (keys['hostip'],7523) )
 
 
     # mover is idle - see what we can do
