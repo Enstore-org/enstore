@@ -714,11 +714,9 @@ def filesystem_check(target_filesystem, inputfile):
         return
     except (OSError, IOError):
         exc, msg, tb = sys.exc_info()
-        msg = "System error getting filesystem file size limit: %s: %s" \
-              % (str(exc), str(msg))
-        Trace.log(e_errors.ERROR, msg)
-        #raise exc, msg, tb
-        raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+        msg2 = "System error getting filesystem file size limit"
+        Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
+        raise EncpError(msg.errno, msg2, e_errors.OSERROR)
         
     filesystem_max = 2L**(bits - 1) - 1
     
