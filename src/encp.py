@@ -684,14 +684,14 @@ def open_control_socket(listen_socket, mover_timeout, verbose):
     
 ##############################################################################
 
-def open_data_socket(mover_addr):
+def open_data_socket(mover_addr, mode=0):
     data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
                 flags | FCNTL.O_NONBLOCK)
 
     #set up any special network load-balancing voodoo
-    interface=check_load_balance(mode=0, dest=mover_addr[0])
+    interface=host_config.check_load_balance(mode=0, dest=mover_addr[0])
     #load balencing...
     if interface:
         ip = interface.get('ip')
@@ -815,9 +815,17 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
                 ticket['status'] = (str(exc), str(msg))
             return None, None, ticket
 
+        #Determine if reading or writing.  This only has importance on
+        # mulithomed machines were an interface needs to be choosen based
+        # on reading and writing usages/rates of the interfaces.
+        if ticket['outfile'][:5] == "/pnfs":
+            mode = 1
+        else:
+            mode = 0
+
         #Attempt to get the data socket connected with the mover.
         try:
-            data_path_socket = open_data_socket(mover_addr)
+            data_path_socket = open_data_socket(mover_addr, mode)
 
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
@@ -1126,7 +1134,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # list at a time, submitting like this will still work.
     elif status[0] == e_errors.RESUBMITTING:
         request_dictionary['resubmits'] = resubmits + 1
-        print "request_dictionary['resubmits']", request_dictionary['resubmits']
+
         for req in request_list:
             try:
                 #Increase the resubmit count.
@@ -1607,10 +1615,12 @@ def submit_write_request(work_ticket, client, encp_intf):
         Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
 
         ticket = submit_one_request(work_ticket, encp_intf.verbose)
+        
+        Trace.message(5, "LIBRARY MANAGER\n%s\n." % pprint.pformat(ticket))
 
-        if encp_intf.verbose > 4:
-            print "LIBRARY MANAGER"
-            pprint.pprint(ticket)
+        #if encp_intf.verbose > 4:
+        #    print "LIBRARY MANAGER"
+        #    pprint.pprint(ticket)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      None, encp_intf)
@@ -2251,9 +2261,11 @@ def submit_read_requests(requests, client, tinfo, encp_intf):
 
             ticket = submit_one_request(req, encp_intf.verbose)
 
-            if encp_intf.verbose > 4:
-                print "LIBRARY MANAGER"
-                pprint.pprint(ticket)
+            Trace.message(5, "LIBRARY MANAGER\n%s\n." % pprint.pformat(ticket))
+                         
+            #if encp_intf.verbose > 4:
+            #    print "LIBRARY MANAGER"
+            #    pprint.pprint(ticket)
 
             result_dict = handle_retries(requests_to_submit, req, ticket,
                                          None, encp_intf)
