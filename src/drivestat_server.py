@@ -39,8 +39,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		att = self.csc.get(MY_NAME)
 		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
-			(att['hostip'], att['dbport']))
-		self.dsDB = drivestat.dsDB(att['dbhost'], att['dbname'], att['port'])
+			(att['hostip'], att['port']))
+		self.dsDB = drivestat.dsDB(att['dbhost'], att['dbname'], att['dbport'])
 		return
 
 	def log_stat(self, ticket):
