@@ -36,6 +36,7 @@ def main():
     metaFileName = "id" + tapeStyle + "-" + tapeLabel + ".par"
     #Set the fullpath of this file.
     localMetaFilePath = os.path.join("/tmp", metaFileName)
+    print "localMetaFilePath", localMetaFilePath
 
     #Copy the catalog metadata file to the /tmp directory.
     if getNames.getFile("sdssdp", metaFileName, mjd,
@@ -49,7 +50,7 @@ def main():
     exit_status = callGet.callGet(tapeLabel, files, pnfsDir, outputDir)
 
     #The copied catalog file is removed at this point.
-    os.remove(localMetaFilePath)
+    #os.remove(localMetaFilePath)
 
     print "Exit status = %s." % exit_status
     sys.exit(exit_status)

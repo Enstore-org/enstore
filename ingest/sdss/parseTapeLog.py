@@ -10,21 +10,21 @@ def makeTarlogFilename(contents, id):
     return string.lower(contents) + "." + id + ".tar"
 
 def parseFile(filename):   #, tapeLabel):
+    print "FILE",filename
     filelist = []
     f = open(filename)
     line = f.readline()
     while line:
-        line = string.strip(line)
-        if not string.find(line, "tapelog"):
+        if not line.find("tapelog"):
             #Split tapelog lines contain tuples of the following:
             # (tape, filemark, run, frame, ccd)
-            (unused, filemark, run, frame, ccd) = string.split(line)
+            (unused, filemark, run, frame, ccd) = line.split()
             filelist.append((filemark,
                              makeTapelogFilename(run, frame, ccd)))
-        elif not string.find(line, "TARFILE"):
+        elif not line.find("tarfile"):
             #Split TARFILE lines contain tuples of the following:
             # (tape, filemark, contents, tar_id)
-            (unused, filemark, contents, tar_id) = string.split(line)
+            (unused, filemark, contents, tar_id) = line.split()
             filelist.append((int(filemark) + 1,
                              makeTarlogFilename(contents, tar_id)))
         #else:

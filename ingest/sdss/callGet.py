@@ -5,6 +5,14 @@ import popen2
 import string
 
 def callGet(tapeLabel, files, pnfsDir, outputDir):
+    pnfsd_s = os.path.split(pnfsDir)
+    if pnfsd_s[len(pnfsd_s)-1] != tapeLabel:
+        pnfsDir = os.path.join(pnfsDir,tapeLabel)
+    output_s = os.path.split(outputDir)
+    if output_s[len(output_s)-1] != tapeLabel:
+        outputDir = os.path.join(outputDir,tapeLabel)
+    print "pnfsd %s out_d %s"%(pnfsDir, outputDir)
+    
     fname = tempfile.mktemp()
     f = open(fname, "w")
 
@@ -39,27 +47,84 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         sys.stderr.write("Unable to find get executable.\n")
         sys.exit(70)
         
+    os.system("mkdir -p %s"%(outputDir,))
+    os.system("mkdir -p %s"%(pnfsDir,))
+    if (not os.path.exists(pnfsDir)):
+        sys.stderr.write("%s does not exist\n"%(pnfsDir,))
+        sys.exit(70)
+    if (not os.path.exists(outputDir)):
+        sys.stderr.write("%s does not exist\n"%(outputDir,))
+        sys.exit(70)
+    
+    
     #args = (path, "--verbose", "4", "--list", fname, tapeLabel,
     #        pnfsDir, outputDir)
-    args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
+    while 1:
+        args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
 
-    print string.join(args)
+        print string.join(args)
 
-    #Fork off the "get" process and read in its output.
-    standard_in, standard_out_err = os.popen4(args)
-    missingFiles = []
-    line = standard_out_err.readline()
-    while line:
-        sys.stdout.write(line)
-        if line[:17] == "unable to deliver":
-            missingFiles.append(line[19:])
-        line = standard_out_err.readline()
+        #Fork off the "get" process and read in its output.
 
-    #Cleanup of open files.
-    standard_out_err.close()
-    standard_in.close()
+        missingFiles = []
+        capturestderr=1
+        pipeObj = popen2.Popen3(string.join(args), capturestderr, 0)
+        if pipeObj is None:
+            print "could not fork off the process %s"%(args)
+            return
+        rc = pipeObj.wait() >> 8
+        #result = pipeObj.fromchild.readlines()  # result has returned string
+        while 1:
+            l = pipeObj.fromchild.readline()[:-1]
+            if l:
+                print l
+            else:
+                break
+        if rc == 0 or rc == 2:
+            break
+        else:
+            print "stat",rc
+            while 1:
+                line = pipeObj.childerr.readline() # don't cut out \n there may be such lines
+                if line:
+                    sys.stderr.write(line)
+                    if len(line)> 1: line=line[:-1]
+                    if line.find("error_output") != -1:
+                        items = line.split()
+                        try:
+                            missingFiles.append(items[1])
+                        except IndexError, detail:
+                           sys.stderr.write("%s\n"%(detail,))
+                else:
+                    break
+
+        del(pipeObj)
+        print "missing files",missingFiles
+        if missingFiles:
+            old_fname = fname
+            fname = tempfile.mktemp()
+            print "new list is", fname
+            f = open(fname, "w")
+            oldf = open(old_fname, "r")
+            while 1:
+                l = oldf.readline()[:-1]
+                if l:
+                    f_number, f_name = l.split()
+                    if f_number in missingFiles:
+                        f.write("%s %s\n"%(f_number, f_name))
+                else:
+                    break
+            oldf.close()
+            f.close()
+            os.remove(old_fname)
+        else:
+            break
+
+        print "will retry"
+    
     #Cleanup the temporary file.
     os.remove(fname)
+    return rc
     
     #Print out messages stating any failures that occured.
     if missingFiles:
@@ -69,5 +134,4 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
             sys.stderr.write("file: %s\n" % missingFile)
         return 1
 
-    return 0
-    #return os.spawnvp(os.P_WAIT, "python", args)
+    return rc
