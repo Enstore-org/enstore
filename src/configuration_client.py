@@ -81,15 +81,15 @@ class ConfigurationClient(generic_client.GenericClient):
         return self.cache.get(key, self.get_uncached(key, timeout, retry))
 
     # dump the configuration dictionary
-    def list(self, timeout=0, retry=0):
-        request = {'work' : 'list' }
+    def dump(self, timeout=0, retry=0):
+        request = {'work' : 'dump' }
         while 1:
             try:
-                self.config_list = self.u.send(request, self.config_address,\
+                self.config_dump = self.u.send(request, self.config_address,\
 	                                       timeout, retry )
                 break
             except socket.error:
-	        self.output_socket_error("list")
+	        self.output_socket_error("dump")
 
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
@@ -156,7 +156,7 @@ class ConfigurationClient(generic_client.GenericClient):
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         # fill in the defaults for the possible options
-        self.config_list = {}
+        self.config_dump = {}
         self.config_file = ""
         self.dict = 0
         self.load = 0
@@ -189,9 +189,9 @@ if __name__ == "__main__":
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.dict:
-        csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-        print csc.config_list["list"]
-        stati = csc.config_list
+        csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
+        print csc.config_dump["dump"]
+        stati = csc.config_dump
 
     elif intf.load:
         stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     elif intf.key_value:
         stati= csc.get_dict_entry(intf.key_value, intf.alive_rcv_timeout,
                                   intf.alive_retries)
-	pprint.pprint(stati['servers'])
+	pprint.pprint(stati['servers']) #XXX ?
 
     else:
 	intf.print_help()
