@@ -1034,6 +1034,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # request when it removes to old one.
     request_dictionary['unique_id'] = generate_unique_id()
 
+    print "Resubmitting with:"
+    pprint.pprint(request_dictionary)
+
     #Since a retriable error occured, resubmit the ticket.
     submit_one_request(request_dictionary, verbose=3)
     
