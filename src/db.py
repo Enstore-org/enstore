@@ -57,6 +57,7 @@ class dBTable:
                    self.count=self.count+1
                    if self.count > JOURNAL_LIMIT and backup_flag :
                        self.checkpoint()
+		       return self.db[key]
                return self.jou[key]
         def __delitem__(self,key):
               if self.jou.has_key(key) == 0:
