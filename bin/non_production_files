@@ -19,8 +19,9 @@ rm -fr lz >/dev/null 2>&1
 mkdir lz  >/dev/null 2>&1
 cd lz
 
-CVSROOT=cvsuser@hppc.fnal.gov:/cvs/hppc
+CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc
 export CVSROOT
+
 cvs co enstore >/dev/null 2>&1
 if [ $? != 0 ]; then
     exit 1
