@@ -552,11 +552,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     bytes_to_read = self.buffer.trailer_size - trailer_bytes_read
                     bytes_read = self.buffer.stream_read(bytes_to_read, trailer_driver)
                     trailer_bytes_read = trailer_bytes_read + bytes_read
-                    Trace.trace(8, "read %s bytes of trailer" % (bytes_read,))
+                    Trace.trace(8, "read %s bytes of trailer" % (trailer_bytes_read,))
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
 
-            
         Trace.trace(8, "read_client exiting, read %s/%s bytes" %(self.bytes_read, self.bytes_to_read))
                         
     def write_tape(self):
@@ -565,7 +564,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if (self.bytes_read == self.bytes_to_read and self.buffer.empty()
-                or self.bytes_read < self.bytes_to_read and self.buffer_low()):
+                or self.bytes_read < self.bytes_to_read and self.buffer.low()):
                 Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
                              self.bytes_read, self.bytes_to_read))
