@@ -37,6 +37,7 @@ VOL_SET_TO_FULL = 'VOLISSETTOFULL'
 RECYCLE='RECYCLE_VOLUME'
 QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
 CRC_ERROR='CRC MISMATCH'
+NO_CRC_RETURNED = 'mover did not return CRC'
 NET_ERROR="NET_ERROR"
 RETRY="RETRY"
 TOO_MANY_RETRIES="TOO MANY RETRIES"
@@ -47,6 +48,7 @@ IOERROR = "IO ERROR"
 ENSTOREBALLRED = "ENSTORE BALL IS RED"
 MALFORMED = "MALFORMED REQUEST"
 RESUBMITTING = "RESUBMITTING"
+
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -158,6 +160,11 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          TOO_MANY_RETRIES,
                          TOO_MANY_RESUBMITS,
                          MALFORMED)
+
+raise_alarm_errors = ( CRC_ERROR,
+                       UNKNOWNMEDIA,
+                       NOVOLUME,
+                       QUOTAEXCEEDED)
 
 
 # CLIENT PORTION OF 'MESS_TYPE' MESSAGE
@@ -299,6 +306,8 @@ stypedict = { "died"               : "DIED",
 
 def is_retriable(e):
     if e in non_retriable_errors:
+        return 0
+    elif e in raise_alarm_errors:
         return 0
     return 1
 
