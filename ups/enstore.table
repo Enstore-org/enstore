@@ -115,10 +115,10 @@ QUALIFIERS = ""
 	#     or, if bakken had special needs,                          ln -s bakken.table enstore_variables.table
 	# The basic idea is that everything in this table file is general, and everything in the
 	#     enstore_variables.table file is user/installation specific
-	setupOptional('-r "${UPS_PROD_DIR}" -M "${UPS_PROD_DIR}"     -m enstore_variables.table enstore_variables v0_0')
+	setupOptional('-r "${UPS_PROD_DIR}" -M "${UPS_PROD_DIR}/ups" -m enstore_variables.table enstore_variables v0_0')
 
 
     ACTION=CONFIGURE
 	# upd complains about enstore_variable not being declared - declare a dummy version
 	execute('sh -c "$UPS_DIR/bin/ups undeclare -f NULL enstore_variables v0_0 >/dev/null 2>/dev/null"',NO_UPS_ENV)
-	execute('sh -c "$UPS_DIR/bin/ups declare -c -f NULL -r ${UPS_PROD_DIR} -M ${UPS_PROD_DIR}  -m enstore_variables.table enstore_variables v0_0 >/dev/null 2>/dev/null"',NO_UPS_ENV)
+	execute('sh -c "$UPS_DIR/bin/ups declare -c -f NULL -r ${UPS_PROD_DIR} -M ${UPS_PROD_DIR}/ups  -m enstore_variables.table enstore_variables v0_0 >/dev/null 2>/dev/null"',NO_UPS_ENV)
