@@ -486,6 +486,7 @@ class LibraryManagerMethods:
     def init_request_selection(self):
         self.write_vf_list = {}
         self.tmp_rq = None   # need this to temporarily store selected request
+        self.processed_admin_requests = []
         # initialize postponed requests list
         if self.postponed_requests.list_expired():
             Trace.trace(16, "postponed list expired")
@@ -614,6 +615,11 @@ class LibraryManagerMethods:
             self.continue_scan = 1
             #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
+        if rq.adminpri > -1:
+            if vol_family in self.processed_admin_requests:
+                return None,key_to_check
+            else:
+               self.processed_admin_requests.append(vol_family) 
         if not self.write_vf_list.has_key(vol_family):
             vol_veto_list, wr_en = self.busy_volumes(vol_family)
             Trace.trace(12,"process_write_request vol veto list:%s, width:%d"%\
