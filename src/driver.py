@@ -2,7 +2,6 @@ import sys
 from errno import *
 import pprint
 import posix
-import ETape
 
 class GenericDriver:
 
@@ -47,6 +46,11 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
+    try:
+	import ETape
+    except:
+	pass
+
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.blocksize = 65536
@@ -110,10 +114,9 @@ class  RawDiskDriver(GenericDriver) :
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
         self.left_to_read = self.pastbyte - self.firstbyte
-        self.state = STATE_OPEN_READ
 
     def close_file_read(self) :
-        self.state = STATE_CLOSED
+	pass
 
     def read_block(self):
         # no file marks on a disk, so use the information
@@ -130,7 +133,6 @@ class  RawDiskDriver(GenericDriver) :
         # we cannot auto sense a floppy, so we must trust the user
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
-        self.state = STATE_OPEN_WRITE
 
     def close_file_write(self):
         first_byte = self.eod
@@ -150,7 +152,6 @@ class  RawDiskDriver(GenericDriver) :
         else:
             self.eod = last_byte
 
-        self.state = STATE_CLOSED
         return `(first_byte, last_byte)`  # cookie describing the file
 
     # write a block of data to already open file: user has to handle exceptions

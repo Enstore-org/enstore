@@ -209,15 +209,12 @@ class Mover :
 
         self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
 
-        (wr_size,\
-         complete_crc) = self.wrapper.write(inode, pnfs["mode"],
-                                            pnfs["uid"], pnfs["gid"],
-                                            ticket["mtime"],
-                                            ticket["size_bytes"],
-                                            pnfs["major"],  pnfs["minor"],
-                                            pnfs["rmajor"], pnfs["rminor"],
-                                            pnfs["pnfsFilename"])
-        #print "cpio.write returned:",wr_size,wr_crc
+        (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
+            inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
+            ticket["size_bytes"], pnfs["major"], pnfs["minor"], pnfs["rmajor"],
+            pnfs["rminor"], pnfs["pnfsFilename"],ticket["sanity_size"])
+        print "cpio.write size:",wr_size,"crc:",complete_crc, \
+              "sanity_crc:",sanity_cookie
 
         if 0 :
             # read the file from the user and write it out
@@ -319,7 +316,7 @@ class Mover :
         dinfo = {}
         for k in ['blocksize', 'device', 'eod', 'first_write_block',
                   'rd_err', 'rd_mnt', 'remaining_bytes',
-                  'state', 'wr_err', 'wr_mnt'] :
+                  'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc
@@ -424,7 +421,7 @@ class Mover :
         for k in ['blocksize', 'device', 'eod', 'firstbyte',
                   'left_to_read', 'pastbyte',
                   'rd_err', 'rd_mnt', 'remaining_bytes',
-                  'state', 'wr_err', 'wr_mnt'] :
+                  'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc

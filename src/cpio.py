@@ -138,7 +138,7 @@ class cpio :
 
 
     # generate the enstore cpio "trailers"
-    def trailers(self,siz, head_crc, data_crc, trailer) :
+    def trailers(self, siz, head_crc, data_crc, trailer) :
         size = siz
 
         # first need to pad data
@@ -188,7 +188,7 @@ class cpio :
 
     # generate an enstore cpio archive: devices must be open and ready
     def write(self, inode, mode, uid, gid, mtime, filesize,
-              major, minor, rmajor, rminor, filename) :
+              major, minor, rmajor, rminor, filename, sanity_bytes=0) :
 
         # generate the headers for the archive and write out 1st one
         format = "new"
@@ -201,6 +201,8 @@ class cpio :
         apply(self.write_driver.write_block,(header,))
 
         # now read input and write it out
+        sanity_crc = 0
+        sanity_size = 0
         data_crc = 0
         data_size = 0
         while 1:
@@ -208,21 +210,33 @@ class cpio :
             length = len(b)
             if length == 0 :
                 break
-            size = size + length
             data_size = data_size + length
+            # we need a complete crc of the data in the file
             data_crc = apply(self.crc_fun,(b,data_crc))
+            # we also need a "sanity" crc of 1st sanity_bytes of data in file
+            # so, we crc the 1st portion of the data twice (should be ok)
+            if sanity_size < sanity_bytes :
+                if sanity_size + length <= sanity_bytes :
+                    sanity_end = length
+                    sanity_size = sanity_size+length
+                else :
+                    sanity_end = sanity_bytes - sanity_size
+                    sanity_size = sanity_bytes
+                sanity_crc = apply(self.crc_fun,(b[0:sanity_end],sanity_crc))
+
             apply(self.write_driver.write_block,(b,))
 
         # write out the trailers
         apply(self.write_driver.write_block,
               (self.trailers(size,head_crc,data_crc,trailer),))
-        return (data_size, data_crc)
+        return (data_size, data_crc, sanity_crc)
 
 
     # read an enstore archive: devices must be ready and open
-    def read(self) :
+    def read(self, sanity_blocks=0, sanity_crc=0) :
 
         # setup counters/flags
+        s_crc = 0
         data_crc = 0
         data_size = 1
         size = 0
@@ -262,11 +276,11 @@ class cpio :
 
         recorded_crc = self.encrc(trailer)
         if recorded_crc != data_crc :
-            match = "ERROR: CRC's MISMATCH"
+            crc_match = "ERROR: CRC's MISMATCH"
         else :
-            match = "ok"
+            crc_match = "ok"
 
-        return (data_size, data_crc, recorded_crc, match)
+        return (data_size, data_crc, recorded_crc, crc_match)
 
 # shamelessly stolen from python's posixfile.py
 class diskdriver:
@@ -290,7 +304,7 @@ class diskdriver:
 
     # Initialization routines
     def fileopen(self, file):
-        if `type(file)` != "<type 'file'>":
+        if repr(type(file)) != "<type 'file'>":
             raise TypeError, 'diskdriver.fileopen() arg must be file object'
         self._file_  = file
         # Copy basic file methods
@@ -304,7 +318,8 @@ class diskdriver:
 
     # this is the name of the function that the wrapper uses to read
     def read_block(self):
-        return self.read()
+        blocksize = 2**16
+        return self.read(blocksize)
 
     # this is the name fo the funciton that the wrapper uses to write
     def write_block(self,buffer):
@@ -336,13 +351,17 @@ if __name__ == "__main__" :
     minor = dev_dict["Minor"]
     rmajor = 0
     rminor = 0
+    sanity_bytes = 1000
 
-    (size,crc) = \
-               wrapper.write(statb[stat.ST_INO], statb[stat.ST_MODE],
-                             statb[stat.ST_UID], statb[stat.ST_GID],
-                             statb[stat.ST_MTIME], statb[stat.ST_SIZE],
-                             major, minor, rmajor, rminor, fin._file_.name)
-    print "cpio.write returned:",size,crc
+    (size,crc,sanity_crc) = wrapper.write(statb[stat.ST_INO],
+                                          statb[stat.ST_MODE],
+                                          statb[stat.ST_UID],
+                                          statb[stat.ST_GID],
+                                          statb[stat.ST_MTIME],
+                                          statb[stat.ST_SIZE],
+                                          major, minor, rmajor, rminor,
+                                          fin._file_.name, sanity_bytes)
+    print "cpio.write returned: size:",size,"crc:",crc,"sanity_crc:",sanity_crc
 
     fin.close()
     fout.close()
@@ -359,7 +378,8 @@ if __name__ == "__main__" :
 
     wrapper = cpio(fin,fout,binascii.crc_hqx)
     (read_size, read_crc, recorded_crc, match) = wrapper.read()
-    print "cpio.read  returned:",read_size,read_crc,recorded_crc,match
+    print "cpio.read  returned: size:",read_size,"crc:",read_crc,\
+          "recorded_crc:",recorded_crc,"crc_match:",match
 
     fin.close()
     fout.close()

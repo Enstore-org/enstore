@@ -80,6 +80,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               "user_info"          : uinfo,
               "mtime"              : int(time.time()),
               "size_bytes"         : fsize,
+              "sanity_size"        : 5000,
               "user_callback_port" : port,
               "user_callback_host" : host,
               "unique_id"          : time.time()
@@ -201,6 +202,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
               "pnfs_info"          : pinfo,
               "user_info"          : uinfo,
               "bfid"               : p.bit_file_id,
+              "sanity_size"        : 5000,
               "user_callback_port" : port,
               "user_callback_host" : host,
               "unique_id"          : time.time()
