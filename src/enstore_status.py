@@ -359,26 +359,52 @@ class EnStatus:
         Trace.trace(12,"}format_lm_moverlist ")
 	return string
 
+    mfile = ""
+
     # format the mover status information
     def format_moverstatus(self, ticket):
-        if 0: print self # quiet lint
         Trace.trace(12,"{format_moverstatus "+repr(ticket))
 	spacing = "\n    "
+        got_vol = 0
 	string = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
+            got_vol = 1
 	    p = "Current Transfer : "
 	    if ticket["mode"] == "r":
-	        m = " reading "+repr(ticket["bytes_to_xfer"])+" bytes from the HSM"
+	        m = " reading "+repr(ticket["bytes_to_xfer"])+\
+                    " bytes from the HSM"
+                f_in = 1
+                f_out = 0
 	    else:
-	        m = " writing "+repr(ticket["bytes_to_xfer"])+" bytes to the HSM"
+	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
+                    " bytes to the HSM"
+                f_in = 0
+                f_out = 1
 	elif ticket["state"] == "idle":
 	    p = "Last Transfer : "
 	    m = " "
+            if ticket['no_xfers'] > 0:
+                got_vol = 1
+                if ticket["mode"] == "r":
+                    f_in = 1
+                    f_out = 0
+                else:
+                    f_in = 0
+                    f_out = 1
+
+        if got_vol:
+            v = ",  Volume : "+ticket['tape']
+            mfile = spacing+" "*(len(p)+1)+ticket['files'][f_in]+" --> "+\
+                    ticket['files'][f_out]
+        else:
+            v = ""
+            mfile = ""
 
 	string = string+",  Current State : "+ticket["state"]+m
 	string = string+spacing+p+" Read "+\
 	             repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
-	             repr(ticket["wr_bytes"])+" bytes\n\n"
+	             repr(ticket["wr_bytes"])+" bytes"+v
+        string = string+mfile+"\n\n"
         Trace.trace(12,"}format_moverstatus ")
 	return string
 
