@@ -20,10 +20,7 @@ data
 trace.key
 mksetup
 Makefile.modules
-aci_shadow_wrap.c
+*_wrap.c
+*wrap_thread.c
 aci_shadow.py
-derrno_wrap.c
-adler32_wrap.c
-checksum_wrap.c
 tape_copy
-socket_ext_wrap.c
