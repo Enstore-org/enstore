@@ -33,13 +33,26 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
-#if defined(__STDC__) && __STDC_VERSION__ == 199901L
-#include <stdbool.h>  /* C99 implimentations have this. */
-#endif
+#if __STDC__ && __STDC_VERSION__ >= 199901L
+#include <stdbool.h>  /* C99 implimentations have these. */
+#include <stdint.h>
+#endif /*__STDC_VERSION__ */
+#ifndef __osf__
+#include <inttypes.h> /* Must handle osf definitions later.  Currently, only
+			 intptr_t and uintptr_t are used.  However, when more
+			 distributions are fully C99 compliant, even more
+		         definitions from this file should be used. */
+#endif /* __osf__ */
 
 /***************************************************************************
  constants and macros
 **************************************************************************/
+
+/* OSF1 V4 defines MAP_FAILED incorrectly. */
+#ifdef __osf__
+# undef MAP_FAILED
+# define MAP_FAILED ((void*)-1L)
+#endif /*__osf__*/ 
 
 /* return/break - read error */
 #define READ_ERROR (-1)
@@ -60,6 +73,8 @@
 
 /* Define DEBUG only for extra debugging output */
 /*#define DEBUG*/
+/* Define DEBUG_REVERT for direct i/o and mmap i/o not supported messages. */
+/*#define DEBUG_REVERT*/
 
 /* Define PROFILE only for extra time output */
 /* This profile only works for the non-threaded implementation.  It works
@@ -88,12 +103,42 @@
    read()/write().  Currently this is 1/2 MB/s. */
 #define MINIMUM_RATE 524288
 
+#ifdef DEBUG_REVERT
+const char generic_direct_io_error[] = 
+  "Using direct i/o failed.  Reverting to POSIX based i/o.\n";
+const char kernel_direct_io_error[] = 
+  "Direct i/o is not supported in the kernel.  "
+  "Reverting to POSIX based i/o.\n";
+const char filesystem_direct_io_error[] = 
+  "Direct i/o is not supported by the filesystem.  "
+  "Reverting to POSIX based i/o.\n";
+
+const char generic_mmap_io_error[] = 
+  "Using mmapped i/o failed.  Reverting to POSIX based i/o.\n";
+const char kernel_mmap_io_error[] = 
+  "Memory mapped i/o is not supported in the kernel.  "
+  "Reverting to POSIX based i/o.\n";
+const char filesystem_mmap_io_error[] = 
+  "Memory mapped i/o is not supported by the filesystem.  "
+  "Reverting to POSIX based i/o.\n";
+#endif /*DEBUG_REVERT*/
+
 /***************************************************************************
  definitions
 **************************************************************************/
 
-#if __STDC_VERSION__ != 199901L
+#if (! __STDC__) || (__STDC_VERSION__ < 199901L)
 typedef unsigned char bool; /* Only define this for pre-C99 implimentations. */
+#endif
+
+#ifdef __osf__
+/* All supported OSes except osf1v40d have a <inttypes.h> file.  Most were
+   written to various drafts of the POSIX/XOPEN 2001 standard.  Newer OSF1
+   machines have this file (although it is missing mandatory things).  The
+   main thing that is needed are the following two integer types for
+   pointers. */
+typedef signed long intptr_t;
+typedef unsigned long uintptr_t;
 #endif
 
 /* This is the struct that holds all the information about one direction
@@ -181,8 +226,9 @@ static PyObject * EXfd_ecrc(PyObject *self, PyObject *args);
    These functions take two paramaters to the read and write transfer structs.
    The dfference is that the first one will run each half of the transfer
    in their own thread, while the later runs everything in a single thread. */
-void do_read_write_threaded(struct transfer *reads, struct transfer *writes);
-void do_read_write(struct transfer *reads, struct transfer *writes);
+static void do_read_write_threaded(struct transfer *reads,
+				   struct transfer *writes);
+static void do_read_write(struct transfer *reads, struct transfer *writes);
 
 /* pack_return_values():
    The first paramater is the transfer struct for the direction of the
@@ -304,13 +350,13 @@ static int thread_init(struct transfer *info);
 /* thread_wait():
    If the other read/write thread is slow, wait for the specified bin to become
    available.  Return 1 on error and 0 on success. */
-static int thread_wait(int bin, struct transfer *info);
+static int thread_wait(size_t bin, struct transfer *info);
 
 /* thread_signal():
    Set the bin (or bucket) with index bin to the amount specified by bytes.
    This function will also 'raise' a condional variable signal to wake
    up the other read/write thread.  Return 1 on error and 0 on success. */
-static int thread_signal(int bin, size_t bytes, struct transfer *info);
+static int thread_signal(size_t bin, size_t bytes, struct transfer *info);
 
 /* thread_collect():
    The first paramater is a thread id as returned by pthread_create().  This
@@ -406,21 +452,59 @@ static PyMethodDef EXfer_Methods[] = {
 
 #endif
 
-int *stored;   /*pointer to array of bytes copied per bin*/
-char *buffer;  /*pointer to array of buffer bins*/
-pthread_mutex_t *buffer_lock; /*pointer to array of bin mutex locks*/
-pthread_mutex_t done_mutex; /*used to signal main thread a thread returned*/
-pthread_mutex_t monitor_mutex; /*used to sync the monitoring*/
-pthread_cond_t done_cond;   /*used to signal main thread a thread returned*/
-pthread_cond_t next_cond;   /*used to signal peer thread to continue*/
+static size_t *stored;               /*pointer to array of bytes in each bin*/
+static char *buffer;                 /*pointer to array of buffer bins*/
+static pthread_mutex_t *buffer_lock; /*pointer to array of bin mutex locks*/
+static pthread_mutex_t done_mutex;   /*main thread waits for an exited thread*/
+static pthread_mutex_t monitor_mutex;/*used to sync the monitoring*/
+static pthread_cond_t done_cond;     /*main thread waits for an exited thread*/
+static pthread_cond_t next_cond;     /*used to signal peer thread to continue*/
 #ifdef DEBUG
-pthread_mutex_t print_lock; /*order debugging output*/
+static pthread_mutex_t print_lock;   /*order debugging output*/
 #endif
-static sigjmp_buf alarm_join; /*used to handle detection of hung thread*/
+static sigjmp_buf alarm_join;        /*handle detection of hung threads*/
 
 /***************************************************************************
  user defined functions
 **************************************************************************/
+
+static void* page_aligned_malloc(size_t size)
+{
+   /* Memory alignment is not very portable yet.  Posix defines the
+      posix_memalign() function.  BSD (long ago) defined the valloc()
+      function and SYSV had memalign(). */
+
+   /* 6-18-2003: MWZ:
+      These are the functions defined for various platforms:
+
+      FL7.1 and earlier: valloc and memalign (No man pages though.)
+
+      FL7.3 and later: valloc, memalign and posix_memalign
+
+      IRIX 6.5: valloc and memalign
+      
+      Solaris 2.6, 2.7, 2.8: valloc and memalign
+
+      OSF1 v40d: valloc
+   */
+   
+#if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
+   void* mem_p;
+   int error;
+   
+   if((error = posix_memalign(&mem_p,
+			      (size_t)sysconf(_SC_PAGESIZE), size)) != 0)
+   {
+      errno = error;
+      return NULL;
+   }
+   return mem_p;
+#elif defined ( __osf__ )
+   return valloc(size);
+#else
+   return memalign((size_t)sysconf(_SC_PAGESIZE), size);
+#endif
+}
 
 static void sig_alarm(int sig_num)
 {
@@ -572,10 +656,10 @@ static unsigned int get_fsync_waittime(struct transfer *info)
   
   /* Calculate the amount of time to wait for the amount of data transfered
      between syncs will take assuming a minumum rate requirement. */
-  return (unsigned int)(get_fsync_threshold(info)/(float)MINIMUM_RATE) + 1;
+  return (unsigned int)(get_fsync_threshold(info)/(double)MINIMUM_RATE) + 1U;
   
   /* To cause intentional DEVICE_ERRORs use the following line instead. */
-  /*return (time_t)(info->block_size/(float)MINIMUM_RATE) + 1;*/
+  /*return (time_t)(info->block_size/(float)MINIMUM_RATE) + 1U;*/
 }
 
 /* A usefull function to round a value to the next full page. */
@@ -598,12 +682,12 @@ static unsigned long long min2ull(unsigned long long min1,
    return (min1 < min2) ? min1 : min2;
 }
 
-/* Returns the smaller of the two values. */
+/* Returns the smaller of the three values. */
 static unsigned long long min3ull(unsigned long long min1,
 				  unsigned long long min2,
 				  unsigned long long min3)
 {
-   return min2ull(min2ull(min1, min2), min2ull(min2, min3));
+   return min2ull(min2ull(min1, min2), min3);
 }
 
 /* Returns the larger of the two values. */
@@ -618,7 +702,7 @@ static unsigned long long max3ull(unsigned long long max1,
 				  unsigned long long max2,
 				  unsigned long long max3)
 {
-return max2ull(max2ull(max1, max2), max2ull(max2, max3));
+return max2ull(max2ull(max1, max2), max3);
 }
 
 /***************************************************************************/
@@ -639,15 +723,15 @@ static void print_status(FILE* fp, unsigned int bytes_transfered,
   /* Print W if write R if read. */
   direction = (info->transfer_direction > 0) ? 'W' : 'R';
   
-  fprintf(fp, "%c%c bytes: %15llu crc: %10u | ",
+  (void)fprintf(fp, "%c%c bytes: %15llu crc: %10u | ",
 	  direction, debug_print,
 	  (unsigned long long)info->bytes, info->crc_ui);
 
   for(i = 0; i < info->array_size; i++)
   {
-    fprintf(fp, " %6d", stored[i]);
+    (void)fprintf(fp, " %6d", stored[i]);
   }
-  fprintf(fp, "\n");
+  (void)fprintf(fp, "\n");
 
   pthread_mutex_unlock(&print_lock);
 
@@ -681,7 +765,7 @@ static void print_profile(struct profile *profile_data, int profile_count)
   int i;
 
   for(i = 0; i < profile_count; i++)
-    printf("%4d: sec: %11ld usec: %9ld  size: %10d  error: %3d\n",
+    (void)printf("%4d: sec: %11ld usec: %9ld  size: %10d  error: %3d\n",
 	   profile_data[i].whereami,
 	   profile_data[i].time.tv_sec,
 	   profile_data[i].time.tv_usec,
@@ -694,6 +778,7 @@ static void print_profile(struct profile *profile_data, int profile_count)
 /***************************************************************************/
 /***************************************************************************/
 
+/* Return 1 on error, 0 on success. */
 static int setup_mmap_io(struct transfer *info)
 {
   int fd = info->fd;            /* The file descriptor in question. */
@@ -701,13 +786,16 @@ static int setup_mmap_io(struct transfer *info)
   off_t bytes = info->size;     /* Number of bytes to transfer. (signed) */
   size_t mmap_len;              /* map_size adjusted to be memory aligned. */
   int advise_holder;            /* Contains the or-ed values for madvise. */
+  int mmap_permissions;         /* Hold the mmap_permisssions. */
 
   /* Determine the length of the memory mapped segment.  This value needs
      to be a multiple of the page size and a multiple of the block_size, but
      since the block_size is already aligned to the page size, just aligning
      to the block_size is sufficent. */
   mmap_len = align_to_size(info->mmap_size, info->block_size);
-  mmap_len = ((unsigned long long)bytes<mmap_len)?bytes:mmap_len;
+  /*mmap_len = ((unsigned long long)bytes < mmap_len) ? bytes : mmap_len;*/
+  mmap_len = (size_t)min2ull((unsigned long long)bytes,
+			     (unsigned long long)mmap_len);
   /* Make sure that the memory map length is set correctly.  Even if
      this file descriptor can not do memory mapped i/o, the other
      transfer thread might. */
@@ -729,63 +817,65 @@ static int setup_mmap_io(struct transfer *info)
 		       0.0, __FILE__, __LINE__);
     return 1;
   }
-  /* If the file is a local disk, use memory mapped i/o on it. */
-  if(S_ISREG(file_info.st_mode))
+  /* If the file descriptor is not a file, don't continue. */
+  if(!S_ISREG(file_info.st_mode))
   {
+     info->mmap_io = (bool)0U;
+     return 0;
+  }
 
-    if(info->transfer_direction > 0)  /* If true, it is a write. */
-    {
-      /* Set the size of the file. */
-      errno = 0;
-      if(ftruncate(fd, bytes) < 0)
-      {
+  /* When opening a mmapped i/o region for writing, the file must already
+     be there and already have the correct size. */
+  if(info->transfer_direction > 0)  /* If true, it is a write. */
+  {
+     /* Set the size of the file. */
+     errno = 0;
+     if(ftruncate(fd, bytes) < 0)
+     {
 	pack_return_values(info, 0, errno, FILE_ERROR, "ftruncate failed",
 			   0.0, __FILE__, __LINE__);
 	return 1;
-      }
-    }
+     }
+  }
 
-    /* Create the memory mapped file. info->mmap_ptr will equal the
-       starting memory address on success; MAP_FAILED on error. */
-    info->mmap_ptr = mmap(NULL, mmap_len, PROT_WRITE | PROT_READ,
-			  MAP_SHARED, fd, (off_t)0);
+  /* Determine the user permissions necessary for mmap io to work. */
+  if(info->transfer_direction > 0) /* If true, it is a write. */
+     mmap_permissions = PROT_WRITE | PROT_READ;
+  else
+     mmap_permissions = PROT_READ;
+  
+  /* Create the memory mapped file. info->mmap_ptr will equal the
+     starting memory address on success; MAP_FAILED on error. */
+  errno = 0;
+  if((info->mmap_ptr = mmap(NULL, mmap_len, mmap_permissions,
+			    MAP_SHARED, fd, (off_t)0)) == MAP_FAILED)
+  {
+     if(errno == ENODEV)
+     {
+	/* There probably should be a write to stderr here.  The message
+	   should say something like, "using mmapped i/o failed, reverting
+	   to posix based i/o." */
+#ifdef DEBUG_REVERT
+        (void)write(STDERR_FILENO, filesystem_mmap_io_error,
+	      strlen(filesystem_mmap_io_error));
+#endif /*DEBUG_REVERT*/
+        info->mmap_io = (bool)0U;
+	return 0;
+     }
+     else
+     {
+	if(info->transfer_direction > 0)  /* If true, it is a write. */
+	{
+	   /* If mmap() or madvise() failed on the write half of the transfer,
+	      set the filesize back to the original size.  On writes we don't,
+	      care about any file corruption (yet) because we have not written
+	      anything out.
+	      
+	      There is a good reason why it is set back to the original size.
+	      The original filesize on a user initiated transfer is 0 bytes.
+	      However, dcache sets the filesize in pnfs to the correct size;
+	      before it starts the encp. */
 
-    if(info->mmap_ptr != MAP_FAILED)
-    {
-      if(info->transfer_direction > 0) /* If true, it is a write to disk. */
-	advise_holder = MADV_SEQUENTIAL;
-      else
-	advise_holder = MADV_SEQUENTIAL | MADV_WILLNEED;
-      
-      /* Advise the system on the memory mapped i/o usage pattern. */
-      errno = 0;
-      if(madvise(info->mmap_ptr, mmap_len, advise_holder) < 0)
-      {
-	/* glibc versions prior to 2.2.x don't support the madvise function.
-	   If it is found not to be supported, don't worry.  Use the
-	   default read/write method.  This error sets errno to ENOSYS. */
-	/* IRIX does not support use of MADV_SEQUENTIAL.  This error sets
-	   errno to EINVAL. */
-
-	/* Clear the memory mapped information. */
-	munmap(info->mmap_ptr, info->mmap_len);
-	info->mmap_ptr = MAP_FAILED;
-      }
-    }
-
-    if(info->transfer_direction > 0)  /* If true, it is a write. */
-    {
-       /* If mmap() or madvise() failed on the write half of the transfer,
-	  set the filesize back to the original size.  On writes we don't,
-	  care about any file corruption (yet) because we have not written
-	  anything out.
-
-	  There is a good reason why it is set back to the original size.
-	  The original filesize on a user initiated transfer is 0 bytes.
-	  However, dcache sets the filesize in pnfs to the correct size;
-	  before it starts the encp. */
-       if(info->mmap_ptr == MAP_FAILED)
-       {
 	  errno = 0;
 	  if(ftruncate(fd, file_info.st_size) < 0)
 	  {
@@ -793,13 +883,90 @@ static int setup_mmap_io(struct transfer *info)
 				"ftruncate failed", 0.0, __FILE__, __LINE__);
 	     return 1;
 	  }
-       }
-    }
+	}
+	
+	pack_return_values(info, 0, errno, FILE_ERROR,
+			   "mmap failed", 0.0, __FILE__, __LINE__);
+	return 1;
+     }
   }
 
+  /* Turn on the SEQUENTIAL advise hints.  For writes also turn on the 
+     WILLNEED hint. */
+#if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
+  advise_holder = POSIX_MADV_SEQUENTIAL;
+  if(info->transfer_direction < 0) /* If true, it is a read from disk. */
+    advise_holder |= POSIX_MADV_WILLNEED;
+#else
+  advise_holder = MADV_SEQUENTIAL;
+  if(info->transfer_direction < 0) /* If true, it is a read from disk. */
+    advise_holder |= MADV_WILLNEED;
+#endif
+
+  /* Advise the system on the memory mapped i/o usage pattern. */
+  errno = 0;
+#if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
+  if(posix_madvise(info->mmap_ptr, info->mmap_len, advise_holder < 0)
+#else
+  if(madvise(info->mmap_ptr, info->mmap_len, advise_holder) < 0)
+#endif /* _POSIX_ADVISORY_INFO */
+  {
+     /* glibc versions prior to 2.4 don't support the madvise function.
+	If it is found not to be supported, don't worry.  Use the
+	default read/write method.  This error sets errno to ENOSYS. */
+     /* IRIX does not support use of MADV_SEQUENTIAL.  This error sets
+	errno to EINVAL. */
+
+     if(errno != ENOSYS) /* A real error occured. */
+     {
+	/* Clear the memory mapped information. */
+	if(munmap(info->mmap_ptr, info->mmap_len) < 0)
+	{
+	   info->mmap_ptr = MAP_FAILED; /* Set this explicitly. */
+	   pack_return_values(info, 0, errno, FILE_ERROR,
+			      "munmap failed", 0.0, __FILE__, __LINE__);
+	   /* don't return here, munmap and ftruncate must execute. */
+	}
+	
+	if(info->transfer_direction > 0)  /* If true, it is a write. */
+	{
+	   /* If madvise() failed on the write half of the transfer, set
+	      the filesize back to the original size.  On writes we don't,
+	      care about any file corruption (yet) because we have not written
+	      anything out.
+	      
+	      There is a good reason why it is set back to the original size.
+	      The original filesize on a user initiated transfer is 0 bytes.
+	      However, dcache sets the filesize in pnfs to the correct size;
+	      before it starts the encp. */
+	   
+	   errno = 0;
+	   if(ftruncate(fd, file_info.st_size) < 0)
+	   {
+	      info->mmap_ptr = MAP_FAILED; /* Set this explicitly. */
+	      pack_return_values(info, 0, errno, FILE_ERROR,
+				 "ftruncate failed", 0.0, __FILE__, __LINE__);
+	      /* don't return here, munmap and ftruncate must execute. */
+	   }
+	}
+
+	/* If this is true either munmap, ftruncate or both have failed too. */
+	if(info->mmap_ptr == MAP_FAILED)
+	   return 1;
+	else
+	{
+	   info->mmap_ptr = MAP_FAILED; /* Set this explicitly. */
+	   
+	   pack_return_values(info, 0, errno, FILE_ERROR,
+			      "madvise failed", 0.0, __FILE__, __LINE__);
+	   return 1;
+	}
+     }
+  }
   return 0;
 }
 
+/* Return 1 on error, 0 on success. */
 static int reinit_mmap_io(struct transfer *info)
 {
   int advise_value = 0; /* Advise hints for madvise. */
@@ -819,8 +986,10 @@ static int reinit_mmap_io(struct transfer *info)
     }
 
     /* Reset these values for the next segment. */
-    info->mmap_len = ((unsigned long long)info->bytes < info->mmap_len) ?
-       info->bytes : info->mmap_len;
+    /*info->mmap_len = ((unsigned long long)info->bytes < info->mmap_len) ?
+      (size_t)info->bytes : info->mmap_len;*/
+    info->mmap_len = (size_t)min2ull((unsigned long long)info->bytes,
+				     (unsigned long long)info->mmap_len);
     info->mmap_offset = 0;
     info->mmap_count += 1;
     info->mmap_left = info->mmap_len;
@@ -855,8 +1024,11 @@ static int reinit_mmap_io(struct transfer *info)
   {
     /* Reset these values for the next segment. Even if this thread does
        not care about page allignment, the other thread might. */
-    info->mmap_len = ((unsigned long long)info->bytes < info->mmap_len) ?
-       info->bytes:info->mmap_len;
+     /*info->mmap_len = ((unsigned long long)info->bytes < info->mmap_len) ?
+       info->bytes : info->mmap_len;
+     */
+    info->mmap_len = (size_t)min2ull((unsigned long long)info->bytes,
+				     (unsigned long long)info->mmap_len);
     info->mmap_offset = 0;
     info->mmap_count += 1;
     info->mmap_left = info->mmap_len;
@@ -865,6 +1037,7 @@ static int reinit_mmap_io(struct transfer *info)
   return 0;
 }
 
+/* Return 1 on error, 0 on success. */
 static int finish_mmap_io(struct transfer *info)
 {
   if(info->mmap_ptr != MAP_FAILED)
@@ -881,6 +1054,7 @@ static int finish_mmap_io(struct transfer *info)
   return 0;
 }
 
+/* Return 1 on error, 0 on success. */
 static int finish_write(struct transfer *info)
 {
   if(info->mmap_ptr != MAP_FAILED)
@@ -898,72 +1072,218 @@ static int finish_write(struct transfer *info)
   {
     /* If the file descriptor supports fsync force the data to be flushed to
        disk.  This can obviously fail for things like fsync-ing sockets, thus
-       any errors are ignored. */
-    fdatasync(info->fd);
-    /*fsync(info->fd);*/
-    /*sync();*/
+       EINVAL errors are ignored. */
+    errno = 0;
+    if(fsync(info->fd) < 0)
+    {
+       if(errno != EINVAL)
+       {
+	  pack_return_values(info, 0, errno, WRITE_ERROR,
+			 "fsync failed", 0.0, __FILE__, __LINE__);
+	  return 1;
+       }
+    }
   }
 
   return 0;
 }
 
-
+/* Return 1 on error, 0 on success. */
 static int setup_direct_io(struct transfer *info)
 {
   struct stat file_info;  /* Information about the file to read/write from. */
-  int sts, rtn_fcntl;
-  
-
-  /* If direct io was specified, check if it may work. */
-  if(info->direct_io)
-  {
-    /* Determine if the file descriptor supports fsync(). */
-    if(fstat(info->fd, &file_info))
-    {
-      pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
-			 __FILE__, __LINE__);
-      return 1;
-    }
-    /* Direct IO can only work on regular files.  Even if direct io is 
-       turned on the filesystem still has to support it. */
-    if(! S_ISREG(file_info.st_mode))
-    {
-      info->direct_io = 0;
-    }
-    else
-    {
 #ifdef O_DIRECT
-      /* If the system supports direct i/o attempt to turn it on. */
+  int new_fcntl;       /* Holder of FD flags or-ed with O_DIRECT. */
+  int rtn_fcntl;       /* Stores the original FD flags. */
+# ifdef linux 
+  int test_fcntl;      /* Compares original flags with new flags. */
+  void* temp_buffer;   /* Some achitectures require additional tests... */
+# endif /* linux */
+#endif /* O_DIRECT */
   
-      /*Get the current file descriptor flags.*/
-      if((rtn_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
-      {
-	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
-	return 1;
-      }
-      sts = rtn_fcntl | O_DIRECT;  /* turn on O_DIRECT */
-      /*Set the new file descriptor flags.*/
-      if(fcntl(info->fd, F_SETFL, sts) < 0)
-      {
+  /* If direct io was specified, check if it may work. */
+  if(info->direct_io == 0)
+  {
+     return 0;
+  }
+  
+  /* Stat the file.  The mode is used to check if it is a regular file. */
+  if(fstat(info->fd, &file_info))
+  {
+     pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
+			__FILE__, __LINE__);
+     return 1;
+  }
+  /* Direct IO can only work on regular files.  Even if direct io is 
+     turned on the filesystem still has to support it. */
+  if(! S_ISREG(file_info.st_mode))
+  {
+     info->direct_io = 0;
+     return 0;
+  }
+
+#ifdef O_DIRECT
+  /* If the system supports direct i/o attempt to turn it on. */
+
+  /* Get the current file descriptor flags. */
+  errno = 0;
+  if((rtn_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
+  {
+     pack_return_values(info, 0, errno, FILE_ERROR,
+			"fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
+     return 1;
+  }
+
+  new_fcntl = rtn_fcntl | O_DIRECT;  /* turn on O_DIRECT */
+  errno = 0;
+  /* Set the new file descriptor flags. */
+  if(fcntl(info->fd, F_SETFL, (long)new_fcntl) < 0)
+  {
+     if(errno == EINVAL) /* If true, direct i/o is not supported. */
+     {
+	/* There probably should be a write to stderr here.  The message
+	   should say something like, "using direct i/o failed, reverting
+	   to posix based i/o." */
+#ifdef DEBUG_REVERT
+        (void)write(STDERR_FILENO, generic_direct_io_error, 
+	      strlen(generic_direct_io_error));
+#endif /*DEBUG_REVERT*/
+	info->direct_io = 0;
+	return 0;
+     }
+     else
+     {
 	pack_return_values(info, 0, errno, FILE_ERROR,
 			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
 	return 1;
-      }
-#else
-      info->direct_io = 0;
-#endif
-    }
+     }
   }
 
+# ifdef linux
+
+  /* Even though direct i/o has been supported since the 2.4.10 Linux kernel,
+     Redhat for there 9.0 release (8.0 maybe too?) (2.4.20 Redhat kernel)
+     applied a patch that turned of direct i/o.  Stock kernels leave direct
+     i/o on.  The problem with how Redhat did it, is that the fcntl(F_SETFL)
+     call above does not return an error.  Thus, to detect this kernel
+     and turn off direct i/o recheck the FD flags. */
+  
+  /*Get the current file descriptor flags.*/
+  errno = 0;
+  if((test_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
+  {
+     pack_return_values(info, 0, errno, FILE_ERROR,
+			   "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
+     return 1;
+  }
+
+  /* Test to see if the fcntl(F_SETFL) function really succeded. */
+  if((test_fcntl & O_DIRECT) == 0)
+  {
+     /* There probably should be a write to stderr here.  The message
+	should say something like, "using direct i/o failed, reverting
+	to posix based i/o." */
+#ifdef DEBUG_REVERT
+     (void)write(STDERR_FILENO, kernel_direct_io_error,
+	   strlen(kernel_direct_io_error));
+#endif /*DEBUG_REVERT*/
+     info->direct_io = 0;
+     return 0;
+  }
+
+  /* Get some aligned memory for the following test(s). */
+  temp_buffer = page_aligned_malloc((size_t)sysconf(_SC_PAGESIZE));
+  
+  /* 2.4.9 kernels (FL7.1) and ealier do not support direct io.  The test for
+     running on one of these older Linux kernels is to write a non-page
+     aligned amount of data.  If successful (return value > 0) then direct
+     i/o is not supported. */
+
+  errno = 0;
+  if(write(info->fd, temp_buffer, (size_t)50U) > 0)
+  {
+     free(temp_buffer);
+
+     /* Clear the FD of the 0_DIRECT flag. */
+     if(fcntl(info->fd, F_SETFL, rtn_fcntl) < 0)
+     {
+	pack_return_values(info, 0, errno, FILE_ERROR,
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
+	return 1;
+     }
+     
+     /* There probably should be a write to stderr here.  The message
+	should say something like, "using direct i/o failed, reverting
+	to posix based i/o." */
+#ifdef DEBUG_REVERT
+     (void)write(STDERR_FILENO, kernel_direct_io_error,
+	   strlen(kernel_direct_io_error));
+#endif /*DEBUG_REVERT*/
+     info->direct_io = 0;
+     return 0;
+  }
+  
+  /* FL7.3 has a direct i/o bug that requires a confusing work around.
+     The check (within the kernel) to see if the opened file can really
+     do direct i/o is done during the write call and not during the
+     fcntl/open call.  Hence, the attempt at the following write() call.
+     If a properly aligned write is done and it succedes (return value != -1),
+     then direct i/o is available.
+  */
+
+  errno = 0;
+  if(write(info->fd, temp_buffer, (size_t)sysconf(_SC_PAGESIZE)) 
+     == (ssize_t)-1)
+  {
+     free(temp_buffer);
+
+     /* Clear the FD of the 0_DIRECT flag. */
+     if(fcntl(info->fd, F_SETFL, rtn_fcntl) < 0)
+     {
+	pack_return_values(info, 0, errno, FILE_ERROR,
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
+	return 1;
+     }
+
+     /* There probably should be a write to stderr here.  The message
+	should say something like, "using direct i/o failed, reverting
+	to posix based i/o." */
+#ifdef DEBUG_REVERT
+     (void)write(STDERR_FILENO, filesystem_direct_io_error,
+	   strlen(filesystem_direct_io_error));
+#endif /*DEBUG_REVERT*/
+     info->direct_io = 0;
+     return 0;
+  }
+
+  free(temp_buffer); /* Don't forget to free this memory. */
+
+  /* Rewind to the beginning of the file. */
+  if(lseek(info->fd, 0, SEEK_SET) < (off_t)0)
+  {
+     pack_return_values(info, 0, errno, FILE_ERROR,
+			"lseek failed", 0.0, __FILE__, __LINE__);
+     return 1;
+  }
+
+# endif /*linux*/
+  
+#else /* O_DIRECT is not even defined on the system. */
+# ifdef DEBUG_REVERT
+  (void)write(STDERR_FILENO, kernel_direct_io_error,
+	      strlen(kernel_direct_io_error));
+# endif /*DEBUG_REVERT*/
+  info->direct_io = 0;
+#endif /*O_DIRECT*/
   return 0;
 }
 
+/* Return 1 on error, 0 on success. */
 static int setup_posix_io(struct transfer *info)
 {
   struct stat file_info;  /* Information about the file to read/write from. */
 
-  /* Determine if the file descriptor supports fsync(). */
+  /* Stat the file.  The mode is used to check if it is a regular file. */
   if(fstat(info->fd, &file_info))
   {
     pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed",
@@ -1005,7 +1325,7 @@ static int do_select(struct transfer *info)
   /* Initialize select values. */
   errno = 0;
   FD_ZERO(&fds);
-  FD_SET(info->fd,&fds);
+  FD_SET(info->fd, &fds);
   timeout.tv_sec = info->timeout.tv_sec;
   timeout.tv_usec = info->timeout.tv_usec;
   
@@ -1039,11 +1359,11 @@ static int do_select(struct transfer *info)
 static ssize_t mmap_read(void *dst, size_t bytes_to_transfer,
 			 struct transfer *info)
 {
-  memcpy(dst, (void*)((unsigned int)info->mmap_ptr + 
-		      (unsigned int)info->mmap_offset),
-	 bytes_to_transfer);
+  (void)memcpy(dst,
+	       (void*)((uintptr_t)info->mmap_ptr+(uintptr_t)info->mmap_offset),
+	       bytes_to_transfer);
   
- return bytes_to_transfer;
+  return (ssize_t)bytes_to_transfer;
 }
 
 static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
@@ -1054,10 +1374,9 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
   /* If file supports memory mapped i/o perform the memory to memory copy
      that reads/writes from/to the file. */
   errno = 0;
-  memcpy((void*)((unsigned int)info->mmap_ptr +
-		 (unsigned int)info->mmap_offset),
-	 src,
-	 bytes_to_transfer);
+  (void)memcpy(
+	    (void*)((uintptr_t)info->mmap_ptr + (uintptr_t)info->mmap_offset),
+	    src, bytes_to_transfer);
 
   /* If this is the very end of the file, don't just set the dirty pages
      to be written to disk, wait for them to be written out to disk. */
@@ -1066,16 +1385,19 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
   else
     sync_type = MS_ASYNC;
 
-  pthread_testcancel(); /* Any syncing action will take time. */
+  pthread_testcancel(); /* Anys syncing action will take time. */
 
   /* Schedule the data for sync to disk now. */
-  msync((void*)((unsigned int)info->mmap_ptr +
-		(unsigned int)info->mmap_offset),
-	bytes_to_transfer, sync_type);
-  
+  if(msync((void*)((uintptr_t)info->mmap_ptr + (uintptr_t)info->mmap_offset),
+	   bytes_to_transfer, sync_type) < 0)
+  {
+     pack_return_values(info, 0, errno, WRITE_ERROR,
+			"msync error", 0.0, __FILE__, __LINE__);
+     return -1;
+  }
   pthread_testcancel(); /* Any syncing action will take time. */
 
-  return bytes_to_transfer;
+  return (ssize_t)bytes_to_transfer;
 }
 
 /* Act like the posix read() call.  But return all interpreted errors with -1.
@@ -1149,16 +1471,21 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
     /* Only apply after the last write() call.  Also, if the size of the
        file was a multiple of the alignment used, then everything is correct
        and attempting to do this file size 'fix' is unnecessary. */
-    if(info->bytes <= sts)
+    if((long long)info->bytes <= (long long)sts)
     {
       /* Adjust the write() return value.  After the last call to write()
 	 for the file this is/can be too long.  It needs to be shrunk down
 	 to the number of bytes written that we actually care about. */
-      sts = ((ssize_t)((signed long long)info->bytes));
+      sts = (ssize_t)info->bytes;
       /* Truncate size at end of transfer.  For direct io all writes must be
 	 a multiple of the page size.  The last write must be truncated down
 	 to the correct size. */
-      ftruncate(info->fd, info->size);
+      if(ftruncate(info->fd, info->size) < 0)
+      {
+	 pack_return_values(info, 0, errno, WRITE_ERROR,
+			    "ftruncate failed", 0.0, __FILE__, __LINE__);
+	 return -1;
+      }
     }
   }
   else /* posix i/o */
@@ -1169,24 +1496,37 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
     if(info->fsync_threshold)
     {
        /* If the number of bytes of data transfered since the last sync has
-	  passed, do the fsync and record amount completed. */
+	  passed, do the fdatasync() and record amount completed. */
       
       if((info->last_fsync - info->bytes) > info->fsync_threshold)
       {
 	info->last_fsync = info->bytes - sts;
 	pthread_testcancel(); /* Any sync action will take time. */
-	fdatasync(info->fd);
-	/*fsync(info->fd);*/
-	/*sync();*/
+	errno = 0;
+	if(fdatasync(info->fd)) /* Sync the data. */
+	{
+	   if(errno != EINVAL)
+	   {
+	      pack_return_values(info, 0, errno, WRITE_ERROR,
+				 "fdatasync failed", 0.0, __FILE__, __LINE__);
+	      return -1;
+	   }
+	}
       }
       /* If the entire file is transfered, do the fsync(). */
       else if((info->bytes - sts) == 0)
       {
 	info->last_fsync = info->bytes - sts;
 	pthread_testcancel(); /* Any syncing action will take time. */
-	fdatasync(info->fd);
-	/*fsync(info->fd);*/
-	/*sync();*/
+	if(fsync(info->fd)) /* Sync the data and metadata. */
+	{
+	   if(errno != EINVAL)
+	   {
+	      pack_return_values(info, 0, errno, WRITE_ERROR,
+				 "fsync failed", 0.0, __FILE__, __LINE__);
+	      return -1;
+	   }
+	}
       }
     }
     pthread_testcancel(); /* Any syncing action will take time. */
@@ -1256,7 +1596,7 @@ static int thread_init(struct transfer *info)
 
 /* The first parameter is the bin to wait on.  Last paramater is the transfer
    struct for this half of the transfer. */
-static int thread_wait(int bin, struct transfer *info)
+static int thread_wait(size_t bin, struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
@@ -1278,11 +1618,16 @@ static int thread_wait(int bin, struct transfer *info)
   if((stored[bin] > 0) == expected)  /*if(!stored[bin] == !expected)*/
   {
     /* Determine the absolute time to wait in pthread_cond_timedwait(). */
-    gettimeofday(&cond_wait_tv, NULL);
+    if(gettimeofday(&cond_wait_tv, NULL) < 0)
+    {
+      pack_return_values(info, 0, errno, TIME_ERROR,
+			 "gettimeofday failed", 0.0, __FILE__, __LINE__);
+      return 1;
+    }
     cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + info->timeout.tv_sec;
     cond_wait_ts.tv_nsec = cond_wait_tv.tv_usec * 1000;
 
-    while(1)
+    for( ; ; ) /* continue looping */
     {
        /* This bin still needs to be used by the other thread.  Put this thread
 	  to sleep until the other thread is done with it. */
@@ -1327,7 +1672,7 @@ static int thread_wait(int bin, struct transfer *info)
   return 0;
 }
 
-static int thread_signal(int bin, size_t bytes, struct transfer *info)
+static int thread_signal(size_t bin, size_t bytes, struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
 
@@ -1390,7 +1735,7 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
       pthread_cancel(tid);
 
       /* Set the alarm to determine if the thread is still alive. */
-      alarm(wait_time);
+      (void)alarm(wait_time);
 
       /* Collect the killed thread.  If this function fails to collect the
 	 canceled thread it is because that thread is stuck in the kernel
@@ -1400,7 +1745,7 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
 
       /* Either an error occured or (more likely) the thread was joined by
 	 this point.  Either way turn off the alarm. */
-      alarm(0);
+      (void)alarm(0);
       
       return rtn;
     }
@@ -1416,87 +1761,121 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
 /* Take the file descriptor of a file and return the files CRC. */
 static unsigned int ecrc_readback(int fd)
 {
-  size_t buffer_size = ECRC_READBACK_BUFFER_SIZE; /*buffer size for the read-
-						    back data blocks*/
-  char readback_buffer[ECRC_READBACK_BUFFER_SIZE]; /*the readback data buffer*/
+  size_t buffer_size = align_to_page(ECRC_READBACK_BUFFER_SIZE);
+                              /*buffer size for the readback data block*/
+  void* readback_buffer;      /*the readback data buffer*/
   unsigned int crc = 0;       /*used to hold the crc as it is updated*/
-  long nb, i;                 /*loop control variables*/
-  size_t rest;
+  off_t nb, i;                /*loop control variables*/
+  size_t rest;                /*the last part of the file < buffer_size*/
   struct stat stat_info;      /*used with fstat()*/
   ssize_t rtn;                /*system call return status*/
-  int rtn_fcntl;              /*fcntl() system call return status*/
-  int new_fcntl;              /*new value to pass to fcntl()s third arg*/
+#ifdef O_DIRECT
+  int getfl_fcntl;            /*fcntl() system call return status*/
+  int setfl_fcntl;            /*new value to pass to fcntl()s third arg*/
+#endif
 
-  if(fstat(fd, &stat_info) < 0)   /* To get the filesize. */
+  /* Stat to get the filesize. */
+  if(fstat(fd, &stat_info) < 0)
      return 0;
+  /* Verify this is a real file. */
   if(!S_ISREG(stat_info.st_mode))
   {
      errno = EINVAL;
      return 0;
   }
-  if(lseek(fd, (off_t)0, SEEK_SET) != 0) /* Set to beginning of file. */
+  
+  /* Set to beginning of file. */
+  if(lseek(fd, (off_t)0, SEEK_SET) != 0)
      return 0;
-
+  
 #ifdef O_DIRECT
   /* If O_DIRECT was used on the file descriptor, we need to turn it off.
-   It seems that (on Linux anyway) writing a file with direct i/o then
-   rewinding and rereading the file causes the reads to return the wrong
-   data or return an EINVAL error. On an IRIX machine, rewinding an
-   O_DIRECT opened file and rereading results in an EINVAL error. */
+     This simplifies the reading of the last part of the file that does
+     not fit into an entire buffer_size sized space. */
   
   /*Get the current file descriptor flags.*/
-  if((rtn_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
+  if((getfl_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
      return 0;
-  new_fcntl = rtn_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
+  setfl_fcntl = getfl_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
   /*Set the new file descriptor flags.*/
-  if(fcntl(fd, F_SETFL, new_fcntl) < 0)
-     return 0;
+  if(fcntl(fd, F_SETFL, setfl_fcntl) < 0)
+    return 0;
 #endif
 
   /*Initialize values used looping through reading in the file.*/
-  nb = stat_info.st_size / buffer_size;
-  rest = stat_info.st_size % buffer_size;
+  nb = (off_t)(stat_info.st_size / buffer_size);
+  rest = (size_t)(stat_info.st_size % buffer_size);
 
-  /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
-  for (i = 0; i < nb; i++)
+  /* Obtain page aligned buffer. */
+  errno = 0;
+  if((readback_buffer = page_aligned_malloc(buffer_size)) == NULL)
+  {
+     if(errno == 0)
+     {
+	errno = ENOMEM;
+     }
+     
+     return 0;
+  }
+  
+  /* Read in the file in 'buffer_size' sized blocks and calculate CRC. */
+  for(i = 0; i < nb; i++)
   {
     if((rtn = read(fd, readback_buffer, buffer_size)) < 0) /* test for error */
+    {
+       free(readback_buffer);
        return 0;
+    }
     else if(rtn != (ssize_t)buffer_size)             /* test for amount read */
     {
+       free(readback_buffer);
        errno = EIO;
        return 0;
     }
-    
-    crc = adler32(crc, readback_buffer, buffer_size);  /* calc. the crc */
+
+    /* calc. the crc */
+    crc = adler32(crc, readback_buffer, (unsigned int)buffer_size);
   }
-  if (rest)
+  if(rest)
   {
+    /* If one wanted to use direct i/o (or mmapped i/o with more work) for
+       the paranoid ecrc readback test then the following read() would have 
+       to have the 'rest' variable contain a page aligned value.  Most other
+       values are already page aligned should someone wish this to be
+       possible. */
+
     if((rtn = read(fd, readback_buffer, rest)) < 0)       /* test for error */
+    {
+       free(readback_buffer);
        return 0;
+    }
     else if(rtn != (ssize_t)rest)                   /* test for amount read */
     {
+       free(readback_buffer);
        errno = EIO;
        return 0;
     }
-    
-    crc = adler32(crc, readback_buffer, rest);  /* calc. the crc */
+
+    /* calc. the crc */
+    crc = adler32(crc, readback_buffer, (unsigned int)rest);
   }
 
+  free(readback_buffer);
+  
 #ifdef O_DIRECT
   /*Set the original file descriptor flags.*/
-  if(fcntl(fd, F_SETFL, rtn_fcntl) < 0)
+  if(fcntl(fd, F_SETFL, getfl_fcntl) < 0)
      return 0;
 #endif
 
-  /*return PyLong_FromUnsignedLong((unsigned long)crc);*/
-  return (unsigned long)crc;
+  return crc;
 }
 
 /***************************************************************************/
 /***************************************************************************/
 
-void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
+static void do_read_write_threaded(struct transfer *reads,
+				   struct transfer *writes)
 {
   size_t array_size = reads->array_size;  /* Number of buffer bins. */
   size_t block_size = reads->block_size;  /* Align the buffers size. */
@@ -1553,8 +1932,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   }
   /* Allocate page aligned memory for the actuall data buffer. */
   errno = 0;
-  if((buffer = memalign((size_t)sysconf(_SC_PAGESIZE),
-			array_size * align_to_page(block_size))) == NULL)
+  if((buffer = page_aligned_malloc(
+     array_size * align_to_page(block_size))) == NULL)
   {
     pack_return_values(reads, 0, errno, MEMORY_ERROR,
 		       "memalign failed", 0.0, __FILE__, __LINE__);
@@ -1567,7 +1946,7 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   {
     /* Since this error is for both reads and writes, copy it over to 
        the writes struct. */
-    memcpy(writes, reads, sizeof(reads));
+    (void)memcpy(writes, reads, sizeof(reads));
     return;
   }
   /*Snag this mutex before spawning the new threads.  Otherwise, there is
@@ -1600,7 +1979,7 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 			     &thread_read, reads)) != 0)
   {
     /* Don't let this thread continue on forever. */
-    thread_collect(writes->thread_id, get_fsync_waittime(writes));
+    (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "monitor thread creation failed", 0.0,
@@ -1616,8 +1995,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 			     &monitor_info)) != 0)
   {
     /* Don't let these threads continue on forever. */
-    thread_collect(writes->thread_id, get_fsync_waittime(writes));
-    thread_collect(reads->thread_id, get_fsync_waittime(reads));
+    (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
+    (void)thread_collect(reads->thread_id, get_fsync_waittime(reads));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
@@ -1630,9 +2009,9 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   if(gettimeofday(&cond_wait_tv, NULL) < 0)
   {
     /* Don't let these threads continue on forever. */
-    thread_collect(writes->thread_id, get_fsync_waittime(writes));
-    thread_collect(reads->thread_id, get_fsync_waittime(reads));
-    thread_collect(monitor_tid, get_fsync_waittime(writes));
+    (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
+    (void)thread_collect(reads->thread_id, get_fsync_waittime(reads));
+    (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, TIME_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
@@ -1651,7 +2030,7 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   {
 
     /* wait until the condition variable is set and we have the mutex */
-    while(1)
+    for( ; ; ) /* continue looping */
     {
        if((p_rtn = pthread_cond_timedwait(&done_cond, &done_mutex,
 					  &cond_wait_ts)) != 0)
@@ -1661,9 +2040,9 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 	     continue;
 	  
 	  /* Don't let these threads continue on forever. */
-	  thread_collect(writes->thread_id, get_fsync_waittime(writes));
-	  thread_collect(reads->thread_id, get_fsync_waittime(reads));
-	  thread_collect(monitor_tid, get_fsync_waittime(writes));
+	  (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
+	  (void)thread_collect(reads->thread_id, get_fsync_waittime(reads));
+	  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "waiting for condition failed", 0.0,
@@ -1688,8 +2067,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 	if(p_rtn != EINTR)
 	{
 	  /* Don't let these threads continue on forever. */
-	  thread_collect(writes->thread_id, get_fsync_waittime(writes));
-	  thread_collect(monitor_tid, get_fsync_waittime(writes));
+	  (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
+	  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
 	  /* Since, pack_return_values aquires this mutex, release it. */
 	  pthread_mutex_unlock(&done_mutex);
@@ -1705,10 +2084,10 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
       }
       if(reads->exit_status)
       {
-	/*fprintf(stderr,
-		"Read thread exited with error(%d) '%s' from %s line %d.\n",
-		reads->errno_val, strerror(reads->errno_val),
-		reads->filename, reads->line);*/
+	/*(void)fprintf(stderr,
+	  "Read thread exited with error(%d) '%s' from %s line %d.\n",
+	  reads->errno_val, strerror(reads->errno_val),
+	  reads->filename, reads->line);*/
 
 	/* Signal the other thread there was an error. We need to lock the
 	   mutex associated with the next bin to be used by the other thread.
@@ -1735,8 +2114,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 	if(p_rtn != EINTR)
 	{
 	  /* Don't let these threads continue on forever. */
-	  thread_collect(reads->thread_id, get_fsync_waittime(reads));
-	  thread_collect(monitor_tid, get_fsync_waittime(writes));
+	  (void)thread_collect(reads->thread_id, get_fsync_waittime(reads));
+	  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
 	  /* Since, pack_return_values aquires this mutex, release it. */
 	  pthread_mutex_unlock(&done_mutex);
@@ -1752,10 +2131,10 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
       }
       if(writes->exit_status)
       {
-	/*fprintf(stderr,
-		"Write thread exited with error(%d) '%s' from %s line %d.\n",
-		writes->errno_val, strerror(writes->errno_val),
-		writes->filename, writes->line);*/
+	/*(void)fprintf(stderr,
+	  "Write thread exited with error(%d) '%s' from %s line %d.\n",
+	  writes->errno_val, strerror(writes->errno_val),
+	  writes->filename, writes->line);*/
 
 	/* Signal the other thread there was an error. We need to lock the
 	   mutex associated with the next bin to be used by the other thread.
@@ -1776,35 +2155,63 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   pthread_mutex_unlock(&done_mutex);
 
   /* Don't let this thread continue on forever. */
-  thread_collect(monitor_tid, get_fsync_waittime(writes));
+  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 
+  /*free the address space, this should only be done here if an error occured*/
+  if(reads->mmap_ptr != MAP_FAILED)
+  {
+     if(munmap(reads->mmap_ptr, reads->mmap_len) < 0)
+     {
+	pack_return_values(reads, 0, errno, FILE_ERROR,
+			   "munmap failed",
+			   0.0, __FILE__, __LINE__);
+	return;
+     }
+  }
+  if(writes->mmap_ptr != MAP_FAILED)
+  {
+     if(munmap(writes->mmap_ptr, writes->mmap_len) < 0)
+     {
+	pack_return_values(writes, 0, errno, FILE_ERROR,
+			   "munmap failed",
+			   0.0, __FILE__, __LINE__);
+	return;
+     }
+  }
+  
   /* Print out an error message.  This information currently is not returned
      to encp.py. */
   if(reads->exit_status)
   {
-    fprintf(stderr, "Low-level read transfer failure: [Errno %d] %s: \n"
-	    "\terror type: %d  filename: %s  line: %d\n\tHigher "
-	    "encp levels will process this error and retry if possible.\n",
-	    reads->errno_val, strerror(reads->errno_val),
-	    reads->exit_status, reads->filename, reads->line);
-    fflush(stderr);
+    (void)fprintf(stderr, "Low-level read transfer failure: [Errno %d] %s: \n"
+		  "\terror type: %d  filename: %s  line: %d\n\tHigher encp "
+		  "levels will process this error and retry if possible.\n",
+		  reads->errno_val, strerror(reads->errno_val),
+		  reads->exit_status, reads->filename, reads->line);
+    while(fflush(stderr) == EOF)
+    {
+       if(errno == EINTR) /* If a signal interupted things, try again... */
+	  continue;
+       else /* ... otherwise give up. */
+	  break;
+    }
   }
   if(writes->exit_status)
   {
-    fprintf(stderr, "Low-level write transfer failure: [Errno %d] %s: \n"
-	    "\terror type: %d  filename: %s  line: %d\n\tHigher "
-	    "encp levels will process this error and retry if possible.\n",
-	    writes->errno_val, strerror(writes->errno_val),
-	    writes->exit_status, writes->filename, writes->line);
-    fflush(stderr);
+    (void)fprintf(stderr, "Low-level write transfer failure: [Errno %d] %s: \n"
+		  "\terror type: %d  filename: %s  line: %d\n\tHigher encp "
+		  "levels will process this error and retry if possible.\n",
+		  writes->errno_val, strerror(writes->errno_val),
+		  writes->exit_status, writes->filename, writes->line);
+    while(fflush(stderr) == EOF)
+    {
+       if(errno == EINTR) /* If a signal interupted things, try again... */
+	  continue;
+       else  /* ... otherwise give up. */
+	  break;
+    }
   }
 
-  /*free the address space, this should only be done here if an error occured*/
-  if(reads->mmap_ptr != MAP_FAILED)
-    munmap(reads->mmap_ptr, reads->mmap_len);
-  if(writes->mmap_ptr != MAP_FAILED)
-    munmap(writes->mmap_ptr, writes->mmap_len);
-  
   /*free the dynamic memory*/
   free(stored);
   free(buffer);
@@ -1823,8 +2230,10 @@ static void* thread_monitor(void *monitor_info)
   sigset_t sigs_to_block;      /* Signal set of those to block. */
 
   /* Block this signal.  Only the main thread should use/recieve it. */
-  sigemptyset(&sigs_to_block);
-  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigemptyset(&sigs_to_block) < 0)
+    pthread_exit(NULL);
+  if(sigaddset(&sigs_to_block, SIGALRM) < 0)
+    pthread_exit(NULL);
   if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
     pthread_exit(NULL);
 
@@ -1850,15 +2259,15 @@ static void* thread_monitor(void *monitor_info)
       pthread_exit(NULL);
 
     /* Grab the currently recorded start time. */
-    memcpy(&start_read, &(read_info->start_transfer_function),
-	   sizeof(struct timeval));
-    memcpy(&start_write, &(write_info->start_transfer_function),
-	   sizeof(struct timeval));
+    (void)memcpy(&start_read, &(read_info->start_transfer_function),
+		 sizeof(struct timeval));
+    (void)memcpy(&start_write, &(write_info->start_transfer_function),
+		 sizeof(struct timeval));
 
     if(pthread_mutex_unlock(&monitor_mutex))
       pthread_exit(NULL);
     
-    while(1)
+    for( ; ; ) /* continue looping */
     {
       
       pthread_testcancel(); /* Don't sleep if main thread is waiting. */
@@ -1998,8 +2407,8 @@ static void* thread_read(void *info)
   size_t bytes_remaining;       /* Number of bytes to move in one loop. */
   size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
   int sts = 0;                  /* Return value from various C system calls. */
-  int bin = 0;                  /* The current bin (bucket) to use. */
-  unsigned int crc_ui = 0;      /* Calculated checksum. */
+  size_t bin = 0U;              /* The current bin (bucket) to use. */
+  unsigned int crc_ui = 0U;     /* Calculated checksum. */
   struct stat file_info;        /* Information about the file to read from. */
   struct timeval start_time;    /* Holds time measurement value. */
   struct timeval end_time;      /* Holds time measurement value. */
@@ -2012,37 +2421,52 @@ static void* thread_read(void *info)
   sigset_t sigs_to_block;       /* Signal set of those to block. */
 
   /* Block this signal.  Only the main thread should use/recieve it. */
-  sigemptyset(&sigs_to_block);
-  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigemptyset(&sigs_to_block))
+  {
+    pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
+		       "sigemptyset failed", 0.0, __FILE__, __LINE__);
+    return NULL;
+  }
+  if(sigaddset(&sigs_to_block, SIGALRM))
+  {
+    pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
+		       "sigaddset failed", 0.0, __FILE__, __LINE__);
+    return NULL;
+  }
   if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
-    pack_return_values(info, 0, errno, SIGNAL_ERROR, "sigprocmask failed", 0.0,
-		       __FILE__, __LINE__);
+    pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
+		       "sigprocmask failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
 
   /* Initialize the time variables. */
 
   /* Initialize the running time incase of early failure. */
-  memset(&start_time, 0, sizeof(struct timeval));
-  memset(&end_time, 0, sizeof(struct timeval));
+  (void)memset(&start_time, 0, sizeof(struct timeval));
+  (void)memset(&end_time, 0, sizeof(struct timeval));
   /* Initialize the running time incase of early failure. */
-  gettimeofday(&start_total, NULL);
-  memcpy(&end_total, &start_total, sizeof(struct timeval));
+  if(gettimeofday(&start_total, NULL) < 0)
+  {
+    pack_return_values(read_info, 0, errno, TIME_ERROR, "gettimeofday failed",
+		       0.0, __FILE__, __LINE__);
+    return NULL;
+  }
+  (void)memcpy(&end_total, &start_total, sizeof(struct timeval));
   /* Initialize the thread's start time usage. */
   errno = 0;
-  if(getrusage(RUSAGE_SELF, &start_usage))
+  if(getrusage(RUSAGE_SELF, &start_usage) < 0)
   {
-    pack_return_values(info, 0, errno, TIME_ERROR, "getrusage failed", 0.0,
-		       __FILE__, __LINE__);
+    pack_return_values(read_info, 0, errno, TIME_ERROR, "getrusage failed",
+		       0.0, __FILE__, __LINE__);
     return NULL;
   }
 
-  /* Determine if the file descriptor supports fsync(). */
+  /* Stat the file.  The mode is used to check if it is a regular file. */
   errno = 0;
   if(fstat(read_info->fd, &file_info))
   {
-    pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
+    pack_return_values(read_info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
 		       __FILE__, __LINE__);
     return NULL;
   }
@@ -2058,16 +2482,16 @@ static void* thread_read(void *info)
       return NULL;
 
     /* Determine the number of bytes to transfer during this inner loop. */
-    bytes_remaining = min3ull((unsigned long long) read_info->bytes,
-			      (unsigned long long) read_info->block_size,
-			      (unsigned long long) read_info->mmap_left);
+    bytes_remaining = (size_t)min3ull((unsigned long long) read_info->bytes,
+				   (unsigned long long) read_info->block_size,
+				   (unsigned long long) read_info->mmap_left);
     /* Set this to zero. */
-    bytes_transfered = 0;
+    bytes_transfered = 0U;
 
-    while(bytes_remaining > 0)
+    while(bytes_remaining > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
-      if(gettimeofday(&start_time, NULL))
+      if(gettimeofday(&start_time, NULL) < 0)
       {
 	pack_return_values(read_info, 0, errno, TIME_ERROR,
 			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2075,7 +2499,7 @@ static void* thread_read(void *info)
       }
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(info))
+      if(do_select(read_info))
 	return NULL;
 
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -2088,7 +2512,7 @@ static void* thread_read(void *info)
 			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
-      if(gettimeofday(&(read_info->start_transfer_function), NULL))
+      if(gettimeofday(&(read_info->start_transfer_function), NULL) < 0)
       {
 	pack_return_values(read_info, 0, errno, TIME_ERROR,
 			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2105,14 +2529,14 @@ static void* thread_read(void *info)
       if(read_info->mmap_ptr != MAP_FAILED)
       {
 	sts = mmap_read((buffer + (bin * read_info->block_size)),
-			bytes_remaining, info);
+			bytes_remaining, read_info);
       }
       else
       {
 	/* Does double duty in that it also does the direct io read. */
 	sts = posix_read(
 	           (buffer + (bin * read_info->block_size) + bytes_transfered),
-		   bytes_remaining, info);
+		   bytes_remaining, read_info);
 	if(sts < 0)
 	  return NULL;
       }
@@ -2136,7 +2560,12 @@ static void* thread_read(void *info)
       }
 
       /* Record the time the read operation completes. */
-      gettimeofday(&end_time, NULL);
+      if(gettimeofday(&end_time, NULL) < 0)
+      {
+	pack_return_values(read_info, 0, errno, TIME_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
       /* Calculate wait time. */
       transfer_time += elapsed_time(&start_time, &end_time);
 
@@ -2172,7 +2601,7 @@ static void* thread_read(void *info)
        return NULL;
 
     /* Determine where to put the data. */
-    bin = (bin + 1) % read_info->array_size;
+    bin = (bin + 1U) % read_info->array_size;
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
     if(pthread_mutex_lock(&monitor_mutex))
@@ -2191,11 +2620,11 @@ static void* thread_read(void *info)
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  if(finish_mmap_io(info))
+  if(finish_mmap_io(read_info))
     return NULL;
 
   /* Get total end time. */
-  if(gettimeofday(&end_total, NULL))
+  if(gettimeofday(&end_total, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
 		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2203,7 +2632,7 @@ static void* thread_read(void *info)
   }
   /* Get the thread's time usage. */
   errno = 0;
-  if(getrusage(RUSAGE_SELF, &end_usage))
+  if(getrusage(RUSAGE_SELF, &end_usage) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
 		       "getrusage failed", 0.0, __FILE__, __LINE__);
@@ -2222,7 +2651,7 @@ static void* thread_read(void *info)
     corrected_time = rusage_elapsed_time(&start_usage, &end_usage) +
       transfer_time;
 
-  pack_return_values(info, read_info->crc_ui, 0, 0, "",
+  pack_return_values(read_info, read_info->crc_ui, 0, 0, "",
 		     corrected_time, NULL, 0);
   return NULL;
 }
@@ -2234,8 +2663,8 @@ static void* thread_write(void *info)
   size_t bytes_remaining;       /* Number of bytes to move in one loop. */
   size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
   int sts = 0;                  /* Return value from various C system calls. */
-  int bin = 0;                  /* The current bin (bucket) to use. */
-  unsigned long crc_ui = 0;     /* Calculated checksum. */
+  size_t bin = 0U;              /* The current bin (bucket) to use. */
+  unsigned int crc_ui = 0U;     /* Calculated checksum. */
   struct stat file_info;        /* Information about the file to write to. */
   struct timeval start_time;    /* Holds time measurement value. */
   struct timeval end_time;      /* Holds time measurement value. */
@@ -2248,28 +2677,43 @@ static void* thread_write(void *info)
   sigset_t sigs_to_block;       /* Signal set of those to block. */
 
   /* Block this signal.  Only the main thread should use/recieve it. */
-  sigemptyset(&sigs_to_block);
-  sigaddset(&sigs_to_block, SIGALRM);
+  if(sigemptyset(&sigs_to_block) < 0)
+  {
+    pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
+		       "sigemptyset failed", 0.0, __FILE__, __LINE__);
+    return NULL;
+  }
+  if(sigaddset(&sigs_to_block, SIGALRM) < 0)
+  {
+    pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
+		       "sigaddset failed", 0.0, __FILE__, __LINE__);
+    return NULL;
+  }
   if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
-    pack_return_values(info, 0, errno, SIGNAL_ERROR, "sigprocmask failed", 0.0,
-		       __FILE__, __LINE__);
+    pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
+		       "sigprocmask failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   
   /* Initialize the time variables. */
 
   /* Initialize the running time incase of early failure. */
-  memset(&start_time, 0, sizeof(struct timeval));
-  memset(&end_time, 0, sizeof(struct timeval));
+  (void)memset(&start_time, 0, sizeof(struct timeval));
+  (void)memset(&end_time, 0, sizeof(struct timeval));
   /* Initialize the running time incase of early failure. */
-  gettimeofday(&start_total, NULL);
-  memcpy(&end_total, &start_total, sizeof(struct timeval));
-  /* Get the thread's start time usage. */
-  if(getrusage(RUSAGE_SELF, &start_usage))
+  if(gettimeofday(&start_total, NULL) < 0)
   {
-    pack_return_values(info, 0, errno, TIME_ERROR, "getrusage failed", 0.0,
-		       __FILE__, __LINE__);
+    pack_return_values(write_info, 0, errno, TIME_ERROR,
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
+    return NULL;
+  }
+  (void)memcpy(&end_total, &start_total, sizeof(struct timeval));
+  /* Get the thread's start time usage. */
+  if(getrusage(RUSAGE_SELF, &start_usage) < 0)
+  {
+    pack_return_values(write_info, 0, errno, TIME_ERROR, "getrusage failed",
+		       0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -2277,7 +2721,7 @@ static void* thread_write(void *info)
   errno = 0;
   if(fstat(write_info->fd, &file_info) < 0)
   {
-    pack_return_values(info, 0, errno, FILE_ERROR,
+    pack_return_values(write_info, 0, errno, FILE_ERROR,
 		       "fstat failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
@@ -2285,7 +2729,7 @@ static void* thread_write(void *info)
   while(write_info->bytes > 0)
   {
     /* If the mmapped memory segment is finished, get the next. */
-    if(reinit_mmap_io(info))
+    if(reinit_mmap_io(write_info))
       return NULL;
 
     /* If the other thread is slow, wait for it. */
@@ -2295,12 +2739,12 @@ static void* thread_write(void *info)
     /* Determine the number of bytes to transfer during this inner loop. */
     bytes_remaining = stored[bin];
     /* Set this to zero. */
-    bytes_transfered = 0;
+    bytes_transfered = 0U;
 
-    while(bytes_remaining > 0)
+    while(bytes_remaining > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
-      if(gettimeofday(&start_time, NULL))
+      if(gettimeofday(&start_time, NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
 			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2308,7 +2752,7 @@ static void* thread_write(void *info)
       }
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(info))
+      if(do_select(write_info))
 	return NULL;
       
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -2321,7 +2765,7 @@ static void* thread_write(void *info)
 			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
-      if(gettimeofday(&(write_info->start_transfer_function), NULL))
+      if(gettimeofday(&(write_info->start_transfer_function), NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
 			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2338,14 +2782,14 @@ static void* thread_write(void *info)
       {
 	sts = mmap_write(
 	          (buffer + (bin * write_info->block_size) + bytes_transfered),
-		  bytes_remaining, info);
+		  bytes_remaining, write_info);
       }
       else
       {
 	/* Does double duty in that it also does the direct io write. */
 	sts = posix_write(
 		  (buffer + (bin * write_info->block_size) + bytes_transfered),
-		  bytes_remaining, info);
+		  bytes_remaining, write_info);
 	if(sts < 0)
 	  return NULL;
       }
@@ -2370,7 +2814,7 @@ static void* thread_write(void *info)
 
       /* Record the time that this thread wakes up from waiting for the
 	 condition variable. */
-      if(gettimeofday(&end_time, NULL))
+      if(gettimeofday(&end_time, NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
 			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2393,7 +2837,7 @@ static void* thread_write(void *info)
 	write_info->crc_ui = crc_ui;
 	break;
       default:
-	crc_ui=0;
+	crc_ui=0U;
 	write_info->crc_ui = crc_ui;
 	break;
       }
@@ -2413,7 +2857,7 @@ static void* thread_write(void *info)
        return NULL;
 
     /* Determine where to get the data. */
-    bin = (bin + 1) % write_info->array_size;
+    bin = (bin + 1U) % write_info->array_size;
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
     if(pthread_mutex_lock(&monitor_mutex))
@@ -2436,7 +2880,7 @@ static void* thread_write(void *info)
     return NULL;
 
   /* Get total end time. */
-  if(gettimeofday(&end_total, NULL))
+  if(gettimeofday(&end_total, NULL) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
 		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
@@ -2444,7 +2888,7 @@ static void* thread_write(void *info)
   }
   /* Get the thread's time usage. */
   errno = 0;
-  if(getrusage(RUSAGE_SELF, &end_usage))
+  if(getrusage(RUSAGE_SELF, &end_usage) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
 		       "getrusage failed", 0.0, __FILE__, __LINE__);
@@ -2470,7 +2914,8 @@ static void* thread_write(void *info)
 /***************************************************************************/
 /***************************************************************************/
 
-void do_read_write(struct transfer *read_info, struct transfer *write_info)
+static void do_read_write(struct transfer *read_info,
+			  struct transfer *write_info)
 {
   ssize_t sts;                  /* Return status from read() and write(). */
   size_t bytes_remaining;       /* Number of bytes to move in one loop. */
@@ -2485,7 +2930,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
   unsigned int crc_ui = 0;      /* Calculated checksum. */
 
 #ifdef PROFILE
-  memset(profile_data, 0, sizeof(profile_data));
+  (void)memset(profile_data, 0, sizeof(profile_data));
 #endif /*PROFILE*/
 
   /* Detect (and setup if necessary) the use of memory mapped io. */
@@ -2508,8 +2953,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
   
   /* Allocate page aligned memory for the actuall data buffer. */
   errno = 0;
-  if((buffer = memalign((size_t)sysconf(_SC_PAGESIZE), read_info->block_size))
-     == NULL)
+  if((buffer = page_aligned_malloc(read_info->block_size)) == NULL)
   {
     pack_return_values(read_info, 0, errno, MEMORY_ERROR, "memalign failed",
 		       0.0, __FILE__, __LINE__);
@@ -2541,7 +2985,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
 		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return;
   }
-  memcpy(&end_time, &start_time, sizeof(struct timeval));
+  (void)memcpy(&end_time, &start_time, sizeof(struct timeval));
 
   while(read_info->bytes > 0 && write_info->bytes > 0)
   {
@@ -2553,13 +2997,13 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
       return;
 
     /* Number of bytes remaining for this loop. */
-    bytes_remaining = min3ull((unsigned long long)read_info->bytes,
-			      (unsigned long long)read_info->block_size,
-			      (unsigned long long)read_info->mmap_left);
+    bytes_remaining = (size_t)min3ull((unsigned long long)read_info->bytes,
+				    (unsigned long long)read_info->block_size,
+				    (unsigned long long)read_info->mmap_left);
     /* Set this to zero. */
-    bytes_transfered = 0;
+    bytes_transfered = 0U;
 
-    while(bytes_remaining > 0)
+    while(bytes_remaining > 0U)
     {
 #ifdef PROFILE
       update_profile(1, bytes_remaining, read_info->fd,
@@ -2612,9 +3056,9 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
 
     /* Initialize the write loop variables. */
     bytes_remaining = bytes_transfered;
-    bytes_transfered = 0;
+    bytes_transfered = 0U;
 
-    while (bytes_remaining > 0)
+    while (bytes_remaining > 0U)
     {
 
 #ifdef PROFILE
@@ -2659,7 +3103,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
       case 0:
 	break;
       case 1:  
-	crc_ui=adler32(crc_ui, (void*)((int)buffer+(int)bytes_transfered),
+	crc_ui=adler32(crc_ui, (void*)((uintptr_t)buffer + bytes_transfered),
 		       (unsigned int)sts);
 	/*write_info->crc_ui = crc_ui;*/
 	break;
@@ -2841,8 +3285,8 @@ EXfd_xfer(PyObject *self, PyObject *args)
 	crc_flag = PyInt_AsLong(crc_obj_tp);
     else 
 	return(raise_exception("fd_xfer - invalid crc param"));
-    if (crc_flag>1 || crc_flag<0)
-	fprintf(stderr, "fd_xfer - invalid crc param");
+    if (crc_flag > 1 || crc_flag < 0)
+	return(raise_exception("fd_xfer - invalid crc param"));
 
     /* determine mmap array size */
     if (PyLong_Check(mmap_size_obj))
@@ -2855,8 +3299,8 @@ EXfd_xfer(PyObject *self, PyObject *args)
     /*Place the values into the struct.  Some compilers complained when this
       information was placed into the struct inline at initalization.  So it
       was moved here.*/
-    memset(&reads, 0, sizeof(reads));
-    memset(&writes, 0, sizeof(writes));
+    (void)memset(&reads, 0, sizeof(reads));
+    (void)memset(&writes, 0, sizeof(writes));
     reads.fd = fr_fd;
     reads.mmap_ptr = MAP_FAILED;
     reads.mmap_len = 0;
@@ -3017,30 +3461,33 @@ int main(int argc, char **argv)
 	break;
       case 'a':  /* array size */
 	errno = 0;
-	if((array_size = (int)strtol(optarg, NULL, 0)) == 0)
+	if((array_size = (size_t)strtoul(optarg, NULL, 0)) == 0)
 	{
-	  printf("invalid array size(%s): %s\n", optarg, strerror(errno));
+	  (void)fprintf(stderr, "invalid array size(%s): %s\n",
+			 optarg, strerror(errno));
 	  return 1;
 	}
 	break;
       case 'b':  /* block size */
 	errno = 0;
-	if((block_size = (int)strtol(optarg, NULL, 0)) == 0)
+	if((block_size = (size_t)strtoul(optarg, NULL, 0)) == 0)
 	{
-	  printf("invalid block size(%s): %s\n", optarg, strerror(errno));
+	  (void)fprintf(stderr, "invalid block size(%s): %s\n",
+		       optarg, strerror(errno));
 	  return 1;
 	}
 	break;
       case 'l':  /* mmap length */
 	errno = 0;
-	if((mmap_size = strtol(optarg, NULL, 0)) == 0)
+	if((mmap_size = (size_t)strtoul(optarg, NULL, 0)) == 0)
 	{
-	  printf("invalid mmap size(%s): %s\n", optarg, strerror(errno));
+	  (void)fprintf(stderr, "invalid mmap size(%s): %s\n",
+		       optarg, strerror(errno));
 	  return 1;
 	}
 	break;
       default:
-	printf("Unknown option: -%c\n", optopt);
+	(void)fprintf(stderr, "Unknown option: -%c\n", optopt);
       }
     }
     /* Remember the index for the first non-option argument found. */
@@ -3076,10 +3523,10 @@ int main(int argc, char **argv)
 
   /* Determine the flags for the input file descriptor. */
   flags_in = 0;
-#ifdef O_DIRECT
+/*#ifdef O_DIRECT
   if(direct_io_in)
      flags_in |= O_DIRECT;
-#endif
+     #endif*/
   if(mmap_io_in)
      flags_in |= O_RDWR;
   else
@@ -3087,10 +3534,10 @@ int main(int argc, char **argv)
   
   /* Determine the flags for the output file descriptor. */
   flags_out |= O_CREAT | O_TRUNC;
-#ifdef O_DIRECT
+/*#ifdef O_DIRECT
   if(direct_io_out)
      flags_out |= O_DIRECT;
-#endif 
+     #endif*/ 
   if(mmap_io_out || ecrc)
      flags_out |= O_RDWR;
   else
@@ -3099,46 +3546,49 @@ int main(int argc, char **argv)
   /* Check the number of arguments from the command line. */
   if(argc < 3)
   {
-    printf("Usage: %s [-edmtva:b:l:] <source_file> [-dm] <dest_file>\n",
-	    argv[0]);
+    (void)fprintf(stderr,
+		  "Usage: %s [-edmtva:b:l:] <source_file> [-dm] <dest_file>\n",
+		  argv[0]);
     return 1;
   }
 
   if(verbose)
   {
-     printf("Threaded: %s\n", ON_OFF(threaded_transfer));
-     printf("Ecrc: %s\n", ON_OFF(ecrc));
-     printf("Block size: %d\n", block_size);
-     printf("Array size: %d\n", array_size);
-     printf("Mmap size: %u\n", mmap_size);
-     printf("Direct i/o in: %s\n", ON_OFF(direct_io_in));
-     printf("Mmap i/o in: %s\n", ON_OFF(mmap_io_in));
-     printf("Direct i/o out: %s\n", ON_OFF(direct_io_out));
-     printf("Mmap i/o out: %s\n", ON_OFF(mmap_io_out));
+     (void)printf("Threaded: %s\n", ON_OFF(threaded_transfer));
+     (void)printf("Ecrc: %s\n", ON_OFF(ecrc));
+     (void)printf("Block size: %d\n", block_size);
+     (void)printf("Array size: %d\n", array_size);
+     (void)printf("Mmap size: %u\n", mmap_size);
+     (void)printf("Direct i/o in: %s\n", ON_OFF(direct_io_in));
+     (void)printf("Mmap i/o in: %s\n", ON_OFF(mmap_io_in));
+     (void)printf("Direct i/o out: %s\n", ON_OFF(direct_io_out));
+     (void)printf("Mmap i/o out: %s\n", ON_OFF(mmap_io_out));
   }
 
   /* Check the input file. */
   if(argv[first_file_optind] == NULL)
   {
-     printf("input file not specified.\n");
+     (void)fprintf(stderr, "input file not specified.\n");
      return 1;
   }
   errno = 0;
   if(stat(argv[first_file_optind], &file_info) < 0)
   {
-     printf("input stat(%s): %s\n", argv[first_file_optind], strerror(errno));
+     (void)fprintf(stderr, "input stat(%s): %s\n",
+		   argv[first_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
   if(realpath(argv[first_file_optind], abspath) == NULL)
   {
-     printf("input file(%s): %s\n", argv[first_file_optind], strerror(errno));
+     (void)fprintf(stderr, "input file(%s): %s\n",
+		   argv[first_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
   if(!S_ISREG(file_info.st_mode) && (strcmp(abspath, "/dev/zero") != 0))
   {
-     printf("input file %s is not a regular file\n", abspath);
+     (void)fprintf(stderr, "input file %s is not a regular file\n", abspath);
      return 1;
   }
   /* If reading from /dev/zero, set the size.  Otherwise, remember the size
@@ -3152,19 +3602,19 @@ int main(int argc, char **argv)
   errno = 0;
   if((fd_in = open(abspath, flags_in)) < 0)
   {
-    printf("input open(%s): %s\n", abspath, strerror(errno));
+    (void)fprintf(stderr, "input open(%s): %s\n", abspath, strerror(errno));
     return 1;
   }
 
   if(verbose)
   {
-     printf("The input file: %s\n", abspath);
+     (void)fprintf(stderr, "The input file: %s\n", abspath);
   }
   
   /* Check the output file. */
   if(argv[second_file_optind] == NULL)
   {
-     printf("output file not specified.\n");
+     (void)fprintf(stderr, "output file not specified.\n");
      return 1;
   }
 
@@ -3173,15 +3623,15 @@ int main(int argc, char **argv)
   if((fd_out = open(argv[second_file_optind], flags_out,
 		    S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
   {
-     printf("output open(%s): %s\n",
-	    argv[second_file_optind], strerror(errno));
+     (void)fprintf(stderr, "output open(%s): %s\n",
+		   argv[second_file_optind], strerror(errno));
      return 1;
   }
   errno = 0;
   if(realpath(argv[second_file_optind], abspath) == NULL)
   {
-     printf("output file(%s): %s\n",
-	    argv[second_file_optind], strerror(errno));
+     (void)fprintf(stderr, "output file(%s): %s\n",
+		   argv[second_file_optind], strerror(errno));
      return 1;
   }
 
@@ -3189,26 +3639,26 @@ int main(int argc, char **argv)
   errno = 0;
   if(stat(abspath, &file_info) < 0)
   {
-     printf("output stat(%s): %s\n", abspath, strerror(errno));
+     (void)fprintf(stderr, "output stat(%s): %s\n", abspath, strerror(errno));
      return 1;
   }
   errno = 0;
   if(!S_ISREG(file_info.st_mode) && (strcmp(abspath, "/dev/null") != 0))
   {
-     printf("output file %s is not a regular file\n", abspath);
+     (void)fprintf(stderr, "output file %s is not a regular file\n", abspath);
      return 1;
   }
   
   if(verbose)
   {
-     printf("The output file: %s\n", abspath);
+     (void)printf("The output file: %s\n", abspath);
   }
   
   /*Place the values into the struct.  Some compilers complained when this
     information was placed into the struct inline at initalization.  So it
     was moved here.*/
-  memset(&reads, 0, sizeof(reads));
-  memset(&writes, 0, sizeof(writes));
+  (void)memset(&reads, 0, sizeof(reads));
+  (void)memset(&writes, 0, sizeof(writes));
   reads.fd = fd_in;
   reads.mmap_ptr = MAP_FAILED;
   reads.mmap_len = 0;
@@ -3224,8 +3674,8 @@ int main(int argc, char **argv)
   reads.crc_flag = 0;
 #endif
   reads.transfer_direction = -1; /* negitive means read */
-  reads.direct_io = direct_io_in;
-  reads.mmap_io = mmap_io_in;
+  reads.direct_io = (bool)direct_io_in;
+  reads.mmap_io = (bool)mmap_io_in;
   writes.fd = fd_out;
   writes.mmap_ptr = MAP_FAILED;
   writes.mmap_len = 0;
@@ -3237,8 +3687,8 @@ int main(int argc, char **argv)
   writes.timeout = timeout;
   writes.crc_flag = 1;
   writes.transfer_direction = 1; /* positive means write */
-  writes.direct_io = direct_io_out;
-  writes.mmap_io = mmap_io_out;
+  writes.direct_io = (bool)direct_io_out;
+  writes.mmap_io = (bool)mmap_io_out;
 
   /* Do the transfer test. */
   errno = 0;
@@ -3249,38 +3699,44 @@ int main(int argc, char **argv)
 
   if (writes.exit_status != 0 && writes.errno_val != ECANCELED)
   {
-     printf("Write error [ errno %d ]: %s: %s  File: %s  Line: %d\n",
-	    writes.errno_val, strerror(writes.errno_val), writes.msg,
-	    writes.filename, writes.line);
+     (void)printf("Write error [ errno %d ]: %s: %s  File: %s  Line: %d\n",
+		  writes.errno_val, strerror(writes.errno_val), writes.msg,
+		  writes.filename, writes.line);
      return 1;
   }
   else if (reads.exit_status != 0)
   {
-     printf("Read error [ errno %d ]: %s: %s:  File: %s  Line: %d\n",
-	    reads.errno_val, strerror(reads.errno_val), reads.msg,
-	    reads.filename, reads.line);
+     (void)printf("Read error [ errno %d ]: %s: %s:  File: %s  Line: %d\n",
+		  reads.errno_val, strerror(reads.errno_val), reads.msg,
+		  reads.filename, reads.line);
      return 1;
   }
   else
   {
      if(verbose)
-	printf("Read time: %f  Write time: %f  Size: %lld  CRC: %u\n",
-	       reads.transfer_time, writes.transfer_time, size, writes.crc_ui);
-     printf("Read rate: %f MB/s Write rate: %f MB/s\n",
-	    size/(1024*1024)/reads.transfer_time,
-	    size/(1024*1024)/writes.transfer_time);
+	(void)printf("Read time: %f  Write time: %f  Size: %lld  CRC: %u\n",
+		     reads.transfer_time, writes.transfer_time,
+		     size, writes.crc_ui);
+     (void)printf("Read rate: %f MB/s Write rate: %f MB/s\n",
+		  (double)(size/(1024*1024)/reads.transfer_time),
+		  (double)(size/(1024*1024)/writes.transfer_time));
   }
 
   if(ecrc)
   {
      errno = 0;
      crc_ui = ecrc_readback(writes.fd);
-     if((crc_ui == 0) && (errno != 0))
-	printf("Error performing ecrc readback check: %s\n", strerror(errno));
+     if((crc_ui == 0U) && (errno != 0U))
+     {
+	(void)printf("Error performing ecrc readback check: %s\n",
+		     strerror(errno));
+     }
      else
+     {
 	if(crc_ui != writes.crc_ui)
-	   printf("CRC mismatch: original: %u  readback: %u\n",
-		  writes.crc_ui, crc_ui);
+	   (void)printf("CRC mismatch: original: %u  readback: %u\n",
+			writes.crc_ui, crc_ui);
+     }
   }
   
   return 0;
