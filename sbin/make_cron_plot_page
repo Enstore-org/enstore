@@ -1,0 +1,5 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+python $ENSTORE_DIR/src/enstore_make_plot_page.py
