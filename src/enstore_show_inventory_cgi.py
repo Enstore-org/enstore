@@ -22,6 +22,14 @@ else:
 
 special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS']
 
+if cluster == "d0en":
+	special.append('NOACCESS')
+	special.append('AML2-VOLUMES.html')
+elif cluster == "stken":
+	special.append('VOLUME_QUOTAS_UPDATE')
+	special.append('AMLJ-VOLUMES.html')
+	special.append('STK-VOLUMES.html')
+
 catalog = {}
 
 cmd = 'ls '+cheat_dir
@@ -55,26 +63,23 @@ print '<hr>'
 
 print '<p>'
 for i in special:
-	print '|<a href="'+os.path.join(inv_dir, i)+'">', i, '</a>'
-print '|'
+	print '<a href="'+os.path.join(inv_dir, i)+'">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
 print '<p><a href="'+inv_dir+'">Raw Directory Listing</a>'
 print '<hr>'
 print '<p>'
 print '<h2><font color="#aa0000">Index</font></h2>'
-print '<ul>'
 keys = catalog.keys()
 keys.sort()
 
 for i in keys:
-	print '<li><a href=#'+i+'>'+i+'</a>'
-print '</ul>'
+	print '<a href=#'+i+'>'+i+'</a>&nbsp;&nbsp;'
 
 for i in keys:
 	print '<hr>'
 	print '<p>'
 	print '<h2><a name="'+i+'"><font color="#aa0000">'+i+'</font></a></h2>'
 	for j in catalog[i]:
-		print '<a href="'+os.path.join(inv_dir, j)+'">', j, '</a>'
+		print '<a href="'+os.path.join(inv_dir, j)+'">', j, '</a>&nbsp;&nbsp;'
 
 # the end
 print '</body>'
