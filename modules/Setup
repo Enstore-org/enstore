@@ -59,3 +59,5 @@ ETape ETape.c -L$(FTT_DIR)/lib -lftt
 EXfer EXfer.c -L$(FTT_DIR)/lib -lftt
 
 Devcodes Devcodes.c
+
+Trace Trace.c trace.a
