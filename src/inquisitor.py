@@ -81,6 +81,7 @@ DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 FF_W = "file_family_width"
 NUM_IN_Q = "num_in_q"
+RESTRICTED_ACCESS = "RESTRICTED_ACCESS"
 
 defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
@@ -1451,7 +1452,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
         sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
 	dfile, seen_down_d = enstore_functions.read_seen_down_file(self.html_dir)
-	if sfile.opened != 0:
+	if sfile and ((sfile.opened != 0) or (sfile.exists() == 0)):
 	    ticket["outage"] = outage_d
 	    ticket["offline"] = offline_d
 	    ticket["override"] = override_d
@@ -1460,9 +1461,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.log(e_errors.ERROR,
 		      "Could not read file %s/%s"%(self.html_dir, 
 						   enstore_constants.OUTAGEFILE))
-	if dfile.opened != 0:
+	if dfile and ((dfile.opened != 0) or (dfile.exists() == 0)):
 	    ticket["seen_down"] = seen_down_d
-	else:
+        else:
 	    ticket["status"] = (e_errors.IOERROR, None)
 	    Trace.log(e_errors.ERROR,
 		      "Could not read file %s/%s"%(self.html_dir, 
