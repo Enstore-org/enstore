@@ -6,6 +6,7 @@ import sys
 import time
 import errno
 import pprint
+import os
 
 # enstore imports
 import generic_client
@@ -15,12 +16,6 @@ import Trace
 import callback
 import e_errors
 import socket
-
-def get_config_host():
-    return blah
-
-def get_config_port():
-    return blah
 
 MY_NAME = "CONFIG_CLIENT"
 MY_SERVER = "configuration_server"
@@ -35,8 +30,18 @@ class ConfigurationClient(generic_client.GenericClient):
         self.server_address=address
         self.u = udp_client.UDPClient()
 
+    #Retrun these values when requested.
+    def get_address(self):
+        return self.server_address
+    def get_timeout(self):
+        return self.timeout
+    def get_retry(self):
+        return self.retry
+
     # return value for requested item
     def get(self, key, timeout=0, retry=0):
+        self.timeout = timeout #Remember this.
+        self.retry = retry     #Remember this.
         if key=='configuration_server':
             ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
         else:
