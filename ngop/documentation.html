@@ -1,0 +1,119 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.75 [en] (X11; U; Linux 2.2.16-3 i686) [Netscape]">
+</head>
+<body text="#000066" bgcolor="#DFF0FF">
+&nbsp;
+<center>
+<p><b><font color="#000066"><font size=+3>Enstore New Configuration Agent
+Help</font></font></b></center>
+
+<p><br>
+<br>
+<p><b><font color="#000066"><font size=+2>Overview</font></font></b>
+<p><font color="#000066">This page shows the Enstore MIB ( Management Information
+Bases) information as a shortcut table. The MIB information is updated
+by the enstore new configuration agent. The shortcut table contains the
+links to the MIB information for each of the MIB groups.</font>
+<p><b><font color="#000066"><font size=+2>The&nbsp; requirements of the
+new configuration agent:</font></font></b>
+<ul>
+<li>
+<font color="#000066">updating MIB by snmpwalk().</font></li>
+
+<li>
+<font color="#000066">updating the node dictionaries by self-define functions.</font></li>
+
+<li>
+<font color="#000066">updating the html files which can be posted on enstore
+web page.</font></li>
+
+<li>
+<font color="#000066">checking the MIB such as tcp, udp, ip, icmp, snmp
+and ifeXtension group objects, sending the events and corresponding statistics
+to NGOP Central Server if any object value reaches the corresponding threshold.</font></li>
+</ul>
+
+<p><br><b><font color="#000066"><font size=+2>The Functions of the MIB
+Groups:</font></font></b>
+<br>&nbsp;
+<ul>
+<li>
+<font color="#000066">The system group includes configuration information
+that pinpoints what the device is, where it is, and who to call when something
+goes wrong.</font></li>
+
+<li>
+<font color="#000066">The tcp group lets a management application check
+up on some TCP configuration value such as the top limit on the number
+of concurrent tcp connections that a system can handle.</font></li>
+
+<li>
+<font color="#000066">The udp group tracks traffic and errors.</font></li>
+
+<li>
+<font color="#000066">The icmp group consists of counts&nbsp; of every
+type of incoming and outgoing ICMP message.</font></li>
+
+<li>
+<font color="#000066">The snmp group tracks everything and counts SNMP
+traffic and errors. especially, the snmp group tracks the number of incoming
+and outgoing gets, sets, responses, and traps, and counts various errors,
+such as attempts to read nonexistent variables.</font></li>
+
+<li>
+<font color="#000066">The ip group covers the configuration and management
+needs of hosts and routers.</font></li>
+
+<li>
+<font color="#000066">The ifeXtension group consists of several nodes.
+The management information includes configuration information, the status
+of the interface, incoming and outgoing traffic statistics, counts of&nbsp;
+various kinds of errors, separate counts of broadcast and multicast traffic,
+variables that fire off a test and record the test results and the complete
+set of physical addresses for which an interface will absorb traffic.</font></li>
+</ul>
+
+<p><br><b><font color="#000066"><font size=+2>To Develope the New Configuration
+Agent:</font></font></b>
+<ul>
+<li>
+<font color="#000066">If you want to add a new node in ifeXtension group
+to monitor, please do: go to the separate file named node_init.py, add
+the node key,&nbsp; node NAME,&nbsp; node PRODucte state,&nbsp; node CABLE
+number and node ORDER number in the node dictionary named node_d to initiate
+the node.</font></li>
+
+<li>
+<font color="#000066">If you want to add a group of the MIB variables to
+monitor, please do: <b>1</b>. go to the agent file named theAgent.py ,
+<b>2</b>.
+define a list that lists the variables,&nbsp; <b>3</b>. call the functions
+get_mib_info() and setTable() to get the MIB information, <b>4.</b> save
+the initiation of the group dictionary as the offset,&nbsp; <b>5.</b>add
+the group name in the list named meNames, and&nbsp; <b>6</b>.add the corresponding
+contents of checking&nbsp; information in the checkNode() function.</font></li>
+
+<li>
+<font color="#000066">To run this new configuration agent, put the new
+configuration agent file&nbsp; theAgent.py and the file init_d.py in a
+subdirectory named config. Under the subdirectory config, do the following
+steps:</font></li>
+</ul>
+<font color="#000066">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+1. setup ngop</font>
+<br><font color="#000066">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2. setenv PYTHONPATH $PYTHONPATH":$NGOP_DIR/ma"</font>
+<br><font color="#000066">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+or</font>
+<br><font color="#000066">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+export PYTHONPATH=$PYTHONPATH":$NGOP_DIR/ma"</font>
+<br><font color="#000066">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+3. python theAgent.py &amp;</font>
+<p>
+<hr noshade="1" size="2"><a href="http://www.fnal.gov/pub/disclaim.html">Legal
+Notices</a>
+</body>
+</html>
