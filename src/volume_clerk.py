@@ -687,6 +687,47 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     # update the database entry for this volume
+    def get_remaining_bytes(self, ticket):
+        # everything is based on external label - make sure we have this
+        try:
+            key="external_label"
+            external_label = ticket[key]
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "Volume Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(8,"get_remaining_bytes "+repr(ticket["status"]))
+            return
+
+        # get the current entry for the volume
+        try:
+            record = dict[external_label]  ## was deepcopy
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "Volume Clerk: volume "+external_label\
+                               +" no such volume")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(8,"get_remaining_bytes "+repr(ticket["status"]))
+            return
+
+
+        # access the remaining_byte field
+        try:
+            ticket["remaining_bytes"] = record["remaining_bytes"]
+            Trace.trace(12,'get_remaining bytes '+key+'='+\
+                        repr(record[key]))
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+                                "Volume Clerk: "+key+" key is missing")
+            Trace.log(e_errors.INFO, repr(ticket))
+            self.reply_to_caller(ticket)
+            Trace.trace(8,"get_remaining_bytes "+repr(ticket["status"]))
+            return
+
+
+    # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
         # everything is based on external label - make sure we have this
         try:
@@ -898,7 +939,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"inquire_vol "+repr(ticket["status"]))
             return
 
-    # flag the database that we are now writing the system
+    # update dB to reflect actual state of volume
     def update_mc_state(self, ticket):
         # everything is based on external label - make sure we have this
         if 'external_label' not in ticket.keys():
@@ -987,14 +1028,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
-
-        vol_ticket = {'external_label' : volume,
-                      'media_type' : m_type
-                      }
-        mc_ticket = {'work' : 'viewvol',
-                         'vol_ticket' : vol_ticket
-                     }
-        stat = mcc.viewvol(mc_ticket)["status"][3]
+        stat = mcc.viewvol(volume, m_type)["status"][3]
 
         if 'O' == stat :
             state = 'unmounted'
