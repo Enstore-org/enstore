@@ -49,10 +49,10 @@ TMP = ".tmp"
 default_dir = "./"
 
 def ascii_file_name():
-    return "inquisitor.txt"
+    return "enstore_system.txt"
 
 def inq_file_name():
-    return "inquisitor.html"
+    return "enstore_system.html"
 
 def default_ascii_file():
     return default_dir+ascii_file_name()
