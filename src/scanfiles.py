@@ -104,6 +104,9 @@ def check(f):
 def check_file(f):
     # if f is a directory, recursively check its files
     if os.path.isdir(f):
+        # skip volmap
+        if os.path.split(f)[1] == 'volmap':
+            return
         if os.access(f, os.R_OK) and os.access(f, os.X_OK):
             for i in os.listdir(f):
                 check_file(os.path.join(f,i))
