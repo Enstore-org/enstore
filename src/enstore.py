@@ -23,14 +23,8 @@ import mover_client
 import volume_clerk_client
 import dbs
 
-# define in 1 place all the hoary pieces of the command needed to access an
-# entire enstore system.
-# Yes, all those blasted slashes are needed and I agree it is insane. We should
-# loop on rsh and dump rgang
-CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
-
-# the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+#CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
+CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
 
 DEFAULT_AML2_NODE = "rip10"
 
@@ -52,8 +46,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 mover_client.do_work],
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                                  volume_clerk_client.do_work],
-		     "db" : [dbs.Interface,
-			     dbs.do_work]
+		     "database" : [dbs.Interface,
+			           dbs.do_work]
                          }
 
 # these general functions perform various system functions
@@ -77,17 +71,8 @@ def get_argv3():
     else:
         return " "
 
-def do_rgang(fdefault, path1, path2):
-    farmlet = get_farmlet(fdefault)
-    if os.path.exists(path1):
-        path = path1
-    else:
-        path = path2
-    return os.system('/usr/local/bin/rgang %s "%s"'%(farmlet, path))
-
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
-    print (          '/usr/local/bin/rgang %s \"%s\"'%(farmlet, command))
     return os.system('/usr/local/bin/rgang %s \"%s\"'%(farmlet, command))
 
 # keep a list of the commands (specific and generic) accessible when in user
@@ -359,15 +344,15 @@ class Enstore(EnstoreInterface):
         elif not self.user_mode and arg1 == "backup":
             rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3(), dbs.CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), dbs.CMD2)
             rtn = do_rgang_command("enstore-down",command)
         elif not self.user_mode and arg1 == "Erestart":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), dbs.CMD2)
             rtn1 = do_rgang_command("enstore-down",command)
-            command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3(), dbs.CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "enaml2":

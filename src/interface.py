@@ -395,6 +395,8 @@ class Interface:
                 self.keep_dir = value
             elif opt == "--output_dir" :
                 self.output_dir = value
+            elif opt == "--nocheck" :
+                self.nocheck = 1
             elif opt == "--test_mode":
                 file = globals().get('__file__', "")
                 if file == "<frozen>":
