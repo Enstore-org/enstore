@@ -2,33 +2,44 @@
 
 # $Id$
 
-#4-30-2002: For reasons unknown to me the order of the imports matters a lot.
-# If the wrong order is done, then the dashed lines are not drawn.
+#system imports
 import os
 import sys
 import socket
 import select
 import string
 import time
+import pprint
 import threading
+import re
+import rexec
+import signal
+import errno
+if sys.version_info < (2, 2, 0):
+    import fcntl, FCNTL
+else: #FCNTL is depricated in python 2.2 and later.
+    import fcntl
+
+#enstore imports
 import enstore_display
 import configuration_client
 import enstore_functions2
 import enstore_erc_functions
 import e_errors
 import mover_client
-import pprint
 import event_relay_messages
 import event_relay_client
 import udp_client
 import setpath
-import rexec
-import signal
-import errno
-import Tkinter
 import Trace
 import generic_client
 import option
+
+#4-30-2002: For reasons unknown to me the order of the imports matters a lot.
+# If the wrong order is done, then the dashed lines are not drawn.
+#3-5-2003: Update to previous comment.  Tkinter must be imported after
+# importing enstore_display.  I still don't know why this is.
+import Tkinter
 
 #########################################################################
 # Globals
@@ -167,7 +178,7 @@ def get_config(intf):
     return _config_cache
 
 def get_system_name(intf):
-
+    
     if intf.movers_file:
         return "local_host"
     
@@ -320,7 +331,7 @@ def get_entvrc(intf):
     return rtn_dict
 
 def set_entvrc(display, intf):
-
+    
     #If there isn't geometry don't do anything.
     if not hasattr(display, "geometry") or display.geometry == None:
         return
@@ -419,6 +430,7 @@ def get_mover_list(intf, fullnames=None):
                 data[i] = data[i][:-1]
                 if fullnames:
                     data[i] = data[i] + ".mover"
+            mf_fp.close()
             return data
         except (OSError, IOError), msg:
             print str(msg)
@@ -480,7 +492,7 @@ def handle_status(mover, status):
 
 def request_mover_status(display, intf):
     global stop_now
-
+    
     #If running from 'canned' version.
     if intf.movers_file:
         return
@@ -493,12 +505,13 @@ def request_mover_status(display, intf):
         #Get the mover client and the mover status.
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
+        del mov
 
         #If the user said it needs to die, then die.  Don't wait for all of
         # the movers to be contacted.  If there is a known problem then this
         # could possibly take a while to time out with each of the movers.
         if stop_now or display.stopped:
-            return
+            break
 
         #Process the commands.
         commands = handle_status(mover[:-6], status)
@@ -519,10 +532,12 @@ def handle_messages(display, intf):
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
-        if(erc.start([event_relay_messages.ALL,]) == erc.ERROR):
+        if stop_now or display.stopped:
             time.sleep(60)
-            os.execvp(sys.argv[0], sys.argv)
-        erc.subscribe()
+            display.queue_command("reinit")
+            return
+        erc.start([event_relay_messages.ALL])
+        #erc.subscribe()
 
     start = time.time()
     count = 0
@@ -559,12 +574,13 @@ def handle_messages(display, intf):
                     sys.exit(1)
 
             #If nothing received for 60 seconds, resubscribe.
-            if count > 60:
+            #if count > 60:
+            if count > 15:
                 erc.subscribe()
                 count = 0
             #Update counts and do it again.
-            count = count + 1          
             if not readable:
+                count = count + 1
                 continue
 
             #for fd in readable:
@@ -576,7 +592,9 @@ def handle_messages(display, intf):
             # it gets here it is a dictionary with a status field error.
             elif getattr(msg, "status", None):
                 Trace.trace(1, msg["status"])
-
+                continue
+            elif msg == None:
+                continue
 
         #Process the command.
         Trace.trace(1, command)
@@ -592,8 +610,67 @@ def handle_messages(display, intf):
 
     #End nicely.
     if not intf.commands_file:
-        erc.unsubscribe()
-        erc.sock.close()
+        #erc.unsubscribe()
+        #erc.sock.close()
+        del erc
+
+#########################################################################
+# The following function sets the window geometry.
+#########################################################################
+
+#tk is the toplevel window.
+def set_geometry(tk, entvrc_info):
+
+    #Don't draw the window until all geometry issues have been worked out.
+    tk.withdraw()
+
+    geometry = entvrc_info.get('geometry', None)
+    window_width = entvrc_info.get('window_width', None)
+    window_height = entvrc_info.get('window_height', None)
+    x_position = entvrc_info.get('x_position', None)
+    y_position = entvrc_info.get('y_position', None)
+    
+    #self.library_colors = entvrc_info.get('library_colors', {})
+    #self.client_colors = entvrc_info.get('client_colors', {})
+
+    #Use the geometry argument first.
+    if geometry != None:
+        window_width = int(re.search("^[0-9]+", geometry).group(0))
+        window_height = re.search("[x][0-9]+", geometry).group(0)
+        window_height = int(window_height.replace("x", " "))
+        x_position = re.search("[+][-]{0,1}[0-9]+[+]", geometry).group(0)
+        x_position = int(x_position.replace("+", ""))
+        y_position = re.search("[+][-]{0,1}[0-9]+$", geometry).group(0)
+        y_position = int(y_position.replace("+", ""))
+
+    #If the initial size is larger than the screen size, use the
+    #  screen size.
+    if window_width != None and window_height != None:
+        window_width = min(tk.winfo_screenwidth(), window_width)
+        window_height= min(tk.winfo_screenheight(), window_height)
+    else:
+        window_width = 0
+        window_height = 0
+    if x_position != None and y_position != None:
+        x_position = max(min(tk.winfo_screenwidth(), x_position), 0)
+        y_position = max(min(tk.winfo_screenheight(), y_position), 0)
+    else:
+        x_position = 0
+        y_position = 0
+
+    #Recompile the geometry string.
+    geometry = "%sx%s+%s+%s" % (window_width, window_height,
+                                x_position, y_position)
+
+    #Remember the unframed geometry.  This is used when determining the
+    # correct geometry to write to the .entvrc file.
+    #self.unframed_geometry = geometry
+
+    #Set the geometry of the cavas and its toplevel window.
+    #Tkinter.Canvas.__init__(self, master=tk, height=window_height,
+    #                        width=window_width)
+    #tk.winfo_toplevel().winfo_toplevel().geometry(geometry)
+    tk.geometry(geometry)
 
 #########################################################################
 #  Interface class
@@ -665,29 +742,34 @@ def main(intf):
     entvrc_dict = get_entvrc(intf)
     entvrc_dict['title'] = system_name #For simplicity put this here.
 
-    #Even though background is passed in via entvrc_dict, the background
-    # works better when done this way.
-    display = enstore_display.Display(entvrc_dict,
+    #Get the main window and set it size.
+    master = Tkinter.Tk()
+    set_geometry(master, entvrc_dict)
+    
+    continue_working = 1
+
+    while continue_working:
+        display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
-        #geometry=geometry,
-        #animate=animate)
-
-    while ( not display.stopped or display.attempt_reinit() ) and not stop_now:
-
         display.reinit()
 
+        Trace.trace(1, "updating movers list")
+        
         #initalize the movers.
         movers = get_mover_list(intf, 0)
         movers_command = "movers " + string.join(movers, " ")
+        Trace.trace(1, "movers list: %s" % movers_command)
+        #Inform the display the names of all the movers.
+        display.handle_command(movers_command)
 
         #Inform the display the config server to use.  Don't do this
         # if running 'canned' entv.
         if not intf.movers_file:
             display.handle_command("csc %s %s" % (intf.csc.server_address[0],
                                                   intf.csc.server_address[1]))
-        #Inform the display the names of all the movers.
-        display.handle_command(movers_command)
 
+        Trace.trace(1, "starting threads")
+        
         #On average collecting the status of all the movers takes 10-15
         # seconds.  We don't want to wait that long.  This can be done
         # sychronously to displaying live data.
@@ -709,12 +791,24 @@ def main(intf):
         #Set the geometry of the file (if necessary).
         set_entvrc(display, intf)
 
+        #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
         status_thread.join()
         Trace.trace(1, "status thread finished")
         messages_thread.join()
         Trace.trace(1, "message thread finished")
 
+        #Terminine if this is a reinitialization (True) or not (False).
+        continue_working = ( not display.stopped or display.attempt_reinit() )\
+                           and not stop_now
+
+        try:
+            display.destroy()
+        except Tkinter.TclError:
+            pass #If the window is already destroyed (i.e. user closed it)
+                 # then this error will occur.
+        del display
+        
 if __name__ == "__main__":
 
     setup_signal_handling()
