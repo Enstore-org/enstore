@@ -236,6 +236,12 @@ def bind_volume( self, external_label ):
 	tmp_vol_info = vcc.inquire_vol( external_label )
 	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
+        # if there is a tape in the drive, eject it (then the robot can put it away and we can continue)
+	if mvr_config['do_eject'] == 'yes':
+            logc.send(log_client.INFO,2,"Performing precautionary offline/eject of device"+str(mvr_config['device']))
+	    self.hsm_driver.offline(mvr_config['device'])
+            logc.send(log_client.INFO,2,"Completed  precautionary offline/eject of device"+str(mvr_config['device']))
+
 	self.vol_info['read_errors_this_mover'] = 0
 	logc.send(log_client.INFO,2,"Requesting media changer load "+str(tmp_vol_info)+" "+str(self.config['mc_device']))
 	rsp = mcc.loadvol( tmp_vol_info,
