@@ -282,10 +282,10 @@ EXfd_xfer(  PyObject	*self
     }
     else /* SPECIFIC/SPECIAL SHM INITIALIZED WITH SEM AND MSG */
     {   struct s_IPCshmgetObject *s_p = (struct s_IPCshmgetObject *)shm_obj_tp;
-	rd_ahead_i = (s_p->i_p[0]-(7*sizeof(int))) / blk_size; /* do integer arithmatic */
+	rd_ahead_i = (s_p->i_p[0]-(8*sizeof(int))) / blk_size; /* do integer arithmatic */
 	g_shmsize = blk_size * rd_ahead_i;
 	g_shmid = s_p->i_p[1];
-	g_shmaddr_p = (char *)&(s_p->i_p[7]);
+	g_shmaddr_p = (char *)&(s_p->i_p[8]);
 	g_msgqid = s_p->i_p[3];
 	g_semid  = s_p->i_p[2];
 	read_bytes_ip  = &(s_p->i_p[4]);
