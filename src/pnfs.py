@@ -22,7 +22,7 @@ error = -1
 
 class pnfs :
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self,pnfsFilename) :
+    def __init__(self,pnfsFilename,all=0) :
         self.pnfsFilename = pnfsFilename
         (dir,file) =os.path.split(pnfsFilename)
         self.dir = dir
@@ -31,17 +31,14 @@ class pnfs :
         self.check_valid_pnfsFilename()
         self.statinfo()
         self.get_bit_file_id()
-        self.get_info()
         self.get_library()
         self.get_file_family()
         self.get_file_family_width()
+        if all :
+            self.get_pnfs_info()
 
     # list what is in the current object
     def dump(self) :
-	print dir(self)
-	print ""
-	print __name__
-	print ""
         pprint.pprint(self.__dict__)
 
     #################################################################################
@@ -163,7 +160,7 @@ class pnfs :
         if self.valid == valid and self.exists == exists :
             self.statinfo()
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r')
-            l = f.readlines()[0]
+            l = f.readlines()
             f.close()
             return l
         else :
@@ -185,7 +182,7 @@ class pnfs :
         if self.valid == valid :
             self.statinfo()
             f = open(self.dir+'/.(tag)('+tag+')','r')
-            t = f.readlines()[0]
+            t = f.readlines()
             f.close()
             return t
         else :
@@ -202,6 +199,7 @@ class pnfs :
             self.get_parent()
             self.get_cursor()
             self.get_counters()
+            self.get_info()
 
     # get the numeric pnfs id of the file
     def get_id(self) :
@@ -383,7 +381,7 @@ class pnfs :
     def get_bit_file_id(self) :
         if self.valid == valid and self.exists == exists :
             try :
-                self.bit_file_id = self.readlayer(1)
+                self.bit_file_id = self.readlayer(1)[0]
             except :
                 self.bit_file_id = unknown
         else :
@@ -412,7 +410,7 @@ class pnfs :
     def get_library(self) :
         if self.valid == valid :
             try :
-                self.library = self.readtag("library")
+                self.library = self.readtag("library")[0]
             except :
                 self.library = unknown
         else :
@@ -430,7 +428,7 @@ class pnfs :
     def get_file_family(self) :
         if self.valid == valid :
             try :
-                self.file_family = self.readtag("file_family")
+                self.file_family = self.readtag("file_family")[0]
             except :
                 pass
         else:
@@ -449,7 +447,7 @@ class pnfs :
     def get_file_family_width(self) :
         if self.valid == valid :
             try :
-                self.file_family_width = string.atoi(self.readtag("file_family_width"))
+                self.file_family_width = string.atoi(self.readtag("file_family_width")[0])
             except :
                 self.file_family_width = error
         else :
@@ -521,109 +519,116 @@ class pnfs :
 
 if __name__ == "__main__" :
 
-    list = 0
-    base = "/pnfs/user/test1"
-    count = 0
-    for pf in base+"/"+repr(time.time()), "/impossible/path/test" :
-        count = count+1;
-        if list : print ""
-        if list : print "Self test from ",__name__," using file ",count,": ",pf
+    try :
+        pf = sys.argv[1]
+        p=pnfs(pf,1)
+        p.dump()
 
-        p = pnfs(pf)
+    except:
 
-        e = p.check_pnfs_enabled()
-        if list : print "enabled: ", e
-
-        if p.valid == valid :
-            if count==2 :
-                print "ERROR: File ",count," is invalid - but valid flag is set"
-                continue
-            p.jon1()
-            p.get_pnfs_info()
-            if list : p.dump()
-            l = p.library
-            f = p.file_family
-            w = p.file_family_width
-            i=p.bit_file_id
-            s=p.file_size
-
-            nv = "crunch"
-            nvn = 222222
+        list = 0
+        base = "/pnfs/user/test1"
+        count = 0
+        for pf in base+"/"+repr(time.time()), "/impossible/path/test" :
+            count = count+1;
             if list : print ""
-            if list : print "Changing to new values"
+            if list : print "Self test from ",__name__," using file ",count,": ",pf
 
-            p.set_library(nv)
-            if p.library == nv :
-                if list : print " library changed"
+            p = pnfs(pf)
+
+            e = p.check_pnfs_enabled()
+            if list : print "enabled: ", e
+
+            if p.valid == valid :
+                if count==2 :
+                    print "ERROR: File ",count," is invalid - but valid flag is set"
+                    continue
+                p.jon1()
+                p.get_pnfs_info()
+                if list : p.dump()
+                l = p.library
+                f = p.file_family
+                w = p.file_family_width
+                i=p.bit_file_id
+                s=p.file_size
+
+                nv = "crunch"
+                nvn = 222222
+                if list : print ""
+                if list : print "Changing to new values"
+
+                p.set_library(nv)
+                if p.library == nv :
+                    if list : print " library changed"
+                else :
+                    print " ERROR: didn't change library tag: still is ",p.library
+
+                p.set_file_family(nv)
+                if p.file_family == nv :
+                    if list : print " file_family changed"
+                else :
+                    print " ERROR: didn't change file_family tag: still is ",p.file_family
+
+                p.set_file_family_width(nvn)
+                if p.file_family_width == nvn :
+                    if list : print " file_family_width changed"
+                else :
+                    print " ERROR: didn't change file_family_width tag: still is ",p.file_family_width
+
+                p.set_bit_file_id(nv,nvn)
+                if p.bit_file_id == nv :
+                    if list : print " bit_file_id changed"
+                else :
+                    print " ERROR: didn't change bit_file_id layer: still is ",p.bit_file_id
+
+                if p.file_size == nvn :
+                    if list : print " file_size changed"
+                else :
+                    print " ERROR: didn't change file_size: still is ",p.file_size
+
+                if list : p.dump()
+                if list : print ""
+                if list : print "Restoring original values"
+
+                p.set_library(l)
+                if p.library == l :
+                    if list : print " library restored"
+                else :
+                    print " ERROR: didn't restore library tag: still is ",p.library
+
+                p.set_file_family(f)
+                if p.file_family == f :
+                    if list : print " file_family restored"
+                else :
+                    print " ERROR: didn't restore file_family tag: still is ",p.file_family
+
+                p.set_file_family_width(w)
+                if p.file_family_width == w :
+                    if list : print " file_family_width restored"
+                else :
+                    print " ERROR: didn't restore file_family_width tag: still is ",p.file_family_width
+
+                p.set_bit_file_id(i,s)
+                if p.bit_file_id == i :
+                    if list : print " bit_file_id restored"
+                else :
+                    print " ERROR: didn't restore bit_file_id layer: still is ",p.bit_file_id
+
+                if p.file_size == s :
+                    if list : print " file size restored"
+                else :
+                    print " ERROR: didn't restore file_size: still is ",p.file_size
+
+                if list : p.dump()
+                p.rm()
+                if p.exists != exists :
+                    if list : print p.pnfsFilename," deleted"
+                else :
+                    print "ERROR: could not delete ",p.pnfsFilename
+
             else :
-                print " ERROR: didn't change library tag: still is ",p.library
-
-            p.set_file_family(nv)
-            if p.file_family == nv :
-                if list : print " file_family changed"
-            else :
-                print " ERROR: didn't change file_family tag: still is ",p.file_family
-
-            p.set_file_family_width(nvn)
-            if p.file_family_width == nvn :
-                if list : print " file_family_width changed"
-            else :
-                print " ERROR: didn't change file_family_width tag: still is ",p.file_family_width
-
-            p.set_bit_file_id(nv,nvn)
-            if p.bit_file_id == nv :
-                if list : print " bit_file_id changed"
-            else :
-                print " ERROR: didn't change bit_file_id layer: still is ",p.bit_file_id
-
-            if p.file_size == nvn :
-                if list : print " file_size changed"
-            else :
-                print " ERROR: didn't change file_size: still is ",p.file_size
-
-            if list : p.dump()
-            if list : print ""
-            if list : print "Restoring original values"
-
-            p.set_library(l)
-            if p.library == l :
-                if list : print " library restored"
-            else :
-                print " ERROR: didn't restore library tag: still is ",p.library
-
-            p.set_file_family(f)
-            if p.file_family == f :
-                if list : print " file_family restored"
-            else :
-                print " ERROR: didn't restore file_family tag: still is ",p.file_family
-
-            p.set_file_family_width(w)
-            if p.file_family_width == w :
-                if list : print " file_family_width restored"
-            else :
-                print " ERROR: didn't restore file_family_width tag: still is ",p.file_family_width
-
-            p.set_bit_file_id(i,s)
-            if p.bit_file_id == i :
-                if list : print " bit_file_id restored"
-            else :
-                print " ERROR: didn't restore bit_file_id layer: still is ",p.bit_file_id
-
-            if p.file_size == s :
-                if list : print " file size restored"
-            else :
-                print " ERROR: didn't restore file_size: still is ",p.file_size
-
-            if list : p.dump()
-            p.rm()
-            if p.exists != exists :
-                if list : print p.pnfsFilename," deleted"
-            else :
-                print "ERROR: could not delete ",p.pnfsFilename
-
-        else :
-            if count==2 :
-                continue
-            else :
-                print "ERROR: File ",count," is valid - but invvalid flag is set"
-            print p.pnfsFilename, "file is not a valid pnfs file"
+                if count==2 :
+                    continue
+                else :
+                    print "ERROR: File ",count," is valid - but invvalid flag is set"
+                    print p.pnfsFilename, "file is not a valid pnfs file"
