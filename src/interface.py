@@ -486,3 +486,7 @@ class Interface:
                 self.dbHome = value
             elif opt == "--jouHome":
                 self.jouHome = value
+            elif opt == "--sendto":    # for mailing
+                self.sendto = string.split(value)
+            elif opt == "--notify":    # for mailing (notification)
+                self.notify = string.split(value)
