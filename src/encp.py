@@ -47,14 +47,14 @@ data_access_layer_format = "INFILE=%s\n"+\
 
 #######################################################################
 
-def write_to_hsm(input, output, output_file_family='',
+def write_to_hsm(input_files, output, output_file_family='',
                  config_host=None, config_port=None,
                  ilist=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
-                 t0=0):
+                 t0=0, bytecount=None):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"write_to_hsm input="+repr(input)+\
+    Trace.trace(6,"write_to_hsm input_files="+repr(input_files)+\
                 " output="+repr(output)+" config_host="+\
 		repr(config_host)+\
                 " config_port="+repr(config_port)+" verbose="+\
@@ -110,13 +110,13 @@ def write_to_hsm(input, output, output_file_family='',
         print "uinfo=",uinfo
 
     if verbose>2:
-        print "Checking input unix files:",input, "   cumt=",\
+        print "Checking input unix files:",input_files, "   cumt=",\
 	      time.time()-t0
     t1 =  time.time() #------------------------------------------Start
 
     # check the input unix files. if files don't exits, 
     # we bomb out to the user
-    ninput, inputlist, file_size = inputfile_check(input)
+    ninput, inputlist, file_size = inputfile_check(input_files, bytecount)
     if (ninput>1) and (delayed_dismount == 0):
         delayed_dismount = 1
     #else:
@@ -452,7 +452,7 @@ def write_to_hsm(input, output, output_file_family='',
 			    " bufsize="+repr(bufsize)+" chk_crc="+\
 			    repr(chk_crc))
 		statinfo = os.stat(inputlist[i])
-		if statinfo[stat.ST_SIZE] != fsize:
+                if not bytecount and statinfo[stat.ST_SIZE] != fsize:
                     print_data_access_layer_format(
                         inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
 		    jraise('EPROTO',
@@ -742,14 +742,14 @@ def write_to_hsm(input, output, output_file_family='',
     Trace.trace(6,"write_to_hsm "+msg)
 
 #######################################################################
-def read_from_hsm(input, output,
+def read_from_hsm(input_files, output,
                   config_host, config_port,
                   ilist=0, chk_crc=0,
                   pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"read_from_hsm input="+repr(input)+\
+    Trace.trace(6,"read_from_hsm input_files="+repr(input_files)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" verbose="+repr(ilist)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -789,11 +789,11 @@ def read_from_hsm(input, output,
         print "uinfo=",client['uinfo']
 
     if verbose>2:
-        print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
+        print "Checking input pnfs files:",input_files, "   cumt=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
 
     #check the input unix files. if files don't exits, we bomb out to the user
-    (ninput, inputlist, file_size) = inputfile_check(input)
+    (ninput, inputlist, file_size) = inputfile_check(input_files)
     (bfid,junk,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
 
     tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
@@ -1801,13 +1801,20 @@ def fullpath(filename):
 
 # check the input file list for consistency
 
-def inputfile_check(input):
+def inputfile_check(input_files, bytecount=None):
     # create internal list of input unix files even if just 1 file passed in
-    if type(input)==type([]):
-        inputlist=input
+    if type(input_files)==type([]):
+        inputlist=input_files
     else:
-        inputlist = [input]
-    ninput = len(input)
+        inputlist = [input_files]
+    ninput = len(inputlist)
+
+    if bytecount != None and ninput != 1:
+        print_data_access_layer_format(inputlist[0],'',0,
+                                       {'status':('EPROTO',"Cannot specify --bytes with multiple files")}
+                                       )
+        jraise('EPROTO'," encp.inputfile_check: "
+               "Cannot specify --bytes with multiple files")
 
     # we need to know how big each input file is
     file_size = []
@@ -1827,7 +1834,11 @@ def inputfile_check(input):
 
         # get the file size
         statinfo = os.stat(inputlist[i])
-        file_size.append(statinfo[stat.ST_SIZE])
+
+        if bytecount != None:
+            file_size.append(bytecount)
+        else:
+            file_size.append(statinfo[stat.ST_SIZE])
 
         # input files can't be directories
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
@@ -1932,12 +1943,13 @@ def outputfile_check(ninput,inputlist,output):
 
     # we can not allow 2 output files to be the same
     # this will cause the 2nd to just overwrite the 1st
-    # In principal, this is already taken care of in the inputfile_check, but
+    # In principle, this is already taken care of in the inputfile_check, but
     #  do it again just to make sure in case someone changes protocol
     for i in range(0,ninput):
         for j in range(i+1,ninput):
             if outputlist[i] == outputlist[j]:
-                print_data_access_layer_format('',outputlist[j],0,{'status':('EPROTO',"Duplicated entry")})
+                print_data_access_layer_format('',outputlist[j],0,
+                                               {'status':('EPROTO',"Duplicated entry")})
                 jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
                        +outputlist[i]+" is duplicated - not allowed")
 
@@ -1958,8 +1970,8 @@ class encp(interface.Interface):
 	self.output_file_family = '' # initial set for use with --ephemeral or
 	                             # or --file_family
 
-        host = 'localhost'
-        port = 0
+        self.bytes = None
+        self.test_mode = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -1968,9 +1980,11 @@ class encp(interface.Interface):
     ##########################################################################
     # define the command line options that are valid
     def options(self):
-        the_options = self.config_options()+\
-                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "file_family=", "ephemeral", "data_access_layer", "d0sam", "queue"]+\
-                      self.help_options()
+        the_options = self.config_options()+[
+            "verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=",
+            "file_family=", "ephemeral", "data_access_layer", "d0sam", "queue",
+            "bytes=", "test_mode"
+            ] + self.help_options()
 
         return the_options
 
@@ -1981,8 +1995,9 @@ class encp(interface.Interface):
         the_help = "%s%s\n or\n  %s%s\n or\n  %s%s%s" % (
             prefix, self.parameters1(),
             prefix, self.parameters2(),
-            prefix, self.parameters3(), self.format_options(self.options(),
-                                                            "\n\t\t"))
+            prefix, self.parameters3(),
+            self.format_options(self.options(), "\n\t\t")
+            )
         return the_help
 
     ##########################################################################
@@ -2066,7 +2081,8 @@ if __name__  ==  "__main__" :
 
     # use class to get standard way of parsing options
     e = encp()
-
+    if e.test_mode:
+        print "WARNING: running in test mode"
 
     # try encp command first
     try:
@@ -2079,7 +2095,8 @@ if __name__  ==  "__main__" :
 	    write_to_hsm(e.input,  e.output, e.output_file_family,
 			 e.config_host, e.config_port,
 			 e.verbose, e.chk_crc,
-			 e.pri, e.delpri, e.agetime, e.delayed_dismount, t0)
+			 e.pri, e.delpri, e.agetime, e.delayed_dismount, t0,
+                         e.bytes)
 
 	# have we been called "encp hsmfile unixfile" ?
 	elif e.intype=="hsmfile" and e.outtype=="unixfile" :
