@@ -208,7 +208,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'write_to_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(use_multiple=1)
+    host, port, listen_socket = callback.get_callback(use_multiple=1,verbose=verbose)
     callback_addr = (host, port)
     listen_socket.listen(4)
     Trace.trace(10,'write_to_hsm got callback host='+repr(host)+
@@ -1418,7 +1418,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                          repr(address)+", failed to transfer: "+
                                          "done_ticket[\"status\"]="+
                                          repr(done_ticket["status"]),fatal=1)
-                            continue
+                            error=1
+                            break
 
                         print_error('EPROTO',
                                     " encp.read_from_hsm:2nd (post-file-send)"+
