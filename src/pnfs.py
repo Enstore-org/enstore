@@ -560,7 +560,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.verify_existance()
             self.pstatinfo()
             #Get the file system size.
-            os_filesize = self.file_size
+            os_filesize = long(self.file_size)
 
         #If there is no layer 4, make sure an error occurs.
         try:
@@ -570,9 +570,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #self.file_size = os_filesize
             #return os_filesize
 
-        Trace.log(e_errors.INFO, "OS SIZE: %s    PNFS SIZE: %s" %
-                  (os_filesize, pnfs_filesize))
-        
         #Error checking.  However first ignore large file cases.
         if os_filesize == 1 and pnfs_filesize > long(2L**31L) - 1:
             if not filepath:
@@ -831,7 +828,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             if real_file:    #os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
                 if self.file_size == 1L:
-                    self.file_size = self.get_file_size()
+                    self.file_size = self.get_xreference()[2] #[2] = size
             else:
                 try:
                     del self.file_size
