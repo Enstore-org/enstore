@@ -3,6 +3,7 @@
 import os
 import getopt
 import errno
+import re
 
 import callGet
 import string, sys
@@ -17,10 +18,10 @@ def main():
         sys.exit(127)
 
     opts_permitted = ['verbose=']
-    options, args =getopt.getopt(sys.argv[1:], [], opts_permitted)
+    options, args = getopt.getopt(sys.argv[1:], [], opts_permitted)
     #If the wrong number of arguments was supplied, print help and error out.
     if len(args) != 5:
-        print "Usage:",sys.argv[0], \
+        print "Usage:", sys.argv[0], \
               " [--verbose n] <tapelabel> <mjd> <TarTape|TapeLog> <pfnsdir> <outputdir>"
         sys.exit(126)
 
@@ -37,37 +38,44 @@ def main():
     pnfsDir = args[3]
     outputDir = args[4]
 
+    USERNAME = "sdssdp"
+    NODENAME = "sdssdp30"
+    DIRNAME = "/sdss/data/golden/"
+
     #Detect tape type errors from the command line.
     if tapeStyle != "TarTape" and tapeStyle != "TapeLog":
         print "Tape style must be TapeLog or TarTape."
         sys.exit(125)
-
-    #Build the TarTape "par" filename.
-    #metaTarTapeFileName = "id" + "TarTape" + "-" + tapeLabel + ".par"
-    #Set the fullpath of this file.
-    #localMetaTarTapeFilePath = os.path.join("/tmp", metaTarTapeFileName)
-
-    #Build the TapeLog "par" filename.
-    #metaTapeLogFileName = "id" + "TapeLog" + "-" + tapeLabel + ".par"
-    #Set the fullpath of this file.
-    #localMetaTapeLogFilePath = os.path.join("/tmp", metaTapeLogFileName)
-
-    par_filename = getNames.findFile("sdssdp", "sdssdp30", mjd, tapeLabel)
-
-    if not par_filename:
-        print "Unable to find .par file for volume %s." % tapeLabel
+    #Detect tape name errors from the command line.
+    if re.match("J[GL][A-Z0-9]{2}[0-9]{2}", tapeLabel) == None:
+        print "%s is not a valid tape name." % tapeLabel
         sys.exit(124)
 
-    #print "Using the par file:" , par_filename
+    #Check credentials.
+    if os.system("klist -s"):
+        print "Failed to find valid credentails."
+        sys.exit(123)
 
+    #Determine the par filepath.
+    par_filepath = getNames.getFilename(USERNAME, NODENAME, DIRNAME,
+                                        mjd, tapeStyle, tapeLabel)
     #Determine the local file to copy the .par file to.
-    localMetaFilePath = os.path.join("/tmp", os.path.basename(par_filename))
+    localMetaFilePath = os.path.join("/tmp", os.path.basename(par_filepath))
 
     #Copy the catalog metadata file to the /tmp directory.
-    if getNames.getFile("sdssdp", "sdssdp30", par_filename, localMetaFilePath):
+    if getNames.getFile(par_filepath, localMetaFilePath):
 
-        print "Unable to get .par file for volume %s." % tapeLabel
-        sys.exit(123)
+        #Finding the file will take a while.
+        par_file = getNames.findFile(USERNAME, NODENAME, DIRNAME, tapeLabel)
+
+        if par_file == None:
+            #getNames.findFile has printed the error message.
+            sys.exit(122)
+
+        #Get the par file with the name from find(1).
+        if getNames.getFile(par_file, localMetaFilePath):
+            print "Unable to get .par file for volume %s." % tapeLabel
+            sys.exit(121)
 
     #Read in the metadata catalog file just copied over.
     files = parseTapeLog.parseFile(localMetaFilePath)
