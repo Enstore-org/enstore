@@ -274,7 +274,7 @@ def genMsgType(msg, ln, severity):
     elif string.find(lowLine, "get_work") >= 0:
         sKey = "get_work"
     elif string.find(lowLine, "next_work") >= 0:
-        fKey = "next_work"
+        sKey = "next_work"
     elif string.find(lowLine, "bad") >= 0:
         sKey = "bad"
     elif string.find(lowLine, "done") >= 0:
