@@ -6,6 +6,6 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 
 
-rgang $gang "echo 'DATE \`date\`'>>/SEL; . /fnal/ups/etc/setups.sh;setup ipmi; \$IPMI_DIR/selread>>/SEL; \$IPMI_DIR/selclear"
+rgang $gang "echo 'DATE \`date\`'>>/SEL; . /home/enstore/enstore/sbin/do_selread"
 
 rgang $gang "echo 'DATE \`date\`'>>/BITERROR; /opt/biterror/biterror_reset>>/BITERROR"
