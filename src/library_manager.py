@@ -395,7 +395,7 @@ class LibraryManagerMethods:
                     self.lm_lock = e_errors.BROKEN
                     if tmp_lock != self.lm_lock:
                         Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
-                                    (intf.name, self.lm_lock))
+                                    (self.name, self.lm_lock))
                     return None, None
                      
                 if v["status"][0] == e_errors.NOVOLUME or v["status"][0] == e_errors.QUOTAEXCEEDED:
@@ -515,7 +515,7 @@ class LibraryManagerMethods:
                         self.lm_lock = e_errors.BROKEN
                         if tmp_lock != self.lm_lock:
                             Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
-                                        (intf.name, self.lm_lock))
+                                        (self.name, self.lm_lock))
                         return  None, (e_errors.NOWORK, None)
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
                     w['status'] = ret['status']
@@ -572,7 +572,7 @@ class LibraryManagerMethods:
                 self.lm_lock = e_errors.BROKEN
                 if tmp_lock != self.lm_lock:
                     Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
-                                (intf.name, self.lm_lock))
+                                (self.name, self.lm_lock))
                 return  None,ret['status'] 
             # if work is write_to_hsm and volume has just been set to full
             # return this status for the immediate dismount
@@ -595,7 +595,7 @@ class LibraryManagerMethods:
                 self.lm_lock = e_errors.BROKEN
                 if tmp_lock != self.lm_lock:
                     Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
-                                (intf.name, self.lm_lock))
+                                (self.name, self.lm_lock))
                 return  None,ret['status'] 
             Trace.trace(11,"work can not be done at this volume %s"%(ret,))
             rq.ticket['status'] = ret['status']
