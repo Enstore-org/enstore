@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
-# script to cut the encp (client) and enstore (server) products from the enstore cvs sources
+# script to cut the get and sdsscp products from the enstore cvs sources
 
 # based on copCut which is based almost entirely on Ron R's dscCut
 
@@ -241,7 +241,7 @@ if [ -z "${INSTALLDIR-}" ] ; then
       ripsgi*)   INSTALLDIR=/usr/products/$product;;
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/${FLAVOR}
                  setrev=0;;
-      bld*)      INSTALLDIR=/afs/.fnal.gov/ups/encp/${REV}/${FLAVOR}
+      bld*)      INSTALLDIR=/afs/.fnal.gov/ups/sdsscp/${REV}/${FLAVOR}
                  setrev=0;;
       d0ola*)    INSTALLDIR=$ENSTORE_DIR/$product #this stinks! but I don't know what else to do
                  puntUPS=1;;
@@ -397,7 +397,7 @@ for try in list doit; do
         #      make clean all
         #      check_status $? "docs make clean all"
         #      else
-        #         echo "No make needed for documentation of encp"
+        #         echo "No make needed for documentation of sdsscp"
         #      fi
         #   fi
         #   ;;
@@ -453,7 +453,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		 # So far, make setuid installation manual
                  #chmod u+s $INSTALLDIR/enroute2
 
-		 manifest=$INSTALLDIR/.encpCut.manifest
+		 manifest=$INSTALLDIR/.sdsscpCut.manifest
  	     fi
 
              filelist=/tmp/$productCut.filelist
