@@ -49,6 +49,8 @@ RECORD_LENGTH_L = 5
 UID_L = 10
 USERNAME_L = 14
 
+efile = None 
+
 # exceptions that this module can raise
 UNKNOWNRECFORMAT = "UNKNOWN_RECORD_FORMAT"
 INVALIDLENGTH = "INVALID_LENGTH"
@@ -641,8 +643,13 @@ def hdr_labels(ticket):
 # construct the eof_labels
 def eof_labels(file_checksum):
     global efile
-    efile.file_checksum = file_checksum
-    return efile.eof_labels()
+    if efile:
+	efile.file_checksum = "%s"%(file_checksum,)
+	efile.file_checksum = add_l_padding(efile.file_checksum[:FILE_CHECKSUM_L],
+					    FILE_CHECKSUM_L, ZERO)
+	return efile.eof_labels()
+    else:
+	return ""
 
 # the cern wrapper does not supply headers
 def headers(dummy):
@@ -686,6 +693,6 @@ def create_wrapper_dict(ticket):
 if __name__ == '__main__':            
     ticket = {'minor': '5', 'type': 'cern', 'fullname': '/home/moibenko/enstore/src/aci.py', 'mode': '33204', 'version': 'v2_14  CVS $Revision$ ', 'gname': 'hppc', 'machine': "('Linux', 'happy.fnal.gov', '2.2.17-14', '#1 Mon Feb 5 18:48:50 EST 2001', 'i686')", 'serial_num': '0060112307', 'product_id': 'EXB-89008E000112', 'compression': '0', 'rminor': '0', 'sanity_size': '65536', 'inode': '0', 'size_bytes': '1434', 'rmajor': '0', 'pstat': '(33204, 71373968, 5L, 1, 6849, 5440, 0, 1007762232, 1007762232, 1007762232)', 'uname': 'moibenko', 'uid': '6849', 'mtime': '1007762233', 'vendor_id': 'EXABYTE', 'blocksize': '131072', 'gid': '5440', 'pnfsFilename': '/pnfs/rip6/happy/mam/cern_wrap/aci.py', 'major': '0'}
     header_labels = hdr_labels(ticket)
-    print "Header Labels", header_labels
+    print "Header Labels:%s"%(header_labels,)
     eofs =  eof_labels(0)
-    print "EOF Labels", eofs
+    print "EOF Labels:%s"%(eofs,)
