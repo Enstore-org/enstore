@@ -264,7 +264,6 @@ class DispatchingWorker:
         Interface required by select().
 
         """
-        ##Trace.trace(16,"fileno ="+repr(self.server_socket.fileno()))
         return self.server_socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
@@ -309,7 +308,6 @@ class DispatchingWorker:
             purge_stale_entries(request_dict)
 
         # call the user function
-        ## Trace.trace(6,"process_request function="+repr(function_name))
         apply(function, (ticket,))
         
     def handle_error(self, request, client_address):
@@ -389,17 +387,12 @@ class DispatchingWorker:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        Trace.trace(18,"reply_to_caller number=%s id=%s"%(self.client_number,
-                                                          self.current_id))
         reply = (self.client_number, ticket, time.time()) 
         self.reply_with_list(reply)          
-        ##Trace.trace(18,"reply_to_caller number=%s"%(self.client_number,))
-
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        ## Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number, self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
         
