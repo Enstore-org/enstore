@@ -184,7 +184,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      # if there is an error - log and return it
      except:
 	 exc, val, tb = e_errors.handle_error()
-         if 0: print tb # quiet lint
          status = (str(exc), str(val))
 
     # change the delete state element in the dictionary
@@ -281,7 +280,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["file_clerk_callback_port"] = file_clerk_port
         self.control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
-        if 0: print address # quiet lint
         self.data_socket = data_socket
         listen_socket.close()
         Trace.trace(16,"get_user_sockets host="+repr(file_clerk_host)+
@@ -306,7 +304,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         while key:
             callback.write_tcp_raw(self.data_socket,repr(key))
             key,value=dict.cursor("next")
-        if 0: print value # quiet lint
         callback.write_tcp_raw(self.data_socket,"")
         dict.cursor("close")
         callback.write_tcp_raw(self.data_socket,"")

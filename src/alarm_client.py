@@ -55,7 +55,6 @@ class AlarmClient(generic_client.GenericClient):
 	# prevent infinite recursion (i.e if some function call by this
 	# function does a trace and the alarm bit is set
 	if self.alarm_func_lock.test_and_set(): return None
-        if 0: print time  # lint fix
         ticket = {}
         ticket['work'] = "post_alarm"
         ticket[alarm_server.UID] = self.uid
@@ -81,7 +80,6 @@ class AlarmClient(generic_client.GenericClient):
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info=None):
-        if 0: print self    # lint fix
         if alarm_info is None:
             alarm_info = {}
         Trace.alarm(severity, root_error, alarm_info )

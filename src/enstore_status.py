@@ -127,7 +127,6 @@ def get_dict(text):
 def parse_encp_line(line):
     [etime, enode, etmp, euser, estatus, etmp2, etype, erest] = \
                                                    string.split(line, None, 7)
-    if 0: print etmp2,etype # quiet lint
 
     try:
         [erest2, erest3] = string.splitfields(erest, ":", 1)
@@ -231,7 +230,6 @@ class EnStatus:
 
     # remove all single quotes
     def unquote(self, s):
-        if 0: print self # quiet lint
 	return string.replace(s,"'","")
 
     # format the status, just use the first element
@@ -331,7 +329,6 @@ class EnStatus:
 	return string
 
     def format_lm_suspect_vols(self, ticket):
-        if 0: print self # quiet lint
 	str =     "\n    SUSPECT VOLUMES : "
 	spacing = "\n                      "
 	sus_vols = ticket['suspect_volumes']
@@ -353,7 +350,6 @@ class EnStatus:
 
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
-        if 0: print self # quiet lint
 	string = "    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT\n"
 	for mover in work:
 	    (address, port) = mover['address']
@@ -361,7 +357,6 @@ class EnStatus:
 	    string = string+"    %(m)-18.18s    %(p)-4.4d    %(s)-10.10s    %(lc)-20.20s    %(tc)-3d\n" % {'m':mover['mover'], 'p':port, 's':mover['state'], 'lc':time, 'tc':mover['summon_try_cnt']}
 
 	string = string+"\n"
-        if 0: print address # quiet lint
 	return string
 
     # format the library manager mover list for output
@@ -399,7 +394,6 @@ class EnStatus:
     # format the mover status information. this is one UGLY routine.  i wish i
     # had the time to make it look better
     def format_moverstatus(self, ticket):
-        if 0: print self     # lint fix
         vol_info = ""
 	spacing = "\n    "
 	aString = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
@@ -554,7 +548,6 @@ class EnHTMLFile:
     # include a link to the main inquisitor page and a sideways page of the
     # users choice
     def page_top_buttons(self):
-        if 0: print self     # lint fix
         str = '<A HREF="'+inq_file_name()+\
               '">Go Back</A>&nbsp&nbsp&nbsp<A HREF="'
         str = str+self.add_2nd_button()
@@ -586,7 +579,6 @@ class EncpFile:
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
-        if 0: print self # quiet lint
 	return "\nencp            : NONE\n"
 
 class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
@@ -623,7 +615,6 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
-        if 0: print self # quiet lint
 	prefix =  "\n                     "
 	str = key+"            : "
 	spacing = ""
@@ -701,7 +692,6 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
-        if 0: print self,key # quiet lint
 	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
 	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
@@ -911,10 +901,8 @@ class EnDataFile(EnFile):
     # check the line to see if the date and timestamp on the beginning of it
     # is between the given start and end values
     def check_line(self, line, start_time, stop_time):
-        if 0: print self # quiet lint
 	# split the line into the date/time and all the rest
 	datetime, rest = string.split(line, None, 1)
-        if 0: print rest # quiet lint
 	# remove the beginning LOG_PREFIX
 	l = string.replace(datetime,LOG_PREFIX,"")
 	# now see if the date/time is between the start time and the end time
@@ -931,10 +919,8 @@ class EnMountDataFile(EnDataFile):
 
     # parse the mount line
     def parse_line(self, line):
-        if 0: print self # quiet lint
 	[etime, enode, etmp, euser, estatus, dev, type, erest] = \
                                                    string.split(line, None, 7)
-        if 0: print etmp #quiet lint
 	if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
 	    # this is the request for the mount
 	    start = MREQUEST
@@ -964,7 +950,6 @@ class EnEncpDataFile(EnDataFile):
 
     # parse the encp line
     def parse_line(self, line):
-        if 0: print self # quiet lint
 	einfo = parse_encp_line(line)
         if not len(einfo):
             # nothing was returned skip this line

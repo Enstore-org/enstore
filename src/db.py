@@ -18,20 +18,6 @@ JOURNAL_LIMIT=1000
 backup_flag=1
 cursor_open=0
 
-#junk class MyIndex(table.Index):
-#junk   def __init__(self,db,name):
-#junk 	table.Index.__init__(self,db,name)
-#junk   def val_to_str(self,val):
-#junk         if 0: print self # quiet lint
-#junk 	if val==None:
-#junk 		return None
-#junk 	return val
-#junk   def str_to_val(self,str):
-#junk         if 0: print self # quiet lint
-#junk 	if str==None:
-#junk 		return None
-#junk 	return str
-
 class DbTable:
   def __init__(self,dbname, db_home, jou_home, indlst=None, auto_journal=1):
     if indlst is None:
@@ -107,7 +93,6 @@ class DbTable:
         key,val=c.next()
         len=len+1
         c.set(pos)
-        if 0: print val # quiet lint
       return len+1
 
     if action=="has_key":
@@ -162,7 +147,6 @@ class DbTable:
 	len=len+1
     c.close()
     t.commit()
-    if 0: print val # quiet lint
     return len
 
   def has_key(self,key):

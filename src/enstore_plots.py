@@ -69,12 +69,10 @@ class MphDataFile(EnPlot):
     # do not do the actual open here, we will do it when plotting because we
     # may need to open more than one file.  
     def open(self):
-        if 0: print self # quiet lint
 	pass
 
     # same for close as open. all files are already closed.
     def close(self):
-        if 0: print self # quiet lint
 	pass
 
     # make the mounts per hour plot file
@@ -93,7 +91,6 @@ class MphDataFile(EnPlot):
 	            ndata[adate] = ndata[adate] + 1
 	        except:
 	            ndata[adate] = 1
-        if 0: print dev # quiet lint
 	# open the file for each day and write out the data points
 	days = date_only.keys()
 	days.sort()
@@ -169,7 +166,6 @@ class MlatDataFile(EnPlot):
 	    else:
 	        # this was the mount request
 	        last_mount_req = time
-        if 0: print dev # quiet lint
 	# we must create our gnu plot command file too
 	gnucmds = MlatGnuFile(self.gnufile)
 	gnucmds.open('w')
@@ -178,7 +174,6 @@ class MlatDataFile(EnPlot):
 
     # subtract two times and return their difference
     def latency(self, time1, time2):
-        if 0: print self # quiet lint
 	# first convert each time into a tuple of the form -
 	#  (year, month, day, hour, minutes, seconds, 0, 0, -1)
 	# then convert the tuple into a seconds value and subtract the
@@ -314,7 +309,6 @@ class BpdDataFile(EnPlot):
 
     # init the following hash from the first date given to the last date
     def init_date_hash(self, sdate, edate):
-        if 0: print self #quiet lint
 	ndate = {}
 	ndate[sdate[0:10]] = 0.0
 	ndate[edate[0:10]] = 0.0
