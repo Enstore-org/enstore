@@ -15,8 +15,6 @@ Include files:-
 */
 
 #include <stdlib.h>
-#include <curses.h>
-
 
 #include "ftt.h"
 #include "ftt_t_parse.h"
@@ -25,7 +23,6 @@ Include files:-
 #define FTT_T_MAXDSIZE 32768
 
 void ftt_t_block_fill   (char *, int, int, int);
-int flash(void);
 
 static ftt_stat_buf	statbuf = NULL;
 static ftt_stat_buf	*delstat = NULL;
@@ -50,7 +47,7 @@ char		*write_cnt;
 char 		*ucmp_write;
 char		*cmp_write;
 static char    	*estatus_str;           /* expected status string */
-unsigned char 		wdata[FTT_T_MAXDSIZE];
+char 		wdata[FTT_T_MAXDSIZE];
 static unsigned int	nblock = 40000;
 static int	bsize = 32767;
 int 		fileno, blockno, tst = 0;
@@ -67,11 +64,6 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
-
-
-
-
-
 /*out_filename = "stat.txt";  */
 
 if (out_filename) {
@@ -82,7 +74,6 @@ if (out_filename) {
       fprintf (stderr,"   filename = %s\n",out_filename);
       return 1;
       }
-fflush(outfile);
 fprintf (outfile,"Outfile %s\n",out_filename);
 } 
 
@@ -144,14 +135,6 @@ if (!statbuf) {
         tst  = (int)atoi(peot); 
         remain = ((long)atoi(stat_val1) - (long)atoi(stat_val2));
 
-/*        if (((long int)atoi(stat_val2)) < remain*1.1) {
-           fflush (outfile);
-           fprintf (outfile,"%u\t%s\t%s\t%lu\t%s\t%s\t%s\t%s\t%s\n",
-                 fileno,stat_val2,write_cnt,remain,ucmp_write,cmp_write,bot,eom,peot); 
-         break;
-        }
-*/        
-        fflush (outfile);
         fprintf (outfile,"%u\t%s\t%s\t%lu\t%s\t%s\t%s\t%s\t%s\n",
                  fileno,stat_val2,write_cnt,remain,ucmp_write,cmp_write,bot,eom,peot); 
 

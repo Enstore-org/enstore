@@ -16,7 +16,7 @@ SUIDOBJ= ftt_suid.o
 SRC= ftt_open.c ftt_tables.c ftt_skip.c ftt_stats.c ftt_info.c \
 	ftt_rdwr.c ftt_do_scsi.c ftt_error.c ftt_debug.c ftt_global.c \
 	ftt_label.c ftt_higher.c ftt_async.c ftt_find.c\
-	ftt_partition.c ftt_version.c \
+	ftt_partition.c ftt_version.c\
 	$(SCSISRC) $(MACHDEPSRC) 
 
 HDR= ftt_private.h ftt_common.h ftt_macros.h local/ftt_mtio.h \

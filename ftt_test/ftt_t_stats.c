@@ -163,7 +163,7 @@ if (!match)
    ------------- */
 stat_value = ftt_extract_stats (statbuf,i); 
 if (0 == stat_value ) { stat_value = "(null)"; }
-fprintf (stderr,"%s is %s\n",match,stat_value);
+fprintf (stderr,"%s is %s ( %u )\n",match,stat_value, atoi(stat_value));
 
 return 0;
 }

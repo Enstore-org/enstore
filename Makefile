@@ -22,7 +22,7 @@ DIR=$(DEFAULT_DIR)
 
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_20
+            VERS=v2_21
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
            CHAIN="rev_01"

@@ -657,14 +657,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
     if (stat_ops & FTT_DO_SN) {
-        static unsigned char cdb_inq_w_sn[]  = {0x12, 0x01, 0x80, 0x00,   14, 0x00};
+        static unsigned char cdb_inq_w_sn[]  = {0x12, 0x01, 0x80, 0x00,   28, 0x00};
 
 	/* scsi inquiry w/ serial number */
-	res = ftt_do_scsi_command(d,"Inquiry", cdb_inq_w_sn, 6, buf, 14, 10, 0);
+	res = ftt_do_scsi_command(d,"Inquiry", cdb_inq_w_sn, 6, buf, 28, 10, 0);
 	if(res < 0){
 	    failures++;
 	} else {
-	    set_stat(b,FTT_SERIAL_NUM, (char *)buf+4, (char *)buf+14);
+	    set_stat(b,FTT_SERIAL_NUM, (char *)buf+4, (char *)buf+4+buf[3]);
 	}
     }
     if (stat_ops & FTT_DO_MS) {
