@@ -490,8 +490,8 @@ def is_mover_suspect(self, mover, external_label):
 	for mov in vol['movers']:
 	    if mover == mov:
 		break
-	else: return vol,mov
-	return vol,None
+	else: return vol,None
+	return vol,mov
     else:
 	return None,None
 
