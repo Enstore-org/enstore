@@ -3163,6 +3163,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.control_socket.bind((host, 0))
                     u = udp_client.UDPClient()
                     Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
+                    Trace.trace(10, "callback socket %s" % (u.get_tsd().socket.getsockname(),))
                     try:
                         x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
                     except errno.errorcode[errno.ETIMEDOUT]:
@@ -3364,6 +3365,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.client_ip = address[0]
                 Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
                 self.net_driver.fdopen(self.client_socket)
+                Trace.trace(10, "listen socket %s control socket %s data_socket %s"%
+                            (self.listen_socket.getsockname(),
+                             self.control_socket.getsockname(),
+                             self.client_socket.getsockname()))
+                
                 self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                 return
             else:
