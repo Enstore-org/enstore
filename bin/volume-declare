@@ -315,7 +315,7 @@ CA$n mam none 8MM 20113227776 20113227776"
 	 volumes=""
 	 for l in 1 7 I; do
        	    n=1;
-	    while [ $n -le 20 ]; do
+	    while [ $n -le 50 ]; do
 		volumes_del="$volumes_del
 null${l}-$n"
 # label      lib   ff    medtype   capacity      bytes left
