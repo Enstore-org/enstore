@@ -821,7 +821,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     def lockfile_name(self):
         d=os.environ.get("ENSTORE_TMP","/tmp")
-        return os.path.join(d, "%s_lock"%self.name)
+        return os.path.join(d, "%s_lock"%(self.name,))
     
         
     # get lock from a lock file

@@ -710,7 +710,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
-        Trace.trace(20, "next_write_volume %s" % ticket)
+        Trace.trace(20, "next_write_volume %s" % (ticket,))
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
@@ -732,7 +732,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         vol = self.find_matching_volume(library, vol_fam, pool,
                                         wrapper_type, vol_veto_list,
                                         first_found, min_remaining_bytes,exact_match=1)
-        Trace.trace(20, "find matching volume returned %s" % vol)
+        Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         if use_exact_match:
             if not vol or len(vol) == 0:
@@ -753,7 +753,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             vol_veto_list, first_found,
                                             min_remaining_bytes,exact_match=0)
         
-            Trace.trace(20, "find matching volume returned %s" % vol)
+            Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
@@ -765,7 +765,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             vol_veto_list, first_found,
                                             min_remaining_bytes,exact_match=0)
         
-            Trace.trace(20, "find matching volume returned %s" % vol)
+            Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         inc_count = 0
         if not vol or len(vol) == 0:
@@ -776,7 +776,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
                                             vol_veto_list, first_found,
                                             min_remaining_bytes, exact_match=0)
-            Trace.trace(20, "find matching volume returned %s" % vol)
+            Trace.trace(20, "find matching volume returned %s" % (vol,))
 
             if vol and len(vol) != 0:
                 # check if quota is enabled

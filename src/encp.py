@@ -46,7 +46,7 @@ import enroute
 
 def signal_handler(sig, frame):
     try:
-        sys.stderr.write("Caught signal %s, exiting\n" % sig)
+        sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
         sys.stderr.flush()
     except:
         pass
@@ -478,7 +478,7 @@ def check_load_balance(mode, dest):
         return
     Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
-    Trace.log(e_errors.INFO, "interface rates: %s" % rate_dict)
+    Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
     choose = []
     for interface in interfaces:
         weight = interface_dict[interface].get('weight', 1)
@@ -1671,7 +1671,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                     'infile':requests[j]['infile'],
                     'outfile':requests[j]['outfile']})
                                                                    
-                done_ticket['status'] = (e_errors.CRC_ERROR,"%s != %s" %((mycrc, mover_crc)))
+                done_ticket['status'] = (e_errors.CRC_ERROR,"%s != %s" %(mycrc, mover_crc))
                 print_data_access_layer_format(requests[j]['infile'], 
                                                requests[j]['outfile'], 
                                                requests[j]['file_size'],

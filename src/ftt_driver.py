@@ -64,7 +64,7 @@ class FTTDriver(driver.Driver):
         
         for retry in xrange(retry_count):
             if retry:
-                Trace.trace(25, "retrying status %d" % retry)
+                Trace.trace(25, "retrying status %d" % (retry,))
                 time.sleep(5)
             status = self.ftt.status(5)
             Trace.trace(25, "ftt status returns %s"%(status,))
@@ -318,9 +318,9 @@ class FTTDriver(driver.Driver):
             except e_errors.READ_ERROR, detail:
                 nbytes = 0
             if nbytes != 80:
-                Trace.trace(25, "read %s bytes checking label" % nbytes)
+                Trace.trace(25, "read %s bytes checking label" % (nbytes,))
                 return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], None
-            Trace.trace(25, "verify_label: read %s" % buf)
+            Trace.trace(25, "verify_label: read %s" % (buf,))
             if buf[:4] != "VOL1":
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
             s = string.split(buf[4:])

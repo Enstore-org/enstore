@@ -94,7 +94,7 @@ class FTT:
             pass
 
     def __repr__(self):
-        return "<FTT: %s>" % self.name or id(self)
+        return "<FTT: %s>" % ((self.name or id(self)),)
     
     def open_dev(self):
         return check(_ftt.ftt_open_dev(self.d))
