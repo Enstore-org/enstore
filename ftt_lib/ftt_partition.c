@@ -66,11 +66,11 @@ ftt_set_part_size(ftt_partbuf p,int n,long sz) {
 int		
 ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
     static char buf[136];
-    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,136, 0x00};
+    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,140, 0x00};
     int res;
     int i;
 
-    res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 136, 10, 0);
+    res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 140, 10, 0);
     if (res < 0) return res;
     p->n_parts = buf[4+3];
     p->max_parts = buf[4+2];
@@ -83,13 +83,15 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 int		
 ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
     static char buf[136];
-    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,136, 0x00};
-    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,136, 0x00};
+    static unsigned char cdb_modsen11[6] = {0x1a, 0x08, 0x11, 0x00,140, 0x00};
+    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,140, 0x00};
     int res, i;
 
-    res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 136, 10, 0);
+    res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 140, 10, 0);
     if (res < 0) return res;
 
+    buf[0] = 0;
+    buf[1] = 0;
     /* set number of partitions */
     buf[4+3] = p->n_parts;
 
@@ -101,7 +103,7 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
         buf[4+8 + 2*i + 0] = (p->partsizes[i] & 0xff00) >> 8;
         buf[4+8 + 2*i + 1] = p->partsizes[i] & 0x00ff;
     }
-    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, 136, 1000, 1);
+    res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, 140, 1000, 1);
     return res;
 }
 

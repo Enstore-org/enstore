@@ -699,8 +699,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    ur = decrypt_ls(b,buf,6,FTT_UNC_READ,1024);
 			    cw = decrypt_ls(b,buf,7,FTT_CMP_WRITE,1024);
 			    cr = decrypt_ls(b,buf,8,FTT_CMP_READ,1024);
-			    set_stat(b,FTT_READ_COMP,  ftt_itoa((long)(100.0*cr/ur)), 0);
-			    set_stat(b,FTT_WRITE_COMP, ftt_itoa((long)(100.0*cw/uw)), 0);}
+                            if (ur != 0.0) {
+			       set_stat(b,FTT_READ_COMP,  ftt_itoa((long)(100.0*cr/ur)), 0);
+			    }
+                            if (uw != 0.0) {
+			       set_stat(b,FTT_WRITE_COMP, ftt_itoa((long)(100.0*cw/uw)), 0);}
+			    }
 		        }
                     }
 		    break;

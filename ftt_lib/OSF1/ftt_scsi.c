@@ -49,10 +49,11 @@ lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
 
 	stat(pc,&sbuf);
 	/* minor = (int)minor(sbuf.st_rdev);		*/
-	/* DEBUG2(stderr,"Minor dev is %d\n", minor);	*/
+	/* DEBUG2(stderr,"Minor dev is %d\n", minor) */
 	*bus  = (sbuf.st_rdev >> 14 ) & 63;
 	*targ = (sbuf.st_rdev >> 10 ) & 15;
 	*lun  = (sbuf.st_rdev >>  6 ) & 15;
+	DEBUG3(stderr,"Got bus %d, target %d, lun %d\n", *bus, *targ, *lun);
 	idstring[0] = 0;
 	return 1;
 }
@@ -214,7 +215,11 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ccb.cam_data_ptr = pcRdWr;
     ccb.cam_dxfer_len = nRdWr;
     /* ccb.cam_timeout = delay <= 5 ? CAM_TIME_DEFAULT: CAM_TIME_INFINITY; */
+#if 0
     ccb.cam_timeout = delay;
+#else
+    ccb.cam_timeout = CAM_TIME_INFINITY;
+#endif
     ccb.cam_cdb_len = nCmd;
     ccb.cam_sense_ptr = (u_char *)acSense;
     ccb.cam_sense_len = SENSSIZ;
@@ -236,13 +241,14 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     successful = 0;
     retries = 0;
     do {
-        DEBUG3(stderr, "try %d\n", retries);
+        DEBUG3(stderr, "try %d\n", retries); 
         res = ioctl(open_devs[(int)n].fd, UAGT_CAM_IO, &ua_ccb);
 	if (res < 0) {
 	    DEBUG1(stderr, "UAGT_CAM_IO ioctl failed\n");
 	    return res;
 	}
-	if ((ccb.cam_ch.cam_status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+	if ((ccb.cam_ch.cam_status & CAM_STATUS_MASK) != CAM_REQ_CMP &&
+	    (ccb.cam_ch.cam_status & CAM_STATUS_MASK) != CAM_REQ_CMP_ERR ) {
 	    DEBUG2(stderr, "cam_status is not completed status=%x\n",
                     ccb.cam_ch.cam_status);
 	    /* try to unfreeze the queue */
@@ -254,12 +260,26 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 		    return res;
 		}
 	    }
+            if ((ccb.cam_ch.cam_status & CAM_STATUS_MASK) == CAM_BUSY){
+		fflush(stderr);
+		sleep(5);
+            }
 	} else {
 	    successful = 1;
 	}
-    } while (!successful && ++retries < 3);
+        if (ftt_debug) fflush(stderr);
+    } while (!successful && ++retries < 10);
 
-    gotstatus = ccb.cam_scsi_status != 0;
+    gotstatus = 0 != (ccb.cam_ch.cam_status & CAM_AUTOSNS_VALID);
+
+    if (ccb.cam_ch.cam_status & CAM_SIM_QFRZN) {
+	DEBUG3(stderr, "unfreezing queue!\n");
+	res = ioctl(open_devs[(int)n].fd,UAGT_CAM_IO, &ua_ccb_sim_rel);
+	if (res < 0) {
+	    DEBUG3(stderr, "unfreeze failed!\n");
+	    return res;
+	}
+    }
 
     if (! successful && ccb.cam_scsi_status == 0 ) {
 	ccb.cam_scsi_status = 255; /* bogus system error status number */

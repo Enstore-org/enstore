@@ -2488,7 +2488,7 @@ ftt_stat_entry ftt_stat_op_tab[] = {
 
     {"2DLT",      
 	FTT_DO_VSRS|
-	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px0f|FTT_DO_RS|
+	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px10|FTT_DO_RS|
 	FTT_DO_DLTRS|FTT_DO_SN|FTT_DO_LS|FTT_DO_RP},
 
     {"2TZ8",      

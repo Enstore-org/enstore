@@ -47,6 +47,7 @@ int ftt_t_extract_stats(int, char **);	int ftt_t_dump_stats(int, char **);
 int ftt_t_free_stat(int, char **);	int ftt_t_init_stats(int, char **);	
 int ftt_t_update_stats(int, char **);	int ftt_t_open(int, char **);		
 int ftt_t_open_logical(int, char **); 	int ftt_t_open_dev(int, char **);
+int ftt_t_setdev(int, char**);
 int ftt_t_close(int, char **); 		int ftt_t_close_dev(int, char **);
 int ftt_t_wait(int, char **);		int ftt_t_check(int, char **);
 int ftt_t_skip_rec(int, char **); 	int ftt_t_skip_fm(int, char **);
@@ -100,6 +101,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_open",		ftt_t_open,
 	"ftt_open_logical",	ftt_t_open_logical,
 	"ftt_open_dev",		ftt_t_open_dev,
+	"ftt_setdev",		ftt_t_setdev,
 	"ftt_close",		ftt_t_close,
 	"ftt_close_dev",	ftt_t_close_dev,
 	"ftt_wait",		ftt_t_wait,

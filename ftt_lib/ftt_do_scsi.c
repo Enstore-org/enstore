@@ -243,10 +243,10 @@ int
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     static unsigned char 
-	mod_sen10[6] = { 0x1a, 0x08, 0x10, 0x00, 28, 0x00},
-	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
-	mod_sen0f[6] = { 0x1a, 0x08, 0x0f, 0x00, 28, 0x00},
-	mod_sel0f[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
+	mod_sen10[6] = { 0x1a, 0x08, 0x10, 0x00, 20, 0x00},
+	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
+	mod_sen0f[6] = { 0x1a, 0x08, 0x0f, 0x00, 20, 0x00},
+	mod_sel0f[6] = { 0x15, 0x10, 0x00, 0x00, 20, 0x00},
 	buf [28],
         opbuf[512];
     int res = 0;
@@ -263,11 +263,12 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, 20, 5, 0);
 	    if(res < 0) return res;
 	    buf[0] = 0;
+	    buf[1] = 0;
 	    /* enable outgoing compression */
 	    buf[4 + 2] &= ~(1 << 7);
 	    buf[4 + 2] |= (compression << 7);
 
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, 20, 5, 1);
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, 20, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -284,7 +285,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* the parent process set... */
 	    /* buf[4] = d->devinfo[d->which_is_default].hwdens; */
  	    buf[4 + 14] = compression;
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, 20, 5, 1);
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, 20, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;

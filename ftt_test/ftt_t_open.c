@@ -172,6 +172,35 @@ return 0;
 
 /* ============================================================================
 
+ROUTINE: ftt_t_setdev
+ 	
+	call ftt_setdev using the global file descriptor
+==============================================================================*/
+int	ftt_t_setdev	(int argc, char **argv)
+{
+int 		status;				/* status */
+int		estatus = 0;			/* expected error */
+static char	*estatus_str;			/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = 0;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_setdev(ftt_t_fd);
+FTT_T_CHECK_CALL (status,estatus);
+return 0;
+
+}
+
+/* ============================================================================
+
 ROUTINE: ftt_t_open_dev
  	
 	call ftt_open_dev using the global file descriptor
