@@ -629,6 +629,9 @@ def do_work(intf):
                     f = open('vol.'+intf.export+'.obj', 'w')
                     cPickle.dump(volume, f)
                     f.close()
+                    Trace.log(e_errors.INFO, "volume %s exported"%(intf.export))
+                else:
+                    Trace.log(e_errors.ERROR, "failed to export volume "+intf.export)
                 ticket={'status':status}
     elif intf.add:
         print intf.add, repr(intf.args)
