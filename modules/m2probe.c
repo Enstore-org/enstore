@@ -324,7 +324,7 @@ unsigned char *s;
 	int res = 0;
 
 	for (; n; n--)
-		res += res * 256 + *s++;
+		res = res * 256 + *s++;
 
 	return(res);
 }
