@@ -166,7 +166,7 @@ ftt_scsi_close(scsi_handle n)
  *\arglend
 -*/
 int
-ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite) {
+ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int writeflag) {
 
     int res;
     static UAGT_CAM_CCB ua_ccb_sim_rel;
@@ -209,7 +209,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ccb.cam_ch.cam_path_id    = open_devs[(int)n].id;
     ccb.cam_ch.cam_target_id  = open_devs[(int)n].targid;
     ccb.cam_ch.cam_target_lun = open_devs[(int)n].lun;
-    ccb.cam_ch.cam_flags = nRdWr? (iswrite ? CAM_DIR_OUT : CAM_DIR_IN) : 
+    ccb.cam_ch.cam_flags = nRdWr? (writeflag ? CAM_DIR_OUT : CAM_DIR_IN) : 
 				  CAM_DIR_NONE;
 
     ccb.cam_data_ptr = pcRdWr;
