@@ -68,63 +68,94 @@ status_table = (
 def convert_status(int_status):
     status = int_status
     if status > len(status_table):  #invalid error code
-        status = derrno.EDASINT
+        #status = derrno.EDASINT
+        return 'BAD', status, 'UNKNOWN CODE'
     return status_table[status][0], status, status_table[status][1]    
 
 
 def mount(volume, drive, media_type,view_first=1):
-    status = 0
-    
-    if view_first:
-        v = view(volume,media_type)
-        if v[0] != 'ok':
-            status = v[1]
-            return status_table[status][0], status, status_table[status][1]
-        elif v[5] != 'O':
-            return 'BAD',("BAD",99),'Tape is not in home position in tower: %s'%(v,)
-        
+    print 'mount called', volume, drive, media_type, view_first
+
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
-        status = derrno.ENOVOLUME
-    elif aci.aci_mount(volume,media_code,drive):  #note order of args!
+        return 'BAD',9998,'Media code is None. media_type= %s  status= %s'%(media_type,)
+    
+    # check if tape is in the storage location or somewhere else
+    if view_first:
+        stat,volstate = view(volume,media_type)
+        if stat!=0:
+            return 'BAD', stat, 'aci_view return code'
+        if volstate == None:
+            return 'BAD', stat, 'volume not found'
+        if volstate.attrib != "O": # look for tape in tower (occupied="O")
+            return 'BAD',9999,'Tape %s is not in home position in tower. location=%s'%(volume,volstate.attrib,)
+        
+    # check if any tape is mounted in this drive
+        stat,drvstate = drive_state(drive,"")
+        if stat!=0:
+            return 'BAD', stat, 'aci_drivestatus2 return code'
+        if drvstate == None:
+            return 'BAD', stat, 'drive not found'
+        if drvstate.volser != "": # look for any tape mounted in this drive
+            return 'BAD',9998,'Drive %s is not empty.'%(drive,)
+
+    stat = aci.aci_mount(volume,media_code,drive)
+    if stat==0:
         status = aci.cvar.d_errno
         if status > len(status_table):  #invalid error code
-            status = derrno.EDASINT
-    
-    return status_table[status][0], status, status_table[status][1]    
-    
+            return 'BAD', status, 'MOUNT UNKNOWN CODE'
+        return status_table[status][0], status, status_table[status][1]    
+    else:
+        return 'BAD',stat,'MOUNT COMMAND FAILED'
 
+    
+def view(volume, media_type):
+    media_code = aci.__dict__.get("ACI_"+media_type)
+    if media_code is None:
+        Trace.log(e_errors.ERROR, derrno.ENOVOLUME,'Media code is None. media_type=%s'%(media_type,))
+        return (-1,None)
+    
+    stat,volstate = aci.aci_view(volume,media_code)
+    if stat!=0:
+        Trace.log(e_errors.ERROR, 'aci_view returned status=%d'%(stat,))
+        return stat,None
+
+    if volstate == None:
+        Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
+        return stat,None
+
+    return stat,volstate
+
+# this is a forced dismount. get rid of whatever has been ejected from the drive   
 def dismount(volume, drive, media_type,view_first=1):
-    status = 0
+    print 'dismount called', volume, drive, media_type, view_first
 
+    # check if any tape is mounted in this drive
     if view_first:
         stat,drvstate = drive_state(drive,"")
-        if stat:
-            status = ("BAD",stat)
-            return 'BAD', status, status_table[stat]
+        if stat!=0:
+            return 'BAD', stat, 'aci_drivestatus2 return code'
         if drvstate == None:
-            status = ("BAD",4) # drive not found
-            return 'BAD', status, status_table[stat]
-
+            return 'BAD', stat, 'drive not found'
         if drvstate.volser == "": # look for any tape mounted in this drive
-            return 'BAD',("BAD",99),'Drive %s is empty.'%(drive,)
+            return 'BAD',8888,'Drive %s is empty.'%(drive,)
 
-
-    if aci.aci_force(drive):
+    stat = aci.aci_force(drive)
+    if stat==0:
         status=aci.cvar.d_errno
         if status > len(status_table):
-            status = derrno.EDASINT
-
-    return status_table[status][0], status, status_table[status][1]    
+            return 'BAD', status, 'FORCE DISMOUNT UNKNOWN CODE'
+        return status_table[status][0], status, status_table[status][1]    
+    else:
+        return 'BAD',stat,'FORCE DISMOUNT COMMAND FAILED'
 
 
 def drive_state(drive,client=""):
     stat,drives = aci.aci_drivestatus2(client)
-    if stat:
+    if stat!=0:
         Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
         return stat,None
     for d in range(0,len(drives)):
-        #print drive, drives[d].drive_name
         if drives[d].drive_name == "":
             break
         if drives[d].drive_name == drive:
@@ -176,23 +207,6 @@ def robotHomeAndRestart(ticket, classTicket):
             return status_table[status][0], status, status_table[status][1]
     return status_table[status][0], status, status_table[status][1]
 
-def view(volume, media_type):
-    status = 0
-    media_code = aci.__dict__.get("ACI_"+media_type)
-
-    if media_code is None:
-        status = derrno.ENOVOLUME
-        return ('TAPE', 3, 'volume not found of this type', '', '\000', '\000', media_type, volume, '\000', 0, 0)
-    else:
-        v = aci.aci_view(volume,media_code)
-        if v[0]:
-            status = aci.cvar.d_errno
-            if status > len(status_table):  #invalid error code
-                status = derrno.EDASINT
-    
-    return status_table[status][0], status, status_table[status][1],\
-           v[1].coord, v[1].owner, v[1].attrib, v[1].type, v[1].volser, \
-           v[1].vol_owner, v[1].use_count, v[1].crash_count
 	   
 #sift through a list of lists
 def yankList(listOfLists, listPosition, look4String):
@@ -363,6 +377,3 @@ def eject(ticket, classTicket):
             return status_table[status][0], status, status_table[status][1]
     
     return status_table[status][0], status, status_table[status][1]
-    
-
-
