@@ -20,6 +20,7 @@ import interface
 import Trace
 import e_errors
 import hostaddr
+import socket_ext
 import callback
 import enstore_html
 import enstore_files
@@ -79,7 +80,6 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         
         #simulate mover connecting on callback and a read_from_HSM transfer
         localhost, localport, well_known_sock = callback.get_callback(
-            fixed_ip=ticket['remote_interface'],
             verbose=0)
         well_known_sock.listen(4)
         ticket['mover']={'callback_addr': (localhost,localport)}
@@ -88,6 +88,16 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         callback.write_tcp_obj(sock,ticket)
         sock.close()
         xfer_sock, address = well_known_sock.accept()
+        xfer_ip = ticket['remote_interface'] ## XXX this is such a stupid name
+                                                                  ## because it's not "remote" on this end
+                                                                  ## Sigh...
+
+        interface=hostaddr.interface_name(xfer_ip)
+        if interface:
+            status=socket_ext.bindtodev(xfer_sock.fileno(),interface)
+            if status:
+                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+        
         well_known_sock.close()
 
         #Now that all of the socket connections have been opened, let the
