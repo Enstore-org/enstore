@@ -91,7 +91,7 @@ def do_alarm(levels):
     if type(levels) != type([]):
         levels = [levels]
     for level in levels:
-        log_levels[level]=1
+        alarm_levels[level]=1
     
 def dont_alarm(levels):
     if type(levels) != type([]):
