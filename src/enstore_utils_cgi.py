@@ -52,7 +52,7 @@ def set_trace_key():
 
 def find_enstore():
     enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo $SETUP_LIBTPPY").readlines()
-#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore efb;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo SETUP_LIBTPPY").readlines()
+#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore -q efb efb;ups list -K @PROD_DIR enstore -q efb efb;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;echo $SETUP_HTMLGEN;echo $SETUP_LIBTPPY").readlines()
     enstore_dir = string.strip(enstore_info[0])
     enstore_dir = string.replace(enstore_dir, "\"", "")
     enstore_src = "%s/src"%(enstore_dir,)

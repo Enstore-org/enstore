@@ -55,7 +55,7 @@ def go():
 	alarms = []
 	import enstore_html
 	if form.has_key(enstore_html.RESOLVEALL):
-	    alarm = [enstore_html.RESOLVEALL]
+	    alarms = [enstore_html.RESOLVEALL]
 	else:
 	    for key in form.keys():
 		if key[0:5] == "alarm":
@@ -64,7 +64,7 @@ def go():
 		if not alarms:
 		    # not to decide, is to decide
 		    print "ERROR: No alarm chosen for resolution."
-                raise SystemExit
+		    raise SystemExit
 
 	import alarm_client
 	import Trace
@@ -73,16 +73,16 @@ def go():
 	print "<PRE>"
 	for alarm in alarms:
 	    ticket = alc.resolve(alarm)
-	    if ticket.get("status", "") == (e_errors.OK, None):
-		msg = "Alarm with id = %s has been resolved."%(alarm,)
-		print msg
-		# log that the alarm was cancelled
-		Trace.log(e_errors.INFO, msg)
-	    else:
-		print "Could not resolve alarm with id = %s."%(alarm,)
-                if ticket.get('status', ""):
-                    print "  Return status = (%s, %s)"%(ticket['status'][0],
-                                                        ticket['status'][1])
+	    for id in ticket.keys():
+		if ticket[id] == (e_errors.OK, None):
+		    msg = "Alarm with id = %s has been resolved."%(id,)
+		    print msg
+		    # log that the alarm was cancelled
+		    Trace.log(e_errors.INFO, msg)
+		else:
+		    print "Could not resolve alarm with id = %s."%(id,)
+		    print "  Return status = (%s, %s)"%(ticket[id][0],
+							ticket[id][1])
 	else:
 	    print "</PRE>"
 		

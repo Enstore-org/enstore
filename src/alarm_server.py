@@ -16,6 +16,7 @@ import e_errors
 import hostaddr
 import enstore_constants
 import www_server
+import enstore_html
 
 def default_alive_rcv_timeout():
     return 5
@@ -136,14 +137,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def resolve_alarm(self, ticket):
         # get the unique identifier for this alarm
         id = ticket.get(enstore_constants.ALARM, 0)
+	ticket = {}
 	if id == enstore_html.RESOLVEALL:
 	    for id in self.alarms.keys():
-		self.resolve(id)
+		status = self.resolve(id)
+		ticket[id] = status
 	else:
 	    status = self.resolve(id)
+	    ticket[id] = status
 
         # send the reply to the client
-        ticket['status'] = status
         self.send_reply(ticket)
         
     def dump(self, ticket):
