@@ -123,6 +123,7 @@ PENDING = "pending"
 WAM = "work at movers"
 WORK = "work"
 MOVERS = "movers"
+MOVER_INTERFACE = 'mover_interface'
 ID = "id"
 PORT = "port"
 CURRENT = "current"

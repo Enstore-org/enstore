@@ -1688,13 +1688,14 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	# now create the table with the data in it, first do the row with
 	# the headings
 	tr = HTMLgen.TR(valign="CENTER")
-	headings = ["Time", "Node", "User", "Bytes", "Volume",
+	headings = ["Time", "Node", "User", "Mover Interface", "Bytes", "Volume",
 		    "Data Transfer Rate (MB/S)", "User Rate (MB/S)"]
 	num_headings = len(headings)
 	for hding in headings:
 	    tr.append(self.make_th(hding))
 	en_table = HTMLgen.TableLite(tr, border=1, bgcolor=AQUA, width="100%",
-				     cols=7, cellspacing=5, cellpadding=CELLP)
+				     cols=num_headings, cellspacing=5, 
+				     cellpadding=CELLP)
 	num_errors = 0
 	errors = []
 	num_successes = 0
@@ -1715,6 +1716,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		# this is a normal encp data transfer row
 		tr.append(HTMLgen.TD(row[1]))
 		tr.append(HTMLgen.TD(row[2]))
+		tr.append(HTMLgen.TD(row[9]))
 		tr.append(HTMLgen.TD(HTMLgen.Href("#%s%s"%(INFOTXT, 
 							   num_successes), 
 						  "%s (%s)"%(row[3], 

@@ -27,6 +27,7 @@ STORAGE_GROUP = 'storage_group'
 STORAGE_GROUP_LIMIT = 'storage_group_limit'
 UNKNOWN = 'UNKNOWN'
 DASH = "-"
+QUESTION = "?"
 
 # locate and pull out the dictionaries in the text message. assume that if
 # there is more than one dict, they are of the form -
@@ -100,16 +101,17 @@ class EncpLine:
 	    return
         [self.time, self.node, self.pid, self.user, self.status, self.server, 
          self.text] = string.split(line, None, 6)
-        self.bytes = "?"
-        self.direction = "?"
-        self.volume = "?"
-        self.user_rate = "?"
-        self.work = "?"
-        self.infile = "?"
-        self.outfile = "?"
-        self.msg_type = "?"
-        self.xfer_rate = "?"
-        self.mc = "?"
+        self.bytes = QUESTION
+        self.direction = QUESTION
+        self.volume = QUESTION
+        self.user_rate = QUESTION
+        self.work = QUESTION
+        self.infile = QUESTION
+        self.outfile = QUESTION
+        self.msg_type = QUESTION
+        self.xfer_rate = QUESTION
+        self.mc = QUESTION
+	self.interface = QUESTION
         # parse all success messages and pull out the interesting information
         if self.status == e_errors.sevdict[e_errors.INFO]:
             try:
@@ -135,8 +137,14 @@ class EncpLine:
                 # get the total data transfer rate
                 [tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
                 [self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
+		# get the dictionary at the end
+		self.dict = get_dict(tmp2)
                 # pull out the name of the media changer
-                self.mc = get_dict(tmp2)
+                self.mc = self.dict.get(enstore_constants.MEDIA_CHANGER, QUESTION)
+		self.interface = self.dict.get(enstore_constants.MOVER_INTERFACE,
+					       QUESTION)
+		# get rid of .fnal.gov
+		self.interface = enstore_functions.strip_node(self.interface)
                 tmp_list = string.splitfields(tmp1, " ")
                 self.bytes = tmp_list[0]
                 self.direction = tmp_list[3]

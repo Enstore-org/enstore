@@ -386,12 +386,13 @@ class HTMLEncpStatusFile(EnStatusFile):
             if encp_line.valid:
                 if encp_line.status == e_errors.sevdict[e_errors.INFO]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
-                                            encp_line.node, encp_line.user, 
+                                            encp_line.node, encp_line.user,
                                             encp_line.bytes, 
                                             "%s %s"%(encp_line.direction, 
                                                      encp_line.volume), 
                                             encp_line.xfer_rate, encp_line.user_rate,
-                                            encp_line.infile, encp_line.outfile])
+                                            encp_line.infile, encp_line.outfile,
+					    encp_line.interface])
                 elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
                     formatted_lines.append(["%s %s"%(day, encp_line.time), 
                                             encp_line.node, encp_line.user, 
