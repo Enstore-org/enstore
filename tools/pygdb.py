@@ -195,7 +195,7 @@ if __name__ == "__main__":
         pid = None
 
     if not pid:
-        print "Usage: %s pid" % argv[0]
+        print "Usage: %s pid" % sys.argv[0]
         sys.exit(-1)
         
     pygdb = PyGdb(sys.argv[1:])
