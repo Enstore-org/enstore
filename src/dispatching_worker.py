@@ -11,11 +11,13 @@ import sys
 import socket
 import signal
 import string
+import fcntl
+import FCNTL
 import copy
 import types
+import rexec
 
 #enstore imports
-import udp_server
 import hostaddr
 import cleanUDP
 import Trace
@@ -27,14 +29,28 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
 
-class DispatchingWorker(udp_server.UDPServer):
+class DispatchingWorker:
     
     def __init__(self, server_address):
-        udp_server.UDPServer.__init__(self, server_address, receive_timeout=60.)
+        self.socket_type = socket.SOCK_DGRAM
+        self.max_packet_size = 16384
+        self.rcv_timeout = 60.   # timeout for get_request in sec.
+        self.address_family = socket.AF_INET
+        self.server_address = server_address
+        try:
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                socket.gethostbyname_ex(
+                    socket.gethostbyaddr(self.server_address[0])[0])
+        except socket.error:
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                self.server_address[0], [], [self.server_address[0]]
+
         # deal with multiple interfaces
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
         self.callback = {} #callback functions associated with above
+        self.request_dict = {} # used to recognize UDP retries
+        self.request_dict_ttl = 1800 # keep requests in request dict for this many seconds
         self.interval_funcs = {} # functions to call periodically - key is function, value is [interval, last_called]
 
         
@@ -44,8 +60,22 @@ class DispatchingWorker(udp_server.UDPServer):
         self.n_children = 0
         self.kill_list = []
         
+        self.server_socket = cleanUDP.cleanUDP (self.address_family,
+                                    self.socket_type)
         self.custom_error_handler = None
 
+        self.rexec = rexec.RExec()
+        
+        # set this socket to be closed in case of an exec
+        fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
+        self.server_bind()
+
+    def r_eval(self, stuff):
+        try:
+            return self.rexec.r_eval(stuff)
+        except:
+            return None,None,None
+    
     def add_interval_func(self, func, interval, one_shot=0):
         now = time.time()
         self.interval_funcs[func] = [interval, now, one_shot]
@@ -62,6 +92,15 @@ class DispatchingWorker(udp_server.UDPServer):
 
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
+
+    def purge_stale_entries(self):
+        stale_time = time.time() - self.request_dict_ttl
+        count = 0 
+        for key, value in self.request_dict.items():
+            if  value[2] < stale_time:
+                del self.request_dict[key]
+                count = count+1
+        Trace.trace(20,"purge_stale_entries count=%d"%(count,))
 
     # check for any children that have exited (zombies) and collect them
     def collect_children(self):
@@ -116,6 +155,16 @@ class DispatchingWorker(udp_server.UDPServer):
             return 0
         
         
+    def server_bind(self):
+        """Called by constructor to bind the socket.
+
+        May be overridden.
+
+        """
+        Trace.trace(16,"server_bind add %s"%(self.server_address,))
+        self.server_socket.bind(self.server_address)
+
+    
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
@@ -165,6 +214,8 @@ class DispatchingWorker(udp_server.UDPServer):
         except:
             self.handle_error(request, client_address)
 
+
+
     # a server can add an fd to the server_fds list
     def add_select_fd(self, fd, write=0, callback=None):
         if fd is None:
@@ -188,7 +239,7 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.callback.has_key(fd):
             del self.callback[fd]
 
-
+        
     def get_request(self):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
@@ -261,6 +312,18 @@ class DispatchingWorker(udp_server.UDPServer):
                         request=None
 
         return (request, addr)
+
+    def handle_timeout(self):
+        # override this method for specific timeout hadling
+        pass
+
+    def fileno(self):
+        """Return socket file number.
+
+        Interface required by select().
+
+        """
+        return self.server_socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
@@ -363,6 +426,7 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_to_caller(ticket)
         
         
+    # quit instead of being killed
     def quit(self,ticket):
         Trace.trace(10,"quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
@@ -379,6 +443,34 @@ class DispatchingWorker(udp_server.UDPServer):
             del self.request_dict[self.current_id]
         except KeyError:
             pass
+
+    # reply to sender with her number and ticket (which has status)
+    # generally, the requested user function will send its response through
+    # this function - this keeps the request numbers straight
+    def reply_to_caller(self, ticket):
+        reply = (self.client_number, ticket, time.time()) 
+        self.reply_with_list(reply)          
+
+    # keep a copy of request to check for later udp retries of same
+    # request and then send to the user
+    def reply_with_list(self, list):
+        self.request_dict[self.current_id] = copy.deepcopy(list)
+        self.server_socket.sendto(repr(self.request_dict[self.current_id]), self.reply_address)
+        
+    # for requests that are not handled serially reply_address, current_id, and client_number
+    # number must be reset.  In the forking media changer these are in the forked child
+    # and passed back to us
+    def reply_with_address(self,ticket):
+        self.reply_address = ticket["ra"][0] 
+        self.client_number = ticket["ra"][1]
+        self.current_id    = ticket["ra"][2]
+        reply = (self.client_number, ticket, time.time())
+        Trace.trace(19,"reply_with_address %s %s %s %s"%( 
+            self.reply_address,
+            self.current_id,
+            self.client_number,
+            reply))
+        self.reply_to_caller(ticket)
 
     def restricted_access(self):
         '''

@@ -58,8 +58,7 @@
 # This is for freeze to find the source of the included modules
 *shared*
 
-# EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
-EXfer EXfer.c  -D`uname`  adler32.a
+EXfer EXfer.c  -D`uname` adler32.a
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
