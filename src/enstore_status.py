@@ -116,11 +116,15 @@ class EncpLine:
                     self.work = tmp_list[0]
                     self.infile = tmp_list[1]
                     self.outfile = tmp_list[3]
-                else:
+                elif len(tmp_list) == 3:
                     # support an old format
                     self.infile = tmp_list[0]
                     self.outfile = tmp_list[2]
                     self.work = ""
+		else:
+		    # we don't support this format, things may be really 
+		    # screwed up.
+		    
                 # get the total data transfer rate
                 [tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
                 [self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
