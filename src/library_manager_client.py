@@ -74,6 +74,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def __init__(self, csc=0, verbose=0, name="", \
                  host=interface.default_host(), port=interface.default_port()):
         self.name=name
+	self.verbose = verbose
         # we always need to be talking to our configuration server
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()

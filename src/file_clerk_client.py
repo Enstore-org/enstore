@@ -26,6 +26,7 @@ class FileClient(generic_client.GenericClient, \
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
+	self.verbose = verbose
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):

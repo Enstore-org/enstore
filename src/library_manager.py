@@ -365,6 +365,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def __init__(self, libman, csc=0, verbose=0, \
                  host=interface.default_host(), port=interface.default_port()):
         Trace.trace(10, '{__init__')
+	self.verbose = verbose
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system

@@ -38,6 +38,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	         host=interface.default_host(), \
 	         port=interface.default_port()):
         Trace.trace(10, '{__init__')
+	self.verbose = verbose
         # get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         #   pretend that we are the test system

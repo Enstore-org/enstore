@@ -21,6 +21,7 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(10,'{__init__')
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+	self.verbose = verbose
         Trace.trace(10,'}__init')
 
     def send (self, ticket, rcv_timeout=0, tries=0):
@@ -116,6 +117,7 @@ class InquisitorClientInterface(interface.Interface):
 	self.timestamp = 0
 	self.max_ascii_size = 0
 	self.get_max_ascii_size = 0
+	self.verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options

@@ -84,6 +84,7 @@ class LoggerClient(generic_client.GenericClient):
         self.logger = servername
         self.log_priority = 7
         self.debug = verbose
+	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 

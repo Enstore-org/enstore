@@ -321,6 +321,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
         self.config_exists()
 
         # always nice to let the user see what she has
+	self.verbose = verbose
         if verbose:
             pprint.pprint(self.__dict__)
 

@@ -24,6 +24,7 @@ class MediaChangerClient(generic_client.GenericClient):
                  host=interface.default_host(), \
                  port=interface.default_port()):
         self.media_changer=name
+	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 

@@ -21,6 +21,7 @@ class AdminClerkClient(generic_client.GenericClient) :
                  port=interface.default_port()):
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
+	self.verbose = verbose
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket, rcv_timeout=0, tries=0) :
