@@ -312,7 +312,7 @@ class DispatchingWorker:
         ticket['pid'] = os.getpid()
 	Trace.log( e_errors.INFO, 'QUITTING... via os_exit python call' )
         self.reply_to_caller(ticket)
-        os._exit(0)
+        sys.exit(0)
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
