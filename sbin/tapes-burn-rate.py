@@ -158,8 +158,10 @@ beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
 ALL_9940 = open('ALL_9940.tapes','a')
 ALL_9940B = open('ALL_9940B.tapes', 'a')
+CD_9940B = open('CD_9940B.tapes', 'a')
 group_fd['ALL_9940'] = ALL_9940
 group_fd['ALL_9940B'] = ALL_9940B
+group_fd['CD_9940B'] = CD_9940B
 
 
 print 'sorting drivestat into storage group and library'
@@ -170,8 +172,10 @@ eagle_v={}
 beagle_v={}
 all_9940_mb = 0L
 all_9940b_mb = 0L
+cd_9940b_mb = 0L
 all_9940_v = {}
 all_9940b_v = {}
+cd_9940b_v = {}
 while 1:
     line = f.readline()
     if not line: break
@@ -219,7 +223,10 @@ while 1:
        #all_9940b_mb = all_9940_mb + long(mb)
        all_9940b_v[v] = 1
        ALL_9940B.write('%s\n' % (ol,))
-        
+       if l == 'CD-9940B':
+           cd_9940b_v[v] = 1
+           CD_9940B.write('%s\n' % (ol,))
+         
     elif l in ['samlto'] or sg in ['cms']:
         pass
     elif l == 'eagle':
@@ -246,6 +253,9 @@ _9940_su = 0.
 _9940b_wv = _9940b_bv = 0
 _9940b_su = 0.
 
+cd_9940b_wv = cd_9940b_bv = 0
+cd_9940b_su = 0.
+
 rpt=open('report','w')
 for g in group_fd.keys():
     print "make plot for %s"%(g,)
@@ -258,6 +268,10 @@ for g in group_fd.keys():
         pass
         #wv = len(all_9940b_v)
         #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
+    elif g == 'CD_9940B':
+        pass
+        #wv = len(all_9940b_v)
+        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
     if QUOTAS.has_key(g):
         (wv,bv,su, l) = QUOTAS[g]
         
@@ -266,6 +280,11 @@ for g in group_fd.keys():
           _9940b_bv = _9940b_bv + int(bv)
           su = float(su.split("G")[0])
           _9940b_su = _9940b_su + su
+          if l == 'CD-9940B':
+              cd_9940b_wv = cd_9940b_wv + int(wv)
+              cd_9940b_bv = cd_9940b_bv + int(bv)
+              cd_9940b_su = cd_9940b_su + su
+             
         elif l in ['mezsilo', 'cdf', '9940']:
           su = float(su.split("G")[0])
           rpt.write("GROUP %s WR %s BL %s GB %s\n"%(g, wv,bv,su)) 
@@ -314,6 +333,9 @@ print cmd
 os.system(cmd)
 sort_the_file('ALL_9940B.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('ALL_9940B',d1,d2,_9940b_wv,_9940b_bv,_9940b_su)
+print cmd
+os.system(cmd)
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('CD_9940B',d1,d2,cd_9940b_wv,cd_9940b_bv,cd_9940b_su)
 print cmd
 os.system(cmd)
 
