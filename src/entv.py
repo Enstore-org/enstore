@@ -801,19 +801,24 @@ def stop_messages_threads():
 
     return
 
-def send_mover_request(csc, send_request_dict, mover_name, u):
+def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
+    mover_name = mover_name.split("@")[0].split(".")[0]
+    mover_name = mover_name + ".mover"
+    
     #Get the message, mover name and mover network address
     # for sending the status request.
     m_addr = csc.get(mover_name, {}).get('hostip', None)
     m_port = csc.get(mover_name, {}).get('port', None)
     if not m_addr or not m_port:
         return
+
     message = {'work' : 'status'}
     mover_system_name = mover_name.split(".")[0]
     tx_id = u.send_deferred(message, (m_addr, m_port))
     send_request_dict[tx_id] = {}
-    send_request_dict[tx_id]['name'] = mover_system_name
-    send_request_dict[tx_id]['time'] = time.time()
+    send_request_dict[tx_id]['name']  = mover_system_name
+    send_request_dict[tx_id]['time']  = time.time()
+    send_request_dict[tx_id]['count'] = count
 
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
@@ -978,7 +983,16 @@ def handle_messages(csc_addr, intf):
             # responce.
             elif send_request_dict:
                 for tx_id in send_request_dict.keys():
-                    if time.time() - send_request_dict[tx_id]['time'] > 15:
+                    if send_request_dict[tx_id]['count'] > 5:
+                        #If there has not been any responce after 25 seconds
+                        # (5 x 5) then give up.
+                        del send_request_dict[tx_id]
+                    elif time.time() - send_request_dict[tx_id]['time'] > 5:
+                        #If ther hasn't been a responce resend the request.
+                        send_mover_request(csc, send_request_dict,
+                                        send_request_dict[tx_id]['name'],
+                                        u,
+                                        send_request_dict[tx_id]['count'] + 1)
                         del send_request_dict[tx_id]
                     
             #Read the next message from the event relay.
