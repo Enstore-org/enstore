@@ -225,10 +225,10 @@ send_writer(  enum e_mtype	mtype
 	    {   sleep( 1 );	/* arbitrary time (probably stuck anyway) */
 		goto re_snd;
 	    }
-	    fprintf( stderr, "msgsnd error - system resourse exhausted\n" );
+	    fprintf( stderr, "ENSTORE: msgsnd error - system resourse exhausted\n" );
 	    /* drop through to exit */
 	default:
-	    perror( "EXfer: fatal reader (send_writer) error" );
+	    perror( "ENSTORE: EXfer: fatal reader (send_writer) error" );
 	    /* can not do much more, but lets try exitting */
 	    exit( 1 );
 	}
