@@ -852,7 +852,9 @@ class EnPatrolFile(EnFile):
     # write out the alarm
     def write(self, alarm):
         if not self.filedes == 0:
-            self.filedes.write(repr(alarm))
+            # tell the alarm that this is going to patrol so the alarm
+            # can add the patrol expected header
+            self.filedes.write(alarm.prepr())
 
     # rm the file
     def remove(self):
