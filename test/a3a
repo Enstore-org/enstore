@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 rsh rip1 "/usr/local/bin/traceMode 1"
 
-#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/scratch.in 15 0
-#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/rip8a.in   16 0
-#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/rip8b.in   17 0
-$ENSTORE_DIR/test/roll  -noread /pnfs/grau/ait/jon2 /home/bakken/enstore/test/raid.in    18 0
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 $ENSTORE_DIR/test/scratch.in 15 0
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 $ENSTORE_DIR/test/rip8a.in   16 0
+#$ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon2 $ENSTORE_DIR/test/rip8b.in   17 0
+$ENSTORE_DIR/test/roll  -noread /pnfs/grau/ait/jon2 $ENSTORE_DIR/test/raid.in    18 0
