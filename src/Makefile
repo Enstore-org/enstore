@@ -1,5 +1,9 @@
 SHELL=/bin/sh
 
+# need a robust way of finding freeze, especially for non-kits version of python
+#FREEZE=`find $PYTHON_DIR -name freeze.py -print` 
+FREEZE=`ls $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py`
+
 all:
 	@echo nothing to build
 
@@ -14,7 +18,7 @@ encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
-	python $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
 	(cd ENCPBIN_TEMP; make;)
 	cp ENCPBIN_TEMP/encp ENCPBIN
 	cp ../ups/encp.table ENCPBIN
