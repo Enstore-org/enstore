@@ -1,0 +1,54 @@
+Client: File Mover sends...	Server: Volume manager, replies
+	idle_mover		nowork, bind_volume		
+	have_bound_volume	read_from_hsm, write_to_hsm, unbind_volume
+	unilateral_unbind	(ack)
+	
+Client: File Mover sends...	Server: Bit file server, replies
+	new_bit_file		bit_file_id
+
+Client: Volume Manager sends...	Server: Storage Server, replies
+	next_write_volume	volume descriptor.
+	append_done		volume descriptor.
+	set_appending		(ack)
+	update_read_stats	(ack)	
+
+Client: Bit File Server	sends..	Server:  Storage Server replies
+	read_from_hsm		library for this volume
+
+Client: File Mover sends...	Server: Storage Server replies
+	inquire_vol		volume_record
+	set_remaining_bytes	ack
+	set_system_readonly	ack
+	set_hung		ack
+
+Client: File Mover sends...	Server: Bit FIle Server
+	new_bit_file		Bit file i.d.
+
+Client: Bit File Server sends..	Server: Volume Manager:
+	read_from_hsm		(ack)
+
+Client: User sends...		Server: Volume Manager:
+	write_to_hsm		(ack)
+
+Client: User sends...		Server: Bit File Server:
+	read_from_hsm		(ack)
+
+Client: Adminsitrator sends...	Server: Storage Server:
+	addvol
+	delete vol
+	edit vol
+	backup
+	status			HTML
+
+Client: Adminsitrator sends...	Server: Bit File server:
+	del bfid		ack
+	edit			
+	mk backup		ack
+	status			HTML
+
+Client: Adminstrator sends...	Server: Volume Server:
+	kill job		ack
+	kill binding		ack
+	status			HTML
+
+
