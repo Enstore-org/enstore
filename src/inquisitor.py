@@ -71,6 +71,10 @@ VOLUME_STATES = ['full', 'readonly']
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
+FF_W = "file_family_width"
+FF = "file_family"
+NUM_IN_Q = "num_in_q"
+
 defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
             'alive_retries': 2,
@@ -481,6 +485,52 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         elif not enstore_functions.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
 
+    check_nodes = ["d0olc",]
+
+    def num_in_queue(self, node, queue):
+	ff_dict = {}
+	for elem in queue:
+	    if elem['work'] == "write_to_hsm" and \
+	       enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
+		ff = elem['pnfs']['file_family']
+		if ff_dict.has_key(ff):
+		    ff_dict[ff][FF_W] = elem['pnfs']['file_family_width']
+		    ff_dict[ff][NUM_IN_Q] = ff_dict[ff][NUM_IN_Q] + 1
+		else:
+		    ff_dict[ff] = {FF_W : elem['pnfs']['file_family_width']}
+		    ff_dict[ff][NUM_IN_Q] = 1
+	return ff_dict
+
+    # we do this when a queue seems to be stalled
+    def queue_is_stalled(self, server, node, ff):
+	# send mail and raise an alarm, this looks stalled.
+	txt = "Write queue stall for %s, file_family: %s, from node %s"%(server, ff,
+									 node)
+	Trace.alarm(e_errors.ERROR, txt)
+	enstore_functions.send_mail(MY_NAME, txt, "Write Queue Stall")
+
+
+    def check_for_stalled_queue(self, lib_man):
+	# get the number of writes that are being done now
+	for node in self.check_nodes:
+	    # we can overwrite ff_width because we are really concerned about what is in
+	    # the pending queue.  if there is nothing, ff_width  = 0, but we don't care
+	    wam_dict = self.num_in_queue(node, lib_man.wam_queue)
+	    pend_dict = self.num_in_queue(node, lib_man.pend_queue)
+	    # loop over all the file families that have an element in the pending queue.
+	    # see if there are file_family_width elements in the wam queue to account for
+	    # there being elements in the pending queue.
+	    keys = pend_dict.keys()
+	    for ff in keys:
+		if wam_dict.has_key(ff):
+		    # there are elements in the wark at movers queue
+		    if wam_dict[ff][NUM_IN_Q] < wam_dict[ff][FF_W]:
+			# we should be processing more for this file_family.
+			self.queue_is_stalled(lib_man.name, node, ff)
+		else:
+		    # there are no elements in the wam queue for this ff. oops.
+		    self.queue_is_stalled(lib_man.name, node, ff)
+
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
 	try:
@@ -495,6 +545,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.wam_queue = self.lm_queues[lib_man.name]['at movers']
 	lib_man.pend_queue = self.lm_queues[lib_man.name]['pending_work']
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
+	self.check_for_stalled_queue(lib_man)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host, lib_man.port,
 					     TIMED_OUT_SP, time, lib_man.name)
