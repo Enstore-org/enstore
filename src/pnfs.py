@@ -796,7 +796,7 @@ class Pnfs:
             return e_errors.OK, None
         except:
             exc, val, tb = e_errors.handle_error()
-            return e_errors.ERROR, str(exc), str(val)
+            return e_errors.ERROR, (str(exc), str(val))
 
     def log_err(self,func_name):
         exc,msg,tb=sys.exc_info()
