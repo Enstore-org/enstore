@@ -190,6 +190,8 @@ class Interface:
                 self.agetime = string.atoi(value)
             elif opt == "--list":
                 self.list = 1
+            elif opt == "--log":
+                self.list = string.atoi(value)
             elif opt == "--verbose" :
                 self.list = string.atoi(value)
             elif opt == "--d0sam":
