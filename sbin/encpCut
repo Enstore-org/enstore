@@ -335,6 +335,10 @@ for try in list doit; do
 
         3) echo "Step $Step:   bump encp version number to $REV in encp.py   `starting`"
            if [ "$try" = "doit" ] ; then
+              cd $ENSTORE_DIR/src
+              check_status $? "cd $ENSTORE_DIR/src"
+              cvs update -A encp.py
+              check_status $? "cvs update -A encp.py"
               encpnew=/tmp/$productCut.encpnew
               sed -e "s+version_string = \".*  CVS +version_string = \"$REV  CVS +" $ENSTORE_DIR/src/encp.py > $encpnew
               check_status $? "sed bump version to $REV"
@@ -342,10 +346,10 @@ for try in list doit; do
               cp $encpnew $ENSTORE_DIR/src/encp.py
               check_status $? "mv $encpnew $ENSTORE_DIR/src/encp.py"
               rm -f $encpnew
-              cd $ENSTORE_DIR/src
-              check_status $? "cd $ENSTORE_DIR/src"
               cvs commit -m "bumping version to $REV because of $productCut" encp.py
               check_status $? "cvs commit of encp.py"
+              cvs tag -F production encp.py
+              check_status $? "cvs tag -F production encp.py"
            fi
            ;;
 
