@@ -420,7 +420,7 @@ def bind_volume( self, external_label ):
 	    vcc.set_remaining_bytes( external_label,
 				     tmp_vol_info['remaining_bytes'],
 				     tmp_vol_info['eod_cookie'],
-				     0,0,0,0 )
+				     0,0,0,0,None )
 	    Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%\
 			 (tmp_vol_info['eod_cookie'],
 			  tmp_vol_info['remaining_bytes']) )
@@ -621,6 +621,7 @@ def forked_write_to_hsm( self, ticket ):
 	if rsp['status'][0] != e_errors.OK:
 	    Trace.log( e_errors.ERROR,
 		       "XXXXXXXXXXXenstore software error" )
+	    ticket["fc"]["bfid"] = None
 	    pass
 	ticket['fc'] = rsp['fc']
 
@@ -628,7 +629,8 @@ def forked_write_to_hsm( self, ticket ):
 						     remaining_bytes,
 						     eod_cookie,
 						     wr_err,rd_err, # added to total
-						     wr_access,rd_access) )
+						     wr_access,rd_access,
+						     ticket["fc"]["bfid"]) )
 	self.vol_info.update( ticket['vc'] )
 	
 
@@ -1166,6 +1168,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
+	print "NEXT REQ", next_req_to_lm
 	if  len(self.summoned_while_busy) and next_req_to_lm=={}:
 	    # now check if next_req_to_lm=={} means we just started an xfer and
 	    # are waiting for completion.

@@ -185,6 +185,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # mod the delete state
         record["deleted"] = deleted
 
+	if deleted == "no":
+	    # restore pnfs entry
+	    import pnfs
+	    map = pnfs.Pnfs(record["pnfs_mapname"])
+	    map.restore_from_volmap()
+
         # become a client of the volume clerk and decrement the non-del files on the volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         vticket = vcc.decr_file_count(record['external_label'],decr_count)

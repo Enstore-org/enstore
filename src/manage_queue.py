@@ -117,18 +117,16 @@ class LM_Queue:
     def get_next_for_this_volume(self, v):
 	for w in self.queue:
 	    if w["work"] == "read_from_hsm":
-		if w['vc']['external_label'] == \
-		   v['vc']["external_label"]:
-		    if w['fc']['location_cookie'] > \
-		       v['vc']['current_location']:
+		if w['vc']['external_label'] == v["external_label"]:
+		    if w['fc']['location_cookie'] > v['current_location']:
 			w['at_the_top'] = w['at_the_top']+1
 			break
 	else:
 	    # no match has been found, return first for this volume
 	    for w in self.queue:
-		if w['vc']['external_label'] ==v['vc']["external_label"]:
+		if w['vc']['external_label'] ==v["external_label"]:
 		    w['at_the_top'] = w['at_the_top']+1
-		    w['status'] = v['vc']['status']
+		    w['status'] = v['status']
 		    break
 	    else: return None 
 	return w

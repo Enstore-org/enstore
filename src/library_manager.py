@@ -268,67 +268,69 @@ def next_work_any_volume(self, csc):
     if w:
 	Trace.trace(11,"check volume %s " % w['fc']['external_label'])
 	if w["status"][0] == e_errors.OK:
-	    vol_info = self.vcc.inquire_vol(w['fc']['external_label'])
-	    if (vol_info['system_inhibit'] == e_errors.NOACCESS or
-		(vol_info['system_inhibit'] != 'none' and 
-		 w['work'] == 'write_to_hsm') or
-		((vol_info['system_inhibit'] != 'none' and
-		  vol_info['system_inhibit'] != 'readonly' and
-		  vol_info['system_inhibit'] != 'full') and 
-		 w['work'] == 'read_from_hsm')):
-		Trace.trace("work can not be done at this volume %s"%vol_info)
-		w['status'] = (e_errors.NOACCESS,None)
+	    file_family = w["vc"]["file_family"]
+	    if w["work"] == "write_to_hsm":
+		file_family = file_family+"."+w["vc"]["wrapper"]
+	    ret = self.vcc.is_vol_available(w['work'],
+					    w['fc']['external_label'],
+					    file_family,
+					    w["wrapper"]["size_bytes"])
+	    print "RET", ret
+	    if ret['status'][0] != e_errors.OK:
+		Trace.trace(11,"work can not be done at this volume %s"%ret)
+		w['status'] = ret['status']
 		pending_work.delete_job(w)
 		send_regret(self, w)
 		Trace.log(e_errors.ERROR,"next_work_any_volume: cannot do"
 			  "the work for %s status:%s" % \
 			  (w['fc']['external_label'], 
-			   vol_info['system_inhibit']))
+			   w['status'][0]))
 		return {"status" : (e_errors.NOWORK, None)}
 	return w
     return {"status" : (e_errors.NOWORK, None)}
 
 
 # is there any work for this volume??  v is a work ticket with info
-def next_work_this_volume(v):
+def next_work_this_volume(self, v):
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
-        # writing to this volume?
-        if (w["work"]                == "write_to_hsm"   and
-            (w["vc"]["file_family"]+"."+w["vc"]["wrapper"]) == v['vc']["file_family"] and
-            v["vc"]["user_inhibit"]        == "none"           and
-            v["vc"]["system_inhibit"]      == "none"           and
-            w["wrapper"]["size_bytes"] <= v['vc']["remaining_bytes"]):
-            w["fc"]["external_label"] = v['vc']["external_label"]
-            w["fc"]["size"] = w["wrapper"]["size_bytes"]
-            # ok passed criteria, return write work ticket
-            return w
+	file_family = w["vc"]["file_family"]
+	if w["work"] == "write_to_hsm":
+	    file_family = file_family+"."+w["vc"]["wrapper"]
+	print "FF", file_family
+	ret = self.vcc.is_vol_available(w['work'],  v["external_label"],
+					file_family,
+					w["wrapper"]["size_bytes"])
+	if ret['status'][0] == e_errors.OK:
+	    w['status'] = ret['status']
+	    # writing to this volume?
+	    if w["work"] == "write_to_hsm":
+		w["fc"]["external_label"] = v["external_label"]
+		w["fc"]["size"] = w["wrapper"]["size_bytes"]
+		# ok passed criteria, return write work ticket
+		return w
 
-        # reading from this volume?
-        elif (w["work"]           == "read_from_hsm" and
-              w["fc"]["external_label"] == v['vc']["external_label"] and
-	      v["vc"]["system_inhibit"] != e_errors.NOACCESS):
+	    # reading from this volume?
+	    elif w["work"] == "read_from_hsm":
+		# if previous read for this file failed and volume
+		# is mounted have_bound_volume request will not
+		# contain current_location field.
+		# Check the presence of current_location field
+		if not v.has_key('current_location'):
+		    v['current_location'] = w['fc']['location_cookie']
 
-	    # if previous read for this file failed and volume
-	    # is mounted have_bound_volume request will not
-	    # contain current_location field.
-	    # Check the presence of current_location field
-	    if not v['vc'].has_key('current_location'):
-		v['vc']['current_location'] = w['fc']['location_cookie']
+		# ok passed criteria
+		# pick up request according to file locations
+		w = pending_work.get_init_by_location()
+		w = pending_work.get_next_for_this_volume(v)
 
-            # ok passed criteria
-	    # pick up request according to file locations
-	    w = pending_work.get_init_by_location()
-	    w = pending_work.get_next_for_this_volume(v)
-
-	    # return read work ticket
-            return w
-        w=pending_work.get_next()
+		# return read work ticket
+		return w
+	w=pending_work.get_next()
     return {"status" : (e_errors.NOWORK, None)}
 
 ##############################################################
-
 # summon mover
 def summon_mover(self, mover, ticket):
     if not summon: return
@@ -843,7 +845,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.reply_to_caller({'work': 'nowork'})
 	    return
         # otherwise, see if this volume will do for any other work pending
-        w = next_work_this_volume(mticket)
+        w = next_work_this_volume(self, mticket["vc"])
         if w["status"][0] == e_errors.OK:
             format = "%s next work on vol=%s mover=%s requester:%s"
             Trace.log(e_errors.INFO, format%(w["work"],

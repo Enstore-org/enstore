@@ -93,6 +93,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['wrapper'] = ticket.get('wrapper', "cpio_odc")
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['blocksize'] = ticket.get('blocksize', -1)
+	record['bfids'] = []
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
@@ -167,16 +168,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
         # delete if from the database
-        try:
-            del dict[external_label]
-            ticket["status"] = (e_errors.OK, None)
-            Trace.trace(10,'delvol ok '+repr(external_label))
-        except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, \
-                                "Volume Clerk: volume "+external_label\
-                               +" no such volume")
-            Trace.log(e_errors.INFO, repr(ticket))
-            Trace.trace(8,"delvol "+repr(ticket["status"]))
+	del dict[external_label]
+	ticket["status"] = (e_errors.OK, None)
+	Trace.trace(10,'delvol ok '+repr(external_label))
 
         self.reply_to_caller(ticket)
         return
@@ -189,6 +183,53 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.log(e_errors.INFO, repr(ticket))
          self.reply_to_caller(ticket)
          return
+
+
+    # Check if volume is available
+    def is_vol_available(self, ticket):
+     try:
+	 work = ticket["action"]
+	 label = ticket["external_label"]
+	 record = copy.deepcopy(dict[label])
+	 if record["system_inhibit"] == e_errors.DELETED:
+	    ret_stat = (record["system_inhibit"],None)
+	 else:
+	     if work == 'read_from_hsm':
+		 # if system_inhibit is NOT in one of the following 
+		 # states it is NOT available for reading
+		 if (record['system_inhibit'] != 'none' and 
+		     record['system_inhibit'] != 'readonly' and
+		     record['system_inhibit'] != 'full'):
+		     ret_stat = (record['system_inhibit'], None)
+		 # if user_inhibit is NOT in one of the following 
+		 # states it is NOT available for reading
+		 elif (record['user_inhibit'] != 'none' and
+		       record['user_inhibit'] != 'readonly' and
+		       record['user_inhibit'] != 'full'):
+		     ret_stat = (record['system_inhibit'], None)
+		     ticket['status'] = (e_errors.OK,None)
+		 else:
+		     ret_stat = (e_errors.OK,None)
+	     elif work == 'write_to_hsm':
+
+		 if record['system_inhibit'] != 'none':
+		     ret_stat = (record['system_inhibit'], None)
+		 elif record['user_inhibit'] != 'none':
+		     ret_stat = (record['user_inhibit'], None)
+		 else:
+		     if (ticket['file_family'] == record['file_family'] and
+			 ticket['file_size'] <= record['remaining_bytes']):
+			 ret_stat = (e_errors.OK,None)
+		     else:
+			 ret_stat = (e_errors.NOACCESS,None)
+	     else:
+		 ret_stat = (e_errors.UNKNOWN,None)
+     except:
+         ret_stat = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+         Trace.log(e_errors.ERROR,"is_vol_available "+repr(ret_stat))
+     ticket['status'] = ret_stat
+     self.reply_to_caller(ticket)
+		
 
 
     # Get the next volume that satisfy criteria
@@ -526,6 +567,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # this key gets decremented when we delete files
         record['non_del_files'] = record['non_del_files'] + ticket['wr_access']
 
+	bfid = ticket.get("bfid")
+	if bfid: record["bfids"].append(bfid)
         # record our changes
         dict[external_label] = copy.deepcopy(record)
         record["status"] = (e_errors.OK, None)
@@ -573,8 +616,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         count = ticket.get("count",1)
 
         # decrement the number of non-deleted files on the tape
+	cc=record ["non_del_files"]
         record ["non_del_files"] = record["non_del_files"] - count
-
+	# if file count is 0 declare it deleted
+	print "CC",cc
+	print "REC", record ["non_del_files"]
+	if record ["non_del_files"] == 0:
+	    record["system_inhibit"] = e_errors.DELETED
+	# if count was 0 and then went up reset system inhibit
+	elif cc == 0 and record ["non_del_files"] == 1:
+	    record["system_inhibit"] = "none"
+	    print "SYSTEM INHIBIT", record["system_inhibit"]
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)

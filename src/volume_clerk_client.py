@@ -258,7 +258,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
-                            wr_err,rd_err,wr_access,rd_access):
+                            wr_err,rd_err,wr_access,rd_access, bfid):
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
@@ -266,7 +266,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
                   'wr_access'       : wr_access,
-                  'rd_access'       : rd_access }
+                  'rd_access'       : rd_access,
+		  'bfid'            : bfid }
         x = self.send(ticket)
         return x
 
@@ -282,6 +283,18 @@ class VolumeClerkClient(generic_client.GenericClient,\
         x = self.send(ticket)
         return x
 
+    # Check if volume is available
+    def is_vol_available(self, work, external_label, family=None, size=0):
+        ticket = { 'work'                : 'is_vol_available',
+		   'action'              : work,
+		   'file_family'         : family,
+		   'file_size'           : size,
+		   'external_label'      : external_label
+		   }
+        x = self.send(ticket)
+        return x
+	
+	
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, wrapper, vol_veto_list,first_found):
