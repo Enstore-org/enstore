@@ -1,0 +1,21 @@
+#===============================================================================
+# This will test reading writing with various alignments
+#===============================================================================
+ftt_open
+ftt_rewind
+
+ftt_echo "writing longword aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 3
+ftt_echo "writing word aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 1
+ftt_echo "writing byte aligned"
+ftt_write_tblock -nblock 100 -bsize 100 -delta 20 -align 0
+ftt_rewind
+ftt_echo "reading longword aligned"
+ftt_verify_tblock -nblock 100 
+ftt_echo "reading word aligned"
+ftt_verify_tblock -nblock 100 
+ftt_echo "reading byte aligned"
+ftt_verify_tblock -nblock 100 
+ftt_close
+

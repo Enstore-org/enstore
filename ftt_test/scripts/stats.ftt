@@ -1,0 +1,27 @@
+#===============================================================================
+# This will test the statistics routine.
+#===============================================================================
+ftt_open
+ftt_rewind
+ftt_echo "this is output of all the statistics. seem reasonable?"
+ftt_get_stats
+ftt_dump_stats
+
+#***********************************
+ftt_echo "writing 20k of data" 
+ftt_echo "look at output, make sense?" 
+#***********************************
+ftt_init_stats
+ftt_write_tblock -nblock 10 -bsize 2048
+ftt_close_dev
+ftt_update_stats -part_display
+
+#***********************************
+ftt_echo "reading 20k of data"
+ftt_echo "look at output, make sense?"
+#***********************************
+ftt_rewind
+ftt_verify_block -nblock 10
+ftt_close_dev
+ftt_update_stats -part_display
+ftt_close

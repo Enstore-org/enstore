@@ -1,0 +1,13 @@
+#===============================================================================
+# This will read/write with a random delay to see if we can dredge up
+# any bugs.
+#===============================================================================
+ftt_open
+ftt_rewind
+
+ftt_write_tblock -nblock 10000 -bsize 8096 -delta 8096 -delay 5
+ftt_rewind
+ftt_verify_tblock -nblock 10000 -delay 5
+ftt_rewind
+ftt_close
+

@@ -1,0 +1,15 @@
+#===============================================================================
+# This will test writing a test tape.
+#===============================================================================
+ftt_open
+ftt_echo "writing a label"
+ftt_write_vol_label -label fttest -type FTT_ANSI_HEADER
+ftt_echo "writing file" 
+ftt_write_tblock -nblock 1000 -bsize 4000 -delta 1000
+ftt_writefm 
+ftt_echo "writing file" 
+ftt_write_tblock -nblock 2000 -bsize 8000 -delta 2000
+ftt_writefm 
+ftt_echo "writing file" 
+ftt_write_tblock -nblock 3000 -bsize 16000 -delta 3000
+ftt_close

@@ -1,0 +1,86 @@
+#===============================================================================
+# This will test positioning withing a test tape.
+# It assumes that the tape has been written with write.ftt.
+#===============================================================================
+ftt_open
+ftt_rewind
+ftt_echo "look at output. tape should be at beginning of tape"
+ftt_status
+#===============================================================================
+# first check to see if when we forward skip a file we are where
+# we should be.
+#===============================================================================
+ftt_echo "testing forward filemark skips"
+ftt_skip_fm 1
+ftt_skip_fm 1
+ftt_echo "look at output. tape should not be at beginning of tape." 
+ftt_echo "                tape should be just after filemark"
+ftt_status
+ftt_verify_position 2 0
+ftt_verify_tblock -nblock 1
+ftt_rewind
+ftt_skip_fm 2
+ftt_verify_position 2 0
+ftt_verify_tblock -nblock 1
+#
+# forward skip too far
+#
+ftt_rewind
+ftt_skip_fm 6 -status FTT_EBLANK
+ftt_get_position -status FTT_EUNRECOVERED
+#===============================================================================
+# then check that if we backspace a file, we are where we should be.
+#===============================================================================
+ftt_echo "testing backward filemark skips"
+ftt_rewind
+ftt_skip_fm 3
+ftt_skip_fm -1
+ftt_verify_tblock -filemark
+ftt_verify_position 3 0
+ftt_verify_tblock -nblock 1
+#
+ftt_skip_fm -2
+ftt_verify_tblock -filemark
+ftt_verify_position 2 0
+ftt_verify_tblock -nblock 1
+#
+# backward skip too far
+#
+ftt_skip_fm -10 -status FTT_ELEADER
+ftt_get_position -status FTT_EUNRECOVERED
+#
+#===============================================================================
+# do the same with records
+#===============================================================================
+ftt_echo "testing record skips"
+ftt_rewind
+ftt_skip_fm 1
+ftt_skip_rec 500
+ftt_verify_position 1 500
+ftt_verify_tblock -nblock 1
+ftt_skip_rec -100
+ftt_verify_position 1 401
+ftt_verify_tblock -nblock 1
+#
+# forward skip too far
+#
+ftt_skip_rec 700 -status FTT_EFILEMARK
+ftt_get_position -status FTT_EUNRECOVERED
+#
+# backward skip too far
+#
+ftt_rewind
+ftt_skip_fm 3
+ftt_skip_rec 50
+ftt_skip_rec -100 -status FTT_EFILEMARK
+ftt_get_position -status FTT_EUNRECOVERED
+#===============================================================================
+# now skip to end of file
+#===============================================================================
+ftt_echo "skip to end of file"
+ftt_rewind
+ftt_skip_to_double_fm
+ftt_verify_tblock -filemark
+ftt_verify_tblock -filemark -status FTT_EBLANK
+ftt_echo "look at output. next line should say File no: 5 block no: 0"
+ftt_get_position
