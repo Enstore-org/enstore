@@ -40,6 +40,10 @@ class FileClerkClient :
         return self.send({"work" : "bfid_info",\
                           "bfid" : bfid } )
 
+    # check on alive status
+    def alive(self):
+        return self.send({'work':'alive'})
+
 if __name__ == "__main__" :
     import getopt
     import socket
@@ -52,10 +56,11 @@ if __name__ == "__main__" :
     bfid = 0
     bfids = 0
     list = 0
+    alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
-               ,"config_list","bfids","bfid=","list","help"]
+               ,"config_list","bfids","bfid=","list","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -68,6 +73,8 @@ if __name__ == "__main__" :
             bfids = 1
         elif opt == "--bfid" :
             bfid = value
+        elif opt == "--alive" :
+            alive = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -87,10 +94,21 @@ if __name__ == "__main__" :
 
     fcc = FileClerkClient(csc)
 
-    if bfids :
+    if alive:
+        ticket = fcc.alive()
+
+    elif bfids :
         ticket = fcc.get_bfids()
+
     elif bfid :
         ticket = fcc.bfid_info(bfid)
 
-    if list:
-        pprint.pprint(ticket)
+    if ticket['status'] == 'ok' :
+        if list:
+            pprint.pprint(ticket)
+        sys.exit(0)
+
+    else :
+        print "BAD STATUS:",ticket['status']
+	pprint.pprint(ticket)
+        sys.exit(1)

@@ -111,6 +111,9 @@ class VolumeClerkClient :
                    }
         return self.send(ticket)
 
+    # check on alive status
+    def alive(self):
+        return self.send({'work':'alive'})
 
 
 
@@ -128,10 +131,11 @@ if __name__ == "__main__" :
     list = 0
     addvol = 0
     delvol = 0
+    alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
-               "vols","vol=","addvol","delvol","list","help"]
+               "vols","vol=","addvol","delvol","list","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -148,6 +152,8 @@ if __name__ == "__main__" :
             addvol = 1
         elif opt == "--delvol" :
             delvol = 1
+        elif opt == "--alive" :
+            alive = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -170,7 +176,9 @@ if __name__ == "__main__" :
 
     vcc = VolumeClerkClient(csc)
 
-    if vols :
+    if alive:
+        ticket = vcc.alive()
+    elif vols :
         ticket = vcc.get_vols()
     elif vol :
         ticket = vcc.inquire_vol(vol)

@@ -54,6 +54,10 @@ class DispatchingWorker:
         # finally call the user function
         exec ("self." + function + "(ticket)")
 
+    # nothing like a heartbeat to let someone know we're alive
+    def alive(self,ticket):
+        ticket['status'] = "ok"
+        self.reply_to_caller(ticket)
 
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through

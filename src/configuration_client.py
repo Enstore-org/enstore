@@ -82,6 +82,11 @@ class configuration_client :
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
 
+    # check on alive status
+    def alive(self):
+        return self.u.send({'work':'alive'},self.config_address )
+
+
 if __name__ == "__main__" :
     import getopt
     import socket
@@ -95,10 +100,11 @@ if __name__ == "__main__" :
     dict = 0
     load = 0
     list = 0
+    alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file=","config_list"\
-               ,"list","dict","load","help"]
+               ,"list","dict","load","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -113,6 +119,8 @@ if __name__ == "__main__" :
             dict = 1
         elif opt == "--load" :
             load = 1
+        elif opt == "--alive" :
+            alive = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -135,7 +143,11 @@ if __name__ == "__main__" :
     csc = configuration_client(config_host,config_port)
     stat = "ok"
 
-    if dict:
+    if alive:
+        stati = csc.alive()
+        if list:
+            pprint.pprint(stati)
+    elif dict:
         csc.list()
         if list:
             pprint.pprint(csc.config_list)
@@ -144,7 +156,7 @@ if __name__ == "__main__" :
     elif load:
         stati= csc.load(config_file)
         if list:
-            print stati
+            pprint.pprint(stati)
         stat=stati['status']
 
     if stat == 'ok' :

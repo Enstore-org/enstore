@@ -92,6 +92,9 @@ class LibraryManagerClient :
 
         return worklist
 
+    # check on alive status
+    def alive(self):
+        return self.send({'work':'alive'})
 
 if __name__ == "__main__" :
     import getopt
@@ -104,10 +107,11 @@ if __name__ == "__main__" :
     config_list = 0
     list = 0
     getwork = 0
+    alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
-               ,"config_list","getwork","list","help"]
+               ,"config_list","getwork","list","alive","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -118,6 +122,8 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--getwork" :
             getwork = 1
+        elif opt == "--alive" :
+            alive = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -143,12 +149,19 @@ if __name__ == "__main__" :
 
     lmc = LibraryManagerClient(csc,args[0])
 
-    if  getwork:
+    if alive:
+        ticket = lmc.alive()
+
+    elif  getwork:
         ticket = lmc.getwork(list)
 
-    if ticket["status"] != "ok"  :
-        print "BAD status returned"
-        pprint.pprint(ticket)
 
-    elif list:
+    if ticket['status'] == 'ok' :
+        if list:
+            pprint.pprint(ticket)
+        sys.exit(0)
+
+    else :
+        print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
+        sys.exit(1)
