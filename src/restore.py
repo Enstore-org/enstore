@@ -1,11 +1,42 @@
-#
+#!/usr/bin/env python
+
 # restore.py
 #
+# Restore database files from backup
+# This procedure trusts journal files. That is, using a good backup and
+# replaying all the journal records since then should be able to put
+# database files to a consistent state when the last journal was
+# written.
+#
+# restore.py can be invoked with no arguments other than normal enstore
+# common arguments (--config-host, ... etc.) or with a specific time
+# as argument. In the former case, restore.py uses only the last backup,
+# while in the latter case, it starts from the first backup that was
+# taken after the specified time and all the journals after that backup.
+#
+# The usage is as follows:
+#
+# restore.py [enstore-arguments] [month day time [year]]
+#
+# If a time is specified, at least month day and time must be specified.
+# year is optional and is only useful if you take backup from previous
+# years, which is unlikely available.
+#
+# The format of time could be one of the followings:
+#
+# hh, hh:mm, hh:mm:ss
+#
+# Since backup is taken at 10 minutes after each hour, hh is sufficient.
+# The other formats are good for restoring from non-scheduled backup,
+# such as the ones that were done manually for maintanence reasons.
 
 import db
 import os
 import sys
 import string
+import time
+import configuration_client
+import hostaddr
 
 # ddiff(o1, o2) -- comparing two objects
 #		Complex objects, like lists and dictionaries, are
@@ -44,12 +75,10 @@ def ddiff(o1, o2):
 	# for everything else
 	return `o1` != `o2`
 
-# getHomes() -- get dbHome, jouHome, bckHost and bckHome
+# getHomes(intf) -- get dbHome, jouHome, bckHost and bckHome
 
-def getHomes():
+def getHomes(intf):
 	
-	import configuration_client
-	import hostaddr
 
 	intf = Interface()
 
@@ -66,6 +95,13 @@ def getHomes():
 	except:
 		dbHome = os.environ['ENSTORE_DIR']
 		jouHome = dbHome
+
+	# overide dnHome and jouHome from interface ...
+
+	if intf.dbHome:
+		dbHome = intf.dbHome
+	if intf.jouHome:
+		jouHome = intf.jouHome
 
 	# find backup host and path
 	backup_config = configuration_client.ConfigurationClient(
@@ -98,6 +134,7 @@ def backupDB(dbHome, jouHome, dbs):
 				os.rename(f, f+".saved")
 
 # revertDB(dbHome, jouHome) -- revert to previous database files
+#				in case of aborting the restoration
 
 def revertDB(dbHome, jouHome):
 
@@ -148,6 +185,13 @@ def cleanUp_jou(jouHome):
 	
 # retriveBackup(dbHome, jouHome, bckHost, bckHome, when)
 #	actually retrive backup version of database and journal files
+#	from bckHost:bckHome
+#
+# "when" is a time stamp, in float, same as returned by time.time()
+# default value of "when", if unspecified, is -1, meaning taking the
+# last backup. If when is specified, the first backup that was taken
+# after the specified time will be taken, as well as all the journal
+# files after that backup.
 
 def retriveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
 
@@ -166,7 +210,8 @@ def retriveBackup(dbHome, jouHome, bckHost, bckHome, when = -1):
 		backups.append(bf)
 		if when < 0:
 			break	# only take the last one
-	# get to the right order again
+
+	# get the right order again
 
 	backups.sort()
 
@@ -217,6 +262,17 @@ def suffix(s):
 		return s1[-1]
 
 # getIndex(dbHome, dbs) -- get the index name from the index files
+#
+#	index file names are of the following format:
+#
+#	database.index_field.index
+#
+#	where ".index" is the suffix, database is the name of the
+#	primary database file and index_field is the name of the field
+#	in the primary database file which the index is built on and for
+#
+#	Therefore, by scanning all the index files, we should be able to
+#	figure out all the index fields
 
 def getIndex(dbHome, dbs):
 	indexf = {}
@@ -243,11 +299,11 @@ class DbTable(db.DbTable):
 
 		jfile = self.jouHome+"/"+dbname+".jou"
 		cmd = "ls -1 "+jfile+".* 2>/dev/null"
-		jfiles = os.popen(cmd).readlines()
-		jfiles.append(jfile+"\012")	# to be same as the rest
+		jfiles = map(string.strip, os.popen(cmd).readlines())
+		if os.access(jfile, os.F_OK):
+			jfiles.append(jfile)
 		self.dict = {}
 		for jf in jfiles:
-			jf = jf[:-1]		# trim \012
 			try:
 				f = open(jf,"r")
 			except IOError:
@@ -263,7 +319,6 @@ class DbTable(db.DbTable):
 
 		self.deletes = []
 		for jf in jfiles:
-			jf = jf[:-1]
 			try:
 				f = open(jf,"r")
 			except IOError:
@@ -344,31 +399,68 @@ import interface
 class Interface(interface.Interface):
 
 	def __init__(self):
+		self.dbHome = None
+		self.jouHome = None
 		interface.Interface.__init__(self)
 
 	def options(self):
-		return self.config_options()
+		return self.config_options()+['dbHome=', 'jouHome=']
+
+	def parameters(self):
+		return '[mon day hh[:mm[:ss]] [year]]'
+
+# parse_time(args) -- get the time
+
+def parse_time(args):
+
+	l1 = len(args)
+
+	if l1 > 2 and l1 < 5:
+		(year, mon, day, hour, min, sec, wday, jday, dsave) \
+			= time.localtime(time.time())
+		min = 0
+		sec = 0
+		mon = int(args[0])		# month
+		day = int(args[1])		# day
+		# hh:mm:ss
+		t = string.split(args[2], ':')
+		l = len(t)
+		hour = int(t[0])
+		if l > 1:
+			min = int(t[1])
+		if l > 2:
+			sec = int(t[2])
+		if l1 > 3:
+			year = int(args[3])	# year
+
+		return time.mktime((year, mon, day, hour, min, sec, wday, jday, dsave))
+	return -1
+
+# main
 
 if __name__ == "__main__":		# main
 
 	# get dbHome, jouHome, bckHost and bckHome to start with
 
-	dbHome, jouHome, bckHost, bckHome = getHomes()
+	intf = Interface()
+	dbHome, jouHome, bckHost, bckHome = getHomes(intf)
 
 	print " dbHome = "+dbHome
 	print "jouHome = "+jouHome
 	print "bckHost = "+bckHost
 	print "bckHome = "+bckHome
 
-	# find the last backup
-	# so far, we only deal with the last backup
-	# In theory, if it is not good, we should go all the way back
-	# to the "last good backup"
+	bckTime = parse_time(intf.args)
 
-	cmd = "enrsh "+bckHost+" ls -1t "+bckHome+" | head -1"
-	bckHome = bckHome+"/"+os.popen(cmd).readline()[:-1]
-
-	print "restore from "+bckHost+":"+bckHome
+	print "Restore from",
+	if bckTime == -1:
+		print "last backup?",
+	else:
+		print time.ctime(bckTime)+'?',
+	print "(y/n) ",
+	ans = sys.stdin.readline()
+	if ans[0] != 'y' and ans[0] != 'Y':
+		sys.exit(0)
 
 	# databases
 	dbs = ['file', 'volume']
@@ -381,14 +473,15 @@ if __name__ == "__main__":		# main
 
 	# retriving the backup
 
-	bckTime = -1	# this should be passed thorugh command line
-			# in text format
+	print "Retriving database from backup ...",
 	retriveBackup(dbHome, jouHome, bckHost, bckHome, bckTime)
+	print "done"
 
 	# run db_recover to put the databases in consistent state
 
-	print "Synchronize database using db_recover"
+	print "Synchronize database using db_recover ...",
 	os.system("db_recover -h "+dbHome)
+	print "done"
 
 	# got to find index files!
 
