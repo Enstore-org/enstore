@@ -21,6 +21,7 @@ import log_client
 import media_changer_client
 import mover_client
 import volume_clerk_client
+import dbs
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
@@ -31,7 +32,7 @@ CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /us
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
 CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
 
-DEFAULT_EMASS_NODE = "rip10"
+DEFAULT_AML2_NODE = "rip10"
 
 server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 alarm_client.do_work],
@@ -50,7 +51,9 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                      "mover" : [mover_client.MoverClientInterface,
                                 mover_client.do_work],
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
-                                 volume_clerk_client.do_work]
+                                 volume_clerk_client.do_work],
+		     "db" : [dbs.Interface,
+			     dbs.do_work]
                          }
 
 # these general functions perform various system functions
@@ -111,7 +114,7 @@ class UserOptions(GenericUserOptions):
         functions = server_functions.get(skey, None)
         if not functions is None:
             self.server_intfs[skey] = self.server_intfs.get(skey,
-                                                            functions[0](0))
+                                                            functions[0]())
             return self.server_intfs[skey]
         else:
             return None
@@ -259,7 +262,7 @@ class EnstoreInterface(UserOptions):
             print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
             print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
             print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
-            print "\n%s emass              (lists current mount state & queue list on emass robot)"%cmd
+            print "\n%s enaml2             (lists current mount state & queue list on aml2 robot)"%cmd
         else:
             call_function("pnfs", "")            
         print "\n"
@@ -300,11 +303,11 @@ class Enstore(EnstoreInterface):
                         t = csc.get_uncached(servers[0], self.timeout,
                                              self.retry)
                         # if there is no specified host, use the default
-                        self.node = t.get("host", DEFAULT_EMASS_NODE)
+                        self.node = t.get("host", DEFAULT_AML2_NODE)
                     else:
                         # there were no media changers of that type, use the
                         # default node
-                        self.node = DEFAULT_EMASS_NODE
+                        self.node = DEFAULT_AML2_NODE
                     rtn = 1
                 except errno.errorcode[errno.ETIMEDOUT]:
                     pass
@@ -324,7 +327,7 @@ class Enstore(EnstoreInterface):
                     # only use the first one
                     server_dict = dict.configdict[slist[0]]
                     # if there is no specified host use the default
-                    self.node = server_dict.get("host", DEFAULT_EMASS_NODE)
+                    self.node = server_dict.get("host", DEFAULT_AML2_NODE)
                     rtn = 1
         return rtn
 
@@ -367,17 +370,17 @@ class Enstore(EnstoreInterface):
             command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
-        elif not self.user_mode and arg1 == "emass":
+        elif not self.user_mode and arg1 == "enaml2":
             # find the node to rsh to.  this node is the one associated with
             # the media changer of type "AML2_MediaLoader"
             #   if the configuration server is running, get the information
             #   from it.  if not, just read the config file pointed to by
             #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
-            #   in DEFAULT_EMASS_NODE.
+            #   in DEFAULT_AML2_NODE.
             if not self.get_config_from_server() and \
                not self.get_config_from_file():
-                self.node = DEFAULT_EMASS_NODE
-            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;egrau\'"'%self.node
+                self.node = DEFAULT_AML2_NODE
+            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;enaml2\'"'%self.node
             rtn = os.system(cmd)
         elif not self.user_mode and arg1 == "Esys":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
