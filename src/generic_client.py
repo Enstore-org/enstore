@@ -94,7 +94,6 @@ class GenericClient:
             x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
         
-                
     # return the name used for this client/server #XXX what is this nonsense? cgw
     def get_name(self, name):
         return name
