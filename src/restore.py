@@ -216,8 +216,8 @@ if __name__ == "__main__":		# main
 	compression = os.popen("rsh -n "+bckHost+" ls "+bckHome+"/dbase.tar*").readline()[-2:-1]
 	if compression == "z" or compression == "Z":	# decompress them first
 		cmd = "rsh -n "+bckHost+" gunzip "+bckHome+"/*"
+		print "decompressing the backup files ..."
 		print cmd
-		print "decompressing the backup files"
 		os.system(cmd)
 
 	# get the database file from backup
