@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include "dcap.h"
+#include "ktevapi.h"
 
 #define PNFS_ROOT getenv("DCACHE_ROOT")?getenv("DCACHE_ROOT"):"/pnfs/ktev/migrated_from_dlt"
 #define FILENAME_LEN 1024
@@ -14,6 +15,7 @@
 /* for getopt */
 extern char *optarg;
 extern int optind;
+extern int errno;
 
 char *volumeName = NULL;
 
@@ -147,13 +149,18 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
   static DIR  *dir = 0;
   struct dirent *dirent;
   static struct dirent **namelist;
-  int static n_ent=-1;
+  int static n_ent=-1, last_file=0;
   int i,j;
   struct stat stat_buf;
 
+  if (last_file) {
+      last_file = 0;
+      return 0;
+  }
+
   strncpy(firstTwo, volumeName, 2);
   strncpy(firstFour, volumeName, 4);
-  printf("Volume %s\n",volumeName); 
+  /*printf("Volume %s\n",volumeName);*/ 
 
   strcpy(path, PNFS_ROOT);
   strcat(path, "/");
@@ -163,7 +170,7 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
   strcat(path, "/");
   strcat(path, volumeName);
   strcat(path, "/");
-  printf("n_ent %d\n",n_ent);
+  /*printf("n_ent %d\n",n_ent);*/
   if (n_ent == -1) /* first time access */
   {
     /* check if dir exists */
@@ -190,6 +197,7 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
       }
       n_ent = n_ent - j;
       n_ent--;
+      last_file = 0;
     }
   }
   if (n_ent >= 0) {
@@ -200,7 +208,8 @@ int GetFile(char *volumeName, char fileName[FILENAME_LEN])
     if (n_ent == -1) { 
 	free(namelist);
 	free(path);
-	return 0;
+	last_file = 1;
+	return 1;
     }
     free(path);
     return 1;
@@ -256,3 +265,94 @@ int PutFile(char *volumeName, char fileName[FILENAME_LEN])
   free(path);
   return 0;
 }
+
+
+file_name *GetFileList(char *volume_name)
+{
+    file_name *head, *curr, *tmp;
+    char f[FILENAME_LEN];
+    int ret, i = 1;
+    /*int nfiles = 0;*/
+
+    head = curr = tmp = NULL;
+    while ((ret = GetFile(volume_name, f)) > 0) {
+	if (ret > 0) {
+	    if (i > 0) {
+		/* first element */
+		head = (file_name *)malloc(sizeof(file_name));
+		head->fileName = (char *)malloc(FILENAME_LEN);
+		strcpy(head->fileName, f); 
+		curr = head;
+		curr->next = NULL;
+		i = 0;
+		/*nfiles++;*/
+	    }
+	    else {
+		tmp = curr;
+		curr = (file_name *)malloc(sizeof(file_name));
+		curr->fileName = (char *)malloc(FILENAME_LEN);
+		strcpy(curr->fileName, f); 
+		curr->next = NULL;
+		tmp->next = curr;
+		/* nfiles++; */
+	    }
+	}
+	else return NULL;
+    }
+    return head;
+}
+
+int FreeFileList(file_name *list_head) {
+    file_name *head, *tmp;
+    
+    head = list_head;
+    if (head == NULL) return 0;
+    while (head->next) {
+	tmp = head->next;
+	free(head->fileName);
+	free(head);
+	head = tmp;
+    }
+    return 0;
+	
+}	
+
+int StageFiles(file_name *file_list, char *stage_on_host) {
+  file_name *tmp;
+  int ret;
+  
+  tmp = file_list;
+  while (tmp) {
+      ret = dc_stage(tmp->fileName, 0, stage_on_host);
+      if ( ret < 0) {
+	  break;
+      }
+      tmp = tmp->next;
+  }
+  return ret;
+}
+
+int CheckFiles(file_name *file_list, char *stage_on_host, int *staged_files) {
+  file_name *tmp;
+  int ret, retval = 0, tmp_errno=0, first=1, staged;
+
+  staged = 0;
+
+  tmp = file_list;
+  while (tmp) {
+      ret = dc_check(tmp->fileName, stage_on_host);
+      if ( (ret < 0) && first ){
+	  tmp_errno = errno;
+	  retval = ret;
+      }
+      else if (ret == 0) {
+	  staged++;
+      }
+      tmp = tmp->next;
+  }
+  *staged_files = staged;
+  errno = tmp_errno;
+  return retval;
+}
+  
+    
