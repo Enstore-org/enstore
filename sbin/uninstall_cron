@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# read current crontab, remove every one ...
+# uninstall_cron -- remove crontab entries for enstore
+# the job name is the same as used in install_cron
 
 crontab -l 2> /dev/null | grep -v "no crontab for" | grep -v "^#" > /tmp/enstore_cron
 
