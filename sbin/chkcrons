@@ -58,7 +58,7 @@ for i in *; do
      file=`mktemp /tmp/cronplot.XXXXXXXX`
      file2=`mktemp /tmp/cronplot2.XXXXXXXX`
      pt=`python $ENSTORE_DIR/src/get_cron_title.py $f`
-     title="$pt $i/$f"
+     title="$pt - $i/$f"
      echo "
 set term postscript enhanced color solid 'Helvetica' 10
 set output '$f.ps'
