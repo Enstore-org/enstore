@@ -50,6 +50,9 @@ while [ $try -le $max_try ]; do
   if [ `enstore vol --vol $tape| grep -c NOACCESS` -ne 0 ]; then
       echo `date` Clearing NOACCESS from $tape assuming trouble reading 
       enstore vol --clear $tape
+      sleeptime=600
+      echo `date` Sleeping for $sleeptime to allow tape to go back to home position
+      sleep $sleeptime
   fi
 
   /data1/migrate_tape -0 -a -g -v $tape >> $log 2>&1
