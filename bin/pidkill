@@ -2,7 +2,7 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-if [ -z "${1-}" ] ; then echo usage $0 pid-file; exit 1; fi
+if [ -z "${1-}" ] ; then echo usage $0 pid-file [process name]; exit 1; fi
 
 if [ ! -r $1 ] ; then exit; fi
 
@@ -27,3 +27,16 @@ cat $1 | while read pid; do
 done
 
 rm -f $1
+
+# some jobs don't seem to die. search for them
+if [ -n "${2-}" ]; then
+  pid=`EPS returnpid $2`
+  if [ "$pid" = ""  ]; then 
+    echo "ERROR $2 still lives...trying to kill $pid again"
+    tmpfile=$ENSTORE_TMP/lost_pids
+    rm -f $tmpfile
+    echo $pid>$tmpfile
+    $0 $tmpfile "" # make sure 2nd argument is null to prevent loop
+    rm -f $tmpfile
+  fi
+fi

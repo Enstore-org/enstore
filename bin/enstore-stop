@@ -74,12 +74,14 @@ fi
 
 turnoff() { for pid in $1; do
                 if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
-                pidkill $pid
+		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
+                pidkill $pid $2
             done; }
 
 turnoff_s() { for pid in $1; do
                 if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
-                pidkill_s $pid
+		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
+                pidkill_s $pid $2
             done; }
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
@@ -142,26 +144,26 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
 	fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
-        turnoff_s "$serv*" "library managers"
+        turnoff_s "$serv*" "library_managers"
     done
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host $ENSTORE_CONFIG_PORT $timeout --work quit >/dev/null
     fi
-    turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration server"
+    turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration_server"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep alarm |sed -e 's/.*://'` $timeout --work quit >/dev/null
     fi
-    turnoff "$PID_DIR/`uname -n`-alarm_server*pids"      "alarm server"
+    turnoff "$PID_DIR/`uname -n`-alarm_server*pids"      "alarm_server"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     if [ $config_running -eq 1 ] ; then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log |sed -e 's/.*://'` $timeout --work quit >/dev/null
     fi
-    turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log server"
+    turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log_server"
 fi
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep data`" ];then
