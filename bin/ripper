@@ -36,37 +36,11 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 red20.library_manager &"; doit
     ;;
 
-   samson*)
-    killall python
-    cmd="traceMode 7"; doit
-    cmd="traceReset"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_port=7500 --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov --config_port=7500 &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py     --config_host=samson.fnal.gov --config_port=7500 samdisk.library_manager &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py       --config_host=samson.fnal.gov --config_port=7500 samdisk.media_changer &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk2.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk1.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk3.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk4.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk5.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
-    ;;
-
    rip1*)
     cmd="killall python"; doit
     cmd="traceMode 7"; doit
     cmd="traceReset"; doit
     cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 grau.media_changer &"; doit
-    cmd="killall db_checkpoint"; doit
-    cmd="killall db_deadlock"; doit
-    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=samson.fnal.gov --config_port=7500 &"; doit
-    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=samson.fnal.gov --config_port=7500 &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 sammam.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samait.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samdlt.library_manager &"; doit
-    cmd="db_checkpoint -h /raid/enstore/db -p 5 &"; doit
-    cmd="db_deadlock   -h /raid/enstore/db -t 1 &"; doit
     ;;
 
    rip2*)
@@ -103,6 +77,39 @@ case `uname -n` in
     cmd="traceReset"; doit
     cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM05AIT.mover &"; doit
     cmd="python /export/home/bakken/enstore/src/mover.py          --config_host=rip6.fnal.gov --config_port=7500 DM07AIT.mover &"; doit
+    ;;
+
+   samson*)
+    killall python
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/configuration_server.py --config_host=samson.fnal.gov --config_port=7500 --config_file=/fnal/ups/prd/enstore/x0_4/etc/sam.conf &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py        --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py     --config_host=samson.fnal.gov --config_port=7500 samdisk.library_manager &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py       --config_host=samson.fnal.gov --config_port=7500 samdisk.media_changer &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk2.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk1.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk3.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk4.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py               --config_host=samson.fnal.gov --config_port=7500 samdisk5.mover &"; doit
+    cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py          --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    ;;
+
+   rip3*)
+    cmd="killall python"; doit
+    cmd="killall db_checkpoint"; doit
+    cmd="killall db_deadlock"; doit
+    cmd="traceMode 7"; doit
+    cmd="traceReset"; doit
+    cmd="python /home/bakken/enstore/src/volume_clerk.py         --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/file_clerk.py           --config_host=samson.fnal.gov --config_port=7500 &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 sammam.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samait.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=samson.fnal.gov --config_port=7500 samdlt.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=samson.fnal.gov --config_port=7500 grau.media_changer &"; doit
+    cmd="db_checkpoint -h /rip3a/enstore/db -p 5 &"; doit
+    cmd="db_deadlock   -h /rip3a/enstore/db -t 1 &"; doit
     ;;
 
    *)
