@@ -8,6 +8,7 @@ set -u  # force better programming and ability to use check for not set
 usage="
 ecmd start   [--ping]
 ecmd ping    [timeout_seconds]
+ecmd qping   [timeout_seconds]
 ecmd stop    (no options/arguments)
 ecmd restart (no options/arguments)
 
@@ -62,6 +63,10 @@ case $cmd in
     ;;
   ping)
     $ENSTORE_DIR/bin/enstore-ping "$@"
+    stat=$?
+    ;;
+  qping)
+    $ENSTORE_DIR/bin/quick-ping "$@"
     stat=$?
     ;;
   stop|enstore-stop)
