@@ -126,7 +126,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	if server.no_thread():
 	    self.serverfile.output_etimedout(server.host, server.port, state, 
 					     time.time(), server.name, 
-					     server.last_alive)
+					     server.output_last_alive)
 	    self.new_server_status = 1
 
     # mark a server as not having sent a heartbeat yet.
@@ -229,16 +229,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 				  "%s died and will not be restarted"%(server.name,))
 		    server.did_restart_alarm = 1
 	    else:
-		# we must keep track of the fact that we created a thread for this 
-		# client so the next time we find the server dead we do not create 
-		# another one.
-		Trace.trace(8,"Inquisitor creating thread to restart %s"%(server.name,))
-		server.restart_thread = threading.Thread(group=None,
-							 target=self.restart_function,
-						       name="RESTART_%s"%(server.name,),
-							 args=(server,))
-		server.restart_thread.setDaemon(1)
-		server.restart_thread.start()
+		# do not attempt to do the restart if the event relay is not alive.
+		if not server.restart_failed and self.event_relay.is_alive():
+		    # we must keep track of the fact that we created a thread for this 
+		    # client so the next time we find the server dead we do not create 
+		    # another one.
+		    Trace.trace(8,"Inquisitor creating thread to restart %s"%(server.name,))
+		    server.restart_thread = threading.Thread(group=None,
+							     target=self.restart_function,
+							     name="RESTART_%s"%(server.name,),
+							     args=(server,))
+		    server.restart_thread.setDaemon(1)
+		    server.restart_thread.start()
 
     def make_server_status_html_file(self):
 	if self.new_server_status:
@@ -479,8 +481,10 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # nothing back.  mark it as dead
 	    self.mark_event_relay(DEAD)
 	    self.event_relay.dead()
-	    Trace.alarm(e_errors.ERROR, e_errors.TIMEDOUT, {'server' : self.event_relay.name,
-							    'host' : self.erc.host })
+	    if not self.sent_event_relay_alarm:
+		Trace.alarm(e_errors.ERROR, e_errors.TIMEDOUT, {'server' : self.event_relay.name,
+								'host' : self.erc.host })
+		self.sent_event_relay_alarm = 1
 
 	# whoops have not seen anything for awhile, try to send ourselves our own 
 	# alive, if this does not work, then the event relay process is not running
@@ -535,7 +539,16 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.serverfile.output_alive(self.erc.event_relay_addr[0], 
 				     self.erc.event_relay_addr[1],
 				     ALIVE, now, enstore_constants.EVENT_RELAY)
+	# if this is the first time alive after the event relay was thought to be deadm then
+	# we must adjust the last alive times for all of the servers,  otherwise we will
+	# think the server is dead immediately and not allow any time to receive the
+	# alive message from it.  
+	if not self.event_relay.is_alive():
+	    for server in self.server_d.keys():
+		self.server_d[server].last_alive = now
+
 	self.event_relay.alive(now)
+	self.sent_event_relay_alarm = 0  
 	msg = self.erc.read(fd)
         if msg:
             if msg.type == event_relay_messages.ALIVE:
@@ -565,7 +578,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.make_encp_html_file()
 	# see if there are any servers in cardiac arrest (no heartbeat)
 	self.check_last_alive()
-	# check if we have received an event realy message recently
+	# check if we have received an event relay message recently
 	self.check_event_message()
 	self.make_server_status_html_file()
 
@@ -795,6 +808,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# keep track of when we receive event relay messages.  maybe we can tell if
 	# the event relay process goes down.
 	self.event_relay = EventRelay(event_relay_interval)
+	self.sent_event_relay_alarm = 0
 
 	# setup the initial system page
 	for server in self.server_d.keys():
