@@ -619,7 +619,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     pass
 
 def do_next_req_to_lm( self, next_req_to_lm, address ):
-    while next_req_to_lm != {}:
+    while next_req_to_lm != {} and next_req_to_lm != None:
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
 	if next_req_to_lm['work'] == "unilateral_unbind":
 	    # FOR SOME ERRORS I FREEZE
