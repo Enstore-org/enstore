@@ -209,12 +209,12 @@ class Mover:
         # open the hsm file for writing
         try:
             self.driver.open_file_write()
-        # create the wrapper instance
+	    # create the wrapper instance
             self.logc.send(log_client.INFO,2,"CPIO")
 	    fast_write = 1
             self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx, fast_write )
 
-        # now write the file
+	    # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
             (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
                 inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
@@ -333,7 +333,7 @@ class Mover:
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
 
-        # close hsm file
+	    # close hsm file
             self.driver.close_file_read()
         except:
             print sys.exc_info()[0],sys.exc_info()[1]
