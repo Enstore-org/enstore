@@ -4351,7 +4351,10 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             try:
-                vcc, fcc = get_clerks(bfids_list[i])
+                if bfids_list:
+                    vcc, fcc = get_clerks(bfids_list[i])
+                else:
+                    vcc, fcc = get_clerks(e.volume)
             except EncpError:
                 print_data_access_layer_format(
                     e.input, e.output, 0,
