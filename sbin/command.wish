@@ -298,7 +298,7 @@ set buta [button .c.ait.s -text "????" -command ASRun -bg midnightblue -fg green
 pack .c.ait.s -side left
 proc AQRun {} {
     global command buta env alive done
-    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7507 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w AQRun_done}
@@ -311,11 +311,42 @@ proc AQRun_done { name element op } {
     global alive buta done more
     trace vdelete done w AQRun_done
     if {$alive == "alive"} {
-        $buta config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $buta config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command ASRun
     } else {
-        $buta config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $buta config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command AGRun
     }
     if {$more == 1} { MQRun }
+}
+
+proc ASRun {} {
+    global command buta done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ~bakken/bin/zapit ait.library_manager"}
+    set done ""
+    catch {trace vdelete done w ASRun_done}
+    trace variable done w ASRun_done
+    #puts [trace vinfo done]
+    $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc ASRun_done { name element op } {
+    global done
+    trace vdelete done w ASRun_done
+    AQRun
+}
+proc AGRun {} {
+    global command buta done
+    set command {rsh rip5 "~bakken/e-ait.library_manager"}
+    set done ""
+    catch {trace vdelete done w AGRun_done}
+    trace variable done w AGRun_done
+    #puts [trace vinfo done]
+    $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc AGRun_done { name element op } {
+    global done
+    trace vdelete done w AGRun_done
+    AQRun
 }
 
 ############################################################################################################################################
