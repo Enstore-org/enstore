@@ -5,13 +5,14 @@
 import time
 import sys
 import string
+import random
 
 # enstore imports
 import lockfile
 import Trace
 import e_errors
 import checksum
-import random
+import hostaddr
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -43,9 +44,13 @@ def try_a_port(host, port) :
     return 1 , sock
 
 # get an unused tcp port for communication
-def get_callback_port(start,end):
-    (host_name,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    host = ci[0]
+def get_callback_port(start,end,use_multiple=0):
+    host_name,junk,ips = hostaddr.gethostinfo()
+    ca = ips[0]
+    if use_multiple:
+        interface_tab = hostaddr.get_multiple_interfaces()
+    else:
+        interface_tab = [(ips[0], 1)]
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the
@@ -58,16 +63,45 @@ def get_callback_port(start,end):
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
     Trace.trace(20,"get_callback_port - got the lock - hunting for port")
 
+    tot_bw = 0
+    print interface_tab
+    for (ip, bw) in interface_tab:
+        tot_bw = tot_bw+bw
+    n_tries = (end - start)*tot_bw
+    n_interfaces = len(interface_tab)
     # now check for a port we can use
     while  1:
-        # remember, only person with lock is pounding  hard on this
-        for port in range (start,end) :
+        #remember, only person with lock is pounding  hard on this
+        next_port_to_try={}
+        for which_interface in range(len(interface_tab)):
+            next_port_to_try[which_interface]=start
+        count = 0
+        which_interface=0
+        host = None
+        while count < n_tries:
+            count = count + 1
+            if not host:
+                host, bw = interface_tab[which_interface]
+            if bw==0:
+                which_interface = (which_interface+1)%n_interfaces
+                host, bw = interface_tab[which_interface]
+            bw = bw-1
+            port = next_port_to_try[which_interface]
+            # XXX debugging stuff
+            if use_multiple:
+                Trace.trace(7, "multiple interface: trying %s %s" % (host,port))
             success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
                 lockfile.unlock(lockf)
                 lockf.close()
                 return host, port, mysocket
+            else:
+                port = port+1
+                if port >= end:
+                    port = start
+                next_port_to_try[which_interface] = port
+                
         #  otherwise, we tried all ports, try later.
         sleeptime = 1
         msg = "get_callback_port: all ports from "+repr(start)+' to ' \
@@ -90,7 +124,7 @@ def get_callback():
 
 # get an unused tcp port for data communication - called by mover
 def get_data_callback():
-    return get_callback_port( 7640, 7650 )
+    return get_callback_port( 7640, 7650, use_multiple=1 )
 
 #send a message, with bytecount and rudimentary security
 def write_tcp_raw(sock,msg):
