@@ -1940,9 +1940,10 @@ class Tag:
             return 1
 
         #Determine if the tag file exists.
-        pstat = os.stat(fname)
-        if not stat:
-            print os.strerror(errno.EINVAL) + ": Tag not found"
+        try:
+            pstat = os.stat(fname)
+        except OSError, msg:
+            print str(msg)
             return 1
         
         #Deterine the existing ownership.
@@ -2019,9 +2020,10 @@ class Tag:
             return 1
 
         #Determine if the tag file exists.
-        pstat = os.stat(fname)
-        if not stat:
-            print os.strerror(errno.EINVAL) + ": Tag not found"
+        try:
+            pstat = os.stat(fname)
+        except OSError, msg:
+            print str(msg)
             return 1
         
         #Deterine the existing ownership.
