@@ -59,7 +59,7 @@ for i in `ls -vI \*.\*`; do
 	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
 	capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
 	if [ "$capstate" = "available" ]; then break; fi
-	echo `date` waiting for cap to be unloaded.
+	echo `date` Waiting for cap to be unloaded.
 	sleep 5
       done
       /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
@@ -70,9 +70,8 @@ for i in `ls -vI \*.\*`; do
   t1=`date  +'%s'`
   delta=`expr $t1 - $t0`
   deltam=`expr $delta / 60`
-  smin=`expr $deltam \* 60`
-  deltas=`expr $delta - $smin`
-  echo That cycle took $deltam minutes $deltas sec
+  deltas=`expr $delta % 60`
+  echo That cycle took $deltam minutes $deltas seconds.
   /bin/echo -n "Were all of these steps successful [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null ; then
      echo "... success acknowledged"
@@ -83,8 +82,8 @@ for i in `ls -vI \*.\*`; do
   fi
   echo
   echo
-  left=`ls -vI \*.\* | wc -l`
-  /bin/echo -n "There are $left groups left to do.  Another [y/n]? "
+  rem=`ls -vI \*.\* | wc -l`
+  /bin/echo -n "There are `expr $rem` groups remaining.  Do another [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null ; then
      continue
   else
@@ -94,6 +93,13 @@ done
 
 case $node in
   d0*|cdf*)
+    while /bin/true; do
+      cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
+      capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+      if [ "$capstate" = "available" ]; then break; fi
+      echo `date` Waiting for cap to be unloaded.
+      sleep 5
+    done
     /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
     ;;
 esac
