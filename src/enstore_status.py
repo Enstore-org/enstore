@@ -192,18 +192,19 @@ class EnStatus:
 
             vc = mover['vc']
             # 'file_family' is not present in a read, use volume family instead
-            if vc.has_key('file_family'):
+            if vc.has_key('volume_family'):
+                dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
+            elif vc.has_key('file_family'):
                 dict[enstore_constants.FILE_FAMILY] = vc['file_family']
                 dict[enstore_constants.FILE_FAMILY_WIDTH] = repr(vc.get('file_family_width', ""))
-            elif vc.has_key('volume_family'):
-                dict[enstore_constants.VOLUME_FAMILY] = vc['volume_family']
 
             # 'fc' not found in pending work
             fc = mover.get('fc', "")
             # 'external_label' not found in pending work
-            if fc:
-                if fc.has_key('external_label'):
-                    dict[enstore_constants.DEVICE] = fc['external_label']
+            if fc and fc.has_key('external_label'):
+		if not (worktype is enstore_constants.PENDING and \
+		   dict[enstore_constants.WORK] is enstore_constants.WRITE):
+		    dict[enstore_constants.DEVICE] = fc['external_label']
             self.text[key][worktype].append(dict)
 
     def format_host(self, host):
