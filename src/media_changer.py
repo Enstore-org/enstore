@@ -25,6 +25,7 @@ import string
 import socket
 import time
 import hostaddr
+import struct, fcntl, FCNTL
 
 # enstore imports
 import configuration_client
@@ -34,6 +35,24 @@ import interface
 import Trace
 import e_errors
 import volume_clerk_client
+
+
+def _lock(f, op):
+	dummy = fcntl.fcntl(f.fileno(), FCNTL.F_SETLKW,
+			    struct.pack('2h8l', op,
+					0, 0, 0, 0, 0, 0, 0, 0, 0))
+	Trace.trace(21,'_lock '+repr(dummy))
+	
+def writelock(f):
+	_lock(f, FCNTL.F_WRLCK)
+
+def readlock(f):
+	_lock(f, FCNTL.F_RDLCK)
+
+def unlock(f):
+	_lock(f, FCNTL.F_UNLCK)
+
+
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
@@ -585,7 +604,6 @@ class STK_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=1, csc=None):
         import STK
-        import lockfile
         ###max_work=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
@@ -595,22 +613,22 @@ class STK_MediaLoader(MediaLoaderMethods):
         if not os.access(self.SEQ_LOCK_DIR,os.W_OK):
             os.mkdir(self.SEQ_LOCK_DIR)
         lockf = open (self.SEQ_LOCK, "w")
-        lockfile.writelock(lockf)  #holding write lock = right to bump sequence
+        writelock(lockf)  #holding write lock = right to bump sequence
         lockf.write("0")
-        lockfile.unlock(lockf)
+        unlock(lockf)
         lockf.close()
         
         print "STK MediaLoader initialized"
 
     def next_seq(self):
-        import lockfile
+
         # First acquire the seq lock.  Once we have it, we have the exclusive right
         # to bump the sequence.  Lock will (I hope) properly serlialze the
         # waiters so that they will be services in the order of arrival.
         # Because we use file locks instead of semaphores, the system will
         # properly clean up, even on kill -9s.
         lockf = open (self.SEQ_LOCK, "r+")
-        lockfile.writelock(lockf)  #holding write lock = right to bump sequence
+        writelock(lockf)  #holding write lock = right to bump sequence
         sequence = lockf.readline()
         try:
             seq=string.atoi(sequence)
@@ -622,7 +640,7 @@ class STK_MediaLoader(MediaLoaderMethods):
             seq = 1
         lockf.seek(0)
         lockf.write("%5.5d\n"%(seq,))
-        lockfile.unlock(lockf)
+        unlock(lockf)
         lockf.close()
         return seq
     
