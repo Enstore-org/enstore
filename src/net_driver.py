@@ -91,13 +91,5 @@ class NetDriver(driver.Driver):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._last_rate
         
-    def ready_to_read(self):
-        r,w,x = select.select([self], [], [], 0)
-        return r
-
-    def ready_to_write(self):
-        r,w,x = select.select([], [self],  [], 0)
-        return w
-    
             
         

@@ -116,12 +116,9 @@ class NullDriver(driver.Driver):
     def rates(self):
         return self._rate, self._last_rate
 
-    def ready_to_read(self):
-        return 1
 
-    def ready_to_write(self):
-        return 1
-    
+    def verify_label(self, label, mode):
+        return e_errors.OK, None
     
             
         
