@@ -205,7 +205,7 @@ class EnPlot(enstore_files.EnFile):
 
 class MphGnuFile(enstore_files.EnFile):
 
-    def write(self, gnuinfo, mount_label):
+    def write(self, gnuinfo, mount_label, lw=20):
 	if mount_label is None:
 	    mount_label = ""
 	self.openfile.write("set terminal postscript color solid\n"+ \
@@ -217,7 +217,7 @@ class MphGnuFile(enstore_files.EnFile):
 				info[0]+ \
 	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+ \
 				info[2]+ \
-	                       "' using 1:2 t '' with impulses lw 20\n")
+	                       "' using 1:2 t '' with impulses lw "+repr(lw)+"\n")
 
 class MphDataFile(EnPlot):
 
@@ -322,7 +322,7 @@ class MphDataFile(EnPlot):
 
 class MpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total_mounts, mount_label):
+    def write(self, outfile, ptsfile, total_mounts, mount_label, lw=20):
 	if mount_label is None:
 	    mount_label = ""
 	self.openfile.write("set terminal postscript color solid\n"+ \
@@ -337,7 +337,8 @@ class MpdGnuFile(enstore_files.EnFile):
 			    "set output '"+outfile+"'\n"+\
 			    "set title '%s Mounts/Day (Total = "%(mount_label,)+\
 			    total_mounts+") "+plot_time()+"'\n"+\
-			    "plot '"+ptsfile+"' using 1:2 t '' with impulses lw 20\n")
+			    "plot '"+ptsfile+"' using 1:2 t '' with impulses lw "+\
+			    repr(lw)+"\n")
 
 class MpdDataFile(EnPlot):
 
@@ -402,6 +403,7 @@ class MpdMonthDataFile(EnPlot):
     def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_MONTH_FILE)
 	self.mount_label = mount_label
+	self.lw = 10
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -442,7 +444,7 @@ class MpdMonthDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label, self.lw)
 	gnucmds.close()
 
 
@@ -562,7 +564,8 @@ class XferDataFile(EnPlot):
 
 class BpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total, meansize, xfers, read_xfers, write_xfers):
+    def write(self, outfile, ptsfile, total, meansize, xfers, read_xfers, write_xfers,
+	      lw=20):
 	psfiler = string.replace(outfile, enstore_constants.BPD_FILE,
 				 enstore_constants.BPD_FILE_R)
 	psfilew = string.replace(outfile, enstore_constants.BPD_FILE,
@@ -584,8 +587,8 @@ class BpdGnuFile(enstore_files.EnFile):
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
 			   "plot '"+ptsfile+\
-			   "' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
-			   "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" 3 1, '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"
 			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
 			   # "set output '"+psfiler+"'\n"+ \
 			   # "set title 'Total Bytes Read Per Day (no null mvs) "+plot_time()+"'\n"+ \
@@ -607,7 +610,7 @@ class BpdGnuFile(enstore_files.EnFile):
 
 class BpdMoverGnuFile(enstore_files.EnFile):
 
-    def write(self, mover, outfile, ptsfile, total, meansize, xfers):
+    def write(self, mover, outfile, ptsfile, total, meansize, xfers, lw=20):
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day for %s "%(mover,)+ \
@@ -625,8 +628,8 @@ class BpdMoverGnuFile(enstore_files.EnFile):
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
 	                   "plot '"+ptsfile+\
-			   "' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
-			   "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" 3 1, '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"
 			    )
 
 
@@ -667,6 +670,7 @@ class BpdDataFile(EnPlot):
 	EnPlot.__init__(self, dir, enstore_constants.BPD_FILE)
 	self.per_mover_files_d = {}
 	self.movers_d = {}
+	self.lw = 10
 
     def cleanup(self, keep, pts_dir):
         if not keep:
@@ -831,7 +835,7 @@ class BpdDataFile(EnPlot):
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
 	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers,
-		      self.read_ctr, self.write_ctr)
+		      self.read_ctr, self.write_ctr, self.lw)
 	gnucmds.close()
 
 	# now output the data to make the bytes/day/mover plots
@@ -984,7 +988,7 @@ class SgDataFile(EnPlot):
 
 class TotalBpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total, meansize, xfers, max_nodes):
+    def write(self, outfile, ptsfile, total, meansize, xfers, max_nodes, lw=20):
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day By Enstore "+\
@@ -1003,14 +1007,15 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 			      repr(xfers)+"\"\n")
 	len_max_nodes = len(max_nodes)
 	if len_max_nodes > 0:
-	    self.openfile.write("plot '%s' using 1:2 t '%s' w impulses lw 20 1 1"%(ptsfile,
-									    max_nodes[0],))
+	    self.openfile.write("plot '%s' using 1:2 t '%s' w impulses lw %s 1 1"%(ptsfile,
+									    max_nodes[0],
+									    lw))
 	    color = 3
 	    column = 3
 	    for node in max_nodes[1:]:
-		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw 20 %s 1"%(ptsfile, 
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s %s 1"%(ptsfile, 
 										    column,
-										    node,
+										    node, lw,
 										    color))
 		color = color + 2
 		column = column + 1
@@ -1020,6 +1025,7 @@ class TotalBpdDataFile(EnPlot):
 
     def __init__(self, dir):
 	EnPlot.__init__(self, dir, enstore_constants.TOTAL_BPD_FILE)
+	self.lw = 10
 
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
@@ -1071,5 +1077,5 @@ class TotalBpdDataFile(EnPlot):
 	# data file
 	max_nodes.reverse()
 	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, 
-		      numxfers, max_nodes)
+		      numxfers, max_nodes, self.lw)
 	gnucmds.close()
