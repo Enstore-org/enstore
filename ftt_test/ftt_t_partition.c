@@ -172,3 +172,15 @@ FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 ftt_set_nparts(parttab,partno);
 return 0;
 }
+
+int ftt_t_undump_partitions(int argc, char **argv)
+{
+int 		status;				/* status */
+int 		estatus = 0;			/* expected status */
+static char	*estatus_str;			/* expected status string */
+
+if (!parttab) { parttab = ftt_alloc_parts(); }
+
+FTT_T_CHECK_CALL (ftt_undump_partitions(parttab,stdin), estatus);
+return 0;
+}

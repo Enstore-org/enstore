@@ -264,15 +264,15 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
-	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_LEN+16, 5, 0);
+	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_SIZE+16, 5, 0);
 	    if(res < 0) return res;
 	    buf[0] = 0;
 	    buf[1] = 0;
 	    /* enable outgoing compression */
-	    buf[BD_LEN + 2] &= ~(1 << 7);
-	    buf[BD_LEN + 2] |= (compression << 7);
+	    buf[BD_SIZE + 2] &= ~(1 << 7);
+	    buf[BD_SIZE + 2] |= (compression << 7);
 
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_LEN+16, 120, 1);
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -281,15 +281,15 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    DEBUG2(stderr, "Using SCSI Mode sense 0x10 page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
-	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, BD_LEN+16, 5, 0);
+	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen10, 6, buf, BD_SIZE+16, 5, 0);
 	    if(res < 0) return res;
 	    buf[0] = 0;
 	    /* we shouldn't be changing density here but it shouldn't hurt */
 	    /* yes it will! the setuid program doesn't know which density */
 	    /* the parent process set... */
-	    /* buf[BD_LEN] = d->devinfo[d->which_is_default].hwdens; */
- 	    buf[BD_LEN + 14] = compression;
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_LEN+16, 120, 1);
+	    /* buf[BD_SIZE] = d->devinfo[d->which_is_default].hwdens; */
+ 	    buf[BD_SIZE + 14] = compression;
+	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 120, 1);
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;

@@ -9,9 +9,9 @@
 #define DO_DBD 
 #ifdef DO_DBD
 # define DBD 0x00
-# define BD_SIZE 0x4
+# define BD_SIZE 0xC
 #else
 # define DBD 0x08
-# define BD_SIZE 0xC
+# define BD_SIZE 0x4
 #endif
 

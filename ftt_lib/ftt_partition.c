@@ -98,8 +98,8 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 
 	res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, BD_SIZE+136, 10, 0);
 	if (res < 0) return res;
-	p->n_parts = buf[BD_SIZE+3];
 	p->max_parts = buf[BD_SIZE+2];
+	p->n_parts = buf[BD_SIZE+3];
 	for( i = 0 ; i <= p->n_parts; i++ ) {
 	    p->partsizes[i] = pack(0,0,buf[BD_SIZE+8+2*i],buf[BD_SIZE+8+2*i+1]);
 	}
