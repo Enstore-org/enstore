@@ -327,7 +327,7 @@ class EnStatus:
 	elif ticket["state"] == "idle":
 	    self.text[key][LAST_READ] = add_commas(str(ticket["rd_bytes"]))
 	    self.text[key][LAST_WRITE] = add_commas(str(ticket["wr_bytes"]))
-	    if ticket['tape'] == 'w' or ticket['tape'] == 'r':
+	    if ticket['mode'] == 'w' or ticket['mode'] == 'r':
 		self.text[key][STATE] = "idle - have bound volume"
 	    else:
 		self.text[key][STATE] = "idle"
