@@ -176,10 +176,9 @@ class PyGdb(Gdb):
         elif cmd_chr == 'w':
             return self.backtrace()
         elif cmd_chr == 't':
-            self.trace = not self.trace
-            if self.trace: s='on'
-            else: s = 'off'
-            return ['tracing is '+s]
+            self.trace = self.trace+1
+            if self.trace>2: self.trace=0
+            return ['trace %s' % self.trace]
         elif cmd_chr == 'd':
             if ntok==1:
                 self.delete_all_breakpoints()
@@ -285,8 +284,13 @@ if __name__ == "__main__":
                         print "%s at %s:%d" % (func,pygdb.filename,pygdb.line)
                         pygdb.break_next_line=0
                         pygdb.cont = 0
-                    elif pygdb.trace:
+                    elif pygdb.trace==1:
                         print "%s at %s:%d" %(func,pygdb.filename,pygdb.line)
+                    elif pygdb.trace==2:
+                        f=string.split(pygdb.filename,'/')
+                        if f: f=f[-1]
+                        else: f="?"
+                        print "%s:%d  %s"%(f,pygdb.line,getline(pygdb.filename,pygdb.line))
                         pygdb.cont = 1
                     else: pygdb.cont = 1
         
