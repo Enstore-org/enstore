@@ -28,6 +28,7 @@ import file_clerk_client
 import admin_clerk_client
 import library_manager_client
 import media_changer_client
+import mover_client
 import dispatching_worker
 import interface
 import generic_server
@@ -178,14 +179,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # this mover does not exist in the config dict
 	    Trace.trace(12,"{update_mover - ERROR, not in config dict")
 	    return
-	self.essfile.output_alive(t['host'], key+self.trailer, \
-                                  { 'work' : "NOT IMPL YET",\
-                                  'address' : (t['host'], t['port']), \
-                                  'status' : (e_errors.OK, None)}, time, key)
-	self.htmlfile.output_alive(t['host'], key+self.trailer, \
-                                  { 'work' : "NOT IMPL YET",\
-                                  'address' : (t['host'], t['port']), \
-                                  'status' : (e_errors.OK, None)}, time, key)
+	# get a client and then check if the server is alive
+	movc = mover_client.MoverClient(self.csc, 0, key, t['host'], t['port'])
+	self.alive_status(movc, (t['host'], t['port']), key+self.trailer, \
+	                  time, key)
         Trace.trace(12,"{update_mover")
 
     # get the information from the admin clerk
