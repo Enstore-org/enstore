@@ -10,6 +10,8 @@ from dict_to_a import *
 from driver import RawDiskDriver
 from media_changer_client import *
 import pprint
+import cpio
+import binascii
 
 class Mover :
 
@@ -22,6 +24,10 @@ class Mover :
         self.config_port = config_port
         self.csc = configuration_client(self.config_host,self.config_port)
         self.u = UDPClient()
+
+    def sock_read(self) :
+        return self.data_socket.recv(self.driver.get_blocksize())
+
 
     # primary serving loop
     def move_forever(self, name) :
@@ -179,43 +185,57 @@ class Mover :
         if ticket["status"] != "ok" :
             raise "volume clerk forgot about this volume"
 
-        # space to where the file will begin and save location
-        # information for where future writes will have to  space the drive to.
-
-        # call the user and announce that your her mover
-        self.get_user_sockets(ticket)
-
         # setup values before transfer
         nb = ticket["size_bytes"]
-        bytes_recvd = 0
+        wr_size = 0
         media_error = 0
         media_full  = 0
         drive_error = 0
         user_send_error = 0
-        anything_written = 0
         bof_space_cookie = 0
         sanity_cookie = 0
         complete_crc = 0
         self.driver.wr_mnt = self.driver.wr_mnt+1
+        pnfs = ticket["pnfsfile_info"]
+        inode = 0
+
+        # call the user and announce that your her mover
+        self.get_user_sockets(ticket)
 
         # open the hsm file for writing
         self.driver.open_file_write()
 
-        # read the file from the user and write it out
-        while 1:
-            buff = self.data_socket.recv(self.driver.get_blocksize())
-            l = len(buff)
-            if l == 0 :
-                break
-            bytes_recvd = bytes_recvd + l
-            self.driver.write_block(buff)
-            anything_written = 1
+        self.wrapper = cpio.cpio(self.sock_read, \
+                                 self.driver.write_block,\
+                                 binascii.crc_hqx)
+
+        (wr_size,\
+         complete_crc) = self.wrapper.write(inode, pnfs["mode"], \
+                                            pnfs["uid"], pnfs["gid"], \
+                                            ticket["mtime"], \
+                                            ticket["size_bytes"], \
+                                            pnfs["major"],  pnfs["minor"], \
+                                            pnfs["rmajor"], pnfs["rminor"], \
+                                            pnfs["pnfsFilename"])
+        #print "cpio.write returned:",wr_size,wr_crc
+
+        if 0 :
+            # read the file from the user and write it out
+            while 1:
+                buff = self.data_socket.recv(self.driver.get_blocksize())
+                l = len(buff)
+                if l == 0 :
+                    break
+                wr_size = wr_size + l
+                self.driver.write_block(buff)
 
         # we've read the file from user, shut down data transfer socket
         self.data_socket.close()
 
-        # close hsm file: get file/eod cookies & remaining bytes & errs & mnts
+        # close hsm file
         file_cookie = self.driver.close_file_write()
+
+        #  get file/eod cookies & remaining bytes & errs & mnts
         eod_cookie = self.driver.get_eod_cookie()
         remaining_bytes = self.driver.get_eod_remaining_bytes()
         wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
@@ -223,7 +243,7 @@ class Mover :
         vcc = VolumeClerkClient(self.csc)
 
         # check for errors and inform volume clerk
-        if bytes_recvd != ticket["size_bytes"] :
+        if wr_size != ticket["size_bytes"] :
             user_send_error = 1
 
         # update database, tell user & continue on user errors
@@ -233,7 +253,7 @@ class Mover :
                                                    eod_cookie,wr_err,\
                                                    wr_err,rd_err,wr_mnt,rd_mnt)
             msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
-                  " but only" +" stored"+repr(bytes_recvd)
+                  " but only" +" stored"+repr(wr_size)
             # tell user we're done, but there has been an error
             self.send_user_last({"status" : "Mover: Retry: user_error "+msg})
             # tell mover ready for more - can't undo user error, so continue
@@ -328,9 +348,6 @@ class Mover :
         # space to where the file will begin and save location
         # information for where future reads will have to space the drive to.
 
-        # call the user and announce that your her mover
-        self.get_user_sockets(ticket)
-
         # setup values before transfer
         media_error = 0
         media_full  = 0
@@ -341,20 +358,36 @@ class Mover :
         sanity_cookie = 0
         complete_crc = 0
 
+        # call the user and announce that your her mover
+        self.get_user_sockets(ticket)
+
         # open the hsm file for writing
         self.driver.open_file_read(ticket["bof_space_cookie"])
 
-        # read the file from hsm and send to user
-        while 1:
-            buff = self.driver.read_block()
-            l = len(buff)
-            if l == 0 : break
-            self.data_socket.send(buff)
-            bytes_sent = bytes_sent + l
-            anything_sent = 1
+        self.wrapper = cpio.cpio(self.driver.read_block,\
+                                 self.data_socket.send,\
+                                 binascii.crc_hqx)
+
+        (bytes_sent, complete_crc, recorded_crc, match) = self.wrapper.read()
+        #print "cpio.read returned: ",\
+        #      bytes_sent, complete_crc, recorded_crc, match
+
+        if 0:
+            # read the file from hsm and send to user
+            while 1:
+                buff = self.driver.read_block()
+                l = len(buff)
+                if l == 0 : break
+                self.data_socket.send(buff)
+                bytes_sent = bytes_sent + l
 
         # we've sent the hsm file to the user, shut down data transfer socket
         self.data_socket.close()
+
+	if match != "ok" :
+	    print "CRC ERROR: Read "+repr(complete_crc)+", wrote "\
+		  +repr(recorded_crc)
+
 
         # get the error/mount counts and update database
         wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
@@ -382,9 +415,7 @@ class Mover :
         # All is well - read has finished correctly
 
         # add some info to user's ticket
-        ticket["bfid"] = self.fticket["bfid"]
         ticket["volume_clerk"] = self.vticket
-        ticket["file_clerk"] = self.fticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',\
                   'library', 'library_device', 'library_manager_host',\
@@ -399,6 +430,8 @@ class Mover :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc
+	ticket["recorded_crc"] = recorded_crc
+	ticket["crc_match"] = match
         ticket["sanity_cookie"] = sanity_cookie
 
         # tell user

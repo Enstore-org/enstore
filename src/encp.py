@@ -197,6 +197,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
               "pnfs_info"          : pinfo,
+              "user_info"          : uinfo,
               "bfid"               : p.bit_file_id,
               "user_callback_port" : port,
               "user_callback_host" : host,

@@ -178,10 +178,12 @@ class cpio :
 
 
     # generate an enstore cpio archive: devices must be open and ready
-    def write(self, format, inode, mode, uid, gid, nlink, mtime, filesize, \
+    def write(self, inode, mode, uid, gid, mtime, filesize, \
               major, minor, rmajor, rminor, filename) :
 
         # generate the headers for the archive and write out 1st one
+        format = "new"
+        nlink = 1
         header,head_crc,trailer = self.headers(format, inode, mode, uid,
                                                gid, nlink, mtime, filesize, \
                                                major, minor, rmajor, rminor, \
@@ -271,8 +273,6 @@ if __name__ == "__main__" :
 
     wrapper = cpio(fin.read,fout.write,binascii.crc_hqx)
 
-    format = "new"
-    nlink = 1
     dev_dict = Devcodes.MajMin(fin.name)
     major = dev_dict["Major"]
     minor = dev_dict["Minor"]
@@ -280,8 +280,8 @@ if __name__ == "__main__" :
     rminor = 0
 
     (size,crc) = \
-               wrapper.write(format, statb[stat.ST_INO], statb[stat.ST_MODE], \
-                             statb[stat.ST_UID], statb[stat.ST_GID], nlink, \
+               wrapper.write(statb[stat.ST_INO], statb[stat.ST_MODE], \
+                             statb[stat.ST_UID], statb[stat.ST_GID], \
                              statb[stat.ST_MTIME], statb[stat.ST_SIZE], \
                              major, minor, rmajor, rminor, fin.name)
     print "cpio.write returned:",size,crc
