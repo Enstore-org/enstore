@@ -24,7 +24,6 @@ else:
 dbInfo = csc.get('database')
 dbHome = dbInfo['db_dir']
 jouHome = dbInfo['jou_dir']
-
 print "dbHome", dbHome
 print "jouHome", jouHome
 
@@ -34,12 +33,14 @@ fcdict = db.DbTable("file", dbHome, jouHome, ['external_label'])
 for k in vcdict.keys():
     rec = vcdict[k]
     lib = rec['library']
-    if lib in ('samm2'):
+    if lib in ('samm2',):
+        ### del vcdict[k] ###!!!###
         print k, rec['library'], rec['non_del_files']
 
 D=open('/home/enstore/DE','r')
 for b in D.readlines():
     b=b[:-1]
+    ### del fcdict[b] ###!!!###
     try:
         if fcdict[b]['deleted'] != 'yes':
             print b, fcdict[b]['deleted'], fcdict[b]['external_label'],fcdict[b]['pnfs_name0']
