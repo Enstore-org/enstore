@@ -224,3 +224,19 @@ if (!parttab) { parttab = ftt_alloc_parts(); }
 FTT_T_CHECK_CALL (ftt_undump_partitions(parttab,stdin), estatus);
 return 0;
 }
+
+int
+ftt_t_set_mount_partition(int argc, char **argv)
+{
+int 		status;				/* status */
+int 		estatus = 0;			/* expected status */
+static char	*estatus_str;			/* expected status string */
+static int	partno;				/* number to skip */
+ftt_t_argt	argt[] = {
+	{"<partition>",	FTT_T_ARGV_INT,		NULL,		&partno},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+ftt_set_mount_partition(ftt_t_fd,partno);
+return 0;
+}

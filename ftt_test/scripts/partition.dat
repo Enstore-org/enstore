@@ -23,7 +23,12 @@ ftt_cur_part
 ftt_set_part_size 1 0
 ftt_set_nparts 0
 ftt_dump_partitions
-ftt_echo "Putting them back"
+ftt_echo "Testing set_mount_part"
+ftt_get_stats
+ftt_extract_stats FTT_MOUNT_PART
+ftt_set_mount_partition 1
+ftt_extract_stats FTT_MOUNT_PART
+ftt_echo "Putting it back to one partition"
 ftt_write_partitions
 ftt_get_partitions
 ftt_dump_partitions

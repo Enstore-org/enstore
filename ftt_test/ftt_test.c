@@ -73,6 +73,7 @@ int ftt_t_set_nparts(int, char **);
 int ftt_t_dump_partitions(int, char **); int ftt_t_write_partitions(int, char**);
 int ftt_t_cur_part(int, char**); 	int ftt_t_skip_part(int, char**);
 int ftt_t_undump_partitions(int, char**);
+int ftt_t_set_mount_partition(int, char **);;
 
 
 /*=============================================================================
@@ -156,6 +157,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_write_partitions", ftt_t_write_partitions,
 	"ftt_cur_part", 	ftt_t_cur_part,
 	"ftt_skip_part", 	ftt_t_skip_part,
+	"ftt_set_mount_partition", 	ftt_t_set_mount_partition,
 	NULL,			0};
 
 /* Get command line arguments
