@@ -339,7 +339,9 @@ class  FTTDriver(GenericDriver) :
 	    part, block_loc, filenum = 0,0,0
 	else:
 	    part, block_loc, filenum = loc2int( self, loc_cookie )
-	if block_loc:
+	    pass
+	# NEXT LINE HAS "and 0" TO DISABLE BLOCK LOCATION TEMPORARILY
+	if block_loc and 0:
 	    FTT.locate( block_loc )
 	elif filenum != loc2int(self,self.cur_loc_cookie)[2]:
 	    # NOTE: when skipping file marks, there must be a file mark to
