@@ -208,9 +208,9 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
     return next_req_to_lm
 
 
-def fatal_enstore( self, error_info, ticket ):
+def fatal_enstore( self, error_info ):
     logc.send( e_errors.ERROR, 1, "FATAL ERROR - MOVER - "+str(error_info) )
-    rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, ticket['address'] )
+    rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, self.lm_origin_addr )
     while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
     return
 
