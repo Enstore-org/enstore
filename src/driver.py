@@ -417,7 +417,7 @@ if __name__ == "__main__" :
     import getopt			# getopt
     import os				# unlink, stat
     import stat				# stat.ST_SIZE
-    import ECRC				# ECRC.ECRC (to do crc)
+    import checksum			# checksum.adler32 (to do crc)
 
     Usage = "Usage: %s [--in=file] [--disk_out=file] [--tape_out=dev]" % sys.argv[0]
 
@@ -491,7 +491,7 @@ if __name__ == "__main__" :
 		do.write( buf_str[buf])
 
 		fd = os.open( opt['in'], os.O_RDONLY )
-		crc = do.fd_xfer( fd, fsize, ECRC.ECRC )
+		crc = do.fd_xfer( fd, fsize, checksum.adler32 )
 		os.close(fd)
 		print '     the crc is',crc
 		print "     stats - %s"%do.get_stats()
@@ -524,7 +524,7 @@ if __name__ == "__main__" :
 
 		statinfo = os.stat( opt['in'] )
 		fd = os.open( opt['in']+str(buf), os.O_WRONLY )
-		crc = do.fd_xfer( fd, fsize, ECRC.ECRC )
+		crc = do.fd_xfer( fd, fsize, checksum.adler32 )
 		os.close(fd)
 		print '     the crc is',crc
 	    

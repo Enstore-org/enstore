@@ -13,7 +13,7 @@ import traceback
 # enstore imports
 import EXfer
 import Trace
-import ECRC
+import checksum
 import e_errors
 
 """
@@ -341,7 +341,7 @@ if __name__ == "__main__" :
               "Invalid input file: can only handle regular files"
 
     fast_write = 0 # needed for testing
-    wrapper = Wrapper(fin,fout,ECRC.ECRC,fast_write)
+    wrapper = Wrapper(fin,fout,checksum.adler32,fast_write)
 
     dev_dict = Devcodes.MajMin(fin._file_.name)
     major = dev_dict["Major"]
@@ -381,7 +381,7 @@ if __name__ == "__main__" :
     fin  = diskdriver_open(sys.argv[2],"r")
     fout = diskdriver_open(sys.argv[1]+".copy","w")
 
-    wrapper = Wrapper(fin,fout,ECRC.ECRC)
+    wrapper = Wrapper(fin,fout,checksum.adler32)
     (read_size, read_crc) = wrapper.read(sanity_cookie)
     Trace.log(e_errors.INFO,
               "cpio.read returned: size: "+repr(read_size)+" crc: "+\

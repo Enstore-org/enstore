@@ -14,7 +14,7 @@ import sys
 import e_errors
 import interface
 import Trace
-import ECRC
+import checksum
 import cleanUDP
 
 TRANSFER_MAX=16384
@@ -102,7 +102,7 @@ def protocolize( self, text ):
 
     # CRC text
     body = `(self.ident, lcl_number, text)`
-    crc = ECRC.ECRC(body, 0)
+    crc = checksum.adler32(0L, body, len(body))
 
     # stringify message and check if it is too long
     message = `(body, crc)`

@@ -65,7 +65,7 @@ import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
 import callback				# used in send_user_done, get_usr_driver
 import wrapper_selector
-import ECRC				# for crc
+import checksum				# for crc
 import Trace
 import driver
 import FTT				# needed for FTT.error
@@ -241,7 +241,7 @@ class MoverClient:
 	# dismount -- labels must be unique
 
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
-	self.crc_func = ECRC.ECRC
+	self.crc_func = checksum.adler32
 	self.local_mover_enable =1
 
 	if config['device'][0] == '$':
@@ -1009,7 +1009,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def crc_on( self, ticket ):
-	self.client_obj_inst.crc_func = ECRC.ECRC
+	self.client_obj_inst.crc_func = checksum.adler32
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
 	return

@@ -13,7 +13,7 @@ import traceback
 # enstore imports
 import EXfer
 import Trace
-import ECRC
+import checksum
 import e_errors
 
 """

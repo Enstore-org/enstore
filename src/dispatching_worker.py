@@ -6,7 +6,7 @@ import errno
 import time
 import os
 import traceback
-import ECRC
+import checksum
 import sys
 import socket
 import os
@@ -179,7 +179,7 @@ class DispatchingWorker:
             req = self.socket.recvfrom(self.max_packet_size)
             request,inCRC = eval(req[0])
             # calculate CRC
-            crc = ECRC.ECRC(request, 0)
+            crc = checksum.adler32(0L, request, len(request))
             if (crc != inCRC) :
                 Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+\
                         " calcCRC="+repr(crc))

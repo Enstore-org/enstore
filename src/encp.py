@@ -28,7 +28,7 @@ import EXfer
 import interface
 import e_errors
 import Trace
-import ECRC
+import checksum
 import library_manager_client
 
 data_access_layer_format = "INFILE=%s\n"+\
@@ -456,7 +456,7 @@ def write_to_hsm(input, output, output_file_family='',
 			   repr(statinfo[stat.ST_SIZE]))
 		    pass
 		try:
-		    if chk_crc != 0: crc_fun = ECRC.ECRC
+		    if chk_crc != 0: crc_fun = checksum.adler32
 		    else:            crc_fun = None
 		    mycrc = EXfer.fd_xfer( in_file.fileno(),
 					   data_path_socket.fileno(), 
@@ -1327,7 +1327,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
 	    # read file, crc the data if user has request crc check
 	    try:
-		if chk_crc != 0: crc_fun = ECRC.ECRC
+		if chk_crc != 0: crc_fun = checksum.adler32
 		else:            crc_fun = None
 		mycrc = EXfer.fd_xfer( data_path_socket.fileno(), _f_.fileno(),
 				       requests[j]['file_size'], bufsize, crc_fun )
