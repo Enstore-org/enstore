@@ -29,7 +29,7 @@ newdbs:
 	( cd data; \
 	for f in * ; do \
 		f2=$(dpnfs)/`basename $$f`;\
-		ecmd encp $$f $$f2 ; \
+		encp $$f $$f2 ; \
 		echo $$f2 >> $$ENSTORE_DIR/test/files.in ; \
 	done ; )
 

@@ -34,7 +34,7 @@ while /bin/true; do
         fo=$fb.out.$$
         fc=$ENSTORE_DIR/test/data/`echo $f | eval sed -e s@$base/@@ | sed -e s/__.*//`
         #echo $fc
-        ecmd encp $f $fo
+        encp $f $fo
         if [ -r $fc ] ; then
            cmp $fo $fc
            if [ $? -ne 0 ] ; then
