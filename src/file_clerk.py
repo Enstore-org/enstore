@@ -363,7 +363,7 @@ if __name__ == "__main__":
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
-    csc = configuration_client.configuration_client(config_host,config_port,\
+    csc = configuration_client.ConfigurationClient(config_host,config_port,\
                                                     config_list)
 
     #   pretend that we are the test system

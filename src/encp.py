@@ -843,7 +843,7 @@ def clients(config_host,config_port,list):
                 " port="+repr(config_port)+" list="+repr(list))
 
     # get a configuration server
-    csc = configuration_client.configuration_client(config_host,config_port,\
+    csc = configuration_client.ConfigurationClient(config_host,config_port,\
                                                     list)
     # get a udp client
     u = udp_client.UDPClient()

@@ -49,7 +49,7 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
         if config_host == "" :
             (config_host,ca,ci) = socket.gethostbyaddr("pcfarm4.fnal.gov")
 
-        csc = configuration_client.configuration_client(config_host,config_port)
+        csc = configuration_client.ConfigurationClient(config_host,config_port)
 	csc.connect()
 
         # get a logger

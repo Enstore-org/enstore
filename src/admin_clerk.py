@@ -178,7 +178,7 @@ if __name__=="__main__":
    # bomb out if port isn't numeric
    config_port = string.atoi(config_port)
 
-   csc = configuration_client.configuration_client(config_host,config_port,config_list)  
+   csc = configuration_client.ConfigurationClient(config_host,config_port,config_list)  
    keys = csc.get("admin_clerk")
    ac =  AdminClerk((keys['hostip'], keys['port']), AdminClerkMethods)
    ac.set_csc(csc)

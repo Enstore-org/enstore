@@ -69,7 +69,7 @@ class Mover:
             (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
         self.config_host = config_host
         self.config_port = config_port
-        self.csc = configuration_client.configuration_client(self.config_host,self.config_port, 0)
+        self.csc = configuration_client.ConfigurationClient(self.config_host,self.config_port, 0)
         self.u = udp_client.UDPClient()
         self.sleeptime = 1.0
         self.chkremote = 2.*60./self.sleeptime
@@ -566,7 +566,7 @@ if __name__ == "__main__":
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\
                      "mover move_forever continuing"
-            csc = configuration_client.configuration_client(config_host,config_port, 0)
+            csc = configuration_client.ConfigurationClient(config_host,config_port, 0)
             logc = log_client.LoggerClient(csc, 'MOVER', 'logserver', 0)
             logc.send(log_client.ERROR, 1, format)
             Trace.trace(0,format)
