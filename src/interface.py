@@ -395,6 +395,12 @@ class Interface:
                 self.start_draining = 1
             elif opt == "--outage":
                 self.outage = value
+	    elif opt == "--override":
+		self.override = value
+	    elif opt == "--nooverride":
+		self.nooverride = value
+	    elif opt == "--saagStatus":
+		self.saagStatus = value
             elif opt == "--output":
                 self.output = value
             elif opt == "--output-dir":
