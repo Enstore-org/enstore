@@ -239,7 +239,7 @@ class Mover :
                 ticket["sanity_cookie"] = fticket["sanity_cookie"]
                 ticket["device"] = self.device
                 ticket["driver_name"] = self.driver_name
-                ticket["device_name"] = self.name
+                ticket["mover_name"] = self.name
                 ticket["library_device"] = self.library_device
                 ticket["capacity_bytes"] = self.vticket["capacity_bytes"]
                 ticket["remaining_bytes"] = self.vticket["remaining_bytes"]

@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 from SocketServer import *
 from configuration_client import *
 from callback import send_to_user_callback
@@ -78,6 +79,9 @@ class VolumeClerkMethods(DispatchingWorker) :
             record["remaining_bytes"] = ticket["remaining_bytes"]
             record["eod_cookie"] = ticket["eod_cookie"]
             record["error_inhibit"] = "none"
+            record["last_access"] = time.time()
+            record["last_access_f"] = time.strftime("%b %d %H:%M:%S %Y %Z"\
+                                      ,time.localtime(record["last_access"]))
             dict[key] = record # THIS WILL JOURNAL IT
             record["status"] = "ok"
         except KeyError:

@@ -9,11 +9,7 @@ from generic_server import GenericServer
 from udp_client import UDPClient
 import pprint
 
-# Read write work lists
-# set up and manipulate the list of requests to read or write
-# along with their priorities
-
-pending_work = []       # list of read write work tickets
+pending_work = []       # list of read or write work tickets
 
 # here is where we setup priority for work that needs to get done
 def priority(ticket) :
@@ -161,7 +157,7 @@ class LibraryManagerMethods(DispatchingWorker) :
 
     def read_from_hsm(self, ticket):
         ticket["status"] = "ok"
-        self.reply_to_caller(ticket)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
         queue_pending_work(ticket)
 
 
@@ -201,7 +197,7 @@ class LibraryManagerMethods(DispatchingWorker) :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             work_awaiting_bind.remove(w)
             w['mover'] = mticket['mover']
-	    #print "awaiting work"
+            #print "awaiting work"
             #pprint.pprint(w)
             work_at_movers.append(w)
             return
@@ -212,7 +208,7 @@ class LibraryManagerMethods(DispatchingWorker) :
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.remove(w)
             w['mover'] = mticket['mover']
-	    #print "next work"
+            #print "next work"
             #pprint.pprint(w)
             work_at_movers.append(w)
 

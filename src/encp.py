@@ -116,7 +116,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         if list :
             print p.pnfsFilename, p.bit_file_id, p.file_size,\
                   done_ticket["external_label"],done_ticket["mover"],\
-		  done_ticket["bof_space_cookie"]
+                  done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket "\
@@ -204,7 +204,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
     if list :
-        print outfile, p.file_size, ticket
+        print outfile, p.file_size
 
 ##############################################################################
 
