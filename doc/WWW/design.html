@@ -1469,7 +1469,8 @@ terminates with the appropriate status. The only successful status returned by <
 </tr>
 
 <tr NOSAVE>
-<td NOSAVE>WRITE_NOTAPE</td>
+<td NOSAVE>WRITE_NOTAPE
+</td>
 <td NOSAVE>Requested volume was not found in the library</td>
 </tr>
 
@@ -4525,9 +4526,12 @@ interim, Enstore will make the following working assumptions:
 	<TR VALIGN=TOP>
 		<TD>
 			<P><B>WRITE_NOTAPE</B> </FONT>
+
 		</TD>
 		<TD>
 			<P>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+  			<A href=write_notape.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check volume in morning </FONT>
@@ -4560,6 +4564,8 @@ interim, Enstore will make the following working assumptions:
 			<P>Requested volume is in another drive. Enstore bug,
 			or some other system has mounted volume or library micro put
 			volume elsewhere. </FONT>
+  			<A href=write_tapebusy.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check volume in morning </FONT>
@@ -4592,6 +4598,8 @@ interim, Enstore will make the following working assumptions:
 			<P>A volume is already in drive. Enstore bug or
 			misconfiguration. Note: Mover waits for automatic cleaning tape to
 			be ejected. </FONT>
+  			<A href=write_drivebusy.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check drive and configuration in morning </FONT>
@@ -4622,6 +4630,8 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P>Mount failure or load operation failed. Must
 			assume jammed volume. </FONT>
+  			<A href=write_badmount.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check drive and volume in morning </FONT>
@@ -4683,6 +4693,8 @@ interim, Enstore will make the following working assumptions:
 		</TD>
 		<TD>
 			<P>Error writing data block or file mark. </FONT>
+  			<A href=write_error.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check drive in morning </FONT>
@@ -5051,6 +5063,8 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P>Error reading data block. Run of the mill read
 			error. </FONT>
+  			<A href=read_error.gif> use case </a>
+
 		</TD>
 		<TD>
 			<P>Check drive in morning </FONT>
