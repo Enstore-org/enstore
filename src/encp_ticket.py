@@ -110,7 +110,6 @@ def read_request_ok(ticket):
     vc_keys = {'address': ('', 0),
                'blocksize': 0,
                'capacity_bytes': 0L,
-               'current_location': '',
                'external_label': '',
                'file_family': '',
                'library': '',
