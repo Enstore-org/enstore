@@ -774,6 +774,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
             import ftt
             stats = self.tape_driver.ftt.get_stats()
+            Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
+                                                                       stats[ftt.WRITE_PROT],
+                                                                       self.override_ro_mount))
             if self.stat_file:
                 if not os.path.exists(self.stat_file):
                    dirname, basename = os.path.split(self.stat_file)
@@ -993,7 +996,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
             self.stat_file = self.config.get('statistics_path', None)
-            Trace.log(e_errors.INFO,"statsitics path %s"%(self.stat_file,))
+            Trace.log(e_errors.INFO,"statitics path %s"%(self.stat_file,))
             self.compression = self.config.get('compression', None)
             if self.compression > 1: self.compression = None
             self.device = self.config['device']
