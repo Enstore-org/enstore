@@ -254,7 +254,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				ticket['encp_id'],
 				ticket['version'],
 				ticket['type'],
-				ticket['error'])
+				ticket['error'],
+				ticket['file_family'],
+				ticket['wrapper'],
+				ticket['mover'],
+				ticket['drive_id'],
+				ticket['drive_sn'],
+				ticket['rw'])
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_encp_error()', ticket, e, v))

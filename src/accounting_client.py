@@ -173,30 +173,17 @@ class accClient(generic_client.GenericClient):
 			'storage_group'	: storage_group,
 			'encp_ip'	: encp_ip,
 			'encp_id'	: encp_id,
-			'rw'		: rw}
-
-		# backward compatibility
-
-		if encp_version:
-			ticket['encp_version'] = encp_version
-		else:
-			ticket['encp_version'] = 'unknown'
-
-		if file_family:
-			ticket['file_family'] = file_family
-		else:
-			ticket['file_family'] = 'unknown'
-
-		if wrapper:
-			ticket['wrapper'] = wrapper
-		else:
-			ticket['wrapper'] = 'unknown'
-
+			'rw'		: rw,
+			'encp_version'	: encp_version,
+			'file_family'	: file_family,
+			'wrapper'	: wrapper}
 
 		self.send2(ticket)
 
 	def log_encp_error(self, src, dst, size, storage_group, encp_id, version,
-		type, error, node=None, date=None):
+		type, error, node=None, date=None, file_family=None,
+		wrapper=None, mover=None, drive_id=None, drive_sn=None,
+		rw=None):
 
 		if not self.server_address: return
 
@@ -219,7 +206,13 @@ class accClient(generic_client.GenericClient):
 			'encp_id'	: encp_id,
 			'version'	: version,
 			'type'		: type,
-			'error'		: error}
+			'error'		: error,
+			'file_family'	: file_family,
+			'wrapper'	: wrapper,
+			'mover'		: mover,
+			'drive_id'	: drive_id,
+			'drive_sn'	: drive_sn,
+			'rw'		: rw}
 		self.send2(ticket)
 
 	def log_start_event(self, name):

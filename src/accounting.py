@@ -126,7 +126,7 @@ class accDB:
 		overall_rate, transfer_rate, mover,
 		drive_id, drive_sn, elapsed, media_changer,
 		mover_interface, driver, storage_group, encp_ip,
-		encp_id, rw, encp_version='unknown', file_family='unknown', wrapper='unknown'):
+		encp_id, rw, encp_version=None, file_family=None, wrapper=None):
 
 		if type(date) != type(""):
 			date = time2timestamp(date)
@@ -154,15 +154,21 @@ class accDB:
 			'storage_group'	: storage_group,
 			'encp_ip'	: encp_ip,
 			'encp_id'	: encp_id,
-			'rw'		: rw,
-			'encp_version'	: encp_version,
-			'file_family'	: file_family,
-			'wrapper'	: wrapper}
+			'rw'		: rw}
+
+		if encp_version:
+			xfer['encp_version'] = encp_version
+		if file_family:
+			xfer['file_family'] = file_family
+		if wrapper:
+			xfer['wrapper'] = wrapper
 
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_error(self, date, node, pid, username, src, dst,
-		size, storage_group, encp_id, version, e_type, error):
+		size, storage_group, encp_id, version, e_type, error,
+		file_family = None, wrapper = None, mover = None,
+		drive_id = None, drive_sn = None, rw = None):
 		if type(date) != type(""):
 			date = time2timestamp(date)
 
@@ -190,7 +196,19 @@ class accDB:
 			en_error['encp_id'] = encp_id
 		if storage_group:
 			en_error['storage_group'] = storage_group
-		
+		if file_family:
+			en_error['file_family'] = file_family
+		if wrapper:
+			en_error['wrapper'] = wrapper
+		if mover:
+			en_error['mover'] = mover
+		if drive_id:
+			en_error['drive_id'] = drive_id
+		if drive_sn:
+			en_error['drive_sn'] = drive_sn
+		if rw:
+			en_error['rw'] = rw
+
 
 		self.insert('encp_error', en_error)
 			
