@@ -163,7 +163,7 @@ if __name__=="__main__":
         remaining_bytes=0
         nfiles = string.atoi(vol["next_file"]) - 1
         eod_cookie = "0000_000000000_%07d"%(nfiles+1,) #+1 to skip VOL1 label
-        user_inhibit = "none"
+        user_inhibit = ["none","none"]
         error_inhibit = "none"
         first_access = string.atof(vol["first_access"])
         if vol.has_key("last_access"):
@@ -177,7 +177,7 @@ if __name__=="__main__":
         sum_rd_access = 0
         wrapper = vol["format"]
         blocksize = string.atoi(vol["blocksize"])
-        system_inhibit = "readonly"
+        system_inhibit = ["none","readonly"]
         
         if verbose: print "addvol", vol_name
         ## addvol, set file family to remote hostname (from metadata)
