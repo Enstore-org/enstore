@@ -66,7 +66,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
     pinfo = {}
     for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
                'major','minor','rmajor','rminor',\
-               'mode','stat' ] :
+               'mode','pstat' ] :
         exec("pinfo["+repr(k)+"] = p."+k)
 
     # let's save who's talking to us
@@ -221,6 +221,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
     if done_ticket["status"] == "ok" :
         if chk_crc != 0 and done_ticket["complete_crc"] != mycrc :
             print "CRC error",complete_crc, mycrc
+        print "CRC's: ",done_ticket["complete_crc"],mycrc
         t1 = time.time()
         if list:
             print "Adding file to pnfs", "   cum=",time.time()-t0

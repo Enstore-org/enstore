@@ -27,7 +27,7 @@ error = -1
 
 class pnfs :
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self,pnfsFilename,all=0,timeit=1) :
+    def __init__(self,pnfsFilename,all=0,timeit=0) :
         t1 = time.time()
         self.pnfsFilename = pnfsFilename
         (dir,file) = os.path.split(pnfsFilename)
@@ -532,7 +532,7 @@ if __name__ == "__main__" :
             sys.exit(0)
 
     if info :
-        p=pnfs(file,1)
+        p=pnfs(file,1,1)
         if list :
             p.dump()
 
