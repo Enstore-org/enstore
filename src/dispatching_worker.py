@@ -27,7 +27,7 @@ import generic_cs
 
 request_dict = {}
 #
-# Purge entries older than 600 seconds. Dict is a dictionary
+# Purge entries older than 30 minutes. Dict is a dictionary
 #    The first entry, dict[0], is the key
 #    The second entry, dict[1], is the message, client number, ticket, and time
 #        which becomes list[0-2]
