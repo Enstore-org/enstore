@@ -213,8 +213,8 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            mls.serve_forever()
             logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
+            mls.serve_forever()
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
                      repr(sys.argv)+" "+\

@@ -674,8 +674,8 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            vs.serve_forever()
             logc.send(log_client.INFO, "Volume Clerk (re)starting")
+            vs.serve_forever()
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
                      repr(sys.argv)+" "+\

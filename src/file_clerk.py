@@ -270,8 +270,8 @@ if __name__ == "__main__" :
 
     while 1:
         try:
+            logc.send(log_client.INFO, "File Clerk (re)starting")
             cs.serve_forever()
-            ogc.send(log_client.INFO, "File Clerk (re)starting")
         except:
             format = time.strftime("%c",time.localtime(time.time()))+" "+\
                      repr(sys.argv)+" "+\
