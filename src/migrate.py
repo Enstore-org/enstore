@@ -632,9 +632,14 @@ def final_scan():
 def final_scan_volume(vol):
 	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
+	# for debugging
+	count = 0
 	# get its own fcc
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
+
+	# get a db connection
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 
 	# get an encp
 	encp = encp_wraper.Encp()
@@ -644,7 +649,7 @@ def final_scan_volume(vol):
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
 			deleted = 'n' and dst_bfid = bfid;"%(vol)
-	query_res = db.query(q).get_result()
+	query_res = db.query(q).getresult()
 	log(MY_TASK, "closing volume", vol)
 
 	v = vcc.inquire_vol(vol)
@@ -658,11 +663,15 @@ def final_scan_volume(vol):
 		return 1
 
 	# make sure this is a migration volume
-	sg, ff, wp = string.split(v[volume_family], '.')
+	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
 		error_log(MY_TASK, "%s is not a migration volume")
 		return 1
 	for r in query_res:
+		# for debugging
+		count = count+1
+		if count > 10:
+			return 0
 		bfid, pnfs_id, src_bfid = r
 		st = is_swapped(src_bfid, db)
 		if not st:
@@ -692,7 +701,7 @@ def final_scan_volume(vol):
 
 			# mark the original deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
-			res = db.query(q).get_result()
+			res = db.query(q).getresult()
 			if len(res):
 				if res[0][0] != 'y':
 					res = fcc.set_deleted('yes', bfid=src_bfid)
@@ -706,7 +715,7 @@ def final_scan_volume(vol):
 			ok_log(MY_TASK, "checking", bfid, pnfs_path, "already done at", ct)
 			# make sure the original is marked deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
-			res = db.query(q).get_result()
+			res = db.query(q).getresult()
 			if not len(res) or res[0][0] != 'y':
 				error_log(MY_TASK, "%s was not marked deleted"%(src_bfid))
 	# restore file family only if there is no error
@@ -817,7 +826,7 @@ def restore_volume(vol):
 	q = "select bfid from file, volume where \
 		file.volume = volume.id and label = '%s' and \
 		deleted = 'y';"%(vol)
-	res = db.query(q).get_result()
+	res = db.query(q).getresult()
 	bfids = []
 	for i in res:
 		bfids.append(i[0])
