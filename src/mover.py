@@ -293,7 +293,9 @@ class MoverClient:
             Trace.log(e_errors.INFO, "No such driver: "+mvr_config['driver'])
             raise
 
-        driver_object = self.hsm_driver.open( mvr_config['device'], 'a+' )
+	# Note: open the dev in read mode, incase there is not a tape
+	# an exception will occur when opening 'a+' when no tape is present.
+        driver_object = self.hsm_driver.open( mvr_config['device'], 'r' )
         ss = driver_object.get_stats()
         if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
 
@@ -307,7 +309,7 @@ class MoverClient:
             self.mcc.unloadvol( self.vol_info, mvr_config['name'], 
                 mvr_config['mc_device'], None)
             pass
-        driver_object.close()
+        driver_object.close( skip=0 )
 
 	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
 	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
@@ -536,6 +538,14 @@ def bind_volume( object, external_label ):
             object.store_mount_statistics(object.hsm_driver)
 	except: return 'BADMOUNT' # generic, not read or write specific
 
+	# at this point, we have the volume in our tape drive,
+	# so if anything goes wrong from this point on, we can let whoever
+	# know that the volume is in our tape drive.
+	# Note that the object.vol_info is updated again if, for example
+	# a label is placed on the tape.
+	object.vol_info.update( tmp_vol_info )
+	object.vol_info['from_lm'] = object.work_ticket['lm']['address'] # who gave me this volume
+
         #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
         if vol1_paranoia and mvr_config['driver']=='FTTDriver':
             driver_object = object.hsm_driver.open( mvr_config['device'], 'r' )
@@ -614,7 +624,6 @@ def bind_volume( object, external_label ):
                 driver_object.skip_fm(-1)
 	    pass
 	driver_object.close()
-	object.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != object.vol_info['external_label']:
         object.vol_info['err_external_label'] = external_label
@@ -622,6 +631,8 @@ def bind_volume( object, external_label ):
                        (object.vol_info['external_label'],external_label) )
         return 'NOTAPE' # generic, not read or write specific
 
+    # update again, after all is said and done
+    object.vol_info.update( tmp_vol_info )
     return e_errors.OK  # bind_volume
 
 
@@ -645,6 +656,7 @@ def do_fork( self, ticket, mode ):
 			       ticket['wrapper']['fullname']),
 		      ticket['wrapper']['pnfsFilename'])
         self.work_ticket = ticket	#just save the whole thing for "status"
+					# and for bind to get lm address!
 	pass
     self.state = 'busy'
     self.mode = mode			# client mode, not driver mode
@@ -691,7 +703,6 @@ def forked_write_to_hsm( self, ticket ):
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
-	self.vol_info['from_lm'] = ticket['lm']['address'] # who gave me this volume
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
@@ -898,7 +909,6 @@ def forked_read_from_hsm( self, ticket ):
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
-	self.vol_info['from_lm'] = ticket['lm']['address'] # who gave me this volume
 
         # space to where the file will begin and save location
         # information for where future reads will have to space the drive to.

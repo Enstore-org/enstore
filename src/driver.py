@@ -17,6 +17,9 @@ import e_errors
 import Trace
 import hostaddr
 
+# define exception(s)
+SeekError = "seek error"
+
 SEEK_SET =       0   
 SEEK_CUR =       1   
 SEEK_END =       2
@@ -256,7 +259,7 @@ class GenericDriver:
 	self.remaining_bytes = self.remaining_bytes - len( buffer )
 	return None
 
-    def close( self ):
+    def close( self, skip=0 ):
         return os.close(self.fd)
 
     def loc_compare( self, loc1, loc2 ):
@@ -510,7 +513,7 @@ class  FTTDriver(GenericDriver) :
 		FTT.rewind()
 		ss = FTT.get_stats()  # block_loc should be 0
 		if ss['bloc_loc'] != None:
-		    if ss['bloc_loc'] != 0: raise SeekError
+		    if ss['bloc_loc'] != "0": raise SeekError
 		    pass
 		else:
 		    Trace.log( e_errors.ERROR, "FTT.get_stats - no block_loc" )
