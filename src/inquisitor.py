@@ -573,13 +573,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	for elem in queue:
 	    if elem['work'] == "write_to_hsm" and \
 	       enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
-		ff = elem['pnfs']['file_family']
+		ff = elem['vc']['file_family']
 		if ff_dict.has_key(ff):
-		    if ff_dict[ff][FF_W] > elem['pnfs']['file_family_width']:
-			ff_dict[ff][FF_W] = elem['pnfs']['file_family_width']
+		    if ff_dict[ff][FF_W] > elem['vc']['file_family_width']:
+			ff_dict[ff][FF_W] = elem['vc']['file_family_width']
 		    ff_dict[ff][NUM_IN_Q] = ff_dict[ff][NUM_IN_Q] + 1
 		else:
-		    ff_dict[ff] = {FF_W : elem['pnfs']['file_family_width']}
+		    ff_dict[ff] = {FF_W : elem['vc']['file_family_width']}
 		    ff_dict[ff][NUM_IN_Q] = 1
 	return ff_dict
 
