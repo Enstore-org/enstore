@@ -35,12 +35,12 @@ mover_cnt = 0  # number of movers in the queue
 def add_mover(name, address):
     global mover_cnt
     Trace.trace(3, "{add_mover " + repr(name) + " " + repr(address))
-    mover = {}
-    mover['mover'] = name
-    mover['address'] = address
-    mover['state'] = 'idle_mover'
-    mover['last_checked'] = time.time()
-    mover['summon_try_cnt'] = 0
+    mover = {'mover'   : name,
+	     'address' : address,
+	     'state'   : 'idle_mover',
+	     'last_checked' : time.time(),
+	     'summon_try_cnt' : 0
+	     }
     movers.append(mover)
     mover_cnt = mover_cnt + 1
     Trace.trace(3, "}add_mover " + repr(mover) + "mover count=" + \
@@ -118,38 +118,27 @@ def remove_mover(mover, mover_list):
 ##############################################################
 
 work_at_movers = []
-work_awaiting_bind = []
-
 
 # return a list of busy volumes for a given file family
 def busy_vols_in_family (family_name):
     vols = []
-    for w in work_at_movers + work_awaiting_bind:
+    for w in work_at_movers:
      try:
         if w["vc"]["file_family"] == family_name:
             vols.append(w["fc"]["external_label"])
      except:
         pprint.pprint(w)
         pprint.pprint(work_at_movers)
-        pprint.pprint(work_awaiting_bind)
         os._exit(222)
     return vols
 
 
 # check if a particular volume with given label is busy
 def is_volume_busy(external_label):
-    for w in work_at_movers + work_awaiting_bind:
+    for w in work_at_movers:
         if w["fc"]["external_label"] == external_label:
             return 1
     return 0
-
-
-# return ticket for given labelled volume in bind queue
-def get_awaiting_work(external_label):
-    for w in work_awaiting_bind:
-        if w["fc"]["external_label"] == external_label:
-            return w
-    return {}
 
 
 # return ticket if given labelled volume in mover queue
@@ -365,9 +354,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                    ticket["vc"]["file_family"],
                                    ticket["wrapper"]["uname"])
 	if not ticket.has_key('lm'):
-	    lm = {}
-	    ticket['lm'] = lm
-	lm['address'] = self.server_address
+	    ticket['lm'] = {'address':self.server_address }
 
         pending_work.insert_job(ticket)
 	if list: pprint.pprint(movers)
@@ -401,9 +388,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                    ticket["fc"]["bfid"],
                                    ticket["wrapper"]["uname"])
 	if not ticket.has_key('lm'):
-	    lm = {}
-	    ticket['lm'] = lm
-	lm['address'] = self.server_address
+	    ticket['lm'] = {'address' : self.server_address}
 
         pending_work.insert_job(ticket)
 
@@ -470,18 +455,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			return
 
             # reply now to avoid deadlocks
-            format = "bind vol=%s work=%s mover=%s requestor:%s"
+            format = "%s work on vol=%s mover=%s requestor:%s"
             logticket = self.logc.send(log_client.INFO, 2, format,
-                                       w["fc"]["external_label"],
                                        w["work"],
+                                       w["fc"]["external_label"],
                                        mticket["mover"],
                                        w["wrapper"]["uname"])
-
-            # put it into our bind queue and take it out of pending queue
-            work_awaiting_bind.append(w)
-            pending_work.delete_job(w)
-	    mticket['vc'] = {"external_label":w["fc"]["external_label"]}
-	    self.have_bound_volume(mticket)
+	    w['times']['lm_dequeued'] = time.time()
+            self.reply_to_caller(w) # reply now to avoid deadlocks
+	    if list:
+		print "MOVER WORK:"
+		pprint.pprint(w)
+	    pending_work.delete_job(w)
+            w['mover'] = mticket['mover']
+            work_at_movers.append(w)
+	    if list: 
+		print "Work awaiting bind"
+		pprint.pprint(w)
+            return
 
         # alas
         else:
@@ -510,28 +501,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             work_at_movers.remove(w)
 
-        # if we have work awaiting the bind, pass that work and delete it
-        # from the list and  return
-        w = get_awaiting_work(mticket['vc']["external_label"])
-        if w:
-            format = "%s awaiting work on vol=%s mover=%s requestor:%s"
-            logticket = self.logc.send(log_client.INFO, 2, format,
-                                       w["work"],
-                                       w["fc"]["external_label"],
-                                       mticket["mover"],
-                                       w["wrapper"]["uname"])
-            self.reply_to_caller(w) # reply now to avoid deadlocks
-	    if list:
-		print "MOVER WORK:"
-		pprint.pprint(w)
-            work_awaiting_bind.remove(w)
-            w['mover'] = mticket['mover']
-            work_at_movers.append(w)
-	    if list: 
-		print "Work awaiting bind"
-		pprint.pprint(w)
-            return
-
         # otherwise, see if this volume will do for any other work pending
         w = next_work_this_volume(mticket)
         if w["status"][0] == e_errors.OK:
@@ -541,6 +510,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["fc"]["external_label"],
                                        mticket["mover"],
                                        w["wrapper"]["uname"])
+	    w['times']['lm_dequeued'] = time.time()
             self.reply_to_caller(w) # reply now to avoid deadlocks
             pending_work.delete_job(w)
             w['mover'] = mticket['mover']
@@ -578,7 +548,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if list: 
 	    print "unilateral_unbind"
 	    pprint.pprint(ticket)
-        w = get_awaiting_work(ticket["external_label"])
+        w = get_work_at_movers(ticket["external_label"])
 
 	# update mover list. If mover is in the list - update its state
 	update_mover_list(ticket)
@@ -600,9 +570,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		vol_found = 1
 		break
 	if not vol_found:
-	    item = {}
-	    item['external_label'] = ticket['external_label']
-	    item['movers'] = []
+	    item = {'external_label' : ticket['external_label'],
+		    'movers' : []
+		    }
 	mv_found = 0
 	for mv in item['movers']:
 	    if ticket['mover'] == mv:
@@ -617,16 +587,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if w:
 	    if list: 
-		print "unbind: work_awaiting_bind" 
-		pprint.pprint(w)
-            work_awaiting_bind.remove(w)
-            pending_work.insert_job(w)
-
-        # else, it is the user's responsibility to retry
-        w = get_work_at_movers (ticket["external_label"])
-        if w:
-	    if list: 
-		print "unbind: work_at movers" 
+		print "unbind: work_at_movers" 
 		pprint.pprint(w)
             work_at_movers.remove(w)
 
@@ -659,7 +620,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket = {}
         rticket["status"] = (e_errors.OK, None)
         rticket["at movers"] = work_at_movers
-        rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work.get_queue()
         callback.write_tcp_socket(self.data_socket,rticket,
                                   "library_manager getwork, datasocket")
