@@ -1,10 +1,10 @@
-The correct way to start the enstore servers is to use the command
-enstore-start, and the correct way to stop them is to use the command
-enstore-stop.  These commands work at the 90% level, so there may be some
-problems. Usually the error messages let you know what is wrong and alot of
-times it is pilot error.  A ps command is also generally useful.
+The correct way to start the enstore servers is to use the command ecmd start,
+and the correct way to stop them is to use the command ecmd stop.  These
+commands work at the 90% level, so there may be some problems. Usually the
+error messages let you know what is wrong and alot of times it is pilot error.
+A ps command is also generally useful.
 
-When starting up servers, yon specify which configuration server the server is
+When starting up servers, you specify which configuration server the server is
 going to use by specifying a configuration server host and port.  If you don't
 specify it, the server will use the standard defaults.  There can only 1
 volume clerk, file clerk and library manager server running per configuration
@@ -20,10 +20,10 @@ every other server does when it starts up is ask the configuration server for
 information.
 
 If you want to see what is in the configuration server's dictionary, try the
-command     econ --config_list --dict
+command     ecmd config  --config_list --dict --list
 
 If you want to change the dictionary, try the command
-    econ --load --config_file file
+    ecmd config --load --config_file file
 Don't do the on the default server, only your private test one!!!
 
 
@@ -38,8 +38,7 @@ name of this volume, capacity of this vol in bytes, and remaining capacity of
 this volume.
 
 The current way (I plan on changing this) to do this is
-python $ENSTORE_DIR/src/envoltool.py addvol activelibrary family_raw \
-                                     floppy flop1 1400000 1400000
+ecmd addvol activelibrary family_raw floppy flop1 1400000 1400000
 
 If you use the standard servers, this has been done already so don't add any
 volumes.  This should be viewed as an administrator's job.
@@ -47,9 +46,9 @@ volumes.  This should be viewed as an administrator's job.
 All the information can be seen simply by listing volume_clerk.jou in the
 enstore etc directory.  That's the journal database file for the volume clerk.
 
-There are also 2 options to the vcc command that provide information:
+There are also 2 options to the ecmd vcc command that provide information:
 
-IRIX-hppc[616] 11:36:31 src$ vcc --vols --list
+IRIX-hppc[616] 11:36:31 src$ ecmd vcc --vols --list
 {'vols': "['flop4', 'flop22', 'flop3', 'flop2', 'flop1']", 'status': 'ok'}
 
 IRIX-hppc[617] 11:40:48 src$ vcc --vol=flop22 --list
@@ -73,9 +72,9 @@ have been written to the volumes.
 All the information can be seen simply by listing file_clerk.jou in the
 enstore etc directory.  That's the journal database file for the file clerk.
 
-There are also 2 options to the fcc command that provide information:
+There are also 2 options to the ecmd fcc command that provide information:
 
-IRIX-hppc[2513] 14:43:01 src$ fcc --list --bfids
+IRIX-hppc[2513] 14:43:01 src$ ecmd fcc --list --bfids
 {'bfids': "['88785533200000L', '88785532100000L', '88785533000000L', \
             '88785532500000L', '88785533400000L', '88785531900000L', \
             '88785532300000L', '88785532600000L']",
@@ -118,4 +117,3 @@ final media.  There is 1 mover server for each tape drive.
 There isn't any way to see what is going on in the movers right now (that I
 know about).  It's clearly possible to write an interface to do this.  This
 information is needed for the users.
-

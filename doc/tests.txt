@@ -14,7 +14,7 @@ Starting from scratch:
         make clean newdbs
 
 Re-use -- must have done started from scratch and not done a clean
-          and the enstore servers must be runing (enstore-start command)
+          and the enstore servers must be runing (ecmd start command)
 
         make olddbs
 

@@ -13,14 +13,3 @@ PYTHONINC=$PYTHON_DIR/include/$PVER; export PYTHONINC
 PYTHONLIB=$PYTHON_DIR/lib/$PVER;     export PYTHONLIB
 PVER=`cd $PYTHON_DIR;ls -d Python*`
 PYTHONMOD=$PYTHON_DIR/$PVER/Modules;     export PYTHONMOD
-
-# encp()   { python $ENSTORE_DIR/src/encp.py $@ ; }
-# pnfs()   { python $ENSTORE_DIR/src/pnfs.py $@ ; }
-# config() { python $ENSTORE_DIR/src/configuration_client.py $@ ; }
-# fcc()    { python $ENSTORE_DIR/src/file_clerk_client.py $@ ; }
-# vcc()    { python $ENSTORE_DIR/src/volume_clerk_client.py $@ ; }
-
-# rddt()   { python $ENSTORE_DIR/src/driver.py $@ ; }
-# clbk()   { python $ENSTORE_DIR/src/callback.py $@ ; }
-# udpc()   { python $ENSTORE_DIR/src/udp_client.py $@ ; }
-# ranf()   { python $ENSTORE_DIR/src/ranfile.py $@ ; }

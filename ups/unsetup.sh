@@ -11,14 +11,3 @@ fi
 unset PYTHONLIB
 unset PYTHONINC
 unset PYTHONMOD
-
-# unset encp
-# unset pnfs
-# unset config
-# unset fcc
-# unset vcc
-
-# unset rddt
-# unset clbk
-# unset udpc
-# unset ranf

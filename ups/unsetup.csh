@@ -4,14 +4,3 @@ setenv PYTHONPATH `dropit -d':' -p"$PYTHONPATH" /enstore`
 unsetenv PYTHONLIB
 unsetenv PYTHONINC
 unsetenv PYTHONMOD
-
-# unalias encp
-# unalias pnfs
-# unalias config
-# unalias fcc
-# unalias vcc
-
-# unalias rddt
-# unalias clbk
-# unalias udpc
-# unalias ranf
