@@ -495,7 +495,9 @@ do_read(  int 		rd_fd
 	    shm_off += sts;
 	}
 
-	g_buf_bytes = 0;	/* should be done with it */
+	/* should be done with it; zero-ing is OK --
+	   it is just a flag at this point */
+	g_buf_bytes = 0;
 
 	if ((shm_off+blk_size) > g_shmsize) shm_off = 0;
     }
@@ -631,6 +633,7 @@ FTT_fd_xfer(  PyObject *self
 			    int ii=msg_s.md.data-no_bytes;
 			    while (ii--)
 				g_buf_p[ii] = msg_s.md.c_p[no_bytes+ii];
+			    g_buf_bytes = msg_s.md.data-no_bytes;
 			}
 			no_bytes -= sts; /* count down */
 			*write_bytes_ip += sts;	/* count up */
