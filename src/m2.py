@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # m2.py -- collection of mammoth-2 related routines
 
 import os
@@ -5,8 +6,9 @@ import string
 import enmail
 import time
 import getpass
+import sys
 
-# dump_code(device, path=None, sendto=None, notify=None, comment=None)
+# dump_code(device, path=None, sendto=[], notify=[], comment=None)
 #
 #	calling m2probe to dump the internal code of a m2 drive
 #
@@ -29,6 +31,8 @@ import getpass
 
 def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 
+	# print 'dump_code(device='+`device`+', path='+`path`+', sendto='+`sendto`+', notify='+`notify`+', comment='+`comment`+')'
+
 	# use prefix to fake the path
 	if path:
 		prefix = '-p '+os.path.join(path, 'Fermilab')
@@ -40,15 +44,16 @@ def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 	# parse m2probe's output for file name and status
 	l = os.popen(cmd).readlines()
 	res = string.split(l[-1], "dumped to")
-	status = string.join(l, '')
-	if len(res) != 2:	# something is wrong
+	status = string.join(l, '')	# use m2probe outout as status
+	if len(res) != 2:		# something is wrong
 		return "code dumping failed:\n"+status
 
 	# get the file name
 	f = string.strip(res[-1])
 
+	# figure out who am I and from where
 	from_add = getpass.getuser()+'@'+os.uname()[1]
-	subject = "M2 dump taken at "+time.ctime(time.time())
+	subject = "Automatic M2 dump taken at "+time.ctime(time.time())
 
 	error_msg = None
 
@@ -69,7 +74,7 @@ def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 			else:
 				to_addresses = sendto
 			mesg = mesg+"\n\nThe dump file has been sent to "+to_addresses
-		res = enmail.mail(from_add, sendto, subject, mesg)
+		res = enmail.mail(from_add, notify, subject, mesg)
 
 		if res:
 			if error_msg:
@@ -78,3 +83,43 @@ def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 				error_msg = 'On sending notification:\n'+res
 
 	return error_msg
+
+# usage() -- help for interactive usage
+
+def usage():
+	print "usage: %s dump device [path [snedto notifify comment]]"%(sys.argv[0])
+	print
+	print "examples:"
+	print "\t%s dump /dev/rmt/tps3d0n"%sys.argv[0]
+	print "\t%s dump /dev/rmt/tps3d0n /tmp"%sys.argv[0]
+	print "\t%s dump /dev/rmt/tps3d0n /tmp MartinD@Exabyte.COM enstore_admin@fnal.gov 'mover XXX'"%sys.argv[0]
+	
+
+# interactive invocation:
+#
+# m2.py dump device [path [snedto notify comment]]
+#
+
+if __name__ == "__main__":
+	argc = len(sys.argv)
+	if argc < 2:
+		usage()
+		sys.exit(0)
+	if sys.argv[1] == 'dump':
+		if argc == 3:
+			res = dump_code(sys.argv[2])
+			if res:
+				print res
+		if argc == 4:
+			res =dump_code(sys.argv[2], sys.argv[3])
+			if res:
+				print res
+		elif argc == 7:
+			res = dump_code(sys.argv[2], sys.argv[3],
+				sys.argv[4], sys.argv[5], sys.argv[6])
+			if res:
+				print res
+		else:
+			usage()
+	else:
+		usage()
