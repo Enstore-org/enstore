@@ -1002,8 +1002,55 @@ def main(e):
         Trace.log(e_errors.INFO, "Listening for control socket at: %s"
                   % str(use_listen_socket.getsockname()))
         try:
-            control_socket, mover_address, ticket = \
-                            encp.open_control_socket(use_listen_socket, 15*60)
+            #The listen socket used depends on if route selection is
+	    # enabled or disabled.  If enabled, then the listening socket
+	    # returned from open_routing_socket is used.  Otherwise, the
+	    # original routing socket opened and the beginning is used.
+	    #If the routes were changed, then only wait 10 sec. before
+	    # initiating the retry.  If no routing was done, wait for the
+	    # mover to callback as originally done.
+	    #if config and config.get('interface', None):
+            i = 0
+            #for i in range(int(e.mover_timeout/15)):
+            while i < int(e.mover_timeout/15):
+                try:
+                    control_socket, mover_address, ticket = \
+                                    encp.open_control_socket(
+                        use_listen_socket, 15)
+                    break
+                except (socket.error, select.error, encp.EncpError), msg:
+                    #If a select (or other call) was interupted,
+                    # this is not an error, but should continue.
+                    if getattr(msg, "errno", None) == errno.EINTR:
+                        continue
+                    #If the error was timeout, resend the reply
+                    # Since, there was an exception, "ticket" is still
+                    # the ticket returned from the routing call.
+                    elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
+                        udp_socket.reply_to_caller_using_interface_ip(
+                            rticket, use_listen_socket.getsockname()[0])
+                    else:
+                        if isinstance(msg, (socket.error, select.error)):
+                            ticket = {'status' : (e_errors.NET_ERROR,
+                                                  str(msg))}
+                        else: #EncpError
+                            ticket = {'status' : (msg.type, str(msg))}
+
+                        #Force an exit from the loop.
+                        break
+
+                #Increment the count.
+                i = i + 1
+            else:
+                #If we get here then we had encp_intf.max_retry timeouts
+                # occur.  Giving up.
+                ticket = {'status' : (e_errors.TIMEDOUT,
+                                      "Mover did not call back")}
+
+	    #else:
+	    #    control_socket, mover_address, ticket = open_control_socket(
+	    #    use_listen_socket, encp_intf.mover_timeout)
+
 
             # Verify that the control socket openned successfully.
             result_dict = encp.handle_retries([request], request,
