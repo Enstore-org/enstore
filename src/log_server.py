@@ -64,7 +64,11 @@ class Logger(  dispatching_worker.DispatchingWorker
             if list :
                 print "opened for append"
         except :
-            self.logfile = open(logfile_name, 'w')
+	    try:
+		self.logfile = open(logfile_name, 'w')
+	    except:
+		print "Can not open log ",logfile_name
+		os._exit(1)
             if list :
                 print "opened for write"
 
