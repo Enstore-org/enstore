@@ -803,7 +803,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "%s " % (volume,)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,4,10)
+        status,response = self.timed_command(command,4,60)
         if status != 0:
             E=1
             msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
@@ -843,7 +843,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
         # execute the command and read the response
         # FIXME - what if this hangs?
-        status,response = self.timed_command(command,4,10)
+        status,response = self.timed_command(command,4,60)
         if status != 0:
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
@@ -915,7 +915,7 @@ class stk_MediaLoader(MediaLoaderMethods):
                 return ("ERROR", E, response, '', msg)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,2,60*5)
+        status,response = self.timed_command(command,2,60*10)
         if status != 0:
             E=12
             msg = "MOUNT %i: %s => %i,%s" % (E,command,status,response)
@@ -963,7 +963,7 @@ class stk_MediaLoader(MediaLoaderMethods):
                     return (e_errors.OK, 0,response, '',msg)
 
         # execute the command and read the response
-        status,response = self.timed_command(command,2,60*5)
+        status,response = self.timed_command(command,2,60*10)
         if status != 0:
             E=16
             msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,response)
