@@ -347,7 +347,7 @@ def set_entvrc(display, intf):
                 except IndexError:
                     background = DEFAULT_BG_COLOR
                 try:
-                    if display.animate:
+                    if display.animate.get():
                         animate = str("animate")
                     else:
                         animate = str("still")
