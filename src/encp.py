@@ -654,6 +654,7 @@ def write_to_hsm(input_files, output, output_file_family='',
         print "  ",vticket["hostip"],vticket["port"]
         print "  dt:",tinfo["get_libman"], "   cumt=",time.time()-t0
 
+    file_fam = None
     # loop on all input files sequentially
     for i in range(0,ninput):
         unique_id.append(0) # will be set later when submitted
@@ -694,8 +695,8 @@ def write_to_hsm(input_files, output, output_file_family='',
 		work_ticket["unique_id"] = unique_id[i]
 		work_ticket["retry"] = retry
             else:
-                try: rq_file_family = file_fam
-                except NameError: rq_file_family = file_family[i]
+                if file_fam: rq_file_family = file_fam
+                else: rq_file_family = file_family[i]
                 volume_clerk = {"library"            : library[i],
                                 "file_family"        : rq_file_family,
                                 # technically width does not belong here, but it associated with the volume
@@ -1621,7 +1622,10 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         ##or if it was asked for explicitly
 
         if done_ticket['status'][0]==e_errors.OK:
-            statinfo = os.stat(outfile)
+            if tempname == '/dev/null':
+               statinfo = os.stat(infile)
+            else:
+                statinfo = os.stat(outfile)
             fsize = statinfo[stat.ST_SIZE]
         else:
             fsize=0
@@ -1640,7 +1644,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
             else:
                 tinfo['rate%d'%(j,)] = 0.0
-            format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f  {'media_changer' : '%s'}"
+            format = "  %s -> %s : %d bytes copied from %s at %.3g MB/S (%.3g MB/S)     cumt= %f  {'media_changer' : '%s'}"
 
             if verbose:
                 print format %(
