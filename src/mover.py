@@ -1403,6 +1403,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = DISMOUNT_WAIT
         have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
         if have_tape == 1:
+            try:
+                self.tape_driver.rewind()
+            except:
+                pass
             ejected = self.tape_driver.eject()
             if ejected == -1:
                 self.error("Cannot eject tape")
