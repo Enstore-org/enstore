@@ -50,7 +50,7 @@ lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
 	stat(pc,&sbuf);
 	/* minor = (int)minor(sbuf.st_rdev);		*/
 	/* DEBUG2(stderr,"Minor dev is %d\n", minor);	*/
-	*bus  = (sbuf.st_rdev >> 14 ) & 7;
+	*bus  = (sbuf.st_rdev >> 14 ) & 63;
 	*targ = (sbuf.st_rdev >> 10 ) & 15;
 	*lun  = (sbuf.st_rdev >>  6 ) & 15;
 	idstring[0] = 0;
