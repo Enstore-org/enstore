@@ -1922,6 +1922,8 @@ def outputfile_check(ninput,inputlist,output):
                 try:
                     statinfo = os.stat(outputlist[i])
                     # generated filename already exists - error
+                    print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
+                                                                          (errno.errorcode[errno.EEXIST], None)})
                     jraise(errno.errorcode[errno.EEXIST],\
                            " encp.outputfile_check: "+outputlist[i]+\
                            " already exists")
@@ -1929,6 +1931,8 @@ def outputfile_check(ninput,inputlist,output):
                     pass # ok, generated name doesn't exist
             # filename already exists - error
             else:
+                print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
+                                                                      (errno.errorcode[errno.EEXIST], None)})
                 jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check: "\
                        +outputlist[i]+" already exists")
 
