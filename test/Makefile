@@ -56,12 +56,15 @@ olddbs:
 	@ echo "   It takes a bit for them to die off"
 
 
-stop:
-	- killall -9 longtest
-	- pidkill $$ENSTORE_DIR/test/longtest_pids
-	- for d in 1 2 3 4 5 6 7 8 9 ; do \
-		pidkill $$d/loop_longtest.pids ; \
+readers:
+	for d in 1 2 3 4 5 6 7 8 9 ; do \
+		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
+		( cd $$d; rm -f *; \
+			cp $$ENSTORE_DIR/test/reader . ;); \
 	done
+
+stop:
+	find . -name '*.pids' -exec $$ENSTORE_DIR/bin/pidkill {} \;
 
 clean:
 	- pidkill $$ENSTORE_DIR/test/longtest_pids

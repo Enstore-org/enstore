@@ -1,0 +1,37 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+usage="USAGE: $0 base_read_dir_path copy_directory"
+
+if [ -n "${1-}" ] ; then
+    base=$1
+else
+    echo "$usage"
+    exit 1
+fi
+
+if [ -n "${2-}" ] ; then
+    copy=$2
+else
+    echo "$usage"
+    exit 2
+fi
+
+set -u  # force better programming and ability to use check for not set
+
+read_list=./reader_list.$$
+rm -f reader.pids
+echo $$ > reader.pids
+
+while /bin/true; do
+    rm -f readerWT.pids
+    echo $! > readerWT.pids
+    rm -fr $read_list
+    find $base/ -type f -print >> $read_list
+    cat $read_list | while read f; do
+        rm -f readerWC.pids
+        echo $! > readerWC.pids
+        rm -f out.out
+        ecmd encp $f $copy/out.out;
+    done ;
+done

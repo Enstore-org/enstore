@@ -519,8 +519,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         logticket = logc.send(log_client.INFO, format, p.pnfsFilename,
                               uinfo["fullname"], fsize,
                               done_ticket["external_label"], tinfo["total"],
-                              uinfo["uname"],
-                              done_ticket["MB_per_S"], time.time()-t0)
+                              done_ticket["MB_per_S"], uinfo["uname"],
+                              time.time()-t0)
 
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
