@@ -1395,7 +1395,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		self.extra_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm),
 						   filename)
 		self.extra_queue_pages[new_key][0].body(\
-		                    self.make_lm_wam_queue_rows(qelem[qlen:], 
+		                    self.make_lm_wam_queue_rows(the_work[qlen:], 
 								cols))
 	return rows
 
