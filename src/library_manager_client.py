@@ -108,6 +108,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_lm_state(self, timeout=0, tries=0):
         return self.send({"work":"get_lm_state"}, timeout, tries)
         
+    # remove volume from suspect volume list
+    def remove_suspect_volume(self, volume):
+        return self.send({"work":"remove_suspect_volume", "volume":volume})
 
     def priority(self, id, pri):
 	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
@@ -217,7 +220,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.status = 0
         self.vols = 0
         self.storage_groups = 0
-        
+        self.rm_suspect_vol = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -230,7 +233,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                     "delete_work=","priority=",
                     "load_movers", "poll", "get_queue=","host=",
                     "start_draining=", "stop_draining", "status", "vols",
-                    "storage_groups"]
+                    "storage_groups", "rm_suspect_vol="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -274,6 +277,8 @@ def do_work(intf):
     elif intf.delete_work:
 	ticket = lmc.remove_work(intf.work_to_delete)
 	print repr(ticket)
+    elif intf.rm_suspect_vol:
+        ticket = lmc.remove_suspect_volume(intf.suspect_volume)
     elif not intf.priority == -1:
 	ticket = lmc.priority(intf.args[1], intf.priority)
 	print repr(ticket)

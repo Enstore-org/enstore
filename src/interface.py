@@ -242,6 +242,9 @@ class Interface:
             elif opt == "--delete_work" :
                 self.work_to_delete = value
                 self.delete_work = 1
+            elif opt == "--rm_suspect_vol" :
+                self.suspect_volume = value
+                self.rm_suspect_vol = 1
             elif opt == "--change_priority" :
                 self.change_priority = 1
             elif opt == "--poll" :

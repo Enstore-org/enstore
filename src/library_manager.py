@@ -1174,30 +1174,32 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rq, status = self.pending_work.put(mticket['returned_work'])
             # return
         
-        # update suspected volume list
-	vol = self.update_suspect_vol_list(mticket['external_label'], 
-				mticket['mover'])
-        Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
-	if vol and len(vol['movers']) >= self.max_suspect_movers:
-            if w:
-                w['status'] = (e_errors.NOACCESS, None)
+        # update suspected volume list if error source is ROBOT or TAPE
+        error_source = mticket.get('error_source', 'none')
+        if error_source in ("ROBOT", "TAPE"):
+            vol = self.update_suspect_vol_list(mticket['external_label'], 
+                                    mticket['mover'])
+            Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
+            if vol and len(vol['movers']) >= self.max_suspect_movers:
+                if w:
+                    w['status'] = (e_errors.NOACCESS, None)
 
-	    # set volume as noaccess
-	    v = self.vcc.set_system_noaccess(mticket['external_label'])
-	    # set volume as read only
-	    #v = self.vcc.set_system_readonly(w['fc']['external_label'])
-	    label = mticket['external_label']
+                # set volume as noaccess
+                v = self.vcc.set_system_noaccess(mticket['external_label'])
+                # set volume as read only
+                #v = self.vcc.set_system_readonly(w['fc']['external_label'])
+                label = mticket['external_label']
 
-	    #remove entry from suspect volume list
-	    self.suspect_volumes.remove(vol)
-	    Trace.trace(13,"removed from suspect volume list %s"%(vol,))
+                #remove entry from suspect volume list
+                self.suspect_volumes.remove(vol)
+                Trace.trace(13,"removed from suspect volume list %s"%(vol,))
 
-	    #self.send_regret(w)
-	    # send regret to all clients requested this volume and remove
-	    # requests from a queue
-	    self.flush_pending_jobs(e_errors.NOACCESS, label)
-	else:
-	    pass
+                #self.send_regret(w)
+                # send regret to all clients requested this volume and remove
+                # requests from a queue
+                self.flush_pending_jobs(e_errors.NOACCESS, label)
+            else:
+                pass
 
     # what is going on
     def getwork(self,ticket):
@@ -1315,12 +1317,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    # get strage groups
+    # get storage groups
     def storage_groups(self, ticket):
         ticket['storage_groups'] = []
         ticket['storage_groups'] = self.sg_limits
         self.reply_to_caller(ticket)
-        
+
+    # remove volume from suspect volume list
+    def remove_suspect_volume(self, ticket):
+        if ticket['volume'] in self.suspect_volumes.list:
+            self.suspect_volumes.remove(ticket['volume'])
+            ticket['status'] = (e_errors.OK, None)
+        else:
+            ticket['status'] = (e_errors.NOVOLUME, "No such volume %s"%(ticket['volume']))
+        self.reply_to_caller(ticket)
+            
         
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
