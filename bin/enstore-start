@@ -73,7 +73,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
     fi
 
     echo "Checking Configuration Server on $ENSTORE_CONFIG_HOST, port $ENSTORE_CONFIG_PORT"
-    ecmd config --alive --verbose=1
+    ecmd config --alive --verbose=32
     if [ $? -ne 0 ] ; then
         echo "   ...Configuration Server not reachable..."
         exit 1
