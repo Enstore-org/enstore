@@ -60,7 +60,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               }
 
     # ask configuration server what port the right library manager is using
-    vticket = csc.get(p.library)
+    vticket = csc.get(p.library+".library_manager")
 
     # send the work ticket to the library manager
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
