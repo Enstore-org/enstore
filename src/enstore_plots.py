@@ -24,7 +24,7 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
-def sort_jpg_files(tmp_stamps):
+def sort_stamp_files(tmp_stamps):
     # sort the stamp files so that all of the mount per hour stamps are at the end in
     # descending date order.  first get the other plots to the front.
     jpg_stamp_files = []
@@ -75,7 +75,7 @@ def find_jpg_files(dir):
     jpg_files, stamp_files, ps_files = find_files(files)
     jpg_files.sort()
     ps_files.sort()
-    jpg_stamp_files = sort_stamp_files(tmp_stamps)
+    jpg_stamp_files = sort_stamp_files(stamp_files)
     return (jpg_files, jpg_stamp_files, ps_files)
 
 def convert_to_jpg(psfile, file_name):
