@@ -17,8 +17,9 @@ import os
 import string
 import errno
 import socket
-import pwd
 import stat
+import grp
+import pwd
 
 # enstore imports
 import setpath
@@ -184,9 +185,22 @@ def check_user():
     #If in a cluster system...
     if is_in_cluster():
         #First determine if running as root, if so become enstore and restart.
-        if os.getegid() == 0:
-            os.execvp("su",
-                  string.split("su enstore -c \"%s\"" % string.join(sys.argv)))
+        if os.geteuid() == 0:
+            try:
+                enstore_gid = grp.getgrnam("enstore")[2]
+                os.setegid(enstore_gid)
+            except (OSError, KeyError, IndexError):
+                print "Should be running as group enstore, " \
+                      "but the enstore group is not found."
+                sys.exit(1)
+            try:
+                enstore_uid = pwd.getpwnam("enstore")[2]
+                os.seteuid(enstore_uid)
+            except (OSError, KeyError, IndexError):
+                print "Should be running as user enstore, " \
+                      "but the enstore user is not found."
+                sys.exit(1)
+            
         #Extract the user name.
 	try:
             name = pwd.getpwuid(os.geteuid())[0]
