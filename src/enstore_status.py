@@ -84,9 +84,15 @@ class EncpLine:
 		[tmp1, tmp2] = string.splitfields(self.text, ": ", 1)
 		# get the file names (tmp_list[2] = "->" so ignore it)
 		tmp_list = string.splitfields(tmp1, None)
-		self.work = tmp_list[0]
-		self.infile = tmp_list[1]
-		self.outfile = tmp_list[3]
+		if (len(tmp_list) > 4):
+		    self.work = tmp_list[0]
+		    self.infile = tmp_list[1]
+		    self.outfile = tmp_list[3]
+		else:
+		    # support an old format
+		    self.infile = tmp_list[0]
+		    self.outfile = tmp_list[2]
+		    self.work = ""
 		# get the total data transfer rate
 		[tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
 		[self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
