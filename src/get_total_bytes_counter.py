@@ -12,9 +12,9 @@ CDF = "cdf"
 D0 = "d0"
 STK = "stk"
 
-LIBRARIES = {CDF, ["cdf"],
-	     D0,  ["mezsilo", "samlto", "samm2", "sammam", "shelf-sammam"],
-	     STK, ["9940", "eagle"]
+LIBRARIES = {CDF : ["cdf"],
+	     D0 : ["mezsilo", "samlto", "samm2", "sammam", "shelf-sammam"],
+	     STK : ["9940", "eagle"]
 	     }
 
 def go(system, vq_file_name, vq_output_file):
@@ -52,21 +52,27 @@ def go(system, vq_file_name, vq_output_file):
 
 if __name__ == "__main__":
 
-    # get the file we need to read
-    dirs = inventory.inventory_dirs()
-    vq_file_name = inventory.get_vq_format_file(dirs[0])
-
     # get the file we need to write
-    if len(sys.argv) > 1:
+    argc = len(sys.argv)
+    if argc > 1:
 	vq_output_file = sys.argv[1]
 
 	# get the system from the args
-	if len(sys.argv) > 2:
+	if argc > 2:
 	    system = sys.argv[2]
 	else:
 	    system = ""
 
-	    go(system, vq_file_name, vq_output_file)
+	# get the file we need to read
+	if argc > 3:
+	    vq_file_name = sys.argv[3]
+	else:
+	    # we were not passed a name, get the default name from the 
+	    # inventory file
+	    dirs = inventory.inventory_dirs()
+	    vq_file_name = inventory.get_vq_format_file(dirs[0])
+
+	go(system, vq_file_name, vq_output_file)
     else:
 	# this is an error we need to be given the file to write
 	pass
