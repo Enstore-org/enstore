@@ -470,7 +470,7 @@ EXfd_xfer(  PyObject	*self
     {   /* do not use shared memory, msgq, sem, or forking */
 	sts = do_read_write( fr_fd, to_fd, no_bytes, blk_size, crc_flag, &crc_i );
 	if (sts == -1) return (raise_exception("fd_xfer read error"));
-	if (sts == -2) return (raise_exception("fd_xfer unexpected eof"));
+	if (sts == -2) return (raise_exception("fd_xfer - read EOF unexpected"));
 	if (sts == -3) return (raise_exception("fd_xfer write error"));
 	if (crc_flag) rr = PyLong_FromUnsignedLong( crc_i );
 	else          rr = Py_BuildValue( "" );
