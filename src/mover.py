@@ -405,9 +405,27 @@ def bind_volume( self, external_label ):
 	    self.hsm_driver.sw_mount( mvr_config['device'],
 				      tmp_vol_info['blocksize'],
 				      tmp_vol_info['remaining_bytes'],
-				      external_label )
+				      external_label,
+				      tmp_vol_info['eod_cookie'] )
             Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
 	except: return 'BADMOUNT' # generic, not read or write specific
+	do = self.hsm_driver.open( mvr_config['device'], 'a+' )
+	if do.is_bot(do.tell()) and do.is_bot(tmp_vol_info['eod_cookie']):
+	    # write an ANSI label and update the eod_cookie
+	    ll = do.format_label( external_label )
+	    do.write( ll )
+	    do.writefm()
+	    tmp_vol_info['eod_cookie'] = do.tell()
+	    tmp_vol_info['remaining_bytes'] = do.get_stats()['remaining_bytes']
+	    vcc.set_remaining_bytes( external_label,
+				     tmp_vol_info['remaining_bytes'],
+				     tmp_vol_info['eod_cookie'],
+				     0,0,0,0 )
+	    Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%\
+			 (tmp_vol_info['eod_cookie'],
+			  tmp_vol_info['remaining_bytes']) )
+	    pass
+	do.close()
 	self.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != self.vol_info['external_label']:
@@ -444,6 +462,7 @@ def do_fork( self, ticket, mode ):
 
     self.pid = os.fork()
     if self.pid == 0:
+	Trace.init( self.log_name ) # update trc_pid
 	# do in child only
 	self.hsm_driver.user_state_set( forked_state.index('forked') )
 	pass
@@ -927,6 +946,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
             pass        
 
 	self.client_obj_inst = MoverClient( mvr_config, self.csc )
+	self.client_obj_inst.log_name = self.log_name # duplicate for do_fork
 	self.summoned_while_busy = []
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
 	for lm in mvr_config['library']:# should be libraries

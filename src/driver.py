@@ -72,7 +72,8 @@ class GenericDriver:
 	return None
 
     #-----------------
-    def sw_mount( self, device, blocksize, remaining_bytes, vol_label ):
+    def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
+		  eod_cookie ):
 	# gets/verifies cur_loc
         self.remaining_bytes = remaining_bytes
 	self.blocksize = blocksize
@@ -180,6 +181,17 @@ class GenericDriver:
     def tell( self ):
 	return self.LOC_SPEC % os.lseek(self.fd,0,SEEK_CUR)
 
+    def is_bot( self, loc_cookie ):
+	if loc_cookie==None or loc_cookie=='None' or loc_cookie=='none':
+                                         loc = 0
+	elif type(loc_cookie)==type(""): loc = string.atoi( loc_cookie )
+        elif type(loc_cookie)==type(0):  loc = loc_cookie
+	if loc == 0: return 1
+	else:        return 0
+	
+    def format_label( self, label ):
+	return ''
+
     def read( self, size_bytes ):
 	return os.read( self.fd, size_bytes )
 
@@ -199,7 +211,8 @@ class  FTTDriver(GenericDriver) :
     """
      A Fermi Tape Tools driver
     """
-    def sw_mount( self, device, blocksize, remaining_bytes, vol_label ):
+    def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
+		  eod_cookie ):
 	# Get the position from the drive.
 	# Should the driver keep the volume label to connect "position"
 	# information to??? So, if a particular volume is unbound and then
@@ -207,8 +220,6 @@ class  FTTDriver(GenericDriver) :
 	# see if a rewind already occurred.
         self.remaining_bytes = remaining_bytes
 	self.blocksize = blocksize	# save blocksize so we do not need as param to open
-	# make cur_loc_cookie such that an ordered list can be produced (for pnfs)
-	self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
 	FTT.open( device, 'r' )
 	x = 120				# for now, after ??? ftt_rewind will
 					# raise exception
@@ -231,7 +242,31 @@ class  FTTDriver(GenericDriver) :
 	if x == 0:
 	    Trace.log( e_errors.INFO, "sw_mount error" )
 	    raise "sw_mount error"
-	FTT.rewind()
+
+	if eod_cookie==None or eod_cookie=='None' or eod_cookie=='none':
+	    part, block_loc, filenum = 0,0,0
+	else:
+	    part, block_loc, filenum = loc2int( self, eod_cookie )
+	    pass
+	# make cur_loc_cookie such that an ordered list can be produced
+	# (for pnfs) i.e. partition, blk offset, filemarks
+	ss =  FTT.get_stats()
+	if filenum and block_loc and ss['bloc_loc'] != None:
+	    # go to the closest location (that we will know the filenum)
+	    cur_bloc = string.atoi( ss['bloc_loc'] )
+	    if abs(cur_bloc-block_loc) < cur_bloc:
+		# closer to eod (could already be there
+		Trace.trace( 19, 'sw_mount going to eod bloc (%s)'%block_loc )
+		FTT.locate( block_loc )
+		self.cur_loc_cookie = int2loc( self, (part,block_loc,filenum) )
+	    else:
+		FTT.locate( 0 )
+		self.cur_loc_cookie = int2loc( self, (0,0,0) )
+		pass
+	else:
+	    self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
+	    FTT.rewind()
+	    pass
 	FTT.close()
 	return None
 
@@ -276,6 +311,9 @@ class  FTTDriver(GenericDriver) :
 	FTT.writefm()
 	self.file_marks = self.file_marks + 1
 	pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+	ss = FTT.get_stats()  # update block_loc if we can
+	if ss['bloc_loc'] != None: bb = string.atoi(ss['bloc_loc'])
+	# NOTE: I know this makes several times that FTT.get_stats is called!!!
 	self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
 	return None
 
@@ -317,6 +355,11 @@ class  FTTDriver(GenericDriver) :
 		if skip < 0: skip = skip - 1# if neg, make more neg
 		FTT.skip_fm( skip )
 		if skip < 0: FTT.skip_fm( 1 )
+		ss = FTT.get_stats()  # update block_loc if we can
+		if ss['bloc_loc'] != None:
+		    Trace.trace( 19, 'after seek: bloc_loc=%s'%ss['bloc_loc'] )
+		    block_loc = string.atoi(ss['bloc_loc'])
+		    pass
 		pass
 	    pass
 	self.cur_loc_cookie = int2loc( self, (part,block_loc,filenum) )
@@ -324,6 +367,16 @@ class  FTTDriver(GenericDriver) :
 
     def tell( self ):
 	return self.cur_loc_cookie
+
+    def is_bot( self, loc_cookie ):
+	if loc_cookie==None or loc_cookie=='None' or loc_cookie=='none':
+	      part, block_loc, filenum = 0,0,0
+	else: part, block_loc, filenum = loc2int( self, loc_cookie )
+	if filenum == 0: return 1
+	return 0
+
+    def format_label( self, label ):
+	return FTT.format_label( label )
 
     def read( self, size_bytes ):
 	return FTT.read( size_bytes )
@@ -375,10 +428,11 @@ class  DelayDriver(RawDiskDriver) :
     """
     import time
 
-    def sw_mount( self, device, blocksize, remaining_bytes, vol_label ):
+    def sw_mount( self, device, blocksize, remaining_bytes, vol_label,
+		  eod_cookie ):
         self.time.sleep( 10 )                   # sw_mount time 10 seconds
 	RawDiskDriver.sw_mount( self, device, blocksize, remaining_bytes,
-				vol_label )
+				vol_label, eod_cookie )
 	return None
 
     def offline( self, device ):
@@ -499,7 +553,7 @@ if __name__ == "__main__" :
 	    pass
 
 	print ' invoking sw_mount method'
-	hsm_driver.sw_mount( dev, 1024, 50000000, 'test_vol' )
+	hsm_driver.sw_mount( dev, 1024, 50000000, 'test_vol', None )
 	
 	for dir,buf in (('w',0), ('w',1), ('r',0), ('w',2), ('r',1), ('r',2)):
 	    if dir == 'w':
