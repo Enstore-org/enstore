@@ -15,7 +15,6 @@ import os
 import cleanUDP
 import Trace
 import e_errors
-import generic_cs
 
 request_dict = {}
 #
@@ -24,7 +23,6 @@ request_dict = {}
 #    The second entry, dict[1], is the message, client number, ticket, and time
 #        which becomes list[0-2]
 def purge_stale_entries(request_dict):
-    Trace.trace(20,"{purge_stale_entries")
     stale_time = time.time() - 1800
     count = 0
     for entry in request_dict.items():
@@ -32,11 +30,10 @@ def purge_stale_entries(request_dict):
         if  list[2] < stale_time:
             del request_dict[entry[0]]
             count = count+1
-    Trace.trace(20,"}purge_stale_entries count=%d",count)
+    Trace.trace(20,"purge_stale_entries count=%d",count)
 
 import pdb
 def dodebug(a,b):
-    Trace.trace(20,'dodebug called'+repr(a)+' '+repr(b))
     pdb.set_trace()
 
 import signal
@@ -44,21 +41,20 @@ signal.signal(3,dodebug)
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
-    Trace.trace(20,"{collect_children")
     count = 0
     try:
         pid, status = os.waitpid(0, os.WNOHANG)
         if (pid!=0):
-            #generic_cs.enprint("Child reaped: pid= "+repr(pid)+" status= "+\
+            #Trace.trace(13,"Child reaped: pid= "+repr(pid)+" status= "+\
 	    #                    repr(status))
             count = count+1
             Trace.trace(21,"collect_children reaped pid="+repr(pid)+' '+repr(status))
     except os.error:
         if sys.exc_info()[1][0] != errno.ECHILD:
-            Trace.trace(0,"collect_children "+str(sys.exc_info()[0])+\
+            Trace.trace(6,"collect_children "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
             raise sys.exc_info()[0],sys.exc_info()[1]
-    Trace.trace(20,"}collect_children count=%d",count)
+    Trace.trace(20,"collect_children count=%d",count)
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -77,7 +73,6 @@ class DispatchingWorker:
         """Constructor.  May be extended, do not override or will need to call
 	   directly.
 	"""
-        Trace.trace(10,"{__init__ add="+repr(server_address))
         self.server_address = server_address
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
@@ -102,9 +97,6 @@ class DispatchingWorker:
             #import traceback
             #traceback.print_exc()
                                             
-        Trace.trace(10,"}__init__")
-
-
     def fork(self):
         """Fork off a child process"""
         pid = os.fork()
@@ -123,9 +115,8 @@ class DispatchingWorker:
         May be overridden.
 
         """
-        Trace.trace(16,"{server_bind add="+repr(self.server_address))
+        Trace.trace(16,"server_bind add="+repr(self.server_address))
         self.socket.bind(self.server_address)
-        Trace.trace(16,"}server_bind")
 
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
@@ -134,10 +125,10 @@ class DispatchingWorker:
             self.handle_request()
             collect_children()
         if self.is_child:
-            Trace.trace(2,"}server_forever, child process exiting")
+            Trace.trace(6,"server_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
         else:
-            Trace.trace(2,"}server_forever, shouldn't get here")
+            Trace.trace(6,"server_forever, shouldn't get here")
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
@@ -190,10 +181,11 @@ class DispatchingWorker:
             # calculate CRC
             crc = ECRC.ECRC(request, 0)
             if (crc != inCRC) :
-                Trace.trace(0,"handle_request - bad CRC inCRC="+repr(inCRC)+\
+                Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+\
                         " calcCRC="+repr(crc))
-                self.enprint("BAD CRC request: "+request)
-                self.enprint("CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
+                Trace.log(e_errors.INFO, "BAD CRC request: "+request)
+                Trace.log(e_errors.INFO,
+                          "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
                 request=""
         else:
             # on time out
@@ -204,7 +196,7 @@ class DispatchingWorker:
     def handle_timeout(self):
 	# override this method for specific timeout hadling
         if 0:
-            self.enprint("timeout handler")
+            Trace.trace(6,"timeout handler")
 
     def fileno(self):
         """Return socket file number.
@@ -212,14 +204,11 @@ class DispatchingWorker:
         Interface required by select().
 
         """
-        Trace.trace(16,"{}fileno ="+self.socket.fileno())
+        Trace.trace(16,"fileno ="+self.socket.fileno())
         return self.socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
-        # the real info and work is in the ticket - get that
-        Trace.trace(6,"{process_request add="+repr(client_address))
-
 	# ref udp_client.py (i.e. we may wish to have a udp_client method
 	# to get this information)
         idn, number, ticket = eval(request)
@@ -237,7 +226,7 @@ class DispatchingWorker:
             # handled it if we have a record of it in our dict
             list = eval(repr(request_dict[idn]))
             if list[0] == number:
-                Trace.trace(6,"}process_request "+repr(idn)+" already handled")
+                Trace.trace(6,"process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
                 return
 
@@ -249,7 +238,7 @@ class DispatchingWorker:
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             else:
-                Trace.trace(6,"}process_request "+repr(idn)+" old news")
+                Trace.trace(6,"process_request "+repr(idn)+" old news")
                 return #old news, timing race....
 
         # on the very 1st request, we don't have anything to compare to
@@ -263,7 +252,7 @@ class DispatchingWorker:
         except (KeyError, AttributeError):
             ticket = {'status' : (e_errors.KEYERROR, \
 				  "cannot find requested function")}
-            Trace.trace(0,"process_request "+repr(ticket)+repr(function_name))
+            Trace.trace(6,"process_request "+repr(ticket)+repr(function_name))
             self.reply_to_caller(ticket)
             return
 
@@ -281,31 +270,32 @@ class DispatchingWorker:
 	mode = Trace.mode()
 	Trace.mode( mode&~1 ) # freeze circular que
 	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
-	generic_cs.enprint('-'*40)
-	self.enprint('Exception during request from '+str(client_address)+' request:'+str(request))
+	Trace.log(e_errors.INFO,'-'*40)
+	Trace.log(e_errors.INFO,
+                  'Exception during request from '+str(client_address)+\
+                  ' request:'+str(request))
 	import traceback
 	traceback.print_exception(exc, value, tb)
-	generic_cs.enprint('-'*40)
+	Trace.log(e_errors.INFO,'-'*40)
 	self.reply_to_caller( {'status':(str(sys.exc_info()[0]), \
 					    str(sys.exc_info()[1]),'error'), \
 			       'request':request, \
 			       'exc_type':repr(exc), \
 			       'exc_value':repr(value)} )
-	Trace.trace(0,"}handle_error "+str(sys.exc_info()[0])+\
+	Trace.trace(6,"handle_error "+str(sys.exc_info()[0])+\
 		    str(sys.exc_info()[1]))
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
-        Trace.trace(10,"{alive address="+repr(self.server_address))
+        Trace.trace(10,"alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
         self.reply_to_caller(ticket)
-        Trace.trace(10,"}alive")
 
     # quit instead of being killed
     def quit(self,ticket):
-        Trace.trace(10,"{quit address="+repr(self.server_address))
+        Trace.trace(10,"quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
@@ -315,28 +305,26 @@ class DispatchingWorker:
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
-        Trace.trace(20,'{done_cleanup '+repr(ticket))
         try:
             Trace.trace(20,"done_cleanup id="+repr(self.current_id))
             del request_dict[self.current_id]
         except KeyError:
             pass
-        Trace.trace(20,"}done_cleanup")
 
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        Trace.trace(18,"{reply_to_caller number="+repr(self.client_number)+\
+        Trace.trace(18,"reply_to_caller number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
         reply = (self.client_number, ticket, time.time())
         self.reply_with_list(reply)
-        Trace.trace(18,"}reply_to_caller number="+repr(self.client_number))
+        Trace.trace(18,"reply_to_caller number="+repr(self.client_number))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        Trace.trace(19,"{reply_with_list number="+repr(self.client_number)+\
+        Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = list
         self.socket.sendto(repr(list), self.reply_address)
@@ -349,7 +337,7 @@ class DispatchingWorker:
         self.client_number = ticket["ra"][1]
         self.current_id    = ticket["ra"][2]
         reply = (self.client_number, ticket, time.time())
-        Trace.trace(19,"}reply_with_address "+ \
+        Trace.trace(19,"reply_with_address "+ \
                    repr(self.reply_address)+" "+ \
                    repr(self.current_id)+" " + \
                    repr(self.client_number)+" "+repr(reply))
