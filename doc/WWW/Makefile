@@ -43,6 +43,7 @@ PIC_GIF_FILES = \
 	./enstore_at_fnal.gif \
 	./enstore_at_fnal2.gif \
 	./read.gif \
+	./route.gif \
 	./test_nodes.gif \
 	./test-stand.gif \
 	./write.gif \
@@ -55,6 +56,7 @@ PIC_PS_FILES = \
 	./enstore_at_fnal.ps \
 	./enstore_at_fnal2.ps \
 	./read.ps \
+	./route.ps \
 	./test_nodes.ps \
 	./test-stand.ps \
 	./write.ps \
