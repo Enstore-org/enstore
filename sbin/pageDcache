@@ -20,7 +20,7 @@ transfer_setup() {
     file=$1
     error_code=$2
     try=0
-    maxtry=5
+    maxtry=3
     delay=30
     stat=1
     rm -f $1
@@ -229,8 +229,7 @@ if [ -z "${UPS_DIR:-}" ]; then
       exit 9
   fi
 fi
-if [ "$gang" == "stken" ];
-then
+if [ $gang = "stken" ]; then
     if [ -z "${KFTP_DIR:-}" ]; then
 	setup kftp
 	if [ $? -gt 0 ]; then
@@ -239,6 +238,7 @@ then
 	fi
     fi
 fi
+
 if [ -z "${DCAP_DIR:-}" ]; then
     setup dcap
     if [ $? -gt 0 ]; then
