@@ -49,10 +49,10 @@ def get_inputs():
 	print "error: ", detail
 	sys.exit(1)
 
+    cgi_dir = ""
+    web_dir = ""
+    cgi_url = ""
     if not len(optlist) == 0:
-	cgi_dir = ""
-	web_dir = ""
-	cgi_url = ""
 	# we have some input
 	for (opt, value) in optlist:
 	    if opt == "--cgi_dir":
