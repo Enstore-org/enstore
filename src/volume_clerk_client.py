@@ -418,6 +418,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket)
 
+    # trim obsolete fields if necessary
+    def check_record(self, external_label):
+        ticket= { 'work'           : 'check_record',
+                  'external_label' : external_label }
+        return self.send(ticket)
+
     # move a volume to a new library
     def new_library(self, external_label,new_library):
         ticket= { 'work'           : 'new_library',
@@ -651,6 +657,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.volume = None
         self.assign_sg = None
         self.touch = None
+	self.trim_obsolete = None
         self.bypass_label_check = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
@@ -720,6 +727,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
         option.CHECK:{option.HELP_STRING:"check a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.TRIM_OBSOLETE:{option.HELP_STRING:"trim obsolete fields",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
@@ -926,6 +938,8 @@ def do_work(intf):
         ticket = vcc.assign_sg(intf.volume, intf.assign_sg)
     elif intf.touch:
         ticket = vcc.touch(intf.touch)
+    elif intf.trim_obsolete:
+        ticket = vcc.check_record(intf.trim_obsolete)
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:

@@ -282,6 +282,7 @@ TIMEOUT = "timeout"
 TITLE = "title"                              #enstore_make_log_plot
 TOTAL_BYTES = "total_bytes"                  #plotter
 TOUCH = "touch"                              #volume
+TRIM_OBSOLETE = "trim-obsolete"              #volume
 UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
@@ -338,7 +339,7 @@ valid_option_list = [
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
-    TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH,
+    TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,
