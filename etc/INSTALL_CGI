@@ -18,4 +18,7 @@ runs the web server -
 	o edit $ENSTORE_DIR/etc/enstore_log_file_search.html to change the node
 		for the cgi script to the correct one.
 
+	o the above two scripts may have to have the location of python
+		changed too.
+
 The permissions on the cgi scripts must have execute turned on.
