@@ -89,10 +89,10 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                                                                   ## Sigh...
 
         interface=hostaddr.interface_name(xfer_ip)
-        if interface:
-            status=socket_ext.bindtodev(xfer_sock.fileno(),interface)
-            if status:
-                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+##        if interface:
+##            status=socket_ext.bindtodev(xfer_sock.fileno(),interface)
+##            if status:
+##                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
         
         well_known_sock.close()
 
