@@ -7,16 +7,48 @@ import info_client
 import generic_client
 import sys
 import string
+import os
+import pwd
+import Trace
 
 MY_NAME = "QUOTA"
 MY_SERVER = None
 
 def show_query_result(res):
-	result = {}
-	result['result'] = res.getresult()
-	result['fields'] = res.listfields()
-	result['ntuples'] = res.ntuples()
-	info_client.show_query_result(result)
+
+	width = []
+	fields = res.listfields()
+	w = len(fields)
+	for i in range(w):
+		width.append(len(fields[i]))
+
+	result = res.getresult()
+	for r in result:
+		for i in range(w):
+			l1 = len(str(r[i]))
+			if l1 > width[i]:
+				width[i] = l1
+
+	format = []
+	for i in range(w):
+		format.append("%%%ds "%(width[i]))
+
+	ll = 0
+	for i in range(w):
+		ll = ll + width[i]
+	ll = ll + 2*(w - 1)
+
+	for i in range(w):
+		print format[i]%(fields[i]),
+	print
+	print "-"*ll
+	for r in result:
+		for i in range(w):
+			print format[i]%(r[i]),
+		if r[2] >= r[3] and r[3] >= r[4]:
+			print
+		else:
+			print " *"
 
 class Quota:
 	def __init__(self, csc):
@@ -27,6 +59,10 @@ class Quota:
 		self.port = dbInfo['db_port']
 		self.dbname = dbInfo['dbname']
 		self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
+		self.uname = whoami()
+
+	def log(m):
+		Trace.log(e_errors.INFO, self.uname+' '+m)
 
 	def show_all(self):
 		res = self.db.query("select * from quota order by library;")
@@ -45,17 +81,23 @@ class Quota:
 		print "QUOTA is %s\n"%(string.upper(state))
 		if library:
 			if sg:
-				q = "select * from quota where \
+				q = "select library, storage_group, \
+					requested, authorized, quota \
+					from quota where \
 					library = '%s' and \
 					storage_group = '%s';"%(
 					library, sg)
 			else:
-				q = "select * from quota where \
+				q = "select library, storage_group, \
+					requested, authorized, quota \
+					from quota where \
 					library = '%s' \
 					order by storage_group;"%(
 					library)
 		else:
-			q = "select * from quota order by library, storage_group;"
+			q = "select library, storage_group, requested,\
+				authorized, quota from quota \
+				order by library, storage_group;"
 
 		show_query_result(self.db.query(q))
 
@@ -89,7 +131,9 @@ class Quota:
 		self.db.query(q)
 		self.show(library, sg)
 		self.check(library, sg)
-
+		msg = "('%s', '%s', %d, %d, %d) created"%(
+			library, sg, requested, authorized, quota)
+		self.log(msg)
 		
 	def delete(self, library, sg):
 		# check if it already existed
@@ -97,6 +141,8 @@ class Quota:
 			q = "delete from quota where library = '%s' and \
 				storage_group = '%s';"%(library, sg)
 			self.db.query(q)
+			msg = "('%s', '%s') deleted"%(library, sg)
+			self.log(msg)
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
@@ -110,6 +156,9 @@ class Quota:
 			self.db.query(q)
 			self.show(library, sg)
 			self.check(library, sg)
+			msg = "set requested of ('%s', '%s') to %d"%(
+				library, sg, n)
+			self.log(msg)
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
@@ -122,6 +171,9 @@ class Quota:
 			self.db.query(q)
 			self.show(library, sg)
 			self.check(library, sg)
+			msg = "set authorized of ('%s', '%s') to %d"%(
+				library, sg, n)
+			self.log(msg)
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
@@ -134,6 +186,9 @@ class Quota:
 			self.db.query(q)
 			self.show(library, sg)
 			self.check(library, sg)
+			msg = "set quota of ('%s', '%s') to %d"%(
+				library, sg, n)
+			self.log(msg)
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
@@ -148,6 +203,7 @@ class Quota:
 		else:
 			q = "insert into option (key, value) values ('quota', 'enabled');"
 		self.db.query(q)
+		self.log("quota enabled")
 
 	def disable(self):
 		q = "select value from option where key = 'quota';"
@@ -160,28 +216,53 @@ class Quota:
 		else:
 			q = "insert into option (key, value) values ('quota', 'disabled');"
 		self.db.query(q)
-
+		self.log("quota disabled")
 
 	def quota_enabled(self):
 		q = "select value from option where key = 'quota';"
 		state = self.db.query(q).getresult()[0][0]
 		if state != "enabled":
 			return None
-		q = "select library, storage_group, quota from quota;"
+		q = "select library, storage_group, quota, significance from quota;"
 		res = self.db.query(q).dictresult()
 		libraries = {}
+		order = {'bottom':[], 'top':[]}
 		for i in res:
 			if not libraries.has_key(i['library']):
 				libraries[i['library']] = {}
 			libraries[i['library']][i['storage_group']] = i['quota']
+			if i['significance'] == 'y':
+				order['top'].append((i['library'], i['storage_group']))
+			else:
+				order['bottom'].append((i['library'], i['storage_group']))
 		q_dict = {
 			'enabled': 'yes',
-			'libraries': libraries
+			'libraries': libraries,
+			'order': order
 		}
 
 		return q_dict
 				
 
+def whoami():
+	# find the principal of kerberos ticket
+	kmsg = os.popen("klist").readlines()
+	kk = 'unknown'
+	for i in kmsg:
+		if i[:18] == "Default principal:":
+			kk = string.split(i)[2]
+			break
+	logname = 'unknown'
+	# try to find the real user name through $LOGNAME
+	if os.environ.has_key('LOGNAME'):
+		logname = os.environ['LOGNAME']
+	else:
+		# if failed, use effective user name
+		logname = pwd.getpwuid(os.getuid())[0]
+
+	return "%s(%s)"%(logname, kk)
+		
+	
 class Interface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
 		self.show = None
@@ -317,8 +398,10 @@ class Interface(option.Interface):
 			option.USER_LEVEL: option.ADMIN},
 			
 	}
-			
+
 if __name__ == '__main__':
+	Trace.init(string.upper(MY_NAME))
+	
 	intf = Interface(user_mode=0)
 	q = Quota((intf.config_host, intf.config_port))
 
