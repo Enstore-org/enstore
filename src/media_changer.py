@@ -75,10 +75,15 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "dismount"
         return self.DoWork( self.unload, ticket)
 
-    def maxwork(self,val=-1):
-        if val != -1:
-           self.MaxWork = val
-        return (self.MaxWork, self.work_list)        
+    def maxwork(self,ticket):
+        self.MaxWork = ticket["maxwork"]
+        self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
+
+    def getwork(self,ticket):
+        result = []
+        for i in self.work_list:
+            result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
+        self.reply_to_caller({'status' : (e_errors.OK, 0, None),'worklist':result})
 
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
@@ -90,7 +95,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	                 drive)
 	    time.sleep( self.mc_config['delay'] )
 	    self.enprint( 'continuing with reply' )
-	    pass
 	return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
@@ -101,7 +105,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
-	    pass
 	return (e_errors.OK, 0, None)
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
@@ -158,10 +161,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			ticket['vol_ticket']['external_label'],
 			ticket['drive_id'],
 			ticket['vol_ticket']['media_type'])
-                # send status back to MC parent via pipe to dispatching_worker
+                # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 #self.enprint( "STS"+repr(ticket))
                 Trace.trace(10, '<<< sts'+repr(sts))
-                ticket["work"]="WorkDone"
+                ticket["work"]="WorkDone"			# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
                 os.write(pipe[1], repr(('0','0',ticket) ))
                 os.close(pipe[1])
@@ -177,7 +180,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     
 
     def WorkDone(self, ticket):
-        # dispatching_worker sends "WorkDone" ticket here
+        # dispatching_worker sends "WorkDone" ticket here and we reply_to_caller
         # remove work from outstanding work list
         for i in self.work_list:
            if i["ra"] == ticket["ra"]:
@@ -187,8 +190,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                           ticket['vol_ticket']['external_label']+" "  +\
                                           ticket['drive_id']+" "  +\
                                           repr(ticket['status']) )
-        # report back ito original client - probably a mover
+        # report back to original client - probably a mover
         Trace.trace(10, '<<< WorkDone')
+        # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 
 # EMASS robot loader server

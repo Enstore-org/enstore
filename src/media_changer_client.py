@@ -36,7 +36,7 @@ class MediaChangerClient(generic_client.GenericClient):
             pass
 
     # send the request to the Media Changer server and then send answer to user
-    #      rcv_timeout is set to 60, the STK mnt/dismnt time is ~35 sec.   This
+    #      rcv_timeout is set to 300sec, the STK mnt/dismnt time is ~35 sec.   This
     #      should really be a function of which media changer we are talking to.
     # If tries is set to 0, then we only try once -- which we should never do
     # with udp.
@@ -58,6 +58,17 @@ class MediaChangerClient(generic_client.GenericClient):
                   }
         return self.send(ticket)
 
+    def MaxWork(self, maxwork):
+        ticket = {'work'           : 'maxwork',
+                  'maxwork'        : maxwork
+                 }
+        return self.send(ticket)
+
+    def GetWork(self):
+        ticket = {'work'           : 'getwork'
+                 }
+        return self.send(ticket)
+
 class MediaChangerClientInterface(interface.Interface):
     def __init__(self):
         self.config_file = ""
@@ -65,9 +76,11 @@ class MediaChangerClientInterface(interface.Interface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.media_changer = ""
+        self.getwork=0
+        self.maxwork=-1
         self.volume = 0
         self.drive = 0
-	self.got_server_verbose = 0
+	self.verbose = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -76,12 +89,12 @@ class MediaChangerClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.verbose_options()+\
-               ["config_file="] +\
+               ["config_file=","maxwork=","getwork"] +\
                self.alive_options()+self.help_options()
 
     #  define our specific help
     def parameters(self):
-        return "media_changer volume drive"
+        return "media_changer"
 
     # parse the options like normal but make sure we have other args
     def parse_options(self):
@@ -92,16 +105,16 @@ class MediaChangerClientInterface(interface.Interface):
             sys.exit(1)
         else:
             self.media_changer = self.args[0]
-
-        if (self.alive == 0) and (self.got_server_verbose == 0):
+        if (self.alive == 0) and (self.verbose == 0) and (self.maxwork==-1) and (self.getwork==0):
             # bomb out if we number of arguments is wrong
-            if len(self.args) < 3 :
-	        self.missing_parameter("volume drive")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.volume = self.args[1]
-                self.drive = self.args[2]
+            self.print_help()
+
+    # print out our extended help
+    def print_help(self):
+        interface.Interface.print_help(self)
+        generic_cs.enprint("        --maxwork=N        Max simultaneous operations allow (may be 0)")
+        generic_cs.enprint("        --getwork          List oprations in progress")
+        
 
 
 if __name__ == "__main__" :
@@ -119,14 +132,20 @@ if __name__ == "__main__" :
     if intf.alive:
         ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
 	msg_id = generic_cs.ALIVE
-    elif intf.got_server_verbose:
-        ticket = mcc.set_verbose(intf.server_verbose, intf.alive_rcv_timeout,\
+    elif intf.verbose:
+        ticket = mcc.set_verbose(intf.verbose, intf.alive_rcv_timeout,\
 	                         intf.alive_retries)
 	msg_id = generic_cs.CLIENT
-    else:
-        ticket = mcc.unloadvol(intf.volume, intf.drive)
-	mcc.enprint('unload returned:'+repr(ticket['status']))
+    elif intf.maxwork  >= 0:
+        ticket=mcc.MaxWork(intf.maxwork)
 	msg_id = generic_cs.CLIENT
+    elif intf.getwork:
+        ticket=mcc.GetWork()
+        generic_cs.enprint(ticket['worklist'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+    else:
+        intf.print_help()
+        sys.exit(0)
 
     del mcc.csc.u
     del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
