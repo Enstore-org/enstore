@@ -280,6 +280,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	if self.mvr_config['do_eject'] == 'yes':
 	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%str(self.mvr_config['device']))
 	    self.hsm_driver.offline(self.mvr_config['device'])
+            self.store_statistics('dismount', self.hsm_driver)
 	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%str(self.mvr_config['device']))
 	    pass
 	# now ask the media changer to unload the volume
@@ -303,7 +304,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	if WSstatus == 0:
 	    try:
                 if WSdata['cleaning_bit'] == 1:
-	            rr = self.mcc.doCleaningCycle(self.mvr_config, self.vol_info)
+	            rr = self.mcc.doCleaningCycle(self.mvr_config)
                     Trace.log(e_errors.INFO,"Media changer cleaningCycle return status =%s"%str(rr['status']))
             except KeyError:
                 Trace.log(e_errors.ERROR,"ERROR: 'cleaning_bit' not defined in WSdata")
@@ -322,85 +323,43 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def read_from_hsm( self, ticket ):
 	self.fc = ticket['fc']
 	return self.forked_read_from_hsm(ticket )
-	
-    def store_mount_statistics( self, driver_object ):
+
+    # update and store driver statistics
+    # action is either mount or dismount
+    def store_statistics( self, action, driver_object ):
         if driver_object is None:
             Trace.log(e_errors.ERROR,"No mount statistics stored. driver_object is None.")
-	else:
-	    try:
-	        stat = driver_object.send_statistics()
-	        self.driveStatistics['mount'] = stat['mount']
-                Trace.log(e_errors.INFO,"Mount statistics length = "+repr(len(stat['mount'])) )
-	    except KeyError:
-                Trace.log(e_errors.ERROR,"Mount statistics malformed.")
-        return
-
-    def store_dismount_statistics( self, driver_object ):
-        if driver_object is None:
-            Trace.log(e_errors.ERROR,"No dismount statistics stored. driver_object is None.")
-	else:
-	    try:
-	        stat = driver_object.send_statistics()
-	        self.driveStatistics['dismount'] = stat['dismount']
-                Trace.log(e_errors.INFO,"Dismount statistics length = "+repr(len(stat['dismount'])) )
-	    except KeyError:
-                Trace.log(e_errors.ERROR,"Dismount statistics malformed.")
-        return
-
-    def writeAll(self, device, outParam=None, inParam={}):
-        status = 0
-	data = {}
+            return
+        if not (action=='mount' or action =='dismount'):
+            Trace.log(e_errors.ERROR,"Wrong action specified for store__statistics.")
+            return
+        
+        
+        try:
+            if action == 'mount': statistics = driver_object.statisticsOpen
+            else: statistics = driver_object.statisticsClose
+            self.driveStatistics[action] = statistics
+            print action, self.driveStatistics[action] # REMOVE
+            Trace.trace(19,"%s statistics %s"%(action,repr(self.driveStatistics[action])) )
+           
+        except KeyError:
+            Trace.log(e_errors.ERROR,"%s statistics malformed."%action)
         try:
             path = self.mvr_config['statistics_path']
-	except KeyError:
-	    Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
-	    return status, data
-
-        if outParam is None:
-	    outParam = []
-	try:
-	    fd = open(path,'a')
-	except IOError, msg:
-	    status = 1
-	    Trace.log(e_errors.INFO, "IOError: "+str(msg))
-	    return status, data
-
-	ss = self.driveStatistics['mount']
-	fd.write('action  mount\n')
-        for skey in ss.keys():
-	    s1 = string.replace(repr(skey),"'","")
-	    s2 = string.replace(repr(ss[skey]),"'","")
-	    buf = s1+' = '+s2+'\n'
-            fd.write(buf)
-	for item in inParam.keys():
-	    s1 = string.replace(repr(item),"'","")
-	    s2 = string.replace(repr(inParam[item]),"'","")
-	    buf = s1+' = '+s2+'\n'
-            fd.write(buf)
-	fd.write('\n')
-
-	ss = self.driveStatistics['dismount']
-	fd.write('action  dismount\n')
-        for skey in ss.keys():
-	    for item in outParam:
-	        if item == skey:
-		    data['item'] = ss[item]
-	    s1 = string.replace(repr(skey),"'","")
-	    s2 = string.replace(repr(ss[skey]),"'","")
-	    buf = s1+' = '+s2+'\n'
-            fd.write(buf)
-	for item in inParam.keys():
-	    s1 = string.replace(repr(item),"'","")
-	    s2 = string.replace(repr(inParam[item]),"'","")
-	    buf = s1+' = '+s2+'\n'
-            fd.write(buf)
-	fd.write('\n')
-
-	fd.close()
-	return status, data
-
-    pass
-        
+        except KeyError:
+            Trace.log(e_errors.ERROR,"Mover 'statistics_path' configuration missing.")
+            return
+        """
+        try:
+            fd = open(path,'a')
+        except IOError, msg:
+            Trace.log(e_errors.INFO, "IOError: "+str(msg))
+            return
+        try:
+            fd.write("%s\n"%action)
+           
+        """    
+        return
 
     # The following functions are the result of the enstore error documentation...
     # know it, live it, love it.
@@ -556,7 +515,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                           tmp_vol_info['eod_cookie'] )
                 Trace.log(e_errors.INFO,'Software mount complete %s %s'%
                           (external_label,self.mvr_config['device']))
-                self.store_mount_statistics(self.hsm_driver)
+                self.store_statistics('mount', self.hsm_driver)
             except:
                 e_errors.handle_error()
                 return 'BADMOUNT' # generic, not read or write specific
@@ -779,7 +738,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 stats = driver_object.get_stats()
                 ticket['times']['get_stats_time'] = time.time() - t0
                 driver_object.close()			# b/c of fm above, this is purely sw.
-                self.store_dismount_statistics(driver_object)
 
             #except EWHATEVER_NET_ERROR:
             except (FTT.error, EXfer.error):
@@ -1002,7 +960,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 # close hsm file
                 Trace.trace(11,'calling close')
                 driver_object.close()
-                self.store_dismount_statistics(driver_object)
+                #self.store_statistics(dismount, driver_object)
                 Trace.trace(11,'closed')
                 wr_err,rd_err       = stats['wr_err'],stats['rd_err']
                 wr_access,rd_access = 0,1
@@ -1209,7 +1167,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 	Trace.log(e_errors.INFO,'CLEAN start %s'%ticket)
         
         control_socket, data_socket = self.get_user_sockets(ticket)
-        rt =self.mcc.doCleaningCycle(self.mvr_config, self.vol_info)
+        rt =self.mcc.doCleaningCycle(self.mvr_config)
 	out_ticket = {'status':(rt['status'][0],rt['status'][2])}
         callback.write_tcp_obj(data_socket,out_ticket)
         data_socket.close()
