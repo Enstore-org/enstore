@@ -183,8 +183,6 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
 # create 2 headers (1 for data file and 1 for crc file) + 1 trailer
 def headers( inode, mode, uid, gid, nlink, mtime, filesize,
              major, minor, rmajor, rminor, filename):
-	dev = makedev(major, minor)
-	rdev = makedev(rmajor, rminor)
 	head = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
              major, minor, rmajor, rminor, filename)
 
