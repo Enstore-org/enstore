@@ -253,7 +253,8 @@ class BpdGnuFile(enstore_files.EnFile):
 	                   "set yrange [0: ]\n"+ \
 	                   "set format x \"%m-%d\"\n"+ \
 			   "set key right top Right title \"Total Bytes : "+\
-			      repr(total)+"\\nMean Xfer Size : "+repr(meansize)+"\"\n"+\
+			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
+			      "%.2e"%(meansize,)+"\"\n"+\
 	                   "plot '"+ptsfile+"' using 1:2 t '' w impulses lw 20\n")
 
 class BpdDataFile(EnPlot):
