@@ -251,6 +251,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
         summary_d[enstore_constants.BASENODE] = enstore_functions.strip_node(os.uname()[1])
         summary_d[enstore_constants.NETWORK] = enstore_constants.UP  # assumption
 
+	msc = None
         for ip in ip_list:
             host = socket.gethostbyaddr(ip)
             hostname = enstore_functions.strip_node(host[0])
@@ -286,7 +287,8 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
                     summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
                 else:
                     summary_d[hostname] = enstore_constants.UP
-        msc.flush_measurements()
+	if msc:
+	    msc.flush_measurements()
 
         # add the name of the html file that will be created
         summary_d[enstore_constants.URL] = "%s"%(enstore_constants.NETWORKFILE,)
