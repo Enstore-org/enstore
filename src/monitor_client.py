@@ -63,6 +63,7 @@ class MonitorServerClient:
         c_hostip, c_port, c_socket = callback.get_callback(
             use_multiple=0,verbose=0)
         
+        c_socket.listen(4)
         ticket= { 'work'           : 'simulate_encp_transfer',
                   'callback_addr' :    (c_hostip, c_port),
                   'remote_interface' : remote_interface,
@@ -90,7 +91,7 @@ class MonitorServerClient:
         # we will use a select and the configurebale timeout instead
         # since no one will wait 12 minutes in practice
         
-        r,w,ex = select.select([c_socket], [c_socket], [c_socket],
+        r,w,ex = select.select([c_socket], [], [c_socket],
                                self.timeout)
         if not r :
 	    if not self.summary:
