@@ -314,8 +314,9 @@ class EMASS_MediaLoader(MediaLoaderMethods):
             if type(temp) == types.IntType:
 	        if temp < 20:   # wait at least 20 seconds
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
-		else:
                     Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeTooSmall(>20), default used")
+		else:
+	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
 	    else:
                 Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeNotAnInt, default used")
 
