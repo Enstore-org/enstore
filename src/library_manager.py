@@ -1096,7 +1096,7 @@ class LibraryManagerMethods:
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
+                            format = "bound1:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
                                                              rq.ticket["vc"]["library"],
                                                              rq.ticket["vc"]["volume_family"],
@@ -1185,7 +1185,7 @@ class LibraryManagerMethods:
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
+                            format = "bound2:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
                                                              rq.ticket["vc"]["library"],
                                                              rq.ticket["vc"]["volume_family"],
