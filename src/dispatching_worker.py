@@ -21,38 +21,6 @@ import cleanUDP
 import Trace
 import e_errors
 
-request_dict = {}
-#
-# Purge entries older than 30 minutes. Dict is a dictionary
-#    The first entry, dict[0], is the key
-#    The second entry, dict[1], is the message: (client number, ticket, and time)
-#        which becomes list[0-2]
-def purge_stale_entries(request_dict):
-    stale_time = time.time() - 1800
-    count = 0
-    for entry in request_dict.items():
-        list = entry[1]
-        if  list[2] < stale_time:
-            del request_dict[entry[0]]
-            count = count+1
-    Trace.trace(20,"purge_stale_entries count=%d"%(count,))
-
-import pdb
-def dodebug(a,b):
-    pdb.set_trace()
-
-import signal
-signal.signal(3,dodebug)
-
-
-# check for any children that have exitted (zombies) and collect them
-def collect_children():
-    try:
-        pid, status = os.waitpid(0, os.WNOHANG)
-    except os.error, msg:
-        if msg.errno != errno.ECHILD:
-            Trace.trace(6,"collect_children %s"%(msg,))
-            raise os.error, msg
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -71,8 +39,9 @@ class DispatchingWorker:
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
         self.callback = {} #callback functions associated with above
-
-        self.interval_func = None #function to call periodically
+        self.request_dict = {} # used to recognize UDP retries
+        self.request_dict_ttl = 1800 # keep requests in request dict for this many seconds
+        self.interval_func = None # function to call periodically
         self.last_interval = 0
         
         ## flag for whether we are in a child process
@@ -84,7 +53,6 @@ class DispatchingWorker:
 
         # set this socket to be closed in case of an exec
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
-        self.do_collect = 1 # allow clients to override the "collect_children"
         self.server_bind()
 
     def set_interval_func(self, func, interval):
@@ -97,9 +65,27 @@ class DispatchingWorker:
 
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
-                             
+
+    def purge_stale_entries(self):
+        stale_time = time.time() - self.request_dict_ttl
+        count = 0 
+        for key, value in self.request_dict.items():
+            if  value[2] < stale_time:
+                del self.request_dict[key]
+                count = count+1
+        Trace.trace(20,"purge_stale_entries count=%d"%(count,))
+
+    # check for any children that have exited (zombies) and collect them
+    def collect_children(self):
+        try:
+            pid, status = os.waitpid(0, os.WNOHANG)
+        except os.error, msg:
+            if msg.errno != errno.ECHILD:
+                Trace.trace(6,"collect_children %s"%(msg,))
+                raise os.error, msg
+        
     def fork(self):
-        """Fork off a child process"""
+        """Fork off a child process.  Use this instead of os.fork for safety"""
         pid = os.fork()
         
         if pid != 0:  #We're in the parent process
@@ -124,18 +110,23 @@ class DispatchingWorker:
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
+        count = 0
         while not self.is_child:
-            self.handle_request()
-            if self.do_collect:
-                collect_children()
+            self.do_one_request()
+            self.collect_children()
+            count = count + 1
+            if count > 100:
+                self.purge_stale_entries()
+                count = 0
+                
         if self.is_child:
             Trace.trace(6,"serve_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
         else:
             Trace.trace(6,"serve_forever, shouldn't get here")
 
-    def handle_request(self):
-        """Handle one request, possibly blocking."""
+    def do_one_request(self):
+        """Recieve and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
         request, client_address = self.get_request()
         now=time.time()
@@ -276,12 +267,12 @@ class DispatchingWorker:
         self.current_id = idn
 
         
-        if request_dict.has_key(idn):
+        if self.request_dict.has_key(idn):
 
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            lst = request_dict[idn]
+            lst = self.request_dict[idn]
             if lst[0] == number:
                 Trace.trace(6,"process_request "+repr(idn)+" already handled")
                 self.reply_with_list(lst)
@@ -303,9 +294,6 @@ class DispatchingWorker:
             Trace.trace(6,"%s process_request %s %s"%(detail,ticket,function_name))
             self.reply_to_caller(ticket)
             return
-
-        if len(request_dict) > 1000:
-            purge_stale_entries(request_dict)
 
         # call the user function
         try:
@@ -383,7 +371,7 @@ class DispatchingWorker:
     def done_cleanup(self,ticket):
         try:
             ##Trace.trace(20,"done_cleanup id="+repr(self.current_id))
-            del request_dict[self.current_id]
+            del self.request_dict[self.current_id]
         except KeyError:
             pass
 
@@ -397,8 +385,8 @@ class DispatchingWorker:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        request_dict[self.current_id] = copy.deepcopy(list)
-        self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
+        self.request_dict[self.current_id] = copy.deepcopy(list)
+        self.server_socket.sendto(repr(self.request_dict[self.current_id]), self.reply_address)
         
     # for requests that are not handled serially reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
