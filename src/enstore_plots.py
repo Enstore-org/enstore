@@ -224,11 +224,12 @@ class MpdGnuFile(enstore_files.EnFile):
 	if mount_label is None:
 	    mount_label = ""
 	self.openfile.write("set terminal postscript color solid\n"+ \
-			    "set xlabel 'Date'\n"+\
+			    "set xlabel 'Date (year-month-day)'\n"+\
 			    "set timefmt \"%Y-%m-%d\"\n"+ \
 			    "set yrange [0 : ]\n"+ \
 			    "set xrange [ : ]\n"+ \
 			    "set xdata time\n"+ \
+                            "set size 1.5,1\n"+ \
 			    "set format x \"%y-%m-%d\"\n"+ \
 			    "set ylabel 'Mounts'\n"+\
 			    "set grid\n"+ \
@@ -382,14 +383,15 @@ class MlatGnuFile(enstore_files.EnFile):
                            "set terminal postscript color solid\n"+ \
                            "set title '%s Mount Latency in Seconds "%(mount_label,)+ \
 			    plot_time()+"'\n"+ \
-                           "set xlabel 'Date'\n"+ \
+                           "set xlabel 'Date (year-month-day)'\n"+ \
                            "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
                            "set logscale y\n"+ \
+                           "set size 1.5,1\n"+ \
 	                   "set xdata time\n"+ \
 	                   "set xrange [ : ]\n"+ \
 	                   "set ylabel 'Latency'\n"+ \
 	                   "set grid\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
+	                   "set format x \"%y-%m-%d\"\n"+ \
 	                   "plot '"+ptsfile+"' using 1:2 t '' with points\n")
 
 class MlatDataFile(EnPlot):
@@ -424,10 +426,11 @@ class XferGnuFile(enstore_files.EnFile):
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Individual Transfer Activity (no null mvs)"+\
 			    plot_time()+"'\n"+ \
-	                   "set xlabel 'Date'\n"+ \
+	                   "set xlabel 'Date (year-month-day)'\n"+ \
 	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 	                   "set xdata time\n"+ \
 	                   "set xrange [ : ]\n"+ \
+                           "set size 1.5,1\n"+ \
 	                   "set ylabel 'Bytes per Transfer'\n"+ \
 	                   "set grid\n"+ \
 	                   "set format x \"%y-%m-%d\"\n"+ \
@@ -488,14 +491,15 @@ class BpdGnuFile(enstore_files.EnFile):
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day (no null mvs) "+\
 			    plot_time()+"'\n"+ \
-	                   "set xlabel 'Date'\n"+ \
+	                   "set xlabel 'Date (year-month-day)'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
+                           "set size 1.5,1\n"+ \
 	                   "set xrange [ : ]\n"+ \
 	                   "set ylabel 'Bytes'\n"+ \
 	                   "set grid\n"+ \
 	                   "set yrange [0: ]\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
+	                   "set format x \"%y-%m-%d\"\n"+ \
 			   "set key right top Right samplen 1 title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
@@ -529,14 +533,15 @@ class BpdMoverGnuFile(enstore_files.EnFile):
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day for %s "%(mover,)+ \
 			    plot_time()+"'\n"+ \
-	                   "set xlabel 'Date'\n"+ \
+	                   "set xlabel 'Date (year-month-day)'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
+                           "set size 1.5,1\n"+ \
 	                   "set xrange [ : ]\n"+ \
 	                   "set ylabel 'Bytes'\n"+ \
 	                   "set grid\n"+ \
 	                   "set yrange [0: ]\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
+	                   "set format x \"%y-%m-%d\"\n"+ \
 			   "set key right top Right samplen 1 title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
@@ -871,15 +876,16 @@ class SgGnuFile(enstore_files.EnFile):
 			    "set terminal postscript color solid\n"+ \
 			    "set title 'Pending->Active Jobs By Storage Group "+\
 			    plot_time()+"'\n"+ \
-			    "set xlabel 'Date'\n"+ \
+			    "set xlabel 'Date (year-month-day  hour)'\n"+ \
 			    "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 			    "set xdata time\n"+ \
+                            "set size 1.5,1\n"+ \
 			    "set xrange [ : ]\n"+ \
                             "set yrange [0: ]\n"+ \
 			    "set ylabel 'Storage Group'\n"+ \
 			    "set grid\n"+ \
 			    "set key outside\n" + \
-			    "set format x \"%m-%d\\n%H\"\n"+ \
+			    "set format x \"%y-%m-%d\\n%H\"\n"+ \
 			    plot_command)
 
 
@@ -929,14 +935,15 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day By Enstore "+\
 			    plot_time()+"'\n"+ \
-	                   "set xlabel 'Date'\n"+ \
+	                   "set xlabel 'Date (year-month-day)'\n"+ \
 	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
+                           "set size 1.5,1\n"+ \
 	                   "set xrange [ : ]\n"+ \
 	                   "set ylabel 'Bytes'\n"+ \
 	                   "set grid\n"+ \
 	                   "set yrange [0: ]\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
+	                   "set format x \"%y-%m-%d\"\n"+ \
 			   "set key right top Right samplen 1 title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
