@@ -92,6 +92,8 @@ print 'version:', version
 
 import FTT
 
+print 'FTT modules was compiled with ftt version:',FTT.version()
+
 
 """
 -- initial check --
