@@ -298,6 +298,8 @@ class FileDB(DbTable):
 			sanity_cookie_0 = s['sanity_cookie'][0]
 		if s['sanity_cookie'][1] == None:
 			sanity_cookie_1 = -1 
+		else:
+			sanity_cookie_1 = s['sanity_cookie'][1]
 
 		# take care of crc
 		if s['complete_crc'] == None:
