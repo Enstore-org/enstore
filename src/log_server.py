@@ -39,12 +39,10 @@ import SocketServer
 import configuration_client
 import dispatching_worker
 import generic_server
+import interface
 import timeofday
 import socket
 import Trace
-
-list = 0
-test = 0
 
 """Logger Class. Instance of this class is a log server. Multiple instances
    of this class can run using unique port numbers. But it actually is not
@@ -55,13 +53,41 @@ class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer
              , SocketServer.UDPServer ):
 
+    def __init__(self, csc=0, list=0, host=interface.default_host(), \
+                 port=interface.default_port(), test=0, list=0):
+        Trace.trace(10, '{__init__')
+        # get the config server
+        configuration_client.set_csc(self, csc, host, port, list)
+        #   pretend that we are the test system
+        #   remember, in a system, there is only one bfs
+        #   get our port and host from the name server
+        #   exit if the host is not this machine
+        keys = self.csc.get("logserver")
+        if list :
+            pprint.pprint(keys)
+        SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
+                                        'unused param')
+        if keys["log_file_path"][0] == '$':
+	    tmp = keys["log_file_path"][1:]
+	    try:
+	        tmp = os.environ[tmp];
+	    except:
+	        print "log_file_path '",keys["log_file_path"],"' configuration ERROR"
+	        sys.exit(1)
+	    self.logfile_dir_path = tmp
+	else:
+	    self.logfile_dir_path =  keys["log_file_path"]
+	self.test = test
+	self.list = list
+        Trace.trace(10, '}__init__')
+
     def open_logfile(self, logfile_name) :
         # try to open log file for append
-        if list :
+        if self.list :
             print "opening " + logfile_name
         try:
             self.logfile = open(logfile_name, 'a')
-            if list :
+            if self.list :
                 print "opened for append"
         except :
 	    try:
@@ -69,7 +95,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    except:
 		print "Can not open log ",logfile_name
 		os._exit(1)
-            if list :
+            if self.list :
                 print "opened for write"
 
     # log the message recieved from the log client
@@ -86,25 +112,25 @@ class Logger(  dispatching_worker.DispatchingWorker
                    host,
                    ticket['message'])
 
-        if list:
+        if self.list:
             print message          # for test
         res = self.logfile.write(message)    # write log message to the file
         self.logfile.flush()
-        if list :
+        if self.list :
             pprint.pprint(res)
 
-    def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
+    def serve_forever(self):                      # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
         day = current_day = tm[2];
-        if test :
+        if self.test :
             min = current_min = tm[4]
         # form the log file name
         fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
-        if test:
+        if self.test:
             ft = '-%02d-%02d' % (tm[3], tm[4])
             fn = fn + ft
 
-        self.logfile_name = logfile_dir_path + "/" + fn
+        self.logfile_name = self.logfile_dir_path + "/" + fn
         # open log file
         self.open_logfile(self.logfile_name)
         while 1:
@@ -114,10 +140,10 @@ class Logger(  dispatching_worker.DispatchingWorker
             # get local time
             tm = time.localtime(time.time())
             day = tm[2];
-            if test :
+            if self.test :
                 min = tm[4]
             # if test flag is not set reopen log file at midnight
-            if not test :
+            if not self.test :
                 # check if day has been changed
                 if day != current_day :
                     # day changed: close the current log file
@@ -125,7 +151,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                     current_day = day;
                     # and open the new one
                     fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
-                    self.logfile_name = logfile_dir_path + "/" + fn
+                    self.logfile_name = self.logfile_dir_path + "/" + fn
                     self.open_logfile(self.logfile_name)
             else :
                 # if test flag is set reopen log file every minute
@@ -137,8 +163,31 @@ class Logger(  dispatching_worker.DispatchingWorker
                     fn = 'LOG-%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
                     ft = '-%02d-%02d' % (tm[3], tm[4])
                     fn = fn + ft
-                    self.logfile_name = logfile_dir_path + "/" + fn
+                    self.logfile_name = self.logfile_dir_path + "/" + fn
                     self.open_logfile(self.logfile_name)
+
+
+class LoggerInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{logi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+	self.config_file = ""
+	self.list = 0
+	self.test = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}logi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+\
+	       ["config_list", "config_file=", "list", "verbose", "test"] +\
+               self.help_options()
 
 
 if __name__ == "__main__" :
@@ -147,70 +196,16 @@ if __name__ == "__main__" :
     Trace.init("log server")
     Trace.trace(1,"log server called with args "+repr(sys.argv))
 
-    # defaults
-    #config_host = "localhost"
-    try:
-	config_host = os.environ['ENSTORE_CONFIG_HOST']
-    except:
-	(config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-        config_host = ci[0]
-    try:
-	config_port = os.environ['ENSTORE_CONFIG_PORT']
-    except:
-	config_port = "7500"
-    config_file = ""
-    config_list = 0
+    # get the interface
+    intf = LoggerInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file=" \
-               ,"config_list","list","verbose","help","test"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-        elif opt == "--test":
-            test = 1
-        elif opt == "--help" :
-            print "python ", options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    config_list)
-
-    keys = csc.get("logserver")
-    if list :
-        pprint.pprint(keys)
-        pprint.pprint(args)
-    logserver =  Logger( (keys['hostip'],keys['port']), 'unused param' )
-
-    logserver.set_csc(csc)
-
-    if keys["log_file_path"][0] == '$':
-	tmp = keys["log_file_path"][1:]
-	try:
-	    tmp = os.environ[tmp];
-	except:
-	    print "log_file_path '",keys["log_file_path"],"' configuration ERROR"
-	    sys.exit(1)
-	keys["log_file_path"] = tmp
+    logserver = Logger(0, intf.config_list, intf.config_host, \
+	               intf.config_port, intf.test, intf.list)
 
     while 1:
         try:
             Trace.trace(1,'Log Server (re)starting')
-            logserver.serve_forever(keys["log_file_path"])
+            logserver.serve_forever()
         except:
             traceback.print_exc()
             format = timeofday.tod()+" "+\
