@@ -1167,20 +1167,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # hsm_driver_info (read: hsm_driver.position
             #                  write: position, eod, remaining_bytes)
             # recent (read) errors (part of vol_info???)
-            r=self.udpc.send( {'work'       :'update_client_info',
-                               'address'    :origin_addr,
-                               'pid'        :os.getpid(),
-                               'exit_status':m_err.index(status),
-                               'vol_info'   :self.vol_info,
-                               'no_xfers'   :self.no_xfers,
-                               'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
-                                              'remaining_bytes':self.hsm_driver.remaining_bytes,
-                                              'vol_label'      :self.hsm_driver.vol_label,
-                                              'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
-                              (self.mvr_config['hostip'],self.mvr_config['port']) )
-            Trace.log(e_errors.INFO, "send returns %s, exit %s"%(r, m_err.index(status)))
+            self.udpc.send_nowait( {'work'       :'update_client_info',
+                                    'address'    :origin_addr,
+                                    'pid'        :os.getpid(),
+                                    'exit_status':m_err.index(status),
+                                    'vol_info'   :self.vol_info,
+                                    'no_xfers'   :self.no_xfers,
+                                    'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
+                                                   'remaining_bytes':self.hsm_driver.remaining_bytes,
+                                                   'vol_label'      :self.hsm_driver.vol_label,
+                                                   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
+                                   (self.mvr_config['hostip'],self.mvr_config['port']) )
             os._exit( m_err.index(status) )
-            pass
         return self.status_to_request( status ) # return_or_update_and_exit
 
     # data transfer takes place on tcp sockets, so get ports & call user
@@ -1410,7 +1408,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def update_client_info( self, ticket ):
 	Trace.log( e_errors.INFO,  "update_client_info - pid: %s, ticket['pid']=%s"%
                    (self.pid,ticket['pid']))
-        self.reply_to_caller( {'status': (e_errors.OK, "None") } )
         if self.pid != ticket['pid']:
             # assume previous "No child processes" exception
             Trace.log(e_errors.INFO, "update_client_info: self.pid=%s, ticket[pid]=%s"%(
