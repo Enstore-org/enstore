@@ -1968,9 +1968,13 @@ def read_hsm_files(listen_socket, submitted, requests,
             try:
                 if msg.args[1] != errno.ENOSPC:
                     done_ticket = callback.read_tcp_obj(control_socket)
+                else:
+                    done_ticket = (e_errors.USERERROR, msg.args[0])
             except:
-                done_ticket = {'status':("EPROTO",
-                                         "Network problem or mover reset")}
+                pass #use local error.
+                #done_ticket = {'status':(e_errors.EPROTO,
+                #                         "Network problem or mover reset")}
+                
             files_left = handle_retries(requests, requests[j],
                                         done_ticket, max_retry)
             try:
