@@ -17,7 +17,7 @@ CFLAGS=-I. -I../ftt_lib -g $(WARN) `cat ../ftt_lib/local/flags`
 all: ftt_test ftt_random ftt_copy
 
 clean:
-	rm $(OBJ) ftt_test ftt_random ftt_copy
+	rm *.o ftt_test ftt_random ftt_copy
 
 install: all
 	cp libftt_test.a $(FTT_DIR)/lib
