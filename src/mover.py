@@ -1278,11 +1278,12 @@ class Mover(  dispatching_worker.DispatchingWorker,
         ticket["callback_port"] = port
         control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
-        data_socket.setsockopt(socket.SOL_SOCKET,socket.SO_DONTROUTE,1)
+        if 0: #XXX CGW
+            data_socket.setsockopt(socket.SOL_SOCKET,socket.SO_DONTROUTE,1)
         interface = hostaddr.interface_name(host)
         if interface:
             Trace.log(16,"bindtodev %s %s %s",host,address,interface)
-            if 0:
+            if 0: #XXX CGW
                 status = socket_ext.bindtodev(data_socket.fileno(),interface)
             else:
                 status=0

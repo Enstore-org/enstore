@@ -41,12 +41,13 @@ def try_a_port(host, port, reuseaddr=1) :
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if reuseaddr:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE,1)
+        if 0: #XXX CGW
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE,1)
         sock.bind(host, port)
         interface=hostaddr.interface_name(host)
         if interface:
             Trace.trace(16,"bindtodev:  %s %s %s"%(host,port,interface))
-            if 0:
+            if 0: ##XXX CGW
                 status=socket_ext.bindtodev(sock.fileno(),interface)
             else:
                 status =0
