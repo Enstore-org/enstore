@@ -2031,8 +2031,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%
                           (detail,))
             except:
-                Trace.log(e_errors.ERROR, "ftt.get_stats cannot get remaining capacity")
-                Trace.handle_error()
+                exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
 
         capacity = self.vol_info['capacity_bytes']
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
