@@ -22,7 +22,7 @@ for i in $work/*; do
   while /bin/true; do 
     cap=`/usr/bin/rsh $sun -l acsss "echo q cap 0,0,0 |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
     capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
-    if [ "$capstate" = "available" ]; then break
+    if [ "$capstate" = "available" ]; then break; fi
     echo `date` waiting for cap to be unloaded: $capstate
     sleep 15
   done
