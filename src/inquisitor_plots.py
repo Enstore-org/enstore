@@ -133,7 +133,7 @@ class InquisitorPlots:
 
 	    mbpdfile = enstore_plots.BpdMonthDataFile(self.output_dir)
 	    mbpdfile.open()
-	    mbpdfile.plot()
+	    mbpdfile.plot(bpdfile.write_ctr)
 	    mbpdfile.close()
 	    mbpdfile.install(self.html_dir)
 

@@ -566,7 +566,7 @@ class XferDataFile(EnPlot):
 class BpdGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile, total, meansize, xfers, read_xfers, write_xfers,
-	      lw=20):
+	      total_written, lw=20):
 	psfiler = string.replace(outfile, enstore_constants.BPD_FILE,
 				 enstore_constants.BPD_FILE_R)
 	psfilew = string.replace(outfile, enstore_constants.BPD_FILE,
@@ -589,7 +589,7 @@ class BpdGnuFile(enstore_files.EnFile):
 			      repr(xfers)+"\"\n"+\
 			   "plot '"+ptsfile+\
 			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" 3 1, '"+ptsfile+\
-			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"
+			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"+ \
 			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
 			   # "set output '"+psfiler+"'\n"+ \
 			   # "set title 'Total Bytes Read Per Day (no null mvs) "+plot_time()+"'\n"+ \
@@ -599,13 +599,13 @@ class BpdGnuFile(enstore_files.EnFile):
 			   #   repr(read_xfers)+"\"\n"+\
 			   # "plot '"+ptsfile+"' using 1:2 t 'total' w points 4 7, '"+ptsfile+\
 			   #       "' using 1:3 t 'reads' w impulses lw 20 1 1\n"+
-			   # "set output '"+psfilew+"'\n"+ \
-			   # "set title 'Total Bytes Written Per Day (no null mvs) "+plot_time()+"'\n"+ \
-			   # "set key right top Right samplen 1 title \"Total Bytes : "+\
-			   #    "%.2e"%(total,)+"\\n Number of Xfers : "+\
-			   #    repr(write_xfers)+"\"\n"+\
-			   # "plot '"+ptsfile+"' using 1:2 t 'total' w points 4 7, '"+ptsfile+\
-			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			   "set output '"+psfilew+"'\n"+ \
+			   "set title 'Total Bytes Written Per Day (no null mvs) "+plot_time()+"'\n"+ \
+			   "set key right top Right samplen 1 title \"Total Bytes : "+\
+			         "%.2e"%(total_written,)+"\\n Number of Xfers : "+\
+			    repr(write_xfers)+"\"\n"+\
+			   "plot '"+ptsfile+\
+			    "' using 1:4  t '' w impulses lw "+repr(lw)+" 1 1\n"
 			    )
 
 
@@ -812,6 +812,7 @@ class BpdDataFile(EnPlot):
 	keys.sort()
 	numxfers = 0
 	total = 0.0
+	total_written = 0.0
 	for key in keys:
 	    day = self.ndata[key]
 	    if not day[TOTAL] == 0:
@@ -827,6 +828,7 @@ class BpdDataFile(EnPlot):
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
 	    total = total + day[TOTAL]
+	    total_written = total_written + day[WRITES]
 	    # there may not be any transfers on a certain date, so check the key
 	    # first.  above ndata has all dates initialized to 0 so no check is
 	    # necessary.
@@ -836,7 +838,7 @@ class BpdDataFile(EnPlot):
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
 	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers,
-		      self.read_ctr, self.write_ctr, self.lw)
+		      self.read_ctr, self.write_ctr, total_written, self.lw)
 	gnucmds.close()
 
 	# now output the data to make the bytes/day/mover plots
@@ -861,12 +863,13 @@ class BpdDataFile(EnPlot):
 	#filer = string.replace(self.name, enstore_constants.BPD_FILE,
 	#		       enstore_constants.BPD_FILE_R)
 	#psfiler = "%s/%s%s"%(self.dir, filer, enstore_constants.PS)
-	#filew = string.replace(self.name, enstore_constants.BPD_FILE,
-	#		       enstore_constants.BPD_FILE_W)
-	#psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	filew = string.replace(self.name, enstore_constants.BPD_FILE,
+			       enstore_constants.BPD_FILE_W)
+	psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	os.system("cp %s %s"%(psfilew, dir))
 	#os.system("cp %s %s %s"%(psfiler, psfilew, dir))
 	#convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
-	#convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
+	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
 
 
 class BpdMonthDataFile(EnPlot):
@@ -896,19 +899,21 @@ class BpdMonthDataFile(EnPlot):
 	return bpd_l[-30:]
 
     def get_total_bpd(self, bpd_l):
-	total_bpd = 0
+	total_bpd = 0.0
 	num_xfers = 0
+	total_w_bpd = 0.0
 	for bpd in bpd_l:
 	    fields = string.split(string.strip(bpd))
 	    total_bpd = total_bpd + float(fields[1])
 	    num_xfers = num_xfers + long(float(fields[1])/float(fields[6]))
-	return total_bpd, num_xfers
+	    total_w_bpd = total_w_bpd + float(fields[3])
+	return total_bpd, num_xfers, total_w_bpd
 
-    # make the mounts per day plot file
-    def plot(self):
+    # make the bytes per day plot file
+    def plot(self, write_ctr):
 	# we must plot the last 30 days of  data in the total bpd file
 	bpd_l = self.get_30_bpd()
-	total_bpd, num_xfers = self.get_total_bpd(bpd_l)
+	total_bpd, num_xfers, total_w_bpd = self.get_total_bpd(bpd_l)
 	if self.openfile:
 	    self.openfile.close()
 	self.openfile = open(self.ptsfile, 'w')
@@ -920,8 +925,18 @@ class BpdMonthDataFile(EnPlot):
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
 	gnucmds.write(self.psfile, self.ptsfile, total_bpd, total_bpd/num_xfers,
-		      num_xfers, 0, 0)
+		      num_xfers, 0, write_ctr, total_w_bpd)
 	gnucmds.close()
+
+
+    def install(self, dir):
+	EnPlot.install(self, dir)
+
+	filew = string.replace(self.name, enstore_constants.BPD_MONTH_FILE,
+			       enstore_constants.BPD_MONTH_FILE_W)
+	psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	os.system("cp %s %s"%(psfilew, dir))
+	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
 
 
 class SgGnuFile(enstore_files.EnFile):
