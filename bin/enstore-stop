@@ -26,8 +26,13 @@ turnoff() { for pid in $1; do
                 pidkill $pid
             done; }
 
+turnoff_s() { for pid in $1; do
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
+                pidkill_s $pid
+            done; }
+
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-db_*_pids"            "databases"
+    turnoff_s "$ENSTORE_DB/`uname -n`-db_*_pids"            "databases"
     turnoff "$ENSTORE_DB/`uname -n`-admin*pids"           "admin"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
