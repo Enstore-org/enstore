@@ -6,6 +6,7 @@ import time
 import errno
 import sys
 import string
+import socket
 
 #enstore imports
 import callback

@@ -9,6 +9,7 @@ import time
 import traceback
 import sys
 import string
+import socket
 
 # enstore imports
 import setpath
@@ -1323,7 +1324,7 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
 
 
 if __name__ == "__main__":
-    import sys
+
     Trace.init("LIBMAN")
     Trace.trace(6, "libman called with args "+repr(sys.argv) )
 
