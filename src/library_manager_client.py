@@ -407,6 +407,11 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                               option.DEFAULT_TYPE:option.INTEGER,
                               option.VALUE_USAGE:option.IGNORED,
                               option.USER_LEVEL:option.ADMIN},
+        option.VOLS:{option.HELP_STRING:
+                     "get list of active volumes",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
         
         }
 
