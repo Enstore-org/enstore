@@ -17,11 +17,11 @@ import errno
 import time
 
 import Trace
-import e_errors
+#import e_errors
 import multiple_interface
 import enroute
 import runon
-import pdb
+#import pdb
 
 #UDP_fixed_route = 0
 
@@ -113,6 +113,8 @@ def update_cached_config():
 #Return the hostip, as a string, that appears on the 'hostip=' line in
 # the enstore.conf file.
 def get_default_interface_ip():
+    __pychecker__ = "unusednames=i"
+
     hostip = ""
     msg = None
     default = None
@@ -302,7 +304,13 @@ def is_route_in_table(dest):
 
 #Return a dictionary where the keys are the intefaces and the values are
 # the number of occurances in the netstat -r output.
+"""
 def connections():
+    if os.uname()[0] == "Linux":
+	search_string = "Iface"
+    else:
+	search_string = "Interface"
+
     #mode should be 0 or 1 for "read" or "write"
     config = get_config()
 
@@ -311,12 +319,29 @@ def connections():
     interfaces = interface_dict.keys()
 
     ret = {}
-    for item in get_netstat_r():
-        if item['Iface'] in interfaces:
+    for item in interfaces:
+	ret[item] = 0
+
+    for item2 in get_netstat_r():
+	#This screwy piece of code determines if the route in question is
+	# to a mover node.  This is nececcary to remove any extras the
+	# control sockets setup.
+	try:
+	    if socket.gethostbyaddr(item['Destination'])[0].find("mvr") < 0:
+		continue
+	    
+	    print socket.gethostbyaddr(item['Destination'])[0]
+        except KeyboardInterrupt, msg:
+	    raise msg
+	except:
+	    continue
+	
+        if item2[search_string] in interfaces:
             #Add one to the number of connection to one interface.
-            ret[item['Iface']] = ret.get(item['Iface'], 0) + 1
+            ret[item2[search_string]] = ret.get(item2[search_string], 0) + 1
 
     return ret
+"""
 
 ##############################################################################
 # The following function selects which CPU to run the process on.
@@ -354,21 +379,52 @@ def set_route(dest, interface_ip):
     else:
 	return
 
-    #Attempt to set the route.
+    #Attempt to set the new route.
     err=enroute.routeAdd(dest, gateway)
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
-        raise OSError(errno.EPERM, "Routing:" + os.strerror(errno.EPERM))
+	raise OSError(errno.EPERM, "Routing:" + enroute.errstr(err))
     elif err == 2: #Not supported.
-        raise OSError(errno.ENOPROTOOPT,
-                      "Routing:" + os.strerror(errno.ENOPROTOOPT))
+        raise OSError(errno.ENOPROTOOPT, "Routing:" + enroute.errstr(err))
     elif err == 3: #Not permitted.
-        raise OSError(errno.EACCES, "Routing:" + os.strerror(errno.EACCES))
+        raise OSError(errno.EACCES, "Routing:" + enroute.errstr(err))
     elif err == 4: #Not valid parameters.
-        raise OSError(errno.EINVAL, "Routing:" + os.strerror(errno.EINVAL))
+        raise OSError(errno.EINVAL, "Routing:" + enroute.errstr(err))
     elif err == 5: #Return code if route selection is not supported.
         pass
-        #raise OSError(errno.ENOSYS, "Routing:" + os.strerror(errno.ENOSYS))
+    elif err == 6: #Route change failed.
+	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+
+def update_route(dest, interface_ip):
+    config = get_config()
+    if not config:
+        return
+    interfaces = get_interfaces()
+    if not interfaces:
+        return
+    
+    for interface in get_interfaces():
+    	if interface_ip == config['interface'][interface]['ip']:
+    	    gateway = config['interface'][interface]['gw']
+	    break
+    else:
+	return
+
+    #Attempt to reset an existing route.
+    err=enroute.routeChange(dest, gateway)
+
+    if err == 1: #Not called from encp/enstore.  (should never see this)
+	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
+    elif err == 2: #Not supported.
+        raise OSError(errno.ENOPROTOOPT, "Routing: " + enroute.errstr(err))
+    elif err == 3: #Not permitted.
+        raise OSError(errno.EACCES, "Routing: " + enroute.errstr(err))
+    elif err == 4: #Not valid parameters.
+        raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+    elif err == 5: #Return code if route selection is not supported.
+        pass
+    elif err == 6: #Route change failed.
+	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
 
 def unset_route(dest):
     config = get_config()
@@ -382,17 +438,17 @@ def unset_route(dest):
     err=enroute.routeDel(dest)
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
-        raise OSError(errno.EPERM, "Routing:" + os.strerror(errno.EPERM))
+	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
     elif err == 2: #Not supported.
-        raise OSError(errno.ENOPROTOOPT,
-                      "Routing:" + os.strerror(errno.ENOPROTOOPT))
+        raise OSError(errno.ENOPROTOOPT, "Routing: " + enroute.errstr(err))
     elif err == 3: #Not permitted.
-        raise OSError(errno.EACCES, "Routing:" + os.strerror(errno.EACCES))
+        raise OSError(errno.EACCES, "Routing: " + enroute.errstr(err))
     elif err == 4: #Not valid parameters.
-        raise OSError(errno.EINVAL, "Routing:" + os.strerror(errno.EINVAL))
+        raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 5: #Return code if route selection is not supported.
         pass
-        #raise OSError(errno.ENOSYS, "Routing:" + os.strerror(errno.ENOSYS))
+    elif err == 6: #Route change failed.
+	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
 
 ##############################################################################
 # The following three functions select an interface based on various criteria.
@@ -411,7 +467,7 @@ def choose_interface():
         weight = get_interface_info(interface).get('weight', 1.0)
         choose.append((-weight, random.random(), interface))
     choose.sort()
-    junk, junk, interface = choose[0]
+    unused, unused, interface = choose[0]
     return get_interface_info(interface)
 
 def check_load_balance(mode = None):
@@ -426,10 +482,8 @@ def check_load_balance(mode = None):
     if not interfaces:
         return get_default_interface()
 
-    #Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
-    connections_dict = connections()
-    #Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
+    #connections_dict = connections()
     
     choose = []
     for interface in interfaces:
@@ -450,28 +504,31 @@ def check_load_balance(mode = None):
 	total_rate = (recv_rate + send_rate)/weight
 
         #Get the number of connections (static routes) for the interface.
-        try:
-            conn_in_progress = connections_dict[interface]
-        except KeyError:
-            continue
+        #try:
+        #    conn_in_progress = connections_dict[interface]
+        #except KeyError:
+        #    continue
 
         #Assemble the load balancing criteria.
         if mode==1: #writing
             #If rates are equal on different interfaces, randomize!
-            choose.append((conn_in_progress, send_rate, -weight,
-                           random.random(), interface))
+            #choose.append((conn_in_progress, send_rate, -weight,
+            #               random.random(), interface))
+	    choose.append((send_rate, -weight, random.random(), interface))
 	elif mode==0: #reading
-	    choose.append((conn_in_progress, recv_rate, -weight,
-                           random.random(), interface))
+	    #choose.append((conn_in_progress, recv_rate, -weight,
+            #               random.random(), interface))
+	    choose.append((recv_rate, -weight, random.random(), interface))
         else:
-            choose.append((conn_in_progress, total_rate, -weight,
-                           random.random(), interface))
+            #choose.append((conn_in_progress, total_rate, -weight,
+            #               random.random(), interface))
+	    choose.append((total_rate, -weight, random.random(), interface))
 
     #By the magic of python, the first item in the list will be the
     # best choice for load balancing.
     choose.sort()
-    junk, junk, junk, junk, interface = choose[0]
-
+    unused, unused, unused, interface = choose[0]
+    Trace.trace(10, "Choosing interface: %s" % interface)
     return get_interface_info(interface)
 
 ##############################################################################
@@ -510,4 +567,5 @@ def setup_interface(dest, interface_ip):
 
 if __name__ == '__main__':
 
-    pprint.pprint(connections())
+    #pprint.pprint(connections())
+    pprint.pprint(check_load_balance())

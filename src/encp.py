@@ -81,6 +81,16 @@ import enstore_functions2
 import accounting_client
 
 
+#Add these if missing.
+if not hasattr(socket, "IPTOS_LOWDELAY"):
+    socket.IPTOS_LOWDELAY = 0x10                 #16
+if not hasattr(socket, "IPTOS_THROUGHPUT"):
+    socket.IPTOS_THROUGHPUT = 0x08               #8
+if not hasattr(socket, "IPTOS_RELIABILITY"):
+    socket.IPTOS_RELIABILITY = 0x04              #4
+if not hasattr(socket, "IPTOS_MINCOST"):
+    socket.IPTOS_IPTOS_MINCOST = 0x02            #2
+
 # Forward declaration.  It is assigned in get_clerks().
 acc = None
 __csc = None
@@ -93,6 +103,8 @@ __vcc = None
 ONE_G = 1024 * 1024 * 1024
 TWO_G = 2 * long(ONE_G) - 1     #Used in int32()
 MAX_FILE_SIZE = long(ONE_G) * 2 - 1    # don't get overflow
+
+MAX_VERSION_LENGTH = 48  #Length of the version string.
 
 #############################################################################
 # verbose: Roughly, 10 verbose levels are used.
@@ -207,7 +219,11 @@ def encp_client_version():
     ##You can edit it manually, but do not change the syntax
     version_string = "v3_3  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
-    if encp_file: version_string = version_string + encp_file
+    if encp_file: version_string = version_string + os.path.basename(encp_file)
+    #If we end up longer than the current version length supported by the
+    # accounting server; truncate the string.
+    if len(version_string) > MAX_VERSION_LENGTH:
+	version_string = version_string[:MAX_VERSION_LENGTH]
     return version_string
 
 #def quit(exit_code=1):
@@ -394,6 +410,9 @@ def close_descriptors(*fds):
         else:
             try:
                 os.close(fd)
+	    except TypeError:
+		#The passed in object was not a valid socket descriptor.
+		pass
             except (OSError, IOError), msg:
                 sys.stderr.write(
                     "Unable to close fd %s: %s\n" % (fd, str(msg)))
@@ -449,11 +468,12 @@ def get_file_size(file):
         #Get the remote pnfs filesize.
         try:
             pin = pnfs.Pnfs(file)
+	    pin.pstatinfo()
             pin.get_file_size()
             filesize = pin.file_size
         except (OSError, IOError):
             filesize = None #0
-    
+
     #Return None for failures.
     if filesize != None:
         #Always return the long version to avoid 32bit vs 64bit problems.    
@@ -786,18 +806,17 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
 
-            if vcc_test.server_address == None:
-                #If we failed to find this volume clerk, move on to the
-                # next one.
-                continue
+            if vcc_test.server_address != None:
+		#If the fcc has been initialized correctly; use it.
 
-            if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
-                msg = "Using %s based on volume %s." % \
-                      (vcc_test.server_address, volume)
-                Trace.log(e_errors.INFO, msg)
+		if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
+		    msg = "Using %s based on volume %s." % \
+			  (vcc_test.server_address, volume)
+		    Trace.log(e_errors.INFO, msg)
 
-                __csc = csc_test  #Set global for performance reasons.
-                return __csc
+		    __csc = csc_test  #Set global for performance reasons.
+		    return __csc
+
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -879,25 +898,25 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
-            if fcc_test.server_address == None:
-                #If we failed to find this file clerk, move on to the
-                # next one.
-                continue
+            if fcc_test.server_address != None:
+		#If the fcc has been initialized correctly; use it.
 
-            system_brand = fcc_test.get_brand(5, 2)
-            if not is_brand(system_brand):
-                Trace.log(e_errors.WARNING,
-                          "File clerk (%s) returned invalid brand: %s\n"
-                          % (fcc_test.server_address, system_brand))
-            #If things match then use this system.
-            if brand[:len(system_brand)] == system_brand:
-                if fcc.get_brand(5, 2) != system_brand:
-                    msg = "Using %s based on brand %s." % (system_brand, brand)
-                    Trace.log(e_errors.INFO, msg)
+		system_brand = fcc_test.get_brand(5, 2)
+		if not is_brand(system_brand):
+		    Trace.log(e_errors.WARNING,
+			      "File clerk (%s) returned invalid brand: %s\n"
+			      % (fcc_test.server_address, system_brand))
+		#If things match then use this system.
+		if brand[:len(system_brand)] == system_brand:
+		    if fcc.get_brand(5, 2) != system_brand:
+			msg = "Using %s based on brand %s." % \
+			      (system_brand, brand)
+			Trace.log(e_errors.INFO, msg)
 
-                __csc = csc_test  #Set global for performance reasons.
-                __fcc = fcc_test
-                return __csc
+		    __csc = csc_test  #Set global for performance reasons.
+		    __fcc = fcc_test
+		    return __csc
+
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -1080,26 +1099,26 @@ def get_fcc(parameter = None):
             fcc_test = file_clerk_client.FileClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
 
-            if fcc_test.server_address == None:
-                #If we failed to find this file clerk, move on to the
-                # next one.
-                continue
+            if fcc_test.server_address != None:
+		#If the fcc has been initialized correctly; use it.
 
-            system_brand = fcc_test.get_brand(5, 2)
-            if not is_brand(system_brand):
-                Trace.log(e_errors.WARNING,
-                          "File clerk (%s) returned invalid brand: %s\n"
-                          % (fcc_test.server_address, system_brand))
-            #If things match then use this system.
-            if bfid[:len(system_brand)] == system_brand:
-                if fcc.get_brand(5, 2) != system_brand:
-                    brand = extract_brand(bfid)
-                    msg = "Using %s based on brand %s." % (system_brand, brand)
-                    Trace.log(e_errors.INFO, msg)
+		system_brand = fcc_test.get_brand(5, 2)
+		if not is_brand(system_brand):
+		    Trace.log(e_errors.WARNING,
+			      "File clerk (%s) returned invalid brand: %s\n"
+			      % (fcc_test.server_address, system_brand))
+		#If things match then use this system.
+		if bfid[:len(system_brand)] == system_brand:
+		    if fcc.get_brand(5, 2) != system_brand:
+			brand = extract_brand(bfid)
+			msg = "Using %s based on brand %s." %  \
+			      (system_brand, brand)
+			Trace.log(e_errors.INFO, msg)
 
-                __csc = csc_test  #Set global for performance reasons.
-                __fcc = fcc_test
-                return __fcc
+		    __csc = csc_test  #Set global for performance reasons.
+		    __fcc = fcc_test
+		    return __fcc
+
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -1206,9 +1225,10 @@ def get_vcc(parameter = None):
             if vcc_test.server_address == None:
                 #If we failed to find this volume clerk, move on to the
                 # next one.
-                continue
+                #continue
+		pass
 
-            if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
+            elif e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
                 msg = "Using %s based on volume %s." % \
                       (vcc_test.server_address, volume)
                 Trace.log(e_errors.INFO, msg)
@@ -1388,7 +1408,7 @@ def check_server(csc, server_name):
         exc, msg = sys.exc_info()[:2]
         stati={}
         stati["status"] = (e_errors.BROKEN,
-                           "Unexpected error (%s, %s) while attempting to"
+                           "Unexpected error (%s, %s) while attempting to "
                            "contact %s." % (str(exc), str(msg), server_name))
 
     #Quick translation for TIMEDOUT error.  The description part of the
@@ -2330,43 +2350,54 @@ def get_ninfo(inputfile, outputfile, e):
 ############################################################################
 ############################################################################
 
-def open_routing_socket(route_server, unique_id_list, encp_intf):
+#The following function is the depricated functionality of
+# open_routing_socket().  Since "get" still uses this socket, this
+# functionality must remain somewhere.
+def open_udp_socket(udp_server, unique_id_list, encp_intf):
 
-    Trace.message(INFO_LEVEL, "Waiting for routing callback at address: %s" %
-                  str(route_server.server_socket.getsockname()))
-    Trace.log(e_errors.INFO, "Waiting for routing callback at address: %s" %
-                  str(route_server.server_socket.getsockname()))
+    Trace.message(INFO_LEVEL, "Waiting for udp callback at address: %s" %
+                  str(udp_server.server_socket.getsockname()))
+    Trace.log(e_errors.INFO, "Waiting for udp callback at address: %s" %
+                  str(udp_server.server_socket.getsockname()))
 
-    route_ticket = None
+    udp_ticket = None
 
-    if not route_server:
+    if not udp_server:
         return None, None
 
     start_time = time.time()
 
     while(time.time() - start_time < encp_intf.mover_timeout):
         try:
-            #Get the route.
-            route_ticket = route_server.process_request()
+            #Get the udp ticket.
+            udp_ticket = udp_server.process_request()
         except socket.error, msg:
             Trace.log(e_errors.ERROR, str(msg))
             raise EncpError(msg.args[0], str(msg),
                             e_errors.NET_ERROR)
 
         #If route_server.process_request() fails it returns None.
-        if not route_ticket:
+        if not udp_ticket:
             continue
-        #If route_server.process_request() returns incorrect value.
-        elif route_ticket == types.DictionaryType and \
-             hasattr(route_ticket, 'unique_id') and \
-             route_ticket['unique_id'] not in unique_id_list:
+        #If udp_server.process_request() returns incorrect value.
+        elif udp_ticket == types.DictionaryType and \
+             hasattr(udp_ticket, 'unique_id') and \
+             udp_ticket['unique_id'] not in unique_id_list:
             continue
         #It is what we were looking for.
         else:
             break
     else:
         raise EncpError(errno.ETIMEDOUT,
-                        "Mover did not call routing back.", e_errors.TIMEDOUT)
+                        "Mover did not call udp back.", e_errors.TIMEDOUT)
+
+    udp_server.reply_to_caller_using_interface_ip(udp_ticket, udp_ticket['callback_addr'][0])
+
+    return udp_ticket
+
+##############################################################################
+
+def open_routing_socket(mover_ip, encp_intf):
 
     #If requested print a message.
     Trace.message(INFO_LEVEL, "Setting up routing table.")
@@ -2386,7 +2417,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     #load balencing...
     if interface:
         ip = interface.get('ip')
-        if ip and route_ticket.get('mover_ip', None):
+	if ip and mover_ip:   #route_ticket.get('mover_ip', None):
 	    #With this loop, give another encp 10 seconds to delete the route
 	    # it is using.  After this time, it will be assumed that the encp
 	    # died before it deleted the route.
@@ -2406,7 +2437,8 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                                     e_errors.OSERROR)
                     
 		for route in route_list:
-		    if route_ticket['mover_ip'] == route['Destination']:
+		    #if route_ticket['mover_ip'] == route['Destination']:
+		    if mover_ip == route['Destination']:
 			break
 		else:
 		    break
@@ -2415,17 +2447,19 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
 	    
             try:
                 #This is were the interface selection magic occurs.
-                host_config.setup_interface(route_ticket['mover_ip'], ip)
+                #host_config.setup_interface(route_ticket['mover_ip'], ip)
+		host_config.setup_interface(mover_ip, ip)
             except (OSError, IOError, socket.error), msg:
                 Trace.log(e_errors.ERROR, str(msg))
                 raise EncpError(getattr(msg,"errno",None),
                                 str(msg), e_errors.OSERROR)
+	    
+	    #Return the ip of the local interface the data socket needs
+	    # to bind to in order for the antispoofing problem to be avoided.
+	    return ip
 
-    (route_ticket['callback_addr'], listen_socket) = \
-				    get_callback_addr(ip)  #encp_intf, ip=ip)
-    route_server.reply_to_caller_using_interface_ip(route_ticket, ip)
-
-    return route_ticket, listen_socket
+    #No route was set.
+    return None
 
 ##############################################################################
 
@@ -2452,6 +2486,16 @@ def open_control_socket(listen_socket, mover_timeout):
         control_socket.close()
         raise EncpError(errno.EPERM, "Host %s not allowed." % address[0],
                         e_errors.NOT_ALWD_EXCEPTION)
+
+    try:
+	#This should help the connection.  It also seems to allow the
+	# connection to servive the antispoofing/routing problem for
+        # properly configured (enstore.conf & enroute2) multihomed nodes.
+	control_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
+				 socket.IPTOS_LOWDELAY)
+    except socket.error, msg:
+	sys.stderr.write("Socket error setting IPTOS_LOWDELAY option: %s\n" %
+			 str(msg))
 
     try:
         ticket = callback.read_tcp_obj(control_socket)
@@ -2483,14 +2527,17 @@ def open_control_socket(listen_socket, mover_timeout):
     
 ##############################################################################
 
-def open_data_socket(mover_addr, interface_ip):
+def open_data_socket(mover_addr, interface_ip = None):
     
-    Trace.message(INFO_LEVEL,
-                  "Connecting data socket to mover (%s) with interface %s."
-                  % (mover_addr, interface_ip))
-    Trace.log(e_errors.INFO,
-              "Connecting data socket to mover (%s) with interface %s."
-              % (mover_addr, interface_ip))
+    if interface_ip:
+	message = "Connecting data socket to mover (%s) with interface %s." \
+		  % (mover_addr, interface_ip)
+    else:
+	message = "Connecting data socket to mover (%s)." % (mover_addr,)
+    
+    Trace.message(INFO_LEVEL, message)
+    Trace.log(e_errors.INFO, message)
+
     try:
         #Create the socket.
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -2503,7 +2550,8 @@ def open_data_socket(mover_addr, interface_ip):
                 flags | os.O_NONBLOCK)
 
     try:
-        data_path_socket.bind((interface_ip, 0))
+	if interface_ip:
+	    data_path_socket.bind((interface_ip, 0))
     except socket.error, msg:
         close_descriptors(data_path_socket)
         raise socket.error, msg
@@ -2556,6 +2604,13 @@ def open_data_socket(mover_addr, interface_ip):
     Trace.log(e_errors.INFO,
               "Data socket %s is connected to %s. " % (sockname, peername))
 
+    #try:
+	#data_path_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
+		#		    socket.IPTOS_THROUGHPUT)
+    #except socket.error, msg:
+#	sys.stderr.write("Socket error setting IPTOS_THROUGHPUT option: %s\n" %
+	#		 str(msg))
+
     return data_path_socket
 
 ############################################################################
@@ -2572,97 +2627,20 @@ def open_data_socket(mover_addr, interface_ip):
 #Returns:
 # (control_socket, 
 
-def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
+def mover_handshake(listen_socket, work_tickets, encp_intf):
     use_listen_socket = listen_socket
     ticket = {}
-    config = host_config.get_config()
+    #config = host_config.get_config()
     unique_id_list = []
     for work_ticket in work_tickets:
         unique_id_list.append(work_ticket['unique_id'])
         
-    ##19990723:  resubmit request after 15minute timeout.  Since the
-    # unique_id is unchanged the library manager should not get
-    # confused by duplicate requests.
-    #timedout=0
-    while 1:  ###not (timedout or reply_read):
-
-        #Attempt to get the routing socket before opening the others
-        try:
-            #There is no need to do this on a non-multihomed machine.
-            if config and config.get('interface', None):
-                ticket, use_listen_socket = open_routing_socket(
-		    route_server, unique_id_list, encp_intf)
-        except (EncpError,):
-            exc, msg = sys.exc_info()[:2]
-            #Return the entire ticket.  Make sure it has valid data, otherwise
-            # just having the 'status' field could cause problems in
-            # handle_retries().
-            ticket = work_ticket.copy()
-            if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                # Setting the error to RESUBMITTING is important.  If this is
-                # not done, then it would be returned as ETIMEDOUT.
-                # ETIMEDOUT is a retriable error; meaning it would retry
-                # the request to the LM, but it will fail since the ticket only
-                # contains the 'status' field (as set below).  When
-                # handle_retries() is called after mover_handshake() by
-                # having the error be RESUBMITTING, encp will resubmit all
-                # pending requests (instead of failing on retrying one
-                # request).
-                ticket['status'] = (e_errors.RESUBMITTING, None)
-            elif hasattr(msg, "type"):
-                ticket['status'] = (msg.type, str(msg))        
-            else:
-                ticket['status'] = (e_errors.NET_ERROR, str(msg))
-                
-            #Since an error occured, just return it.
-            return None, None, ticket
-
-        if config and config.get('interface', None):
-            Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (ROUTING)")
-            Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-            Trace.log(e_errors.INFO,
-                      "Received routing ticket from %s for transfer %s." % \
-                      (ticket.get('mover', {}).get('name', "Unknown"),
-                       ticket.get('unique_id', "Unknown")))
-
         #Attempt to get the control socket connected with the mover.
         try:
-	    #The listen socket used depends on if route selection is
-	    # enabled or disabled.  If enabled, then the listening socket
-	    # returned from open_routing_socket is used.  Otherwise, the
-	    # original routing socket opened and the beginning is used.
-	    #If the routes were changed, then only wait 10 sec. before
-	    # initiating the retry.  If no routing was done, wait for the
-	    # mover to callback as originally done.
-	    if config and config.get('interface', None):
-		for i in range(int(encp_intf.mover_timeout/15)):
-		    try:
-			control_socket, mover_address, ticket = \
-					open_control_socket(
-					    use_listen_socket, 15)
-			break
-		    except (socket.error, select.error, EncpError), msg:
-                        #If a select (or other call) was interupted,
-                        # this is not an error, but should continue.
-                        if getattr(msg, "errno", None) == errno.EINTR:
-                            continue
-			#If the error was timeout, resend the reply
-			# Since, there was an exception, "ticket" is still
-			# the ticket returned from the routing call.
-			elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
-			    route_server.reply_to_caller_using_interface_ip(
-				ticket, use_listen_socket.getsockname()[0])
-			else:
-			    raise msg
-		else:
-		    #If we get here then we had encp_intf.max_retry timeouts
-		    # occur.  Giving up.
-		    raise msg
-	    else:
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, encp_intf.mover_timeout)
-        except (socket.error, select.error, EncpError):
-            exc, msg = sys.exc_info()[:2]
+        except (socket.error, select.error, EncpError), msg:
+            #exc, msg = sys.exc_info()[:2]
             if getattr(msg, "errno", None) == errno.EINTR:
                 #If a select (or other call) was interupted,
                 # this is not an error, but should continue.
@@ -2747,27 +2725,37 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         try:
             mover_addr = ticket['mover']['callback_addr']
         except KeyError:
-            exc, msg = sys.exc_info()[:2]
+            msg = sys.exc_info()[1]
             sys.stderr.write("Sub ticket 'mover' not found.\n")
-            sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+            sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
             sys.stderr.write(pprint.pformat(ticket)+"\n")
             if e_errors.is_ok(ticket.get('status', (None, None))):
-                ticket['status'] = (str(exc), str(msg))
+                ticket['status'] = (e_errors.KEYERROR, str(msg))
             return None, None, ticket
+
+	try:
+            #There is no need to do this on a non-multihomed machine.
+	    config = host_config.get_config()
+            if config and config.get('interface', None):
+		local_intf_ip = open_routing_socket(mover_addr[0], encp_intf)
+	    else:
+		local_intf_ip = work_ticket['callback_addr'][0]
+        except (EncpError,), msg:
+	    ticket['status'] = (e_errors.EPROTO, str(msg))
+	    return None, None, ticket
 
         #Attempt to get the data socket connected with the mover.
         try:
             Trace.log(e_errors.INFO,
                       "Atempting to connect data socket to mover at %s." \
                       % (mover_addr,))
-            data_path_socket = open_data_socket(mover_addr,
-                                                ticket['callback_addr'][0])
+            data_path_socket = open_data_socket(mover_addr, local_intf_ip)
 
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
 
-        except (socket.error,):
-            exc, msg = sys.exc_info()[:2]
+        except (socket.error,), msg:
+            #exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.NET_ERROR, str(msg))
             #Trace.log(e_errors.INFO, str(msg))
             close_descriptors(control_socket)
@@ -2775,7 +2763,9 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             return None, None, ticket
 
         #We need to specifiy which interface was used on the encp side.
-        ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
+        #ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
+	#ticket['encp_ip'] = local_intf_ip
+	ticket['encp_ip'] = data_path_socket.getsockname()[0]
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
         #Include new info from mover.
@@ -2940,6 +2930,38 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
             crc_flag = 1
         else:
             crc_flag = 0
+
+	################################################
+	"""
+	mover_ip = request['mover']['callback_addr'][0]
+
+	#Determine if reading or writing.  This only has importance on
+	# mulithomed machines were an interface needs to be choosen based
+	# on reading and writing usages/rates of the interfaces.
+	if getattr(e, "output", "") == "hsmfile":
+	    mode = 1 #write
+	else:
+	    mode = 0 #read
+        #Force a reload of the enstore.conf file.  This updates the global
+	# cached version of the enstore.conf file information.
+	host_config.update_cached_config()
+        #set up any special network load-balancing voodoo
+	interface=host_config.check_load_balance(mode=mode)
+        #load balencing...
+	if interface:
+	    ip = interface.get('ip')
+	    if ip and mover_ip:   #route_ticket.get('mover_ip', None):
+
+		try:
+                    #This is were the interface selection magic occurs.
+		    host_config.update_route(mover_ip, ip)
+		except (OSError, IOError, socket.error), msg:
+		    print "SOCKET ERROR:", str(msg)
+		    Trace.log(e_errors.ERROR, str(msg))
+		    #raise EncpError(getattr(msg,"errno",None),
+		    #		    str(msg), e_errors.OSERROR)
+        """
+	#####################################################
 
         if hasattr(input_file_obj, "fileno"):
             input_fd = input_file_obj.fileno()
@@ -4566,7 +4588,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #Open the control and mover sockets.
         control_socket, data_path_socket, ticket = mover_handshake(
-            listen_socket, route_server, [work_ticket], e)
+            listen_socket, [work_ticket], e)
 
         overall_start = time.time() #----------------------------Overall Start
 
@@ -5861,6 +5883,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             #Determine the filesize.  None if non-existant.
             #file_size = get_file_size(ifullname)
+
             try:
                 #file_size = p.get_file_size()
 
@@ -6121,7 +6144,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #There is no need to deal with routing on non-multihomed machines.
         config = host_config.get_config()
         if config and config.get('interface', None):
-            route_selection = 1
+            route_selection = 0  #1
         else:
             route_selection = 0
 
@@ -6240,7 +6263,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         # listen for a mover - see if id corresponds to one of the tickets
         #   we submitted for the volume
         control_socket, data_path_socket, request_ticket = mover_handshake(
-            listen_socket, route_server, request_list, e)
+            listen_socket, request_list, e)
 
         overall_start = time.time() #----------------------------Overall Start
 
