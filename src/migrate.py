@@ -741,7 +741,7 @@ def final_scan_volume(vol):
 		vf = string.join((sg, ff, wp), '.')
 		res = vcc.modify({'external_label':vol, 'volume_family':vf})
 		if res['status'][0] == e_errors.OK:
-			ok_log(MY_TASK, "restore volume_family of", vol, "to", ff)
+			ok_log(MY_TASK, "restore file_family of", vol, "to", ff)
 		else:
 			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 			local_error = local_error + 1
@@ -828,6 +828,24 @@ def migrate_volume(vol):
 			log(MY_TASK, "set %s to migrated"%(vol))
 		else:
 			error_log(MY_TASK, "failed to set %s migrated"%(vol))
+		# set comment
+		q = "select distinct vb.label \
+			from volume va, volume vb, file fa, file fb, \
+			migration \
+			 where fa.volume = va.id and fb.volume = vb.id \
+				and fa.bfid = migration.src_bfid \
+				and fb.bfid = migration.dst_bfid \
+				and va.label = '%s';"%(vol)
+		res = db.query(q).getresult()
+		vol_list = ""
+		for i in res:
+			vol_list = vol_list + ' ' + i[0]
+		if vol_list:
+			res = vcc.set_comment(vol, "migrated to"+vol_list)
+			if res['status'][0] == e_errors.OK:
+				ok_log(MY_TASK, 'set comment of %s to "migrated to%s"'%(vol, vol_list))
+			else:
+				error_log(MY_TASK, 'failed to set comment of %s to "migrated to%s"'%(vol, vol_list))
 	else:
 		error_log(MY_TASK, "do not set %s to migrated due to previous error"%(vol))
 	return res
