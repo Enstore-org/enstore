@@ -172,16 +172,11 @@ if __name__ == "__main__" :
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
-    elif args[0] == 'RDD.media_changer' :
+    else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-    else :
-        raise "Unknown media loader type"
-        sys.exit(1)
 
     mls.set_csc(csc)
-    #mls.loadvol('VSN001', '0,0,9,1')
-    #mls.unloadvol('VSN001', '0,0,9,1')
 
     while 1:
         try:
