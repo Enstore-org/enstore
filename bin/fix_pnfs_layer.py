@@ -169,6 +169,9 @@ if __name__ == "__main__":
         if msg.errno == errno.ENOENT:
             print "file %s does not exist"%(bfinfo['pnfs_name0'],)
             sys.exit(-1)
+    except KeyError, msg:
+	print "ERROR: error getting bfid information\n   %s"%(bfinfo,)
+	sys.exit(-1)
     file = change_file_name(bfinfo['pnfs_name0'])
     l1 = readlayer(file, 1)[0]
     if bfinfo['bfid'] != l1:
