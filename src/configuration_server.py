@@ -27,7 +27,7 @@ MY_NAME = "CONFIG_SERVER"
 class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     def __init__(self):
-	self.print_id="CONFIG_DICT"
+        self.print_id="CONFIG_DICT"
         self.serverlist = {}
     def read_config(self, configfile):
         self.configdict={}
@@ -264,17 +264,13 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-	self.config_file = ""
+        self.config_file = ""
         generic_server.GenericServerInterface.__init__(self)
-
-        # bomb out if we can't find the file
-        statinfo = os.stat(self.config_file)
-
-
+        self.parse_options()
+        
     # define the command line options that are valid
     def options(self):
-        return generic_server.GenericServerInterface.options(self)+\
-	       ["config_file=",]
+        return generic_server.GenericServerInterface.options(self)+["config-file="]
 
 
 if __name__ == "__main__":
@@ -289,6 +285,10 @@ if __name__ == "__main__":
     cs = ConfigurationServer((intf.config_host, intf.config_port),
 	                     intf.config_file)
     cs.handle_generic_commands(intf)
+    # bomb out if we can't find the file
+    statinfo = os.stat(intf.config_file)
+    
+
     while 1:
         try:
             Trace.log(e_errors.INFO,"Configuration Server (re)starting")
