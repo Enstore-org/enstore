@@ -134,6 +134,10 @@ class GenericDriver:
                 'product_id'     :None,
                 'vendor_id'     :None}
 
+    def get_allStats( self, device="" ):
+        return self.get_stats()
+
+
     def fd_xfer( self, fd, siz_bytes, crc_flag=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
 	# no crc if crc_flag is 0
