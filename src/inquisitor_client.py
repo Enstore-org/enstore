@@ -91,7 +91,8 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to return the timeout between gathering stats
 	return self.send(t)
 
-    def plot (self, logfile_dir="", start_time="", stop_time=""):
+    def plot (self, logfile_dir="", start_time="", stop_time="", mcs=[],
+              keep=0, pts_dir=""):
 	# tell the inquisitor to plot bytes per unit of time
 	t = {"work"        : "plot" }
 	if logfile_dir:
@@ -100,6 +101,13 @@ class Inquisitor(generic_client.GenericClient):
 	    t["start_time"] = start_time
 	if stop_time:
 	    t["stop_time"] = stop_time
+        if keep:
+            t["keep"] = keep
+        if pts_dir:
+            t["pts_dir"] = pts_dir
+        if mcs:
+            # the user  specified a device to plot the data for.
+            t['mcs'] = mcs
 	return self.send(t)
 
 
@@ -124,6 +132,9 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.logfile_dir = ""
 	self.start_time = ""
 	self.stop_time = ""
+        self.mcs = []
+        self.keep = 0
+        self.pts_dir = ""
         generic_client.GenericClientInterface.__init__(self)
 
     #  define our specific help
@@ -148,7 +159,8 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	       ["get_max_ascii_size", "dump"] +\
 	       ["refresh=", "get_refresh", "max_encp_lines="] +\
 	       ["get_max_encp_lines", "plot", "logfile_dir="] +\
-	       ["start_time=", "stop_time="]
+	       ["start_time=", "stop_time=", "mc=", "keep"]   +\
+               ["pts_dir="]
 
 
 if __name__ == "__main__" :
@@ -207,7 +219,8 @@ if __name__ == "__main__" :
 	print repr(ticket['max_encp_lines'])
 
     elif intf.plot:
-	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time)
+	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time,
+                          intf.mcs, intf.keep, intf.pts_dir)
 
     else:
 	intf.print_help()

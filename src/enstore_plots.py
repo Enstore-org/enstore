@@ -39,9 +39,15 @@ class EnPlot(enstore_status.EnFile):
         # create the ps file, copy it to the users dir
 	os.system("gnuplot %s;cp %s %s;"%(self.gnufile, self.psfile, dir))
 
-    def cleanup(self):
-        # delete the gnu command file and the data points file
-	os.system("rm %s;rm %s*"%(self.gnufile, self.ptsfile))
+    def cleanup(self, keep, pts_dir):
+        if not keep:
+            # delete the gnu command file and the data points file
+            os.system("rm %s;rm %s*"%(self.gnufile, self.ptsfile))
+        else:
+            if pts_dir:
+                # move these files somewhere
+                os.system("mv %s %s;mv %s* %s"%(self.gnufile, pts_dir,
+                                                self.ptsfile, pts_dir))
 
 class MphGnuFile(enstore_status.EnFile):
 
@@ -53,7 +59,7 @@ class MphGnuFile(enstore_status.EnFile):
 	for info in gnuinfo:
 	    self.filedes.write("set title 'Mount Count For "+info[0]+ \
 	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
-	                       "' using 1:2 t '' with boxes\n")
+	                       "' using 1:2 t '' with impulses lw 20\n")
 
 class MphDataFile(EnPlot):
 
@@ -250,7 +256,7 @@ class BpdGnuFile(enstore_status.EnFile):
 	                   "set grid\n"+ \
 	                   "set yrange [0: ]\n"+ \
 	                   "set format x \"%m-%d\"\n"+ \
-	                   "plot '"+ptsfile+"' using 1:2 t '' w boxes\n")
+	                   "plot '"+ptsfile+"' using 1:2 t '' w impulses lw 20\n")
 
 class BpdDataFile(EnPlot):
 

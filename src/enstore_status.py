@@ -28,6 +28,7 @@ EURATE = 7
 # different MOUNT line pieces from log file
 MDEV = 4
 MSTART = 5
+MDICTS = 6
 
 # message is either a mount request or an actual mount
 MREQUEST = 0
@@ -96,38 +97,48 @@ def strip_file_dir(str):
     if not ind == -1:
 	str = str[(ind+1):]
 
+# locate and pull out the dictionaries in the text message. assume that if
+# there is more than one dict, they are of the form -
+#
+#                 dict1 , dict2 , dict3 ...
+#
+# with only a comma and whitespace between them
+def get_dict(text):
+    dicts = []
+    start = string.find(text, "{")
+    if not start == -1:
+        end = string.rfind(text, "}")
+        if not end == -1:
+            # we have a start and an end curly brace, assume that all inbetween
+            # are part of the dictionaries
+            try:
+                dicts = eval(text[start:end+1])
+                if len(dicts) == 1:
+                    # dicts is a dictionary, we want to return a list
+                    dicts = [dicts,]
+            except SyntaxError:
+                # the text was not in the right format so ignore it
+                pass
+    return dicts
+
 # parse the encp line
 def parse_encp_line(line):
-    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
-                                                   string.split(line, None, 6)
-    if 0: print etmp,etmp2 # quiet lint
-    if type(erest) == type([]):
-        # if erest is a list we do not currently handle this format
-        return []
-    if estatus == e_errors.sevdict[e_errors.INFO]:
-        try:
-            [erest2, erest3] = string.splitfields(erest, ":", 1)
-            # erest2 has the file name info which we do not need, get the 
-            # total data transfer rate from the end of erest3
-            [erest2, tt] = string.splitfields(erest3, "(", 1)
-            [tt, etmp] = string.splitfields(tt, ")",1)
-            [tt, etmp] = string.splitfields(tt, " ",1)
-            erate = string.splitfields(erest2, " ")
-        except ValueError:
-            # we do not handle this formatting
-            return []
-    else:
-        # there was an error or warning
-        try:
-            [str1, str2, erest2] = string.splitfields(erest, ":", 2)
-	    return [etime, enode, euser, estatus, str1, str2, erest2]
-        except :
-            # the leftover text was formatted funny, just output it
-	    return [etime, enode, euser, estatus, erest]
+    [etime, enode, etmp, euser, estatus, etmp2, etype, erest] = \
+                                                   string.split(line, None, 7)
+    if 0: print etmp,etmp2,etype # quiet lint
+
     try:
-        return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
-    except IndexError:
+        [erest2, erest3] = string.splitfields(erest, ":", 1)
+        # erest2 has the file name info which we do not need, get the 
+        # total data transfer rate from the end of erest3
+        [erest2, tt] = string.splitfields(erest3, "(", 1)
+        [tt, etmp] = string.splitfields(tt, ")",1)
+        [tt, etmp] = string.splitfields(tt, " ",1)
+        erate = string.splitfields(erest2, " ")
+    except ValueError:
+        # we do not handle this formatting
         return []
+    return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
 
 class EnStatus:
 
@@ -354,24 +365,27 @@ class EnStatus:
     def format_moverstatus(self, ticket):
         if 0: print self     # lint fix
 	spacing = "\n    "
-        got_vol = 0
 	aString = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
-            got_vol = 1
 	    p = "Current Transfer : "
 	    if ticket["mode"] == "r":
 	        m = " reading "+repr(ticket["bytes_to_xfer"])+\
                     " bytes from Enstore"
                 f_in = 1
                 f_out = 0
+                got_vol = 1
 	    elif ticket["mode"] == "w":
 	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
                     " bytes to Enstore"
                 f_in = 0
                 f_out = 1
+                got_vol = 1
             elif ticket["mode"] == "u":
                 got_vol = 0
-                m = " busy dismounting volume %s"%ticket['tape']
+                m = " dismounting volume %s"%ticket['tape']
+            else:
+                got_vol = 0
+                m = " "
 	elif ticket["state"] == "idle":
 	    p = "Last Transfer : "
 	    m = " "
@@ -387,6 +401,8 @@ class EnStatus:
                 else:
                     # we don't know what the last transfer was
                     got_vol = 0
+            else:
+                got_vol = 0
 
         if got_vol:
             v = ",  Volume : "+ticket['tape']
@@ -424,8 +440,14 @@ class EnFile:
 	    self.filedes = 0
 
     # remove the file
-    def cleanup(self):
-	os.system("rm %s"%self.file_name)
+    def cleanup(self, keep, pts_dir):
+        if not keep:
+            # delete the data file
+            os.system("rm %s"%self.file_name)
+        else:
+            if pts_dir:
+                # move these files somewhere
+                os.system("mv %s %s"%(self.file_name, pts_dir))
 
 class EnStatusFile(EnFile):
 
@@ -665,7 +687,7 @@ class EnDataFile(EnFile):
 	else:
 	    cdcmd = "cd "+indir+";"
 	try:
-	    os.system(cdcmd+"fgrep '"+text+"' "+inFile+fproc+"> "+oFile)
+	    os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
 	except:
 	    self.file_name = ""
 	    format = str(sys.argv)+" "+\
@@ -733,26 +755,43 @@ class EnMountDataFile(EnDataFile):
     # parse the mount line
     def parse_line(self, line):
         if 0: print self # quiet lint
-	[etime, enode, etmp, euser, estatus, dev, erest] = \
-                                                   string.split(line, None, 6)
+	[etime, enode, etmp, euser, estatus, dev, type, erest] = \
+                                                   string.split(line, None, 7)
         if 0: print etmp #quiet lint
-	if erest[0:10] == "Requesting":
+	if type == string.rstrip(Trace.MSG_MC_LOAD_REQ) :
 	    # this is the request for the mount
 	    start = MREQUEST
 	else:
 	    start = MMOUNT
+
 	# parse out the file directory , a remnant from the grep in the time 
 	# field
 	strip_file_dir(etime)
 
-	return [etime, enode, euser, estatus, dev, start]
+        # pull out any dictionaries from the rest of the message
+        msg_dicts = get_dict(erest)
 
-    # pull out the plottable data from each line
-    def parse_data(self):
+	return [etime, enode, euser, estatus, dev, start, msg_dicts]
+
+    # given a list of media changers and a log file message, see if any of the
+    # media changers are mentioned in the log file message
+    def mc_in_list(self, msg, mcs):
+        for msgDict in msg:
+            for mc in mcs:
+                if mc == msgDict.get("media_changer", ""):
+                    return 1
+        else:
+            return 0
+
+    # pull out the plottable data from each line that is from one of the
+    # specified movers
+    def parse_data(self, mcs):
 	for line in self.lines:
 	    minfo = self.parse_line(line)
-	    self.data.append([minfo[MDEV], string.replace(minfo[ETIME], \
-	                LOG_PREFIX, ""), minfo[MSTART]])
+            if not mcs or self.mc_in_list(minfo[MDICTS], mcs):
+                self.data.append([minfo[MDEV], string.replace(minfo[ETIME],
+                                                              LOG_PREFIX, ""),
+                                  minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 

@@ -52,7 +52,6 @@ def default_max_encp_lines():
 MY_NAME = "inquisitor"
 
 LOGFILE_DIR = "logfile_dir"
-ENCP = "ENCP"
 
 ALA_PREFIX =  "alarm server    : "
 FC_PREFIX =   "file clerk      : "
@@ -291,8 +290,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	logfile = t['logfile_name']
         # create the file which contains the encp lines from the most recent
         # log file.
-	encpfile = enstore_status.EnDataFile(logfile,\
-                                             self.parsed_file+".encp", ENCP,\
+	encpfile = enstore_status.EnDataFile(logfile,
+                                             self.parsed_file+".encp",
+                                             "-e %s"%Trace.MSG_ENCP_XFER,
 	                                     "", "|sort -r")
 	encpfile.open('r')
 	encplines = encpfile.read(self.max_encp_lines)
@@ -306,9 +306,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.logc.get_last_logfile_name()
 	    logfile2 = t['last_logfile_name']
 	    if (logfile2 != logfile) and logfile2:
-	        encpfile2 = enstore_status.EnDataFile(logfile2,\
-	                                    self.parsed_file+".encp2", ENCP,\
-	                                    "", "|sort -r")
+	        encpfile2 = enstore_status.EnDataFile(logfile2,
+                                                  self.parsed_file+".encp2",
+                                                  "-e %s"%Trace.MSG_ENCP_XFER,
+	                                          "", "|sort -r")
 	        encpfile2.open('r')
 	        encplines = encplines + encpfile2.read(self.max_encp_lines-i)
 	        encpfile2.close()
@@ -579,8 +580,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.csc.get("log_server")
 	    lfd = t["log_file_path"]
 
-	self.encp_plot(ticket, lfd)
-	self.mount_plot(ticket, lfd)
+        keep = ticket.get("keep", 0)
+        pts_dir = ticket.get("pts_dir", "")
+        
+	self.encp_plot(ticket, lfd, keep, pts_dir)
+	self.mount_plot(ticket, lfd, keep, pts_dir)
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
 
@@ -693,7 +697,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
 
     # make the mount plots (mounts per hour and mount latency
-    def mount_plot(self, ticket, lfd):
+    def mount_plot(self, ticket, lfd, keep, pts_dir):
 	ofn = lfd+"/mount_lines.txt"
 
 	# parse the log files to get the media changer mount/dismount
@@ -702,44 +706,50 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line.
 	mountfile = enstore_status.EnMountDataFile(enstore_status.LOG_PREFIX+\
-	                                           "* /dev/null", ofn, \
-	                                           "edia changer load", lfd)
+	                                           "* /dev/null", ofn, 
+	                                "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
+                                                       Trace.MSG_MC_LOAD_DONE),
+                                                   lfd)
 
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	mountfile.open('r')
 	mountfile.timed_read(ticket)
 	# now pull out the info we are going to plot from the lines
-	mountfile.parse_data()
+	mountfile.parse_data(ticket.get("mcs", []))
         mountfile.close()
-        mountfile.cleanup()
+        mountfile.cleanup(keep, pts_dir)
 
-	# create the data files
-	mphfile = enstore_plots.MphDataFile(lfd)
-	mphfile.open()
-	mphfile.plot(mountfile.data)
-	mphfile.close()
-	mphfile.install(self.html_dir)
-        mphfile.cleanup()
+        # only do the plotting if we have some data
+        if mountfile.data:
+            # create the data files
+            mphfile = enstore_plots.MphDataFile(lfd)
+            mphfile.open()
+            mphfile.plot(mountfile.data)
+            mphfile.close()
+            mphfile.install(self.html_dir)
+            mphfile.cleanup(keep, pts_dir)
 
-	mlatfile = enstore_plots.MlatDataFile(lfd)
-	mlatfile.open()
-	mlatfile.plot(mountfile.data)
-	mlatfile.close()
-	mlatfile.install(self.html_dir)
-        mlatfile.cleanup()
+            mlatfile = enstore_plots.MlatDataFile(lfd)
+            mlatfile.open()
+            mlatfile.plot(mountfile.data)
+            mlatfile.close()
+            mlatfile.install(self.html_dir)
+            mlatfile.cleanup(keep, pts_dir)
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
-    def encp_plot(self, ticket, lfd):
+    def encp_plot(self, ticket, lfd, keep, pts_dir):
 	ofn = lfd+"/bytes_moved.txt"
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line.
 	encpfile = enstore_status.EnEncpDataFile(enstore_status.LOG_PREFIX+\
-	                                         "* /dev/null",\
-	                                         ofn, "ENCP", lfd)
+	                                         "* /dev/null",
+	                                         ofn,
+                                                 "-e %s"%Trace.MSG_ENCP_XFER,
+                                                 lfd)
 
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
@@ -748,6 +758,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# now pull out the info we are going to plot from the lines
 	encpfile.parse_data()
         encpfile.close()
+        encpfile.cleanup(keep, pts_dir)
 
 	bpdfile = enstore_plots.BpdDataFile(lfd)
 	bpdfile.open()
@@ -763,8 +774,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # delete any extraneous files. do it here because the xfer file
         # plotting needs the bpd data file
-        bpdfile.cleanup()
-        xferfile.cleanup()
+        bpdfile.cleanup(keep, pts_dir)
+        xferfile.cleanup(keep, pts_dir)
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
