@@ -46,6 +46,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "enstore" : enstore_constants.ENSTORE,
 	      "network" : enstore_constants.NETWORK,
 	      "alarms" : enstore_constants.ANYALARMS}
+
 server_keys = server_map.keys()
 
 # start of global variables
