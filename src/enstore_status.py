@@ -453,7 +453,7 @@ class EnHTMLFile:
     # close the file
     def close(self):
         Trace.trace(12,"{close "+self.file_name)
-	self.file.write("</pre></body>\n")
+	self.file.write(self.trailer)
 	self.file.close()
         Trace.trace(12,"}close")
 
@@ -489,6 +489,7 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 	EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh, verbose)
 	self.header2 = html_header3
+	self.trailer = "</pre></body>\n"
         Trace.trace(10,'}__init__')
 
     # open the file and write the header to the file
@@ -561,6 +562,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
         Trace.trace(10,'{__init__ encpstatusfile ')
 	EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh, verbose)
+	self.trailer = "</body>\n"
         Trace.trace(10,'}__init__')
 
     # open the file and write the header to the file
@@ -574,7 +576,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
     def format_encp(self, lines, key):
 	Trace.trace(13,"{format_encp ")
 	# include a </pre> here to finish the one started in the header
-	str = "</pre><P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
+	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
 	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
 	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
@@ -604,7 +606,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	            str2 = str2+"\n  "+einfo[4]+"\n"
 	else:
 	    str = str+"</TABLE></CENTER>\n"
-	str = str+str2+"\n"
+	str = str+str2+"</PRE>\n"
 	Trace.trace(13,"}format_encp ")
 	return str
 
