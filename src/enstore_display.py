@@ -1595,7 +1595,7 @@ class Connection:
 
         if position == None:
             #Is this necessary anymore?
-            print "An unknown error occured.  Please send the enstore" \
+            print "An unknown error occured.  Please send the enstore " \
                   "developers the following output."
             print "ERROR:", position, self.client.name, self.mover.name
             pprint.pprint(self.display.clients)
@@ -1771,9 +1771,9 @@ class MoverDisplay(Tkinter.Toplevel):
         try:
             self.state_display.destroy()
             self.state_display = None
-        except AttributeError, msg:
-            pass
-        except Tkinter.TclError, msg:
+        #except AttributeError:
+        #    pass
+        except Tkinter.TclError:
             pass
 
     def get_mover_status(self):
@@ -1784,7 +1784,7 @@ class MoverDisplay(Tkinter.Toplevel):
         try:
             csc = self.display.csc_dict[system_name]
         except (KeyError, AttributeError), msg:
-            return {'status' : (e_errors.DOESNOTEXIST, None),
+            return {'status' : (e_errors.DOESNOTEXIST, str(msg)),
                     'state' : "ERROR"}
         mov = mover_client.MoverClient(csc, mover_name)
         status = mov.status(rcv_timeout=5, tries=1)
@@ -2232,6 +2232,35 @@ class Display(Tkinter.Canvas):
             
         return 1  #Up to date.
 
+    #Called from join_thread().
+    def _join_thread(self, waitall = None):
+        global status_request_threads
+        
+        thread_lock.acquire()
+
+        #del_list = []
+        alive_list = []
+        for i in range(len(status_request_threads)):
+            if waitall:
+                status_request_threads[i].join()
+            else:
+                status_request_threads[i].join(0.0)
+            if status_request_threads[i].isAlive():
+                alive_list.append(status_request_threads[i])
+            #else:
+            #    del_list.append(i)
+
+        #del status_request_threads[0]
+        status_request_threads = alive_list
+
+        thread_lock.release()
+
+    #########################################################################
+
+    #These functions are all called from Tkinter callbacks.  Because they
+    # can happen asynchronously to normal execution protect them with
+    # display_lock (process_messages is slightly different).
+        
     #Called from self.after().
     def process_messages(self):
         if self.stopped: #If we should stop, then stop.
@@ -2276,6 +2305,9 @@ class Display(Tkinter.Canvas):
         
     #Called from self.after().
     def smooth_animation(self):
+
+        display_lock.acquire()
+        
         #If necessary, process the animation of the connections lines.
         self.connection_animation()
 
@@ -2283,8 +2315,13 @@ class Display(Tkinter.Canvas):
         self.after_smooth_animation_id = self.after(ANIMATE_TIME,
                                                     self.smooth_animation)
 
+        display_lock.release()
+
     #Called from self.after().
     def disconnect_clients(self):
+
+        display_lock.acquire()
+
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():
@@ -2308,39 +2345,23 @@ class Display(Tkinter.Canvas):
         self.after_clients_id = self.after(UPDATE_TIME,
                                            self.disconnect_clients)
 
-    #Called from join_thread().
-    def _join_thread(self, waitall = None):
-        global status_request_threads
-        
-        thread_lock.acquire()
-
-        #del_list = []
-        alive_list = []
-        for i in range(len(status_request_threads)):
-            if waitall:
-                status_request_threads[i].join()
-            else:
-                status_request_threads[i].join(0.0)
-            if status_request_threads[i].isAlive():
-                alive_list.append(status_request_threads[i])
-            #else:
-            #    del_list.append(i)
-
-        #del status_request_threads[0]
-        status_request_threads = alive_list
-
-        thread_lock.release()
+        display_lock.release()
 
     #Called from self.after().
     def join_thread(self):
-        __pychecker__ = "unusednames=i"
+
+        display_lock.acquire()
 
         self._join_thread()
         
         self.after_join_id = self.after(JOIN_TIME, self.join_thread)
 
+        display_lock.release()
+
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
+    #
+    #    display_lock.acquire()
     #
     #    now = time.time()
     #    #### Handle titling
@@ -2352,6 +2373,8 @@ class Display(Tkinter.Canvas):
     #
     #    ####force the display to refresh
     #    self.update()
+    #
+    #    display_lock.release()
 
     #########################################################################
     
