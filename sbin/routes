@@ -61,7 +61,8 @@ case $node in
                  cdfenmvr7a: \
                  cdfenmvr8a: \
                  cdfenmvr9a: \
-                 cdfenmvr10a: "
+                 cdfenmvr10a: \ 
+                 cdfendca3: cdfendca4: cdfendca5: "
           ;;
 
        *) NODES=UNKNOWN
@@ -73,7 +74,7 @@ case $node in
           ;;
   stkmvr*|d0enmvr*|cdfenmvr*) type=mover
           ;;
-  stkendca*) type=dcache
+  stkendca*|cdfendca*) type=dcache
           ;;
        *) type=UNKNOWN
           ;;
@@ -171,6 +172,10 @@ add*)
     /sbin/route add -host cdfenmvr8a  eth0;
     /sbin/route add -host cdfenmvr9a  eth0;   
     /sbin/route add -host cdfenmvr10a eth0;   
+
+    /sbin/route add -host cdfendca3   eth0
+    /sbin/route add -host cdfendca4   eth0
+    /sbin/route add -host cdfendca5   eth0
 
 
 ### rip
@@ -304,6 +309,10 @@ del*)
     /sbin/route del       cdfenmvr8a      ;
     /sbin/route del       cdfenmvr9a      ;   
     /sbin/route del       cdfenmvr10a     ;   
+
+    /sbin/route del       cdfendca3      
+    /sbin/route del       cdfendca4      
+    /sbin/route del       cdfendca5      
 
 
 ### rip
