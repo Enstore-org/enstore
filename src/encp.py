@@ -438,6 +438,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 	    fsize = file_size[i]
 
 	    if ticket['mover']['local_mover']:
+                if bytecount:
+                    print "Fatal error:  test_mode not supported with local mover"
+                    sys.exit(-1)
 		# option is not applicable -- make sure it is disabled
 		chk_crc = 0
 	    else:
