@@ -424,9 +424,6 @@ def main(e):
     for request in requests_per_vol[e.volume]:
         encp.create_zero_length_files(request['outfile'])
 
-    #Get the next volume in the list to transfer.
-    request, index = get_next_request(requests_per_vol[e.volume])
-    
     #Only the first submission goes to the LM for volume reads.  On errors,
     # encp.handle_retries() will send the request to the LM.  Thus this
     # code should only be done once.
@@ -435,10 +432,18 @@ def main(e):
         request['method'] = "read_tape_start" #evil hacks
         request['route_selection'] = 1 #On for Get..
         request['submitted'] = None #Failures won't be re-sent if not None.
+
+    ######################################################################
+    # No more "for request in requests_per_vol[e.volume]:" pieces of code
+    # should appear below this comment.
+    ######################################################################
+
+    #Get the next volume in the list to transfer.
+    request, index = get_next_request(requests_per_vol[e.volume])
+
     Trace.message(10, "LM SUBMISSION TICKET:")
     Trace.message(10, pprint.pformat(request))
-    submitted, reply_ticket = encp.submit_read_requests(
-        [request], tinfo, e)
+    submitted, reply_ticket = encp.submit_read_requests([request], tinfo, e)
     Trace.message(10, "LM RESPONCE TICKET:")
     Trace.message(10, pprint.pformat(reply_ticket))
     Trace.message(4, "Read tape submission sent to LM.")
@@ -523,7 +528,10 @@ def main(e):
 
             #Combine the ticket from the mover with the current information.
             # Remember the ealier dictionaries 'win' in setting values.
-            request = encp.combine_dict(ticket, request)
+            # encp.combine_dict() is insufficent for this dictionary munge.
+            # It must be done by hand because both tickets have correct
+            # pieces of information that is old in the other ticket.
+            request['mover'] = ticket['mover']
             #Encp create_read_request() gives each file a new unique id.
             # The LM can't deal with multiple mover file requests from one
             # LM request.  Thus, we need to set this back to the last unique
