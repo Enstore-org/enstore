@@ -58,6 +58,7 @@ EOF
 getval() { grep "$1" $2 | cut -d: -f3 | cut -f2 -d\ ; }
 getdes() { grep "$1" $2 | cut -d: -f2 ; }
 
+alarm_sent=0
 for des in \
         "Baseboard Temp 1" \
         "Baseboard Temp 2" \
@@ -79,7 +80,6 @@ for des in \
   cat <<EOF >>$output
 <tr><td align=center>$des</td>
 EOF
-  alarm_sent=0
   for i in `cat $farmlet`; do
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
