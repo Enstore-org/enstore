@@ -19,6 +19,8 @@ import enroute
 import runon
 import pdb
 
+UDP_fixed_route = 0
+
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
     if config_host:
@@ -130,37 +132,44 @@ def set_route(interface_ip, dest):
     config = get_config()
     if not config:
         return
-    interface_dict = config.get('interface', {})
 
-    interface_details = {}
-    for interface in interface_dict.keys():
-        if interface_dict[interface]['ip'] == interface_ip:
-            interface_details = interface_dict[interface]
+    err=enroute.routeAdd(dest, interface_ip)
+    if err:
+        Trace.log(e_errors.INFO, "set_route(%s, %s) failed"%(dest, interface_ip))
+    return
 
-    gw = interface_details.get('gw', None)
-    if gw is not None and dest is not None:
-        err=enroute.routeDel(dest)
-        #SENDING THINGS TO THE LOG FILE FROM THIS FUNCTION IS BAD!  IF DONE,
-        # AN INFINITE LOOP OCCURS.
-        #if err:
-        #    Trace.log(e_errors.INFO,
-        #              "enroute.routeDel(%s) returns %s" % (dest, err))
-        #else:
-        #    Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
-        err=enroute.routeAdd(dest, gw)
-        #if err:
-        #    Trace.log(e_errors.INFO,
-        #              "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
-        #else:
-        #    Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+    # The following is the previous code and is commented out
+    # interface_dict = config.get('interface', {})
 
-    return interface_details
+    # interface_details = {}
+    # for interface in interface_dict.keys():
+    #     if interface_dict[interface]['ip'] == interface_ip:
+    #         interface_details = interface_dict[interface]
+
+    # gw = interface_details.get('gw', None)
+    # if gw is not None and dest is not None:
+    #     err=enroute.routeDel(dest)
+    #     #SENDING THINGS TO THE LOG FILE FROM THIS FUNCTION IS BAD!  IF DONE,
+    #     # AN INFINITE LOOP OCCURS.
+    #     #if err:
+    #     #    Trace.log(e_errors.INFO,
+    #     #              "enroute.routeDel(%s) returns %s" % (dest, err))
+    #     #else:
+    #     #    Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
+    #     err=enroute.routeAdd(dest, gw)
+    #     #if err:
+    #     #    Trace.log(e_errors.INFO,
+    #     #              "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
+    #     #else:
+    #     #    Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+
+    # return interface_details
 
 
 def choose_interface(dest=None):
     interfaces = get_interfaces()
     if not interfaces:
-        return
+        return None
     
     choose = []
     for interface in interfaces:
@@ -239,3 +248,8 @@ def check_load_balance(mode = 0, dest = None):
             Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
 
     return interface_details
+
+# set config file, if any, once for all
+
+if get_config().get('hostip', None):
+    UDP_fixed_route = 1
