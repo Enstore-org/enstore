@@ -138,7 +138,7 @@ kftp_test() {
     transfer_setup $write_in_progress 7
     # we need to strip off the pnfs dir from $wp
     wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m -p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
+    do_transfer "kftpcp -p $strong_port -m p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
 
     if [ -r $write_in_progress ]; then
 	raise_alarm "$dcache dcache passive kftp write failed." $dcache_saag 6
@@ -148,7 +148,7 @@ kftp_test() {
     transfer_setup $read_in_progress 5
     # we need to strip off the pnfs dir from $wp
     wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
-    do_transfer "kftpcp -p $strong_port -m -p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
+    do_transfer "kftpcp -p $strong_port -m p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
 	raise_alarm "$dcache dcache passive kftp read failed" $dcache_saag 4
