@@ -78,6 +78,7 @@ class PriSelector:
 
         cur_pri = flat_ticket['basepri']
         cur_adm_pri = flat_ticket.get('adminpri',-1)
+        daq_enabled = flat_ticket.get('encp_daq',None)
         # regular priority
         self.prioritydict = self.base_dict
         pri_keys = self.base_pri_keys
@@ -90,8 +91,8 @@ class PriSelector:
                 if not self.ticket_match(flat_ticket, pri_key, conf_key): break
                 nmatches = nmatches + 1
             if nmatches == nkeys:
-                if (pri_key < self.max_reg_pri):
-                    if pri_key+cur_pri < self.max_reg_pri:
+                if (pri_key <= self.max_reg_pri):
+                    if pri_key+cur_pri <= self.max_reg_pri:
                         cur_pri = pri_key+cur_pri
                 else:
                     cur_pri = pri_key+cur_pri
@@ -108,15 +109,16 @@ class PriSelector:
                 if not self.ticket_match(flat_ticket, pri_key, conf_key): break
                 nmatches = nmatches + 1
             if nmatches == nkeys:
-                if (pri_key < self.max_reg_pri):
-                    if pri_key+cur_adm_pri < self.max_reg_pri:
+                if (pri_key <= self.max_reg_pri):
+                    if pri_key+cur_adm_pri <= self.max_reg_pri:
                         cur_adm_pri = pri_key+cur_adm_pri
                 else:
                     cur_adm_pri = pri_key+cur_adm_pri
                 break
         
         if cur_pri >= self.max_reg_pri:
-            cur_adm_pri = cur_pri / self.max_reg_pri + cur_adm_pri
+            if daq_enabled:
+                cur_adm_pri = cur_pri / self.max_reg_pri + cur_adm_pri
             cur_pri = cur_pri % self.max_reg_pri
         return cur_pri, cur_adm_pri
 
