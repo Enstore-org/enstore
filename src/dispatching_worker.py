@@ -59,6 +59,10 @@ class DispatchingWorker:
         self.interval_funcs[func] = [interval, 0]
         self.rcv_timeout = min(interval, self.rcv_timeout)
 
+    def set_interval_func(self, func,interval):
+        #Backwards-compatibilty
+        self.add_interval_func(self, func, interval)
+        
     def remove_interval_func(self, func):
         del self.interval_funcs[func]
         
