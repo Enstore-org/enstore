@@ -574,18 +574,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ff_dict = {}
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                    "num in queue = %s"%(len(queue),))
-	for elem in queue:
-	    if elem['work'] == "write_to_hsm" and \
-	       enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
-		ff = elem['vc']['file_family']
-		if ff_dict.has_key(ff):
-		    if ff_dict[ff][FF_W] > elem['vc']['file_family_width']:
-			ff_dict[ff][FF_W] = elem['vc']['file_family_width']
-		    ff_dict[ff][NUM_IN_Q] = ff_dict[ff][NUM_IN_Q] + 1
-		else:
-		    ff_dict[ff] = {FF_W : elem['vc']['file_family_width']}
-		    ff_dict[ff][NUM_IN_Q] = 1
-                    
+        # if there was no queue, then it is a safe_dict. so check if it
+        # is empty first. otherwise this becomes an infinite loop
+        if queue:
+            for elem in queue:
+                if elem['work'] == "write_to_hsm" and \
+                   enstore_functions.strip_node(elem['wrapper']['machine'][1]) == node:
+                    ff = elem['vc']['file_family']
+                    if ff_dict.has_key(ff):
+                        if ff_dict[ff][FF_W] > elem['vc']['file_family_width']:
+                            ff_dict[ff][FF_W] = elem['vc']['file_family_width']
+                        ff_dict[ff][NUM_IN_Q] = ff_dict[ff][NUM_IN_Q] + 1
+                    else:
+                        ff_dict[ff] = {FF_W : elem['vc']['file_family_width']}
+                        ff_dict[ff][NUM_IN_Q] = 1
+
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                    "return from num_in_queue")
 	return ff_dict
