@@ -2,6 +2,11 @@
 %{
 /* $Id */
 #include "zlib.h"
+
+unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
+	return adler32(crc, buf+offset, nbytes);
+}
+
 %}
 
 %include "typemaps.i"
@@ -27,3 +32,5 @@
 }
 
 zint adler32(zint, cptr, int);
+
+zint adler32_o(zint, cptr, int, int);
