@@ -124,6 +124,8 @@ class Interface:
                 self.config_list = 1
             elif opt == "--dict" :
                 self.dict = 1
+            elif opt == "--get_keys" :
+                self.get_keys = 1
             elif opt == "--getwork" :
                 self.getwork = 1
             elif opt == "--load" :
