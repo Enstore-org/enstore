@@ -101,6 +101,10 @@ if __name__ == "__main__":
         logfile = ""
         for day in range(6,-1,-1):
             logfile=logfile+" "+logname(now-day*86400)
+    elif choice == "month":
+        logfile = ""
+        for day in range(30,-1,-1):
+            logfile=logfile+" "+logname(now-day*86400)
     else:
         logfile = choice
 
