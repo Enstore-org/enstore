@@ -49,8 +49,10 @@ class accClient(generic_client.GenericClient):
 		ticket = {'work': 'hello'}
 		return self.send2(ticket)
 
-	def log_start_mount(self, volume, type, start=time.time()):
+	def log_start_mount(self, volume, type, start=None):
 		if not self.server_address: return
+		if not start:
+			start = time.time()
 		ticket = {
 			'work': 'log_start_mount',
 			'node': self.node,
@@ -60,8 +62,10 @@ class accClient(generic_client.GenericClient):
 			'start': start}
 		self.send2(ticket)
 
-	def log_finish_mount(self, volume, finish=time.time(), state='M'):
+	def log_finish_mount(self, volume, finish=None, state='M'):
 		if not self.server_address: return
+		if not finish:
+			finish = time.time()
 		ticket = {
 			'work': 'log_finish_mount',
 			'node': self.node,
@@ -70,12 +74,14 @@ class accClient(generic_client.GenericClient):
 			'state': state}
 		self.send2(ticket)
 
-	def log_finish_mount_err(self, volume, finish=time.time(), state='E'):
+	def log_finish_mount_err(self, volume, finish=None, state='E'):
 		if not self.server_address: return
 		self.log_finish_mount(volume, finish, state)
 
-	def log_start_dismount(self, volume, type, start=time.time()):
+	def log_start_dismount(self, volume, type, start=None):
 		if not self.server_address: return
+		if not start:
+			start = time.time()
 		ticket = {
 			'work': 'log_start_dismount',
 			'node': self.node,
@@ -85,8 +91,10 @@ class accClient(generic_client.GenericClient):
 			'start': start}
 		self.send2(ticket)
 
-	def log_finish_dismount(self, volume, finish=time.time(), state='D'):
+	def log_finish_dismount(self, volume, finish=None, state='D'):
 		if not self.server_address: return
+		if not finish:
+			finish = time.time()
 		ticket = {
 			'work': 'log_finish_dismount',
 			'node': self.node,
@@ -95,7 +103,7 @@ class accClient(generic_client.GenericClient):
 			'state': state}
 		self.send2(ticket)
 
-	def log_finish_dismount_err(self, volume, finish=time.time(), state='F'):
+	def log_finish_dismount_err(self, volume, finish=None, state='F'):
 		if not self.server_address: return
 		self.log_finish_dismount(volume, finish, state)
 
