@@ -51,7 +51,7 @@ def get_client() :
         for port in range (port1, port2) : # range (7600, 7600) has 0 members...
             success, sockt = try_a_port (host, port)
             if success :
-                Trace.trace(20,'{get_client '+repr((host,port))+" "+repr(sockt)+" "+repr(hostname,ha,hi))
+                Trace.trace(20,'{get_client '+repr((host,port))+" "+repr(sockt)+" "+repr((hostname,ha,hi)))
                 return host, port, sockt
         Trace.trace(0,'{get_client sleeping for 10 - all ports used '+\
                     repr((port1, port2)))
