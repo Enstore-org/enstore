@@ -1,8 +1,13 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
-import socket
+#import socket
 import time
 import os
 import errno
@@ -18,12 +23,12 @@ import rexec
 
 # enstore imports
 import Trace
-import setpath
+#import setpath
 import e_errors
 import checksum
 import cleanUDP
 import udp_common
-import hostaddr
+#import hostaddr
 import host_config
 
 UDPError = "UDP Error"
@@ -207,7 +212,13 @@ class UDPClient:
                 ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
                 if send_done:
                     self.send_no_wait({"work":"done_cleanup"}, dst)
-                del tsd.send_done[dst]
+                try:
+                    del tsd.send_done[dst]
+                except KeyError:
+                    #If the send_done entry for this key is already gone,
+                    # is this an error?  How does it get empty in the
+                    # first place?
+                    pass
                 return out
 	    
         #If we got here, it's because we didn't receive a response to the
