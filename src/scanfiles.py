@@ -12,6 +12,7 @@ import stat
 import string
 import time
 import errno
+import types
 
 import info_client
 import option
@@ -38,6 +39,9 @@ def warning(s):
     print s, '... WARNING'
 
 def errors_and_warnings(fname, error, warning):
+
+    if type(error) != types.ListType and type(warning) != types.ListType:
+        return
 
     print fname +' ...',
     # print warnings
@@ -193,10 +197,6 @@ def check_dir(d, f_stats):
     if check_permissions(f_stats, os.R_OK | os.X_OK):
         for entry in os.listdir(d):
 
-            #Skip blacklisted files.
-            if entry[:4] == '.bad' or entry[:8] == '.removed':
-                continue
-
             check(os.path.join(d, entry))
     else:
         msg.append("can not access directory")
@@ -208,12 +208,17 @@ def check_file(f, f_stats):
     msg = []
     warn = []
 
+    fname = os.path.basename(f)
+
     #If the file is an (P)NFS or encp temporary file, give the error that
     # it still exists.
-    if os.path.basename(f)[:4] == ".nfs" \
-           or os.path.basename(f)[-5:] == "_lock":
+    if fname[:4] == ".nfs" or fname[-5:] == "_lock":
         msg.append("found temporary file")
         return msg, warn
+
+    #Skip blacklisted files.
+    if fname[:4] == '.bad':
+        return None, None #Non-lists skips any output.
 
     """
     #Determine if the file exists and we can access it.
