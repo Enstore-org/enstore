@@ -160,9 +160,9 @@ class Mover:
         x, y = self.x, self.y
         label_offset = XY(60, 40)
         img_offset  =  XY(90, 2)
+        percent_disp_offset = XY(60, 22)
         state_offset = XY(90, 8)
         timer_offset = XY(100, 22)
-        
 
         self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
         self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
@@ -174,16 +174,20 @@ class Mover:
         self.timer_display = self.display.create_text(x+timer_offset.x, y+timer_offset.y, text='00:00:00',fill='white')
         if self.percent_done != None:
             bar_width = 38
+            #XXXX  offset variable
             self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')
             self.progress_bar = self.display.create_line(x+5,y+17,
                                                          x+6+(bar_width*self.percent_done/100.0), y+22,
                                                          fill='yellow', width=8)
             
-            self.progress_percent_display =  self.display.create_text(x+60, y+22,
+            self.progress_percent_display =  self.display.create_text(x+percent_disp_offset.x, y+percent_disp_offset.y,
                                                               text = str(self.percent_done)+"%",
                                                               fill = 'green') #,font=8)
 
     def update_state(self, state, time_in_state=0):
+        img_offset=XY(90, 2)
+        state_disp_offset=XY(90, 8)
+        
         mover_color=None
         if state == self.state:
             return
@@ -196,21 +200,23 @@ class Mover:
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
-            self.state_display = self.display.create_image(x+90, y+2, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
         else:
-            self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
+            self.state_display = self.display.create_text(x+state_disp_offset.x, y+state_disp_offset.y, text=self.state, fill='light blue')
         now = time.time()
         self.timer_started = now - time_in_state
         if state != 'ACTIVE':
             self.show_progress(None)
         self.update_timer(time_in_state)
         
-    def update_timer(self, seconds):        
+    def update_timer(self, seconds):
+        timer_offset = XY(100, 22)
+        
         x, y = self.x, self.y
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
         self.display.delete(self.timer_display)
-        self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
+        self.timer_display = self.display.create_text(x+ timer_offset.x, y+ timer_offset.y, text=self.timer_string,fill='white')
 
     def load_tape(self, volume, load_state):
         self.volume = volume
@@ -231,6 +237,7 @@ class Mover:
         self.volume.moveto(x, y)
 
     def volume_position(self, ejected=0):
+        tape_offset = XY(5, 2)
         if layout==CIRCULAR:
             k=self.index
             N=self.N
@@ -240,13 +247,16 @@ class Mover:
             x, y = scale_to_display(coord.real. coord.imag, self.display.width, self.display.height)
         else:
             if ejected:
-                x, y = self.x+self.width+5, self.y+2
+                x, y = self.x+self.width+tape_offset.x, self.y+tape_offset.y
             else:
-                x, y = self.x+5, self.y+2
+                x, y = self.x+ tape_offset.x, self.y+ tape_offset.y
         return x, y
 
 
     def show_progress(self, percent_done):
+        progress_bar_offset = XY(6, 22)
+        perc_disp_offset = XY(60, 22)
+        
         x,y=self.x,self.y
         bar_width = 38
         if percent_done == self.percent_done:
@@ -271,11 +281,11 @@ class Mover:
             return
 
         # Draw the new progress gauge
-        self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')
-        self.progress_bar = self.display.create_line(x+6,y+22,
-                                                     x+6+bar_width*(self.percent_done/100.0),y+22,
+        self.progress_bar_bg = self.display.create_rectangle(x+5,y+17,x+6+bar_width,y+26,fill='magenta')    #XXXXX  need to create variable for offset
+        self.progress_bar = self.display.create_line(x+progress_bar_offset.x, y+progress_bar_offset.y,
+                                                     x+progress_bar_offset.x+bar_width*(self.percent_done/100.0),y+progress_bar_offset.y,
                                                      fill='yellow', width=8)
-        self.progress_percent_display =  self.display.create_text(x+60, y+22,
+        self.progress_percent_display =  self.display.create_text(x+perc_disp_offset.x, y+perc_disp_offset.y,
                                                                   text = str(self.percent_done)+"%",
                                                                   fill = 'green') #,font=8)
 
@@ -458,9 +468,9 @@ class Connection:
         self.segment_start_time = 0
         self.segment_stop_time = 0
 
-    def draw(self):
+    def draw(self, n_name=None, c_name=None):
         mover_end = (self.mover.x,
-                     self.mover.y + self.mover.height/2.0) # middle of left side
+                     self.mover.y + self.mover.height/2.0) #middle of left side
         client_end = (self.client.x + self.client.width,
                       self.client.y + self.client.height/2.0) #middle of right side
         x_distance = mover_end[0] - client_end[0]
@@ -542,7 +552,6 @@ class Display(Canvas):
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
         Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
-
         self.scrollX = Scrollbar(self, orient=HORIZONTAL)
         self.scrollY = Scrollbar(self, orient=VERTICAL)
 
@@ -695,7 +704,6 @@ class Display(Canvas):
             return
         
         if words[0]== 'connect':
-            #print "CONNECT", words
             client_name = strip_domain(words[2])
             client = self.clients.get(client_name)
             if not client: ## New client, we must add it
@@ -728,6 +736,7 @@ class Display(Canvas):
             mover.t0 = time.time()
             mover.b0 = 0
             mover.show_progress(None)
+            print words[1], " disconnecting from ", client_name
             return
 
         if words[0] in ['loading', 'loaded']:
@@ -804,10 +813,13 @@ class Display(Canvas):
                     mover.connection.animate(now)
 
             #### Check for unconnected clients
+            tmp_client_dict={}
+            t={}
             for client_name, client in self.clients.items():
-                if client.n_connections > 0:
+                if client.n_connections >0:
                     continue
-                if now - client.last_activity_time >  5: # grace period
+                if now - client.last_activity_time >  5 and client.waiting != 1: # grace period; ignores clients in queue
+                    del self.clients[client_name]
                     del client
 
             #### Handle titling
