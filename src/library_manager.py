@@ -96,15 +96,15 @@ class SG_FF:
             if len(self.sg[sg]) == 0:
                 del(self.sg[sg])
         else:
-            Trace.log(e_errors.ERROR,'can not remove from sg %s %s' % (mover, volume))
-            Trace.log(e_errors.ERROR, 'SG: %s' % (self.sg,))
+            Trace.log(e_errors.INFO,'can not remove from sg %s %s' % (mover, volume))
+            Trace.log(e_errors.INFO, 'SG: %s' % (self.sg,))
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
         else:
-            Trace.log(e_errors.ERROR,'can not remove from vf %s %s' % (mover, volume))
-            Trace.log(e_errors.ERROR,'VF: %s' % (self.vf,))
+            Trace.log(e_errors.INFO,'can not remove from vf %s %s' % (mover, volume))
+            Trace.log(e_errors.INFO,'VF: %s' % (self.vf,))
 
     def put(self, mover, volume, sg, vf):
         self.delete(mover, volume, sg, vf) # delete entry to update content
