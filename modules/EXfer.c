@@ -1,3 +1,6 @@
+/* EXfer.c - Low level data transfer C modules for encp. */
+
+
 #include <Python.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -18,11 +21,6 @@
 /***************************************************************************
  constants
 **************************************************************************/
-
-/* xfs extention */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 
 /* return/break - read error */
 #define READ_ERROR (-1)
@@ -250,6 +248,9 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 
   struct stat file_info;        /* Information about the file to write to. */
 
+#ifdef O_DIRECT
+  int i_rtn;  /* Used to hold return value of fcntl() F_GETFL call. */
+#endif
 #ifdef F_DIOINFO
   struct dioattr memalign_val;  /* Information about xfs memory alignment. */
 #endif
@@ -293,13 +294,17 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 #ifdef O_DIRECT
       /* If xfs extension supported use direct i/o to avoid kernel
 	 buffering. */
-      fcntl(wr_fd, F_SETFL, O_SYNC | O_DIRECT);
-#else
-      fcntl(wr_fd, F_SETFL, O_SYNC);
+      /* First get the current descriptor flag values. */
+      if((i_rtn = fcntl(wr_fd, F_GETFL, NULL)) < 0)
+         fprintf(stderr, "fcntl(F_GETFL): %d\n", errno);
+      /* Then or the current values with the one we want to set. */
+      /*if(fcntl(wr_fd, F_SETFL, O_DIRECT | i_rtn) < 0)
+         fprintf(stderr, "fcntl(F_SETFL:O_DIRECT): %d\n", errno);*/
 #endif
 #ifdef F_DIOINFO
       /* If xfs extension supported. */
-      fcntl(wr_fd, F_DIOINFO, &memalign_val);
+      if(fcntl(wr_fd, F_DIOINFO, &memalign_val) < 0)
+         fprintf(stderr, "fcntl(F_DIOINFO): %d\n", errno);
 #endif
     }
   }
@@ -315,25 +320,32 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
     {
 #ifdef O_DIRECT
       /* If xfs extension supported use direct i/o to avoid kernel
-	 buffering. */
-      fcntl(rd_fd, F_SETFL, O_SYNC | O_DIRECT);
-#else
-      fcntl(rd_fd, F_SETFL, O_SYNC);
+         buffering. */
+      /* First get the current descriptor flag values. */
+      if((i_rtn = fcntl(rd_fd, F_GETFL, NULL)) < 0)
+         fprintf(stderr, "fcntl(F_GETFL): %d\n", errno);
+      /* Then or the current values with the one we want to set. */
+      /*if(fcntl(rd_fd, F_SETFL, O_DIRECT | i_rtn) < 0)
+         fprintf(stderr, "fcntl(F_SETFL:O_DIRECT): %d\n", errno);*/
 #endif
 #ifdef F_DIOINFO
-      fcntl(rd_fd, F_DIOINFO, &memalign_val);
+      if(fcntl(rd_fd, F_DIOINFO, &memalign_val) < 0)
+         fprintf(stderr, "fcntl(F_DIOINFO): %d\n", errno);
 #endif
     }
   }
 
 #if defined( O_DIRECT ) && defined( F_DIOINFO )
   /* If xfs direct i/o is available make sure the memory is aligned. */
-  buffer = memalign(memalign_val.d_mem, ARRAY_SIZE * blk_size);
+  if((buffer = memalign(memalign_val.d_mem, ARRAY_SIZE * blk_size)) == NULL)
+    printf("memalign failed %d\n", errno);
   memset(buffer, 0, ARRAY_SIZE * blk_size);
 #elif defined( O_DIRECT )
   /* If xfs direct i/o is available make sure the memory is aligned.  If
    this code is compiled use best guess alignment size. */
-  buffer = memalign(4096, ARRAY_SIZE * blk_size);
+  errno = 0;
+  if((buffer = memalign(sysconf(_SC_PAGE_SIZE), ARRAY_SIZE * blk_size)) == NULL)
+    printf("memalign failed %d\n", errno);
   memset(buffer, 0, ARRAY_SIZE * blk_size);
 #else
   /*allocate (and initalize) memory for the global pointers*/
@@ -760,7 +772,7 @@ static void* thread_write(void *info)
       timeout.tv_sec = write_info->timeout.tv_sec;
       timeout.tv_usec = write_info->timeout.tv_usec;
       sts = select(wr_fd+1, NULL, &fds, NULL, &timeout);
-
+      
       if (sts == -1)
       {
 	set_done_flag(&write_done);
@@ -781,6 +793,7 @@ static void* thread_write(void *info)
       errno = 0;
       sts = write(wr_fd, (buffer + (bin * block_size) + bytes_transfered),
 		  bytes_to_transfer);
+      
       if (sts == -1)
       {
 	set_done_flag(&write_done);
