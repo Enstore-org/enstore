@@ -184,7 +184,7 @@ def extract_backup(check_dir, container):
 def check_db(check_dir):
 	out_file = os.path.join(check_dir, "COMPLETE_FILE_LISTING")
 	f = open(out_file, 'w')
-	out.write('Listed at %s\n\n'%(time.ctime(time.time())))
+	f.write('Listed at %s\n\n'%(time.ctime(time.time())))
 	f.close()
 	print timeofday.tod(), "Listing all files ..."
 	cmd = "psql -d backup -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" | sed -e 's/|/ /g' >> "+out_file
