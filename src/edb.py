@@ -221,7 +221,7 @@ class FileDB(DbTable):
 	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
 		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1, rdb = rdb)
 		if dbHome:
-			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
+			self.bdb = db.DbTable(self.name, dbHome, jou, ['external_label'],0)
 		else:
 			self.dbd = None
 
