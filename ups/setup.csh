@@ -15,7 +15,7 @@ setenv PVER `cd $PYTHON_DIR;ls -d Python*`
 setenv PYTHONMOD $PYTHON_DIR/$PVER/Modules
 unsetenv PVER
 
-setenv ENSTORE_CONFIG_FILE $ENSTORE_DIR/etc/willow.conf
+setenv ENSTORE_CONFIG_FILE $ENSTORE_DIR/etc/enstore.conf-default
 setenv ENSTORE_CONFIG_PORT 7510
 setenv ENSTORE_CONFIG_HOST pcfarm9.fnal.gov
 
