@@ -24,7 +24,7 @@ class DbTable(db.DbTable):
 		# Now let's deal with all the journal files
 
 		jfile = self.dbHome+"/"+dbname+".jou"
-		cmd = "ls -c "+jfile+".*"
+		cmd = "ls -c "+jfile+".* 2>/dev/null"
 		jfiles = os.popen(cmd).readlines()
 		jfiles.append(jfile+"\012")	# to be same as the rest
 
