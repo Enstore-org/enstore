@@ -126,7 +126,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 
         # do not gzip enstoredb.dmp any more, it is already compressed
 
-	cmd="enrcp *.tar* " + " %s "%(enstoredb.dmp)+ hst_bck+":"+dir_bck
+	cmd="enrcp *.tar* " + " %s "%("enstoredb.dmp")+ hst_bck+":"+dir_bck
 	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
