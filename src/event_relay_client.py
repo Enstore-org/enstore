@@ -12,7 +12,7 @@ the message.
 
 class EventRelayClient:
 
-    def __init__(self, server, function=None, event_relay_host=None, 
+    def __init__(self, server=None, function=None, event_relay_host=None, 
 		 event_relay_port=None):
 	# get a socket on which to talk to the event relay process
 	self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
