@@ -8,6 +8,8 @@ PYMODULES=`find $(PYTHON_DIR) -name Modules -print`
 # No static version for SunOS for now
 LDFLAGS2=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-dy"; else echo "-static"; fi`
 
+OSV=`uname -s r`
+
 # just for testing
 setenvs:
 	echo "uname =" `uname`
@@ -45,6 +47,15 @@ encp:
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP
+
+        # if [ $(OSV) = "IRIX64 6.2" ] ; then echo $(OSV)
+	(cd $(ENSTORE_DIR)/modules; make all; rm EXfer.o; make -f Makefile.modules EXFER_THREADED=THREADED EXfer.so)
+	- rm -rf ENCPBIN_TEMP
+	mkdir ENCPBIN_TEMP
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp.py
+	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp ENCPBIN_TEMP/encp	ENCPBIN/encp_t
+	rm -rf ENCPBIN_TEMP
 
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
 #	mkdir MONITOR_CLIENT_BIN_TEMP
