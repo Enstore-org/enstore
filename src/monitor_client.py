@@ -118,7 +118,7 @@ class MonitorServerClient(generic_client.GenericClient):
         r,w,ex = select.select([self.c_socket], [], [self.c_socket],
                                self.timeout)
         if not r :
-            if not summary:
+            if not self.summary:
                 print "passive open did not hear back from monitor server via TCP"
             raise  errno.errorcode[errno.ETIMEDOUT]
 
@@ -216,18 +216,20 @@ class MonitorServerClient(generic_client.GenericClient):
                        read_rate, write_rate):
         if read_rate['status'] == ('ok', None) and \
            write_rate['status'] == ('ok', None):
-            print "  Success."
-            print "Network rate measured at %.4g MB/S recieving " \
-                  "and %.4g MB/S sending." % \
-                  (read_rate['rate'], write_rate['rate'])
+            if not summary:
+                print "  Success."
+                print "Network rate measured at %.4g MB/S recieving " \
+                      "and %.4g MB/S sending." % \
+                      (read_rate['rate'], write_rate['rate'])
             
             summary_d[hostname] = enstore_constants.UP
             if read_rate == 0.0 or write_rate == 0.0:
                 summary_d[hostname] = enstore_constants.WARNING
                 summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
         else:
-            print "  Error.    Status is (%s,%s)"%(read_rate['status'],
-                                                   write_rate['status'])
+            if not summary:
+                print "  Error.    Status is (%s,%s)"%(read_rate['status'],
+                                                       write_rate['status'])
             summary_d[hostname] = enstore_constants.WARNING
             summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
 
