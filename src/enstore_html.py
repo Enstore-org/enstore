@@ -55,7 +55,8 @@ RESOLVEALL = "Resolve All"
 RESOLVESELECTED = "Resolve Selected"
 
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
-	     [enstore_constants.MPD_FILE, "Mounts/Day"],
+	     [enstore_constants.MPD_FILE, "Mounts/Day (cum.)"],
+	     [enstore_constants.MPD_MONTH_FILE, "Mounts/Day (30 days)"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency"],
 	     [enstore_constants.BPD_FILE_R, "Bytes Read/Day"],
 	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day"],
