@@ -4,11 +4,12 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
-#FULL_BACKUP_DAYS="Mon Thu"
-#FULL_BACKUP_DAYS="Wed"
-#FULL_BACKUP_DAYS="Thu"
-FULL_BACKUP_DAYS="NEVER"
 
+if [ -n "${1:-}" ];then 
+  FULL=`echo $1 | tr a-z A-Z `
+else
+  FULL="NO"
+fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
@@ -99,21 +100,13 @@ LAST_BACKUP_DATE=$VAULT/last_backup_date
 last="`date -r $LAST_BACKUP_DATE`"
 list "Last backup on $last"
 
-FULL_BACKUP_FLAG=$VAULT/full_backup_needed
-FULL_BACKUP_LAST=$VAULT/full_backup_date
-
-if [ `echo $FULL_BACKUP_DAYS | grep -c "\`date +'%a'\`"` -ne 0 -a -r $FULL_BACKUP_FLAG ]; then
+if [ $FULL="FULL" ]; then
    find_options="-follow"
-   TOUCHME=$FULL_BACKUP_LAST
    kind=FULL
 else
-   reference="`date -r $FULL_BACKUP_LAST`"
    find_options="-follow -newer $LAST_BACKUP_DATE"
-   TOUCHME=$FULL_BACKUP_FLAG # indicate that another full backup is needed when the right day rolls around
    kind=INCREMENTAL
 fi
-
-#  find_options="-follow"
 
 
 #### PNFS Database Backup ##################################################
@@ -206,11 +199,6 @@ eval $cmd
 mv $START_BACKUP_DATE $LAST_BACKUP_DATE
 
 touch $TOUCHME            # indicate that the backup was successful
-if [ $kind = "FULL" ]; then
-  rm -f $FULL_BACKUP_FLAG # indicate we've done the full backup on selected day (not twice per day)
-fi
-
-
 
 #  send mail to let people know what was backed up
 cat $BACKUP_LOG | /usr/bin/Mail -s "Metadata tape backup log from $node on `uname -n`" $ENSTORE_MAIL
