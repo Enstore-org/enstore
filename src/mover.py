@@ -3163,7 +3163,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # bind control socket to data ip
                     self.control_socket.bind((host, 0))
                     u = udp_client.UDPClient()
-                    Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
+                    Trace.trace(10, "sending IP %s to %s. whole ticket %s"%
+                                (host, ticket['routing_callback_addr']), ticket)
                     Trace.trace(10, "callback socket %s" % (u.get_tsd().socket.getsockname(),))
                     try:
                         x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
