@@ -532,3 +532,5 @@ class Interface:
                 self.recycle = value
             elif opt == "--dont-try-this-at-home-erase":
                 self.dont_try_this_at_home_erase = value
+            elif opt == "--pnfs-is-automounted":
+                self.pnfs_is_automounted = 1
