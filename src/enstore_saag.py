@@ -10,7 +10,6 @@ import enstore_files
 import generic_client
 import enstore_up_down
 import monitor_client
-import enstore_files
 import www_server
 import alarm_server
 
