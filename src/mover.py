@@ -391,7 +391,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.default_dismount_delay = 31536000 #1 year
             
             
-        self.mount_delay = self.config.get('dismount_delay',
+        self.mount_delay = self.config.get('mount_delay',
                                            self.tape_driver.mount_delay)
         
         if type(self.mount_delay) != type(0):
