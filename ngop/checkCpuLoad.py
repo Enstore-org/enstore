@@ -12,17 +12,19 @@ means that no mail or alarm is generated
 
 OK_VAL = 1.0
 
-# nodes that are ok if cpuload is < 5
-LOAD5 = ["stkensrv1", "d0ensrv1", "stkendca5a", "stkensrv3", "stkensrv2"]
-LOAD5_VAL = 5.0
-
-# nodes that are ok if cpuload is < 4
-LOAD4 = ["stkenmvr5a"]
-LOAD4_VAL = 4.0
-
-# nodes that are ok if cpuload is < 3
-LOAD3 = ["stkendca4a", "stkenmvr6a", "stkenmvr4a", "stkenmvr2a", "stkendca3a"]
-LOAD3_VAL = 3.0
+NODES = {"stkensrv1" : 15.0,
+         "d0ensrv1"  : 15.0,
+         "cdfensrv1" : 15.0,
+         "stkendca5a" : 5.0,
+         "stkensrv3" : 5.0,
+         "stkensrv2" : 5.0,
+         "stkenmvr5a" : 4.0,
+         "stkendca4a" : 3.0,
+         "stkenmvr6a" : 3.0,
+         "stkenmvr4a" : 3.0,
+         "stkenmvr2a" : 3.0,
+         "stkendca3a" : 3.0,
+         }
 
 # all other nodes give the standard result,
 # anything above 2 results in an action
@@ -44,18 +46,9 @@ if __name__=="__main__":
     node = os.uname()[1]
     node = strip_domain(node)
 
-    if node in LOAD5:
-        if cpuLoad > LOAD5_VAL:
-            print cpuLoad
-        else:
-            print OK_VAL
-    elif node in LOAD4:
-        if cpuLoad > LOAD4_VAL:
-            print cpuLoad
-        else:
-            print OK_VAL
-    elif node in LOAD3:
-        if cpuLoad > LOAD3_VAL:
+    nodes = NODES.keys()
+    if node in nodes:
+        if cpuLoad > NODES[node]:
             print cpuLoad
         else:
             print OK_VAL
