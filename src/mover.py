@@ -309,7 +309,6 @@ class Buffer:
                 Trace.trace(22,"first_block %s, sanity_bytes %s"%(self.first_block,self.sanity_bytes))
                 if self.first_block and self.sanity_bytes < SANITY_SIZE:
 		    self.first_block = 0
-                    Trace.trace(22,"222222222")
                     nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
                     self.sanity_crc = checksum.adler32_o(self.sanity_crc,
                                                          data,
@@ -321,7 +320,7 @@ class Buffer:
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
-                                  (self.buffer.sanity_cookie[1],self.buffer.sanity_crc)) 
+                                  (self.sanity_cookie[1],self.sanity_crc)) 
                         crc_error = 1
                 data_ptr = data_ptr + bytes_for_cs
             except:
@@ -1023,6 +1022,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         count = 0
         defer_write = 1
+        failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             empty = self.buffer.empty()
             if (empty or
@@ -1066,10 +1066,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                failed = 1
                 break
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                      (bytes_written, nbytes), error_source=TAPE)
+                failed = 1
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
@@ -1078,6 +1080,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
+        if failed: return
         if self.bytes_written == self.bytes_to_write:
             try:
                 if self.single_filemark:
@@ -1135,15 +1138,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                         exc, detail, tb = sys.exc_info()
                         Trace.handle_error(exc, detail, tb)
                         self.transfer_failed(e_errors.CRC_ERROR, detail, error_source=TAPE)
+                        failed = 1
                         break
                     except:
                         exc, detail, tb = sys.exc_info()
                         Trace.handle_error(exc, detail, tb)
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                        failed = 1
                         break
                     if b_read <= 0:
                         self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (bytes_read,),
                                              error_source=TAPE)
+                        failed = 1
                         break
                     bytes_read = bytes_read + b_read
                     if bytes_read > bytes_to_read: #this is OK, we read a cpio trailer or something
@@ -1151,6 +1157,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
                             (self.buffer.complete_crc, saved_complete_crc))
+                if failed: return
                 if self.buffer.complete_crc != saved_complete_crc:
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                     return
@@ -1175,6 +1182,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             do_crc = 0
         driver = self.tape_driver
+        failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             if self.buffer.full():
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
@@ -1193,15 +1201,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_read = self.buffer.block_read(nbytes, driver)
             except "CRC_ERROR":
                 self.transfer_failed(e_errors.CRC_ERROR, None)
+                failed = 1
                 break
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
+                failed = 1
                 break
             if bytes_read <= 0:
                 self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
                                      error_source=TAPE)
+                failed = 1
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 if len(self.buffer._buf) != 1:
@@ -1216,6 +1227,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
                         ##XXX NB: the client won't necessarily see this message since it's still trying
                         ## to recieve data on the data socket
+                        failed = 1
                         break
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
@@ -1225,6 +1237,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
+        if failed: return
         if do_crc:
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
@@ -1263,6 +1276,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             threshold = self.bytes_to_write/5
         elif threshold * 100 < self.bytes_to_write:
             threshold = self.bytes_to_write/100
+
+        failed = 0
            
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if bytes_notified==0 or self.bytes_written - bytes_notified > threshold:
@@ -1283,6 +1298,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except "CRC_ERROR":
                 self.transfer_failed(e_errors.CRC_ERROR, None)
+                failed = 1
                 break
             except:
                 exc, detail, tb = sys.exc_info()
@@ -1290,11 +1306,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
+                failed = 1
                 break
             if bytes_written < 0:
                 if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
+                failed = 1
                 break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
@@ -1304,6 +1322,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.read_ok.set()
             
         Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
+        if failed: return
   
         if self.bytes_written == self.bytes_to_write:
             # check crc
@@ -1359,33 +1378,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_time = None
         self.unlock_state()
         
-        ### cgw - abstract this to a check_valid_filename method of the driver ?
-        if self.config['driver'] == "NullDriver": 
-            filename = ticket['wrapper'].get("pnfsFilename",'')
-            if "NULL" not in string.split(filename,'/'):
-                ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
-                self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
-                self.state = save_state
-                return 0
-        if ticket['work'] == 'read_from_hsm':
-            sanity_cookie = ticket['fc']['sanity_cookie']
-        else:
-            sanity_cookie = None
-        
-        if ticket.has_key('client_crc'):
-            client_crc_on = ticket['client_crc']
-        else:
-            client_crc_on = 1 # assume that client does CRC
-        
-        # if client_crc is ON:
-        #    write requests -- calculate CRC when writing from memory to tape
-        #    read requetsts -- calculate CRC when reading from tape to memory
-        # if client_crc is OFF:
-        #    write requests -- calculate CRC when writing to memory
-        #    read requetsts -- calculate CRC when reading memory
-
-        self.reset(sanity_cookie, client_crc_on)
-
         ticket['mover']={}
         ticket['mover'].update(self.config)
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
@@ -1410,7 +1402,43 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info.update(vc)
         self.file_info.update(fc)
         self.volume_family=vc['volume_family']
+        ### cgw - abstract this to a check_valid_filename method of the driver ?
+        if self.config['driver'] == "NullDriver": 
+            filename = ticket['wrapper'].get("pnfsFilename",'')
+            if "NULL" not in string.split(filename,'/'):
+                ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
+                self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
+                self.state = save_state
+                return 0
+            wrapper_type = volume_family.extract_wrapper(self.vol_info['volume_family'])
+            if ticket['work'] == 'write_to_hsm' and wrapper_type is not "null":
+                ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
+                self.send_client_done(ticket, e_errors.USERERROR,
+                                      'only "null" wrapper is allowed for NULL mover')
+                self.state = save_state
+                return 0
+
         delay = 0
+        if ticket['work'] == 'read_from_hsm':
+            sanity_cookie = ticket['fc']['sanity_cookie']
+        else:
+            sanity_cookie = None
+        
+        if ticket.has_key('client_crc'):
+            client_crc_on = ticket['client_crc']
+        elif self.config['driver'] == "NullDriver":
+            client_crc_on = 0
+        else:
+            client_crc_on = 1 # assume that client does CRC
+        
+        # if client_crc is ON:
+        #    write requests -- calculate CRC when writing from memory to tape
+        #    read requetsts -- calculate CRC when reading from tape to memory
+        # if client_crc is OFF:
+        #    write requests -- calculate CRC when writing to memory
+        #    read requetsts -- calculate CRC when reading memory
+
+        self.reset(sanity_cookie, client_crc_on)
         if ticket['encp'].has_key('delayed_dismount'):
             delay = 60 * int(ticket['encp']['delayed_dismount']) #XXX is this right? minutes?
                                                                   ##what does the flag really mean?
