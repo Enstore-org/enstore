@@ -449,7 +449,7 @@ EXusrTo_(  PyObject	*self
 #	define		To_	1	/* EXto_HSM Arg2 */
 #	define		Crc	2	/* EXto_HSM Arg3 */
 	PyObject	*obj_pa[3];
-	int		crc_flg, san_crc=0, dat_crc=0, dat_byts=0;
+	int		crc_flg, dat_crc=0, dat_byts=0;
 	long		filesize[3];		/* default locations */
 	long		*filesize_p[3];
 	PyObject	*attrObj_p;
@@ -610,9 +610,6 @@ EXusrTo_(  PyObject	*self
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
 	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
-	    break;
-	case SanCrc:
-	    san_crc = msgbuf_s.data;
 	    break;
 	case DatCrc:
 	    /*printf( "EXfer crc is %d\n", msgbuf_s.data );*/
