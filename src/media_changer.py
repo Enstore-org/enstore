@@ -199,7 +199,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # Do the forking and call the function
     def DoWork(self, function, ticket):
-        print "DOWORK",ticket
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
