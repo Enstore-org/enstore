@@ -775,6 +775,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt
             stats = self.tape_driver.ftt.get_stats()
             if self.stat_file:
+                if not os.path.exists(self.stat_file):
+                   dirname, basename = os.path.split(self.stat_file)
+                   if not os.path.exists(dirname):
+                       os.makedirs(dirname)
                 fd = open(self.stat_file, "w")
                 fd.write("FORMAT VERSION:         %d\n"%(22,))
                 fd.write("INIT FLAG:              %d\n"%(1,))
@@ -2489,6 +2493,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
         self.timer('transfer_time')
         after_dismount_function = None
+        volume_label = self.current_volume
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
@@ -2612,6 +2617,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.send_error_msg(error_info = (exc, msg),error_source=error_source)
         if not ftt_eio:
             self.need_lm_update = (1, ERROR, 1, error_source)
+        if exc in (e_errors.READ_VOL1_WRONG,
+                   e_errors.WRITE_VOL1_WRONG,
+                   e_errors.WRITE_VOL1_MISSING,
+                   e_errors.READ_VOL1_MISSING,
+                   e_errors.READ_VOL1_READ_ERR,
+                   e_errors.WRITE_VOL1_READ_ERR):
+           self.set_volume_noaccess(volume_label) 
         if dism_allowed:
             if save_state == DRAINING:
                 self.dismount_volume()
