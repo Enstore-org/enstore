@@ -151,6 +151,9 @@ def is_mover(server):
 def is_media_changer(server):
     return is_this(server, enstore_constants.MEDIA_CHANGER)
 
+def get_name(server):
+    return string.split(server, ".")[0]
+
 # return true if the passed server name is one of the following -
 #   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
 #   server, event_relay
