@@ -228,9 +228,20 @@ def fullpath(filename):
     return machine, filename, dirname, basename
 
 def close_descriptors(*fds):
+
+    routes_to_close = {}
+    
     #For each file descriptor that is passed in, close it.  The fds can
-    # contain itegers or class instances with a "close" function attribute.
+    # contain integers or class instances with a "close" function attribute.
     for fd in fds:
+
+        try:
+            #Obtain a list of unique ips to close the routes to.
+            routes_to_close[fd.getpeername()[0]] = 1
+        except (OSError, IOError, AttributeError, socket.error), msg:
+            Trace.log(e_errors.WARNING,
+                      "Unable to cleanup routing table: %s" % (str(msg),))
+            
         if hasattr(fd, "close"):
 	    try:
 		apply(getattr(fd, "close"))
@@ -241,6 +252,22 @@ def close_descriptors(*fds):
                 os.close(fd)
             except OSError:
                 sys.stderr.write("Unable to close fd %s.\n" % fd)
+
+    for route in routes_to_close.keys():
+        try:
+	    #Cleanup the tcp static routes to the mover nodes.
+            # (udp is handled in the udp_client module)
+            #The addition and deletion of routes can be done without fear of
+            # deleting the routes used by other encps... with some care.
+            # All tcp traffic goes to dedicated mover nodes, with
+            # one ip per media device (tape drive/disk/cdrom), a static route
+            # is not shared with any other encp.
+            host_config.unset_route(route)
+        except (AttributeError, KeyError), msg:
+            pass
+        except (OSError, IOError, socket.error), msg:
+            Trace.log(e_errors.WARNING,
+                      "Unable to cleanup routing table: %s" % (str(msg),))
 
 def format_class_for_print(object, name):
     #formulate e values output
@@ -1402,19 +1429,6 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         else:
             EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
-
-    try:
-	#Cleanup the tcp static routes to the mover nodes.
-        # (udp is handled in the udp_client module)
-        #The addition and deletion of routes can be done without fear of
-        # deleting the routes used by other encps... with some care.
-        # All tcp traffic goes to dedicated mover nodes, with
-        # one ip per media device (tape drive/disk/cdrom), a static route is
-        # not shared with any other encp.
-	host_config.unset_route(request['mover']['callback_addr'][0])
-    except (OSError, IOError, KeyError), msg:
-	Trace.log(e_errors.WARNING,
-		  "Unable to cleanup routing table: %s" % (str(msg),))
 
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
