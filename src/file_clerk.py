@@ -1166,7 +1166,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        if ticket.has_key['bfid']:
+        if ticket.has_key('bfid'):
             bfid = ticket['bfid']
         else:
             bfid = self.unique_bit_file_id()
