@@ -21,8 +21,9 @@ while 1:
         cmd_dict[seq] = (rest[3:],dat,tim)
     
     if rest[0] in ['Positive', 'Negative']:
-        (cmd,dat0,tim0) = cmd_dict.get(seq)
-        if not cmd:
+        try:
+            (cmd,dat0,tim0) = cmd_dict.get(seq)
+        except:
             continue
         if dat == dat0:
             day="%s %s->%s"%(dat,tim0,tim)
