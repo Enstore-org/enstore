@@ -377,9 +377,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			    os._exit(0)   # second child
 			    # end of the second child ##################################
 			else:
-			    # add the second childs pid to the appropriate enstore file so the
-			    # child can be killed automatically
-			    os.system("tpid=`$ENSTORE_DIR/bin/en_get_pid_dir`;echo %s >> $tpid/`uname -n`-inquisitor_pids"%(pid2,))
 			    os._exit(0)   # first child
 		    else:
 			# we are the original parent.  now we must wait for the first
