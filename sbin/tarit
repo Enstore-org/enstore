@@ -70,9 +70,14 @@ dd if=/dev/hda of=$M/partition_table.dd bs=512 count=1
 
 # generate a script excluding files we don't care about.
 # NOTE:  no users files are backed up.
+file_users=/tmp/file_users
+export file_users
+rm -f $file_users
 users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
-   users="$users --exclude=\'/home/$user/*\'" ; fi; done
+   users="$users --exclude=\'/home/$user/*\'" ; fi; rm -f $file_users; echo "$users" > $file_users; done
+users=`cat $file_users`
+rm -f $file_users
 cmd=""
 cmd="nice -n 20 tar -l
 --exclude='/lost+found/*' --exclude=/proc/ --exclude='/tmp/*' --exclude='/var/log/*'
