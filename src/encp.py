@@ -1462,12 +1462,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         # contains new ['fc'] fields.
         done_ticket = combine_dict(done_ticket, work_ticket)
 
-        #We know the file has hit some sort of media. When this occurs
-        # create a file in pnfs namespace with information about transfer.
-        #These four functions write errors/warnings to the log file and put an
+        #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-        #verify_file_size(done_ticket) #make sure file size is same.
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
@@ -1480,7 +1477,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         set_outfile_permissions(done_ticket) #Writes errors to log file.
         ###What kind of check should be done here?
 
-        set_pnfs_settings(done_ticket, client, e.verbose) #Tell pnfs file stats
+        #We know the file has hit some sort of media. When this occurs
+        # create a file in pnfs namespace with information about transfer.
+        set_pnfs_settings(done_ticket, client, e.verbose)
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
