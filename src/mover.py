@@ -549,7 +549,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written != nbytes:
-                self.transfer_failed(e_errors.WRITE_ERROR, detail)
+                self.transfer_failed(e_errors.WRITE_ERROR, None) #XXX detail?
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
@@ -591,7 +591,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.READ_ERROR, detail)
                 break
             if bytes_read <= 0:
-                self.transfer_failed(e_errors.READ_ERROR, detail)
+                self.transfer_failed(e_errors.READ_ERROR, None) ##XXX detail?
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 if len(self.buffer._buf) != 1:
@@ -637,7 +637,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written < 0:
-                self.transfer_failed(e_errors.WRITE_ERROR, detail)
+                self.transfer_failed(e_errors.WRITE_ERROR, None) #XXX detail?
                 break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
