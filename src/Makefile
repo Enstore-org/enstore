@@ -88,9 +88,9 @@ entv:
 	mkdir ENTVBIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENTV_TEMP/entv ENTVBIN
+	cp ENTV_TEMP/entv ../ups/chooseConfig ENTVBIN
 	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTVBIN/entv.table
-	# - rm -rf ENTV_TEMP
+	- rm -rf ENTV_TEMP
 
 
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
