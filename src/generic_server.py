@@ -33,7 +33,6 @@ class GenericServerInterface(interface.Interface):
 	interface.Interface.__init__(self)
 
     def options(self):
-        Trace.trace(16, "{}options")
 	return self.config_options() + ["verbose="]+\
 	       self.help_options()
 
@@ -42,10 +41,8 @@ class GenericServer(generic_cs.GenericCS):
 
     # this overrides the server_bind in TCPServer for the hsm system
     def server_bind(self):
-        Trace.trace(10,'{server_bind')
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(self.server_address)
-        Trace.trace(10,'}server_bind')
 
     # we got an uncaught error while in serve_forever
     def serve_forever_error(self, id, logger=0):
@@ -59,7 +56,6 @@ class GenericServer(generic_cs.GenericCS):
 
     # reset the verbosity
     def set_verbose(self, ticket):
-        Trace.trace(10,'{set_verbose')
         ticket["status"] = (e_errors.OK, None)
 	id = "verbose"
 	if self.__dict__.has_key(id):
@@ -72,11 +68,9 @@ class GenericServer(generic_cs.GenericCS):
 	    verbose = ticket[id]
 	    ticket["variable"] = "verbose"
 	self.send_reply(ticket)
-        Trace.trace(10,'}set_verbose')
 	
     # send back our response
     def send_reply(self, t):
-	Trace.trace(11,"{send_reply "+repr(t))
 	self.enprint(t, generic_cs.SERVER, self.verbose)
         try:
            self.reply_to_caller(t)
@@ -86,4 +80,3 @@ class GenericServer(generic_cs.GenericCS):
            self.reply_to_caller(t)
            Trace.trace(1,"}send_reply "+repr(t))
            return
-	Trace.trace(11,"}send_reply")

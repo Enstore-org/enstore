@@ -29,14 +29,11 @@ class GenericClient(generic_cs.GenericCS):
 
     # check on alive status
     def alive(self, rcv_timeout=0, tries=0):
-        Trace.trace(10,'{alive')
 	try:
             x = self.send({'work':'alive'},rcv_timeout,tries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    Trace.trace(14,"}alive - ERROR, alive timed out")
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
-	else:
-            Trace.trace(10,'}alive '+repr(x))
         return x
 
     # examine the final ticket to check for any errors
@@ -60,15 +57,11 @@ class GenericClient(generic_cs.GenericCS):
 
     # reset the verbosity in the server
     def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
-        Trace.trace(10,'{set_verbose (client)')
         x = self.send({'work':'set_verbose', 'verbose': verbosity}, \
 	              rcv_timeout, tries)
-        Trace.trace(10,'}set_verbose (client) '+repr(x))
         return x
 
     # tell the server to spill it's guts
     def dump(self, rcv_timeout=0, tries=0):
-        Trace.trace(10,'{dump')
         x = self.send({'work':'dump'}, rcv_timeout, tries)
-        Trace.trace(10,'}dump '+repr(x))
         return x
