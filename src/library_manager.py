@@ -168,8 +168,13 @@ class AtMovers:
        
 
 class LibraryManagerMethods:
-    def __init__(self, csc, sg_limits):
+    def __init__(self, name, csc, sg_limits, min_file_size, max_suspect_movers, max_suspect_volumes):
+        self.name = name
+        self.min_file_size = min_file_size
+        self.max_suspect_movers = max_suspect_movers
+        self.max_suspect_volumes = max_suspect_volumes
         # instantiate volume clerk client
+        self.csc = csc
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
@@ -852,7 +857,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               # generation
     def __init__(self, libman, csc):
         self.name_ext = "LM"
-        generic_server.GenericServer.__init__(self, csc, libman)
+        self.csc = csc
+        generic_server.GenericServer.__init__(self, self.csc, libman)
         self.name = libman
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -895,9 +901,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # add this to file size when requesting
         # a tape for writes to avoid FTT_ENOSPC at the end of the tape
         # due to inaccurate REMAINING_BYTES
-        self.min_file_size = self.keys.get('min_file_size',0L)
+        min_file_size = self.keys.get('min_file_size',0L)
         
-        LibraryManagerMethods.__init__(self, csc, sg_limits)
+        LibraryManagerMethods.__init__(self, self.name,
+                                       self.csc,
+                                       sg_limits,
+                                       min_file_size,
+                                       self.max_suspect_movers,
+                                        self.max_suspect_volumes)
         self.set_udp_client()
 
     # check startup flag
