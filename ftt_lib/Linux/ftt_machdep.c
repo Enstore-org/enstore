@@ -116,7 +116,7 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     buf.mt_count = blocksize;
     res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
 
-#ifdef 1
+#if 1
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
