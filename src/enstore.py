@@ -20,6 +20,8 @@ import volume_clerk_client
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
+# Yes, all those blasted slashes are needed and I agree it is insane. We should
+# loop on rsh and dump rgang
 CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
 
 CMD2 = ">>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
@@ -61,6 +63,12 @@ def get_farmlet(default):
         return sys.argv[2]
     else:
         return default
+
+def get_argv3():
+    if len(sys.argv) > 3:
+        return sys.argv[3]
+    else:
+        return " "
 
 def do_rgang(fdefault, path1, path2):
     farmlet = get_farmlet(fdefault)
@@ -286,28 +294,20 @@ class Enstore(EnstoreInterface):
             rtn = call_function("python $ENSTORE_DIR/src/backup.py",
                                 sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
-            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="%s enstore-start%s"%(CMD1, CMD2)
-            rtn = do_rgang_command("enstore",command)
-        elif not self.user_mode and arg1 == "Estart1":
-            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="%s enstore-start --nocheck%s"%(CMD1, CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
-            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="%s enstore-stop%s"%(CMD1, CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), CMD2)
             rtn = do_rgang_command("enstore-down",command)
         elif not self.user_mode and arg1 == "Erestart":
-            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="%s enstore-stop%s"%(CMD1, CMD2)
+            command="%s enstore-stop %s%s"%(CMD1, get_argv3(), CMD2)
             rtn1 = do_rgang_command("enstore-down",command)
-            command="%s enstore-start%s"%(CMD1, CMD2)
+            command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "emass":
             rtn = os.system('rsh rip10 "$ENSTORE_DIR/sbin/egrau"')
         elif not self.user_mode and arg1 == "Esys":
-            # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
             rtn = do_rgang_command("enstore",command)
         else:
