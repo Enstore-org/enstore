@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<doc editor="KIllustrator" mime="application/x-killustrator" >
+<head>
+<layout format="a4" orientation="portrait" width="210" height="297" lmargin="0" tmargin="0" rmargin="0" bmargin="0" />
+<grid dx="20" dy="20" align="0" />
+<helplines align="0" >
+</helplines>
+</head>
+<rectangle matrix="1 0 0 0 1 0 0 -1 1" strokecolor="255 255 255" strokestyle="0" linewidth="0" fillstyle="4" gradcolor1="255 255 255" gradcolor2="230 248 255" gradstyle="0" x="60" y="151" width="160" height="80" rounding="0" />
+<ellipse matrix="0.622378 0 0 0 1 0 35.4965 -1 1" strokecolor="200 254 255" strokestyle="0" linewidth="0" fillstyle="4" gradcolor1="230 248 255" gradcolor2="255 255 255" gradstyle="0" x="165.5" y="191.5" rx="71.5" ry="37.5" angle1="270" angle2="270" kind="full" />
+<text matrix="0.973301 0 0 0 1.80258 0 77 161.486 1" strokecolor="216 254 255" strokestyle="1" linewidth="1" fillstyle="4" gradcolor1="189 254 255" gradcolor2="123 214 220" gradstyle="2" align="0" >
+<font face="utopia" point-size="26" weight="50" italic="1" >
+ENSTORE</font>
+</text>
+</doc>
