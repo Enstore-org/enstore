@@ -102,7 +102,7 @@ if __name__=="__main__":
     if len(sys.argv) > 1 :
 	ago=string.atoi(sys.argv[1])
     else :
-	ago=10
+	ago=100
 
     try:
 	dbHome = configuration_client.ConfigurationClient(\
