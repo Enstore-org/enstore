@@ -29,12 +29,8 @@ class EventRelayMsg:
     def send(self, sock, event_relay_addr):
 	sock.sendto(self.message(), (event_relay_addr))
 
-    def format_host_port(self, host, port):
-	self.host = string.replace(host, "(", "")
-	self.port = string.atoi(string.replace(port, ")", ""))
-
     def encode_addr(self):
-	return "(%s, %s)"%(self.host, self.port)
+	return "%s %s"%(self.host, self.port)
 
 """
 Message format :  notify (host, port) msg_type1 msg_type1 ...
@@ -53,8 +49,6 @@ class EventRelayNotifyMsg(EventRelayMsg):
 	self.type, self.extra_info = decode_type(msg)
 	host, port, self.msg_types = string.split(self.extra_info, 
 						  MSG_FIELD_SEPARATOR, 2)
-	# remove any parenthesis
-	self.format_host_port(host, port)
 	
 """
 Message format:   alive (host, port) server_name 
@@ -66,8 +60,6 @@ class EventRelayAliveMsg(EventRelayMsg):
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
 	host, port, self.server = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 2)
-	# remove any parenthesis
-	self.format_host_port(host, port)
 
     def encode(self, name):
 	self.type = ALIVE
@@ -84,8 +76,6 @@ class EventRelayNewConfigFileMsg(EventRelayMsg):
     def decode(self, msg):
 	self.type, self.extra_info = decode_type(msg)
 	host, port = string.split(self.extra_info, MSG_FIELD_SEPARATOR, 1)
-	# remove any parenthesis
-	self.format_host_port(host, port)
 
     def encode(self):
 	self.type = NEWCONFIGFILE
