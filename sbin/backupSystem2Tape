@@ -12,7 +12,8 @@ if [ "$gang" = "stke" ]; then gang=stken; fi
 
 cd /diskc/enstore/$gang
 today=`date +"%Y-%m-%d-%H"`
-BACKUP=/pnfs/eagle/${gang}-sys-backups/$today
+year=`date +"%Y"
+BACKUP=/pnfs/eagle/${gang}-sys-backups/$year/$today
 mkdir $BACKUP
 if [ $? -ne 0 ]; then echo "`date` can not mkdir $BACKUP on $node "; exit 1; fi
 
