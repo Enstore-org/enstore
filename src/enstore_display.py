@@ -98,6 +98,12 @@ def find_image(name):
             img = None
     return img
     
+
+class XY:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
     
     
 #########################################################################
@@ -153,10 +159,12 @@ class Mover:
     def draw(self):
         x, y = self.x, self.y
         self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
-        self.label = self.display.create_text(x+60, y+40, text=self.name)
+        label_offset = XY(60, 40)
+        self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
         img = find_image(self.state+'.gif')
+        img_offset = XY(90,2)
         if img:
-            self.state_display = self.display.create_image(x+90, y+2, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
         else:
             self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         self.timer_display = self.display.create_text(x+100, y+22, text='00:00:00',fill='white')
@@ -308,7 +316,7 @@ class Mover:
         if N == 1:
             y = self.display.height / 2.
         else:
-            y = (k+0.5) * self.display.height  / (N+1)
+            y = (k*2.5)*(self.display.height  / (N+1))#(k+0.5) * 
         x = self.display.width - 200
         return int(x), int(y)
     
@@ -529,9 +537,31 @@ class Title:
         
 class Display(Canvas):
     """  The main state display """
-    def __init__(self, master, title, **attributes):
+    def __init__(self, master, title, window_width, window_height, canvas_width=None, canvas_height=None, **attributes):
+
+        if canvas_width is None:
+            canvas_width = window_width
+        if canvas_height is None:
+            canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
-        Canvas.__init__(self, master)
+        Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
+
+        self.scrollX = Scrollbar(self, orient=HORIZONTAL)
+        self.scrollY = Scrollbar(self, orient=VERTICAL)
+
+       #When the canvas changes size or moves, update the scrollbars
+        self['xscrollcommand']= self.scrollX.set
+        self['yscrollcommand'] = self.scrollY.set
+
+        #When scrollbar clicked on, move the canvas
+        self.scrollX['command'] = self.xview
+        self.scrollY['command'] = self.yview
+
+        #pack 'em up
+        self.scrollX.pack(side=BOTTOM, fill=X)
+        self.scrollY.pack(side=RIGHT, fill=Y)
+        self.pack(side=LEFT)
+
         Tk.title(self.master, title)
         self.configure(attributes)
         self.pack(expand=1, fill=BOTH)
@@ -800,7 +830,8 @@ if __name__ == "__main__":
     else:
         title = "Enstore"
     display = Display(master=None, title=title,
-                      width=1000, height=700,
+                      window_width=700, window_height=1600,
+                      canvas_width=1000, canvas_height=2000,
                       background=rgbtohex(173, 216, 230))
     display.mainloop()
 
