@@ -44,7 +44,7 @@ def dodebug(a,b):
 import signal
 signal.signal(3,dodebug)
 
-verbose = 0
+verbose = 0 #CGW XXX
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
@@ -81,7 +81,7 @@ class DispatchingWorker:
         self.is_child = 0
 	self.server_socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
-        
+        self.custom_error_handler = None
         # set this socket to be closed in case of an exec
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.do_collect = 1 # allow clients to override the "collect_children"
@@ -94,7 +94,9 @@ class DispatchingWorker:
 
     def reset_interval_timer(self):
         self.last_interval = time.time()
-    
+
+    def set_error_handler(self, handler):
+        self.custom_error_handler = handler
                              
     def fork(self):
         """Fork off a child process"""
@@ -169,20 +171,19 @@ class DispatchingWorker:
             if fd not in self.read_fds:
                 self.read_fds.append(fd)
         self.callback[fd]=callback
-        ##print "callbacks", self.callback
         
     def remove_select_fd(self, fd):
         if verbose: print "disable fd", fd
         if fd is None:
             return
 
-        if fd in self.write_fds:
+        while fd in self.write_fds:
             self.write_fds.remove(fd)
-        if fd in self.read_fds:
+        while fd in self.read_fds:
             self.read_fds.remove(fd)
         if self.callback.has_key(fd):
             del self.callback[fd]
-        ##print "callbacks", self.callback
+
         
     def get_request(self):
         # returns  (string, socket address)
@@ -215,6 +216,10 @@ class DispatchingWorker:
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
+            #now check for replies from send_async
+            #XXX
+
+            #now handle other incoming requests
             for fd in r:
                 if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
                                                         ##for old usage in media_changer
@@ -320,10 +325,13 @@ class DispatchingWorker:
                   (client_address, request))
 	e_errors.handle_error(exc, msg, tb)
 	Trace.log(e_errors.INFO,'-'*40)
-	self.reply_to_caller( {'status':(str(exc),str(msg), 'error'), 
-			       'request':request, 
-			       'exc_type':str(exc), 
-			       'exc_value':str(msg)} )
+        if self.custom_error_handler:
+            self.custom_error_handler(exc,msg,tb)
+        else:
+            self.reply_to_caller( {'status':(str(exc),str(msg), 'error'), 
+                                   'request':request, 
+                                   'exc_type':str(exc), 
+                                   'exc_value':str(msg)} )
 
     def alive(self,ticket):
         ticket['address'] = self.server_address
