@@ -25,15 +25,27 @@ def backup_dbase():
 
     dbFile=""
     for name in os.popen("db_archive -s  -h"+dbHome).readlines():
-	dbFile=dbFile+" "+name[:-1]
-    cmd="tar cvf dbase.tar "+dbFile+" log.*"
+        cmd = "ls -l " + name[:-1] + " | tee " + name[:-1] + ".stat"
+        Trace.log(e_errors.INFO,repr(cmd))
+        ret = os.system(cmd)
+        if ret !=0 :
+            Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
+            sys.exit(1)	
+        cmd = "db_stat -h " + dbHome + " -d " + name[:-1] + " | tee -a " + name[:-1] + ".stat"
+        Trace.log(e_errors.INFO,repr(cmd))
+        ret = os.system(cmd)
+        if ret !=0 :
+            Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
+            sys.exit(1)	
+    	dbFile=dbFile+" "+name[:-1]
+    cmd="tar cvf dbase.tar "+dbFile+" log.* *.stat"
     Trace.log(e_errors.INFO,repr(cmd))
     ret=os.system(cmd)
     if ret !=0 :
 	Trace.log(e_errors.INFO, "Failed: %s"%repr(cmd))
 	sys.exit(1)	
     for name in os.popen("db_archive  -h"+dbHome).readlines():
-	os.system("rm "+name[:-1])
+	os.system("rm "+name[:-1]+ " " + name[:-1] + ".stat")
 def archive_backup():
 
     if hst_bck == hst_local:
