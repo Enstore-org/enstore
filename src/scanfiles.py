@@ -63,14 +63,20 @@ def check(f):
         pf = pnfs.File(f)
     except (KeyboardInterrupt, SystemExit), msg:
         raise msg
-    except:
-        msg.append('corrupted meta-data')
-        return msg, warn
+    except OSError:
+        msg.append('corrupted layer 4 metadata')
+        #return msg, warn
 
     # get bfid from layer 1
-    f1 = open(layer_file(f, 1))
-    bfid = f1.readline()
-    f1.close()
+    try:
+        f1 = open(layer_file(f, 1))
+        bfid = f1.readline()
+        f1.close()
+    except OSError:
+        msg.append('corrupted layer 1 metadata')
+
+    if msg:
+        return msg, warn
 
     #Look for missing pnfs information.
     try:
@@ -79,28 +85,16 @@ def check(f):
     except (TypeError, ValueError, IndexError, AttributeError):
     	age = time.time() - f_stats[8]
         if age < ONE_DAY:
-                warn.append('younger than 1 day (%d)'%(age))
+            warn.append('younger than 1 day (%d)'%(age))
+            return msg, warn
+        
         if len(bfid) < 8:
             msg.append('missing layer 1')
-            return msg, warn
-        else:
+
+        if not hasattr(pf, 'bfid'):
             msg.append('missing layer 4')
-            fr = infc.bfid_info(bfid)
-            if fr['status'][0] != e_errors.OK:
-                msg.append('not in db')
-                return msg, warn
-            if fr.has_key('pnfs_name0'):
-                if pf.path != fr['pnfs_name0'] and \
-                   pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
-                    msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
-            else:
-                msg.append('unknown file')
-            pnfs_id = pf.get_pnfs_id()
-            if fr.has_key('pnfsid'):
-                if pnfs_id != fr['pnfsid']:
-                    msg.append('pnfsid(%s, %s)'%(pnfs_id, fr['pnfsid']))
-            else:
-                msg.append('no pnfs id in db')
+            
+        if msg or warn:
             return msg, warn
 
     # Get file database information.
@@ -108,6 +102,15 @@ def check(f):
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
 	return msg, warn
+
+    # Look for missing file database information.
+    if not fr.has_key('pnfs_name0'):
+        msg.append('no filename in db')
+    if not fr.has_key('pnfsid'):
+        msg.append('no pnfs id in db')
+
+    if msg or warn:
+        return msg, warn
 
     #Compare pnfs metadata with file database metadata.
     
@@ -117,6 +120,7 @@ def check(f):
             msg.append('label(%s, %s)'%(pf.volume, fr['external_label']))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted external_label')
+        
     # location cookie
     try:
         # if pf.location_cookie != fr['location_cookie']:
@@ -127,6 +131,7 @@ def check(f):
             msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted location_cookie')
+        
     # size
     try:
         real_size = os.stat(f)[stat.ST_SIZE]
@@ -136,6 +141,7 @@ def check(f):
             msg.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted size')
+        
     # file_family
     try:
         if ff.has_key(fr['external_label']):
@@ -153,6 +159,7 @@ def check(f):
             msg.append('file_family(%s, %s)'%(pf.file_family, file_family))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted file_family')
+        
     # pnfsid
     try:
         pnfs_id = pf.get_pnfs_id()
@@ -160,6 +167,7 @@ def check(f):
             msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, pnfs_id, fr['pnfsid']))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted pnfsid')
+        
     # drive
     try:
         if fr.has_key('drive'):	# some do not have this field
@@ -169,21 +177,19 @@ def check(f):
                     msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted drive')
+        
     # path
     try:
-        if pf.path != fr['pnfs_name0'] and \
-           pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
-            warn.append('original_pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
+        if pf.p_path != fr['pnfs_name0'] and \
+               pnfs.get_local_pnfs_path(pf.p_path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
+            #print layer 4, current name, file database.  ERROR
+            msg.append("filename(%s, [%s], %s)" % (pf.p_path, pf.path, fr['pnfs_name0']))
+        elif pf.path != pf.p_path and \
+                 pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(pf.p_path):
+            #print current name, then original name.  WARNING
+            warn.append('original_pnfs_path(%s, %s)'%(pf.path, pf.p_path))
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted pnfs_path')
-
-    # path2
-    try:
-        if pf.path != pf.p_path and \
-           pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(pf.p_path):
-            warn.append('moved_path(%s, %s)'%(pf.path, pf.p_path))
-    except (TypeError, ValueError, IndexError, AttributeError):
-        msg.append('no or corrupted l4_pnfs_path')
 
     # deleted
     try:
