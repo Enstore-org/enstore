@@ -195,6 +195,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 	    if label : 	pass
 	    else : break
             v = copy.deepcopy(dict[label])
+	    #pprint.pprint(v)
             if v["library"] != library :
                 continue
             if v["file_family"] != file_family :

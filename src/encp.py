@@ -178,10 +178,12 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
             # if no ticket, then this is a not a retry
             except NameError:
+		file_clerk = {}
                 work_ticket = {"work"               : "write_to_hsm",\
                                "delayed_dismount"   : delayed_dismount,\
                                "priority"           : 1,\
                                "library"            : library[i],\
+			       "file_clerk"         : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
                                "orig_filename"      : inputlist[i],\
@@ -329,7 +331,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
         # Check the CRC
             if chk_crc != 0:
-                if done_ticket["complete_crc"] != mycrc :
+                if done_ticket["file_clerk"]["complete_crc"] != mycrc :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
@@ -346,7 +348,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
         Trace.trace(10,"write_to_hsm adding to pnfs "+outputlist[i])
         p=pnfs.pnfs(outputlist[i])
         # save the bfid and set the file size
-        p.set_bit_file_id(done_ticket["bfid"],file_size[i])
+        p.set_bit_file_id(done_ticket["file_clerk"]["bfid"],file_size[i])
         # create volume map and store cross reference data
         p.set_xreference(done_ticket["file_clerk"]["external_label"],
                          done_ticket["file_clerk"]["bof_space_cookie"])
@@ -378,13 +380,13 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
         if list or ninput>1:
             print format %\
                   (inputlist[i], outputlist[i], fsize,\
-                   done_ticket["external_label"],\
+                   done_ticket["file_clerk"]["external_label"],\
                    tinfo1["rate"+repr(i)], uinfo["uname"],\
                    time.time()-t0)
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
-                  done_ticket["external_label"],
+                  done_ticket["file_clerk"]["external_label"],
                   tinfo1["rate"+repr(i)], uinfo["uname"],
                   time.time()-t0)
 
@@ -556,10 +558,11 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 uinfo["fullname"] = outputlist[i]
 
                 # generate the work ticket
+		file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"               : "read_from_hsm",\
                                "user_info"          : uinfo,\
+			       "file_clerk"         : file_clerk,\
                                "pnfs_info"          : pinfo[i],\
-                               "bfid"               : bfid[i],\
                                "sanity_size"        : 5000,\
                                "user_callback_port" : port,\
                                "user_callback_host" : host,\
@@ -697,7 +700,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 
             # verify that the crc's match
             if chk_crc != 0 :
-                if done_ticket["complete_crc"] != mycrc :
+                if done_ticket["file_clerk"]["complete_crc"] != mycrc :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
@@ -738,13 +741,13 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
             if list or ninput>1:
                 print format %\
                       (inputlist[j], outputlist[j], fsize,\
-                       done_ticket["external_label"],\
+                       done_ticket["file_clerk"]["external_label"],\
                        tinfo["rate"+repr(j)], uinfo["uname"],\
                        time.time()-t0)
 
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
-                      done_ticket["external_label"],
+                      done_ticket["file_clerk"]["external_label"],
                       tinfo["rate"+repr(j)], uinfo["uname"],
                       time.time()-t0)
 

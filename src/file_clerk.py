@@ -20,7 +20,9 @@ from db import dBTable
 class FileClerkMethods(DispatchingWorker) :
 
     # we need a new bit field id for each new file in the system
+    """
     def new_bit_file(self, ticket) :
+     # input ticket is a file clerk part of the main ticket
      try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
@@ -30,14 +32,44 @@ class FileClerkMethods(DispatchingWorker) :
         record["sanity_cookie"]    = ticket["sanity_cookie"]
         record["complete_crc"]     = ticket["complete_crc"]
 
-        # get a new bit fit id
+        # get a new bit file id
         bfid = self.unique_bit_file_id()
         record["bfid"] = bfid
-
         # record it to the database
         dict[bfid] = copy.deepcopy(record)
 
         ticket["bfid"] = bfid
+        ticket["status"] = "ok"
+        self.reply_to_caller(ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+     """
+
+    # we need a new bit field id for each new file in the system
+    def new_bit_file(self, ticket) :
+     # input ticket is a file clerk part of the main ticket
+     try:
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
+        record = {}
+        record["external_label"]   = ticket["file_clerk"]["external_label"]
+        record["bof_space_cookie"] = ticket["file_clerk"]["bof_space_cookie"]
+        record["sanity_cookie"]    = ticket["file_clerk"]["sanity_cookie"]
+        record["complete_crc"]     = ticket["file_clerk"]["complete_crc"]
+
+        # get a new bit file id
+        bfid = self.unique_bit_file_id()
+        record["bfid"] = bfid
+        # record it to the database
+        dict[bfid] = copy.deepcopy(record)
+
+        ticket["file_clerk"]["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
         return
@@ -58,7 +90,11 @@ class FileClerkMethods(DispatchingWorker) :
         # everything is based on bfid - make sure we have this
         try:
             key="bfid"
-            bfid = ticket[key]
+	    print "FILE CLERK"
+	    pprint.pprint(ticket["file_clerk"])
+	    print "=========================="
+            bfid = ticket["file_clerk"][key]
+            #bfid = ticket[key]
         except KeyError:
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
@@ -85,9 +121,10 @@ class FileClerkMethods(DispatchingWorker) :
             return
 
         # copy all file information we have to user's ticket
-        for key in finfo.keys() :
-            ticket[key] = finfo[key]
+        #for key in finfo.keys() :
+        #    ticket[key] = finfo[key]
         ticket["file_clerk"] = finfo
+	
 
         # become a client of the volume clerk to get library information
         vcc = VolumeClerkClient(self.csc)
@@ -95,7 +132,7 @@ class FileClerkMethods(DispatchingWorker) :
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
-            external_label = ticket[key]
+            external_label = ticket["file_clerk"][key]
         except KeyError:
             ticket["status"] = "File Clerk: "+key+" key is missing"
             pprint.pprint(ticket)
@@ -129,6 +166,7 @@ class FileClerkMethods(DispatchingWorker) :
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
+     print "NORMAL"
 
     def get_user_sockets(self, ticket) :
         file_clerk_host, file_clerk_port, listen_socket =\

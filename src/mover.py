@@ -43,6 +43,7 @@ import timeofday
 import traceback
 import socket				# for init(config_host=="localhost"...)
 import binascii				# for crc
+import pprint
 
 #enstore modules
 import volume_clerk_client		# -.
@@ -80,7 +81,6 @@ class Mover:
     # The next set of methods are ones that will be invoked via an eval of
     # the 'work' key of the ticket received.
     #
-
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket):
         time.sleep(self.sleeptime)
@@ -180,10 +180,9 @@ class Mover:
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
-
         self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
         # double check that we are talking about the same volume
-        if ticket["external_label"] != self.external_label:
+        if ticket["file_clerk"]["external_label"] != self.external_label :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and tell him we are going to append to volume
@@ -266,20 +265,30 @@ class Mover:
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
         # Tell volume server & update database
-        self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
+        self.vticket = vcc.set_remaining_bytes(ticket["file_clerk"]\
+					       ["external_label"],
                                                remaining_bytes,
                                                eod_cookie,
                                                wr_err,rd_err,\
                                                wr_access,rd_access)
         # connect to file clerk and get new bit file id
         fc = file_clerk_client.FileClerkClient(self.csc)
-        self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
+	"""
+        self.fticket = fc.new_bit_file(file_cookie,ticket["file_clerk"]\
+				       ["external_label"],
                                        sanity_cookie,complete_crc)
+        """
+	ticket["work"] = "new_bit_file"
+	ticket["file_clerk"]["bof_space_cookie"] = file_cookie
+	ticket["file_clerk"]["sanity_cookie"] = sanity_cookie
+	ticket["file_clerk"]["complete_crc"] = complete_crc
+	ticket = fc.new_bit_file(ticket)
+
         # bfid & crc needed, but save other useful information for user too
-        ticket["bfid"] = self.fticket["bfid"]
-        ticket["complete_crc"] = complete_crc
+        #ticket["bfid"] = self.fticket["bfid"]
+        #ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
-        ticket["file_clerk"] = self.fticket
+        #ticket["file_clerk"] = self.fticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
@@ -305,7 +314,7 @@ class Mover:
     def read_from_hsm(self, ticket):
 
         # double check that we are talking about the same volume
-        if ticket["external_label"] != self.external_label:
+        if ticket["file_clerk"]["external_label"] != self.external_label :
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and check on volume
@@ -323,7 +332,7 @@ class Mover:
         drive_error = 0
         user_recieve_error = 0
         bytes_sent = 0
-        sanity_cookie = ticket["sanity_cookie"]
+        sanity_cookie = ticket["file_clerk"]["sanity_cookie"]
         complete_crc = 0
 
         # call the user and announce that your her mover
@@ -334,7 +343,8 @@ class Mover:
 
         # open the hsm file for reading and read it
         try:
-            self.driver.open_file_read(ticket["bof_space_cookie"])
+	    print "Trying to open file" 
+            self.driver.open_file_read(ticket["file_clerk"]["bof_space_cookie"])
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
 
@@ -350,22 +360,22 @@ class Mover:
 
         # get the error/mount counts and update database
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
-        vcc.update_counts(ticket["external_label"],
+        vcc.update_counts(ticket["file_clerk"]["external_label"],
                           wr_err,rd_err,wr_access,rd_access)
 
         # if media error, mark volume readonly, unbind it & tell user to retry
-        if media_error:
-            vcc.set_system_readonly(ticket["external_label"])
+        if media_error :
+            vcc.set_system_readonly(ticket["file_clerk"]["external_label"])
             self.unilateral_unbind_next(ticket)
-            msg = "Volume "+repr(ticket["external_label"])
+            msg = "Volume "+repr(ticket["file_clerk"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
 
         # drive errors are bad:  unbind volule it & tell user to retry
-        elif drive_error:
-            vcc.set_hung(ticket["external_label"])
+        elif drive_error :
+            vcc.set_hung(ticket["file_clerk"]["external_label"])
             self.unilateral_unbind_next(ticket)
-            msg = "Volume "+repr(ticket["external_label"])
+            msg = "Volume "+repr(ticket["file_clerk"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
             #since we will kill ourselves, tell the library manager now....
             ticket = send_library_manager()
@@ -374,7 +384,7 @@ class Mover:
         # All is well - read has finished correctly
 
         # add some info to user's ticket
-        ticket["complete_crc"] = complete_crc
+        #ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
@@ -392,7 +402,7 @@ class Mover:
         ticket["driver"] = dinfo
 
         # tell user
-        
+        pprint.pprint(ticket)
         self.logc.send(log_client.INFO,2,"READ"+str(ticket))
         self.send_user_last(ticket)
 

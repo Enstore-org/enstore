@@ -34,7 +34,7 @@ class FileClerkClient(BaseDefaults, ClientDefaults) :
 
     def read_from_hsm(self, ticket) :
         return self.send(ticket)
-
+    """
     def new_bit_file(self, bof_space_cookie \
                          , external_label \
                          , sanity_cookie \
@@ -44,6 +44,12 @@ class FileClerkClient(BaseDefaults, ClientDefaults) :
                           "external_label"   : external_label, \
                           "sanity_cookie"    : sanity_cookie, \
                           "complete_crc"     : complete_crc })
+    """
+    """ To keep it consistent with approach to transferring a ticket
+        send the whole ticket to file clerk
+    """
+    def new_bit_file(self, ticket) :
+        return self.send(ticket)
 
     def get_bfids(self):
 

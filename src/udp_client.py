@@ -7,6 +7,7 @@ import errno
 import exceptions
 import errno
 import sys
+import binascii
 from base_defaults import default_host, default_port, BaseDefaults
 
 TRANSFER_MAX=16384
@@ -94,9 +95,12 @@ class UDPClient(BaseDefaults):
         # keep track of where we are sending things so we can clean up later
         self.where_sent[address] = (self.ident,text)
 
+	# CRC text
+        body = `(self.ident, self.number, text)`
+	crc = binascii.crc_hqx(body, 0)
         # stringify message and check if it is too long
-        message = `(self.ident, self.number, text)`
-        ##print message
+	message = `(body, crc)`
+	#print message
         if len(message) > TRANSFER_MAX :
             raise errno.errorcode[errno.EMSGSIZE],"UDPClient.send:message "+\
                   "too big. Size = ",+repr(len(message))+" Max = "+\
@@ -193,8 +197,12 @@ class UDPClient(BaseDefaults):
         # make a new message number - response needs to match this number
         self.number = self.number + 1
 
+	# CRC text
+        body = `(self.ident, self.number, text)`
+	crc = binascii.crc_hqx(body, 0)
         # stringify message and check if it is too long
-        message = `(self.ident, self.number, text)`
+	message = `(body, crc)`
+	
         if len(message) > TRANSFER_MAX :
             raise errorcode[EMSGSIZE],"UDPCl.send_n_w:message too big.Size = "\
                   +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message

@@ -55,6 +55,7 @@ class DispatchingWorker:
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address) :
         # the real info and work is in the ticket - get that
+
         exec ( "idn, number, ticket = " + request)
         self.reply_address = client_address
         self.client_number = number
