@@ -161,6 +161,17 @@ class Wrapper :
 # cpio support functions
 #
 
+# convert int or long int to 8byte (zero-padded) hex string
+
+def hex8(x):
+    s=hex(x)[2:]
+    if type(x)==type(1L): s=s[:-1]
+    l = len(s)
+    if l>8:
+        raise "Overflow Error", x
+    return '0'*(8-l)+s
+    
+
 # create 2 headers (1 for data file and 1 for crc file) + 1 trailer
 def headers( format,            # either "new" or "CRC"
              inode, mode, uid, gid, nlink, mtime, filesize,
@@ -194,42 +205,32 @@ def headers( format,            # either "new" or "CRC"
             else :
                 jonmode = mode
             # make all filenames relative - strip off leading slash
-            if fname[0] == "/" :
+            while fname[0] == "/" :
                 fname = fname[1:]
-            head = \
-                 "070701" +\
-                 "%08x" % inode +\
-                 "%08x" % jonmode +\
-                 "%08x" % uid +\
-                 "%08x" % gid +\
-                 "%08x" % nlink +\
-                 "%08x" % mtime +\
-                 "%08x" % fsize +\
-                 "%08x" % major +\
-                 "%08x" % minor +\
-                 "%08x" % rmajor +\
-                 "%08x" % rminor +\
-                 "%08x" % int(len(fname)+1) +\
-                 "%08x" % crc +\
-                 "%s\0" % fname
+            head =  "070701" + string.join(map(hex8,
+                                               [inode,jonmode,uid,gid,nlink,mtime,fsize,
+                                                major,minor,rmajor,rminor,len(fname)+1,
+                                                crc]
+                                               ), '') + "%s\0"%fname
+            
             pad = (4-(len(head)%4)) %4
             heads.append(head + "\0"*pad)
 
         # create the trailer as well
-        heads.append("070701"   +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000001" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "00000000" +\
-                     "0000000b" +\
-                     "00000000" +\
+        heads.append("070701"  
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000001"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "0000000b"
+                     "00000000"
                      "TRAILER!!!\0")
 
         return heads
@@ -254,7 +255,7 @@ def trailers( siz, head_crc, data_crc, trailer ):
 
         # ok, send it back to so he can write it out
         return("\0"*padd +
-               head_crc + "%08x" % data_crc + "\0"*padc +
+               head_crc + hex8(data_crc) + "\0"*padc +
                trailer + "\0"*padt )
 
 
