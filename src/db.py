@@ -206,7 +206,6 @@ class DbTable:
      cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
                         self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
-     print cmd
      os.system(cmd)
      self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
      self.count=0
