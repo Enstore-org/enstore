@@ -641,7 +641,10 @@ class LibraryManagerMethods:
         # look in pending work queue for reading or writing work
         rq=self.pending_work.get()
         while rq:
-            if rq.ticket.has_key('reject_reason'): del(rq.ticket['reject_reason'])
+            rej_reason = None
+            if rq.ticket.has_key('reject_reason'):
+                rej_reason = rq.ticket['reject_reason'][0]
+                del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
             rc, fun, args, action = self.restrictor.match_found(rq.ticket)
             if rc and fun and action:
@@ -649,11 +652,12 @@ class LibraryManagerMethods:
                 if fun == 'restrict_host_access':
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
-                        format = "access delayed for %s : library=%s family=%s requester:%s"
-                        Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                         rq.ticket["vc"]["library"],
-                                                         rq.ticket["vc"]["volume_family"],
-                                                         rq.ticket["wrapper"]["uname"]))
+                        if not (rej_reason = "RESTRICTED_ACCESS"):
+                            format = "access delayed for %s : library=%s family=%s requester:%s"
+                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                             rq.ticket["vc"]["library"],
+                                                             rq.ticket["vc"]["volume_family"],
+                                                             rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
                         continue
             if rq.work == "read_from_hsm":
