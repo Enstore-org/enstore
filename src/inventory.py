@@ -376,8 +376,8 @@ def print_volume_quotas_status(volume_quotas, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-13s %-9s %-6s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
-          ("Library", "Storage Group", "Allocated", "Quota",
+    vq_file.write("%-10s %-13s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
+          ("Library", "Storage Group", "Quota", "Allocated",
            "Blank Vols", "Written Vols", "Deleted", "Space Used",
            "Active Files", "Deleted Files", "Unknown Files"))
 
@@ -418,7 +418,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
             formated_tuple = volume_quotas[keys][0:7] + \
                              format_storage_size(volume_quotas[keys][6]) + \
                              volume_quotas[keys][8:]
-            vq_file.write("%-10s %-13s %-9d %-6s %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
+            vq_file.write("%-10s %-13s %-6s %-9d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
                           % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
@@ -590,8 +590,8 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
         volumes_allocated[(library, storage_group)] =\
                                    (library,
                                     storage_group,
-                                    v_info[2] + 1, #volume allocated
-                                    v_info[3],     #quota
+                                    v_info[2],     #quota
+                                    v_info[3] + 1, #volume allocated
                                     v_info[4] + blank_vols,
                                     v_info[5] + written_vols,
                                     v_info[6] + deleted,
@@ -603,8 +603,8 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
     except KeyError:
         volumes_allocated[(library, storage_group)] = (library,
                                                        storage_group,
-                                                       1, #volumes allocated
                                                        quota, #quota
+                                                       1, #volumes allocated
                                                        blank_vols,
                                                        written_vols,
                                                        deleted,
