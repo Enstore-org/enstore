@@ -730,14 +730,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	            self.intervals[a_key] = self.default_server_interval
 	            if not self.last_update.has_key(a_key):
 	                self.last_update[a_key] = ctime
-	# now get rid of any keys that are in intervals and not in csc_keys
+	# now get rid of any keys that are in intervals and not in the config file
 	# make an exception for update_commands, config_server and encp. (since
         # they will never be in csc_keys. this takes care of the
         # case where a server was removed from the config dict.
 	for a_key in self.intervals.keys():
 	    if a_key not in csc_keys['get_keys']:
-	        if a_key != "config_server" and a_key != "encp" and\
-                   a_key != "update_commands":
+	        if a_key not in ["config_server", "encp","update_commands"]:
 	            del self.intervals[a_key]
 	            self.htmlfile.remove_key(a_key)
 	# if there was no encp, config_server or update_commands intervals
