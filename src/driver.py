@@ -16,9 +16,6 @@ class Driver:
     def open(self, device, mode):
         raise NotImplementedError
 
-    def reopen(self, device, mode):
-        raise NotImplementedError
-    
     def flush(self, device):
         raise NotImplementedError
     

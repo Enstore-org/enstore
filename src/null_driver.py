@@ -32,10 +32,6 @@ class NullDriver(driver.Driver):
         self._rate = self._last_rate = self._bytes_transferred = 0
         return self.fd
 
-    def reopen(self, device=None, mode=None):
-        self._rate = self._last_rate = self._bytes_transferred = 0
-        return self.open(device, mode)
-    
     def rewind(self):
         if self.verbose: print "rewind"
         self.loc = 0L

@@ -39,9 +39,9 @@ import hostaddr
 def print_args(*args):
     print args
 
-verbose=0
+verbose=10
     
-##Trace.trace = print_args
+Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -80,14 +80,25 @@ class Buffer:
         self._work_block = None
         self._readptr = 0
         self._writeptr = 0
+        
     def nbytes(self):
-        return self._buf_bytes + self._readptr + self._writeptr
+        if self._work_block:
+            if self._readptr:
+                return self._buf_bytes + self._readptr
+            else:
+                return self._buf_bytes + len(self._work_block) - self._writeptr
+        else:
+            return self._buf_bytes
+        
     def full(self):
         return self.nbytes() > self.max_bytes
+    
     def empty(self):
         return self.nbytes() == 0
+    
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
+        
     def set_blocksize(self, blocksize):
         if blocksize == self.blocksize:
             return
@@ -95,11 +106,14 @@ class Buffer:
             raise "Buffer error: changing blocksize of nonempty buffer"
         self._freelist = []
         self.blocksize = blocksize
+        
     def low(self):
         return self.nbytes() <= self.min_bytes
+    
     def push(self, data):
         self._buf.append(data)
         self._buf_bytes = self._buf_bytes + len(data)
+        
     def pull(self):
         if not self._buf:
             if self._work_block and self._readptr>0:
@@ -112,6 +126,7 @@ class Buffer:
         data = self._buf.pop(0)
         self._buf_bytes = self._buf_bytes - len(data)
         return data
+    
     def reset(self):
         self._buf = []
         self._freelist = []
@@ -119,8 +134,10 @@ class Buffer:
         self._work_block = None
         self._readptr = 0
         self._writeptr = 0
+
     def nonzero(self):
         return self.nbytes() > 0
+    
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
@@ -772,19 +789,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         if verbose: print "self.vol_info =", self.vol_info
 
         if self.current_volume != volume_label:
-            if self.current_volume:
+            if self.current_volume: #XXX or unconditional?
                 self.dismount_volume()
-            self.mount_volume(volume_label)
-            print "Opening tape driver"
-            self.tape_driver.open(self.device, iomode)
-            self.tape_driver.set_mode(compression = 0, blocksize = 0)            
-            print "tape driver", self.tape_driver.fileno()
-        else: #already mounted
-            self.timer('mount_time') # needed to make encp happy - cgw
-            if verbose: print "Reopening tape driver"
-            self.tape_driver.reopen(self.device, iomode)
-            if verbose: print "tape driver", self.tape_driver.fileno()
-            ##XXX need to set mode here?
+
+        self.mount_volume(volume_label)
+        
+        print "Opening tape driver"
+        self.tape_driver.open(self.device, iomode)
+        self.tape_driver.set_mode(compression = 0, blocksize = 0)            
+        print "tape driver", self.tape_driver.fileno()
 
         if iomode is WRITE:
             status = self.vcc.set_writing(volume_label)
