@@ -40,7 +40,7 @@ def timed_command(command, time=60, retries=3 ):
         response = os.popen(cmd,'r').readlines()
     return response
 
-def query(volume, media_type="", seqNo=0):
+def query(volume, media_type=""):
 
     # build the command, and what to look for in the response
     command = "query vol %s" % (volume,)
@@ -110,30 +110,30 @@ def query_drive(drive):
 
     # check for really bad errors
     if size <= 19:
-        Trace.log(e_errors.ERROR, "QUERY_DRIVE 1: %s %s" % (command+" => ",response))
-        return (ERROR, 1, response, '', command)
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE 7: %s %s" % (command+" => ",response))
+        return (ERROR, 7, response, '', command)
     elif string.find(response[19], cmd_lookfor, 0) != 0:
-        Trace.log(e_errors.ERROR, "QUERY_DRIVE 2: %s %s" % (command+" => ",response))
-        return (ERROR, 2,  response, '', command)
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE 8: %s %s" % (command+" => ",response))
+        return (ERROR, 8,  response, '', command)
     if size <= 20:
-        Trace.log(e_errors.ERROR, "QUERY_DRIVE 3: %s %s" % (command+" => ",response))
-        return (ERROR, 3, response,'',command)
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE 9: %s %s" % (command+" => ",response))
+        return (ERROR, 9, response,'',command)
 
     # got something - if response is too small, got an "error code" back
     if size <= 22:
         answer = string.strip(response[20])
-        Trace.log(e_errors.INFO, "QUERY_DRIVE 4: %s %s" % (command+" => ",answer))
-        return (TAPE, 4, answer, '', command)
+        Trace.log(e_errors.INFO, "QUERY_DRIVE 10: %s %s" % (command+" => ",answer))
+        return (TAPE, 10, answer, '', command)
 
     # got response, parse it and put it into the standard form
     answer = string.strip(response[22])
     answer = string.replace(answer,', ',',') # easier to part drive id
     if string.find(answer, answer_lookfor,0) != 0:
-        Trace.log(e_errors.ERROR, "QUERY_DRIVE 5: %s %s" % (command+" => ",answer))
-        return (ERROR, 5, answer, '', command)
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE 11: %s %s" % (command+" => ",answer))
+        return (ERROR, 11, answer, '', command)
     elif string.find(answer,' online ') == -1:
-        Trace.log(e_errors.ERROR, "%s %s" % (command+" => ",answer))
-        return (ERROR,0,answer, 'O', command) # not online
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE 12: %s %s" % (command+" => ",answer))
+        return (ERROR,12,answer, '', command) # not online
     elif string.find(answer,' available ') != -1:
         Trace.log(e_errors.INFO, "%s %s" % (command+" => ",answer))
         return (OK,0,answer, '', command) # empty
@@ -143,8 +143,8 @@ def query_drive(drive):
         Trace.log(e_errors.INFO, "%s %s" % (command+" => ",answer))
         return (OK,0,answer, volume, command) # mounted and in use
     else:
-        Trace.log(e_errors.ERROR, "QUERY_DRIVE DRIVE 6: %s %s" % (command+" => ",answer))
-        return (TAPE, 6, answer, '', command)
+        Trace.log(e_errors.ERROR, "QUERY_DRIVE DRIVE 13: %s %s" % (command+" => ",answer))
+        return (TAPE, 13, answer, '', command)
 
 def mount(volume, drive, media_type="",view_first=1):
 
@@ -159,20 +159,20 @@ def mount(volume, drive, media_type="",view_first=1):
         status,stat,response,attrib,com_sent = query(volume, media_type)
 
         if stat!=0:
-            Trace.log(e_errors.ERROR,'MOUNT 1 %s => %s' % (command,response))
-            return status, stat, response
+            Trace.log(e_errors.ERROR,'MOUNT 14 %s => %s' % (command,response))
+            return status, 14, response
         if attrib != "O": # look for tape in tower (occupied="O")
-            Trace.log(e_errors.ERROR,'MOUNT 2 %s => Tape %s is not in home position =>  %s' % (command, volume,response,) )
-            return 'BAD',9999,'%s => Tape %s is not in home position =>  %s'%(command,volume,response,)
+            Trace.log(e_errors.ERROR,'MOUNT 15 %s => Tape %s is not in home position =>  %s' % (command, volume,response,) )
+            return 'BAD',15,'%s => Tape %s is not in home position =>  %s'%(command,volume,response,)
 
     # check if any tape is mounted in this drive
         status,stat,response,volser,com_sent = query_drive(drive)
         if stat!=0:
-            Trace.log(e_errors.ERROR,'MOUNT 3 %s => %s' % (command,response))
-            return status, stat, response
+            Trace.log(e_errors.ERROR,'MOUNT 16 %s => %s' % (command,response))
+            return status, 16, response
         if volser != "": # look for any tape mounted in this drive
-            Trace.log(e_errors.ERROR,'MOUNT 4 %s => Drive %s is not empty =>  %s' % (command, drive,response) )
-            return 'BAD',9998,'%s => Drive %s is not empty:  %s'%(command, drive,response)
+            Trace.log(e_errors.ERROR,'MOUNT 17 %s => Drive %s is not empty =>  %s' % (command, drive,response) )
+            return 'BAD',17,'%s => Drive %s is not empty:  %s'%(command, drive,response)
 
     # execute the command and read the response
     response = timed_command(cmd,60*15,3)
@@ -184,20 +184,20 @@ def mount(volume, drive, media_type="",view_first=1):
 
     # check for really bad errors
     if size <= 19:
-        Trace.log(e_errors.ERROR, "MOUNT 5: %s %s" % (command+" => ",response))
-        return (ERROR, 1, "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "MOUNT 18: %s %s" % (command+" => ",response))
+        return (ERROR, 18, "%s %s" % (command+" => ",response))
     elif string.find(response[19], cmd_lookfor, 0) != 0:
-        Trace.log(e_errors.ERROR, "MOUNT 6: %s %s" % (command+" => ",response))
-        return (ERROR, 2,  "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "MOUNT 19: %s %s" % (command+" => ",response))
+        return (ERROR, 19,  "%s %s" % (command+" => ",response))
     if size <= 20:
-        Trace.log(e_errors.ERROR, "MOUNT 7: %s %s" % (command+" => ",response))
-        return (ERROR, 3, "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "MOUNT 20: %s %s" % (command+" => ",response))
+        return (ERROR, 20, "%s %s" % (command+" => ",response))
 
     # got response, parse it and put it into the standard form
     answer = string.strip(response[20])
     if string.find(answer, answer_lookfor,0) != 0:
-        Trace.log(e_errors.ERROR, "MOUNT 8: %s %s" % (command+" => ",answer))
-        return (ERROR, 5, "%s %s" % (command+" => ",answer))
+        Trace.log(e_errors.ERROR, "MOUNT 21: %s %s" % (command+" => ",answer))
+        return (ERROR, 21, "%s %s" % (command+" => ",answer))
     Trace.log(e_errors.INFO, "%s %s" % (command+" => ",answer))
     return (OK, 0, "%s %s" % (command+" => ",answer))
 
@@ -214,16 +214,17 @@ def dismount(volume, drive, media_type="",view_first=1):
     if view_first:
         status,stat,response,volser,com_sent = query_drive(drive)
         if stat!=0:
-            Trace.log(e_errors.ERROR,'ERROR 1 %s => %s' % (command,response))
-            return status, stat, response
+            Trace.log(e_errors.ERROR,'DISMOUNT 22 %s => %s' % (command,response))
+            return status, 22, response
+
         if volser == "": # look for any tape mounted in this drive
             if volume!="Unknown":
-                Trace.log(e_errors.ERROR,'IGNORED DISMOUNT 1 %s => Drive %s is empty. Thought %s was there =>  %s' % (command,drive,volume,response) )
-                #return 'BAD',9998,'%s => Drive %s is empty. Thought %s was there => %s' % (command,drive,volume,response)
+                Trace.log(e_errors.ERROR,'IGNORED DISMOUNT 23 %s => Drive %s is empty. Thought %s was there =>  %s' % (command,drive,volume,response) )
+                #return 'BAD',23,'%s => Drive %s is empty. Thought %s was there => %s' % (command,drive,volume,response)
                 #FIXME: mover calling with tape when there is none in drive. Return OK for now
                 return      OK,         0,'%s => Drive %s is empty. Thought %s was there =>  %s' % (command,drive,volume,response)
             else: #don't know the volume on startup
-                Trace.log(e_errors.ERROR,'IGNORED DISMOUNT 2 %s => %s' % (command,response) )
+                Trace.log(e_errors.ERROR,'IGNORED DISMOUNT 24 %s => %s' % (command,response) )
                 return OK, 0,'%s => %s' % (command,response)
 
     # execute the command and read the response
@@ -236,20 +237,20 @@ def dismount(volume, drive, media_type="",view_first=1):
 
     # check for really bad errors
     if size <= 19:
-        Trace.log(e_errors.ERROR, "DISMOUNT 3: %s %s" % (command+" => ",response))
-        return (ERROR, 3, "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "DISMOUNT 25: %s %s" % (command+" => ",response))
+        return (ERROR, 25, "%s %s" % (command+" => ",response))
     elif string.find(response[19], cmd_lookfor, 0) != 0:
-        Trace.log(e_errors.ERROR, "DISMOUNT 4: %s %s" % (command+" => ",response))
-        return (ERROR, 4,  "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "DISMOUNT 26: %s %s" % (command+" => ",response))
+        return (ERROR, 26,  "%s %s" % (command+" => ",response))
     if size <= 20:
-        Trace.log(e_errors.ERROR, "DISMOUNT 5: %s %s" % (command+" => ",response))
-        return (ERROR, 5, "%s %s" % (command+" => ",response))
+        Trace.log(e_errors.ERROR, "DISMOUNT 27: %s %s" % (command+" => ",response))
+        return (ERROR, 27, "%s %s" % (command+" => ",response))
 
     # got response, parse it and put it into the standard form
     answer = string.strip(response[20])
     if string.find(answer, answer_lookfor,0) != 0:
-        Trace.log(e_errors.ERROR, "DISMOUNT 6: %s %s" % (command+" => ",answer))
-        return (ERROR, 6, "%s %s" % (command+" => ",answer))
+        Trace.log(e_errors.ERROR, "DISMOUNT 28: %s %s" % (command+" => ",answer))
+        return (ERROR, 28, "%s %s" % (command+" => ",answer))
     Trace.log(e_errors.INFO, "%s %s" % (command+" => ",answer))
     return (OK, 0, "%s %s" % (command+" => ",answer))
 
@@ -260,7 +261,7 @@ if __name__ == "__main__" :
         print "stk.py query drive  <drive>"
         print "stk.py query volume <volume>"
         print "stk.py mount <volume> <drive>"
-        print "stk.py dismount <drive>"
+        print "stk.py dismount <volume> <drive>"
 
 
     # silly little parsing

@@ -672,14 +672,14 @@ class STK_MediaLoader(MediaLoaderMethods):
                 sts=apply(function,args)
                 if sts[1] != 0:
                    if self.logdetail:
-                      Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
-                if sts[1] in retry_these and function==self.STK.mount:
-                        time.sleep(60)
-                        fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-                        Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
-                if sts[1] in retry_these:
-                        time.sleep(60)
-                        count = count - 1
+                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
+                   if sts[1] in retry_these and function==self.STK.mount:
+                       time.sleep(60)
+                       fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
+                       Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
+                   if sts[1] in retry_these:
+                       time.sleep(60)
+                       count = count - 1
                 else:
                     break
             except:
@@ -708,6 +708,68 @@ class STK_MediaLoader(MediaLoaderMethods):
         media_type = ticket['media_type']
         seq=self.next_seq()
         rt = self.retry_function(self.STK.query_volume,external_label,media_type,seq)
+        Trace.trace(11, "getVolState returned %s"%(rt,))
+        if rt[3] == '\000':
+            state=''
+        else :
+            state = rt[3]
+            if not state and rt[2]:  # volumes not in the robot
+                state = rt[2]
+        return (rt[0], rt[1], rt[2], state)
+        
+
+# STK robot loader server
+class stk_MediaLoader(MediaLoaderMethods):
+
+    def __init__(self, medch, max_work=7, csc=None):
+        import stk
+        self.STK = stk
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
+        self.prepare = self.unload
+        print "STK MediaLoader initialized"
+
+    # retry function call
+    def retry_function(self,function,*args):
+        count = self.getNretry()
+        sts=("",0,"")
+        # retry every error
+        while count > 0 and sts[0] != e_errors.OK:
+            try:
+                sts=apply(function,args)
+                if sts[1] != 0:
+                   if self.logdetail:
+                      Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
+                   if function==self.STK.mount:
+                       time.sleep(60)
+                       fixsts=apply(self.STK.dismount,args) 
+                       Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation STK.dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
+                   time.sleep(60)
+                   count = count - 1
+                else:
+                    break
+            except:
+                exc,val,tb = Trace.handle_error()
+                return str(exc),0,""
+        return sts
+    
+    # load volume into the drive;
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):       # media type
+        return self.retry_function(self.STK.mount,external_label,drive,media_type)
+    
+    # unload volume from the drive
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+               media_type):     # media type
+        return self.retry_function(self.STK.dismount,external_label,drive,media_type)
+
+    def getVolState(self, ticket):
+        external_label = ticket['external_label']
+        media_type = ticket['media_type']
+        rt = self.retry_function(self.STK.query,external_label,media_type)
         Trace.trace(11, "getVolState returned %s"%(rt,))
         if rt[3] == '\000':
             state=''
