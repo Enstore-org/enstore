@@ -9,7 +9,7 @@ doit() { if [ -z "${1-}" ]; then echo "$cmd"; fi
        }
 
 stopit() { cmd="ezapit -s 15 python        >/dev/null 2>&1"; doit quiet
-           cmd="ezapit -s 15 db_checkpoint >/dev/null 2>&1"; doit quiet
+           cmd="ezapit -s  9 db_checkpoint >/dev/null 2>&1"; doit quiet
            cmd="ezapit -s 15 db_deadlock   >/dev/null 2>&1"; doit quiet
            if [ "$opt" = "stop" ]; then exit 0; fi
          }
