@@ -19,7 +19,7 @@ class NullDriver(driver.Driver):
         self._bytes_transferred = 0
         self.verbose = 0
         
-    def open(self, device=None, mode=None):
+    def open(self, device=None, mode=None, retry_count=10):
         if mode==0:
             device = '/dev/zero'
         elif mode==1:
@@ -40,7 +40,7 @@ class NullDriver(driver.Driver):
         if self.verbose: print "tell", self.loc
         return self.loc
     
-    def seek(self, loc):
+    def seek(self, loc, eot_ok=None):
         if type(loc) is type(""):
             if loc[-1]=='L':
                 loc=loc[:-1] #py1.5.2 
