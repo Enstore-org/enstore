@@ -32,7 +32,7 @@ def _open2(pathname,mode=0666):
 
     tmpname = "%s-%s-%s" % (pathname, os.uname()[1], os.getpid())
     delete_at_exit.register(tmpname)
-    fd = os.open(tmpname, os.O_CREAT|os.O_RDWR, mode)
+    fd_tmp = os.open(tmpname, os.O_CREAT|os.O_RDWR, mode)
 
     ok = 0
     delete_at_exit.register(pathname)
@@ -50,6 +50,7 @@ def _open2(pathname,mode=0666):
     if ok:
         fd=os.open(pathname, os.O_CREAT|os.O_RDWR, mode)
         os.unlink(tmpname)
+        os.close(fd_tmp)
         delete_at_exit.unregister(tmpname)
         return fd
     else:
