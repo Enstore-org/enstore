@@ -401,11 +401,11 @@ def get_file_size(file):
             filesize = None #0
 
     #Return None for failures.
-    if filesize == None:
-        return filesize
+    if filesize != None:
+        #Always return the long version to avoid 32bit vs 64bit problems.    
+        filesize = long(filesize)
     
-    #Always return the long version to avoid 32bit vs 64bit problems.    
-    return long(filesize)
+    return filesize
 
 #Return the number of requests in the list that have NOT had a non-retriable
 # error or have already finished.
@@ -681,13 +681,16 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     fcc = file_clerk_client.FileClient(csc)
 
+    #There is no brand, since the file is too old.
+    if not brand:
+	return csc
     #Before checking other systems, check the current system.
     fcc_brand = fcc.get_brand()
     if not is_brand(fcc_brand):
         Trace.log(e_errors.WARNING,
                   "File clerk (%s) returned invalid brand: %s\n"
                   % (fcc.server_address, fcc_brand))
-    if brand[:len(fcc_brand)] == fcc_brand:
+    elif brand[:len(fcc_brand)] == fcc_brand:
         return csc
 
     #Get the list of all config servers and remove the 'status' element.
