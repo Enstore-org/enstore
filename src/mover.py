@@ -243,7 +243,7 @@ class MoverClient:
         self.mcc = media_changer_client.MediaChangerClient( self.csc,
                                              mvr_config['media_changer'] )
 
-	self.vol_info = {'external_label':''}
+	self.vol_info = {'external_label':'', 'media_type':''}
 	self.vol_vcc = {}		# vcc associated with a particular
 	# vol_label (useful when other lib man summons during delayed
 	# dismount -- labels must be unique
@@ -274,8 +274,7 @@ class MoverClient:
             # tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
             #mcc.unloadvol( self.vol_info, mvr_config['mc_device'] )
             self.mcc.unloadvol( self.vol_info, mvr_config['name'], 
-                mvr_config['mc_device'],
-                self.vol_vcc[self.vol_info['external_label']] )
+                mvr_config['mc_device'], None)
             pass
         driver_object.close()
 
