@@ -1089,6 +1089,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # later to do the update if no other encp xfer comes thru to trigger
                     # an update.
                     self.encp_xfer_but_no_update = now
+        # we may be stuck getting lots of event relay messages if the rest of
+        # the system is backed up.  so, check if it has been more than 5
+        # minutes since we last wrote out the web pages
+        now = time.time()
+        if  now - self.last_time_for_periodic_tasks > 300:
+            self.periodic_tasks()
+
 
     # these are the things we do periodically, this routine is called when an
     # interval is up, from within dispatching_worker  -
@@ -1114,6 +1121,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.write_server_status_file()
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - end")
+        self.last_time_for_periodic_tasks = time.time()
 
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
