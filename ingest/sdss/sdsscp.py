@@ -27,7 +27,8 @@ if tapeStyle != "TarTape" and tapeStyle != "TapeLog":
 
 metaFileName = "id"+tapeStyle+"-"+tapeLabel+".par"
 
-getNames.getFile("sdssdp",metaFileName,mjd,"sdssdp30")
+if getNames.getFile("sdssdp",metaFileName,mjd,"sdssdp30") < 0:
+    sys.exit(-1)
 
 files = parseTapeLog.parseFile(metaFileName, tapeLabel)
 sys.exit(callGet.callGet(tapeLabel, files, pnfsDir, outputDir))
