@@ -23,6 +23,9 @@ class Mover :
         self.config_port = config_port
         self.csc = configuration_client(self.config_host,self.config_port)
         self.u = UDPClient()
+        self.sleeptime = 1.0
+        self.chkremote = 2.*60./self.sleeptime
+        self.local = self.chkremote-1
 
     def read_block(self) :
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
@@ -87,22 +90,26 @@ class Mover :
 
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket) :
-        time.sleep(0.5)
+        time.sleep(self.sleeptime)
+        self.local = self.local+1
 
         # get (possibly new) info about the library manager this mover serves
-        mconfig = self.csc.get_uncached(self.name)
-        if mconfig["status"] != "ok" :
-            raise "could not start mover up:" + mconfig["status"]
-        self.library_device = mconfig["library_device"]
-        self.driver_name = mconfig["driver"]
-        self.device = mconfig["device"]
-        self.library = mconfig["library"]
-        self.media_changer = mconfig["media_changer"]
+        # check for a new value every few minutes, otherwise use cached value
+        if self.local >= self.chkremote:
+            self.local = 0
+            mconfig = self.csc.get_uncached(self.name)
+            if mconfig["status"] != "ok" :
+                raise "could not start mover up:" + mconfig["status"]
+            self.library_device = mconfig["library_device"]
+            self.driver_name = mconfig["driver"]
+            self.device = mconfig["device"]
+            self.library = mconfig["library"]
+            self.media_changer = mconfig["media_changer"]
 
-        # get (possibly new) info asssociated with our volume manager
-        lconfig = self.csc.get_uncached(self.library)
-        self.library_manager_host = lconfig["host"]
-        self.library_manager_port = lconfig["port"]
+            # get (possibly new) info asssociated with our volume manager
+            lconfig = self.csc.get_uncached(self.library)
+            self.library_manager_host = lconfig["host"]
+            self.library_manager_port = lconfig["port"]
 
         # set our ticket when we announce ourselves to the library manager
         self.idle_mover_next()
@@ -324,7 +331,7 @@ class Mover :
                                        sanity_cookie,complete_crc)
         # bfid & crc needed, but save other useful information for user too
         ticket["bfid"] = self.fticket["bfid"]
-	ticket["complete_crc"] = complete_crc
+        ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
         ticket["file_clerk"] = self.fticket
         minfo = {}
@@ -421,7 +428,7 @@ class Mover :
         # All is well - read has finished correctly
 
         # add some info to user's ticket
-	ticket["complete_crc"] = complete_crc
+        ticket["complete_crc"] = complete_crc
         ticket["volume_clerk"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',

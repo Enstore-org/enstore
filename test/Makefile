@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-dpnfs = `echo "/pnfs/enstore/test1-\`uname -n\`-\`whoami\`"`
+dpnfs = `echo "/pnfs/enstore/fndapr/test1-\`uname -n\`-\`whoami\`"`
 
 newdbs:
 	- killall -9 longtest
@@ -67,7 +67,5 @@ clean:
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
 	@ $$ENSTORE_DIR/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
-	rm -f *.jou
-	rm -f *.fake
 	rm -f files.in
 	rm -f longtest_pids

@@ -4,6 +4,7 @@ while /bin/true; do
     cat $ENSTORE_DIR/test/files.in | while read f; do
         rm -f loop_longtest.pids
         echo $$ > loop_longtest.pids
+        rm -f out.out
         ecmd encp $f out.out;
         diff out.out $ENSTORE_DIR/test/data/`basename $f` ;
     done ;

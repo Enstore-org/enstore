@@ -232,8 +232,6 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
         if chk_crc != 0:
             if done_ticket["complete_crc"] != mycrc :
                 print "CRC error",complete_crc, mycrc
-            else :
-                print "  CRC's match: ",done_ticket["complete_crc"]
         t1 = time.time()
         if list:
             print "Adding file to pnfs", "   cum=",time.time()-t0
@@ -469,8 +467,6 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
         if chk_crc != 0 :
             if done_ticket["complete_crc"] != mycrc :
                 print "CRC error",complete_crc, mycrc
-            else :
-                print "  CRC's match: ",done_ticket["complete_crc"]
 
         tinfo["final_dialog"] = time.time()-t1
         if list:
