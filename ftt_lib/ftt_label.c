@@ -101,6 +101,11 @@ ftt_to_upper( char *p ) {
 
 int
 ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
+   return ftt_format_label_version(buf, length, vol, vlen, type, 0);
+}
+
+int
+ftt_format_label_version( char *buf, int length, char *vol, int vlen, int type, char version) {
 
 #define BLEN 512
     static char volbuf[BLEN];
@@ -117,10 +122,13 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 
     switch(type) {
     case FTT_ANSI_HEADER:
+	if ( version == 0 ) { /* default is 4 */
+	    version = '4';
+	}
 	ftt_to_upper(volbuf);
 	if (length >= 80) {
-	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1s", 
-				volbuf, " ", " ", "ftt", " ", " " , "4");
+	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1c", 
+				volbuf, " ", " ", "ftt", " ", " " , version);
 	    return 80;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
@@ -128,6 +136,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	    return -1;
 	}
 	break;
+
     case FTT_FMB_HEADER:
 	if (length >= 2048) {
 	    sprintf(buf, "%s\n%s\n%s\n%s\n",
@@ -169,6 +178,7 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
 	    return -1;
 	 }
     }
+
     ftt_errno = FTT_ENOTSUPPORTED;
     if ( type < FTT_MAX_HEADER ) {
       ftt_eprintf("ftt_format_label: unsupported label type %s\n",
