@@ -1162,7 +1162,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
         if mounts >= 1000:
             mnts = '<font color=#FF0000>'+mnts+'</font>'
         if mounts >= 10000:
-            mnts = '<blink>+mnts+'</blink>'
+            mnts = '<blink>'+mnts+'</blink>'
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
