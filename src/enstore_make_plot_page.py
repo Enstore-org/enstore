@@ -29,7 +29,7 @@ ENGLISH_TITLES = {
 		   "enstoreSystem" : "(e)Make SAAG Page",
 		   "enstore_overall_status" : "(r)Make Operator SAAG Page",
 		   "failedX" : "(e)Get Failed Transfers",
-		   "fix_url" : "(e)Fix CGI URL's",
+		   "fix_url" : "(e)Fix CGI URLs",
 		   "getcons" : "(r)Get Console Logs",
 		   "getnodeinfo" : "(r)Get Node Info",
 		   "inqPlotUpdate" : "(e)Make Inq Plots",
