@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# TOO MANY TASSK TRY TO KILL THEM ALL.
+
+if [ `uname` = Linux ] ; then 
+   ps | while read pid tty stat time command rest ; do \
+	if [ "$rest" = ./longtest ]  ; then kill $pid ; fi ; done
+
+   ps | while read pid tty stat time command rest ; do \
+	if [ $command = python ]  ; then kill $pid ; fi ; done
+fi
+
+if [ `uname` = IRIX ] ; then 
+
+   ps | while read pid tty time command rest ; do \
+	if [ $command = python ]  ; then kill $pid ; fi ; done
+	
+   ps | while read pid tty time command rest ; do \
+	if [ $command = longtest ]  ; then kill $pid ; fi ; done
+fi
