@@ -169,9 +169,7 @@ find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORELOG_FILES=$VAULT/enstorelog.files
 rm -f $ENSTORELOG_FILES
-NF="last" #avoid echo error, awk inserts its own value
-echo find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }'
-     find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }' > $ENSTORELOG_FILES
+find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }' > $ENSTORELOG_FILES
 lines=`wc -l $ENSTORELOG_FILES | awk '{print $1}'`
 list ""
 list "ENSTORE log backup: $lines files to backup to tape"
