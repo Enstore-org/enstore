@@ -56,7 +56,7 @@ if intf.status:
 			print "Checking "+i+" against journal ..."
 			err = d.cross_check()
 			if err:
-				print I+" is inconsistent with journal"
+				print i+" is inconsistent with journal"
 			else:
 				print i+" is OK"
 		except:
