@@ -1298,6 +1298,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# update list of suspected volumes
 	vol = self.update_suspect_vol_list(ticket['external_label'], 
 				ticket['mover'])
+        Trace.log(e_errors.INFO,"unilateral_unbind updated suspect volume list for %s"%(repr(w),))
 	if len(vol['movers']) >= self.max_suspect_movers:
 	    w['status'] = (e_errors.NOACCESS, None)
 
