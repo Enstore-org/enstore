@@ -4288,7 +4288,7 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2><B>WRITE_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+			<P><FONT SIZE=2>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
 		</TD>
 		<TD>
 			<P><FONT SIZE=2>Check volume in morning </FONT>
@@ -4653,7 +4653,7 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2><B>READ_NOTAPE</B> </FONT>
 		</TD>
 		<TD>
-			<P><FONT SIZE=2>Request volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
+			<P><FONT SIZE=2>Requested volume was not found in the library. Volume Clerk's data base is inconsistent with library micro's database. </FONT>
 
 		</TD>
 		<TD>
@@ -5401,8 +5401,8 @@ The procedure for importing a volume is:
 The Enstore hardware test system was designed to be able to test
 data movement at rates comparable to requirements for Run II data
 logging, to evaluate gigabit networking technologies, and to 
-determine scaling for the larger support hardware required to 
-support all of Run II.  The ability to sustain data rates comparable
+determine scaling for the larger amount of hardware, required  to 
+support all of Run II data handling.  The ability to sustain data rates comparable
 to Run II data logging requirements allows the test system to double
 as the RIP (Reconstruction Input Pipeline) test platform.
 
@@ -5589,7 +5589,7 @@ that will most likely be used in conjunction with the EMASS robot.
        <ul>
 	 <li> 1 GB file transferred
 	 <li> Mount time ~ 41 seconds
-	 <li> Seek time ~ 0 seconfs (beginning of tape)
+	 <li> Seek time ~ 0 seconds (beginning of tape)
 	 <li> Enstore queue wait time ~ 1 second
 	 <li> Transfer time ~ 116 seconds (8.8 MB/S)
 	 <li> EOF time ~ 0 seconds
@@ -5766,7 +5766,7 @@ constraints:
 <p>All production hardware is to come from the D0 Budget, requisitioned by
 D0. This includes the Enstore system, tape drives and other peripherals.
 D0 have a baseline system design. From the point of view of the storage
-management project, The main features the D0 system are:    
+management project, the main features the D0 system are:    
 
 <ul>
  <li>IP Based connectivity.
@@ -5787,7 +5787,7 @@ management project, The main features the D0 system are:
 <p> Given the discussion above, the main interface issues with D0 are:
 
 <ul>
- <li> Specification  and design of a data lan.
+ <li> Specification  and design of a data LAN.
  <li> The number and type of NIC cards on each computer.
  <li> Tuning the features in Enstore for the significant multiple NIC card
       machines.
@@ -5798,7 +5798,7 @@ which avoids congestion.
 
 <p> It is important to characterize the rate achievable on a NIC card, and the
 amount of CPU required to drive NIC cards.  Typically, there is less CPU/BYTE
-when writing to the network, then when read from it. One vendor reports, for
+when writing to the network, then when reading from it. One vendor reports, for
 CPU's available in late 1998:
 
 <pre>
@@ -5811,13 +5811,13 @@ CPU's available in late 1998:
 					(n.b. GB ethernet here...)
 </pre>
 
-<p>On an analysis server, Allocation of streams to NIC cards is most easily
+<p>On an analysis server, allocation of streams to NIC cards is most easily
 accomplished statistically. For machines with very many potential streams,
 this is best effected by fewer, fatter pipes.  Ideally, there is little packet
 loss and traffic is regulated by the TCP window.  If Jumbo frames were
 acceptable not generally, but only between the Enstore system and the D0
 analysis machine, statistical load balancing over four GB NICs consuming two
-CPUS could be could easily sustain the (imagined) 150 MB/S peak tape rate
+CPUS could easily sustain the (imagined) 150 MB/S peak tape rate
 for D0, with very little congestion.
 
 <p>The problem becomes more difficult as the throughput of a NIC card
@@ -5970,7 +5970,7 @@ an acceptable format)</LI>
 
 <LI>
 ability
-to export volumes (with their associate meta-data)</LI>
+to export volumes (with their associated meta-data)</LI>
 
 <LI>
 possibly
@@ -6007,7 +6007,7 @@ Families for files</LI>
 
 <LI>
 specification of "width" for a grouping
-- ie number of tapes allowed to be written in //</LI>
+- ie number of tapes allowed to be written in //</LI><!-- What // means? -->
 
 <LI>
 possibly specification of a list of
@@ -6032,7 +6032,8 @@ are read from tape</B></H3>
 <UL>
 <LI>
 specification of error/retry behavior</LI>
-<p> <b><it> Cannot do this dynamically, have static retry behavior, and will makr this comply to D0 needs. </it></b></P>
+<p> <b><it> Cannot do this dynamically, have static retry behavior, and will make
+     this comply to D0 needs. </it></b></P>
 </UL>
 <H3>
 <B>3.4) Control of parameters which govern</B> <B>access
@@ -6131,7 +6132,7 @@ alternate tape drive resources</LI>
 <LI>
 Notation and tracking of all work done,
 all errors encountered, all retries performed</LI>
-<p> <b><it> Does does not track reties in a user-visible way, except that the delay is apparent. </it></b></P>
+<p> <b><it> Does not track reties in a user-visible way, except that the delay is apparent. </it></b></P>
 </UL>
 
 
@@ -6157,7 +6158,7 @@ to transfer files at > N% of raw tape bandwidth. N is probably about 50.</LI>
 <LI>
 nothing
 done to exclude the possibility of adding an intermediate disk cache layer
-to rate adjust movement of data from tape drive to end user data sink -
+to adjust rate of data movement from tape drive to end user data sink -
 should that become necessary</LI>
 
 <LI>
@@ -6231,7 +6232,7 @@ of tapes - maintenance of statistics</LI>
 </h3>
 
 
-Below are note on the SAM/Enstore interface provided by D0.
+Below are notes on the SAM/Enstore interface provided by D0.
 For the most part, Enstore complies in software features. Exceptions
 are noted.
 
@@ -6265,10 +6266,10 @@ arrives some notification should be provided.
 <br><p><em>The notational issues in this items have not been addressed.
 Enstore provides cp-like list features. The user can launch many encps.
 Input wildcarding is allowed and furnished by the user's shell glob capabilities. Output
-wildcarding doesn't make any sense -- Enstore allows the user to specify a
+wildcarding doesn't make any sense -- Enstore allows the user to specify an
 input list of files and an output directory; in this case the input names
 are used in creating the output files in the directory (<it>i.e.</it>,
-similar to the UNIX cp command.</em>
+similar to the UNIX cp command).</em>
 </TD>
 
 <TD>Enstore will implement notification by writing a message to stdout.
