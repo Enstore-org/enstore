@@ -25,13 +25,13 @@ import Trace
 
 ## Some of the backslash-itis is cured by using Python raw strings.
 
-CMDa = r"(F=~/\\\`hostname\\\`."
-CMDb = r";echo >>\\\$F 2>&1;date>>\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\$F 2>&1; setup enstore>>\\\$F 2>&1;"
-CMDc = r";echo >>\\\$F 2>&1;date>>\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\$F 2>&1; setup enstore efb>>\\\$F 2>&1;"
-CMD1 = r"%s%s%s"%(CMDa, "database", CMDb)
-#CMD1 = r"%s%s%s"%(CMDa, "database", CMDc)
+CMDa = "(F=~/\\\\\\`hostname\\\\\\`."
+CMDb = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore>>\\\\\\$F 2>&1;"
+CMDc = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore efb>>\\\\\\$F 2>&1;"
+CMD1 = "%s%s%s"%(CMDa, "database", CMDb)
+#CMD1 = "%s%s%s"%(CMDa, "database", CMDc)
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2 = r" 2>&1 |tee /dev/console>>\\\$F 2>&1;date>>\\\$F 2>&1) 1>&- 2>&- <&- &"
+CMD2 = " 2>&1 |tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&- &"
 
 
 
