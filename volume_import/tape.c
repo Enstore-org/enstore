@@ -198,12 +198,12 @@ write_vol1_header()
 
 
 int 
-write_eot1_header(int fileno)
+write_eot1_header(int file_no)
 {
     char buf[81];
     int i,n;
     
-    sprintf(buf, "EOT%07d", fileno);
+    sprintf(buf, "EOT%07d", file_no);
     strcpy(buf+10, volume_label); /*volume label should already have been checked
 				   * for proper length */
     n = strlen(volume_label);
@@ -226,7 +226,7 @@ write_eot1_header(int fileno)
 }
 
 int 
-read_tape_label(char *label, int *type, int *fileno)
+read_tape_label(char *label, int *type, int *file_no)
 {
     char buf[80];
     char *cp;
@@ -246,7 +246,7 @@ read_tape_label(char *label, int *type, int *fileno)
 	return 0;
     } else if (!strncmp(buf,"EOT",3)){
 	*type=1;
-	if (sscanf(buf+3," %7d", fileno) != 1){
+	if (sscanf(buf+3," %7d", file_no) != 1){
 	    verbage("Can't parse filenumber\n");
 	    return -1;
 	} else {
