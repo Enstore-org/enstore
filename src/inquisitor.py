@@ -795,7 +795,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				# be ok. report the error too.
 				e_errors.handle_error()
 				self.serve_forever_error(self.log_name)
-				self.htmlfile.text[key][enstore_status.STATUS][0] = "error"
+				self.htmlfile.set_alive_error_status(key)
                             # record the fact that we have done something. this
                             # will be used later to either update the html
                             # files or clean up.
