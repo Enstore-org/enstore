@@ -189,11 +189,12 @@ class LibraryManagerClient(generic_client.GenericClient) :
                 return []
             new_ticket = callback.read_tcp_obj_new(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"] :
-                Trace.trace(9, "sent id=%s, recieved id=%s" % (ticket['unique_id'],
-                                                               new_ticket['unique_id']))
                 listen_socket.close()
                 break
             else:
+                Trace.trace(9, "sent id=%s, recieved id=%s" % (ticket['unique_id'],
+                                                               new_ticket['unique_id']))
+
                 Trace.trace(9,"lmc.%s: imposter called us back, trying again" %(work,))
                 control_socket.close()
         ticket = new_ticket
