@@ -25,6 +25,6 @@ while /bin/true; do
         if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 0; fi
         fb=`basename $f`
         ecmd encp $f $fb.out.$$
-        rm -f $fb.out
+        rm -f $fb.out.$$
     done
 done
