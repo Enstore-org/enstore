@@ -484,7 +484,7 @@ def write_to_hsm(input, output,
                    done_ticket["times"]["transfer_time"],
                    done_ticket["times"]["seek_time"],
                    done_ticket["times"]["mount_time"],
-                   done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                   done_ticket["times"]["in_queue"],
                    time.time()-done_ticket["times"]["t0"],
                    e_errors.OK)
 
@@ -959,7 +959,7 @@ def read_from_hsm(input, output,
                        done_ticket["times"]["transfer_time"],
                        done_ticket["times"]["seek_time"],
                        done_ticket["times"]["mount_time"],
-                       done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                       done_ticket["times"]["in_queue"],
                        time.time()-done_ticket["times"]["t0"],
                        e_errors.OK)
 
