@@ -1498,6 +1498,22 @@ def clients(config_host,config_port,verbose):
     # get a configuration server
     csc = configuration_client.ConfigurationClient(config_host,config_port,\
                                                     verbose)
+
+    # send out an alive request - if config not working, give up
+    rcv_timeout = 20
+    alive_retries = 10
+    try:
+        stati = csc.alive(rcv_timeout,alive_retries)
+    except:
+        stati={}
+        stati["status"] = ("CONFIGDEAD","Config at "+repr(config_host)+" port="+repr(config_port))
+    if stati['status'][0] != e_errors.OK:
+        inputfile = ""
+        outputfile = ""
+        filesize = 0
+        print_d0sam_format(inputfile, outputfile, filesize, stati)
+        jraise(stati['status']," NO response on alive to config",1)
+    
     # get a udp client
     u = udp_client.UDPClient()
 
