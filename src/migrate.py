@@ -60,14 +60,14 @@ import os
 import sys
 import string
 import e_errors
-import encp_wrapper
+import encp
 import volume_family
 import pg
 import time
 import thread
 import Queue
 
-debug = False	# debugging mode
+debug = True	# debugging mode
 
 icheck = True	# instant readback check after swap
 		# this is turned by default for file based migration
@@ -85,9 +85,7 @@ f_prefix = '/pnfs/fs/usr'
 f_p = string.split(f_prefix, '/')
 f_n = len(f_p)
 
-MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
-lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
-
+db = None
 csc = None
 
 io_lock = thread.allocate_lock()
@@ -133,6 +131,8 @@ def init():
 
 	errors = 0
 
+	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
+		dbname=db_info['dbname'])
 	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 	return
 
@@ -143,7 +143,7 @@ def init():
 def is_copied(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		log("is_copied():", q)
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -154,7 +154,7 @@ def is_copied(bfid, db):
 def is_swapped(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
-		log("is_swapped():", q)
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -166,7 +166,7 @@ def is_swapped(bfid, db):
 def is_checked(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
-		log("is_checked():", q)
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -178,7 +178,7 @@ def is_checked(bfid, db):
 def is_closed(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
-		log("is_closed():", q)
+		log(q)
 	res = db.query(q).dictresult()
 	if not len(res):
 		return None
@@ -230,24 +230,13 @@ def log(*args):
 		log_f.flush()
 	io_lock.release()
 
-# close_log(*args) -- close open log
-def close_log(*args):
-	if log_f:
-		for i in args:
-			log_f.write(i+' ')
-		log_f.write("\n")
-		log_f.flush()
-	for i in args:
-		print i,
-	print
-
 # log_copied(bfid1, bfid2) -- log a successful copy
 def log_copied(bfid1, bfid2, db):
 	q = "insert into migration (src_bfid, dst_bfid, copied) \
 		values ('%s', '%s', '%s');" % (bfid1, bfid2,
 		time2timestamp(time.time()))
 	if debug:
-		log("log_copied():", q)
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -261,7 +250,7 @@ def log_swapped(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log("log_swapped():", q)
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -275,7 +264,7 @@ def log_checked(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log("log_checked():", q)
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -289,7 +278,7 @@ def log_closed(bfid1, bfid2, db):
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
 	if debug:
-		log("log_closed():", q)
+		log(q)
 	try:
 		db.query(q)
 	except:
@@ -331,13 +320,10 @@ def temp_file(vol, location_cookie):
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
 def copy_files(files):
-	MY_TASK = "COPYING_TO_DISK"
 	# get a db connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
 
-	# get an encp
-	encp = encp_wrapper.Encp()
-
+	MY_TASK = "COPYING_TO_DISK"
 	# if files is not a list, make a list for it
 	if type(files) != type([]):
 		files = [files]
@@ -351,7 +337,7 @@ def copy_files(files):
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
 		if debug:
-			log(MY_TASK, q)
+			log(q)
 		res = db.query(q).dictresult()
 
 		# does it exist?
@@ -361,12 +347,12 @@ def copy_files(files):
 
 		f = res[0]
 		if debug:
-			log(MY_TASK, `f`)
+			log(`f`)
 		tmp = temp_file(f['label'], f['location_cookie'])
 		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
 		if debug:
-			log(MY_TASK, "src:", src)
-			log(MY_TASK, "tmp:", tmp)
+			log("src:", src)
+			log("tmp:", tmp)
 		if not os.access(src, os.R_OK):
 			error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
 			continue
@@ -381,8 +367,7 @@ def copy_files(files):
 			if os.access(tmp, os.F_OK):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
 				os.remove(tmp)
-			cmd = "encp --priority 0 --ignore-fair-share --ecrc %s %s"%(src, tmp)
-			res = encp.encp(cmd)
+			res = run_encp(['--ecrc', src, tmp])
 			if res == 0:
 				ok_log(MY_TASK, "%s %s to %s"%(bfid, src, tmp))
 			else:
@@ -398,7 +383,7 @@ def copy_files(files):
 
 # migration_file_family(ff) -- making up a file family for migration
 def migration_file_family(ff):
-	return ff+MIGRATION_FILE_FAMILY_SUFFIX
+	return ff+'-MIGRATION'
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
@@ -412,7 +397,7 @@ def normal_file_family(ff):
 def compare_metadata(p, f, pnfsid = None):
 	if debug:
 		p.show()
-		log("compare_metadata():", `f`)
+		log(`f`)
 	if p.bfid != f['bfid']:
 		return "bfid"
 	if p.volume != f['external_label']:
@@ -428,7 +413,7 @@ def compare_metadata(p, f, pnfsid = None):
 	if p.complete_crc and long(p.complete_crc) != long(f['complete_crc']):
 		return "crc"
 	if p.drive and p.drive != "unknown:unknown" and \
-		p.drive != f['drive'] and f['drive'] != "unknown:unknown":
+		p.drive != f['drive']:
 		return "drive"
 	return None
 
@@ -507,17 +492,13 @@ def swap_metadata(bfid1, src, bfid2, dst):
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	# get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
-
-	# get an encp
-	encp = encp_wrapper.Encp()
-
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
 	if debug:
 		log(MY_TASK, "migrating() starts")
 	job = copy_queue.get(True)
 	while job:
 		if debug:
-			log(MY_TASK, `job`)
+			log(`job`)
 		(bfid, src, tmp, ff, sg) = job
 		ff = migration_file_family(ff)
 		dst = migration_path(src)
@@ -548,8 +529,8 @@ def migrating():
 		# check if it has already been copied
 		bfid2 = is_copied(bfid, db)
 		if not bfid2:
-			cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s %s %s"%(DEFAULT_LIBRARY, sg, ff, tmp, dst)
-			res = encp.encp(cmd)
+			res = run_encp(['--library', DEFAULT_LIBRARY, '--storage-group', sg,
+				'--file-family', ff, tmp, dst])
 			if res:
 				error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
 				job = copy_queue.get(True)
@@ -598,24 +579,18 @@ def migrating():
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
 def final_scan():
-	MY_TASK = "FINAL_SCAN"
 	# get its own file clerk client
 	fcc = file_clerk_client.FileClient(csc)
-
 	#get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
-
-	# get an encp
-	encp = encp_wrapper.Encp()
-
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
+	MY_TASK = "FINAL_SCAN"
 	job = scan_queue.get(True)
 	while job:
 		(bfid, bfid2, src) = job
 		log(MY_TASK, "start checking %s %s"%(bfid2, src))
 		ct = is_checked(bfid2, db)
 		if not ct:
-			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(src)
-			res = encp.encp(cmd)
+			res = run_encp([src, '/dev/null'])
 			if res == 0:
 				log_checked(bfid, bfid2, db)
 				ok_log(MY_TASK, bfid2, src)
@@ -640,50 +615,37 @@ def final_scan():
 
 # final_scan_volume(vol) -- final scan on a volume when it is closed to
 #				write
-# This is run without any other threads
 def final_scan_volume(vol):
-	MY_TASK = "FINAL_SCAN_VOLUME"
-	local_error = 0
 	# get its own fcc
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
-
-	# get a db connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
-
-	# get an encp
-	encp = encp_wrapper.Encp()
-
-	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
+	MY_TASK = "FINAL_SCAN_VOLUME"
+	q = "select bfid, pnfs_id, src_bfid  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
-			deleted = 'n' and dst_bfid = bfid \
-		order by location_cookie;"%(vol)
-	query_res = db.query(q).getresult()
-	log(MY_TASK, "verifying volume", vol)
-
+			deleted = 'n' and dst_bfid = bfid;"%(vol)
+	query_res = db.query(q).get_result()
+	log(MY_TASK, "closing volume", vol)
+	# switch the file family back
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
 		error_log(MY_TASK, "failed to find volume", vol)
-		return 1
-
-	# make sure the volume is full
-	if v['system_inhibit'][1] != 'full':
-		error_log(MY_TASK, "volume %s is not 'full'"%(vol))
-		return 1
-
-	# make sure this is a migration volume
-	sg, ff, wp = string.split(v['volume_family'], '.')
-	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
-		error_log(MY_TASK, "%s is not a migration volume")
-		return 1
+		return
+	sg, ff, wp = string.split(v[volume_family], '.')
+	ff = normal_file_family(ff)
+	vf = string.join((sg, ff, wp), '.')
+	res = vcc.modify({'external_label':vol, 'volume_family':vf})
+	if res['status'][0] == e_errors.OK:
+		ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
+	else:
+		error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
+		return 
 	for r in query_res:
-		bfid, pnfs_id, src_bfid, location_cookie = r
+		bfid, pnfs_id, src_bfid = r
 		st = is_swapped(src_bfid, db)
 		if not st:
-			error_log(MY_TASK, "%s %s has not been swapped"%(src_bfid, bfid))
-			local_error = local_error + 1
+			error_log(MY_TASK, "%s %s %s has not been swapped"%(src_bfid, bfid, pnfs_path))
 			continue
 		ct = is_closed(bfid, db)
 		if not ct:
@@ -693,23 +655,16 @@ def final_scan_volume(vol):
 			pf = pnfs.File(pnfs_path)
 			if pf.volume != vol:
 				error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
-				local_error = local_error + 1
 				continue
-
-			open_log(MY_TASK, "verifying", bfid, pnfs_path, '...')
-			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(pnfs_path)
-			res = encp.encp(cmd)
+			res = run_encp([pnfs_path, '/dev/null'])
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
-				close_log('OK')
+				ok_log(MY_TASK, "closing", bfid, pnfs_path)
 			else:
-				close_log("FAILED ... ERROR")
-				local_error = local_error + 1
-				continue
-
+				error_log(MY_TASK, "closing", bfid, pnfs_path, "failed")
 			# mark the original deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
-			res = db.query(q).getresult()
+			res = db.query(q).get_result()
 			if len(res):
 				if res[0][0] != 'y':
 					res = fcc.set_deleted('yes', bfid=src_bfid)
@@ -720,23 +675,12 @@ def final_scan_volume(vol):
 				else:
 					ok_log(MY_TASK, "%s has already been marked deleted"%(src_bfid))
 		else:
-			ok_log(MY_TASK, bfid, "is already closed at", ct)
+			ok_log(MY_TASK, "checking", bfid, pnfs_path, "already done at", ct)
 			# make sure the original is marked deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
-			res = db.query(q).getresult()
+			res = db.query(q).get_result()
 			if not len(res) or res[0][0] != 'y':
 				error_log(MY_TASK, "%s was not marked deleted"%(src_bfid))
-	# restore file family only if there is no error
-	if not local_error:
-		ff = normal_file_family(ff)
-		vf = string.join((sg, ff, wp), '.')
-		res = vcc.modify({'external_label':vol, 'volume_family':vf})
-		if res['status'][0] == e_errors.OK:
-			ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
-		else:
-			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
-			local_error = local_error + 1
-	return local_error
 
 # migrate(file_list): -- migrate a list of files
 def migrate(files):
@@ -761,10 +705,8 @@ def migrate(files):
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 	# get its own vcc
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
-
 	# check if vol is set to "readonly". If not, set it.
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
@@ -778,8 +720,7 @@ def migrate_volume(vol):
 	# get all bfids
 	q = "select bfid from file, volume \
 		where file.volume = volume.id and label = '%s' \
-		and deleted = 'n' and pnfs_path != '' \
-		 order by location_cookie;"%(vol)
+		and deleted = 'n' order by location_cookie;"%(vol)
 	res = db.query(q).getresult()
 
 	bfids = []
@@ -832,12 +773,11 @@ def restore(bfids):
 # restore_volume(vol) -- restore all deleted files on vol
 def restore_volume(vol):
 	MY_TASK = "RESTORE_VOLUME"
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 	log(MY_TASK, "restoring", vol, "...")
 	q = "select bfid from file, volume where \
 		file.volume = volume.id and label = '%s' and \
 		deleted = 'y';"%(vol)
-	res = db.query(q).getresult()
+	res = db.query(q).get_result()
 	bfids = []
 	for i in res:
 		bfids.append(i[0])
@@ -867,10 +807,6 @@ if __name__ == '__main__':
 	if len(sys.argv) < 2 or sys.argv[1] == "--help":
 		usage()
 		sys.exit(0)
-
-	# log command line
-	cmd = string.join(sys.argv)
-	log("COMMAND LINE:", cmd)
 
 	if sys.argv[1] == "--vol":
 		icheck = False
