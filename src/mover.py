@@ -1989,7 +1989,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 #End of tape
                                 Trace.log(e_errors.INFO, "hit EOT while reading tape. Current Location %s Previous location %s"%
                                           (self.current_location, prev_loc))
-                                self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_NODATA, error_source=TAPE)
+                                #self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_NODATA, error_source=TAPE)
+                                self.send_error_msg(error_info=(e_errors.READ_ERROR, e_errors.READ_NODATA), error_source=TAPE)
                                 failed = 1
                                 break
                     elif detail == 'FTT_EBLANK':
@@ -2745,11 +2746,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         ftt_eio =0 
 
+        if type(msg) != type(""):
+            msg = str(msg)
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s" % (
             exc, msg, error_source,self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
-        if type(msg) != type(""):
-            msg = str(msg)
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
             if (msg.find("FTT_EIO") != -1):
                 # possibly a scsi error, log low level diagnostics
@@ -2771,6 +2772,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # this only can happen when initial communication with get failed
         # just return here as no tape was mounted yet
         if self.udp_control_address and self.udp_cm_sent:
+            Trace.trace(98, "calling nowork")
             self.nowork({})
 
         if exc not in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
