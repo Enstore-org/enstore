@@ -1018,7 +1018,7 @@ class Mover:
     def transfer_rate(self, num_bytes, mover_time = None):
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
-        num_bytes = int(num_bytes)  #If this throughs an error...
+        num_bytes = long(num_bytes)  #If this throughs an error...
         try:
             el_time = float(mover_time)
         except (ValueError, TypeError):
@@ -2511,7 +2511,7 @@ class Display(Tkinter.Canvas):
 
         ###What are these for?
         mover.t0 = now
-        mover.b0 = 0
+        mover.b0 = 0L
                 
     def disconnect_command(self, command_list):
         Trace.trace(2, "mover %s is disconnecting from %s" %
