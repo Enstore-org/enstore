@@ -1118,7 +1118,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             
             # create volume map and store cross reference data
             mover_ticket = done_ticket.get('mover', {})
-            drive = mover_ticket.get('device', 'Unknown') + ':' + mover_ticket.get('serial_num','Unknown')
+            drive = "%s:%s"%(mover_ticket.get('device', 'Unknown'),mover_ticket.get('serial_num','Unknown'))
             try:
                 p.set_xreference(done_ticket["fc"]["external_label"],
                                  done_ticket["fc"]["location_cookie"],
@@ -1132,6 +1132,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
             done_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
             done_ticket["fc"]["pnfs_mapname"] = p.mapfile
+            done_ticket["fc"]["drive"] = drive
             done_ticket["work"] = "set_pnfsid"
             fc_reply = u.send(done_ticket, (fticket['hostip'], 
                                              fticket['port']))
