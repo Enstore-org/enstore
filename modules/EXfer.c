@@ -43,8 +43,9 @@
 			 distributions are fully C99 compliant, even more
 		         definitions from this file should be used. */
 #endif /* __osf__ */
-
+#ifdef __sgi
 #include <sys/sysmp.h>
+#endif
 
 /***************************************************************************
  constants and macros
