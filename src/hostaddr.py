@@ -8,8 +8,10 @@
 
 #system imports
 import os
+import stat
 import socket
 import string
+import time
 
 #enstore imports
 import access
@@ -54,7 +56,7 @@ def name_to_address(name):
     known_names[name] = addr
     return addr
     
-def get_interface_file_name():
+def get_interface_file_name(verbose=0):
     hostname, junk, junk = gethostinfo()
     if '.' in hostname:
         hostname=string.split(hostname,'.')[0]
@@ -66,24 +68,46 @@ def get_interface_file_name():
     trydirs.append("/etc") # fallback
     for trydir in trydirs:
         trypath=os.path.join(trydir, filename)
+        if verbose: print "searching", trydir, "for", filename
         if access.access(trypath, access.R_OK):
+            if verbose: print "found it"
             return trypath
+    if verbose: print "not found"
     return None
         
         
 multi_interface_table=None
-        
+last_mtime = 0
+
 def get_multiple_interfaces(verbose=0):
     global multi_interface_table
-    if multi_interface_table:
-        return multi_interface_table
+    global last_mtime
 
+    filename = get_interface_file_name(verbose)
+
+    #see if we previously loaded the file, if so, check the mtime
+    if multi_interface_table:
+        if verbose: print "table already loaded, checking for file update"
+        if filename:
+            try:
+                mtime=os.stat(filename)[stat.ST_MTIME]
+                if mtime == last_mtime:
+                    if verbose: print "not changed"
+                    return multi_interface_table
+            except os.error: # file must have been deleted
+                if verbose: print "cannot stat", filename
+                multi_interface_table = None
+                last_mtime = 0
+        else:
+             multi_interface_table = None
+             last_mtime = 0
+            
     table = []
-    filename = get_interface_file_name()
 
     if filename:
         file = open(filename,'r')
-
+        last_mtime=os.stat(filename)[stat.ST_MTIME]
+        if verbose: print "reading", filename
         ##this table will be  a list of tuples,  (IP#.  Relative B/W)
         for line in file.readlines():
             words = string.split(line)
@@ -97,21 +121,24 @@ def get_multiple_interfaces(verbose=0):
             else:
                 print "Configuration file error: %s %s" % (filename, line)
     if not table:
+        if verbose: print "no multiple interface table"
         junk, junk, ips = gethostinfo()
         table = (ips[0], 1)
-    multiple_interface_table = table
-    return multiple_interface_table
+    multi_interface_table = table
+    return multi_interface_table
 
 if __name__ == "__main__":
     print gethostinfo(1)
     print gethostinfo(1)
-    print get_multiple_interfaces()
-    print get_multiple_interfaces()
+    print get_multiple_interfaces(1)
+    print get_multiple_interfaces(1)
     print address_to_name('127.0.0.1')
     print address_to_name('1.1.1.1')
     print address_to_name('131.225.84.156')
     print name_to_address('rip8.fnal.gov')
-    
+    while 1:
+        print get_multiple_interfaces(1)
+        time.sleep(1)
     
     
 
