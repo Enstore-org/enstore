@@ -5455,6 +5455,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #Determine the output filename.
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
+            elif getattr(e, "sequential_filenames", None):
+                #The user overrode "get" to use numbered filenames.
+                ofullname = os.path.join(e.output[0], lc)
             else:
                 ofullname = os.path.join(e.output[0], filename)
 
