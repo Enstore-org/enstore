@@ -65,6 +65,8 @@ def write_request_ok(ticket):
             return key
         else:
             if type(ticket['wrapper'][key]) != type( wrapper_keys[key]):
+                if key == 'inode' and (type(ticket['wrapper'][key]) == type(0) or type(ticket['wrapper'][key]) == type(0L)):
+                    continue
                 return key
         
     return None
@@ -161,6 +163,8 @@ def read_request_ok(ticket):
             return key
         else:
             if type(ticket['wrapper'][key]) != type(wrapper_keys[key]):
+                if key == 'inode' and (type(ticket['wrapper'][key]) == type(0) or type(ticket['wrapper'][key]) == type(0L)):
+                    continue
                 return key
         
     return None
@@ -242,7 +246,7 @@ if __name__ == "__main__" :
                             'uname': 'jurgen', 'pstat': (33188, 185388456L, 1310720L, 1, 1727, 1747,
                                                          80907408L, 1059340564, 997734565, 997734522),
                             'gid': 1747, 'mode': 33252, 'gname': 'e781', 'size_bytes': 80907408L,
-                            'fullname': '/spool03/scratch/jurgen/strip-123/a.tmp', 'inode': None,
+                            'fullname': '/spool03/scratch/jurgen/strip-123/a.tmp', 'inode': 0,
                             'minor': 0},
                 'times': {'lm_dequeued': 1075147989.9954801, 'encp_start_time': 1075147985.4076791,
                           'job_queued': 1075147987.235173, 't0': 1075147985,
