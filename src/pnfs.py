@@ -500,7 +500,7 @@ class Pnfs:
         if self.valid == VALID and self.exists == EXISTS:
             try:
                 xinfo = self.readlayer(4)
-                xinfo = map(string.strip,xinfo)
+                xinfo = map(string.strip, xinfo[:6])
                 (self.volume, self.location_cookie, self.size,
                  self.origff, self.origname, self.mapfile) = xinfo
             except:
