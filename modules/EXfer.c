@@ -69,6 +69,7 @@ raise_exception( char *msg )
     if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
 #   endif
 
+    /* note: format should be the same as in FTT.c */
     sprintf( buf, "(pid %d) %s - %s", getpid(), msg, strerror(i) );
     v = Py_BuildValue( "(is)", i, buf );
     if (v != NULL)
