@@ -23,8 +23,8 @@ import mover_client
 import volume_clerk_client
 import dbs
 
-#CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
-CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
+CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
+#CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
 
 DEFAULT_AML2_NODE = "rip10"
 
