@@ -273,6 +273,9 @@ class MoverClient:
             self.hsm_driver.offline( mvr_config['device'] )
             # tell media changer to unload the vol BUT I DO NOT KNOW THE VOL
             #mcc.unloadvol( self.vol_info, mvr_config['mc_device'] )
+            self.mcc.unloadvol( self.vol_info, mvr_config['name'], 
+                mvr_config['mc_device'],
+                self.vol_vcc[self.vol_info['external_label']] )
             pass
         driver_object.close()
 
