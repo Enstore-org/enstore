@@ -35,34 +35,34 @@ import pprint
 import pwd
 import grp
 import socket
-import pdb
+#import pdb
 import string
-import traceback
+#import traceback
 import select
-import signal
-import random
+#import signal
+#import random
 import fcntl
 if sys.version_info < (2, 2, 0):
     import FCNTL #FCNTL is depricated in python 2.2 and later.
     fcntl.F_GETFL = FCNTL.F_GETFL
     fcntl.F_SETFL = FCNTL.F_SETFL
-import math
+#import math
 import exceptions
 import re
 import statvfs
 import types
 
 # enstore modules
-import setpath 
+#import setpath
 import Trace
 import pnfs
 import callback
-import log_client
-import alarm_client
+#import log_client
+#import alarm_client
 import configuration_client
 import udp_server
 import EXfer
-import interface
+#import interface
 import option
 import e_errors
 import hostaddr
@@ -70,8 +70,8 @@ import host_config
 import atomic
 import library_manager_client
 import delete_at_exit
-import runon
-import enroute
+#import runon
+#import enroute
 import charset
 import volume_family
 import volume_clerk_client
@@ -210,10 +210,10 @@ def encp_client_version():
     if encp_file: version_string = version_string + encp_file
     return version_string
 
-def quit(exit_code=1):
-    delete_at_exit.quit(exit_code)
-    #delete_at_exit.delete()
-    #os._exit(exit_code)
+#def quit(exit_code=1):
+#    delete_at_exit.quit(exit_code)
+#    #delete_at_exit.delete()
+#    #os._exit(exit_code)
 
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
@@ -1407,6 +1407,10 @@ def clients():
     # get a configuration server client
     csc = get_csc()
 
+    #Report on the success of getting the csc and logc.
+    #Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'],'csc'))
+    #Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'],'logc'))
+    
     #This group of servers must be running to allow the transfer to
     # succed.  The library manager is not checked (now anyway) because we
     # don't know which one it is.
@@ -1421,28 +1425,27 @@ def clients():
         if not e_errors.is_ok(ticket['status']):
             Trace.alarm(e_errors.ERROR, ticket['status'][0], ticket)
             print_data_access_layer_format("", "", 0, ticket)
-            quit()
+            delete_at_exit.quit()
 
         Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
                       (server, ticket.get('address', "Unknown")))
     
     # get a logger client
-    logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
+    #logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     #global client #should not do this
-    client = {}
-    client['csc']=csc
-    client['logc']=logc
+    #client = {}
+    #client['csc']=csc
+    #client['logc']=logc
     
-    return client
+    #return client
 
 ##############################################################################
 
-def get_callback_addr(encp_intf, ip=None):
+def get_callback_addr(ip = None):  #encp_intf, ip=None):
     # get a port to talk on and listen for connections
     try:
-        (host, port, listen_socket) = callback.get_callback(
-            verbose=encp_intf.verbose, ip=ip)
+        (host, port, listen_socket) = callback.get_callback(ip)
         listen_socket.listen(4)
     except socket.error:
         #Most likely, there are no more sockets/files left to open.
@@ -2419,7 +2422,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                                 str(msg), e_errors.OSERROR)
 
     (route_ticket['callback_addr'], listen_socket) = \
-				    get_callback_addr(encp_intf, ip=ip)
+				    get_callback_addr(ip)  #encp_intf, ip=ip)
     route_server.reply_to_caller_using_interface_ip(route_ticket, ip)
 
     return route_ticket, listen_socket
@@ -3453,8 +3456,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         result_dict = combine_dict(result_dict, socket_dict)
         return result_dict
     #At this point it is known there is an error.  If the transfer is a read,
-    # then if the encp is killed before completing quit() could leave
-    # non-zero non-correct files.  If this is the case truncate them.
+    # then if the encp is killed before completing delete_at_exit.quit() could
+    # leave non-zero non-correct files.  If this is the case truncate them.
     elif is_read(encp_intf):
         try:
             fd = os.open(outfile, os.O_WRONLY | os.O_TRUNC)
@@ -4801,7 +4804,7 @@ def write_to_hsm(e, tinfo):
     exit_status = 0 #Used to determine the final message text.
 
     # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr(e)
+    callback_addr, listen_socket = get_callback_addr()  #e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
 
@@ -4809,7 +4812,7 @@ def write_to_hsm(e, tinfo):
     if listen_socket == None or udp_server.server_socket == None:
         print_data_access_layer_format(
             "", "", 0, {'status':(e_errors.NET_ERROR, None)})
-        quit()
+        delete_at_exit.quit()
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
@@ -4828,11 +4831,11 @@ def write_to_hsm(e, tinfo):
 
         #Print the error and exit.
         print_data_access_layer_format("", "", 0, e_ticket)
-        quit()
+        delete_at_exit.quit()
 
     #If this is the case, don't worry about anything.
     if len(request_list) == 0:
-        quit()
+        delete_at_exit.quit()
 
     #This will halt the program if everything isn't consistant.
     try:
@@ -4841,7 +4844,7 @@ def write_to_hsm(e, tinfo):
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         print_data_access_layer_format("", "", 0, msg.ticket)
-        quit()
+        delete_at_exit.quit()
 
     #Where does this really belong???
     if not e.put_cache: #Skip this for dcache transfers.
@@ -4853,7 +4856,7 @@ def write_to_hsm(e, tinfo):
                 request['status'] = (e_errors.OSERROR, msg.strerror)
                 print_data_access_layer_format(request['infile'], "",
                                                0, request)
-                quit()
+                delete_at_exit.quit()
                 
     #Set the max attempts that can be made on a transfer.
     max_attempts(request_list[0]['vc']['library'], e)
@@ -6504,7 +6507,7 @@ def read_from_hsm(e, tinfo):
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
     # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr(e)
+    callback_addr, listen_socket = get_callback_addr()  #e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
 
@@ -6512,11 +6515,11 @@ def read_from_hsm(e, tinfo):
     if listen_socket == None:
         print_data_access_layer_format("", "", 0,
            {'status':(e_errors.NET_ERROR, "Unable to obtain control socket.")})
-        quit()
+        delete_at_exit.quit()
     if udp_server.server_socket == None:
         print_data_access_layer_format("", "", 0,
            {'status':(e_errors.NET_ERROR, "Unable to obtain udp socket.")})
-        quit()
+        delete_at_exit.quit()
     
     #Create all of the request dictionaries.
     try:
@@ -6530,11 +6533,11 @@ def read_from_hsm(e, tinfo):
                                         errno.errorcode[errno.ENODATA])
         print_data_access_layer_format(
             "", "", 0, {'status':(error, str(msg))})
-        quit()
+        delete_at_exit.quit()
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
-        quit()
+        delete_at_exit.quit()
 
     #This will halt the program if everything isn't consistant.
     try:
@@ -6544,7 +6547,7 @@ def read_from_hsm(e, tinfo):
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         print_data_access_layer_format("", "", 0, msg.ticket)
-        quit()
+        delete_at_exit.quit()
 
     #Create the zero length file entry.
     for vol in requests_per_vol.keys():
@@ -6557,7 +6560,7 @@ def read_from_hsm(e, tinfo):
                 request['status'] = (e_errors.OSERROR, msg.strerror)
                 print_data_access_layer_format("", request['outfile'],
                                                0, request)
-                quit()
+                delete_at_exit.quit()
     
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()    
@@ -6598,7 +6601,8 @@ def read_from_hsm(e, tinfo):
 
             if len(requests_failed) > 0 or \
                not e_errors.is_ok(data_access_layer_ticket['status'][0]):
-                exit_status = 1 #Error, when quit() called, this is passed in.
+                #When delete_at_exit.quit() called, exit_status passed in.
+                exit_status = 1 
                 Trace.message(ERROR_LEVEL,
                               "TRANSFERS FAILED: %s" % len(requests_failed))
                 Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
@@ -7096,7 +7100,7 @@ class EncpInterface(option.Interface):
                     print_error(e_errors.USERERROR, msg % "/pnfs/...")
                 else:
                     print_error(e_errors.USERERROR, msg % "unix")
-                quit()
+                delete_at_exit.quit()
             else:
                 self.input.append(self.args[i]) #Do this way for a copy.
 
@@ -7231,10 +7235,8 @@ def main(intf):
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
-    client = clients()
-    #Report on the success of getting the csc and logc.
-    Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'], 'csc'))
-    Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'], 'logc'))
+    clients()
+    #client = clients()
 
     # convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
@@ -7281,7 +7283,7 @@ def main(intf):
         if intf.data_access_layer:
             print_data_access_layer_format(intf.input, intf.output, 0,
                                            {'status':("USERERROR",emsg)})
-        quit()
+        delete_at_exit.quit()
 
     ## have we been called "encp hsmfile hsmfile?
     elif intf.intype=="hsmfile" and intf.outtype=="hsmfile" :
@@ -7290,13 +7292,13 @@ def main(intf):
         if intf.data_access_layer:
             print_data_access_layer_format(intf.input, intf.output, 0,
                                            {'status':("USERERROR",emsg)})
-        quit()
+        delete_at_exit.quit()
 
     else:
         emsg = "ERROR: Can not process arguments %s"%(intf.args,)
         Trace.trace(16,emsg)
         print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
-        quit()
+        delete_at_exit.quit()
 
     exit_status = done_ticket.get('exit_status', 1)
     try:
@@ -7318,25 +7320,25 @@ def main(intf):
         exc, msg = sys.exc_info()[:2]
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
-        quit(1)
+        delete_at_exit.quit(1)
 
     Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
     #Quit safely by Removing any zero length file for transfers that failed.
-    quit(exit_status)
+    delete_at_exit.quit(exit_status)
 
 
 def do_work(intf):
 
     try:
         main(intf)
-        quit(0)
+        delete_at_exit.quit(0)
     except SystemExit:
-        quit(1)
+        delete_at_exit.quit(1)
     #except:
         #exc, msg, tb = sys.exc_info()
         #sys.stderr.write("%s\n" % (tb,))
         #sys.stderr.write("%s %s\n" % (exc, msg))
-        #quit(1)
+        #delete_at_exit.quit(1)
         
         
 if __name__ == '__main__':
