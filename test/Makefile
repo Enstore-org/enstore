@@ -59,12 +59,9 @@ datafiles:
 	if [ ! -d data ] ; then mkdir data ; fi
 	touch data/null0.dat
 	echo short > data/short1.dat
-	dd if=/dev/zero of=data/null1.dat count=10
-	dd if=/dev/zero of=data/null2.dat count=20
 	dd if=/dev/zero of=data/null3.dat count=60
-	ecmd random-file --size=1024   --file=data/ran1.dat
-	ecmd random-file --size=32768  --file=data/ran2.dat
 	ecmd random-file --size=131072 --file=data/ran3.dat
+	ecmd random-file --size=262144 --file=data/ran4.dat
 
 jobs:
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
