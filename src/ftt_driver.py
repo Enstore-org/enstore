@@ -18,7 +18,7 @@ GB=MB*KB
 
 
 class FTTDriver(driver.Driver):
-    mount_delay = 15
+    mount_delay = 30
     def __init__(self):
         self.fd = -1
         self.ftt = None
@@ -85,14 +85,19 @@ class FTTDriver(driver.Driver):
                 break
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.value))
-                if detail.errno == ftt.EBUSY:
+                if detail.errno in ftt.EBUSY
                     time.sleep(5)
                 elif detail.errno == ftt.EROFS:
                     ###XXX HACK!  Tape may have write-protect tab set.  But we really
                     ### ought to get readonly status of the tape from the volume database
                     Trace.log(e_errors.INFO, "ftt open dev: %s %s: reopening read-only" %(detail, detail.value))
+                    self.ftt.rewind() #XXX hack, clear error
                     self.ftt.close()
                     self.ftt = ftt.open(self.device, ftt.RDONLY)
+                elif detail.errno == ftt.SUCCESS: ###XXX hack - why are we getting this?
+                    Trace.log(e_errors.INFO, "CGW: got SUCCESS on open, why?")
+                    self.ftt.close_dev()
+                    time.sleep(5)
                 else:
                     break
                 
