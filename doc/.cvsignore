@@ -6,6 +6,8 @@
 *.jou
 *.dat
 *.old
+classes.known
+obj.ps
 data
 1
 2
