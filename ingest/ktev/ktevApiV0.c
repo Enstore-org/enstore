@@ -31,11 +31,10 @@ int putRecord(char *buffer, int buffer_size, int dest)
 {
 
   int n;
-  int record_length;
-  n = dc_write(dest, &record_length, sizeof(int));
-  n = dc_write(dest, buffer, record_length);
-  n = dc_write(dest, &record_length, sizeof(int));
-  return n>0?record_length:n;
+  n = dc_write(dest, &buffer_size, sizeof(int));
+  n = dc_write(dest, buffer, buffer_size);
+  n = dc_write(dest, &buffer_size, sizeof(int));
+  return n>0?buffer_size:n;
 }
 
 void setVolumeName(const char *s)
@@ -50,7 +49,7 @@ void setVolumeName(const char *s)
     volumeName = (char *)strdup(s);       
 }
 
-int getFile(char *volumeName, char fileName[FILENAME_LEN])
+int nextGetFile(char *volumeName, char fileName[FILENAME_LEN])
 {
   char *path = malloc(strlen(volumeName) + strlen(PNFS_ROOT) + 11);
   char firstTwo[2], firstFour[4];
@@ -100,4 +99,48 @@ int getFile(char *volumeName, char fileName[FILENAME_LEN])
     {
       return -1;
     }
+}
+
+int getFile(char *volumeName, char fileName[FILENAME_LEN])
+{
+  return nextGetFile(volumeName, fileName);
+}
+
+int nextPutFile(char *volumeName, char fileName[FILENAME_LEN])
+{
+  char *path = malloc(strlen(volumeName) + strlen(PNFS_ROOT) + 11);
+  char firstTwo[2], firstFour[4];
+  static int fileNum=0;
+
+  strncpy(firstTwo, volumeName, 2);
+  strncpy(firstFour, volumeName, 4);
+
+  strcpy(path, PNFS_ROOT);
+  strcat(path, "/");
+  strncat(path, firstTwo, 2);
+  if( !opendir(path) ) {
+    if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      return -1;
+    }
+  }
+  strcat(path, "/");
+  strncat(path, firstFour, 4);
+  if( !opendir(path) ) {
+    if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      return -1;
+    }
+  }
+  strcat(path, "/");
+  strcat(path, volumeName);
+  if( !opendir(path) ) {
+    if( mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+      return -1;
+    }
+  }
+  strcat(path, "/");
+  sprintf(firstFour, "f%d", fileNum);
+  strcat(path, firstFour);
+  strncpy(fileName, path, FILENAME_LEN);
+  fileNum ++;
+  return 0;
 }
