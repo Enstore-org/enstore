@@ -53,7 +53,7 @@ class AdminClerkClient(generic_client.GenericClient) :
                 break
             else:
 	        self.enprint("select - imposter called us back, trying again",\
-	                     generic_cs.NONE, generic_cs.NONE, self.logc)
+	                     generic_cs.ENNONE, generic_cs.ENNONE, self.logc)
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:

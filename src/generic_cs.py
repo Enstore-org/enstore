@@ -7,8 +7,8 @@ import pprint
 #enstore imports
 import Trace
 
-NONE = 0
-NONE_V = -1
+ENNONE = 0
+ENNONE_V = -1
 
 # define the bits used in the verbose mask
 SERVER       = 000000000001     # 1
@@ -41,12 +41,12 @@ def add_id(id, msg):
 	nmsg = id+": "+repr(msg)
     return nmsg
 
-def enprint(msg, msg_bit=NONE, verbosity=NONE_V, logger=NONE, id=""):
+def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, id=""):
     global global_print_id
 
     # send the message to STDOUT.
     # do not print if the verbosity level does not have a bit set for this msg.
-    if verbosity != NONE_V:
+    if verbosity != ENNONE_V:
 	# check that this message should be printed for this verbosity
 	if verbosity & msg_bit:
 	    nmsg = add_id(id, msg)
@@ -83,7 +83,7 @@ def enprint(msg, msg_bit=NONE, verbosity=NONE_V, logger=NONE, id=""):
 
 class GenericCS:
 
-    def enprint(self, msg, msg_bit=NONE, verbosity=NONE_V, logger=NONE):
+    def enprint(self, msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE):
 	global global_print_id
 	try:
 	    global_print_id = self.print_id
