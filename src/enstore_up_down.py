@@ -298,11 +298,7 @@ class LibraryManager(EnstoreServer):
 	    # the lm is not in a good state mark it as yellow
 	    enprint("%s in a %s state"%(self.format_name, self.lstate))
 	    self.set_status(enstore_constants.WARNING)
-            if self.lstate != 'unknown':
-                self.writemail("%s is in %s state. Down counter %s"%(self.format_name,
-                                                                     self.lstate,
-                                                                     self.seen_down_d[self.format_name]))
-            else:
+            if self.lstate == 'unknown':
                 self.writemail("%s is in %s state. Down counter %s"%(self.format_name,
                                                                      self.lstate,
                                                                      self.seen_down_d[self.format_name]))
