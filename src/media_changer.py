@@ -105,6 +105,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # wrapper method for client - server communication
     def loadvol(self, ticket):
         ticket["function"] = "mount"
+        Trace.trace(11, "loadvol %s"%(ticket,))
         return self.DoWork( self.load, ticket)
 
     # wrapper method for client - server communication
@@ -363,6 +364,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		    if ticket['vol_ticket']['system_inhibit'][1] in ('full','readonly','migrated') or ticket['vol_ticket']['user_inhibit'][1] in ('full','readonly'):
 			    media_type=media_type+"READONLY"
 	    #print ticket['function'],ticket['vol_ticket']['external_label'],ticket['vol_ticket']['system_inhibit'][1], ticket['vol_ticket']['user_inhibit'][1],media_type
+            
+            Trace.trace(12, 'ticket %s'%(ticket,))
             Trace.trace(11, 'mcDoWork> child doing %s. Media type %s'%(msg, media_type))
             sts = function(
                 ticket['vol_ticket']['external_label'],
