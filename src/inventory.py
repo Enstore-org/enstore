@@ -1151,6 +1151,8 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     la_file.close()
     vs_file.close()
     vd_file.close()
+    vols.close()
+    files.close()
 
     #Create files that hold statistical data.
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
