@@ -5,6 +5,7 @@ import os
 import errno
 import exceptions
 from errno import *
+import sys
 
 TRANSFER_MAX=1024
 
@@ -71,6 +72,13 @@ class UDPClient:
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
                 try :
                     exec ("number,  out  = "  + reply)
+                # did we read entire message (bigger than TRANSFER_MAX?)
+                except exceptions.SyntaxError :
+                    print "disaster: probably didn't read entire message"
+                    print "reply:",reply
+                    print "server:",server
+                    raise sys.exc_info()[0],sys.exc_info()[1]
+                # goofy test feature - need for client being echo service only
                 except exceptions.ValueError :
                     exec ("ident, number,  out  = "  + reply)
                 if number != self.number :
@@ -82,7 +90,6 @@ class UDPClient:
 
 
 if __name__ == "__main__" :
-    import sys
     import getopt
     import socket
     import string
@@ -117,14 +124,14 @@ if __name__ == "__main__" :
     #pprint.pprint(u.__dict__)
 
     if list:
-	print "Sending:\n",msg,"\nto",host,port,"with calback on",u.port
+        print "Sending:\n",msg,"\nto",host,port,"with calback on",u.port
     back = u.send(msg, (host, port))
 
     if back != msg :
-	print "Error: sent:\n",msg,"\nbut read:\n",back
-	status = status|1
+        print "Error: sent:\n",msg,"\nbut read:\n",back
+        status = status|1
 
     elif list:
-	print "Read back:\n",back
+        print "Read back:\n",back
 
     sys.exit(status)
