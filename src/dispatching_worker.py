@@ -129,10 +129,10 @@ class DispatchingWorker:
             if self.do_collect:
                 collect_children()
         if self.is_child:
-            Trace.trace(6,"server_forever, child process exiting")
+            Trace.trace(6,"serve_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
         else:
-            Trace.trace(6,"server_forever, shouldn't get here")
+            Trace.trace(6,"serve_forever, shouldn't get here")
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
@@ -264,7 +264,7 @@ class DispatchingWorker:
         Interface required by select().
 
         """
-        Trace.trace(16,"fileno ="+repr(self.server_socket.fileno()))
+        ##Trace.trace(16,"fileno ="+repr(self.server_socket.fileno()))
         return self.server_socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
@@ -298,10 +298,10 @@ class DispatchingWorker:
         try:
             function_name = ticket["work"]
             function = getattr(self,function_name)
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
 				  "cannot find requested function `%s'"%(function_name,))}
-            Trace.trace(6,"process_request %s %s"%(ticket,function_name))
+            Trace.trace(6,"%s process_request %s %s"%(detail,ticket,function_name))
             self.reply_to_caller(ticket)
             return
 
@@ -309,7 +309,7 @@ class DispatchingWorker:
             purge_stale_entries(request_dict)
 
         # call the user function
-        Trace.trace(6,"process_request function="+repr(function_name))
+        ## Trace.trace(6,"process_request function="+repr(function_name))
         apply(function, (ticket,))
         
     def handle_error(self, request, client_address):
@@ -380,7 +380,7 @@ class DispatchingWorker:
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
         try:
-            Trace.trace(20,"done_cleanup id="+repr(self.current_id))
+            ##Trace.trace(20,"done_cleanup id="+repr(self.current_id))
             del request_dict[self.current_id]
         except KeyError:
             pass
@@ -393,13 +393,13 @@ class DispatchingWorker:
                                                           self.current_id))
         reply = (self.client_number, ticket, time.time()) 
         self.reply_with_list(reply)          
-        Trace.trace(18,"reply_to_caller number=%s"%(self.client_number,))
+        ##Trace.trace(18,"reply_to_caller number=%s"%(self.client_number,))
 
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number,
+        ## Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number,
                                                           self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
         self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
