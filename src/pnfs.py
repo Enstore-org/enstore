@@ -216,7 +216,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.rminor = 0
         except:
             exc, msg, tb = sys.exc_info()
-            sys.stderr.write("%s %s" % (exc, msg))
+            sys.stderr.write("%s %s\n" % (exc, msg))
             #traceback.print_tb(tb)
             self.valid = INVALID
 
