@@ -209,32 +209,33 @@ class UDPClient:
             # check for a response
 	    reply , server = wait_rsp( self.socket, address, rcv_timeout )
 
-	    if reply == "" and once:
+	    if reply != "":
+		# OK, we have received something -- "try" it
+		try:
+		    exec ("number,  out, time  = "  + reply)
+		# did we read entire message (bigger than TRANSFER_MAX?)
+	        except exceptions.SyntaxError :
+		    Trace.trace(0,"send disaster: didn't read entire message"+\
+				"server="+repr(server)+" "+\
+				str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+		    print "disaster: didn't read entire message"
+		    print "reply:",reply
+		    print "server:",server
+		    raise sys.exc_info()[0],sys.exc_info()[1]
+		# goofy test feature - need for client being echo service only
+		except exceptions.ValueError :
+		    Trace.trace(0,'send GOOFY TEST FEATURE')
+		    exec ("ident, number,  out, time  = "  + reply)
+
+		# now (after receive), check...
+		if number != self.number :
+		    Trace.trace(21,'send stale='+repr(number)+' want='+\
+				repr(self.number))
+		    print "UDPClient.send: stale_number=",number, "number=", \
+			  self.number,"resending to ", address, message
+
+	    elif once: # no reply and once
 		raise errno.errorcode[errno.ETIMEDOUT]
-
-	    # OK, we have received something -- "try" it
-	    try:
-		exec ("number,  out, time  = "  + reply)
-	    # did we read entire message (bigger than TRANSFER_MAX?)
-	    except exceptions.SyntaxError :
-		Trace.trace(0,"send disaster: didn't read entire message"+\
-			    "server="+repr(server)+" "+\
-			    str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-		print "disaster: didn't read entire message"
-		print "reply:",reply
-		print "server:",server
-		raise sys.exc_info()[0],sys.exc_info()[1]
-	    # goofy test feature - need for client being echo service only
-	    except exceptions.ValueError :
-		Trace.trace(0,'send GOOFY TEST FEATURE')
-		exec ("ident, number,  out, time  = "  + reply)
-
-	    # now (after receive), check...
-	    if number != self.number :
-		Trace.trace(21,'send stale='+repr(number)+' want='+\
-			    repr(self.number))
-		print "UDPClient.send: stale_number=",number, "number=", \
-		      self.number,"resending to ", address, message
 
 	Trace.trace(20,"}send "+repr(out))
         return out
