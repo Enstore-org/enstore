@@ -47,13 +47,13 @@ while /bin/true; do
           delpri=`$ENSTORE_DIR/test/aran.sh 1 10`
           age=`$ENSTORE_DIR/test/aran.sh 1 6`
           agetime=`expr $age \* 10 `
-          if [ $delayed_dismount_time -ne 0 ] ; then
+          if [ $delayed_dismount_time -lt 0 ] ; then
             if [ $sleep_time -eq 0 ] ; then
               delayed_dismount=5
             else
               delayed_dismount=`$ENSTORE_DIR/test/aran.sh 0 5`
             fi
-	  else
+          else
             delayed_dismount=$delayed_dismount_time
           fi
           if [ `$ENSTORE_DIR/test/aran.sh 0 1` -eq 0 ] ; then
