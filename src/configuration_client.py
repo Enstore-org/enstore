@@ -36,7 +36,11 @@ class ConfigurationClient(generic_client.GenericClient):
 	self.print_id = MY_NAME
         self.config_address=csc
         self.u = udp_client.UDPClient()
-        
+
+    def send (self, ticket,  rcv_timeout=0, tries=0):
+        x = self.u.send( ticket, self.config_address, rcv_timeout, tries )
+        return x
+    
     # return the address of the configuration server
     def get_address(self):
 	return self.config_address
@@ -48,27 +52,16 @@ class ConfigurationClient(generic_client.GenericClient):
     # get value for requested item from server, store locally in own cache
     def get_uncached(self, key, timeout=0, retry=0):
         request = {'work' : 'lookup', 'lookup' : key }
-        while 1:
-            try:
-                self.cache[key] = self.u.send(request, self.config_address,
-                                              timeout, retry)
-                break
-            except socket.error:
-	        self.output_socket_error("get_uncached")
-        return self.cache[key]
+        self.cache[key] = self.send(request, timeout, retry)
 
-    # output the socket error
-    def output_socket_error(self, id):
-        exc, msg, tb = sys.exc_info()
-        if msg.errno == errno.CONNREFUSED:
-            delay = 3
-            time.sleep(delay)
-        else:
-            raise exc, msg
+        return self.cache[key]
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
-        ret = self.cache.get(key, None)
+        if key=='configuration_server':
+            ret = {'hostip':self.config_address[0], 'port':self.config_address[1]}
+        else:
+            ret = self.cache.get(key, None)
         if ret is None:
             ret = self.get_uncached(key, timeout, retry)
         return ret
@@ -76,43 +69,34 @@ class ConfigurationClient(generic_client.GenericClient):
     # dump the configuration dictionary
     def dump(self, timeout=0, retry=0):
         host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        
         request = {'work' : 'dump',
                    'callback_addr'  : (host,port)
                    }
-        try:
-            listen_socket.listen(1)
-            x=self.u.send(request, self.config_address, timeout, retry)
-            control_socket, addr = listen_socket.accept()
-            self.config_dump = callback.read_tcp_obj(control_socket)
-        except socket.error:
-            self.output_socket_error("dump")
+
+
+        x=self.send(request, timeout, retry)
+        control_socket, addr = listen_socket.accept()
+        self.config_dump = callback.read_tcp_obj(control_socket)
                 
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):
         request = {'work' : 'get_keys' }
-        while 1:
-            try:
-                keys = self.u.send(request, self.config_address, timeout,\
-	                           retry )
-                return keys
-            except socket.error:
-	        self.output_socket_error("get_keys")
+        keys = self.send(request,  timeout,  retry )
+        return keys
 
     # reload a new  configuration dictionary
     def load(self, configfile, timeout=0, retry=0):
         request = {'work' : 'load' ,  'configfile' : configfile }
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("load retrying")
+        x = self.send(request, timeout, retry)
+        return x
 
-    # check on alive status
+
+
     def alive(self, server, rcv_timeout=0, tries=0):
         try:
-            x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,
-                          tries)
+            x = self.send({'work':'alive'}, rcv_timeout, tries)
         except errno.errorcode[errno.ETIMEDOUT]:
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
@@ -120,55 +104,39 @@ class ConfigurationClient(generic_client.GenericClient):
     # get list of the Library manager movers
     def get_movers(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_movers' ,  'library' : library_manager }
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("get_movers")
+        x = self.send(request, timeout, retry)
+        return x
 
     # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_media_changer' ,
                    'library' : library_manager }
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("get_media_changer")
+        x = self.send(request, timeout, retry)
+        return x
+
 	
     #get list of library managers
     def get_library_managers(self, ticket, timeout=0, retry=0):
         request = {'work': 'get_library_managers'}
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("get_library_managers")
+        x = self.send(request, timeout, retry)
+        return x
+
 
     #get list of media changers
     def get_media_changers(self, ticket, timeout=0, retry=0):
         request = {'work': 'get_media_changers'}
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("get_media_changers")
+        x = self.send(request, timeout, retry)
+        return x
+
 
     # get the configuration dictionary element(s) that contain the specified
     # key, value pair
     def get_dict_entry(self, keyValue, timeout=0, retry=0):
         request = {'work': 'get_dict_element',
                    'keyValue': keyValue }
-        while 1:
-            try:
-                x = self.u.send(request, self.config_address, timeout, retry)
-                return x
-            except socket.error:
-	        self.output_socket_error("get_dict_element")
+        x = self.send(request, timeout, retry)
+        return x
+
 
         
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
@@ -199,22 +167,20 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
 def do_work(intf):
 
     csc = ConfigurationClient((intf.config_host, intf.config_port))
-
-    if intf.alive:
-        stati = csc.alive(MY_SERVER, intf.alive_rcv_timeout,intf.alive_retries)
-
+    csc.csc = csc
+    stati = csc.handle_generic_commands(MY_SERVER, intf)
+    if stati:
+        pass
     elif intf.show:
         csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        print pprint.pformat(csc.config_dump["dump"])
         stati = csc.config_dump
 
     elif intf.load:
-        stati= csc.load(intf.config_file, intf.alive_rcv_timeout, \
+        stati= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
 
     elif intf.summary:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
-	pprint.pprint(stati['get_keys'])
 
     else:
 	intf.print_help()
