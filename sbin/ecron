@@ -212,6 +212,10 @@ if [ $problem -ne 0 ] ; then
    cat $procOutput >>$procMail 2>/dev/null
    echo "  -------------------- end of messages   ---------------------- ">>$procMail
    sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+# save the error output. we get python and ENSTORE_DIR from the enstore setup
+# the second parameter tells the script how many output files to keep.  the default
+# is 5
+    python $ENSTORE_DIR/sbin/save-cron-output.py $procOutput 5
 fi
 
 quit "" $problem
