@@ -10,6 +10,7 @@ QUALIFIERS = ""
 	setupEnv()
 	proddir()
 	pathAppend(PATH, ${UPS_PROD_DIR}/bin)
+	setupRequired("libtp")
 	setupRequired("libtppy")
 	setupOptional("dot")
 	setupOptional("tgif")
