@@ -2734,11 +2734,25 @@ def submit_one_request(ticket):
         responce_ticket = lmc.write_to_hsm(ticket)
 
     if not e_errors.is_ok(responce_ticket['status']):
-        Trace.message(ERROR_LEVEL, "Submission to LM failed: " + \
-                      str(responce_ticket['status']))
-        Trace.log(e_errors.ERROR,
-                  "submit_one_request: Ticket submit failed for %s"
-                  " - retrying" % ticket['infile'])
+        if e_errors.is_non_retriable(responce_ticket['status']):
+            Trace.log(e_errors.ERROR,
+                      "submit_one_request: Ticket submit failed for %s: %s" %
+                      (ticket['infile'], responce_ticket['status']))
+            Trace.message(ERROR_LEVEL, "Submission to LM failed: " \
+                          + str(responce_ticket['status']))
+        else:
+            Trace.log(e_errors.ERROR,
+                      "submit_one_request: Ticket submit failed for %s"
+                      " - retrying" % ticket['infile'])
+            Trace.message(ERROR_LEVEL, "Submission to LM failed: - retrying" \
+                          + str(responce_ticket['status']))
+
+        #If the ticket was malformed, then we want to see what was sent
+        # to the LM.
+        if responce_ticket['status'][0] == e_errors.MALFORMED:
+            Trace.log(e_errors.ERROR,
+                      "submit_one_request: %s: %s" % (e_errors.MALFORMED,
+                                                      str(ticket)))
 
     return responce_ticket
 
