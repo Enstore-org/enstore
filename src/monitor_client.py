@@ -275,15 +275,15 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
                 # we had a problem
                 if not summary:
                     print "  Error.    Status is %s"%(measurement['status'],)
-                summary_d[hostname] = enstore_constants.DOWN
-                summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+                summary_d[hostname] = enstore_constants.WARNING
+                summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
             else:
                 if not summary:
                     #pprint.pprint(measurement)
                     print "  Success.  Network rate measured at ",rate," MB/S"
                 if rate == 0.0:
-                    summary_d[hostname] = enstore_constants.DOWN
-                    summary_d[enstore_constants.NETWORK] = enstore_constants.DOWN
+                    summary_d[hostname] = enstore_constants.WARNING
+                    summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
                 else:
                     summary_d[hostname] = enstore_constants.UP
         msc.flush_measurements()
