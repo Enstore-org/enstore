@@ -241,7 +241,7 @@ class EnstoreStatus:
 	for a_key in info.keys():
 	    if a_key != 'status':
 	        if ctr == 3:
-	            str = str+"\n"+prefix2
+	            str = str+",\n"+prefix2
 	            ctr = 0
 	        elif ctr > 0:
 	            str = str+",  "
