@@ -58,6 +58,7 @@ typedef struct {
 	char *		os;			/* operating system */
 	int		nretries, nfailretries;	/* retried reads/writes */
 	int		nresets;		/* unexpected BOT's */
+	int		nharderrors;		/* unrecovered r/w errors */
 } ftt_descriptor_buf, *ftt_descriptor;
 
 

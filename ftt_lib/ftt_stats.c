@@ -136,6 +136,7 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_RETRIES		48 */ 1,
     /*  FTT_FAIL_RETRIES	49 */ 1,
     /*  FTT_RESETS		50 */ 1,
+    /*  FTT_HARD_ERRORS		51 */ 1,
 };
 
 void
@@ -297,6 +298,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     set_stat(b,FTT_RETRIES,itoa((long)d->nretries), 0);
     set_stat(b,FTT_FAIL_RETRIES,itoa((long)d->nfailretries), 0);
     set_stat(b,FTT_RESETS,itoa((long)d->nresets), 0);
+    set_stat(b,FTT_HARD_ERRORS,itoa((long)d->nharderrors), 0);
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
 	return res;

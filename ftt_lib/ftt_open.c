@@ -123,6 +123,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     d.nretries = 0;
     d.nfailretries = 0;
     d.nresets = 0;
+    d.nharderrors = 0;
 
     if( 0 == d.prod_id ) {
 	ftt_eprintf("ftt_open_logical: out of memory allocating string for \"%s\" errno %d" , drivid, errno);

@@ -81,6 +81,8 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 	d->readkb += d->readlo >> 10;
 	d->readlo &= (1<<10) - 1;
 	d->current_block++;
+    } else {
+	d->nharderrors++;
     }
     d->nreads++;
     d->data_direction = FTT_DIR_READING;
@@ -123,6 +125,8 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	d->writekb += d->writelo >> 10;
 	d->writelo &= (1<<10) - 1;
 	d->current_block++;
+    } else {
+	d->nharderrors++;
     }
     d->nwrites++;
     d->data_direction = FTT_DIR_WRITING;

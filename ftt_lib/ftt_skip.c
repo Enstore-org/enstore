@@ -64,6 +64,9 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 	    (void) lseek(d->file_descriptor, 0L, 0);
 	}
     }
+    if (res < 0) {
+	 d->nharderrors++;
+    }
     d->last_operation = (1 << opn);
     return res;
 }
@@ -382,6 +385,7 @@ ftt_write2fm(ftt_descriptor d) {
 	indicating that there was a SCSI reset or other error which rewound\n\
 	the tape behind our back.", d->current_file, d->current_block );
 	    d->unrecovered_error = 2;
+	    d->nresets++;
 	    return -1;
 	}
     }

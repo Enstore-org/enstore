@@ -8,7 +8,7 @@
 /* statistics 
 **
 ** If you add or change statistics, you MUST also update:
-** -- ftt_numeric_tab[] in ftt_stat.c
+** -- ftt_numeric_tab[] in ftt_stats.c
 ** -- ftt_stat_names[] in ftt_higher.c
 ** so that ftt_dump_stats(), ftt_undump_stats(), etc. know how
 ** to print 'em.
@@ -67,7 +67,8 @@ extern int ftt_numeric_tab[];	/* table for ftt_{add,sub}_stats */
 #define FTT_RETRIES		48
 #define FTT_FAIL_RETRIES	49
 #define FTT_RESETS		50
-#define FTT_MAX_STAT		51
+#define FTT_HARD_ERRORS		51
+#define FTT_MAX_STAT		52
 
 extern int ftt_errno;
 extern int ftt_debug;

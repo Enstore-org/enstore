@@ -292,7 +292,8 @@ char *ftt_stat_names[] = {
  /* FTT_RETRIES		48 */ "FTT_RETRIES",
  /* FTT_FAIL_RETRIES	49 */ "FTT_FAIL_RETRIES",
  /* FTT_RESETS		50 */ "FTT_RESETS",
- /* FTT_MAX_STAT	51 */ "FTT_MAX_STAT",
+ /* FTT_HARD_ERRORS	51 */ "FTT_HARD_ERRORS",
+ /* FTT_MAX_STAT	52 */ "FTT_MAX_STAT",
  0
 };
 
