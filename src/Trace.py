@@ -26,11 +26,9 @@ def log( severity, msg, *args ):
 def alarm( severity, root_error, **rest ):
     if rest:
         rest['severity'] = severity
-        rest['root_error'] = root_error
     else:
-        rest = {'severity' : severity,
-                'root_error' : root_error}
-        pass
+        rest = {'severity' : severity}
+    rest['root_error'] = root_error
     trace( e_errors.ALARM, "root_error:%s"%rest['root_error'], rest )
     return None
 
