@@ -454,10 +454,12 @@ char *prefix;
 	close(fd);
 }
 	
-/* is_m2(d) -- to see if device d is a Mammoth-2 drive */
+/* get_vendor_model(d, s, m) -- get the vendor and model info */
 
-int is_m2(d)
+char *get_vendor_model(d, v, m)
 ftt_descriptor d;
+char *v;
+char *m;
 {
 	char buf[256];
 	int res;
@@ -467,8 +469,25 @@ ftt_descriptor d;
 	res = ftt_do_scsi_command(d, "Inquiry", ftt_cdb_inquiry, 6, buf,
 		128, 10, 0);
 
-	if (strncmp(buf+8, "EXABYTE ", 8) ||
-		strncmp(buf+16, "Mammoth2        ", 16))
+	strncpy(v, buf+8, 8);
+	strncpy(m, buf+16, 16);
+
+	return v;
+}
+
+/* is_m2(d) -- to see if device d is a Mammoth-2 drive */
+
+int is_m2(d)
+ftt_descriptor d;
+{
+	char buf[256];
+	char vendor[64];
+	char model[64];
+
+	get_vendor_model(d, vendor, model);
+
+	if (strncmp(vendor, "EXABYTE ", 8) ||
+		strncmp(model, "Mammoth2        ", 16))
 	{
 		return(0);
 	}
@@ -616,6 +635,8 @@ char **argv;
 	int c;
 	int make_dump, list_tape_history, drive_info, read_error, write_error;
 	int check_m2 = 1;
+	char vendor[64];
+	char model[64];
 
 	device = NULL;
 	output_file = NULL;
@@ -709,9 +730,17 @@ char **argv;
 		exit(1);
 	}
 
-	show_m2_status(get_status(d, buf));
-	printf("              Tape ID: %s\n", get_tape_id(d, buf));
-	printf("\n");
+	if (is_m2(d))
+	{
+		show_m2_status(get_status(d, buf));
+		printf("              Tape ID: %s\n", get_tape_id(d, buf));
+		printf("\n");
+	}
+	else
+	{
+		get_vendor_model(d, vendor, model);
+		printf("%s %s ...\n", vendor, model);
+	}
 
 	if (make_dump)
 	{
