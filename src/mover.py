@@ -1865,7 +1865,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
 
         if failed:
-            self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            rc = self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            if rc[0] == -1:
+               self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(rc[1],), error_source=DRIVE) 
             return
         
         if self.bytes_written == self.bytes_to_write:
