@@ -231,6 +231,11 @@ class MonitoredVolumeClerk(MonitoredServer):
     def do_hack_restart(self):
 	hack_restart(self.name, self.host)
 
+class MonitoredInfoServer(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.INFO_SERVER)
+
 class MonitoredConfigServer(MonitoredServer):
 
     def update_config(self, new_config):

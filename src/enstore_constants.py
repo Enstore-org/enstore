@@ -99,6 +99,7 @@ CONFIGS = "Configuration Server"
 FILEC = "File Clerk"
 INQ = "Inquisitor"
 VOLC = "Volume Clerk"
+INFO = " Info Server"
 EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
 RATE = "Ratekeeper"
@@ -127,6 +128,7 @@ SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
 		ALARMS : ALARM_SERVER,
 		FILEC : FILE_CLERK,
 		INQ : INQUISITOR,
+                INFO : INFO_SERVER,
 		VOLC : VOLUME_CLERK,
 		CONFIGS : CONFIG_SERVER,
 		EV_RLY : EVENT_RELAY,
@@ -244,7 +246,7 @@ VC = "vc"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
-                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
+                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER, INQUISITOR,
 		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER ]
 
 # Trace.trace output levels used by the inquisitor

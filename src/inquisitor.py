@@ -40,6 +40,7 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "configuration" : enstore_constants.CONFIGS,
 	      "file_clerk" : enstore_constants.FILEC,
 	      "inquisitor" : enstore_constants.INQ,
+	      "info_server" : enstore_constants.INFO,
 	      "volume_clerk" : enstore_constants.VOLC,
 	      "ratekeeper" : enstore_constants.RATEKEEPER,
 	      "enstore" : enstore_constants.ENSTORE,
@@ -1595,6 +1596,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         cdict = self.config_d.get(enstore_constants.VOLUME_CLERK, {})
         self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
 	self.servers_by_name[enstore_constants.VOLUME_CLERK] = self.volume_clerk
+
+        cdict = self.config_d.get(enstore_constants.INFO_SERVER, {})
+        self.info_server = monitored_server.MonitoredInfoServer(cdict)
+	self.servers_by_name[enstore_constants.INFO_SERVER] = self.info_server
 
         cdict = self.config_d.get(enstore_constants.CONFIG_SERVER, {})
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
