@@ -210,7 +210,7 @@ class Mover:
         self.x, self.y  = 0, 0 # Not placed yet
         self.column = 0 #Movers may be laid out in multiple columns
         if N >= 20:
-            self.height = 0.75 * (self.display.height - 40) / (N/2.0)
+            self.height = 0.75 * (self.display.height - 40) / (N/2.0+1.0)
         else:
             self.height = 0.75 * (self.display.height - 40) / N
         self.height = min(self.height, self.display.height/3)
@@ -480,7 +480,7 @@ class Mover:
             y = 20 + k * space
             x = self.display.width - ((self.display.width/3)+label_width)
         else:
-            space = (self.display.height - 40.0) / (N/2.0)
+            space = (self.display.height - 40.0) / (N/2.0+1.0)
             if k <= half:
                 x = self.display.width - ((self.display.width/1.5)+label_width)
                 y = 20 + k * space
@@ -505,7 +505,7 @@ class Mover:
     def reposition(self, N, state=None):
         #This is the new configuration for mover size
         if N >= 20:
-            self.height = 0.75 * (self.display.height - 40) / (N/2.0)
+            self.height = 0.75 * (self.display.height - 40) / (N/2.0+1.0)
         else:
             self.height = 0.75 * (self.display.height - 40) / N
 
