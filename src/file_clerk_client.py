@@ -87,14 +87,8 @@ class FileClient(generic_client.GenericClient,
         data_path_socket.connect(ticket['file_clerk_callback_addr'])
   
         ticket= callback.read_tcp_obj(data_path_socket)
-        list =''
-        while 1:
-            msg=callback.read_tcp_raw(data_path_socket)
-            if not msg: break
-            if list:
-                list = list + msg
-            else: list = msg
-        ticket['bfids'] = string.split(list)
+        list = callback.read_tcp_obj_new(data_path_socket)
+        ticket['bfids'] = list
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
@@ -136,14 +130,8 @@ class FileClient(generic_client.GenericClient,
         data_path_socket.connect(ticket['file_clerk_callback_addr'])
   
         ticket= callback.read_tcp_obj(data_path_socket)
-        list =''
-        while 1:
-            msg=callback.read_tcp_raw(data_path_socket)
-            if not msg: break
-            if list:
-                list = list + msg
-            else: list = msg
-        ticket['active_list'] = string.split(list)
+        list = callback.read_tcp_obj_new(data_path_socket)
+        ticket['active_list'] = list
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
@@ -185,13 +173,8 @@ class FileClient(generic_client.GenericClient,
         data_path_socket.connect(ticket['file_clerk_callback_addr'])
   
         ticket= callback.read_tcp_obj(data_path_socket)
-        tape_list=''
-        while 1:
-            msg=callback.read_tcp_raw(data_path_socket)
-            if not msg: break
-            if tape_list: tape_list=tape_list+msg
-            else: tape_list=msg
-        ticket['tape_list'] = tape_list
+        vol = callback.read_tcp_obj_new(data_path_socket)
+        ticket['tape_list'] = vol
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
@@ -319,7 +302,16 @@ def do_work(intf):
     elif intf.list:
         ticket = fcc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            print ticket['tape_list']
+            
+            print "     label           bfid       size        location_cookie delflag original_name\n"
+            tape = ticket['tape_list']
+            for key in tape.keys():
+                record = tape[key]
+                print "%10s %s %10i %22s %7s %s\n" % (intf.list,
+                    record['bfid'], record['size'],
+                    record['location_cookie'], record['deleted'],
+                    record['pnfs_name0'])
+
     elif intf.list_active:
         ticket = fcc.list_active(intf.list_active)
         if ticket['status'][0] == e_errors.OK:
