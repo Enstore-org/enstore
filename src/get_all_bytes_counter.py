@@ -59,7 +59,7 @@ def get_remote_file(node, file, newfile):
 CTR_FILE = "/fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html"
 NODES = ["d0ensrv2", "cdfensrv2", "stkensrv2"]
 TOTAL_FILE = "enstore_all_bytes"
-TOTAL_BYTES_FILE = "enstore_all_bytes.html"
+TOTAL_BYTES_FILE = "enstore_all_bytes.bytes"
 MB = 1024.0 * 1024.0
 GB = MB * 1024.0
 TB = GB * 1024.0
