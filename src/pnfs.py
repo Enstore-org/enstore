@@ -676,8 +676,12 @@ class Pnfs:
                     if posixpath.exists(dir) == 0:
                         # try to make the directory - just bomb out if we fail
                         #   since we probably require user intervention to fix
+                        dir = regsub.sub("//","/",dir)
                         Trace.trace(11,'dir='+repr(dir)+" voldir="+repr(self.voldir))
                         os.mkdir(dir)
+                        # we already written to the user's file space, let everyone write to directory
+                        # later the actual file will be given to root and there will be no access
+                        os.chmod(dir,0777) 
 
             # create the volume map file and set its size the same as main file
             self.volume_fileP = Pnfs(self.volume_file)
