@@ -92,6 +92,8 @@ class DispatchingWorker:
             t.host=server_address[0]
             t.port=server_address[1]
             t.start()
+            tdb.install()
+            tdb.onoff(1)
         except:
             pass
             #import traceback
