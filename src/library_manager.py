@@ -164,6 +164,7 @@ def remove_from_summon_list(self, mover, state):
 # remove all pending works
 def flush_pending_jobs(self, status, external_label=None, jobtype=None):
     w = self.pending_work.get_init()
+    rm_list = []
     while w:
 	delete_this_job = 0
 	if external_label:
@@ -181,10 +182,15 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
 	   delete_this_job = 1
 	if delete_this_job:
 	    w['status'] = status
+            Trace.trace(12,"flush_pending_jobs: %s"%(w,))
 	    send_regret(self, w)
-	    self.pending_work.delete_job(w)
+            # append work to remove list
+            rm_list.append(w)
 	    w = self.pending_work.get_next()
-    
+    # now delete all works in the remove list
+    for work in rm_list:
+       self.pending_work.delete_job(w)
+       
 ##############################################################
 
 # return a list of busy volumes for a given file family
