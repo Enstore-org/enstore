@@ -1261,8 +1261,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.enprint("removed from suspect volume list "+repr(vol)+\
 	                 "\nSUSPECT VOLUME LIST AFTER", generic_cs.DEBUG, self.verbose)
 	    self.enprint(self.suspect_volumes, generic_cs.DEBUG, self.verbose)
-	    
-	    pending_work.delete_job(w)
+
 	    # 01/22 do not send a regret as the mover had already
 	    # sent a status to encp
 	    call_back_addr = w['callback_addr']
@@ -1283,7 +1282,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		except KeyError:
 		    pass
 	else:
-	    pending_work.delete_job(w)
+	    pass
 	    # 01/22 do not send a regret as the mover had already
 	    # sent a status to encp
 	    # send_regret(self, w, self.verbose)
