@@ -1,3 +1,40 @@
+###############################################################################
+# $CVS file: src/mover.py $
+# $Revision$
+#
+# This file controls data movement between the user and the storage device.
+# Other general informance about the "Mover" is in doc/servers.txt
+#
+# Message interactions, handled by methods in this file, are documented in
+# doc/enstore.txt and doc/protocol.txt
+# 
+# Mover actions according to doc/protocol.txt:
+#    1   nowork
+#                           calls: idle_mover_next
+#                                 (which sets up to send: idle_mover)
+#    2   bind_volume
+#                           calls:    have_bound_volume_next
+#                                  or unilateral_unbind_next
+#                                 (which sets up up to send: have_bound_volume
+#                                                          or unilateral_unbind)
+#    3   read_from_hsm
+# or 4   write_to_hsm
+#                           calls: get_user_sockets
+#                                  send_user_last
+#                                  have_bound_volume_next
+#                                 (which sets up to send: have_bound_volume)
+#    5   unbind_volume
+#                           calls: idle_mover_next
+#                                 (which sets up to send: idle_mover
+#   (6)  ack  (handled in udp layer)
+#
+#   move_forever:
+#       setup initial ticket
+#       loop forever
+#           send_library manager and get response [list of library managers??]
+#           do response (one of 5 actions above) which sets up next ticket
+#
+
 import sys
 import time
 import timeofday
@@ -6,25 +43,25 @@ import socket				# for init(config_host=="localhost"...)
 import binascii				# for crc
 
 #enstore modules
-import configuration_client
-import volume_clerk_client
-import file_clerk_client
-import udp_client
+import volume_clerk_client		# -.
+import file_clerk_client		#   >-- 3 significant clients
+import media_changer_client		# -'
+import configuration_client		# -.
+import log_client			#   >-- 3 common clients
+import udp_client			# -'
 import callback
-import log_client
-import media_changer_client
 import cpio
 from driver import RawDiskDriver, FTTDriver
 
 
-class Mover :
+class Mover:
 
     def __init__(self, config_host="localhost", config_port=7500):
         # An administrator can change out configuration on the fly.  This is
         # useful when a "library" is really one robot with multiple uses, or
         # when we need to manually load balance movers attached to virtual
         # library.  So we need to keep track of configuration server.
-        if config_host == "localhost" :
+        if config_host == "localhost":
             (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
         self.config_host = config_host
         self.config_port = config_port
@@ -35,69 +72,14 @@ class Mover :
         self.local = self.chkremote-1
         self.logc = log_client.LoggerClient(self.csc, 'MOVER', 'logserver', 0)
 
-    def read_block(self) :
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "Mover read_block, pre-recv error:", \
-                  errno.errorcode[badsock]
-        block = self.data_socket.recv(self.driver.get_blocksize())
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "Mover read_block, post-recv error:", \
-                  errno.errorcode[badsock]
-        return block
-
-    def write_block(self,buff) :
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "Mover write_block, pre-send error:", \
-                  errno.errorcode[badsock]
-        count = self.data_socket.send(buff)
-        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "Mover write_block, post-send error:", \
-                  errno.errorcode[badsock]
-        return count
-
-    # primary serving loop
-    def move_forever(self, name) :
-        self.name = name
-
-        # we don't have any work when we start - setup
-        self.nowork({})
-
-        while 1:
-            # ok, here we go. get something to do from library manager
-            ticket = self.send_library_manager()
-
-            try:
-                function = ticket["work"]
-            except KeyError:
-                raise "assert error Bogus stuff from vol mgr"
-
-            # we got a job - now do it
-            exec ("self." + function + "(ticket)")
-
-
-    # send a message to our (current) library manager & return its answer
-    def send_library_manager(self) :
-        return  self.u.send(self.next_libmgr_request,
-                             (self.library_manager_host,
-                              self.library_manager_port) )
-
-    # send a message to our user
-    def send_user_last(self, ticket):
-        callback.write_tcp_socket(self.control_socket,ticket,\
-                                  "mover send_user_last")
-        self.control_socket.close()
-
+    #########################################################################
+    #
+    # The next set of methods are ones that will be invoked via an eval of
+    # the 'work' key of the ticket received.
+    #
 
     # we don't have any work. setup to see if we can get some
-    def nowork(self, ticket) :
+    def nowork(self, ticket):
         time.sleep(self.sleeptime)
         self.local = self.local+1
 
@@ -106,7 +88,7 @@ class Mover :
         if self.local >= self.chkremote:
             self.local = 0
             mconfig = self.csc.get_uncached(self.name)
-            if mconfig["status"] != "ok" :
+	    if mconfig["status"] != "ok":
                 raise "could not start mover up:" + mconfig["status"]
             self.library_device = mconfig["library_device"]
             self.driver_name = mconfig["driver"]
@@ -124,7 +106,7 @@ class Mover :
 
 
     # the library manager has told us to bind a volume so we can do some work
-    def bind_volume(self, ticket) :
+    def bind_volume(self, ticket):
 
         # become a volume clerk client first
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
@@ -132,9 +114,9 @@ class Mover :
         # find out what volume clerk knows about this volume
         self.external_label = ticket["external_label"]
         vticket = vcc.inquire_vol(self.external_label)
-        if vticket["status"] != "ok" :
-            self.unilateral_unbind_next(ticket)
-            return
+        if vticket["status"] != "ok":
+	    self.unilateral_unbind_next(ticket)
+	    return
         self.vticket = vticket
 
         # now invoke the driver, which has the form:
@@ -152,7 +134,7 @@ class Mover :
         self.mlc = media_changer_client.MediaLoaderClient(self.csc, self.media_changer)
 
         lmticket = self.mlc.loadvol(self.external_label, self.library_device)
-        if lmticket["status"] != "ok" :
+        if lmticket["status"] != "ok":
 
             # it is possible, under normal conditions, for the system to be
             # in the following race condition:
@@ -160,9 +142,9 @@ class Mover :
             #   other mover responds promptly,
             #   more work for library manager arrives and is given to a
             #     new mover before the old volume was given back to the library
-            if lmticket["status"] == "media_in_another_device" :
+            if lmticket["status"] == "media_in_another_device":
                 time.sleep (10)
-            self.unilateral_unbind_next(ticket)
+	    self.unilateral_unbind_next(ticket)
             return
 
         # we have the volume - load it
@@ -172,7 +154,7 @@ class Mover :
         self.have_bound_volume_next()
 
 
-    def unbind_volume(self, ticket) :
+    def unbind_volume(self, ticket):
 
         # do any driver level rewind, unload, eject operations on the device
         self.driver.unload()
@@ -182,7 +164,7 @@ class Mover :
 
         # now ask the media changer to unload the volume
         ticket = self.mlc.unloadvol(self.external_label, self.library_device)
-        if ticket["status"] != "ok" :
+        if ticket["status"] != "ok":
             raise "media loader cannot unload my volume"
 
         # need to call the driver destructor....
@@ -191,37 +173,18 @@ class Mover :
         self.idle_mover_next()
 
 
-    # data transfer takes place on tcp sockets, so get ports & call user
-    def get_user_sockets(self, ticket) :
-        mover_host, mover_port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket["mover_callback_host"] = mover_host
-        ticket["mover_callback_port"] = mover_port
-
-        # call the user and tell him I'm your mover and here's your ticket
-        self.control_socket = callback.user_callback_socket(ticket)
-
-        # we expect a prompt call-back here, and should protect against users
-        # not getting back to us. The best protection would be to kick off if
-        # the user dropped the control_socket, but I am at home and am not able
-        # to find documentation on select...
-
-        data_socket, address = listen_socket.accept()
-        self.data_socket = data_socket
-        listen_socket.close()
-
     # the library manager has asked us to write a file to the hsm
-    def write_to_hsm(self, ticket) :
+    def write_to_hsm(self, ticket):
 
         self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
         # double check that we are talking about the same volume
-        if ticket["external_label"] != self.external_label :
+        if ticket["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and tell him we are going to append to volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.vticket = vcc.set_writing(self.external_label)
-        if ticket["status"] != "ok" :
+        if ticket["status"] != "ok":
             raise "volume clerk forgot about this volume"
 
         # setup values before transfer
@@ -248,7 +211,8 @@ class Mover :
             self.driver.open_file_write()
         # create the wrapper instance
             self.logc.send(log_client.INFO,2,"CPIO")
-            self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
+	    fast_write = 1
+            self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx, fast_write )
 
         # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
@@ -271,7 +235,7 @@ class Mover :
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         
         # check for errors and inform volume clerk
-        if media_error :
+        if media_error:
             vcc.update_counts(ticket["external_label"],
                               wr_err,rd_err,wr_access,rd_access)
             vcc.set_system_readonly(ticket["external_label"])
@@ -280,7 +244,7 @@ class Mover :
             self.send_user_last({"status" : "Mover: Retry: media_error "+msg})
             return
 
-        if wr_size != ticket["size_bytes"] :
+        if wr_size != ticket["size_bytes"]:
             msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
                   " but only" +" stored"+repr(wr_size)
             self.logc.send(log_client.ERROR,1,msg)
@@ -314,14 +278,14 @@ class Mover :
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
-                  'library_manager_port', 'media_changer', 'name' ] :
+                  'library_manager_port', 'media_changer', 'name' ]:
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
-        if 0 :
+        if 0:
             for k in ['blocksize', 'device', 'eod', 'first_write_block',
                       'rd_err', 'rd_access', 'remaining_bytes',
-                      'wr_err', 'wr_access'] :
+                      'wr_err', 'wr_access']:
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         self.logc.send(log_client.INFO,2,"WRITE"+str(ticket))
@@ -333,16 +297,16 @@ class Mover :
 
 
     # the library manager has asked us to read a file to the hsm
-    def read_from_hsm(self, ticket) :
+    def read_from_hsm(self, ticket):
 
         # double check that we are talking about the same volume
-        if ticket["external_label"] != self.external_label :
+        if ticket["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and check on volume
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.vticket = vcc.inquire_vol(self.external_label)
-        if self.vticket["status"] != "ok" :
+        if self.vticket["status"] != "ok":
             raise "volume clerk forgot about this volume"
 
         # space to where the file will begin and save location
@@ -385,7 +349,7 @@ class Mover :
                           wr_err,rd_err,wr_access,rd_access)
 
         # if media error, mark volume readonly, unbind it & tell user to retry
-        if media_error :
+        if media_error:
             vcc.set_system_readonly(ticket["external_label"])
             self.unilateral_unbind_next(ticket)
             msg = "Volume "+repr(ticket["external_label"])
@@ -393,7 +357,7 @@ class Mover :
             return
 
         # drive errors are bad:  unbind volule it & tell user to retry
-        elif drive_error :
+        elif drive_error:
             vcc.set_hung(ticket["external_label"])
             self.unilateral_unbind_next(ticket)
             msg = "Volume "+repr(ticket["external_label"])
@@ -410,7 +374,7 @@ class Mover :
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
-                  'library_manager_port', 'media_changer', 'name' ] :
+                  'library_manager_port', 'media_changer', 'name' ]:
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
@@ -418,7 +382,7 @@ class Mover :
             for k in ['blocksize', 'device', 'eod', 'firstbyte',
                       'left_to_read', 'pastbyte',
                       'rd_err', 'rd_access', 'remaining_bytes',
-                      'wr_err', 'wr_access'] :
+                      'wr_err', 'wr_access']:
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
 
@@ -430,6 +394,87 @@ class Mover :
         # go around for more
         self.have_bound_volume_next()
 
+#
+    """
+    def read_block(self):
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0:
+            print "Mover read_block, pre-recv error:", \
+                  errno.errorcode[badsock]
+        block = self.data_socket.recv(self.driver.get_blocksize())
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0:
+            print "Mover read_block, post-recv error:", \
+                  errno.errorcode[badsock]
+        return block
+
+    def write_block(self,buff):
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0:
+            print "Mover write_block, pre-send error:", \
+                  errno.errorcode[badsock]
+        count = self.data_socket.send(buff)
+        badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+        if badsock != 0:
+            print "Mover write_block, post-send error:", \
+                  errno.errorcode[badsock]
+        return count
+    """
+    # primary serving loop
+    def move_forever(self, name):
+        self.name = name
+
+        # we don't have any work when we start - setup
+        self.nowork({})
+
+        while 1:
+            # ok, here we go. get something to do from library manager
+            ticket = self.send_library_manager()
+
+            try:
+                function = ticket["work"]
+            except KeyError:
+                raise "assert error Bogus stuff from vol mgr"
+
+            # we got a job - now do it
+            exec ("self." + function + "(ticket)")
+
+
+    # send a message to our (current) library manager & return its answer
+    def send_library_manager(self):
+        return  self.u.send(self.next_libmgr_request,
+                             (self.library_manager_host,
+                              self.library_manager_port) )
+
+    # send a message to our user
+    def send_user_last(self, ticket):
+        callback.write_tcp_socket(self.control_socket,ticket,\
+                                  "mover send_user_last")
+        self.control_socket.close()
+
+
+    # data transfer takes place on tcp sockets, so get ports & call user
+    def get_user_sockets(self, ticket):
+        mover_host, mover_port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket["mover_callback_host"] = mover_host
+        ticket["mover_callback_port"] = mover_port
+
+        # call the user and tell him I'm your mover and here's your ticket
+        self.control_socket = callback.user_callback_socket(ticket)
+
+        # we expect a prompt call-back here, and should protect against users
+        # not getting back to us. The best protection would be to kick off if
+        # the user dropped the control_socket, but I am at home and am not able
+        # to find documentation on select...
+
+        data_socket, address = listen_socket.accept()
+        self.data_socket = data_socket
+        listen_socket.close()
 
     # create ticket that says we are idle
     def idle_mover_next(self):
@@ -443,7 +488,7 @@ class Mover :
         self.next_libmgr_request["work"] = "have_bound_volume"
         self.next_libmgr_request["mover"] = self.name
         # copy volume information about the volume to our ticket
-        for k in self.vticket.keys() :
+        for k in self.vticket.keys():
             self.next_libmgr_request[k] = self.vticket[k]
 
 
@@ -455,7 +500,7 @@ class Mover :
                                     "mover"          : self.name }
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import getopt
     import string
     import socket
@@ -469,14 +514,14 @@ if __name__ == "__main__" :
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
+    for (opt,value) in optlist:
+        if opt == "--config_host":
             config_host = value
-        elif opt == "--config_port" :
+        elif opt == "--config_port":
             config_port = value
-        elif opt == "--config_list" :
+        elif opt == "--config_list":
             config_list = 1
-        elif opt == "--help" :
+        elif opt == "--help":
             print "python ",sys.argv[0], options,"mover_device"
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
@@ -488,12 +533,12 @@ if __name__ == "__main__" :
     config_port = string.atoi(config_port)
 
     # bomb out if we don't have a mover
-    if len(args) < 1 :
+    if len(args) < 1:
         print "python",sys.argv[0], options, "mover_device"
         print "   do not forget the '--' in front of each option"
         sys.exit(1)
 
-    if config_list :
+    if config_list:
         print "Connecting to configuration server at ",config_host,config_port
 
     while 1:
