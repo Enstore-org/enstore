@@ -608,7 +608,12 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	     	  , generic_server.GenericServer ):
     def __init__( self, server_address ):
 	self.client_obj_inst = MoverClient( mvr_config )
-	self.next_req_to_lm = idle_mover_next( self.client_obj_inst )# a "respone" to server being summoned
+	for lm in mvr_config['library']:# should be libraries
+	    # a "respone" to server being summoned
+	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
+	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
+	    do_next_req_to_lm( self, next_req_to_lm, address )
+	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
 	return
 
@@ -812,6 +817,7 @@ if type(mvr_config['library']) == types.ListType:
     pass
 else:
     lib = mvr_config['library']
+    mvr_config['library'] = [lib]	# make it a list
     libm_config_dict[lib] = {'startup_polled':'not_yet'}
     libm_config_dict[lib].update( csc.get_uncached(lib) )
     pass
