@@ -333,6 +333,7 @@ def next_work_any_volume(self):
     # look in pending work queue for reading or writing work
     force_summon = 1   # enable force summon
     w=self.pending_work.get_init()
+    write_file_fams = {}
     while w:
         force_summon = 1   # enable force summon
         # if we need to read and volume is busy, check later
@@ -357,11 +358,19 @@ def next_work_any_volume(self):
         # find volumes we _dont_ want to hear about -- that is volumes in the
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
-            vol_veto_list, work_movers, wr_en = busy_vols_in_family(self, self.vcc, 
-							    w["vc"]["file_family"]+\
-                                                             "."+w["vc"]["wrapper"])
-            Trace.trace(11,"next_work_any_volume vol veto list:%s, movers:%s"%\
-                        (repr(vol_veto_list), repr(work_movers)))
+            key = w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
+            if not write_file_fams.has_key(key):
+                vol_veto_list, work_movers, wr_en = busy_vols_in_family(self, self.vcc, 
+                                                                        key)
+                Trace.trace(11,"next_work_any_volume vol veto list:%s, movers:%s"%\
+                            (repr(vol_veto_list), repr(work_movers)))
+                write_file_fams[key] = {'vol_veto_list':vol_veto_list,
+                                        'work_movers':work_movers,
+                                        'wr_en': wr_en}
+            else:
+                vol_veto_list =  write_file_fams[key]['vol_veto_list']
+                work_movers = write_file_fams[key]['work_movers']
+                wr_en = write_file_fams[key]['wr_en']
             # only so many volumes can be written to at one time
             if wr_en >= w["vc"]["file_family_width"]:
                 w["reject_reason"] = ("VOLS_IN_WORK","")
