@@ -337,6 +337,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                            key)
 	    Trace.trace(13, "work_queue - ERROR, timed out")
 
+    # get the library manager state and output it
+    def lm_state(self, lm, (host, port), key, time):
+	try:
+	    stat = lm.get_lm_state()
+	    self.htmlfile.output_lmstate(stat, key)
+	except errno.errorcode[errno.ETIMEDOUT]:	
+	    self.htmlfile.output_etimedout((host, port), TIMED_OUT_SP, time,
+                                           key)
+	    Trace.trace(13, "lm_state - ERROR, timed out")
+
     # get the library manager mover list and output it
     def mover_list(self, lm, (host, port), key, time):
 	try:
@@ -378,6 +388,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    ret = self.alive_and_restart(lmc, (t['host'], t['port']), 
                                          key+TRAILER, time, key)
 	    if ret == DID_IT:
+                self.lm_state(lmc, (t['host'], t['port']), key, time)
 	        self.suspect_vols(lmc, (t['host'], t['port']), key, time)
 	        self.mover_list(lmc, (t['host'], t['port']), key, time)
 	        self.work_queue(lmc, (t['host'], t['port']), key, time)

@@ -216,6 +216,12 @@ class EnStatus:
         Trace.trace(12, repr(fq))
 	self.text[key] = self.text[key]+fq
 
+    # output the library manager state
+    def output_lmstate(self, ticket, key):
+	fq = self.format_lm_state(ticket)
+        Trace.trace(12, repr(fq))
+	self.text[key] = self.text[key]+fq
+
     # output the library manager queues
     def output_moverstatus(self, ticket, key):
 	fs = self.format_moverstatus(ticket)
@@ -328,6 +334,11 @@ class EnStatus:
 	    string = self.parse_lm_queues(pending_work, spacing, string)
 	else:
 	    string = string+"    No pending work\n\n"
+	return string
+
+    # format the library manager status for output
+    def format_lm_state(self, ticket):
+	string = "    Library manager state: %s\n"%ticket['state']
 	return string
 
     def format_lm_suspect_vols(self, ticket):
