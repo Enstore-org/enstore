@@ -357,7 +357,7 @@ class Enstore(EnstoreInterface):
             rtn = call_function("enstore-stop", sys.argv[2:])
             rtn = call_function("enstore-start --nocheck", sys.argv[2:])
         elif not self.user_mode and arg1 == "backup":
-            rtn = call_function("python backup.py", sys.argv[2:])
+            rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
             command="%s enstore-start %s%s"%(CMD1, get_argv3(), CMD2)
             rtn = do_rgang_command("enstore",command)
