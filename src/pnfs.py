@@ -336,6 +336,7 @@ class pnfs :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
                     self.statinfo()
                 except os.error :
+                    print "enoent path taken again!"
                     if sys.exc_info()[1][0] == errno.ENOENT :
                         self.statinfo()
                         # maybe this works??
