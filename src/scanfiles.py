@@ -44,7 +44,6 @@ def check(f):
             if not os.access(cf, os.R_OK):
                 return ['no read permission'], []
 
-    age = time.time() - os.stat(cf)[8]
 
     try:
         pf = pnfs.File(cf)
@@ -59,6 +58,7 @@ def check(f):
         if bfid != pf.bfid:
             msg.append('bfid(%s, %s)'%(bfid, pf.bfid))
     except:
+    	age = time.time() - os.stat(cf)[8]
         if len(bfid) < 8:
             msg.append('missing layer 1')
             if age < 3600:
