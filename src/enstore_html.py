@@ -177,14 +177,12 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def table_top_b(self, table, td):
 	td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
-	td.append(HTMLgen.Font(" (Last Updated: %s)"%(enstore_functions.format_time(time.time())), 
-			       html_escape='OFF', size="+1"))
 	td.append(HTMLgen.HR(size=2, noshade=1))
 	table.append(HTMLgen.TR(td))
 	table.append(empty_row())
 	return table
 
-    def table_top(self):
+    def table_top(self, add_update=1):
 	# create the outer table and its rows	
 	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, align="LEFT",
 				     width="800")
@@ -192,9 +190,20 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.script_title(tr)
 	fl_table.append(tr)
 	tr = HTMLgen.TR(empty_data())
-	tr.append(HTMLgen.TD(HTMLgen.Font("Brought To You By : %s"%(self.source_server,), size=-1),
-			     align="RIGHT"))
+	td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Brought To You By : ", size=-1)),
+			align="RIGHT")
+	td.append(HTMLgen.Font("%s"%(self.source_server,), size=-1))
+	tr.append(td)
 	fl_table.append(tr)
+	# only add update information if asked to
+	if add_update:
+	    tr = HTMLgen.TR(empty_data())
+	    td = HTMLgen.TD(HTMLgen.Emphasis(HTMLgen.Font("Last updated : ", size=-1)),
+			    align="RIGHT")
+	    td.append(HTMLgen.Font("%s"%(enstore_functions.format_time(time.time()),), 
+				   html_escape='OFF', size=-1))
+	    tr.append(td)	    
+	    fl_table.append(tr)
 	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
 				  cellspacing=0, cellpadding=0, align="LEFT",
 				  width="800")
@@ -886,7 +895,7 @@ class EnLogPage(EnBaseHtmlDoc):
 	self.title = "ENSTORE Log Files"
 	self.script_title_gif = "en_log.gif"
 	self.source_server = THE_INQUISITOR
-	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top.Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
+	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
 
     def logfile_date(self, logfile):
 	(prefix, year, month, day) = string.split(logfile, '-')
@@ -1231,12 +1240,12 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         """
 	self.title = "ENSTORE Active Network Monitoring"
 	self.script_title_gif = "en_net_mon.gif"
-	self.source_server = "The Monitor Server"
 	self.description = "%s%sRecent network monitoring results."%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh)
+	self.source_server = "The Monitor Server"
         
-        #add standard header to  html page
-        table_top = self.table_top()
+        #add standard header to  html page, do not need update information
+        table_top = self.table_top(0)
         self.append(table_top)
 
         # The standard look and feel provides for our output table to be a row
@@ -1260,15 +1269,6 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         for h in headings:
             head_row.append(self.make_th(h))
 
-    "override the one in the base class, it does not update the data ach time we write"
-    def table_top_b(self, table, td):
-        td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
-	td.append(HTMLgen.HR(size=2, noshade=1))
-	table.append(HTMLgen.TR(td))
-	table.append(empty_row())
-	return table
-        
-        
     def add_measurement(self, measurement):
         """
         add a measurement to the top of the measurment table
