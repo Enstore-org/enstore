@@ -78,8 +78,7 @@ class FileClient(generic_client.GenericClient, \
                 listen_socket.close()
                 break
             else:
-	        self.enprint("get_bfids - imposter called us back, trying again",
-	                     generic_cs.ENNONE, generic_cs.ENNONE_V, self.logc)
+	        self.enprint("get_bfids - imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
