@@ -757,7 +757,7 @@ There are two ways to recover from a crash:
 </ul>
 </table>
 
-<h2><a name="current_db">
+<h3><a name="current_db">
 2.2 Current Underlying Database Implemented in Enstore
 </h3>
 
@@ -825,6 +825,16 @@ recovery.
 <li>
 It is readily obtainable and free.
 </ul>
+
+We are also considering using relational database in Enstore. Conceptually,
+relational databases provide the same level of data access with respect to
+any combination of data attributes used as the search key. Data lookup may
+be further optimized by creation of additional indices. Such additional
+optimization can be done at any time and does not require any modification
+of client provided the client is designed to use relational database.  For
+Enstore project, database are a modular component and switching databases
+means modifying a module only.  Python interfaces will have to be developed
+to allow the current framework to keep working.
 
 <h2><a name="admin_tools">
 2.3 Administrative Tools
