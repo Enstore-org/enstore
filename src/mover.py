@@ -807,13 +807,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##  need to safeguard against relabeling here
                 status = self.tape_driver.verify_label(None)
                 if status[0] == e_errors.OK:
-                    Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
-                              (volume_label, status[1]))
-                    self.transfer_failed(e_errors.WRITE_VOL1_WRONG, status[1])
-                    ##XXX set volume noaccess? Eject it?
-                    self.state = ERROR
-                    return 0
-                
+                    if status[1] != volume_label:
+                        label_tape = 0
+                    else:
+                        Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
+                                  (volume_label, status[1]))
+                        self.transfer_failed(e_errors.WRITE_VOL1_WRONG, "%s should be %s"%
+                                             (status[1], volume_label))
+                        ##XXX set volume noaccess? Eject it?
+                        self.state = ERROR
+                        return 0
+            if label_tape:
                 self.tape_driver.rewind()
                 vol1_label = 'VOL1'+ volume_label
                 vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
@@ -829,7 +833,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     remaining = stats[ftt.REMAIN_TAPE]
                     if remaining is not None:
                         remaining = long(remaining)
-                        self.vol_info['remaining_bytes'] = remaining * 1024L #XXX keep everything in KB?
+                        self.vol_info['remaining_bytes'] = remaining * 1024L
+                        ##XXX keep everything in KB?
                 self.vcc.set_remaining_bytes(volume_label,
                                               self.vol_info['remaining_bytes'],
                                               self.vol_info['eod_cookie'])
