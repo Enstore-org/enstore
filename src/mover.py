@@ -229,7 +229,7 @@ class Buffer:
             if self.sanity_bytes < SANITY_SIZE:
                 nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_written)
                 self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._writing_block,
-                                                            self._write_ptr, nbytes)
+                                                     self._write_ptr, nbytes)
                 self.sanity_bytes = self.sanity_bytes + nbytes
         else:
             bytes_written = bytes_to_write #discarding header stuff
@@ -287,7 +287,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         generic_server.GenericServer.__init__(self, csc_address, name)
 
-        self.config = self.csc.get( name )
+        self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
 
@@ -332,9 +332,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info = {}
         self.dismount_time = None
         self.delay = 0
-        self.mcc = media_changer_client.MediaChangerClient( self.csc,
-                                                            self.config['media_changer'] )
-        self.config['device'] = os.path.expandvars( self.config['device'] )
+        self.mcc = media_changer_client.MediaChangerClient(self.csc,
+                                                           self.config['media_changer'])
+        self.config['device'] = os.path.expandvars(self.config['device'])
 
         import net_driver
         self.net_driver = net_driver.NetDriver()
@@ -399,7 +399,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.mount_delay < 0:
             self.mount_delay = 0
             
-	dispatching_worker.DispatchingWorker.__init__( self, self.address)
+	dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.libraries = []
         lib_list = self.config['library']
         if type(lib_list) != type([]):
@@ -411,7 +411,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.set_error_handler(self.handle_mover_error)
         ##end of __init__
 
-    def nowork( self, ticket ):
+    def nowork(self, ticket):
 	return {}
 
     def handle_mover_error(self, exc, msg, tb):
@@ -474,8 +474,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         except KeyError, msg:
             self.malformed_ticket(ticket, "[lm][address]")
             return
-        ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY,
-                                                                state_name(self.state)),
+        ticket = self.format_lm_ticket(state=ERROR,
+                                       error_info=(e_errors.MOVER_BUSY, state_name(self.state)),
                                        returned_work=ticket)
         self.udpc.send_no_wait(ticket, lm_address)
 
@@ -532,7 +532,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.bytes_read < self.bytes_to_read and self.buffer.low():
                 Trace.trace(15,"write_tape: buffer low %s/%s"%
-                            ( self.buffer.nbytes(), self.buffer.min_bytes))
+                            (self.buffer.nbytes(), self.buffer.min_bytes))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 continue
@@ -579,13 +579,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.flush()
             if self.update_after_writing():
                 self.transfer_completed()
+            else:
+                self.transfer_failed()
 
 
     def read_tape(self):
         Trace.trace(10, "read_tape, bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.tape_driver
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-
+            
             if self.buffer.full():
                 Trace.trace(15, "read_tape: buffer full %s/%s" % (self.buffer.nbytes(), self.buffer.max_bytes))
                 self.buffer.read_ok.clear()
@@ -607,7 +609,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 if len(self.buffer._buf) != 1:
-                    Trace.log(e_errors.ERROR, "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
+                    Trace.log(e_errors.ERROR,
+                              "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     header_size = self.wrapper.header_size(b0)
@@ -666,19 +669,20 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         
     # the library manager has asked us to write a file to the hsm
-    def write_to_hsm( self, ticket ):
+    def write_to_hsm(self, ticket):
         Trace.log(e_errors.INFO, "WRITE_TO_HSM")
         self.setup_transfer(ticket, mode=WRITE)
         
     # the library manager has asked us to read a file from the hsm
-    def read_from_hsm( self, ticket ):
+    def read_from_hsm(self, ticket):
         Trace.log(e_errors.INFO,"READ FROM HSM")
         self.setup_transfer(ticket, mode=READ)
 
     def setup_transfer(self, ticket, mode):
         Trace.trace(10, "setup transfer")
+        ##        pprint.pprint(ticket)
         if self.state not in (IDLE, HAVE_BOUND):
-            Trace.log(e_errors.ERROR, "Not idle %s" %( state_name(self.state),))
+            Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             return 0
         ### cgw - abstract this to a check_valid_filename method of the driver ?
@@ -686,7 +690,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             filename = ticket['wrapper'].get("pnfsFilename",'')
             if "NULL" not in string.split(filename,'/'):
                 ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
-                self.send_client_done( ticket, e_errors.USERERROR, "NULL not in PNFS path" )
+                self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
                 return 0
         self.reset()
 
@@ -696,7 +700,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.current_work_ticket = ticket
         self.control_socket, self.client_socket = self.connect_client()
-        Trace.trace(10,  "client connect %s %s" %( self.control_socket, self.client_socket))
+        Trace.trace(10, "client connect %s %s" % (self.control_socket, self.client_socket))
         if not self.client_socket:
             ##XXX ENCP GONE
             return 0
@@ -713,8 +717,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             delay = 60 * int(ticket['encp']['delayed_dismount']) #XXX is this right? minutes?
                                                                   ##what does the flag really mean?
         self.delay = max(delay, self.default_dismount_delay)
-        self.fcc = file_clerk_client.FileClient( self.csc, bfid=0,
-                                                 server_address=fc['address'] )
+        self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
+                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
         volume_label = fc['external_label']
@@ -737,20 +741,28 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "%s"%(self.wrapper_type, detail))
             self.wrapper = None
             
-        self.client_filename = ticket['wrapper'].get('fullname','?')
-        self.pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
+        client_filename = ticket['wrapper'].get('fullname','?')
+        pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
 
         self.mode = mode
         self.bytes_to_transfer = long(fc['size'])
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
 
+        try:
+            client_hostname = ticket['wrapper']['machine'][1]
+        except KeyError:
+            client_hostname = ''
+
+        if client_hostname:
+            client_filename = client_hostname + ":" + client_filename
+            
         if self.mode == READ:
-            self.files = (self.pnfs_filename, self.client_filename)
+            self.files = (pnfs_filename, client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
             self.buffer.header_size = None
         elif self.mode == WRITE:
-            self.files = (self.client_filename, self.pnfs_filename)
+            self.files = (client_filename, pnfs_filename)
             if self.wrapper:
                 self.header, self.trailer = self.wrapper.headers(ticket['wrapper'])
             else:
@@ -762,11 +774,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.target_location = None        
 
         if volume_label == self.current_volume: #no mount needed
+            self.timer('mount_time')
             self.position_media()
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
-
+            
 
 
     def position_media(self):
@@ -800,22 +813,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.driver_type == 'FTTDriver':
                     import ftt
                     stats = self.tape_driver.ftt.get_stats()
-                    rt = stats[ftt.REMAIN_TAPE]
-                    if rt is not None:
-                        rt = long(rt)
-                        self.vol_info['remaining_bytes'] = rt * 1024L #XXX keep everything in KB?
-                self.vcc.set_remaining_bytes( volume_label,
+                    remaining = stats[ftt.REMAIN_TAPE]
+                    if remaining is not None:
+                        remaining = long(remaining)
+                        self.vol_info['remaining_bytes'] = remaining * 1024L #XXX keep everything in KB?
+                self.vcc.set_remaining_bytes(volume_label,
                                               self.vol_info['remaining_bytes'],
                                               self.vol_info['eod_cookie'])
 
             if self.target_location is None:
                 self.target_location = eod
             if self.target_location != eod:
-                return 0# Can only write at end of tape
+                Trace.log(e_errors.ERROR, "requested write at location %s, eod=%s" %
+                          (self.target_location, eod))
+                return 0 # Can only write at end of tape
 
         location = cookie_to_long(self.target_location)
         self.run_in_thread('seek_thread', self.seek_to_location,
-                           args = (location, self.mode==WRITE and location==eod,),
+                           args = (location, self.mode==WRITE),
                            after_function=self.start_transfer)
         
         return 1
@@ -876,8 +891,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.update(reset_timer=1)
 
     def update_after_writing(self):
+        previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
         self.current_location = self.tape_driver.tell()
+        if self.current_location <= previous_eod:
+            Trace.log(e_errors.ERROR, " current location %s <= eod %s" %
+                      (self.current_location, previous_eod))
+            return 0
+        
         remaining = self.vol_info['remaining_bytes']-self.bytes_written
+        ## XXX make this a driver method
         if self.driver_type == 'FTTDriver':
             import ftt
             stats = self.tape_driver.ftt.get_stats()
@@ -900,11 +922,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
-        fcc_reply = self.fcc.new_bit_file( {'work':"new_bit_file",
+        fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                             'fc'  : fc_ticket
-                                            } )
+                                            })
         if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log( e_errors.ERROR,
+            Trace.log(e_errors.ERROR,
                        "cannot assign new bfid")
             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
             #XXX exception?
@@ -915,10 +937,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         fc_ticket['complete_crc'] = complete_crc 
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
-        Trace.log(e_errors.INFO,"set remaining: %s %s %s" %( self.current_volume, remaining, eod))
-        reply = self.vcc.set_remaining_bytes( self.current_volume,
-                                              remaining, eod,
-                                              bfid )
+        Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
+        reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
         self.vol_info.update(reply)
         self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
         self.volume_status =  (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
@@ -933,10 +953,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         msg = "%s %s"%(msg, ticket)
         Trace.log(e_errors.ERROR, msg)
 
-    def send_client_done( self, ticket, status, error_info=None):
+    def send_client_done(self, ticket, status, error_info=None):
         ticket['status'] = (status, error_info)
         try:
-            callback.write_tcp_obj( self.control_socket, ticket)
+            callback.write_tcp_obj(self.control_socket, ticket)
         except Exceptions.exception, detail:
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
         self.control_socket.close()
@@ -960,8 +980,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR,"error in connect_client_done: %s" % (detail,))
             # we expect a prompt call-back here
             
-            read_fds,write_fds,exc_fds=select.select(
-                [listen_socket],[],[],60) # one minute timeout
+            read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],60) # one minute timeout
             if listen_socket in read_fds:
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
@@ -972,7 +991,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return None, None
         except:
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%(exc, msg, traceback.format_tb(tb)))
+            Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%
+                      (exc, msg, traceback.format_tb(tb)))
             return None, None 
     
     def format_lm_ticket(self, state=None, error_info=None, returned_work=None):
@@ -995,8 +1015,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 status = error_info
         if work is None:
-            Trace.log(e_errors.ERROR, "state: %s work: %s" %
-                      (state_name(state),work))
+            Trace.log(e_errors.ERROR, "state: %s work: %s" % (state_name(state),work))
 
         if not status:
             status = e_errors.OK, None
@@ -1054,7 +1073,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.state = ERROR
             self.tape_driver.close()
         vol_info = self.vol_info.copy()
-        Trace.log(e_errors.INFO, "dismounting %s" %( self.current_volume,))
+        Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
@@ -1081,23 +1100,29 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
         
-        Trace.log(e_errors.INFO, "mounting %s, after_function=%s" %( volume_label,after_function))
+        Trace.log(e_errors.INFO, "mounting %s, after_function=%s" % (volume_label,after_function))
         self.timer('mount_time')
         
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
+        status = mcc_reply.get('status')
+        Trace.trace(10, 'mc replies %s' % (status,))
 
         if self.mount_delay:
             Trace.trace(25, "waiting %s seconds after mount"%self.mount_delay)
             time.sleep(self.mount_delay)
 
-        status = mcc_reply.get('status')
-        Trace.trace(10, 'mc replies %s' % (status,))
-        
-        if status and status[0]==e_errors.OK:
+        if self.mode is WRITE and self.vol_info['eod_cookie'] in (None, "none"):
+            pass
+        else:
+            if status and status[0] == e_errors.OK:
+                status = tape_driver.verify_label(volume_label, self.mode)
+            
+        if status and status[0] == e_errors.OK:
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
         else:
+            self.last_error = status
             Trace.log(e_errors.ERROR, "mount volume: %s" % (status,))
             #XXX robot error, deal with it
             if error_function:
@@ -1136,7 +1161,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.transfer_failed(e_errors.ERROR, "invalid mode %s" % (self.mode,))
                 
-    def status( self, ticket ):
+    def status(self, ticket):
         now = time.time()
 	tick = { 'status'       : (e_errors.OK,None),
 		 'drive_sn'     : self.config['serial_num'],
@@ -1164,9 +1189,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'rate of tape': self.tape_driver.rates()[0],
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
-            tick['will dismount'] = 'in %.1f seconds'%(self.dismount_time - now)
+            tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
             
-	self.reply_to_caller( tick )
+	self.reply_to_caller(tick)
 	return
 
     def timer(self, key):
@@ -1211,17 +1236,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = DRAINING # XXX CGW should dismount here. fix this
         self.create_lockfile()
 	out_ticket = {'status':(e_errors.OK,None)}
-	self.reply_to_caller( out_ticket )
+	self.reply_to_caller(out_ticket)
 	return
 
     def stop_draining(self, ticket):	    # put itself into draining state
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not in draining state")}
-            self.reply_to_caller( out_ticket )
+            self.reply_to_caller(out_ticket)
             return
         self.state = IDLE
         out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller( out_ticket )
+        self.reply_to_caller(out_ticket)
         self.remove_lockfile()
 
     def clean_drive(self, ticket):
@@ -1234,6 +1259,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = save_state
         self.reply_to_caller(ret)
         
+
 class MoverInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -1255,9 +1281,6 @@ class MoverInterface(generic_server.GenericServerInterface):
         else:
             self.name = self.args[0]
 
-#############################################################################
-
-#############################################################################
 
 if __name__ == '__main__':            
 
@@ -1266,7 +1289,7 @@ if __name__ == '__main__':
     # get an interface, and parse the user input
 
     intf = MoverInterface()
-    mover =  Mover( (intf.config_host, intf.config_port), intf.name )
+    mover =  Mover((intf.config_host, intf.config_port), intf.name)
     mover.handle_generic_commands(intf)
     
     while 1:
@@ -1286,9 +1309,4 @@ if __name__ == '__main__':
             except:
                 pass
 
-            
     Trace.log(e_errors.INFO, 'ERROR returned from serve_forever')
-    
-
-
-
