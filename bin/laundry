@@ -83,7 +83,7 @@ class Laundry:
 	    optlist, args = getopt.getopt(sys.argv[1:], "", options)
 	except getopt.error, detail:
 	    print "error: ", detail
-	    print "Usage: laundry [--dirt=[\"str1\", \"str2\"...]"
+	    print "Usage: laundry [--dirt=\"[\\\"str1\\\", \\\"str2\\\"...]\""
 	    sys.exit(1)
 	    
 	if not len(optlist) == 0:
