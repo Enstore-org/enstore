@@ -115,7 +115,7 @@ class UserOptions(GenericUserOptions):
 
     server_options = {
         "file" : ["bfid=", "restore=", "list=", "recursive"],
-        "library" : ["priority=", "delete-work=", "get_queue"],
+        "library" : ["priority=", "delete-work=", "get-queue"],
         "volume" : ["add=", "delete=", "new-library=", "no-access=",
                     "read-only=", "restore=", "update=", "vol="],
         "monitor" : [] }
