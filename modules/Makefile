@@ -15,7 +15,7 @@ all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t
 
 POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 
-TR=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-ltr"; else echo ""; fi`
+RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
@@ -73,7 +73,7 @@ ecrc: ecrc.c
 	cp ecrc ../sbin
 
 ddencp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(TR)
+	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT)
 	cp $(@) ../bin
 
 installpyc:
