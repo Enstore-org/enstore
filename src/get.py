@@ -618,6 +618,7 @@ def next_request_update(work_ticket, file_number):
     #Clear this information too.
     work_ticket['file_size'] = None
     work_ticket['bfid'] = None
+    work_ticket['completion_status'] = None
     #If 'exfer' not deleted; it clobbers new data when returned from the mover.
     del work_ticket['exfer']
 
@@ -640,25 +641,22 @@ def next_request_update(work_ticket, file_number):
     return work_ticket
 
 #Return the next uncompleted transfer.
-def get_next_request(request_list, filenumber = None):
+def get_next_request(request_list, e): #, filenumber = None):
 
-    #If we know nothing about this tape.  (i.e. not metadata and --list was
-    # not used.)
-    if request_list[0].get('completion_status', None) == EOD and \
-       filenumber != None:
-        request = next_request_update(copy.deepcopy(request_list[0]),
-                                      filenumber)
-        request_list.append(request)
-        return request, (len(request_list) - 1)
-
-    #For all cases were metadata is known.
     for i in range(len(request_list)):
         completion_status = request_list[i].get('completion_status', None)
-        if completion_status == None or completion_status == EOD: 
+        if completion_status == None:
             return request_list[i], i
-
-    return None, 0
-            
+    else:
+        if e.list:
+            return None, 0
+        else:
+            filenumber = encp.extract_file_number(request_list[-1]['fc']['location_cookie'])
+            request = next_request_update(copy.deepcopy(request_list[0]),
+                                          filenumber + 1)
+            request_list.append(request)
+            return request, (len(request_list) - 1)
+        
 def main(e):
 
     t0 = time.time()
@@ -795,7 +793,7 @@ def main(e):
     ######################################################################
 
     #Get the next volume in the list to transfer.
-    request, index = get_next_request(requests_per_vol[e.volume])
+    request, index = get_next_request(requests_per_vol[e.volume], e)
 
     Trace.message(10, "LM SUBMISSION TICKET:")
     Trace.message(10, pprint.pformat(request))
@@ -829,15 +827,15 @@ def main(e):
     # the user did not specify the filenames...
     #if len(requests_per_vol[e.volume]) == 1 and \
     #   requests_per_vol[e.volume][0].get('bfid', None) == None:
-    if request.get('bfid', None) == None and \
-       len(requests_per_vol[e.volume]) == 1:
+    #if request.get('bfid', None) == None and \
+    #   len(requests_per_vol[e.volume]) == 1:
+    #if not e.list:
         #Initalize this.
-        file_number = 1
-        request['completion_status'] = EOD
-        #Store these changes back into the master list.
-        requests_per_vol[e.volume][index] = request
-    else:
-        file_number = None
+        #file_number = 1
+        #for i in range(len(requests_per_vol[e.volume])):
+        #    requests_per_vol[e.volume][index]['completion_status'] = EOD
+    #else:
+        #file_number = None
 
     while requests_outstanding(requests_per_vol[e.volume]):
 
@@ -1181,24 +1179,32 @@ def main(e):
                                   request['infile'])
                     set_metadata(request, e)
                 
-                if request.get('completion_status', None) == "EOD":
+                #if request.get('completion_status', None) == "EOD":
                     #The fields need to be updated for the next file
                     # on the tape to be read.  We should only get here if
                     # the metadata is unkown and --list was NOT used.
                     #Note: This will not work for the cern wrapper.  For this
                     # wrapper the header and trailer consume a 'file' on
                     # the tape.
-                    file_number = file_number + 1
+                #    file_number = file_number + 1
                     #next_request_update(request, file_number)
-                else:
-                    #Set completion status to successful.
-                    request['completion_status'] = SUCCESS
+                #else:
+
+                #Set completion status to successful.
+                request['completion_status'] = SUCCESS
 
                 #Store these changes back into the master list.
                 requests_per_vol[e.volume][index] = request
                 #Get the next request before continueing.
-                request, index = get_next_request(requests_per_vol[e.volume],
-                                                  file_number)
+                request, index = get_next_request(requests_per_vol[e.volume],e)
+
+                #If the read mode is "read until end of data", we need to
+                # create the new output file.
+                #if request.get('completion_status', None) == "EOD":
+                if not e.list:
+                    if not os.path.exists(request['outfile']):
+                        encp.create_zero_length_local_files(request)
+                    
                 continue
 
             #The requested file does not exist on the tape.  (i.e. the
