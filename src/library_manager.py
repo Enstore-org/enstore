@@ -735,6 +735,7 @@ class LibraryManagerMethods:
                 if fun == 'restrict_host_access':
                     args.append(rq.ticket['wrapper']['machine'][1])
                     ret = apply(getattr(self,fun), args)
+                    Trace.trace(16, "restrict_host_access returned %s"%(ret,))
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
@@ -764,7 +765,7 @@ class LibraryManagerMethods:
                 if rq:
                     Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
                 else:
-                    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
+                    Trace.trace(16,"process_write_request returned %s %s %s" % (rq, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
