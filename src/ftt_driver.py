@@ -25,7 +25,7 @@ class FTTDriver(driver.Driver):
         self._fast_rate = 10*MB
         self.verbose = 0
         
-    def open(self, device=None, mode=None):
+    def open(self, device=None, mode=None, retry_count=10):
         if mode not in (0,1):
             raise ValueError, ("illegal mode", mode)
         self.device = device
@@ -44,7 +44,7 @@ class FTTDriver(driver.Driver):
         self._rate = 0
         self._bytes_transferred = 0
         if self.verbose: print "ftt_open returns", self.ftt
-        for retry in xrange(10):
+        for retry in xrange(retry_count):
             if retry:
                 if self.verbose: print "retrying open"
             try:
@@ -56,14 +56,14 @@ class FTTDriver(driver.Driver):
                     time.sleep(5)
                 else:
                     break
-        for retry in xrange(10):
+        for retry in xrange(retry_count):
             if retry:
                 if self.verbose: print "retrying status"
-            status = self.ftt.status(10)
+            status = self.ftt.status(5)
             if status & ftt.ONLINE:
                 break
-        else:
-            ftt.raise_ftt()  #this is BADSWMOUNT
+#        else:
+#            ftt.raise_ftt()  #this is BADSWMOUNT
             
         self._rate = self._last_rate = self._bytes_transferred = 0
         if self.verbose: print "ftt_open_dev returns", self.fd
@@ -81,7 +81,7 @@ class FTTDriver(driver.Driver):
         if self.verbose: print "ftt_get_position returns", file, block
         return file
     
-    def seek(self, target):
+    def seek(self, target, eot_ok=0):
         if type(target)==type(""):
             target = long(target)
         try:
@@ -99,7 +99,11 @@ class FTTDriver(driver.Driver):
             if self.verbose: print "seek: current = %s,%s target=%s" %(file, block, target)
         current = file
         if target>current:
-            self.ftt.skip_fm(target-current)
+            try:
+                self.ftt.skip_fm(target-current)
+            except ftt.FTTError, detail:
+                if detail.errno == ftt.EBLANK and eot_ok:
+                    pass
         else:
             self.ftt.skip_fm(target-current-1)
             self.ftt.skip_fm(1)
@@ -179,6 +183,9 @@ class FTTDriver(driver.Driver):
             self.print_error()
         return r
 
+    def eject(self):
+        return self.ftt.unload()
+        
     def set_mode(self, density=None, compression=None, blocksize=None):
         mode = self.ftt.get_mode()
         if density is None:
