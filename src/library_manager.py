@@ -980,7 +980,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    else:
                 Trace.log(e_errors.INFO,
                           "Cannot satisfy request. Vol %s is %s"%\
-                          (w['fc']['external_label'],vol_info['at_mover'][0])) 
+                          (w['fc']['external_label'],vol_info['at_mover'][0]))
+                if (vol_info['at_mover'][0] != "mounting" and
+                    vol_info['at_mover'][0] != "unmounting"):
+                    # volume is not in any known state
+                    w['status'] = (e_errors.NOACCESS, "volume state:"+vol_info['at_mover'][0])
+                    self.pending_work.delete_job(w)
+                    send_regret(self, w)
 		self.reply_to_caller({"work" : "nowork"})
 		return
 		
