@@ -245,6 +245,8 @@ if __name__ == "__main__":		# main
 
 	print "Restoring databse ..."
 	for i in dbs:
+		print "dbHome", dbHome
+		print "jouHome", jouHome
 		d = DbTable(i, dbHome, jouHome, [])
 		print "Checking "+i+" ... "
 		err = d.cross_check()
