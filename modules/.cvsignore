@@ -30,3 +30,4 @@ tape_write
 so_locations
 t_rand
 t_read
+ecrc
