@@ -14,14 +14,11 @@ enstore/cd/d0enmvr4a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr5a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr6a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr7a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr8a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr9a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr10a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr11a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr12a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr13a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr14a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr15a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr16a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr18a.fnal.gov@FNAL.GOV
