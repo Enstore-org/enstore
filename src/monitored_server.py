@@ -105,11 +105,11 @@ class MonitoredServer:
 		# event relay is still alive.  determine that first
 		enstore_functions.inqTrace(enstore_constants.INQSERVERTIMESDBG,
 		    "%s Past Interval: %s, Hung Interval: %s, ER Alive: %s"%(self.name, 
-								    past_interval,
-								    self.hung_interval,
-								    event_relay.is_alive()))
-		if event_relay.is_alive() and (past_interval > \
-			   event_relay.heartbeat + self.alive_interval + self.hung_interval):
+									     past_interval,
+									     self.hung_interval,
+									     event_relay.is_alive()))
+		if event_relay.is_alive() and (past_interval > event_relay.heartbeat + self.alive_interval + \
+					       self.hung_interval):
 		    rtn = HUNG
 		else:
 		    rtn = TIMEDOUT
