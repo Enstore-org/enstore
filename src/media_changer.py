@@ -404,8 +404,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def getVolState(self, ticket):
 	"get current state of the tape"
         import aml2
-	external_label = ticket[external_label]
-	media_type = ticket[media_type]
+	external_label = ticket['external_label']
+	media_type = ticket['media_type']
 	rt = aml2.view(external_label, media_type)
         if 'O' == rt[5] :
           state = 'O'
