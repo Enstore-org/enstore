@@ -132,6 +132,8 @@ class UDPClient:
             logmsg="udpClient.eval_reply %s %s"%(exc, msg)
             if exc == exceptions.SyntaxError: #msg size> max datagram size?
                 logmsg=logmsg+"Truncated message?"
+            elif exc == exceptions.TypeError:
+                logmsg = logmsg + ": " + reply
             Trace.log(e_errors.ERROR, logmsg)
             raise exc, msg
         return number, out, t
