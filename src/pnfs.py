@@ -368,14 +368,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.counters = counters
         return counters
 
-    # get the cursor information
-    def get_countersN(self, dbnum):
-        fname = os.path.join(self.dir, ".(get)(counters)(%s)"%(dbnum,))
-        f=open(fname,'r')
-        self.countersN = f.readlines()
-        f.close()
-        return self.countersN
-
     # get the position information
     def get_position(self, directory=None):
 
@@ -409,15 +401,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.database = database
         return database
 
-    # get the database information
-    def get_databaseN(self, dbnum):
-        fname = os.path.join(".(get)(database)(%s)"%(dbnum,))
-        f=open(fname,'r')
-        self.databaseN = f.readlines()
-        f.close()
-        self.databaseN = string.replace(self.databaseN[0], "\n", "")
-        return self.databaseN
-
     ##########################################################################
 
     def get_file_size(self, filepath=None):
@@ -431,8 +414,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             
         file_size = os.stat(file)[stat.ST_SIZE]
             
-        filesize = self.readlayer(enstore_constants.XREF_LAYER, file)
-        filesize = long(filesize[2].strip())
+        #filesize = self.readlayer(enstore_constants.XREF_LAYER, file)
+        #filesize = long(filesize[2].strip())
+        try: #Not all files have a layer four.
+            filesize = long(self.get_xreference()[2].strip())
+        except ValueError:
+            self.file_size = file_size
+            return file_size
 
         #Error checking.  However first ignore large file cases.
         if file_size == 1 and filesize > long(2L**31L) - 1:
@@ -864,13 +852,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
         
-    def pcountersN(self, intf):
-        try:
-            self.get_countersN(intf.dbnum)
-            print_results(self.countersN)
-        except (OSError, IOError), detail:
-            print str(detail)
-    
     def pcursor(self, intf):
         try:
             self.get_cursor()
@@ -892,12 +873,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             
-    def pdatabaseN(self, intf):
-        try:
-            self.get_databaseN(intf.dbnum)
-            print_results(self.databaseN)
-        except (OSError, IOError), detail:
-            print str(detail)
 
 
     def pdown(self, intf):
@@ -1714,6 +1689,43 @@ class Tag:
 
 ##############################################################################
 
+class N:
+    def __init__(self, dbnum):
+        self.dir = os.getcwd()
+
+    # get the cursor information
+    def get_countersN(self, dbnum):
+        fname = os.path.join(self.dir, ".(get)(counters)(%s)"%(dbnum,))
+        f=open(fname,'r')
+        self.countersN = f.readlines()
+        f.close()
+        return self.countersN
+
+    # get the database information
+    def get_databaseN(self, dbnum):
+        fname = os.path.join(".(get)(database)(%s)"%(dbnum,))
+        f=open(fname,'r')
+        self.databaseN = f.readlines()
+        f.close()
+        self.databaseN = string.replace(self.databaseN[0], "\n", "")
+        return self.databaseN
+
+    def pdatabaseN(self, intf):
+        try:
+            self.get_databaseN(intf.dbnum)
+            print_results(self.databaseN)
+        except (OSError, IOError), detail:
+            print str(detail)
+
+    def pcountersN(self, intf):
+        try:
+            self.get_countersN(intf.dbnum)
+            print_results(self.countersN)
+        except (OSError, IOError), detail:
+            print str(detail)
+    
+
+
 # This is a cleaner interface to access the file, as well as its
 # metadata, in /pnfs
 
@@ -1880,22 +1892,24 @@ def do_work(intf):
     if intf.file:
         p=Pnfs(intf.file)
         t=None
+        n=None
     elif intf.pnfs_id:
         p=Pnfs(intf.pnfs_id)
         t=None
-    elif intf.dbnum:
-        print "Not yet implemented."
-        sys.exit(1)
-        #p=Pnfs(intf.pnfs_id)
-        #t=None
+        n=None
+    elif hasattr(intf, "dbnum:") and intf.dbnum:
+        p=None
+        t=None
+        n=N(intf.dbnum)
     else:
         p=None
         t=Tag(intf.directory)
-    
+        n=None
+        
     for arg in intf.option_list:
         if string.replace(arg, "_", "-") in intf.options.keys():
             arg = string.replace(arg, "-", "_")
-            for instance in [t, p]:
+            for instance in [t, p, n]:
                 if getattr(instance, "p"+arg, None):
                     apply(getattr(instance, "p" + arg), (intf,))
                     break
