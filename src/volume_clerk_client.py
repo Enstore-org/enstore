@@ -100,10 +100,11 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 
     # delete a volume from the stockpile
-    def delvol(self, external_label):
+    def delvol(self, external_label,force=0):
         Trace.trace( 6, 'del_vol label=%s'%external_label )
         ticket= { 'work'           : 'delvol',
-                  'external_label' : external_label }
+                  'external_label' : external_label,
+                  'force'          : force }
         x = self.send(ticket)
         return x
 
@@ -381,6 +382,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol = ""
         self.addvol = 0
         self.delvol = 0
+        self.force  = 0
         self.newlib = 0
         self.rdovol = 0
         self.noavol = 0
@@ -394,7 +396,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         Trace.trace(20,'{}options')
         return self.client_options()+\
                ["clrvol", "backup", "vols","nextvol","vol=","addvol","statvol=",
-	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count="]
+	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -535,7 +537,7 @@ if __name__ == "__main__":
                                  intf.args[1])         # new library name
 	msg_id = generic_cs.CLIENT
     elif intf.delvol:
-        ticket = vcc.delvol(intf.args[0])              # name of this volume
+        ticket = vcc.delvol(intf.args[0],intf.force)   # name of this volume
 	msg_id = generic_cs.CLIENT
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
