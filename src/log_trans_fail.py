@@ -40,16 +40,27 @@ def parse_failures(failed):
     Vol = {}
     Drv = {}
     for l in failed:
+        syslog_entry = 0
+        token = string.split(l,' ')
+        if l.find("SYSLOG.Entry") != -1:
+            syslog_entry = 1
         token = string.split(l,' ')
         size = len(token)
         thetime = token[0]
         thetime = string.replace(thetime,'LOG-','')
         node = token[1]
         drive = token[5]
-        location = token[size-1]
-        volume = token[size-2]
+        location = ''
+        if not syslog_entry:
+            location = token[size-1]
+            volume = token[size-2]
+        else:
+            volume = token[size-1] 
         volume = string.replace(volume,'volume=','')
-        reason = string.join(token[6:size-2])
+        if syslog_entry:
+            reason = l
+        else:
+            reason = string.join(token[6:size-2])
         error = [thetime, node, drive, location, volume, reason]
         if Vol.has_key(volume):
             Vol[volume].append(error)
