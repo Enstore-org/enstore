@@ -2,63 +2,60 @@
 #  CVS/Build standard makefile template
 #  $Id$
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# run commands with bourne shell!
+SHELL=/bin/sh
 
-#---------------------------------------------------------------------------
-# Things folks may need to change
-#---------------------------------------------------------------------------
-
+#------------------------------------------------------------------
+# DIR is a "proper" name for the current directory 
+#(e.g. the name visible  all over the cluster)  
 DIR=$(DEFAULT_DIR)
 
-# Product name for ups
-PROD=ftt
-PRODUCT_DIR=FTT_DIR
-
-# version for ups
-VERS=b2_1a
-VERSIONFILES=Makefile README ups/INSTALL_NOTE ftt_lib/ftt_version.c
-
-# dependency flags for declares
-UPS_STYLE=old
-DEPEND=
-TABLE_FILE_DIR=ups
-TABLE_FILE=ftt.table
-UPS_SUBDIR=ups
-
-# Chain for declares/addproduct
-CHAIN=development
-
-# Extended Flavor of product
-FLAVOR=$(DEFAULT_FLAVOR)
-
-# OS for declare/addproduct
-OS=$(DEFAULT_OS)
-
-# Qualifiers for declares, etc. (e.g. +debug+mips3)
-QUALS=
-
-# Customization for addproduct (os release major)
-CUST=$(DEFAULT_CUST)
-
-# addproduct host
-ADDPRODUCT_HOST=`test $(UPS_STYLE) = old && echo dcdsv0 || echo fnkits`
-
-# Directories to add whole hog, files to add by find rule
-# empty directories to include
-ADDDIRS =.
-ADDFILES=-name '*.xxx' ! -name '*.yyy'
-ADDEMPTY=
-
-# destination for html install targets
-DOCROOT=/afs/fnal/files/docs/products/$(PROD)
-
-# destination for local installs
-LOCAL=/usr/products/$(OS)$(CUST)/$(VERS)$(QUALS)
+#------------------------------------------------------------------
+# Variables for ups declaration and setup of product
+#
+            PROD=ftt
+     PRODUCT_DIR=FTT_DIR
+            VERS=b2_1
+       UPS_STYLE=new
+          DEPEND=
+  TABLE_FILE_DIR=ups
+      TABLE_FILE=template_product.table
+           CHAIN=test
+      UPS_SUBDIR=ups
+ ADDPRODUCT_HOST=fnkits
+OLD_ADDPRODUCT_HOST=dcdsv0
 DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
 
-# --prefix=$(PREFIX) for gnu configure tools
-PREFIX=/usr/local/products/ftt/$(VERS)
+#   QUALS is added qualifiers, like: "QUALS=mips3:debug"
+#
+# for Flavored products
+         FLAVOR=$(DEFAULT_FLAVOR)
+ 	      OS=$(DEFAULT_OS)
+          QUALS=
+ 	    CUST=$(DEFAULT_CUST)
+#------------------------------------------------------------------
+# Files to include in Distribution
+#
+# ADDDIRS is dirs to run "find" in to get a complete list
+# ADDFILE is files to pick out by pattern anywhere in the product
+# ADDEMPTY is empty directories to include in distribution which would
+#	   otherwise be missed
+# ADDCMD is a command to run to generate a list of files to include 
+#	(one per line) (e.g. 'cd fnal/module; make distriblist')
+# LOCAL is destination for local: and install: target
+# DOCROOT is destination for html documentation targets
+ADDDIRS =.
+ADDFILES=
+ADDEMPTY=
+  ADDCMD=
+   LOCAL=/usr/products/$(OS)$(CUST)/$(VERS)$(QUALS)
+ DOCROOT=/afs/fnal/files/docs/products/$(PROD)
 
+PREFIX=$(DEFAULT_PREFIX)
 
+VERSIONFILES=Makefile README $(UPS_SUBDIR)/INSTALL_NOTE $(UPS_SUBDIR)/Version
+
+#------------------------------------------------------------------
 
 
 SUBDIRS=ftt_lib ftt_test
@@ -70,6 +67,10 @@ clean:
 
 test:
 	sh test/TestScript
+
+spotless:
+	rm -rf bin lib
+	rm -f ftt_lib/local
 
 # we indirect this a level so we can customize it for bundle products
 
@@ -94,7 +95,7 @@ autokits: $(UPS_STYLE)_autokits
 #
 # The invocation looks weird here; we need to make a tarfile from a (long)
 # file list on stdin, but something obvious like:
-#     $(LISTALL) | xargs tar cvf - 
+#     $(LISTALL) | xargs -n25 tar cvf - 
 # doesn't work on all the platforms; tar thinks its done when it hits
 # the end of the first one, and "tar rvf" doesn't work right on OSF1, so:
 # * make an empty file .header
@@ -103,11 +104,11 @@ autokits: $(UPS_STYLE)_autokits
 # 	at a time with "xargs tar uf..."
 # * Finally echo the filename and do a table of contents to show it worked
 #
-distribution: clean .manifest
+distribution: clean .manifest.$(PROD)
 	@echo "creating $(DISTRIBUTIONFILE)..."
 	@: > .header
 	@tar cf $(DISTRIBUTIONFILE) .header
-	@$(LISTALL) | xargs tar uf $(DISTRIBUTIONFILE)
+	@$(LISTALL) | xargs -n25 tar uf $(DISTRIBUTIONFILE)
 	@echo $(DISTRIBUTIONFILE):
 	@tar tvf $(DISTRIBUTIONFILE)
 
@@ -119,7 +120,7 @@ unkits: delproduct
 # then we cd over there and do a check_manifest to make sure the copy 
 #      worked okay.
 #
-local: clean .manifest
+local: clean .manifest.$(PROD)
 	test -d $(LOCAL) || mkdir -p $(LOCAL)
 	$(LISTALL) | cpio -dumpv $(LOCAL)
 	cd $(LOCAL); make check_manifest
@@ -138,14 +139,14 @@ install: local
 # and clean out the local copy
 #
 old_addproduct: dproducts_is_set distribution
-	$(OLD_ADDPRODUCT)
-	rm $(DISTRIBUTIONFILE)
+	@$(OLD_ADDPRODUCT)
+	@echo rm $(DISTRIBUTIONFILE);rm $(DISTRIBUTIONFILE)
 
 old_autokits: dproducts_is_set distribution
 	@/bin/echo "Press enter to update database? \c"
 	@read line
-	$(OLD_ADDPRODUCT)
-	rm $(DISTRIBUTIONFILE)
+	@$(OLD_ADDPRODUCT)
+	@echo rm $(DISTRIBUTIONFILE);rm $(DISTRIBUTIONFILE)
 
 # declare -- declares or redeclares the product; first we check
 #        if its already declared and if so remove the existing declaration
@@ -174,8 +175,8 @@ new_addproduct: dproducts_is_set distribution
 new_autokits: dproducts_is_set distribution
 	@/bin/echo "Press enter to update database? \c"
 	@read line
-	$(NEW_ADDPRODUCT)
-	rm $(DISTRIBUTIONFILE)
+	@$(NEW_ADDPRODUCT)
+	@echo rm $(DISTRIBUTIONFILE) ; rm $(DISTRIBUTIONFILE) 
 
 # declare -- declares or redeclares the product; first we check
 #        if its already declared and if so remove the existing declaration
@@ -199,8 +200,20 @@ new_undeclare_one:
 	@$(NEW_UPS_UNDECLARE)
 
 new_delproduct:
-	$(NEW_DELPRODUCT)
+	@$(NEW_DELPRODUCT)
 
+#====================== TRANSITION COMMANDS =====================
+
+both_addproduct: dproducts_is_set distribution
+	@$(NEW_ADDPRODUCT)
+	@$(OLD_ADDPRODUCT)
+	@echo rm $(DISTRIBUTIONFILE); rm $(DISTRIBUTIONFILE)
+
+both_delproduct:
+	@$(NEW_DELPRODUCT)
+	@$(OLD_DELPRODUCT)
+
+#=================================================================
 # this is the usual target for manually rebuilding the software if it's just
 # been checked out of the repository.  We declare it, set it up, and 
 # build and regression test it.  Note that the make test will indirectly
@@ -208,13 +221,12 @@ new_delproduct:
 # 
 build_n_test:
 	set +e						;\
-	. /usr/local/etc/setups.sh			;\
-	PRODUCTS="$(DPRODUCTS) $$PRODUCTS" 		;\
-	export PRODUCTS					;\
-	make FLAVOR=$(FLAVOR) declare			;\
-	setup -b -f $(FLAVOR) $(PROD) $(VERS)||true	;\
+	UPS_SHELL=sh; export UPS_SHELL; . `ups setup ups` ;\
+	setup -q build? -f $(FLAVOR) $(PROD) 		\
+		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)	;\
 	make all 					;\
-	setup -f $(FLAVOR) $(PROD) $(VERS)||true	;\
+	setup -f $(FLAVOR) $(PROD) 			\
+		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)	;\
 	make test
 
 #
@@ -279,17 +291,17 @@ $(UPS_SUBDIR)/upd_files.dat:
 #
 MANIFEST = $(LISTALL) | 				\
 		grep -v .manifest |			\
-		xargs sum -r | 				\
+		xargs -n25 sum -r | 				\
 		sed -e 's/[ 	].*[ 	]/	/' | 	\
 		sort +1
 
-.manifest: FORCE
+.manifest.$(PROD): FORCE
 	@echo "creating .manifest..."
 	@ $(MANIFEST) > $@
 
 check_manifest:
 	$(MANIFEST) > /tmp/check$$$$ 	;\
-	diff /tmp/check$$$$ .manifest	;\
+	diff /tmp/check$$$$ .manifest.$(PROD)	;\
 	rm /tmp/check$$$$
 
 #---------------------------------------------------------------------------
@@ -315,7 +327,7 @@ setversion:
 
 # find arguements to prevent CVS directories and manifest file stuff
 # from being listed:
-PRUNECVS =  '(' -name CVS -prune ')' -o ! -name .manifest ! -name .header
+PRUNECVS =  '(' -name CVS -prune ')' -o ! -name '.manifest.*' ! -name .header
 
 # make a list of all the files to be included in the product.  There are
 # several make variables that could be set, so use all of them that aree
@@ -323,7 +335,7 @@ PRUNECVS =  '(' -name CVS -prune ')' -o ! -name .manifest ! -name .header
 # parenthesis) so the whole thing can be piped to other programs, etc.
 #
 LISTALL =  ( \
-    for d in  .manifest $(ADDEMPTY); do echo $$d; done; \
+    for d in  .manifest.$(PROD) $(ADDEMPTY); do echo $$d; done; \
     test -z "$(ADDDIRS)" || find $(ADDDIRS) $(PRUNECVS) ! -type d -print; \
     test -z "$(ADDFILES)" || find . $(PRUNECVS) $(ADDFILES) ! -type d -print; \
     test -z "$(ADDCMD)" || sh -c "$(ADDCMD)" \
@@ -473,10 +485,12 @@ NEW_UPS_LIST = \
 		-f $(FLAVOR) \
 		$(PROD) $(VERS) 
 
-OLD_ADDPRODUCT = \
-    rsh $(ADDPRODUCT_HOST) /bin/sh -c "'\
+OLD_ADDPRODUCT = echo $(OLD_ADDPRODUCT_1); $(OLD_ADDPRODUCT_1)
+
+OLD_ADDPRODUCT_1 = \
+    rsh $(OLD_ADDPRODUCT_HOST) /bin/sh -c "'\
 	. /usr/local/etc/setpath.sh ; \
-	. /usr/local/etc/setups.sh ; \
+	. /usr/local/etc/setupsI.sh ; \
 	cmd addproduct \
 		-t $(DISTRIBUTIONFILE) \
 		-o $(OS) \
@@ -489,6 +503,9 @@ OLD_ADDPRODUCT = \
 
 NEW_ADDPRODUCT = \
 	(test ! -z "$(UPD_DIR)" || (echo upd must be setup!; false ));\
+		echo $(NEW_ADDPRODUCT_1); $(NEW_ADDPRODUCT_1)
+
+NEW_ADDPRODUCT_1 = \
 	upd addproduct \
 	        -h $(ADDPRODUCT_HOST) \
 		-T $(DISTRIBUTIONFILE) \
@@ -500,13 +517,18 @@ NEW_ADDPRODUCT = \
 
 NEW_DELPRODUCT = \
 	(test ! -z "$(UPD_DIR)" || (echo upd must be setup!; false ));\
+	     echo $(NEW_DELPRODUCT_1); $(NEW_DELPRODUCT_1)
+
+NEW_DELPRODUCT_1 = \
 	upd delproduct \
                 -h $(ADDPRODUCT_HOST) \
 		-f $(FLAVOR) \
 		$(PROD) $(VERS)
 
-OLD_DELPRODUCT = \
-    rsh $(ADDPRODUCT_HOST) /bin/sh -c "'\
+OLD_DELPRODUCT = echo $(OLD_DELPRODUCT_1); $(OLD_DELPRODUCT_1)
+
+OLD_DELPRODUCT_1 = \
+    rsh $(OLD_ADDPRODUCT_HOST) /bin/sh -c "'\
 	. /usr/local/etc/setpath.sh ; \
 	. /usr/local/etc/setups.sh ; \
 	cmd delproduct \
@@ -549,7 +571,7 @@ $(UPS_SUBDIR)/toman:
 html: html-man html-texi html-html
 
 html-man: $(UPS_SUBDIR)/toman
-	. /usr/local/etc/setups.sh					;\
+	UPS_SHELL=sh; export UPS_SHELL; . `ups setup ups`               ;\
 	setup conv2html							;\
 	if [ -d $(UPS_SUBDIR)/toman/catman ]; then			;\
 	    src=$(UPS_SUBDIR)/toman/catman				;\
@@ -569,7 +591,7 @@ html-man: $(UPS_SUBDIR)/toman
 	    done
 
 html-texi:
-	. /usr/local/etc/setups.sh					;\
+	UPS_SHELL=sh; export UPS_SHELL; . `ups setup ups` ;\
 	setup conv2html							;\
 	dest=$(DOCROOT)/texi						;\
 	mkdir -p $$dest	|| true						;\
