@@ -1046,7 +1046,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if verbose > 2:
             print "To many retries for %s -> %s." % (infile, outfile)
         status = (e_errors.TOO_MANY_RETRIES, status)
-    print "Status after TOO_MANY_RETRIES check:", status
+
     #If the error is not retriable, remove it from the request queue.
     if not e_errors.is_retriable(status[0]):
         #Print error to stdout in data_access_layer format. However, only
@@ -1816,7 +1816,7 @@ def get_clerks_info(bfid, client):
     #Get the file clerk information.
     fcc = file_clerk_client.FileClient(client['csc'], bfid)
     fc_ticket = fcc.bfid_info()
-    pprint.pprint(fc_ticket)
+
     if fc_ticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, fc_ticket)
         quit()
@@ -1824,7 +1824,7 @@ def get_clerks_info(bfid, client):
     #Get the volume clerk information.
     vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
     vc_ticket = vcc.inquire_vol(fc_ticket['fc']['external_label'])
-    pprint.pprint(vc_ticket)
+
     if vc_ticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vc_ticket)
         quit()
@@ -1834,7 +1834,7 @@ def get_clerks_info(bfid, client):
     
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        msg = "volume is marked" + inhibit
+        msg = "volume is marked " + inhibit
         vc_ticket['status'] = inhibit, msg
         #if inhibit==e_errors.NOACCESS:
         #    msg="Volume is marked NOACCESS"
@@ -1844,7 +1844,7 @@ def get_clerks_info(bfid, client):
         
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        msg = "volume is marked" + inhibit
+        msg = "volume is marked " + inhibit
         vc_ticket['status'] = inhibit, msg
         #if inhibit==e_errors.NOACCESS:
         #    msg="Volume is marked NOACCESS"
@@ -1853,7 +1853,8 @@ def get_clerks_info(bfid, client):
         #raise inhibit, msg
         
     if fc_ticket["deleted"] == "yes":
-        raise (e_errors.DELETED, "File has been deleted")
+        #raise (e_errors.DELETED, "File has been deleted")
+        fc_ticket['status'] = (e_errors.DELETED, "File has been deleted")
 
     #Verify that the external labels named by the file clerk and volume
     # clerk are the same.
@@ -1864,10 +1865,10 @@ def get_clerks_info(bfid, client):
               "From volume clerk: %s\n" % \
               (fc_ticket['external_label'],
                vc_ticket['external_label'])
-        raise (e_errors.BROKEN, msg)
+        #raise (e_errors.BROKEN, msg)
+        fc_ticket['status'] = vc_ticket['status'] = (e_errors.BROKEN, msg)
 
     return fc_ticket, vc_ticket
-    
     
 #######################################################################
 
@@ -1889,15 +1890,23 @@ def create_read_requests(inputlist, outputlist, file_size,
             fc_reply, vc_reply = get_clerks_info(bfid[i], client)
 
             if fc_reply['status'][0] != e_errors.OK:
-                raise fc_reply['status']
-            if vc_reply['status'][0] != e_errors.OK:
-                raise vc_reply['status']
+                error_ticket = {'fc':fc_reply, 'vc':vc_reply}
+                error_ticket['status'] = fc_reply['status']
+                print_data_access_layer_format(inputlist[i], outputlist[i],
+                                              error_ticket['fc'].get('size',0),
+                                               error_ticket)
+                raise fc_reply['status'][0]
+
+            elif vc_reply['status'][0] != e_errors.OK:
+                error_ticket = {'fc':fc_reply, 'vc':vc_reply}
+                error_ticket['status'] = vc_reply['status']
+                print_data_access_layer_format(inputlist[i], outputlist[i],
+                                              error_ticket['fc'].get('size',0),
+                                               error_ticket)
+                raise vc_reply['status'][0]
 
         except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED,
                 e_errors.BROKEN):
-            exc, msg, tb = sys.exc_info()
-            print_data_access_layer_format(inputlist[i], outputlist[i], 0,
-                                           {'status':(exc, msg)})
             continue
 
         if e.verbose > 4:
