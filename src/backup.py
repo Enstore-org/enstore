@@ -91,7 +91,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         for file in tarfiles:
             os.rename(file, os.path.join(dir_bck, file))
     else :
-	cmd="rsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
+	cmd="enrsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
 	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
@@ -105,7 +105,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	if os.system("gzip *.tar"):	# failed?
             os.system("compress *.tar")
 
-	cmd="rcp *.tar* " + hst_bck+":"+dir_bck
+	cmd="enrcp *.tar* " + hst_bck+":"+dir_bck
 	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
@@ -134,13 +134,13 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
 		 logthis(e_errors.INFO, "Failed: %s"%(cmd,))
     else :
         remcmd="find %s -type d -mtime %s"%(bckHome,ago)
-	cmd="rsh %s '%s'"%(hst_bck,remcmd)
+	cmd="enrsh %s '%s'"%(hst_bck,remcmd)
 	logthis(e_errors.INFO, repr(cmd))
         names= map(string.strip,os.popen(cmd).readlines())
         for name in names:
 		logthis(e_errors.INFO, name)
 		if name and name != bckHome:
-                    cmd="rsh "+hst_bck+" 'rm -rf "+name+"'"
+                    cmd="enrsh "+hst_bck+" 'rm -rf "+name+"'"
                     logthis(e_errors.INFO, cmd)
                     ret=os.system(cmd)
                     if ret != 0 :

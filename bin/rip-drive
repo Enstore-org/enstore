@@ -250,9 +250,9 @@ case $drive in
        eval node=\$${drive}node
        eval device=\$${drive}device
        if [ "$command" = "uname" ]; then
-         cmd="rsh $node 'uname -a 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
+         cmd="enrsh $node 'uname -a 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
        else
-         cmd="rsh $node 'mt -f $device $command 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
+         cmd="enrsh $node 'mt -f $device $command 2>&1 </dev/null; echo \$? 2>&1 </dev/null' </dev/null"
        fi
        ;;
 

@@ -63,7 +63,7 @@ class Rtester:
             # send command
             cmdline="%s %s "%(test_script, mover)
         
-            cmd = 'rsh %s '%(mv['hostip'],)+'"sh -c \'%s'%(cmdline,)+'\'"'
+            cmd = 'enrsh %s '%(mv['hostip'],)+'"sh -c \'%s'%(cmdline,)+'\'"'
             ret = os.popen(cmd).readlines()
             for item in ret:
                 if string.find(item,'Transfer rates') != -1:

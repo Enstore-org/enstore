@@ -43,9 +43,9 @@ for i in *; do
   cd $base/$i
   rm -f *HISTOGRAM  >/dev/null 2>&1
   rm -f *.pbm  >/dev/null 2>&1
-  rcp $i:/root/CRON/*HISTOGRAM . >/dev/null 2>&1
-  rcp $i:/home/enstore/CRON/*HISTOGRAM .  >/dev/null 2>&1
-  #rcp $i:/diska/pnfs/db/info/scheduler/*HISTOGRAM . >/dev/null 2>&1
+  enrcp $i:/root/CRON/*HISTOGRAM . >/dev/null 2>&1
+  enrcp $i:/home/enstore/CRON/*HISTOGRAM .  >/dev/null 2>&1
+  #enrcp $i:/diska/pnfs/db/info/scheduler/*HISTOGRAM . >/dev/null 2>&1
   for j in *HISTOGRAM; do
      if [ "$j" = "*HISTOGRAM" ]; then break; fi
      f=`basename $j |sed -e 's/HISTOGRAM//'`

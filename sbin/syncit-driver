@@ -24,27 +24,27 @@ esac
 
 for i in $movers; do
   ./syncit -node ${gang}mvr${i}a
-  rsh ${gang}mvr${i}a "./syncit -node $basenode"
+  enrsh ${gang}mvr${i}a "./syncit -node $basenode"
 done
 
 for i in $servers; do
   ./syncit -node ${gang}srv$i
-   rsh ${gang}srv${i} "./syncit -node $basenode"
+   enrsh ${gang}srv${i} "./syncit -node $basenode"
 done
 
 
 ./syncit -node $othernode
-#rsh $othernode "./syncit -node $basenode"
+#enrsh $othernode "./syncit -node $basenode"
 
 for i in $servers; do
-   #rsh ${othergang}srv${i} "./syncit -node ${gang}srv$i"
-   rsh ${gang}srv${i}  "./syncit -node ${othergang}srv$i"
+   #enrsh ${othergang}srv${i} "./syncit -node ${gang}srv$i"
+   enrsh ${gang}srv${i}  "./syncit -node ${othergang}srv$i"
 done
 
 
 if [ $node = "d0enmv18a" ]; then
-  rsh d0ensrv3 "./syncit -node d0ensrv5"
-  rsh d0ensrv5 "./syncit -node d0ensrv3"
+  enrsh d0ensrv3 "./syncit -node d0ensrv5"
+  enrsh d0ensrv5 "./syncit -node d0ensrv3"
 
 elif [ $node = "stkenmvr5a" ]; then
   echo ""

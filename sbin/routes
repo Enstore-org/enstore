@@ -242,7 +242,7 @@ cat << EOF >>$storit
 </body>
 EOF
     # next line is not good...
-    rcp $storit ${gang}srv2:/fnal/ups/prd/www_pages/enstore
+    enrcp $storit ${gang}srv2:/fnal/ups/prd/www_pages/enstore
     ;;
 
 ################################################################################
@@ -266,12 +266,12 @@ test*)
       while [ $loop -lt $count ]; do
 
         o=netperf.${num1}a-${num}a.output
-        rsh ${gang}mvr${num1}a "$netperf -l $testTime -H ${gang}mvr${num}a >> $o 2>&1 <$N &" &
+        enrsh ${gang}mvr${num1}a "$netperf -l $testTime -H ${gang}mvr${num}a >> $o 2>&1 <$N &" &
         o=netperf.${num1}b-${num}b.output
-        rsh ${gang}mvr${num1}b "$netperf -l $testTime -H ${gang}mvr${num}b >> $o 2>&1 <$N &" &
+        enrsh ${gang}mvr${num1}b "$netperf -l $testTime -H ${gang}mvr${num}b >> $o 2>&1 <$N &" &
         sleep $testTime
         sleep 3
-        rsh ${gang}mvr${num1}a "(killall $netperf 2>$N) 1>&- 2>&- <&- &" &
+        enrsh ${gang}mvr${num1}a "(killall $netperf 2>$N) 1>&- 2>&- <&- &" &
 
         o=netperf.${num}a-${num1}a.output
         $netperf -l $testTime -H ${gang}mvr${num1}a >> $o 2>&1 <$N &

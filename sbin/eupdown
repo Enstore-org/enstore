@@ -37,5 +37,5 @@ cat <<EOF
 EOF
 
 # this is not robust.
-rcp ~/CRON/enstore_up_down-output d0ensrv2:/fnal/ups/prd/www_pages/enstore/up_down.html
+enrcp ~/CRON/enstore_up_down-output d0ensrv2:/fnal/ups/prd/www_pages/enstore/up_down.html
 

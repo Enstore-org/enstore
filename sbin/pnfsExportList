@@ -14,6 +14,6 @@ f=/tmp/pnfsExports.html
 
 python $ENSTORE_DIR/sbin/pnfsExports.py --all >$f 2>$f.errors
 
-scp $f ${gang}srv2:/fnal/ups/prd/www_pages/enstore/
+enrcp $f ${gang}srv2:/fnal/ups/prd/www_pages/enstore/
 
 

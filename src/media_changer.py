@@ -870,7 +870,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
                 self.cmdPrefix = ""
                 self.cmdSuffix = ""
             else :
-                self.cmdPrefix = "rsh " + self.ocsHost + " '"
+                self.cmdPrefix = "enrsh " + self.ocsHost + " '"
                 self.cmdSuffix = "'"
                 fnstatus = self.checkRemoteConnection()
                 if fnstatus != 'OK' :
@@ -924,7 +924,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf cRC rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf cRC enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0':
@@ -946,7 +946,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf cOa rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf cOa enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0':
@@ -968,7 +968,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf aOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf aOd enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0':
@@ -982,7 +982,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
                     pos=string.find(retstring," ")
                     if pos != -1 :
                         wrongdrive=string.strip(retstring[pos+1:])
-                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd rsh wrongdrive=%s" % (wrongdrive,) )
+                        Trace.log(e_errors.ERROR, "ERROR:Shelf aOd enrsh wrongdrive=%s" % (wrongdrive,) )
                     fnstatusR = self.deallocateOCSdrive(drive)
                     return fnstatus
         else :
@@ -1003,7 +1003,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf mOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf mOd enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0':
@@ -1032,7 +1032,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf dOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf dOd enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0': #check if drive already deallocated (not an error)
@@ -1058,7 +1058,7 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
-        Trace.log(e_errors.INFO, "Shelf uOd rsh return strings=%s stat=%s" % (result, stat))
+        Trace.log(e_errors.INFO, "Shelf uOd enrsh return strings=%s stat=%s" % (result, stat))
         if stat == 0:
             retval = result[len(result)-1][0]
             if retval != '0':

@@ -32,7 +32,7 @@ cat << EOF >>$output
 <pre>
 EOF
 
-rsh fntt -l acsss "echo query drive all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garby" < /dev/null >>$output
+enrsh fntt -l acsss "echo query drive all |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garby" < /dev/null >>$output
 
 
 ######################################################################################Q
@@ -48,6 +48,6 @@ EOF
 else
   f=STKDrvStat.html
   rm /tmp/$f
-  rcp stkensrv4:$f /tmp/$f
+  enrcp stkensrv4:$f /tmp/$f
   cat /tmp/$f >>$output
 fi

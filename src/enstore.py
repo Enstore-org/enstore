@@ -404,7 +404,7 @@ class Enstore(EnstoreInterface):
             if not self.get_config_from_server() and \
                not self.get_config_from_file():
                 self.node = DEFAULT_AML2_NODE
-            cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%(self.node,)
+            cmd = 'enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%(self.node,)
             rtn = os.system(cmd)
         elif not self.user_mode and arg1 == "EPS":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"

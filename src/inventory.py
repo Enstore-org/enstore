@@ -808,8 +808,8 @@ if __name__ == "__main__":
     #Move all of the output files over to the web server node.
     if inventory_rcp_dir:
         if string.find(output_dir, "/dev/stdout") == -1:
-            print "rcp %s %s" % (output_dir + "*", inventory_rcp_dir)
-            os.system("rcp %s %s" % (output_dir + "*", inventory_rcp_dir))
+            print "enrcp %s %s" % (output_dir + "*", inventory_rcp_dir)
+            os.system("enrcp %s %s" % (output_dir + "*", inventory_rcp_dir))
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0

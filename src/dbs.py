@@ -227,7 +227,7 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 	# In theory, if it is not good, we should go all the way back
 	# to the "last good backup"
 
-	cmd = "rsh "+bckHost+" ls -1t "+bckHome+" | head -1"
+	cmd = "enrsh "+bckHost+" ls -1t "+bckHome+" | head -1"
 	bckHome = bckHome+"/"+os.popen(cmd).readline()[:-1]
 
 	print "restore from "+bckHost+":"+bckHome
@@ -261,9 +261,9 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 
 	# check the type of compression
 
-	compression = os.popen("rsh -n "+bckHost+" ls "+bckHome+"/dbase.tar*").readline()[-2:-1]
+	compression = os.popen("enrsh -n "+bckHost+" ls "+bckHome+"/dbase.tar*").readline()[-2:-1]
 	if compression == "z" or compression == "Z":	# decompress them first
-		cmd = "rsh -n "+bckHost+" gunzip "+bckHome+"/*"
+		cmd = "enrsh -n "+bckHost+" gunzip "+bckHome+"/*"
 		print "decompressing the backup files ..."
 		print cmd
 		os.system(cmd)
@@ -272,7 +272,7 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 
 	print "Retriving database file from backup ("+bckHost+":"+bckHome+")"
 
-	cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
+	cmd = "enrsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
 	print cmd
 	os.system(cmd)
 
@@ -291,7 +291,7 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 
 	print "Retriving journal files from backup ("+bckHost+":"+bckHome+")"
 	for i in dbs:
-		cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/"+i+\
+		cmd = "enrsh -n "+bckHost+" dd if="+bckHome+"/"+i+\
 			".tar bs=20b | tar xvBfb - 20 '"+i+".jou*'"
 		os.system(cmd)
 		print cmd

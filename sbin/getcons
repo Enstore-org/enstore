@@ -28,7 +28,7 @@ cat << EOF >>$output
 EOF
 
 for i in 3 5; do 
-  rsh ${gang}srv$i "find /var/log/conserver -type f |egrep -v 'bios|tbd|tdb'  | sort | xargs tail -n 25" >>$output
+  enrsh ${gang}srv$i "find /var/log/conserver -type f |egrep -v 'bios|tbd|tdb'  | sort | xargs tail -n 25" >>$output
 done
 
 cat <<EOF >>$output

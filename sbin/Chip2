@@ -30,7 +30,7 @@ EOF
 if [ -z "${2-}" ] ; then
   for i in `cat $farmlet`; do
    date > $filebase$i
-   rsh $i 'killall -9 /opt/chip2/chip2; /opt/chip2/chip2 ' >> $filebase$i &
+   enrsh $i 'killall -9 /opt/chip2/chip2; /opt/chip2/chip2 ' >> $filebase$i &
   done
   #wait
   sleep 30 # wait doesn't work if rsh fails ???

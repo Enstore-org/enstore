@@ -100,12 +100,12 @@ do
         if [ $copyit = 0 ]; then
            for command in "$@"
               do
-                if [ $header -eq 1 ];then echo rsh $machine \""$command"\"; fi
-                eval rsh $machine \""$command"\"
+                if [ $header -eq 1 ];then echo enrsh $machine \""$command"\"; fi
+                eval enrsh $machine \""$command"\"
            done
         else
-                if [ $header -eq 1 ]; then echo rcp $1 $machine:$2; fi
-                     rcp $1 $machine:$2
+                if [ $header -eq 1 ]; then echo enrcp $1 $machine:$2; fi
+                     enrcp $1 $machine:$2
         fi
 
 done

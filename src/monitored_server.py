@@ -25,7 +25,7 @@ DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 def hack_restart_function(name, host):
     Trace.log(e_errors.WARNING, "running dbhang for %s on %s"%(name, host))
-    os.system("rsh -n %s '/home/enstore/dbhang %s'"%(host, name))
+    os.system("enrsh -n %s '/home/enstore/dbhang %s'"%(host, name))
 
 # this is really a hack, do this right when i am back full time on enstore
 def hack_restart(name, host):

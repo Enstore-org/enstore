@@ -55,7 +55,7 @@ def findChild(ppid, fromNode, toNode):
     num = 0
     while num < len(a) - 1:
         b = string.split(a[num])
-        if b[0] == str(ppid) and string.find(a[num], 'rsh %s "%s -l %s -H %s"' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode)) >= 0:
+        if b[0] == str(ppid) and string.find(a[num], 'enrsh %s "%s -l %s -H %s"' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode)) >= 0:
             cpid = str(b[1])
             break
         else:
@@ -72,7 +72,7 @@ def findChild(ppid, fromNode, toNode):
 def testSeq(fromNode, toNode):
     ppid = os.getpid()
     testdict["%s %s" % (fromNode, toNode)] = ""
-    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
+    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('enrsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
     if testdict["%s %s" % (fromNode, toNode)] == "":
         testdict["%s %s" % (fromNode, toNode)] = findChild(ppid, fromNode, toNode)
     
@@ -292,7 +292,7 @@ def printResults():
         fromPtr = fromPtr + 1
     sys.stdout.write("\n\n    -2 : AN 'UNKNOWN ERROR' OCCURRED. RUN THE TEST BY HAND\n")
     sys.stdout.write("       : TO SEE WHAT THE ERROR WAS.\n")
-    sys.stdout.write("""       : rsh fromNode "netPerfPath -l testtime -H toNode"\n""")
+    sys.stdout.write("""       : enrsh fromNode "netPerfPath -l testtime -H toNode"\n""")
     sys.stdout.write("    -1 : SYSTEM HUNG OR HAS VERY SLOW RESPONSE\n")
     sys.stdout.write(" BLANK : SELF TEST. DEVICE DID NOT TEST ITSELF.\n")
     sys.stdout.write("# >= 0 : THROUGHPUT: NUM * 10^6 BITS/SEC\n\n")
