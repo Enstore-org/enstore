@@ -82,7 +82,7 @@ class UDPClient:
         pid=os.getpid()  
         if pid != self.pid:  #recompute ident and get new sockets each time we fork
             self.host, self.port, self.socket = get_client()
-            Trace.log(e_errors.INFO, "child UPD client 
+            Trace.log(e_errors.INFO, "child UPD client got new sockets")
             self.pid = pid
             self._ident = "%s-%d-%f-%d" % (self.host, self.port, time.time(), self.pid )
         return self._ident 
