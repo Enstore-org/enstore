@@ -3,8 +3,8 @@
 
 Instance: 		v1_2
 Database: 		/afs/fnal/products/ups_database/declared
-Flavor : 		OSF1+V3
-Home_dir:		/afs/.fnal.gov/products/OSF1/ftt/v1_2
+Flavor : 		SunOS+5
+Home_dir:		/afs/.fnal.gov/products/SunOS+5/ftt/v1_2
 Declared date:		8-22-96
 Declarer:		mengel
 Master Source:		Source not available
