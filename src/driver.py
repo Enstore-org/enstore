@@ -6,7 +6,6 @@ import os				# temporary - .system for mt commands
 import types				# see if eod_str is string
 import string				# atoi use on loc_cookie
 
-import ETape
 import FTT
 import EXfer
 import IPC

@@ -55,8 +55,6 @@
 # This is for freeze to find the source of the included modules
 *shared*
 
-ETape ETape.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc
-
 EXfer EXfer.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 
 FTT FTT.c -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc
