@@ -17,8 +17,7 @@ ALLOW_BASE="
        LISTEN,inetd,:netperf,TCP,x
        LISTEN,python,:,,/home/enstore/enstore/bin/encp
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
-       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
-       UDP,python,:,UDP,/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
+       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
        TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:6000,TCP,x
@@ -29,6 +28,39 @@ ALLOW_BASE="
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
 "
+root 23816 1 0 Dec14 1 G 00:01:02 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23816 root 3u inet 4466081 UDP *:4340
+DEBUG root 23816 1 0 Dec14 1 G 00:01:02 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+root 23830 1 0 Dec14 1 G 00:04:49 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23830 root 4u inet 4466108 UDP *:4344
+DEBUG root 23830 1 0 Dec14 1 G 00:04:49 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+root 23858 23816 0 Dec14 1 G 00:00:06 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23858 root 3u inet 4466081 UDP *:4340
+DEBUG root 23858 23816 0 Dec14 1 G 00:00:06 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+root 23859 23858 0 Dec14 1 G 00:00:42 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23859 root 3u inet 4466081 UDP *:4340
+DEBUG root 23859 23858 0 Dec14 1 G 00:00:42 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+root 23860 23858 0 Dec14 1 G 00:00:30 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23860 root 3u inet 4466081 UDP *:4340
+DEBUG root 23860 23858 0 Dec14 1 G 00:00:30 /local/ups/prd/python/v2_0_E_1/bin/python /home/enstore/enstore/ngop/cronjobAgent.py -c /var/ngop/cron_agent/local_cronjob.xml
+root 23863 23830 0 Dec14 1 G 00:00:06 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23863 root 4u inet 4466108 UDP *:4344
+DEBUG root 23863 23830 0 Dec14 1 G 00:00:06 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+root 23864 23863 0 Dec14 1 G 00:00:42 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23864 root 4u inet 4466108 UDP *:4344
+DEBUG root 23864 23863 0 Dec14 1 G 00:00:42 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+root 23865 23863 0 Dec14 1 G 00:00:31 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+DEBUG UNAUTHORIZED NETWORK SERVICE! stkenmvr2a UDP python 23865 root 4u inet 4466108 UDP *:4344
+DEBUG root 23865 23863 0 Dec14 1 G 00:00:31 /local/ups/prd/python/v2_0_E_1/bin/python /local/ups/prd/ngop/v1_1/ma/PlugInAgent.py -c /var/ngop/plugins_agent/linuxHealth.xml
+
 
 ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
