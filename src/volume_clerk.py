@@ -1571,7 +1571,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     # get the actual state of the media changer
     def get_media_changer_state(self, lib, volume, m_type):
-        m_changer = self.csc.get_media_changer(lib + ".library_manager")
+        # m_changer = self.csc.get_media_changer(lib + ".library_manager")
+        if len(lib) < 16 or lib[-16:] != '.library_manager':
+            lib = lib + '.library_manager'
+        m_changer = self.csc.get_media_changer(lib)
         if not m_changer:
             Trace.log(e_errors.ERROR,
                       " vc.get_media_changer_state: ERROR: no media changer found %s" % (volume,))
@@ -1666,7 +1669,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.ERROR, msg)
             return
         # find the media changer for this volume
-        m_changer = self.csc.get_media_changer(record['library'] + ".library_manager")
+        # m_changer = self.csc.get_media_changer(record['library'] + ".library_manager")
+        lib = record['library']
+        if len(lib) < 16 or lib[-16:] != '.library_manager':
+            lib = lib + '.library_manager'
+        m_changer = self.csc.get_media_changer(lib)
         if m_changer:
             if not self.paused_lms.has_key(m_changer):
                 self.paused_lms[m_changer] = {'paused':0,
@@ -1687,7 +1694,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 
     # check if Library Manager is paused
     def lm_is_paused(self, library):
-        m_changer = self.csc.get_media_changer(library + ".library_manager")
+        # m_changer = self.csc.get_media_changer(library + ".library_manager")
+        if len(library) < 16 or library[-16:] != '.library_manager':
+            library = library + '.library_manager'
+        m_changer = self.csc.get_media_changer(library)
         if m_changer:
             if (self.paused_lms.has_key(m_changer) and
                 self.paused_lms[m_changer]['paused'] != 0):
@@ -1867,7 +1877,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                                   "backup"  : 'no' })
 
     def clear_lm_pause(self, ticket):
-        m_changer = self.csc.get_media_changer(ticket['library'] + ".library_manager")
+        # m_changer = self.csc.get_media_changer(ticket['library'] + ".library_manager")
+        lib = ticket['library']
+        if len(lib) < 16 or lib[-16:] != '.library_manager':
+            lib = lib + '.library_manager'
+        m_changer = self.csc.get_media_changer(lib)
         if m_changer:
             if self.paused_lms.has_key(m_changer):
                 Trace.log(e_errors.INFO, "Cleared BROKEN flag for all LMs related to media changer %s" % (m_changer,))
