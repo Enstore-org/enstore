@@ -36,6 +36,7 @@ import Trace
 import e_errors
 import enstore_status
 import enstore_plots
+import udp_client
 
 def default_timeout():
     return 5
@@ -132,7 +133,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         Trace.init("INQ_CHILD")
                         # we need to get new udp clients so we don't collide
                         # with our parent.
-                        import udp_client
                         client.u = udp_client.UDPClient()
                         if not key == CONFIG_S:
                             self.csc.u = udp_client.UDPClient()
@@ -141,7 +141,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         if not key == ALARM_S:
                             self.alarmc.u = udp_client.UDPClient()
                         # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 5
+                        self.alive_rcv_timeout = 180
                         self.alive_retries = 2
                         ret = self.alive_status(client, (t['host'], t['port']),
                                                 prefix, time, key)
