@@ -1285,19 +1285,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 q_dict = self.quota_enabled(library, sg)
                 inc_counter = 1
                 if q_dict:
-                    if self.check_quota(q_dict, library, sg):
-                        # this should not happen, do it but let someone know that
-                        # more volumes need to be assigned to the storage group.
-                        Trace.alarm(e_errors.ERROR,
-                          "Volume Clerk: Selecting volume from common pool, add more volumes for %s"%(vol_fam,))
-                        # this is important so turn the enstore ball red
-                        # check if it is ignored
-                        if not library+'.'+sg in self.ignored_sg:
-			    ic = inquisitor_client.Inquisitor(self.csc)
-                            ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
-                            # release ic
-                            del ic
-                    else:
+                    if not self.check_quota(q_dict, library, sg):
                         msg="Volume Clerk: %s quota exceeded while drawing from common pool. Contact enstore admin."%(sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.alarm(e_errors.ERROR,msg)
