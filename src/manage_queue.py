@@ -421,6 +421,9 @@ class Request_Queue:
 
     def put(self,ticket,t_time=0):
         if ticket['work'] == 'write_to_hsm':
+            # backward compatibility
+            if not ticket['vc'].has_key('storage_group'):
+               ticket['vc']['storage_group'] = 'unknown' 
             # combine volume family
             if ticket['vc']['file_family'] != 'ephemeral':
                 key = string.join((ticket['vc']['storage_group'],

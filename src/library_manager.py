@@ -310,6 +310,14 @@ class LibraryManagerMethods:
 
         # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
         # do not update temporarily store rq.
+
+
+        #############################################
+        # REMOVE WHEN V1 IS GONE
+        #
+        if not rq.ticket['vc'].has_key('volume_family'):
+            rq.ticket['vc']['volume_family'] = rq.ticket['vc']['file_family']
+        ##############################################
         rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
         sg_limit = self.get_sg_limit(rq_sg)
         if self.tmp_rq:
@@ -348,9 +356,18 @@ class LibraryManagerMethods:
 
         # width not exceeded, ask volume clerk for a new volume.
         first_found = 0
+        #################################################
+        # REMOVE WHEN OLD SYSTEM IS GONE
+        # backward compatibility
+        # cut the wrapper info off volume family
+        sg_tmp = volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"])
+        if sg_tmp == 'unknown':
+            vf = string.join((sg_tmp, string.split(rq.ticket["vc"]["volume_family"],'.')[1]), '.')
+        else: vf = rq.ticket["vc"]["volume_family"]
+        ##################################################
         v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
                                         rq.ticket["wrapper"]["size_bytes"],
-                                        rq.ticket["vc"]["volume_family"], 
+                                        vf, 
                                         rq.ticket["vc"]["wrapper"],
                                         vol_veto_list,
                                         first_found)
@@ -481,7 +498,6 @@ class LibraryManagerMethods:
                 Trace.trace(12, "check_write_request: request for volume %s rejected %s"%
                                 (external_label, rq.ticket["reject_reason"]))
                 rq.ticket['status'] = e_errors.INPROGRESS
-                Trace.trace(11,"11111")
                 return rq, rq.ticket['status'] 
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -493,7 +509,6 @@ class LibraryManagerMethods:
             rq.ticket['status'] = ret['status']
             rq.ticket["fc"]["size"] = rq.ticket["wrapper"]["size_bytes"]
             rq.ticket['fc']['external_label'] = external_label
-            Trace.trace(11,"2222222")
             return rq, ret['status'] 
         else:
             rq.ticket['reject_reason'] = (ret['status'][0], ret['status'][1])
@@ -502,9 +517,7 @@ class LibraryManagerMethods:
             if (rq.work == "write_to_hsm" and
                 (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
                  ret['status'][0] == 'full')):
-                Trace.trace(11,"3333333")
                 return None, ret['status']
-        Trace.trace(11,"444444444")
         return rq, ret['status']
             
 
@@ -911,6 +924,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 format = "read rq. is already in the queue %s -> %s : library=%s family=%s requester:%s"
             else:
                 format = "read Q'd %s -> %s : library=%s family=%s requester:%s"
+
+            #############################################
+            # REMOVE WHEN V1 IS GONE
+            #
+            if not ticket['vc'].has_key('volume_family'):
+                ticket['vc']['volume_family'] = ticket['vc']['file_family']
+            ##############################################
+                
             Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                              ticket["wrapper"]["pnfsFilename"],
                                              ticket["vc"]["library"],
@@ -1062,9 +1083,23 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # update volumes_at_movers
             if w["vc"]["external_label"] != mticket['external_label']:
                 self.volumes_at_movers.delete(mticket)
+                mticket['external_label'] = w["vc"]["external_label"]
+                # update volume status
+                # get it directly from volume clerk as mover
+                # in the idle state does not have it
+                vol_info = self.vcc.inquire_vol(mticket['external_label'])
+                mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                                            vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             # create new mover_info
-            mticket['external_label'] = w["vc"]["external_label"]
             mticket['status'] = (e_errors.OK, None)
+
+            #############################################
+            # REMOVE WHEN V1 IS GONE
+            #
+            if not w['vc'].has_key('volume_family'):
+                w['vc']['volume_family'] = w['vc']['file_family']
+            ##############################################
+                
             mticket['volume_family'] = w['vc']['volume_family']
             Trace.trace(11,"mover %s label %s vol_fam %s" % (mticket['mover'], mticket['external_label'],
                                                                   mticket['volume_family']))
