@@ -100,7 +100,13 @@ QUALIFIERS = ""
 
 	# create an enstoreCut link in the sbin area
 	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ]; then ln -s $ENSTORE_DIR/sbin/encpCut $ENSTORE_DIR/sbin/enstoreCut; fi"',NO_UPS_ENV)
-	
+
+	# special treatment for libds.a on IRIX64
+	execute("uname", UPS_ENV, ENSTORE_OSV)
+	# ups can't handle "sh -c `uanme` ...
+	execute("sh -c 'if [ ${ENSTORE_OSV} = IRIX64 ]; then echo -L/usr/lib32 -lds ; fi'", UPS_ENV, LIBDS)
+	envUnset(ENSTORE_OSV)
+
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/pcfarm.conf")
         envSet(ENSTORE_CONFIG_PORT, 7500)

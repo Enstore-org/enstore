@@ -63,7 +63,7 @@ EXfer EXfer.c  -D`uname` adler32.a
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
 
-FTT FTT.c -D$(FTT_DEF)$(FTT_DIR) -DNO_PARTITION_SUPPORT -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc adler32.a
+FTT FTT.c -D$(FTT_DEF)$(FTT_DIR) -DNO_PARTITION_SUPPORT -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt -lc $(LIBDS) adler32.a
 
 IPC IPC.c
 
