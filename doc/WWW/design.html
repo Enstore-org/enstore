@@ -1,4 +1,4 @@
-<body>
+<body BGCOLOR=#FFFFFF>
 <font size=7><b><i>
 <center>Enstore Technical Design Document</center>
 </i></b></font>
@@ -73,6 +73,8 @@
 <li><a href="#volimp">5.2 Volume Import</a>
 <li><a href="#test_system">6 Test System</a>
 <li><a href="#ts_results">6.1 Test System Results</a>
+<li><a href="#interface">7 Interfaces and Integration</a>
+
 </ul>
 
 <p>
@@ -561,7 +563,7 @@ stand alone and doesn't require any other products, including python.
 <p>
 Commonly used commands are:
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
@@ -731,12 +733,12 @@ Pnfs up
 </pre></TD>
 </TR>
 
-</TABLE>
+</TABLE></center>
 <P>
 
 Don't use these unless you know what you are doing:
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
@@ -799,13 +801,13 @@ Don't use these unless you know what you are doing:
 </pre></TD>
 </TR>
 
-</TABLE>
+</TABLE></center>
 <P>
 
 
 Don't use these unless you can interpret the results:
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
@@ -896,7 +898,7 @@ Don't use these unless you can interpret the results:
 </pre></TD>
 </TR>
 
-</TABLE>
+</TABLE></center>
 <P>
 
 <h3><a name="volmaps">
@@ -982,7 +984,7 @@ extension to <em>encp</em>.
 <h3>
 <a NAME="encp_options"></a>1.2.1<i>Encp</i> command line options</h3>
 
-<table BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><table BORDER COLS=3 WIDTH="100%" NOSAVE >
 <tr VALIGN=CENTER NOSAVE>
 <td NOSAVE><b>OPTION</b></td>
 <td NOSAVE><b>SWITCH</b></td>
@@ -1049,7 +1051,7 @@ extension to <em>encp</em>.
 
 </tr>
 
-</table>
+</table></center>
 
 <h3><a name="encp_throttle">
 1.2.2 Throttling in <em>encp</em>
@@ -1575,7 +1577,7 @@ The record is looked up by a key.
 The key is the volume's external label.
 The information tracked for each volume is described in the table below:
 The default values are shown in parentheses ().
-<table>
+<center><table>
 <td valign=top><b>Column Name</b>
 <td valign=top><b>Type</b>
 <td valign=top><b>Comments</b>
@@ -1670,7 +1672,7 @@ volume, updated by Volume Clerk.
 this volume; updated by Volume Clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the volume.
-</table>
+</table></center>
 <p>
 The Volume Clerk does the following operations:
 <ul>
@@ -1695,7 +1697,7 @@ The records are keyed.
 The key is the string version of the bit file ID.
 The default values are shown in parentheses ().
 The fields tracked are as follows:
-<table>
+<center><table>
 <td valign=top><b>Column Name</b>
 <td valign=top><b>Type</b>
 <td valign=top><b>Comments</b>
@@ -1726,7 +1728,7 @@ itself.  The sanity crc is just the normal crc but only for the 1st N bytes in
 the file. This allows the Mover to check early in the transfer process that it
 probably has the right user file selected; it at least will know if it has the
 wrong file.
-</table>
+</table></center>
 <p>
 The File Clerk supports the following requests:
 <ul>
@@ -1786,7 +1788,7 @@ The Mover may be told to unmount a volume as there is no more work for
 the volume.
 A Mover may have dismounted a volume unilaterally because it ran into
 trouble.  This is summarized in the tables below
-<table>
+<center><table>
 <td><b>Mover sends</b>
 <td><b>Library Manager may respond</b>
 <tr>
@@ -1798,9 +1800,9 @@ trouble.  This is summarized in the tables below
 <tr>
 <td>unilateral_unbind
 <td>just acknowledge
-</table>
+</table></center>
 
-<table>
+<center><table>
 <td valign=top><b>Library has just responded</b>
 <td valign=top><b>Mover sends</b>
 <td valign=top><b>Library Manager presumes</b>
@@ -1833,7 +1835,7 @@ trouble.  This is summarized in the tables below
 <td valign=top>
 <td valign=top>Unilateral_unbind
 <td valign=top>Just acknowledge
-</table>
+</table></center>
 
 Note that if a Mover should crash holding a volume, the worst that can
 happen is that the Library Manager will be unable to schedule work for
@@ -2000,7 +2002,7 @@ $ ecmd mov --status fndaprdisk.mover<br>
 <h4><a name="mover_config">
 1.3.8.2 Mover Config File Values
 </h4>
-<TABLE BORDER COLS=4 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=4 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>DICTIONARY ELEMENT</B></TD>
 <TD NOSAVE><B>DEFINITION</B></TD>
@@ -2063,7 +2065,7 @@ media changer.</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>'/dev/rmt/tps2d2n' (make sure this is a no-rewind device)</TD>
 </TR>
-</TABLE>
+</TABLE></center>
 
 
 <p>
@@ -2150,7 +2152,7 @@ general commands supported by all other servers; <i>alive</i>,
 <i>config_host</i>, <i>config_port</i>, <i>help</i>, <i>server_verbose</i>,
 <i>verbose</i>, <i>alive_rcv_timeout</i> <i>alive_retries</i>.
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
@@ -2187,7 +2189,7 @@ general commands supported by all other servers; <i>alive</i>,
 </pre>
 </TD>
 </TR>
-</TABLE>
+</TABLE></center>
 <P>
 <h3><a name="log_server">
 1.3.6 Log Server
@@ -2257,7 +2259,7 @@ information from the log files on <em>encp</em> commands and report on the block
 set in the Enstore config file.
 
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>SERVER</B></TD>
 <TD NOSAVE><B>INFORMATION GATHERED</B></TD>
@@ -2318,7 +2320,7 @@ set in the Enstore config file.
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
-</TABLE>
+</TABLE></center>
 <P>
 
 Since the Inquisitor can request a new config file from the config_server 
@@ -2336,7 +2338,7 @@ general commands supported by all other servers; <i>alive</i>,
 <i>config_host</i>, <i>config_port</i>, <i>help</i>, <i>server_verbose</i>,
 <i>verbose</i>, <i>alive_rcv_timeout</i> <i>alive_retries</i>.
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>FUNCTION</B></TD>
 <TD NOSAVE><B>COMMAND</B></TD>
@@ -2442,7 +2444,7 @@ general commands supported by all other servers; <i>alive</i>,
 <TD NOSAVE>ecmd inq --update</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
-</TABLE>
+</TABLE></center>
 
 <h4><a name="inquisitor_config">
 1.3.8.2 Inquisitor Config File Values
@@ -2452,7 +2454,7 @@ Enstore config file. The default value is used if the dictionary element is not
 found. Dictionary elements with no default must be specified in the Enstore 
 config file.  All frequencies are specified in seconds.<BR>
 <P>
-<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
 <TD NOSAVE><B>DICTIONARY ELEMENT</B></TD>
 <TD NOSAVE><B>DEFINITION</B></TD>
@@ -2523,7 +2525,7 @@ config file.  All frequencies are specified in seconds.<BR>
 <TD NOSAVE>dictionary of frequencies for monitoring each server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
-</TABLE>
+</TABLE></center>
 <P>
 In addition to the information listed above, the inquisitor will look for the
 <i>inq_timeout</i> dictionary element in each of the individual server sections.
@@ -2876,7 +2878,7 @@ designated directory on a remote host.
 The remote host and directory are defined in configuration server.
 The backup procedure will perform the following actions:
 <p>
-<table>
+<center><table>
 <tr>
 <td valign=top>Libtp database
 <td valign=top><ul>
@@ -2911,14 +2913,14 @@ journal file, release database access)
 <td valign=top>Archives cleanup
 <td valign=top><ul><li>deletes all the archival directories created more then
 N days ago (default is 10 days)</ul>
-</table>
+</table></center>
 <h3><a name="recovery">
 2.2.2 Recovery
 </h3>
 Recovery should be a job initiated manually in case of database corruption.
 There are two ways to recover from a crash:
 <p>
-<table>
+<center><table>
 <tr>
 <td valign=top>libtp utility
 <td valign=top><ul>
@@ -2939,7 +2941,7 @@ database directory.
 <li>delete all related files from database directory.
 <li>move the resulting database files to database directory.
 </ul>
-</table>
+</table></center>
 
 <hr>
 <h2><a name="admin_tools">
@@ -3200,7 +3202,7 @@ the the intrinsic ability for the system to recover when a process or
 system running a process crashes.  This is summarized in the table below:
 
 
-<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+<center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 
 <TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Process</B></FONT></FONT></TH>
 <TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Where is State?</B></FONT></FONT></TH>
@@ -3262,7 +3264,7 @@ is at what mover </FONT> </TD>
 
 
 
-</TABLE>
+</TABLE></center>
 
 
 <h3><a name="edet">
@@ -3306,7 +3308,7 @@ interim, Enstore will make the following working assumptions:
 	<DT><BR><BR>
 	</DT>
 </DL>
-<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+<center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 	<TR VALIGN=TOP>
 		<TH>
 			<P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Error Code</B></FONT></FONT></TH>
@@ -4232,7 +4234,7 @@ interim, Enstore will make the following working assumptions:
 			<P><FONT SIZE=2>Offline </FONT>
 		</TD>
 	</TR>
-</TABLE>
+</TABLE></center>
 <P><BR><BR>
 </P>
 
@@ -4474,7 +4476,7 @@ The procedure for importing a volume is:
 
 <ul>
 <li> EMASS Robot:
-     <table cols=2 width="50%">
+<center>     <table cols=2 width="50%">
      <tr>
      <td> 2 AITS
      <td> (15 of 84 tapes allocated)
@@ -4484,18 +4486,18 @@ The procedure for importing a volume is:
      <tr>
      <td> 2 DLTS
      <td> (15 of 84 tapes allocated)
-     </table>
+     </table></center>
 <li> STK Robot:
-     <table cols=2 width="50%">
+<center>     <table cols=2 width="50%">
      <tr>
      <td> 2 Redwoods
      <td> (5 of 200 tapes allocated)
-     </table>
+     </table></center>
 <li> Disk test movers
 </ul>
 
 <h3>Preliminary Rates Measurements:</h3>
-<table cols=5 width="80%">
+<center><table cols=5 width="80%">
 <tr>
 <td> Device
 <td> Writing
@@ -4532,7 +4534,7 @@ The procedure for importing a volume is:
 <td> 7.5
 <td> 83
 <td> 9.8
-</table>
+</table></center>
 
 <dl>
 <dt> Some STK details:</dt>
@@ -4550,8 +4552,8 @@ The procedure for importing a volume is:
 	      </dd>
 </dl>
 
-<h3>Preliminary CPU Utilization for AIT transfers:
-<table cols=3 width="40%">
+<h3>Preliminary CPU Utilization for AIT transfers:</h3>
+<center><table cols=3 width="40%">
 <tr>
 <td> &nbsp;
 <td> Mover
@@ -4564,9 +4566,250 @@ The procedure for importing a volume is:
 <td> crc
 <td> 10-20%
 <td> 10-20%
-</table>
+</table></center>
 
 
+<hr>
+<h2><a name="interface">
+7 Interfaces and Integration
+</h2>
+
+Below is an (incomplete) summary of interfaces that are intrinsic to
+the Enstore software. They are specified and coded as
+part of the software project.
+
+<center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Function</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Person</B></FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Software</B></FONT></FONT></TH>
+
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Initiate a specific transfer betwen tape and disk </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>encp</em> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Organize names </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Choose library to write to </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Create file families, administer width </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2><em>pnfs</em> </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Current status on web </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
+<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Summary status on Web </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
+<TD> <P><FONT SIZE=2>Inquisitor </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Routine periodic monitoring </FONT> </TD>
+<TD> <P><FONT SIZE=2>TBD </FONT> </TD>
+<TD> <P><FONT SIZE=2>Patrol  (or TBD?) + Alarm module </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Move volumes between shelf and library </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Move volumes between shelf and out-of-system (includes new volumes) </FONT> </TD>
+<TD> <P><FONT SIZE=2>Experimenter </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Drain system </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administrator  </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Shutdown system </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>(Re)Start system </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administrator </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore Administration Utility </FONT> </TD>
+
+
+</TABLE></center>
+
+
+<h3> Enstore System Instance Interface</h3>
+
+<p> Interfacing to an experiment means placing Enstore in a larger
+system context. 
+
+<p> From the point of view of Enstore with network attached tapes, there is an
+Enstore system which interfaces to the rest of D0 on at the NIC-card cable
+connector. In addition to the interfaces to the user and administrators (which
+are intrinsic to Enstore software), there are other miscellaneous interface
+issues associated with a real instance of the software, since the whole system
+must conform to the Experiments, Division's and Laboratories system
+constraints:
+
+<center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Type</FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Constraint</FONT></FONT></TH>
+<TH> <P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Imposed by</FONT></FONT></TH>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Network </FONT> </TD>
+<TD> <P><FONT SIZE=2>Conforming Physical Media </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Network </FONT> </TD>
+<TD> <P><FONT SIZE=2>Protocol Extensions </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Network </FONT> </TD>
+<TD> <P><FONT SIZE=2>8K minimum UDP Datagram size </FONT> </TD>
+<TD> <P><FONT SIZE=2>Enstore </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Network </FONT> </TD>
+<TD> <P><FONT SIZE=2>Traffic pattern to machines where one NIC card is not sufficient, </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Siting </FONT> </TD>
+<TD> <P><FONT SIZE=2>Location </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
+<TD> <P><FONT SIZE=2>Run II Operations Software Framework (Patrol or TBD) </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
+<TD> <P><FONT SIZE=2>Failure planning (i.e. broken tape library, Power) </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Operations </FONT> </TD>
+<TD> <P><FONT SIZE=2>Upgrade-ability </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Operations + Security </FONT> </TD>
+<TD> <P><FONT SIZE=2>Standard Administration </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+<TR VALIGN=TOP>
+<TD> <P><FONT SIZE=2>Security </FONT> </TD>
+<TD> <P><FONT SIZE=2>Authentication etc are TBD </FONT> </TD>
+<TD> <P><FONT SIZE=2>System </FONT> </TD>
+
+
+
+
+</TABLE></center>
+
+
+<h2>Integration for D0.</h2>
+
+
+
+<h3> Salient entities for D0</h3>
+
+<p>All production hardware is to come from the D0 Budget, requisitioned by
+D0. This includes the Enstore system, tape drives and other peripherals.</p>
+
+<p>D0 have a baseline system design. From the point of view of the storage
+management project, The main features the D0 system are:    </p>
+
+<ul>
+ <li>IP Based connectivity.
+
+ <li>A few SMP boxes back-ending their D.A. at the D0 assembly building.
+
+ <li>An analysis facility in FCC consisting of a large SMP box and
+ smaller SMP boxes.
+
+ <li>Many hundred farm nodes, most likely an ensemble of small P.C.'s or
+ economical RISC work stations provided by the lowest bidder.  Whether there
+ are "I/O nodes" associated with the farm is  TBD.
+
+ <li>An Enstore system with about 8-10 mover nodes.
+</ul>
+
+<h3>Network system design and integration issues</h3>
+
+<p> Given the discussion above, the main interface issues with D0 are:
+
+<ul>
+ <li> Specification  and design of a data Lan
+ <li> The number and type of NIC cards on each computer.
+ <li> Tuning the features in Enstore for the significant multiple NIC card
+      machines.
+</ul>
+
+
+<p> To keep transfers efficient, It is important to have a network design
+which avoids congestion.  
+
+<p> It is important to characterize the rate achievable on a NIC card, and the
+amount of CPU required to drive NIC cards.  Typically, there is less CPU/BYTE
+when writing to the network, then when read from it. One vendor reports, fro
+CPU's available in late 1998:
+
+<pre>
+	10-11 MB/sec on a 100mbps ethernet NIC
+	30-35 MB/sec on a Gbit ethernet card (standard MTU)
+	70-80 MB/sec on a Gbit ethernet card (jumbo MTU)
+	
+	30-35 MB/sec/CPU   standard ethernet frames
+	78    MB/sec/CPU   "jumbo" (~9000 byte) frames.
+					(n.b. GB ethernet here...)
+</pre>
+
+<p>On an analysis server, Allocation of streams to NIC cards is most easily
+accomplished statistically. For machines with very many potential streams,
+this is best effected by fewer, fatter pipes.  Ideally, there is little packet
+loss and traffic is regulated by the TCP window.  If Jumbo frames were
+acceptable not generally, but only between the Enstore system and the D0
+analysis machine, statistical load balancing over four GB NICs consuming two
+CPUS could be could easily sustain the (imagined) 150 MB/sec peak tape rate
+for D0, with very little congestion.
+
+<p>The problem becomes more difficult as the throughput of a NIC card
+decreases. The basic unit of transfer is a stream carrying the full tape
+rate.  (i.e 5MB/sec for AIT-2 + some allowance for expansion).  It is in fact,
+a little questionable whether two such tape streams should be multiplexed onto
+a single 100MBPS nic card -- Congestion, slow start and other rate-inhibiting
+mechanisms may be invoked.
+
+
+
+<h3>Other system design and integration issues</h3>
+
+<ul>
+<li> A specific site for the Enstore installation has not been identified.
+<li> The Enstore project has begun to learn about PATROL, but is unaware of
+     its formal selection for Run II.
+<li> The OSS dept has work items relating to installing and administering the
+     operating systems for the D0 Enstore system.
+<li> Run II authentication systems are TBD.
+<li> The Enstore mover machines have not yet been identified.
+</ul>
 
 
 
@@ -4574,3 +4817,5 @@ The procedure for importing a volume is:
 
 </body>
 </html>
+
+
