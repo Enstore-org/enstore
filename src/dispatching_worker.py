@@ -326,9 +326,17 @@ class DispatchingWorker:
     def reply_to_caller(self, ticket):
         Trace.trace(18,"reply_to_caller number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
-        reply = (self.client_number, ticket, time.time())
-        self.reply_with_list(reply)
+
+        # There is some path that causes bfids to be in the ticket -- delete it XXX FIXME
+        has_bfids = ticket.has_key("bfids")  # XXX FIXME
+        if has_bfids:                        # XXX FIXME
+            bfids=ticket["bfids"]            # XXX FIXME
+            del ticket["bfids"]              # XXX FIXME
+        reply = (self.client_number, ticket, time.time()) 
+        self.reply_with_list(reply)          
         Trace.trace(18,"reply_to_caller number="+repr(self.client_number))
+        if has_bfids:                        # XXX FIXME
+            ticket["bfids"]=bfids            # XXX FIXME
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
@@ -336,7 +344,7 @@ class DispatchingWorker:
         Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = list[:]
-        self.socket.sendto(repr(list), self.reply_address)
+        self.socket.sendto(request_dict[self.current_id), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
