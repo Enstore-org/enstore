@@ -441,6 +441,7 @@ class Interface:
                 self.stop_draining = 1
             elif opt == "--up":
                 self.stop_draining = 1
+                self.up = value
             elif opt == "--stop-time":
                 self.stop_time = value
             elif opt == "--storage-groups":
@@ -455,8 +456,6 @@ class Interface:
                 self.title = value
             elif opt == "--title-gif":
                 self.title_gif = value
-            elif opt == "--up":
-                self.up = value
             elif opt == "--update":
                 self.update = 1
             elif opt == "--update-and-exit":
