@@ -8,6 +8,8 @@ import stat
 NEW_IPMI_NODES = ["d0ensrv0.fnal.gov", "d0ensrv1.fnal.gov",
 		  "d0ensrv2.fnal.gov", "d0ensrv4.fnal.gov"]
 
+NO_IPMI_NODES = ["d0ensrv5.fnal.gov", "d0ensrv7.fnal.gov"]
+
 def isTime(nm,dur):
         try:
                 crtTime=os.stat(nm)[stat.ST_CTIME]
@@ -68,7 +70,12 @@ if __name__=="__main__":
     if len(sys.argv)!=2:
         print -1
         print -1
-        sys.exit(0)
+	sys.exit(0)
+
+    if os.uname()[1] in NO_IPMI_NODES:
+	    print 0
+	    print 0
+	
     if os.uname()[1] in NEW_IPMI_NODES:
 	    ipmi = "ipmi_new"
     else:
