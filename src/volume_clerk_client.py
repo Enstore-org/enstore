@@ -489,6 +489,24 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket)
 
+    def set_ignored_sg(self, sg):
+        ticket = {'work': 'set_ignored_sg',
+                  'sg': sg}
+        return self.send(ticket)
+
+    def clear_ignored_sg(self, sg):
+        ticket = {'work': 'clear_ignored_sg',
+                  'sg': sg}
+        return self.send(ticket)
+
+    def clear_all_ignored_sg(self):
+        ticket = {'work': 'clear_all_ignored_sg'}
+        return self.send(ticket)
+
+    def list_ignored_sg(self):
+        ticket = {'work': 'list_ignored_sg'}
+        return self.send(ticket)
+
 """
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
@@ -522,6 +540,10 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.recycle = None
         self.export = None
         self._import = None
+        self.ignore_storage_group = None
+        self.clear_ignored_storage_group = None
+        self.clear_all_ignored_storage_groups = 0
+        self.list_ignored_storage_groups = 0
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -534,7 +556,12 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle=", "export=", "import="]
+                "restore=", "all","destroy=", "modify=","VOL1OK",
+                "reset-lib=", "list=", "ls-active=", "recycle=",
+                "export=", "import=", "ignore-storage-group=",
+                "clear-ignored-storage-group=",
+                "clear-all-ignored-storage-groups",
+                "list-ignored-storage-groups"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -605,6 +632,10 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.recycle = None
         self.export = None
         self._import = None
+        self.ignore_storage_group = None
+        self.clear_ignored_storage_group = None
+        self.clear_all_ignored_storage_groups = 0
+        self.list_ignored_storage_groups = 0
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -651,67 +682,109 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         option.CHECK:{option.HELP_STRING:"check a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
         option.CLEAR:{option.HELP_STRING:"clear a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.CLEAR_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
+                      "clear a ignored storage group",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"storage_group",
+                      option.USER_LEVEL:option.ADMIN},
+        option.CLEAR_ALL_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+                      "clear all ignored storage groups",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
                       option.USER_LEVEL:option.ADMIN},
         option.DECR_FILE_COUNT:{option.HELP_STRING:
                                 "decreases file count of a volume",
                                 option.VALUE_TYPE:option.INTEGER,
                                 option.VALUE_USAGE:option.REQUIRED,
+                                option.VALUE_LABEL:"count",
                                 option.USER_LEVEL:option.ADMIN},
         option.DELETE:{option.HELP_STRING:"delete a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
         option.DESTROY:{option.HELP_STRING:"wipe out a volume",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
+        option.EXPORT:{option.HELP_STRING:
+                       "export a volume",
+                       option.DEFAULT_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_LABEL:"volume_name",
+                       option.USER_LEVEL:option.ADMIN},
         option.FORCE:{option.HELP_STRING:
                        "used with --delete to force the action",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
+        option.IMPORT:{option.HELP_STRING:
+                       "import an exported volume onject",
+                       option.DEFAULT_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_LABEL:"exported_volume_object",
+                       option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
         option.MODIFY:{option.HELP_STRING:
                        "modify a volume record -- extremely dangerous",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
         option.NEW_LIBRARY:{option.HELP_STRING:"set new library",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"library",
                             option.USER_LEVEL:option.ADMIN},
         option.NO_ACCESS:{option.HELP_STRING:"set volume to NOACCESS",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
         option.READ_ONLY:{option.HELP_STRING:"set volume TO readonly",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
+        option.RECYCLE:{option.HELP_STRING:"recycle a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
         option.RESET_LIB:{option.HELP_STRING:"reset library manager",
                           option.VALUE_NAME:"lm_to_clear",
+                          option.VALUE_LABEL:"library",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN},
         option.RESTORE:{option.HELP_STRING:"restore a volume",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
         option.VOL:{option.HELP_STRING:"get info of a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
         option.VOLS:{option.HELP_STRING:"list all volumes",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -948,7 +1021,22 @@ def do_work(intf):
                     non_del_files = volume['vol']['non_del_files'],
                     system_inhibit = volume['vol']['system_inhibit'],
                     remaining_bytes = volume['vol']['remaining_bytes'])
-     
+    elif intf.ignore_storage_group:
+        ticket = vcc.set_ignored_sg(intf.ignore_storage_group)
+        if ticket['status'][0] == e_errors.OK:
+            pprint.pprint(ticket['status'][1])
+    elif intf.clear_ignored_storage_group:
+        ticket = vcc.clear_ignored_sg(intf.clear_ignored_storage_group)
+        if ticket['status'][0] == e_errors.OK:
+            pprint.pprint(ticket['status'][1])
+    elif intf.clear_all_ignored_storage_groups:
+        ticket = vcc.clear_all_ignored_sg()
+        if ticket['status'][0] == e_errors.OK:
+            pprint.pprint(ticket['status'][1])
+    elif intf.list_ignored_storage_groups:
+        ticket = vcc.list_ignored_sg()
+        if ticket['status'][0] == e_errors.OK:
+            pprint.pprint(ticket['status'][1])
     elif intf.add:
         #print intf.add, repr(intf.args)
         cookie = 'none'
@@ -958,7 +1046,7 @@ def do_work(intf):
         capacity = my_atol(intf.volume_byte_capacity)
         # if wrapper is empty create a default one
         if not intf.wrapper:
-            if media_type == 'null': #media type
+            if intf.media_type == 'null': #media type
                 intf.wrapper = "null"
             else:
                 intf.wrapper = "cpio_odc"
