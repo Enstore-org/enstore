@@ -3,25 +3,25 @@
 <H2>
 Origins</H2>
 Enstore was originally written in Python under Linux using disk files to
-simulate tape drives. It ported easily to&nbsp; IRIX and AIX .&nbsp; Next,
-it was extended with a C module named ETape that&nbsp; calls FTT (Fermi
-Tape Tools).&nbsp;&nbsp; FTT is used to obtain the information about space
-remaining on tape cartridges and errors encountered while accessing tapes.&nbsp;
+simulate tape drives. It ported easily to IRIX and AIX. Next,
+it was extended with a C module named ETape that calls FTT (Fermi
+Tape Tools). FTT is used to obtain the information about space
+remaining on tape cartridges and errors encountered while accessing tapes.
 This phase required a more extensive test environment.
-<BR>&nbsp;
+<BR>
 <H2>
 Test Stand</H2>
 The test stand that evolved contained different operating systems, different
-network connections, and different kinds of tape drives.&nbsp; The <A HREF="test-stand.ps">test
+network connections, and different kinds of tape drives. The <A HREF="test-stand.ps">test
 stand schematic</A> shows the layout.
 
 <P>Some of the interesting points in the test stand:
-<BR>&nbsp;
+<BR>
 <LI>
 A 20MB/sec fibre channel network connection between two AIX nodes.</LI>
 
 <LI>
-A 56KB/sec to a Linux PC</LI>
+A 56KB/sec to a remote Linux PC</LI>
 
 <LI>
 Two Storage Tek Redwood tape drives (12MB/sec)</LI>
@@ -39,24 +39,22 @@ Enstore library managers and movers running on Linux, Irix and AIX platforms</LI
 Test Results</H2>
 The most significant test results were obtained using the two AIX machines
 with
-<BR>fibre channel connection and the Redwood tape drives.&nbsp;&nbsp; Enstore
+fibre channel connection and the Redwood tape drives. Enstore
 repeatedly wrote
-<BR>eight cartridges (50GB each) or 400 GB of random data in in approximately
+eight cartridges (50 GB each) or 400 GB of random data in in approximately
 60 hours.
-<BR>Eight cartridges was the number available for the test and there is
+Eight cartridges was the number available for the test and there is
 no reason to
-<BR>believe&nbsp; enstore could not have continued.
+believe enstore could not have continued.
 
-<P>The test was run with a mover on fntt2, a RS6000/F50-a fast modern machine,&nbsp;
-writing to a Redwood tape drive and encp on fntt1, a RS6000/370 -a slow(circa
-1992) machine
-<BR>reading from old disk drives.&nbsp; During this test the data rates
-were limited by&nbsp; the memory FNTT1 which was paging during the transfer.
+<P>The test was run with a mover on fntt2, a RS6000/F50-a fast modern machine,
+writing to a Redwood tape drive and encp on fntt1, a RS6000/370 -a slow (circa
+1992) machine reading from old disk drives. During this test the data rates
+were limited by the memory FNTT1 which was paging during the transfer.
 
-<P>The test was also run entirely on fntt2&nbsp; i.e. over a local tcp/ip
-connect not over an external network.&nbsp;&nbsp; During this test the
-limit was the speed of the disk from which
-<BR>encp was reading
+<P>The test was also run entirely on fntt2  i.e. over a local tcp/ip
+connect not over an external network. During this test the
+limit was the speed of the disk from which encp was reading.
 <H3>
 Test Summary</H3>
 
@@ -68,20 +66,17 @@ Test Summary</H3>
 
 <PRE></PRE>
 In the above table the&nbsp; DATA&nbsp;XFR TIME and ATE are the times to
-transfer
-<BR>the data not including tape mount times (~50sec).&nbsp; The TOTAL&nbsp;TIME
-and RATE
-<BR>is from the start of encp until it is notified the data is on tape.&nbsp;&nbsp;
+transfer the data not including tape mount times (~50 sec). The TOTAL&nbsp;TIME
+and RATE is from the start of encp until it is notified the data is on tape.
 Logs of the <A HREF="redwoodfiber.log">network</A>
-<BR><A HREF="redwoodfiber.log">transfer </A>and the <A HREF="redwoodlocal.log">local
+<A HREF="redwoodfiber.log">transfer </A>and the <A HREF="redwoodlocal.log">local
 transfer</A> show all of the detail.
-<BR>&nbsp;
+<BR>
 <H2>
 What Was Not Tested</H2>
-Error conditions did not occur during testing of the prototype.&nbsp; Tape
-and network
-<BR>errors are known to cause file transfers to fail and not be retried.&nbsp;
+Error conditions did not occur during testing of the prototype. Tape
+and network errors are known to cause file transfers to fail and not be retried.
 These errors and many others must be handled in a production system but
-the prototype did run continuously for days&nbsp; with out error conditions.
+the prototype did run continuously for days with out error conditions.
 </BODY>
 </HTML>
