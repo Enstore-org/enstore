@@ -208,7 +208,9 @@ def busy_vols_in_family (self, vc, family_name):
     work_movers = []
     for mv in movers:
         Trace.trace(11,"busy_vols_in_family. Mover file_family: %s"%(mv["file_family"],))
-	if mv.has_key("file_family") and mv["file_family"] == family_name:
+	if (mv.has_key("external_label") and
+            mv.has_key("file_family") and
+            mv["file_family"] == family_name):
 	    vol_info = vc.inquire_vol(mv["external_label"])
             Trace.trace(11,"busy_vols_in_family vol %s"%(vol_info,))
 	    if vol_info["status"][0] != e_errors.OK: continue
