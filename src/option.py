@@ -1384,7 +1384,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1417,7 +1417,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1444,7 +1444,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1469,7 +1469,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
