@@ -180,7 +180,8 @@ def do_work(intf):
 
     elif intf.summary:
         result= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
-
+        pprint.pprint(result['get_keys'])
+        
     else:
 	intf.print_help()
         sys.exit(0)
