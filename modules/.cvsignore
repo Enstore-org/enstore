@@ -28,3 +28,5 @@ enroute2
 m2probe
 tape_write
 so_locations
+t_rand
+t_read

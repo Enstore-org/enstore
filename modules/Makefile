@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -49,6 +49,12 @@ m2probe: m2probe.c
 enroute2: enroute2.c
 	$(CC) enroute2.c -o enroute2 $(LIBSOCKETNSL)
 
+t_rand: t_rand.c
+	$(CC) t_rand.c -o t_rand
+
+t_read: t_read.c
+	$(CC) t_read.c -o t_read
+
 installpyc:
 	for m in $(PYMODULES) the-end; do \
 	  if [ "$$m" != the-end ]; then \
@@ -59,7 +65,7 @@ installpyc:
 
 clean:
 	-rm Makefile.modules
-	-rm -f *.o *.so *~ *# so_locations sedscript enroute2 m2probe
+	-rm -f *.o *.so *~ *# so_locations sedscript enroute2 m2probe t_rand t_read
 	-rm -rf mksetup
 	-rm -rf tape_copy tape_write
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
