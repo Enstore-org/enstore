@@ -22,12 +22,11 @@ case "$1" in
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
 
-        if [ "$n1" != "$n2" ]; then
-          if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c ", 0% packet loss"` -eq 1 ]; then
-            echo "`date`: $ENSTORE_CONFIG_HOST responds to pings" 2>&1 | tee /dev/console >>$output
+        #if [ "$n1" != "$n2" ]; then
+        if [ "$n1" == "$n2" ]; then
             for server in config log alarm; do
 	      echo "`date`: checking if $server is alive"  2>&1 | tee /dev/console >>$output
-              enstore $server --alive --timeout=$timeout --retries=2 2>&1 | tee /dev/console >>$output
+              enstore $server --alive --timeout=$timeout --retries=2 > /dev/null 2>&1
               estat=$?
 	      echo "`date`:  ... status returned=$estat" 2>&1 | tee /dev/console >>$output
               if [ $estat -ne 0 ] ; then
@@ -35,10 +34,6 @@ case "$1" in
                 break
               fi
             done
-          else
-            echo "`date`: $ENSTORE_CONFIG_HOST does not respond to pings, therefore not starting Enstore automatically" 2>&1 | tee /dev/console >>$output
-            estat=1
-          fi
         fi
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root) if we are a server
