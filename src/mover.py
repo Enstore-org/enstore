@@ -230,9 +230,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass
         driver_object.close( skip=0 )
 
-        signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
-        signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
-        signal.signal( signal.SIGSEGV, sigsegv )# scsi reset???
+        signal.signal( signal.SIGTERM, self.sigterm )# to allow cleanup of shm
+        signal.signal( signal.SIGINT, self.sigint )# to allow cleanup of shm
+        signal.signal( signal.SIGSEGV, self.sigsegv )# scsi reset???
       
 	self.summoned_while_busy = []
 
@@ -1511,6 +1511,68 @@ class Mover(  dispatching_worker.DispatchingWorker,
             pass
         return next_req_to_lm
 
+
+
+    def sigterm(self, sig, stack ):
+        print '%d sigterm called'%(os.getpid(),)
+        if self.pid:
+            print 'attempt kill of mover subprocess', self.pid
+            os.kill( self.pid, signal.SIGTERM )
+            pass
+
+        # ONLY DELETE AFTER FORKED PROCESS IS KILL
+        # must just try: b/c may get "AttributeError: hsm_driver" which causes
+        # forked process to become server via dispatching working exception handling
+        try: del self.hsm_driver.shm
+        except: pass			# wacky things can happen with forking
+        sem = 0; msg = 0
+        try: sem = self.hsm_driver.sem
+        except: pass
+        try: msg = self.hsm_driver.msg
+        except: pass
+        print 'deleting sem (id=%d) and msg (id=%d)'%(sem,msg)
+        try: del self.hsm_driver.sem; print '%d deleted sem'%(os.getpid(),)
+        except: pass			# wacky things can happen with forking
+        try: del self.hsm_driver.msg; print '%d deleted msg'%(os.getpid(),)
+        except: pass			# wacky things can happen with forking
+        #print '%d sigterm exiting'%os.getpid()
+        sys.exit( 0 )   # anything other than 0 causes traceback
+
+        # sys.exit( 0x80 | sig ) # this is the way to indicate exit b/c of a signal
+        return None
+
+    def sigint( self, sig, stack ):
+        del self.hsm_driver
+        print 'Traceback (innermost last):'
+        traceback.print_stack( stack )
+        print 'KeyboardInterrupt'
+        sys.exit( 1 )
+        return None
+
+    def sigsegv( self, sig, stack ):
+        if self.pid:
+            os.kill( self.pid, signal.SIGTERM )
+            time.sleep(3)
+            os.waitpid( self.pid, os.WNOHANG )
+            pass
+        # kill just shm to avoid "AttributeError: hsm_driver" which causes
+        # forked process to become server via dispatching working exception handling
+        try: del self.hsm_driver.shm
+        except: pass			# wacky things can happen with forking
+        try: del self.hsm_driver.sem
+        except: pass			# wacky things can happen with forking
+        try: del self.hsm_driver.msg
+        except: pass			# wacky things can happen with forking
+
+        if self.pid:
+            self.usr_driver.close()
+        else:
+            sys.exit( 0x80 | sig )
+        return None
+
+    def sigstop( self, sig, stack ):
+            return None
+        
 class MoverInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -1534,66 +1596,6 @@ class MoverInterface(generic_server.GenericServerInterface):
             self.name = self.args[0]
 
 #############################################################################
-
-def sigterm( sig, stack ):
-    print '%d sigterm called'%(os.getpid(),)
-    if mvr_srvr.pid:
-	print 'attempt kill of mover subprocess', mvr_srvr.pid
-	os.kill( mvr_srvr.pid, signal.SIGTERM )
-	pass
-
-    # ONLY DELETE AFTER FORKED PROCESS IS KILL
-    # must just try: b/c may get "AttributeError: hsm_driver" which causes
-    # forked process to become server via dispatching working exception handling
-    try: del mvr_srvr.hsm_driver.shm
-    except: pass			# wacky things can happen with forking
-    sem = 0; msg = 0
-    try: sem = mvr_srvr.hsm_driver.sem
-    except: pass
-    try: msg = mvr_srvr.hsm_driver.msg
-    except: pass
-    print 'deleting sem (id=%d) and msg (id=%d)'%(sem,msg)
-    try: del mvr_srvr.hsm_driver.sem; print '%d deleted sem'%(os.getpid(),)
-    except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.hsm_driver.msg; print '%d deleted msg'%(os.getpid(),)
-    except: pass			# wacky things can happen with forking
-    #print '%d sigterm exiting'%os.getpid()
-    sys.exit( 0 )   # anything other than 0 causes traceback
-
-    # sys.exit( 0x80 | sig ) # this is the way to indicate exit b/c of a signal
-    return None
-
-def sigint( sig, stack ):
-    del mvr_srvr.hsm_driver
-    print 'Traceback (innermost last):'
-    traceback.print_stack( stack )
-    print 'KeyboardInterrupt'
-    sys.exit( 1 )
-    return None
-    
-def sigsegv( sig, stack ):
-    if mvr_srvr.pid:
-	os.kill( mvr_srvr.pid, signal.SIGTERM )
-	time.sleep(3)
-	os.waitpid( mvr_srvr.pid, os.WNOHANG )
-	pass
-    # kill just shm to avoid "AttributeError: hsm_driver" which causes
-    # forked process to become server via dispatching working exception handling
-    try: del mvr_srvr.hsm_driver.shm
-    except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.hsm_driver.sem
-    except: pass			# wacky things can happen with forking
-    try: del mvr_srvr.hsm_driver.msg
-    except: pass			# wacky things can happen with forking
-
-    if mvr_srvr.pid:
-	mvr_srvr.usr_driver.close()
-    else:
-	sys.exit( 0x80 | sig )
-    return None
-
-def sigstop( sig, stack ):
-    return None
 
 #############################################################################
 import sys				# sys.argv[1:]
