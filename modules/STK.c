@@ -22,7 +22,9 @@ static PyObject *STKErrObject;
 
 int STKerr(char *caller, char *location, STATUS status)
 {
+#ifdef DEBUG
  printf("STK err: %s - %s - code %d - %s\n", caller, location, status, cl_status(status));
+#endif
  return(status);
 }
 
@@ -185,42 +187,83 @@ void  asc2STKdrv( char *drive,  DRIVEID *stkdrv)
   stkdrv->drive =             strtol(drive,&drive,0);
 }
 
+/*
+	Convert the STK error code to a canonical code
+		e_type is also defined in EMASS.c and media_changer.py
+		see stk/common_lib/cl_status.c
+*/
+enum e_type {EM_OK=0,           /* mount successful */
+                EM_UNKOWN,      /* something wrong with library system */
+                EM_DRIVE,       /* a drive problem - retry another drive */
+                EM_MEDIA};      /* a cartridge problem - drive ok */
+/*
+	STK errors impying drive problem or media problem
+*/
+int drive_errs[]={STATUS_DRIVE_IN_USE, STATUS_DRIVE_NOT_IN_LIBRARY, STATUS_DRIVE_OFFLINE,
+	STATUS_DRIVE_RESERVED,STATUS_INVALID_DRIVE,STATUS_INVALID_DRIVE_TYPE,0};
+int media_errs[]={STATUS_MISPLACED_TAPE,STATUS_UNREADABLE_LABEL,STATUS_INVALID_VOLUME,
+	STATUS_VOLUME_IN_TRANSIT,STATUS_VOLUME_NOT_FOUND,STATUS_VOLUME_DELETED,
+	STATUS_VOLUME_ACCESS_DENIED,0};
+int *e;
+
+int status_class(int stat)
+{
+  if (stat == 0) return(EM_OK);
+  for (e=drive_errs; *e; e++)
+	if (stat == *e) return(EM_DRIVE);
+  for (e=media_errs; *e; e++)
+	if (stat == *e) return(EM_MEDIA);
+  return(EM_UNKOWN);
+}
+/*
+	Documentation for python
+*/
 static char STK_Doc[] =  "STK Robot Mount and Dismount";
 static char Mount_Doc[] =  "Mount a tape";
 static char Dismount_Doc[] =  "Dismount a tape";
+/*   	Mount
+
+	Arguments{
+                vol - cartridge id
+                drive - drive name
+                media_type_s - mediatype
+        Returns
+                int - status returned by robot
+                int - canonical status 0=> ok, 1=> unknow error, 2=>drive problem, 3=>nedia problem
+                char* text desciption of error
+*/
 
 static PyObject* Mount(PyObject *self, PyObject *args)
 {
   char *vol;
   char *drive;
+  char *media_type;
   DRIVEID stkdrv;
   int stat;
   /*
         Get the arguements
   */
-  PyArg_ParseTuple(args, "ss", &vol, &drive);
+  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);
   asc2STKdrv(drive, &stkdrv);
   stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
-/*
-	cl_status is a short text description of the error - 
-	see $STK_DIR/src/common_lib/cl_status.c
-*/
-  return(Py_BuildValue("is",stat, cl_status(stat) ));
+  return(Py_BuildValue("iis",stat,status_class(stat),cl_status(stat) ));
 }
 
+/*
+        Dismount - see Mount parameters and return values
+*/
 static PyObject* Dismount(PyObject *self, PyObject *args)
 {
   char *vol;
   char *drive;
+  char *media_type;
   DRIVEID stkdrv;
   int stat;
-  /*
-        Get the arguements
-  */
-  PyArg_ParseTuple(args, "ss", &vol, &drive);
-  asc2STKdrv(drive, &stkdrv);
-  stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);
-  return(Py_BuildValue("is",stat,cl_status(stat) ));
+  
+  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);			/* get args */
+  asc2STKdrv(drive, &stkdrv);							/* cvt drive 0,0,9,1 to binary */
+  stat = STKdismount(0, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
+  return(Py_BuildValue("iis",stat,status_class(stat),cl_status(stat) ));	/* return results */
 }
 
 /*

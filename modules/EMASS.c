@@ -37,18 +37,78 @@ struct media_struct {
   ACI_AUDIO_TAPE, "AUDIO_TAPE",
   (enum aci_media)NULL,"INVALIDMEDIA"
 };
-
 enum aci_media stoi_mediatype(char *media_type)
 {
 struct media_struct *m;
   for (m=media_table;m->media_enum; m++) 
   {
-    printf("%s %s\n",media_type, m->media_string);
     if (strcmp(media_type, m->media_string) == 0) 
       return(m->media_enum);
   }
   return(m->media_enum);		/* rturn "INVALID" */
 }
+/*
+	EMASS error table - from aci/v1_3_0_c7/inc/derrno.h
+	enum e_type a canonical code for enstore
+*/
+enum e_type {EM_OK=0,		/* mount successful */
+		EM_UNKOWN,	/* something wrong with library system */
+		EM_DRIVE,	/* a drive problem - retry another drive */
+		EM_MEDIA};	/* a cartridge problem - drive ok */
+
+struct err_struct {
+  enum e_type	e_code;
+  char *    	err_string;
+}  err_table[] = {
+	EM_OK    ,"request successful",					/*0*/
+	EM_UNKOWN,"rpc failure",					/*1*/
+	EM_UNKOWN,"aci parameter invalid ",				/*2*/
+	EM_MEDIA ,"volume not found of this type",			/*3*/
+	EM_DRIVE ,"drive not in Grau ATL ",				/*4*/
+	EM_DRIVE ,"the requested drive is in use",			/*5*/
+	EM_MEDIA ,"the robot has a physical problem with the volume",	/*6*/
+	EM_UNKOWN,"an internal error in the AMU ",			/*7*/
+	EM_UNKOWN,"the DAS was unable to communicate with the AMU",	/*8*/
+	EM_UNKOWN,"the robotic system is not functioning",		/*9*/
+	EM_UNKOWN,"the AMU was unable to communicate with the robot",	/*10*/
+	EM_UNKOWN,"the DAS system is not active ",			/*11*/
+	EM_DRIVE ,"the drive did not contain an unloaded volume",	/*12*/
+	EM_UNKOWN,"invalid registration",				/*13*/
+	EM_UNKOWN,"invalid hostname or ip address",			/*14*/
+	EM_UNKOWN,"the area name does not exist ",			/*15*/
+	EM_UNKOWN,"the client is not authorized to make this request",	/*16*/
+	EM_UNKOWN,"the dynamic area became full, insertion stopped",	/*17*/
+	EM_DRIVE ,"the drive is currently available to another client",	/*18*/
+	EM_UNKOWN,"the client does not exist ",				/*19*/
+	EM_UNKOWN,"the dynamic area does not exist",			/*20*/
+	EM_UNKOWN,"no request exists with this number",			/*21*/
+	EM_UNKOWN,"retry attempts exceeded",				/*22*/
+	EM_MEDIA ,"requested volser is not mounted",			/*23*/
+	EM_MEDIA ,"requested volser is in use ",			/*24*/
+	EM_UNKOWN,"no space availble to add range",			/*25*/
+	EM_UNKOWN,"the range or object was not found",			/*26*/
+	EM_UNKOWN,"the request was cancelled by aci_cancel()",		/*27*/
+	EM_UNKOWN,"internal DAS error",					/*28*/
+	EM_UNKOWN,"internal ACI error",					/*29*/
+	EM_UNKOWN,"for a query more data are available",		/*30*/
+	EM_UNKOWN,"things don't match together",			/*31*/
+	EM_MEDIA ,"volser is still in another pool",	 		/*32*/
+	EM_DRIVE ,"drive in cleaning",					/*33*/
+	EM_UNKOWN,"The aci request timed out",				/*34*/
+	EM_DRIVE ,"the robot has a problem with handling the device",	/*35*/
+	};
+
+/*
+        Mount
+        arguements
+                vol - cartridge id
+                drive - drive name
+                media_type_s - mediatype
+        Returns
+                int - status returned by robot
+                int - canonical status 0=> ok, 1=> unknow error, 2=>drive problem, 3=>nedia problem
+                char* text desciption of error
+*/
 
 static PyObject* Mount(PyObject *self, PyObject *args)
 {
@@ -57,16 +117,21 @@ static PyObject* Mount(PyObject *self, PyObject *args)
   char *media_type_s;
   enum aci_media media_type;
   int stat;
-  /*
-        Get the arguements
-  */
-  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s);
-  media_type = stoi_mediatype(media_type_s);
-  if  (stat = aci_mount(vol,media_type,drive))
-     return(Py_BuildValue("i",d_errno));
-  return(Py_BuildValue("i",stat ));
-}
 
+  PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s);			/* pargs args */
+  if (!(media_type = stoi_mediatype(media_type_s)))				/* cvt media type to aci code */
+      return(Py_BuildValue("iis",ENOVOLUME, err_table[ENOVOLUME].e_code, err_table[ENOVOLUME].err_string));
+  if  (stat = aci_mount(vol,media_type,drive))					/* call aci routine */
+  {										/* if error */
+     stat=d_errno;									/* gett err code */
+     if (sizeof(err_table) < stat)							/* if invalid err code */
+         stat= EDASINT;
+  }										/* return result */
+  return(Py_BuildValue("iis",stat, err_table[stat].e_code, err_table[stat].err_string));
+}
+/*
+	Dismount - see Mount parameters and return values
+*/
 static PyObject* Dismount(PyObject *self, PyObject *args)
 {
   char *vol;
@@ -78,10 +143,15 @@ static PyObject* Dismount(PyObject *self, PyObject *args)
         Get the arguements
   */
   PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s);
-  media_type = stoi_mediatype(media_type_s);
+  if (!(media_type = stoi_mediatype(media_type_s)))
+      return(Py_BuildValue("iis",ENOVOLUME, err_table[ENOVOLUME].e_code, err_table[ENOVOLUME].err_string));
   if  (stat = aci_dismount(vol,media_type))
-     return(Py_BuildValue("i",d_errno));
-  return(Py_BuildValue("i",stat ));
+  {
+     stat=d_errno;
+     if (sizeof(err_table) < stat)
+         stat= EDASINT;
+  }
+  return(Py_BuildValue("iis",stat, err_table[stat].e_code, err_table[stat].err_string));
 }
 
 /*
