@@ -166,7 +166,7 @@ class Index:
 					self.db[(val[field], t)] = key
 					key, val = c.next()
 					count = count + 1
-					if count / 100 * 100 == count:
+					if count % 100 == 0:
 						Trace.log(e_errors.INFO, "%d entries have been inserted"%(count))
 				Trace.log(e_errors.INFO, "%d entries in total"%(count))
 				c.close()
@@ -643,11 +643,3 @@ def do_backup(name, dbHome, jouHome):
      Trace.log(e_errors.INFO, repr(cmd))
      os.system(cmd)
      os.chdir(cwd)
-if __name__=="__main__":
-  import sys
-  Trace.init("DBCLERK")
-  Trace.trace(6,"dbc called with args "+repr(sys.argv))
-
-  dict= DbTable(sys.argv[1],0)
-  dict.dump()
-  Trace.trace(6,"dbc exit ok")
