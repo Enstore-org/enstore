@@ -498,8 +498,14 @@ def write_to_hsm(input_files, output, output_file_family='',
     # make the part of the ticket that encp knows about (there's 
     # more later)
     encp = {}
+
+    ## quick fix to check HiPri functionality
+    admpri = -1
+    if pri < 0:
+        pri = -pri
+        admpri = pri
     encp["basepri"] = pri
-    encp["adminpri"] = -1
+    encp["adminpri"] = admpri
     encp["delpri"] = delpri
     encp["agetime"] = agetime
 
@@ -1858,8 +1864,14 @@ def read_from_hsm(input_files, output,
 
         # make the part of the ticket that encp knows about (there's more later)
         encp_el = {}
+
+        ## quick fix to check HiPri functionality
+        admpri = -1
+        if pri < 0:
+            pri = -pri
+            admpri = pri
         encp_el["basepri"] = pri
-        encp_el["adminpri"] = -1
+        encp_el["adminpri"] = admpri
         encp_el["delpri"] = delpri
         encp_el["agetime"] = agetime
         encp_el["delayed_dismount"] = delayed_dismount

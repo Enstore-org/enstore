@@ -56,6 +56,7 @@ class VolumeClerkClient(generic_client.GenericClient,
     # add a volume to the stockpile
     def add(self,
             library,               # name of library media is in
+            storage_group,         # storage group for this volume
             file_family,           # volume family the media is in
             media_type,            # media
             external_label,        # label as known to the system
@@ -85,6 +86,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         Trace.trace( 6, 'add label=%s'%(external_label,))
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
+                   'storage_group'   : storage_group,
                    'file_family'     : file_family,
                    'media_type'      : media_type,
                    'external_label'  : external_label,
@@ -201,7 +203,7 @@ class VolumeClerkClient(generic_client.GenericClient,
             print "%-10s  %-8s %-12s %-17s %17s %012s %-012s"%(
                 "label","avail.","mount state",
                 "system_inhibit","user_inhibit",
-                "library","    file_family")
+                "library","    volume_family")
             for v in volumes["volumes"]:
                 print "%-10s"%(v['volume'],),
                 print capacity_str(v['remaining_bytes']),
@@ -209,7 +211,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                     v['at_mover'][0],
                     v['system_inhibit'][0],v['system_inhibit'][1],
                     v['user_inhibit'][0],v['user_inhibit'][1],
-                    v['library'],v['file_family'])
+                    v['library'],v['volume_family'])
         else:
             vlist = ''
             for v in volumes.get("volumes",[]):
@@ -413,7 +415,7 @@ class VolumeClerkClient(generic_client.GenericClient,
     def is_vol_available(self, work, external_label, family=None, size=0):
         ticket = { 'work'                : 'is_vol_available',
 		   'action'              : work,
-		   'file_family'         : family,
+		   'volume_family'         : family,
 		   'file_size'           : size,
 		   'external_label'      : external_label
 		   }
@@ -423,11 +425,11 @@ class VolumeClerkClient(generic_client.GenericClient,
 	
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           file_family, wrapper, vol_veto_list,first_found):
+                           volume_family, wrapper, vol_veto_list,first_found):
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
-                   'file_family'         : file_family,
+                   'volume_family'       : volume_family,
 		   'wrapper'             : wrapper,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
@@ -437,12 +439,11 @@ class VolumeClerkClient(generic_client.GenericClient,
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
-                           file_family, wrapper, external_label):
+                           volume_family, external_label):
         ticket = { 'work'                : 'can_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
-                   'file_family'         : file_family,
-		   'wrapper'             : wrapper,
+                   'volume_family'         : volume_family,
                    'external_label'       : external_label }
 
         x = self.send(ticket)
@@ -505,7 +506,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 self.print_add_args()
                 sys.exit(1)
         elif self.add:
-            if len(self.args) < 5:
+            if len(self.args) < 6:
                 self.print_add_args()
                 sys.exit(1)
         elif self.new_library:
@@ -520,8 +521,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         print "   new_library arguments: volume_name"
 
     def print_add_args(self):
-        print "   add arguments: volume_name library file_family media_type"\
-              +" volume_byte_capacity remaining_capacity"
+        print "   add arguments: volume_name library file_family storage_group"\
+              +" media_type volume_byte_capacity remaining_capacity"
 
     def print_clear_args(self):
         print "usage: --clear volume_name"
@@ -599,7 +600,7 @@ def do_work(intf):
                                                ticket['user_inhibit'])
     elif intf.add:
         print repr(intf.args)
-        library, file_family, media_type, capacity, remaining = intf.args[:5]
+        library, file_family, storage_group, media_type, capacity, remaining = intf.args[:6]
         capacity, remaining = string.atol(capacity), string.atol(remaining)
         if media_type == 'null': #media type
             wrapper = "null"
@@ -607,6 +608,7 @@ def do_work(intf):
             wrapper = "cpio_odc"
         ticket = vcc.add(library,
                          file_family,
+                         storage_group,
                          media_type,     
                          intf.add,                  # name of this volume
                          capacity,

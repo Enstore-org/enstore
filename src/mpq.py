@@ -48,10 +48,7 @@ class MPQ:
     def bisect(self, item):
         return _bisect(self.items, item, self.comparator)
     def remove(self, item):
-        print "MPQ_ITEMS",self.items
-        print "MPQ_REMOVE",item
         self.items.remove(item)
-        print "MPQ_ITEMS AFTER",self.items 
 
     def __getitem__(self, index):
         return self.items[index]
