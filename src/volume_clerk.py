@@ -529,8 +529,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # go through the volumes and find one we can use for this request
         vol = {}
 
-        Trace.trace(11,  "vf %s pool %s wrapper %s veto %s" %
-                    (volume_family, pool,wrapper, vol_veto_list))
+        Trace.trace(20,  "volume family %s pool %s wrapper %s veto %s exact %s" %
+                    (volume_family, pool,wrapper, vol_veto_list, exact_match))
 
         lc = self.dict.inx['library'].cursor()          # read only
         vc = self.dict.inx['volume_family'].cursor()
@@ -605,11 +605,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         first_found = ticket["first_found"]
         wrapper_type = ticket["wrapper"]
 
+        Trace.trace(20, "next_write_volume %s" % ticket)
         # go through the volumes and find one we can use for this request
         # first use exact match
+        Trace.trace(20, "next_write_volume %s %s" % (volume_family, volume_family))
         vol = self.find_matching_volume(library, volume_family, volume_family,
                                         wrapper_type, vol_veto_list,
                                         first_found, min_remaining_bytes,1)
+        Trace.trace(20, "find matching volume returned %s" % vol)
 
         # return what we found
         if vol and len(vol) != 0:
@@ -621,9 +624,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # given storage group.
         vf = string.split(volume_family,'.')
         pool = string.join((vf[0],'none'), '.')
+        
+        Trace.trace(20, "next_write_volume %s %s" % (volume_family, pool))
         vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
                                         vol_veto_list, first_found, min_remaining_bytes,0)
-
+        
+        Trace.trace(20, "find matching volume returned %s" % vol)
+                    
         # return blank volume we found
         if vol and len(vol) != 0:
             label = vol['external_label']
@@ -640,9 +647,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         # nothing was available - see if we can assign a blank one.
         pool = 'none.none'
+        Trace.trace(20, "next_write_volume %s %s" % (volume_family, pool))
         vol = self.find_matching_volume(library, volume_family, pool, wrapper_type,
                                         vol_veto_list, first_found, min_remaining_bytes, 0)
-
+        Trace.trace(20, "find matching volume returned %s" % vol)
+                    
         # return blank volume we found
         if vol and len(vol) != 0:
             label = vol['external_label']
