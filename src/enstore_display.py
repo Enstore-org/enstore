@@ -371,7 +371,6 @@ class Mover:
         # Anything that deals with time
         self.b0                 = 0
         now                     = time.time()
-        self.last_activity_time = now
         self.rate               = None  #In bytes per second.
         self.rate_string        = "0 MB/S"
         self.t0                 = 0
@@ -1113,8 +1112,8 @@ class Client:
     def __init__(self, name, display):
         self.name               = name
         self.display            = display
-        self.last_activity_time = time.time()
         self.n_connections      = 0
+        self.last_activity_time = time.time()
         self.waiting            = 0
         self.label              = None
         self.outline            = None
@@ -1280,8 +1279,11 @@ class Connection:
 
     def animate(self, now=None):
         if now is None:
-            now=time.time()
+            now = time.time()
         if now >= self.segment_stop_time:
+            return
+        if self.rate == None:
+            #The transfer is complete don't update in this case.
             return
 
         new_offset = self.segment_start_offset + \
@@ -1813,7 +1815,7 @@ class Display(Tkinter.Canvas):
                 #client.undraw()
                 del self.clients[client_name]
 
-        self.after_clients_id = self.after(500, self.disconnect_clients)
+        self.after_clients_id = self.after(1000, self.disconnect_clients)
 
     #Called from entv.handle_periodic_actions().
     def handle_titling(self):
@@ -2049,12 +2051,10 @@ class Display(Tkinter.Canvas):
 
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
-
         num_bytes = float(command_list[2])
         total_bytes = float(command_list[3])
-        #num_bytes = my_atof(command_list[2])
-        #total_bytes = my_atof(command_list[3])
-        if total_bytes==0:
+
+        if total_bytes == 0:
             percent_done = 100
         else:
             percent_done = abs(int(100 * num_bytes/total_bytes))
@@ -2089,11 +2089,21 @@ class Display(Tkinter.Canvas):
             except IndexError:
                 now = time.time()
 
+            #Calculate the new instantanious rate.
             rate = mover.transfer_rate(num_bytes, now)
-            
-            #Experience shows this is a good adjustment.
-            connection.update_rate(rate / (256*1024))
+
+            #Now that the rate is known, update the display.
             mover.update_rate(rate)
+            if percent_done == 100:
+                connection.update_rate(None)
+            else:
+                #Experience shows this is a good adjustment.
+                connection.update_rate(rate / (256*1024))
+
+        if connection:
+            #Don't use the variable "now" here.  We want to use the local
+            # machines time for this measure.
+            connection.client.last_activity_time = time.time()
 
     def movers_command(self, command_list):
         self.mover_names = command_list[1:]
@@ -2232,7 +2242,7 @@ class Display(Tkinter.Canvas):
     def mainloop(self):
         self.after_timer_id = self.after(30, self.update_timers)
         self.after_animation_id = self.after(30, self.connection_animation)
-        self.after_clients_id = self.after(500, self.disconnect_clients)
+        self.after_clients_id = self.after(1000, self.disconnect_clients)
         self.after_idle_id = self.after(30, self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
