@@ -15,6 +15,7 @@ setup enstore
 # . Check that eth1 is working (if present)
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
+# . Check that root's crontab has reset of watchdog. Verify ipmisrv in /usr/local/bin is same as one in enstore
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -351,6 +352,25 @@ if [ $? -ne 0 ]; then
    logit "$msg"
 elif [ $QUIET -ne 1 ]; then
    logit  "$msg"
+fi
+
+
+# check that we have a check_watchdog_reset.py running in the crontab:
+if [ `$EGREP -c check_watchdog_reset.py /var/spool/cron/root` -ne 1 ]; then
+   msg="/var/spool/cron/root is missing check_watchdog_reset.py or it is misconfigured" 
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "check_watchdog_reset.py is ok"
+fi
+if ! $CMP /usr/local/bin/ipmisrv /home/enstore/ipmi/ipmisrv >/dev/null 2>/dev/null; then
+   msg="ipmisrv found in /usr/local/bin not the same as /home/enstore/ipmi/ipmisrv"
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "/usr/local/bin/ipmisrv, ok"
 fi
 
 # get open files - twice - get ps in between - only take connections that survive past this
