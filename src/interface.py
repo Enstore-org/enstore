@@ -401,6 +401,8 @@ class Interface:
                 self.restore_dir = 1
             elif opt == "--refresh":
                 self.refresh = int(value)
+            elif opt == "--reset-lib":
+                self.lm_to_clear = value
             elif opt == "--resolve":
                 self.resolve = value
             elif opt == "--restore":

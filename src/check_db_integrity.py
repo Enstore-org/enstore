@@ -482,7 +482,7 @@ class DBChecker:
                 recs = []
                 self.prepare_for_interactive_input()
                 for rec in self.records_to_fix:
-                    self.fix = self.interactive_input('fix this record?')
+                    self.fix = self.interactive_input('fix this record? %s'%(rec,))
                     if self.fix:
                         print "Fixing file DB: %s" % (rec,)
                         self.file_dict[rec['bfid']] = rec
@@ -558,6 +558,11 @@ class DBChecker:
         if bad_volume:
             report_file.write('VOLUME %s'%(external_label,))
             self.write_record(bad_volume, report_file)
+            ret = 1
+        else:
+            print "VOLUME %s is good" % (external_label,)
+            ret = 0
+        return ret
 
     def check_file_db(self):
         # open report file
@@ -597,8 +602,11 @@ def report():
         # form the log file name
         fn = '%s%s%04d-%02d-%02d' % (vol, FILE_PREFIX, tm[0], tm[1], tm[2])
         report_file = open(fn,'w')
-        opdb.check_file_db_for_vol(vol,report_file)                  
+        ret = opdb.check_file_db_for_vol(vol,report_file)                  
         report_file.close()
+        if ret == 0:
+            # no errors. Delete report file
+            os.unlink(fn)
     else:
         opdb.check_file_db()
 

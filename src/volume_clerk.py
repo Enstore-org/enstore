@@ -559,7 +559,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-        record = self.dict[label]  
+        if self.lm_is_paused(record['library']):
+            ticket['status'] = (e_errors.BROKEN,'Too many volumes set to NOACCESS')
+            self.reply_to_caller(ticket)
+            return
+            
+                             
         ret_stat = (e_errors.OK,None)
         Trace.trace(35, "is_vol_available system_inhibit = %s user_inhibit = %s ticket = %s" %
                     (record['system_inhibit'],
@@ -722,12 +727,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
+            
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
 
         # get the criteria for the volume from the user's ticket
         min_remaining_bytes = ticket["min_remaining_bytes"]
         library = ticket["library"]
+        if self.lm_is_paused(library):
+            ticket['status'] = (e_errors.BROKEN,'Too many volumes set to NOACCESS')
+            self.reply_to_caller(ticket)
+            return
+        
         vol_fam = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = volume_family.extract_wrapper(vol_fam)
@@ -1116,6 +1127,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             record[inhibit][position] = "none"
             self.dict[external_label] = record   # THIS WILL JOURNAL IT
             record["status"] = (e_errors.OK, None)
+        if record["status"][0] == e_errors.OK:
+            Trace.log(e_errors.INFO, "system inhibit cleared for %s" % (external_label, ))
         self.reply_to_caller(record)
         return
 
@@ -1167,7 +1180,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_system_inhibit(self, ticket, flag, index=0):
         external_label = ticket["external_label"]
         # get the current entry for the volume
-        # get the current entry for the volume
         try:
             record = self.dict[external_label]  
         except KeyError, detail:
@@ -1175,7 +1187,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
-            return
+            return ticket["status"]
 
         # update the fields that have changed
         record["system_inhibit"][index] = flag
@@ -1184,7 +1196,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record["status"] = (e_errors.OK, None)
         Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
         self.reply_to_caller(record)
-        return
+        return record["status"]
 
     # set system_inhibit flag, flag the database that we are now writing the system
     def set_writing(self, ticket):
@@ -1198,10 +1210,58 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_system_readonly(self, ticket):
         return self.set_system_inhibit(ticket, "readonly", 1)
 
+    # set pause flag for the all Library Managers corresponding to
+    # certain Media Changer
+    def pause_lm(self, external_label):
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]  
+        except KeyError, detail:
+            msg="Volume Clerk: no such volume %s" % (detail,)
+            Trace.log(e_errors.ERROR, msg)
+            return
+        # find the media changer for this volume
+        m_changer = self.csc.get_media_changer(record['library'] + ".library_manager")
+        if m_changer:
+            if not self.paused_lms.has_key(m_changer):
+                self.paused_lms[m_changer] = {'paused':0,
+                                              'noaccess_cnt': 0,
+                                              'noaccess_time':time.time(),
+                                              }
+            now = time.time()
+            if self.paused_lms[m_changer]['noaccess_cnt'] == 0:
+                self.paused_lms[m_changer]['noaccess_time'] = now
+            if self.paused_lms[m_changer]['noaccess_time'] - now <= self.noaccess_to:
+                self.paused_lms[m_changer]['noaccess_cnt'] = self.paused_lms[m_changer]['noaccess_cnt'] + 1
+            else:
+                self.paused_lms[m_changer]['noaccess_cnt'] = 1
+            if ((self.paused_lms[m_changer]['noaccess_cnt'] >= self.max_noaccess_cnt) and
+                self.paused_lms[m_changer]['paused'] == 0):
+                self.paused_lms[m_changer]['paused'] = 1
+                Trace.log(e_errors.INFO,'pause library_managers for %s media_changerare paused due to too many volumes set to NOACCESS' % (m_changer,))
+                
+    # check if Library Manager is paused
+    def lm_is_paused(self, library):
+        m_changer = self.csc.get_media_changer(library + ".library_manager")
+        if m_changer:
+            if (self.paused_lms.has_key(m_changer) and
+                self.paused_lms[m_changer]['paused'] != 0):
+                ret_code = 1
+                Trace.log(e_errors.ERROR,'library_managers for %s media_changerare paused due to too many volumes set to NOACCESS' % (m_changer,))
+            else:
+                ret_code = 0
+        else:
+            ret_code = 0
+        return ret_code
+            
+            
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
-        Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]}) 
-        return self.set_system_inhibit(ticket, e_errors.NOACCESS)
+        Trace.alarm(e_errors.WARNING, e_errors.NOACCESS,{"label":ticket["external_label"]})
+        rc = self.set_system_inhibit(ticket, e_errors.NOACCESS)
+        if rc[0] == e_errors.OK:
+            self.pause_lm(ticket["external_label"])
+        return rc
 
     # flag that the current volume is marked as not allowed
     def set_system_notallowed(self, ticket):
@@ -1343,18 +1403,31 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
+    def clear_lm_pause(self, ticket):
+        m_changer = self.csc.get_media_changer(ticket['library'] + ".library_manager")
+        if m_changer:
+            if self.paused_lms.has_key(m_changer):
+                Trace.log(e_errors.INFO, "Cleared BROKEN flag for all LMs related to media changer %s" % (m_changer,))
+                self.paused_lms[m_changer] = {'paused':0,
+                                              'noaccess_cnt': 0,
+                                              'noaccess_time':time.time(),
+                                              }
+        self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
+        self.noaccess_to = self.keys.get('noaccess_to', 300.)
+        self.reply_to_caller({"status" : (e_errors.OK, None)})
+         
 
 class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
     def __init__(self, csc):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
-        keys = self.csc.get(MY_NAME)
+        self.keys = self.csc.get(MY_NAME)
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
-								  keys)
+								  self.keys)
 
-        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
-                                                             keys['port']))
+        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
+                                                             self.keys['port']))
 
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
         try:
@@ -1373,6 +1446,12 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
         self.bfid_db=bfid_db.BfidDb(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
+
+        self.noaccess_cnt = 0
+        self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
+        self.noaccess_to = self.keys.get('noaccess_to', 300.)
+        self.paused_lms = {}
+        self.noaccess_time = time.time()
         
 	# start our heartbeat to the event relay process
 	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 

@@ -388,6 +388,15 @@ class LibraryManagerMethods:
             Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
             if v["status"][0] != e_errors.OK:
                 rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
+                if v['status'][0] == e_errors.BROKEN:
+                    # temporarily save last state:
+                    tmp_lock = self.lm_lock
+                    self.lm_lock = e_errors.BROKEN
+                    if tmp_lock != self.lm_lock:
+                        Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
+                                    (intf.name, self.lm_lock))
+                    return None, None
+                     
                 if v["status"][0] == e_errors.NOVOLUME or v["status"][0] == e_errors.QUOTAEXCEEDED:
                     if not self.process_for_bound_vol:
                         #if wr_en > rq.ticket["vc"]["file_family_width"]:
@@ -499,6 +508,14 @@ class LibraryManagerMethods:
                                                 w["vc"]["volume_family"],
                                                 w["wrapper"]["size_bytes"])
                 if ret['status'][0] != e_errors.OK:
+                    if ret['status'][0] == e_errors.BROKEN:
+                        # temporarily save last state:
+                        tmp_lock = self.lm_lock
+                        self.lm_lock = e_errors.BROKEN
+                        if tmp_lock != self.lm_lock:
+                            Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
+                                        (intf.name, self.lm_lock))
+                        return  None, (e_errors.NOWORK, None)
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
                     w['status'] = ret['status']
                     self.pending_work.delete(rq)
@@ -533,7 +550,7 @@ class LibraryManagerMethods:
                 rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
                 Trace.trace(12, "check_write_request: request for volume %s rejected %s"%
                                 (external_label, rq.ticket["reject_reason"]))
-                rq.ticket['status'] = e_errors.INPROGRESS
+                rq.ticket['status'] = ("VOLS_IN_WORK",None)
                 return rq, rq.ticket['status'] 
             
         ret = self.vcc.is_vol_available(rq.work,  external_label,
@@ -548,6 +565,14 @@ class LibraryManagerMethods:
             return rq, ret['status'] 
         else:
             rq.ticket['reject_reason'] = (ret['status'][0], ret['status'][1])
+            if ret['status'][0] == e_errors.BROKEN:
+                # temporarily save last state:
+                tmp_lock = self.lm_lock
+                self.lm_lock = e_errors.BROKEN
+                if tmp_lock != self.lm_lock:
+                    Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
+                                (intf.name, self.lm_lock))
+                return  None,ret['status'] 
             # if work is write_to_hsm and volume has just been set to full
             # return this status for the immediate dismount
             if (rq.work == "write_to_hsm" and
@@ -563,6 +588,14 @@ class LibraryManagerMethods:
                                         rq.ticket["wrapper"]["size_bytes"])
         Trace.trace(11,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
+            if ret['status'][0] == e_errors.BROKEN:
+                # temporarily save last state:
+                tmp_lock = self.lm_lock
+                self.lm_lock = e_errors.BROKEN
+                if tmp_lock != self.lm_lock:
+                    Trace.alarm(e_errors.ERROR,"LM %s goes to %s state" %
+                                (intf.name, self.lm_lock))
+                return  None,ret['status'] 
             Trace.trace(11,"work can not be done at this volume %s"%(ret,))
             rq.ticket['status'] = ret['status']
             self.pending_work.delete(rq)
@@ -707,9 +740,10 @@ class LibraryManagerMethods:
             if rq.work == 'read_from_hsm':
                 rq, status = self.check_read_request(external_label, rq)
             else:
-                rq.ticket['status'] = (e_errors.OK, None)
+                status = (e_errors.OK, None)
+                rq.ticket['status'] = status
             # return work
-            return (rq, rq.ticket['status'])
+            return (rq, status)
         if status:
             return (None, status)
         return (None, (e_errors.NOWORK, None))
@@ -869,7 +903,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             #           and give out works in the pending queue to movers
             # pause -- same as ignore, but also do not give out works in the pending
             #          queue to movers
-            if self.keys['lock'] in ('locked', 'unlocked', 'ignore', 'pause'): 
+            # nowrite -- locked for write requests
+            # noread -- locked for read requests
+
+            if self.keys['lock'] in ('locked', 'unlocked', 'ignore', 'pause', 'nowrite', 'noread'): 
                 return self.keys['lock']
         try:
             lock_file = open(self.lockfile_name(), 'r')
@@ -896,7 +933,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'write'
         ff = ticket['vc']['file_family']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause', 'nowrite'):
+        if self.lm_lock in ('locked', 'ignore', 'pause', 'nowrite', e_errors.BROKEN):
             if self.lm_lock in  ('locked', 'nowrite'):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
@@ -937,22 +974,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
         # put ticket into request queue
         rq, status = self.pending_work.put(ticket)
-        if status == e_errors.INPROGRESS:
-            ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-        else:
-            ticket['status'] = (status, None)
+        ticket['status'] = (status, None)
                 
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
-        if ticket['status'][0] == e_errors.INPROGRESS:
-            # we did not put request
-            format = "write NOT Q'd %s -> %s : library=%s family=%s requester:%s"
-            Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
-                                             ticket["wrapper"]["pnfsFilename"],
-                                             ticket["vc"]["library"],
-                                             ticket["vc"]["file_family"],
-                                             ticket["wrapper"]["uname"]))
-            Trace.notify("client %s %s %s %s" % (host, work, ff, 'rejected'))
-            return
 
         if status == e_errors.OK:
             if not rq:
@@ -974,7 +998,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'read'
         vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause', 'noread'):
+        if self.lm_lock in ('locked', 'ignore', 'pause', 'noread', e_errors.BROKEN):
             if self.lm_lock in ('locked', 'noread'):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
@@ -1013,10 +1037,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
-            if status == e_errors.INPROGRESS:
-                ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-                Trace.notify("client %s %s %s %s" % (host, work, vol, 'rejected'))
-            else: ticket['status'] = (status, None)
+            ticket['status'] = (status, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if status == e_errors.OK:
             if not rq:
@@ -1053,7 +1074,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # its volumes at movers table
             return
         
-        if self.lm_lock == 'pause':
+        if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
             return
             
@@ -1172,7 +1193,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # starts processing mover requests to update
             # its volumes at movers table
             return
-        if self.lm_lock == 'pause':
+        if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
             return
         # just did some work, delete it from queue

@@ -449,6 +449,14 @@ class VolumeClerkClient(generic_client.GenericClient,
         x = self.send(ticket)
         return x
 
+    # clear the pause flag for the LM and all LMs that relate to the Media Changer
+    def clear_lm_pause(self, library_manager):
+        ticket = { 'work'    :'clear_lm_pause',
+                   'library' : library_manager
+                   }
+        x = self.send(ticket)
+        return x
+        
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -475,6 +483,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.decr_file_count = 0
         self.rmvol = 0
         self.vol1ok = 0
+        self.lm_to_clear = ""
+        
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -486,7 +496,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","next","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK"]
+                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -651,6 +661,8 @@ def do_work(intf):
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
+    elif intf.lm_to_clear:
+        ticket = vcc.clear_lm_pause(intf.lm_to_clear)
     else:
         intf.print_help()
         sys.exit(0)

@@ -96,7 +96,7 @@ class SortedList:
     # with e_errors.INPROGRESS (needed for write requests)
     def test(self, id, output_file_name=None):
         if id in self.ids: return 1,e_errors.OK 
-        if output_file_name in self.of_names: return 1, e_errors.INPROGRESS
+        #if output_file_name in self.of_names: return 1, e_errors.INPROGRESS
         return 0,None
     
     # this probably is not needed
@@ -106,9 +106,9 @@ class SortedList:
 	for r in self.sorted_list:
 	    if r.unique_id == id:
 		return r,e_errors.OK
-            if (output_file_name and
-                output_file_name == r.ticket["wrapper"]['pnfsFilename']):
-                return r,e_errors.INPROGRESS
+            #if (output_file_name and
+            #    output_file_name == r.ticket["wrapper"]['pnfsFilename']):
+            #    return r,e_errors.INPROGRESS
 
     # update the sorted request list
     def update(self, now=None):
