@@ -8,7 +8,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
 case $node in
 
-  stken*|rip9|rip10*|d0enmvr4a|d0enmvr7a)
+  stken*|rip9|rip10*)
 	gang=stken
         ;;
   rip*|cachen*)
