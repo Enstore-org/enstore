@@ -1,11 +1,11 @@
 #!/bin/sh
 
-./start-config
+start-config
 if [ $? -ne 0 ] ; then exit 1; fi
 
-python ../volume_clerk.py &
-python ../file_clerk.py &
-python ../library_manager.py activelibrary &
-python ../mover.py fd0.mover &
+python volume_clerk.py &
+python file_clerk.py &
+python library_manager.py activelibrary &
+python mover.py fd0.mover &
 sleep 1
 

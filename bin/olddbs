@@ -1,6 +1,6 @@
 #!/bin/sh
 
-./stopall
-./serv_up
+stopall
+serv_up
 if [ ! -f file_clerk.jou ] ; then echo Sorry, no old database ; fi
 if [ ! -f volume_clerk.jou ] ; then echo Sorry, no old database ; fi

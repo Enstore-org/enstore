@@ -4,7 +4,7 @@
 
 if [ `uname` = Linux ] ; then 
    ps | while read pid tty stat time command rest ; do \
-	if [ "$rest" = ./longtest ]  ; then kill $pid ; fi ; done
+	if [ "$rest" = longtest ]  ; then kill $pid ; fi ; done
 
    ps | while read pid tty stat time command rest ; do \
 	if [ $command = python ]  ; then kill $pid ; fi ; done

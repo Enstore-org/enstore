@@ -1,8 +1,8 @@
 #!/bin/sh
 
-python ../configuration_server.py &
+python configuration_server.py &
 sleep 1
-python ../configuration_client.py
+python configuration_client.py
 if [ $? -ne 0 ] ; then
     echo "...configuration error. can not continue..."
     exit 1

@@ -1,5 +1,5 @@
 #!/bin/sh
 
-for d in [1-9] ; do cp ./longtest $d ; done
+for d in [1-9] ; do cp $(ENSTORE_DIR)/bin/longtest $d ; done
 for d in [1-9] ; do (cd $d; ./longtest&) ; done
 
