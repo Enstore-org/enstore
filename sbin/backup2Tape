@@ -167,7 +167,7 @@ done
 if [ -f $QUIT ]; then exit 1; fi
 rm -f $ENSTORE_FILES
 # rm backup journals
-for i in `cat /tmp/journal`
+for i in `cat /tmp/journals`
 do
   rm -f $i
 done
