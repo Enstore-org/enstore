@@ -1042,6 +1042,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def mover_bound_volume(self, mticket):
 	Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
+        if not mticket['external_label']:
+            Trace.log(e_errors.ERROR,"mover_bound_volume: mover request with suspicious volume label %s" %
+                      (mticket['external_label'],))
+            return
         last_work = mticket['operation']
         if not mticket['volume_family']:
             # mover restarted with bound volume and it has not
