@@ -1,0 +1,9 @@
+#!/bin/sh
+
+while /bin/true; do
+  if [ `/usr/bin/pstree -acpu | egrep -v grep| egrep -c "CDF_migrate$1"` -eq 0 ]; then break;fi
+  echo `date` waiting
+  sleep 1200
+done
+echo `date` 'ready'
+cat $2| while read tape; do echo $tape; /data1/CDF_migrate$1 $tape;done
