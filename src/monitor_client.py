@@ -362,7 +362,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
     # TCP/IP SOCK_STREAM connections the rate tests use.
     try:
         msc.c_socket.close()
-    expect:
+    except:
         pass
     
     return summary_d
