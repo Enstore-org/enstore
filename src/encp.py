@@ -551,7 +551,7 @@ def outputfile_check(inputlist, output, dcache):
                 #Determine the max allowable size for the given library.
                 pout.get_library()
                 library = csc.get(pout.library + ".library_manager", {})
-                library_max = library.get('max_file_size', 0)
+                library_max = library.get('max_file_size', MAX_FILE_SIZE)
 
                 #Compare the max sizes allowed for these various conditions.
                 if size > wrapper_max:
