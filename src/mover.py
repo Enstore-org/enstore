@@ -174,19 +174,19 @@ class Mover(  dispatching_worker.DispatchingWorker,
             lib_config = self.csc.get(lib)
             self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
 
-        self.set_interval_func(self.update_lm, 1)
+        self.set_interval_func(self.update_lm, 15) #this sets the period for messages to LM.
 
 
     def update_lm(self):
         status = e_errors.OK, None
         if self.state is IDLE:
-            work = "idle"
+            work = "mover_idle"
         elif self.state in (MOUNT_WAIT, HAVE_BOUND):
-            work = "have_bound"
+            work = "mover_bound_volume"
         elif self.state in (ACTIVE, DISMOUNT_WAIT):
-            work = "busy"
+            work = "mover_busy"
         elif self.state is ERROR:
-            work = "error"
+            work = "mover_error"
             status = self.last_error
         else: #cleaning, draining or offline
             return
