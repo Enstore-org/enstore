@@ -687,7 +687,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         q_dict = self.quota_enabled(library, storage_group)
         if q_dict:
             if not self.check_quota(q_dict, library, storage_group):
-                msg="%s Quota exceeded when reassiging blank volume to it. Contact enstore admin."%(storage_group)
+                msg="(%s, %s) quota exceeded when reassiging blank volume to it. Contact enstore admin."%(library, storage_group)
                 Trace.log(e_errors.ERROR,msg)
                 ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                 self.reply_to_caller(ticket)
@@ -800,7 +800,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 q_dict = self.quota_enabled(library, sg)
                 if q_dict:
                     if not self.check_quota(q_dict, library, sg):
-                        msg="Volume Clerk: %s quota exceeded while adding %s. Contact enstore admin."%(sg, external_label)
+                        msg="Volume Clerk: (%s, %s) quota exceeded while adding %s. Contact enstore admin."%(library, sg, external_label)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
@@ -1202,9 +1202,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # if the head room is less than 3 volumes or the count
                 # exceeds 95%
                 dq = quota - vol_count
-                if dq < 3 or dq < (quota * 0.05):
+                # at quota?
+                if dq == 1:
+                   msg = "(%s, %s) has reached its quota limit (%d/%d)"%(library, storage_group, vol_count+1, quota)
+                   Trace.alarm(e_errors.WARNING, 'REACH QUOTA LIMIT', msg)
+                elif dq < 3 or dq < (quota * 0.05):
                    msg = "(%s, %s) is approaching its quota limit (%d/%d)"%(library, storage_group, vol_count+1, quota)
-                   Trace.alarm(e_errors.INFO, 'APPROACHING QUOTA LIMMIT', msg)
+                   Trace.alarm(e_errors.WARNING, 'APPROACHING QUOTA LIMIT', msg)
                 return 1
         else:
             Trace.log(e_errors.ERROR, "no library %s defined in the quota configuration" % (library))
@@ -1312,7 +1316,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 inc_counter = 1
                 if q_dict:
                     if not self.check_quota(q_dict, library, sg):
-                        msg="Volume Clerk: %s quota exceeded while drawing from common pool. Contact enstore admin."%(sg)
+                        msg="Volume Clerk: (%s, %s) quota exceeded while drawing from common pool. Contact enstore admin."%(library, sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.alarm(e_errors.ERROR, e_errors.QUOTAEXCEEDED, msg)
                         self.reply_to_caller(ticket)
