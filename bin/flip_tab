@@ -20,13 +20,13 @@ case $node in
      icap="1,0,0"
      ocap="1,1,0"
      sun=fntt
-     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
+     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
      ;;
   cdfensrv4)
      icap="0,1,0"
      ocap="0,0,0"
      sun=fntt2
-     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
+     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
      ;;
   *) usage
      exit 1
@@ -64,19 +64,19 @@ for i in `ls -vI \*.\*`; do
   echo
   case $node in
     stk*)
-      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
+      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
       echo
       echo
       /bin/echo -n "Press Enter when all tapes have been loaded with tab in ${action}ed position"
       read ans
       while /bin/true; do
-	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
+	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
 	capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
 	if [ "$capstate" = "available" ]; then break; fi
 	echo `date` Waiting for cap to be unloaded...
 	sleep 5
       done
-      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
+      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
       echo
       echo
       ;;
@@ -121,7 +121,7 @@ case $node in
   d0*|cdf*)
     msgflag=
     while /bin/true; do
-      cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
+      cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
       capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
       if [ "$capstate" = "available" ]; then break; fi
       if [ -z "$msgflag" ]; then
@@ -130,6 +130,6 @@ case $node in
       fi
       sleep 5
     done
-    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
+    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
     ;;
 esac
