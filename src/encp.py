@@ -1226,7 +1226,7 @@ def outputfile_check(inputlist, outputlist, dcache):
                     #Test if the layers are empty.
                     if layer1 != [] or layer4 != []:
                         #The layers are not empty.
-                        raise EncpError(None,
+                        raise EncpError(errno.EEXIST,
                                         "Layer 1 and layer 4 are already set.",
                                         e_errors.PNFS_ERROR)
                     else:
@@ -2737,15 +2737,16 @@ def calculate_rate(done_ticket, tinfo):
                  "\t(%.3g MB/S overall) (%.3g MB/S transfer)\n" \
                  "\tdrive_id=%s drive_sn=%s drive_vendor=%s\n" \
                  "\tmover=%s media_changer=%s   elapsed=%.02f"
-        
-        log_format = "  %s %s -> %s: "\
+
+        log_format = "  %s %s -> %s: " \
                      "%d bytes copied %s %s at %.3g MB/S " \
                      "(%.3g MB/S network) (%.3g MB/S drive) (%.3g MB/S disk) "\
-                     "mover=%s " \
-                     "drive_id=%s drive_sn=%s drive_vendor=%s elapsed=%.05g "\
-                     "{'media_changer' : '%s', 'mover_interface' : '%s', " \
-                     "'driver' : '%s', 'storage_group':'%s', " \
-                     "'encp_ip': '%s', 'unique_id': '%s'}"
+                     "mover=%s drive_id=%s drive_sn=%s drive_vendor=%s " \
+                     "elapsed=%.05g %s"
+
+                     #"{'media_changer' : '%s', 'mover_interface' : '%s', " \
+                     #"'driver' : '%s', 'storage_group':'%s', " \
+                     #"'encp_ip': '%s', 'unique_id': '%s'}"
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
@@ -2766,6 +2767,22 @@ def calculate_rate(done_ticket, tinfo):
                                                  e_errors.UNKNOWN),
                         time.time() - tinfo["encp_start_time"])
 
+        log_dictionary = {
+            'media_changer' : done_ticket["mover"].get("media_changer",
+                                                       e_errors.UNKNOWN),
+            'mover_interface' : done_ticket["mover"].get('data_ip',
+                                                 done_ticket["mover"]['host']),
+            'driver' : done_ticket["mover"]["driver"],
+            'storage_group' : sg,
+            'encp_ip' : done_ticket["encp_ip"],
+            'unique_id' : done_ticket['unique_id'],
+            'network_rate' : tinfo["%s_transfer_rate"%(id,)],
+            'drive_rate' : tinfo["%s_drive_rate"%(id,)],
+            'disk_rate' : tinfo["%s_disk_rate"%(id,)],
+            'overall_rate' : tinfo["%s_overall_rate"%(id,)],
+            'transfer_rate' : tinfo["%s_transfer_rate"%(id,)],
+            }
+
         log_values = (done_ticket['work'],
                       done_ticket['infile'],
                       done_ticket['outfile'],
@@ -2776,21 +2793,20 @@ def calculate_rate(done_ticket, tinfo):
                       tinfo["%s_network_rate"%(id,)],
                       tinfo['%s_drive_rate'%(id,)],
                       tinfo["%s_disk_rate"%(id,)],
-                      #tinfo["%s_overall_rate"%(id,)],
-                      #tinfo["%s_transfer_rate"%(id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
                       done_ticket["mover"]["vendor_id"],
                       time.time() - tinfo["encp_start_time"],
-                      done_ticket["mover"].get("media_changer",
-                                               e_errors.UNKNOWN),
-		      done_ticket["mover"].get('data_ip',
-					       done_ticket["mover"]['host']),
-                      done_ticket["mover"]["driver"],
-                      sg,
-                      done_ticket["encp_ip"],
-                      done_ticket['unique_id'])
+                      log_dictionary)
+                      #done_ticket["mover"].get("media_changer",
+                      #                         e_errors.UNKNOWN),
+		      #done_ticket["mover"].get('data_ip',
+                      #                         done_ticket["mover"]['host']),
+                      #done_ticket["mover"]["driver"],
+                      #sg,
+                      #done_ticket["encp_ip"],
+                      #done_ticket['unique_id'])
         
         Trace.message(DONE_LEVEL, print_format % print_values)
 
