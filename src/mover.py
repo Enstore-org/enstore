@@ -5,7 +5,6 @@
 
 import os
 
-
 # python modules
 import sys
 import os
@@ -36,10 +35,11 @@ import udp_client
 import socket_ext
 import hostaddr
 
+
 def print_args(*args):
     print args
 
-verbose=0
+verbose=1
     
 ##Trace.trace = print_args
 
@@ -47,15 +47,18 @@ class MoverError(exceptions.Exception):
     def __init__(self, arg):
         exceptions.Exception.__init__(self,arg)
 
+
+#states
 IDLE, MOUNT_WAIT, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CLEANING, ERROR = range(9)
 
 _state_names=['IDLE', 'MOUNT_WAIT', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
-              'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
-
+             'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
 def state_name(state):
     return _state_names[state]
 
+#modes
 READ, WRITE, CLEANING = range(3)
+
 def  mode_name(mode):
     if mode is None:
         return None
@@ -113,6 +116,7 @@ class Buffer:
         self._buf = []
         self._freelist = []
         self._buf_bytes = 0
+        self._work_block = None
         self._readptr = 0
         self._writeptr = 0
     def nonzero(self):
@@ -259,11 +263,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.client_socket = None
 
 
-        self.config['name']=self.name #XXX why?
+        self.config['name']=self.name 
         self.config['product_id']='Unknown'
         self.config['serial_num']=0
         self.config['vendor_id']='Unknown'
-        self.config['local_mover'] = 0 #XXX yuk
+        self.config['local_mover'] = 0 #XXX who still looks at this?
         
         self.driver_type = self.config['driver']
         if self.driver_type == 'NullDriver':
@@ -653,7 +657,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_after_writing(self):
 
         self.current_location = self.tape_driver.tell()
-        remaining=self.vol_info['remaining_bytes']-self.bytes_written
+        remaining = self.vol_info['remaining_bytes']-self.bytes_written
+
         if self.driver_type == 'FTTDriver':
             import ftt
             stats = self.tape_driver.ftt.get_stats()
