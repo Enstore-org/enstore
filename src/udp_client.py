@@ -40,7 +40,7 @@ def get_client() :
     (hostname,ha,hi) = socket.gethostbyaddr(socket.gethostname())
     host = hi[0]
     port1 = 7600
-    port2 = 7700
+    port2 = 8000
     while  1:
         for port in range (port1, port2) : # range (7600, 7600) has 0 members...
             success, sockt = try_a_port (host, port)
