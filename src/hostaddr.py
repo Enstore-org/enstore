@@ -17,27 +17,6 @@ hostinfo=None
 #Only allow connections from these domains
 valid_domains = ('131.225', '127.0')
 
-def allow(addr):
-    if not addr:
-        return 0
-    if type(addr) is type(()):
-        if len(addr)==2:
-            addr = addr[0]
-        else:
-            raise TypeError
-    if addr[0] not in string.digits:
-        addr = name_to_address(addr)
-    if addr[0] not in string.digits:
-        return 0
-    tok = string.split(addr, '.')
-    if len(tok) != 4:
-        return 0
-    for v in valid_domains:
-        vtok = string.split(v, '.')
-        if tok[:len(vtok)] == vtok:
-            return 1
-    return 0
-
 
 ####  XXX Get preferred interface from config file if present, else use hostname.
 
@@ -81,6 +60,26 @@ def name_to_address(name):
     known_names[name] = addr
     return addr
 
+def allow(addr):
+    if not addr:
+        return 0
+    if type(addr) is type(()):
+        if len(addr)==2:
+            addr = addr[0]
+        else:
+            raise TypeError
+    if addr[0] not in string.digits:
+        addr = name_to_address(addr)
+    if addr[0] not in string.digits:
+        return 0
+    tok = string.split(addr, '.')
+    if len(tok) != 4:
+        return 0
+    for v in valid_domains:
+        vtok = string.split(v, '.')
+        if tok[:len(vtok)] == vtok:
+            return 1
+    return 0
 
 ifconfig_command=None
 ifinfo={}
