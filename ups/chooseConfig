@@ -12,7 +12,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 stken=stkensrv2.fnal.gov
 d0en=d0ensrv2.fnal.gov
 rip=rip7.fnal.gov
-cachen=rip7.fnal.gov
+cachen=$stken
 buffalo=buffalo.fnal.gov
 happy=happy.fnal.gov
 water=water.fnal.gov
@@ -40,9 +40,8 @@ case $node in
             complain=0
             ;;
   cachen*)
-            ENSTORE_MAIL=enstore@fnal.gov
-            ENSTORE_CONFIG_HOST=$rip
-            ENSTORE_CONFIG_FILE=rip.conf
+            ENSTORE_CONFIG_HOST=$stken
+            ENSTORE_CONFIG_FILE=stk.conf
             complain=0
             ;;
 
