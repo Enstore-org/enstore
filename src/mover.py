@@ -296,12 +296,21 @@ class MoverClient:
 	return {}
 
     def unbind_volume( self, ticket ):
+	if self.vol_info['external_label'] == '': return idle_mover_next( self )
+	if mvr_config['do_fork']: do_fork( self, ticket, 'u' )
+	if mvr_config['do_fork'] and self.pid != 0:
+	    #parent
+	    return {}
+
+	# child or single process???
+	logc.send(e_errors.INFO,2,'UNBIND start'+str(ticket))
+	    
 	# do any driver level rewind, unload, eject operations on the device
 	if mvr_config['do_eject'] == 'yes':
-            logc.send(e_errors.INFO,2,"Performing offline/eject of device"+str(mvr_config['device']))
+	    Trace.log( e_errors.INFO, "Performing offline/eject of device %s"%mvr_config['device'] )
 	    self.hsm_driver.offline(mvr_config['device'])
-            logc.send(e_errors.INFO,2,"Completed  offline/eject of device"+str(mvr_config['device']))
-
+	    Trace.log( e_errors.INFO, "Completed  offline/eject of device %s"%mvr_config['device'] )
+	    pass
 	# now ask the media changer to unload the volume
 	logc.send(e_errors.INFO,2,"Requesting media changer unload")
 	rr = mcc.unloadvol( self.vol_info, self.config['name'], 
@@ -309,13 +318,15 @@ class MoverClient:
 			    self.vol_vcc[self.vol_info['external_label']] )
 	logc.send(e_errors.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
-	    return freeze_tape_in_drive( self, e_errors.UNMOUNT )
-	    raise "media loader cannot unload my volume"
+	    #return freeze_tape_in_drive( self, e_errors.UNMOUNT )
+	    return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.UNMOUNT )
+	    pass
 
 	del self.vol_vcc[self.vol_info['external_label']]
 	self.vol_info['external_label'] = ''
-
-	return idle_mover_next( self )
+	
+	return_or_update_and_exit( self, self.vol_info['from_lm'], e_errors.OK )
+	pass
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
@@ -402,28 +413,31 @@ def bind_volume( self, external_label ):
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
-    return e_errors.OK
+    return e_errors.OK  # bind_volume
 
+
 def do_fork( self, ticket, mode ):
     global vcc, fcc
-    # get vcc and fcc for this xfer
-    fcc = file_clerk_client.FileClient( csc, 0, 0, 0, 0,
-					ticket['fc']['address'] )
-    vcc = volume_clerk_client.VolumeClerkClient( csc, 0, 0, 0,
-						 ticket['vc']['address'] )
-    self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
     ticket['mover'] = self.config
-    ticket['mover']['local_mover'] = 0	# potentially changed in get_usr_driver
-    self.hsm_driver._bytes_clear()
+    if mode == 'w' or mode == 'r':
+	# get vcc and fcc for this xfer
+	fcc = file_clerk_client.FileClient( csc, 0, 0, 0, 0,
+					    ticket['fc']['address'] )
+	vcc = volume_clerk_client.VolumeClerkClient( csc, 0, 0, 0,
+						     ticket['vc']['address'] )
+	self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
+	ticket['mover']['local_mover'] = 0  # potentially changed in get_usr_driver
+	self.hsm_driver._bytes_clear()
+	self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
+	self.bytes_to_xfer = ticket['fc']['size']
+	# save some stuff for "status"
+	self.tape = ticket['fc']['external_label']
+	self.files = ("%s:%s"%(ticket['wrapper']['machine'][1],
+			       ticket['wrapper']['fullname']),
+		      ticket['wrapper']['pnfsFilename'])
+	pass
     self.state = 'busy'
-    self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
-    self.bytes_to_xfer = ticket['fc']['size']
-    # save some stuff for "status"
     self.mode = mode			# client mode, not driver mode
-    self.tape = ticket['fc']['external_label']
-    self.files = ("%s:%s"%(ticket['wrapper']['machine'][1],
-			   ticket['wrapper']['fullname']),
-		  ticket['wrapper']['pnfsFilename'])
     self.work_ticket = ticket		# just save the whole thing for "status"
 
     self.pid = os.fork()
@@ -438,8 +452,10 @@ def forked_write_to_hsm( self, ticket ):
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
     if mvr_config['do_fork'] and self.pid != 0:
+	# parent
 	pass
     else:
+	# child or single process???
 	logc.send(e_errors.INFO,2,'WRITE_TO_HSM start'+str(ticket))
 
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
@@ -461,6 +477,7 @@ def forked_write_to_hsm( self, ticket ):
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
+	self.vol_info['from_lm'] = ticket['lm']['address'] # who gave me this volume
 	    
 	sts = vcc.set_writing( self.vol_info['external_label'] )
 	if sts['status'][0] != "ok":
@@ -628,6 +645,7 @@ def forked_read_from_hsm( self, ticket ):
 	    send_user_done( self, ticket, sts )
 	    return_or_update_and_exit( self, self.lm_origin_addr, sts )
 	    pass
+	self.vol_info['from_lm'] = ticket['lm']['address'] # who gave me this volume
 
         # space to where the file will begin and save location
         # information for where future reads will have to space the drive to.
@@ -754,8 +772,9 @@ def forked_read_from_hsm( self, ticket ):
 	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, self.lm_origin_addr, e_errors.OK )
 	pass
-    return
+    return None # forked_read_from_hsm
 
+
 def return_or_update_and_exit( self, origin_addr, status ):
     if status != e_errors.OK: logc.send( e_errors.ERROR, 1, str(status) )
     if mvr_config['do_fork']:
@@ -763,19 +782,20 @@ def return_or_update_and_exit( self, origin_addr, status ):
 	# hsm_driver_info (read: hsm_driver.position
 	#                  write: position, eod, remaining_bytes)
 	# recent (read) errors (part of vol_info???)
-	udpc.send_no_wait( {'work':'update_client_info',
-			    'address':origin_addr,
-			    'pid':os.getpid(),
-			    'hsm_driver':{'blocksize':self.hsm_driver.blocksize,
-					  'remaining_bytes':self.hsm_driver.remaining_bytes,
-					  'vol_label':self.hsm_driver.vol_label,
-					  'cur_loc_cookie':self.hsm_driver.cur_loc_cookie,
-					  'no_xfers':self.hsm_driver.no_xfers},
-			    'vol_info':self.vol_info},
+	udpc.send_no_wait( {'work'       :'update_client_info',
+			    'address'    :origin_addr,
+			    'pid'        :os.getpid(),
+			    'exit_status':status,
+			    'vol_info'   :self.vol_info,
+			    'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
+					   'remaining_bytes':self.hsm_driver.remaining_bytes,
+					   'vol_label'      :self.hsm_driver.vol_label,
+					   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie,
+					   'no_xfers'       :self.hsm_driver.no_xfers}},
 			   (self.config['hostip'],self.config['port']) )
 	sys.exit( m_err.index(status) )
-    else:
-	return status_to_request( self, status )
+	pass
+    return status_to_request( self, status ) # return_or_update_and_exit
 
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
@@ -910,6 +930,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def status( self, ticket ):
+	tim = time.time()
+	# try getting wr_bytes 1st to prevent writing ahead of reading
+	wb  = self.client_obj_inst.hsm_driver.wr_bytes_get()
+	rb  = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	tick = { 'status'       : (e_errors.OK,None),
 		 #
 		 'crc_func'     : str(self.client_obj_inst.crc_func),
@@ -917,15 +941,14 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		 'state'        : self.client_obj_inst.state,
 		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
 		 'local_mover'  : self.client_obj_inst.local_mover_enable,
-		 # try getting wr_bytes 1st to prevent writing ahead of reading
-		 'wr_bytes'     : self.client_obj_inst.hsm_driver.wr_bytes_get(),
-		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
+		 'rd_bytes'     : rb,
+		 'wr_bytes'     : wb,
 		 # from "work ticket"
 		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
 		 'files'        : self.client_obj_inst.files,
 		 'mode'         : self.client_obj_inst.mode,
 		 'tape'         : self.client_obj_inst.tape,
-		 'time_stamp'   : time.time(),
+		 'time_stamp'   : tim,
 		 'vol_info'     : self.client_obj_inst.vol_info,
 		 # just include total "work ticket"
 		 'work_ticket'  : self.client_obj_inst.work_ticket,
@@ -977,6 +1000,14 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
 	return
+
+    def config( self, ticket ):
+	global mvr_config
+	out_ticket = {'status':(e_errors.OK,None)}
+	if 'config' in ticket.keys(): mvr_config.update( ticket['config'] )
+	out_ticket['config'] = mvr_config
+	self.reply_to_caller( out_ticket )
+	return
 	
     def update_client_info( self, ticket ):
 	self.client_obj_inst.vol_info = ticket['vol_info']
@@ -994,13 +1025,13 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		   "update_client_info - pid:"+str(self.client_obj_inst.pid)+
 		   "ticket['pid']:"+str(ticket['pid']) )
 	wait = 0
-	next_req_to_lm = get_state_build_next_lm_req( self, wait )
+	next_req_to_lm = get_state_build_next_lm_req( self, wait, ticket['exit_status'] )
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
 	return
 
     def summon( self, ticket ):
 	wait=posix.WNOHANG
-	next_req_to_lm = get_state_build_next_lm_req( self, wait )
+	next_req_to_lm = get_state_build_next_lm_req( self, wait, None )
 	if next_req_to_lm['state']=='busy' and not ticket['address'] in self.summoned_while_busy:
 	    self.summoned_while_busy.append(ticket['address'])
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
@@ -1088,17 +1119,19 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	pass
     return
 
-def get_state_build_next_lm_req( self, wait ):
+def get_state_build_next_lm_req( self, wait, exit_status ):
     if self.client_obj_inst.pid:
 	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
 	except:
 	    traceback.print_exc()
 	    logc.send( e_errors.ERROR, 1,
-		       'waitpid-for pid:'+str(self.client_obj_inst.pid)+':'+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+		       'waitpid-for pid:%s exit_status:%s exc_info:%s'%(self.client_obj_inst.pid,
+									exit_status,
+									sys.exc_info()[0:2]) )
 	    os.system( 'ps alxwww' )
 	    #raise sys.exc_info()[0], sys.exc_info()[1]
-	    # assume success???
-	    status = m_err.index(e_errors.OK)<<8
+	    if wait == 0: status = exit_status
+	    else:         status = m_err.index(e_errors.OK)<<8 # assume success???
 	    pid = self.client_obj_inst.pid
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
@@ -1212,8 +1245,6 @@ if mvr_config['status'][0] != 'ok':
     raise 'could not start mover',intf.name,' up:' + mvr_config['status']
 # clean up the mvr_config a bit
 mvr_config['name'] = intf.name
-mvr_config['config_host'] = intf.config_host
-mvr_config['config_port'] = intf.config_port
 del intf
 mvr_config['do_fork'] = 1
 if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
