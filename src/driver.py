@@ -180,8 +180,8 @@ class  RawDiskDriver(GenericDriver) :
 
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
-        print "write error"
-        raise "write error"
+        #print "write error"
+        #raise "write error"
         if len(data) > self.remaining_bytes :
             format="NoSpace Len "+repr(len(data))+ \
                      "Remain "+repr(self.remaining_bytes)
