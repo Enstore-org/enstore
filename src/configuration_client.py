@@ -144,6 +144,19 @@ class ConfigurationClient(generic_client.GenericClient):
                 return x
             except socket.error:
 	        self.output_socket_error("get_library_managers")
+
+    # get the configuration dictionary element(s) that contain the specified
+    # key, value pair
+    def get_dict_entry(self, keyValue, timeout=0, retry=0):
+        request = {'work': 'get_dict_element',
+                   'keyValue': keyValue }
+        while 1:
+            try:
+                x = self.u.send(request, self.config_address, timeout, retry)
+                return x
+            except socket.error:
+	        self.output_socket_error("get_dict_element")
+
         
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
@@ -155,6 +168,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.get_keys = 0
+        self.key_value=()
         generic_client.GenericClientInterface.__init__(self)
 
         # if we are using the default host and port, warn the user
@@ -163,7 +177,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-	       ["config_file=","get_keys","dict","load"]
+	       ["config_file=","get_keys","dict","load","key_value="]
 
 if __name__ == "__main__":
     import sys
@@ -191,6 +205,11 @@ if __name__ == "__main__":
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
 	pprint.pprint(stati['get_keys'])
+
+    elif intf.key_value:
+        stati= csc.get_dict_entry(intf.key_value, intf.alive_rcv_timeout,
+                                  intf.alive_retries)
+	pprint.pprint(stati['servers'])
 
     else:
 	intf.print_help()

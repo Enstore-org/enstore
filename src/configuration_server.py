@@ -304,7 +304,18 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         out_ticket = {"status" : (e_errors.OK, None), "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
         Trace.trace(6,"reply_serverlist"+repr(out_ticket))
-	 
+
+    def get_dict_element(self, ticket):
+        ret = {"status" : (e_errors.OK, None)}
+        slist = []
+        skeyValue = ticket['keyValue']
+        for key in self.configdict.keys():
+            if skeyValue in self.configdict[key].items():
+                slist.append(key)
+        ret['servers'] = slist
+        self.reply_to_caller(ret)
+        Trace.trace(6,"get_dict_element"+repr(ret))
+
 
 class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
