@@ -313,9 +313,12 @@ class Queue:
     def delete(self, request):
         key = self.what_key(request)
         if not key: return
-
+        if not self.queue.has_key(key):
+            Trace.log(e_errors.INFO,"manage_queue.delete: no such key %s" %(key,))
+            return
         # remove opt entry
         Trace.trace(13,"Queue.delete: opt %s %s"%(key, request.ticket))
+        
         self.queue[key]['opt'].delete(request)
         self.queue[key]['by_priority'].delete(request)
         # if list for this queue is empty, remove
