@@ -939,7 +939,11 @@ FTT_locate(  PyObject *self
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_locate device not opened"));
 
+#   ifdef OLD_FTT
+    sts = ftt_scsi_locate( g_ftt_desc_tp, locate );
+#   else
     sts = ftt_scsi_locate( g_ftt_desc_tp, locate, part );
+#   endif
     if (sts == -1) return (raise_ftt_exception("FTT_locate"));
 
     return (Py_BuildValue(""));
