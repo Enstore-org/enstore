@@ -520,22 +520,22 @@ def do_work(intf):
     logc = LoggerClient((intf.config_host, intf.config_port), MY_NAME,
                         MY_SERVER)
 
-    if intf.alive:
-        ticket = logc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                            intf.alive_retries)
+    ticket = logc.handle_generic_commands(MY_SERVER, intf)
+    if ticket:
+        pass
 
     elif intf.get_last_logfile_name:
-        ticket = logc.get_last_logfile_name(intf.alive_rcv_timeout,\
+        ticket = logc.get_last_logfile_name(intf.alive_rcv_timeout,
 	                                    intf.alive_retries)
 	print(ticket['last_logfile_name'])
 
     elif intf.get_logfile_name:
-        ticket = logc.get_logfile_name(intf.alive_rcv_timeout,\
+        ticket = logc.get_logfile_name(intf.alive_rcv_timeout,
 	                               intf.alive_retries)
 	print(ticket['logfile_name'])
 
     elif intf.get_logfiles:
-        ticket = logc.get_logfiles(intf.get_logfiles, intf.alive_rcv_timeout,\
+        ticket = logc.get_logfiles(intf.get_logfiles, intf.alive_rcv_timeout,
 				   intf.alive_retries)
 	print(ticket['logfiles'])
 

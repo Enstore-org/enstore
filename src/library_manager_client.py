@@ -275,9 +275,9 @@ def do_work(intf):
     lmc = LibraryManagerClient((intf.config_host, intf.config_port), intf.name)
     Trace.init(lmc.get_name(lmc.log_name))
 
-    if intf.alive:
-        ticket = lmc.alive(intf.name, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+    ticket = lmc.handle_generic_commands(intf.name, intf)
+    if ticket:
+        pass
     elif  intf.get_work:
         ticket = lmc.getwork()
 	print ticket['pending_work']

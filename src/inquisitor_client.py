@@ -184,9 +184,10 @@ def do_work(intf):
     iqc = Inquisitor((intf.config_host, intf.config_port))
     Trace.init(iqc.get_name(MY_NAME))
 
-    if intf.alive:
-        ticket = iqc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+
+    ticket = icq.handle_generic_commands(MY_SERVER, intf)
+    if ticket:
+        pass
 
     elif intf.dump:
         ticket = iqc.dump(intf.alive_rcv_timeout, intf.alive_retries)

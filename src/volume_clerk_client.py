@@ -40,21 +40,21 @@ def capacity_str(x):
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
-    def __init__( self, csc, servr_addr=None ):
+    def __init__( self, csc, server_addr=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
         ticket = self.csc.get( MY_SERVER )
-	if servr_addr != None:
-            self.servr_addr = servr_addr
+	if server_addr != None:
+            self.server_addr = server_addr
 	else:
-            self.servr_addr = (ticket['hostip'],ticket['port'])
+            self.server_addr = (ticket['hostip'],ticket['port'])
 
         Trace.trace(10,'__init__ u='+str(self.u))
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket,  rcv_timeout=0, tries=0):
-        Trace.trace( 16, 'send to volume clerk '+str(self.servr_addr) )
-        x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
+        Trace.trace( 16, 'send to volume clerk '+str(self.server_addr) )
+        x = self.u.send( ticket, self.server_addr, rcv_timeout, tries )
         return x
 
     # add a volume to the stockpile
@@ -186,12 +186,6 @@ class VolumeClerkClient(generic_client.GenericClient,
         data_path_socket.connect(ticket['volume_clerk_callback_addr'])
         ticket= callback.read_tcp_obj(data_path_socket)
         volumes = cPickle.loads(callback.read_tcp_raw(data_path_socket))
-        ##while 1:
-        ##    msg=callback.read_tcp_raw(data_path_socket)
-        ##    if not msg: break
-        ##    if volumes: volumes = volumes+","+msg
-        ##    else: volumes=msg
-        #ticket['volumes'] = volumes
         data_path_socket.close()
 
 
@@ -544,10 +538,11 @@ def do_work(intf):
     # get a volume clerk client
     vcc = VolumeClerkClient((intf.config_host, intf.config_port))
     Trace.init(vcc.get_name(MY_NAME))
-	
-    if intf.alive:
-        ticket = vcc.alive(MY_SERVER, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+
+    ticket = vcc.handle_generic_commands(MY_SERVER, intf)
+    if ticket:
+        pass
+
     elif intf.backup:
         ticket = vcc.start_backup()
         ticket = vcc.backup()

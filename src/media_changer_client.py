@@ -234,9 +234,10 @@ def do_work(intf):
                              intf.media_changer)
     Trace.init(mcc.get_name(mcc.log_name))
 
-    if intf.alive:
-        ticket = mcc.alive(intf.media_changer, intf.alive_rcv_timeout,
-                           intf.alive_retries)
+    ticket = mcc.handle_generic_commands(intf.media_changer, intf)
+    if ticket:
+        pass
+
     elif intf.update:
         # get a volume clerk client
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
