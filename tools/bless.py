@@ -37,7 +37,26 @@ for file in filelist[:]:
         if string.find(line, "(none)\n") < 0:
             print "%s %s" %(file, line)
             sys.exit(1)
-        
+
+    # if the head of the repository and the production version are not only 1 apart, ask
+    versions = os.popen("cvs -q log -h %s | sed -e 's/.*production: //p' -e 's/^head: //p' -e d"%(file,)).readlines()
+    # remove carriage return. line feed
+    head = string.replace(versions[0], "\012", "")
+    if len(versions) == 2:
+	production = string.replace(versions[1], "\012", "")
+    else:
+	production = None
+    if production:
+	ihead = int(string.split(head, '.')[1])
+	iproduction = int(string.split(production, '.')[1])
+	if ihead - iproduction > 1:
+	    # check if the user wants to proceed
+	    sys.stdout.write("\n%s has head version %s and production version %s, continue? [y/n def:n] "%(file, head, production))
+	    ans = sys.stdin.readline()
+	    ans = string.replace(ans, "\012", "")
+	    if ans not in ['y', 'Y']:
+		sys.exit(1)
+
     if file[-3:] == '.py':
         print '\nchecking',file,'with mylint'
         pipe = os.popen('%s/tools/mylint.py %s' % (os.environ["ENSTORE_DIR"], file), 'r')
