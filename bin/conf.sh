@@ -58,7 +58,7 @@ else:
      try:
          ahost,ip,port = servers[key]
 	 #print key,ahost,ip,port
-	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="logserver" or key=="inquisitor" :
+	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="logserver" or key=="inquisitor" or key=="alarm_server" :
              print "%s:%s:%s" % (key,ahost,port)
      except:
          pass
