@@ -1023,7 +1023,13 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             fc = files.inx['external_label'].cursor()
             fk, pfk = fc.set(vk)
             while fk:
-                f = files[pfk]
+                # to work around the infamous missing key error due to
+                # live backup
+                try:
+                    f = files[pfk]
+                except:
+                    fk, pfk = fc.nextDup()
+                    continue
                 if f.has_key('deleted'):
                     if f['deleted'] == 'yes':
                         deleted = deleted + 1
