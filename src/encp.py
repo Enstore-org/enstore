@@ -1237,7 +1237,8 @@ def get_ninfo(inputfile, outputfile, e):
         pass
     elif ifullname == "/dev/zero":
         pass
-    if (len(e.input) > 1) or (len(e.input) == 1 and os.path.isdir(ofullname)):
+    elif (len(e.input) > 1) or \
+         (len(e.input) == 1 and os.path.isdir(ofullname)):
         ofullname = os.path.join(ofullname, ibasename)
         omachine, ofullname, odir, obasename = fullpath(ofullname)
 
