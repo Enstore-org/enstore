@@ -172,7 +172,7 @@ class  FTTDriver(GenericDriver) :
 	# binded again as the next volume, the position could be checked to
 	# see if a rewind already occurred.
         self.remaining_bytes = remaining_bytes
-	self.blocksize = blocksize
+	self.blocksize = blocksize	# save blocksize so we do not need as param to open
 	# make cur_loc_cookie such that an ordered list can be produced (for pnfs)
 	self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
 	FTT.open( device, 'r' )
@@ -192,9 +192,6 @@ class  FTTDriver(GenericDriver) :
 	    raise "sw_mount error"
 	FTT.rewind()
 	FTT.close()
-	# get blocksize into FTT so we do not have to pass it as param to
-	# open.
-	FTT.set_blocksize( self.blocksize )
 	return None
 
     def offline( self, device ):
@@ -246,6 +243,11 @@ class  FTTDriver(GenericDriver) :
         self.rd_access = 0		# counts
 	self.mode = mode[0]		# used in fd_xfer
 	FTT.open( device, mode )
+	# Note: self.blocksize is set in sw_mount which is done in mover
+	# forked process AND will not be done for all read/write
+	# operations. self.blocksize is passed back to parent (via code in
+	# mover).
+	FTT.set_blocksize( self.blocksize )
 	# verifiy location via FTT.stats???
 	return self
 
