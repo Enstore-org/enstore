@@ -1,3 +1,4 @@
+import sys
 import time
 import pprint
 import copy
@@ -16,6 +17,7 @@ class FileClerkMethods(DispatchingWorker) :
 
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket) :
+     try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
         record = {}
@@ -34,11 +36,21 @@ class FileClerkMethods(DispatchingWorker) :
         ticket["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
+	return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+	 return
+
 
     # To read from the hsm, we need to verify that the bit file id is ok,
     # call the volume server to find the library, and copy to the work
     # ticket the salient information
     def read_from_hsm(self, ticket) :
+     try:
         # everything is based on bfid - make sure we have this
         try:
             key="bfid"
@@ -95,16 +107,36 @@ class FileClerkMethods(DispatchingWorker) :
         u = UDPClient()
         ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
         self.reply_to_caller(ticket)
+	return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+	 return
+
 
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket) :
-            self.reply_to_caller({"status" : "ok",\
-                                  "bfids"  :repr(dict.keys()) })
+     try:
+	self.reply_to_caller({"status" : "ok",\
+			      "bfids"  :repr(dict.keys()) })
+	return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+	 return
+
 
     # return all info about a certain bfid - this does everything that the
     # read_from_hsm method does, except send the ticket to the library manager
     def bfid_info(self, ticket) :
+     try:
         # everything is based on bfid - make sure we have this
         try:
             key="bfid"
@@ -153,8 +185,14 @@ class FileClerkMethods(DispatchingWorker) :
 
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
+	return
 
-
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+	 return
 
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count

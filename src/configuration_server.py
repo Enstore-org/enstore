@@ -1,3 +1,4 @@
+import sys
 import string
 import regsub
 import pprint
@@ -10,6 +11,7 @@ class ConfigurationDict(DispatchingWorker) :
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile,list=1) :
+     try:
         try:
             f = open(configfile)
         except :
@@ -53,8 +55,14 @@ class ConfigurationDict(DispatchingWorker) :
         self.configdict=copy.deepcopy(xconfigdict)
         return "ok"
 
+     # even if there is an error - respond to caller so he can process it
+     except:
+         return sys.exc_info()[0]+sys.exc_info()[1]
+
+
     # does the configuration dictionary exist?
     def config_exists(self) :
+     try:
         need = 0
         try :
             if len(self.configdict) == 0 :
@@ -66,9 +74,17 @@ class ConfigurationDict(DispatchingWorker) :
             print "Configuration Server: invalid dictionary, " \
                   +"loading ",configfile
             self.load_config(configfile)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         print sys.exc_info()[0]+sys.exc_info()[1]
+         return
+
 
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket) :
+     try:
         self.config_exists()
         # everything is based on lookup - make sure we have this
         try:
@@ -88,15 +104,34 @@ class ConfigurationDict(DispatchingWorker) :
                           +repr(lookup)}
             pprint.pprint(out_ticket)
         self.reply_to_caller(out_ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
     # return a dump of the dictionary back to the user
     def list(self, ticket) :
+     try:
         self.config_exists()
         out_ticket = {"status" : "ok", "list" : self.configdict}
         self.reply_to_caller(out_ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+
 
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket) :
+     try:
         try :
             configfile = ticket["configfile"]
             list = 1
@@ -104,6 +139,14 @@ class ConfigurationDict(DispatchingWorker) :
         except KeyError:
             out_ticket = {"status" : "Configuration Server: no such name"}
         self.reply_to_caller(out_ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
 class ConfigurationServer(ConfigurationDict, GenericServer, UDPServer) :

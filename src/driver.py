@@ -2,6 +2,7 @@ import sys
 import errno
 import pprint
 import posix
+import string
 try:
     import ETape
 except  ImportError:
@@ -77,9 +78,9 @@ class  FTTDriver(GenericDriver) :
         stats = ETape.ET_CloseRead(self.ETdesc)
         
         if stats[1] != "Invalid":
-          self.rd_access = stats[1]
+          self.rd_access = string.atoi(stats[1])
         if stats[2] != "Invalid":
-          self.rd_err = stats[2]
+          self.rd_err = string.atoi(stats[2])
 
     def read_block(self):
         return ETape.ET_ReadBlock (self.ETdesc)
@@ -95,12 +96,13 @@ class  FTTDriver(GenericDriver) :
         self.eod = self.eod + 1
         self.position = self.eod
         if stats[0] != "Invalid" :
-          self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
+          #self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
+	   self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
         else :
           self.remaining_bytes = 44000000000L
-        self.wr_access = stats[1]
+        self.wr_access = string.atoi(stats[1])
         if stats[2] != "Invalid" :
-          self.wr_err = stats[2]
+          self.wr_err = string.atoi(stats[2])
         else :
           self.wr_err = 0;
         print repr(self.bod), repr(stats[3])

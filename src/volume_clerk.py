@@ -1,3 +1,4 @@
+import sys
 import time
 import copy
 from SocketServer import UDPServer, TCPServer
@@ -14,6 +15,7 @@ class VolumeClerkMethods(DispatchingWorker) :
     # add : some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
+     try:
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
         record={}
@@ -110,11 +112,19 @@ class VolumeClerkMethods(DispatchingWorker) :
         dict[external_label] = record
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # delete a volume from the database
     def delvol(self, ticket):
-
+     try:
         # everything is based on external label - make sure we have this
         key="external_label"
         try:
@@ -135,10 +145,19 @@ class VolumeClerkMethods(DispatchingWorker) :
             pprint.pprint(ticket)
 
         self.reply_to_caller(ticket)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # Get the next volume that satisfy criteria
     def next_write_volume (self, ticket) :
+     try:
         # make sure we have this vol_veto_list
         key="vol_veto_list"
         try:
@@ -263,7 +282,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             label = vol['external_label']
             vol["file_family"] = file_family
             print "Assigning blank volume",label,"to family",file_family,\
-		  "in",library,"library"
+                  "in",library,"library"
             dict[label] = copy.deepcopy(vol)
             vol["status"] = "ok"
             self.reply_to_caller(vol)
@@ -275,9 +294,17 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(ticket)
         return
 
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+
 
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket) :
+     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -325,12 +352,20 @@ class VolumeClerkMethods(DispatchingWorker) :
         # record our changes
         dict[external_label] = copy.deepcopy(record)
         record["status"] = "ok"
-
         self.reply_to_caller(record)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # update the database entry for this volume
     def update_counts(self, ticket) :
+     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -368,11 +403,20 @@ class VolumeClerkMethods(DispatchingWorker) :
         # record our changes
         dict[external_label] = copy.deepcopy(record)
         record["status"] = "ok"
-
         self.reply_to_caller(record)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+
 
     # get the current database volume about a specific entry
     def inquire_vol(self, ticket) :
+     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -388,15 +432,25 @@ class VolumeClerkMethods(DispatchingWorker) :
             record = copy.deepcopy(dict[external_label])
             record["status"] = "ok"
             self.reply_to_caller(record)
+            return
         except KeyError:
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" no such volume"
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
+            return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # flag the database that we are now writing the system
     def set_writing(self, ticket) :
+     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -420,12 +474,21 @@ class VolumeClerkMethods(DispatchingWorker) :
         # update the fields that have changed
         record ["system_inhibit"] = "writing"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-
         record["status"] = "ok"
         self.reply_to_caller(record)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
+
 
     # flag that the current volume is readonly
     def set_system_readonly(self, ticket) :
+     try:
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
@@ -449,20 +512,44 @@ class VolumeClerkMethods(DispatchingWorker) :
         # update the fields that have changed
         record ["system_inhibit"] = "readonly"
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
-
         record["status"] = "ok"
         self.reply_to_caller(record)
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # device is broken - what to do, what to do
     def set_hung(self,ticket) :
+     try:
         self.reply_to_caller({"status" : "ok"})
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :
-            self.reply_to_caller({"status" : "ok",\
-                                  "vols"  :repr(dict.keys()) })
+     try:
+         self.reply_to_caller({"status" : "ok",\
+                               "vols"  :repr(dict.keys()) })
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         return
 
 
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
