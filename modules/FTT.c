@@ -502,8 +502,8 @@ do_read(  int 		rd_fd
 	    case 0:
 		break;
 	    case 1:
-		crc_i=adler32(crc_i,g_shmaddr_p+shm_off+g_buf_bytes
-			      ,shm_bytes-g_buf_bytes);
+		crc_i=adler32(crc_i,g_shmaddr_p+shm_off+g_buf_bytes,
+			      shm_bytes-g_buf_bytes);
 		break;
 	    default:
 		printf("fd_xfer: invalid crc flag");
@@ -623,7 +623,7 @@ FTT_fd_xfer(  PyObject *self
 	PyObject	*crc_tp;    /*  /  */
 	PyObject	*shm_tp;    /* /   */
 
-	unsigned int	 crc_i=0;
+	unsigned long    crc_i=0;
 	int              crc_flag=0;
 	int		 sts;	/* general status */
 	struct sigaction newSigAct_sa[32];
@@ -641,8 +641,8 @@ FTT_fd_xfer(  PyObject *self
     if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened"));
 
     if      (crc_tp == Py_None)   crc_i = 0;
-    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsLong(crc_tp);
-    else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
+    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsUnsignedLong(crc_tp);
+    else if (PyInt_Check(crc_tp)) crc_i = (unsigned long) PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
 
     if (crc_fun_tp==Py_None) crc_flag=0;
@@ -838,7 +838,7 @@ FTT_fd_xfer(  PyObject *self
 	return (raise_exception("fd_xfer - waitpid"));
 
     if (crc_flag)
-	rr = PyLong_FromLong(crc_i);
+	rr = PyLong_FromUnsignedLong(crc_i);
     else
 	rr = Py_BuildValue( "" );
     return (rr);

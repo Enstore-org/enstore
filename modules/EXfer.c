@@ -297,7 +297,7 @@ EXfd_xfer(  PyObject	*self
 	PyObject	*shm_obj_tp=0;  /* optional, ref. FTT.fd_xfer */
 	int              crc_flag=0; /*0: no CRC 1: Adler32 CRC >1: RFU */
 
-	unsigned int     crc_i;
+	unsigned long    crc_i;
 	int		 sts;
 	struct sigaction newSigAct_sa[32];
 	int		 rd_ahead_i;
@@ -311,8 +311,8 @@ EXfd_xfer(  PyObject	*self
 			   , &blk_size, &crc_obj_tp, &crc_tp, &shm_obj_tp );
     if (!sts) return (NULL);
     if      (crc_tp == Py_None)   crc_i = 0;
-    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsLong(crc_tp);
-    else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
+    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsUnsignedLong(crc_tp);
+    else if (PyInt_Check(crc_tp)) crc_i = (unsigned)PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
 
     /* see if we are crc-ing */
@@ -504,7 +504,7 @@ EXfd_xfer(  PyObject	*self
 	return (raise_exception("fd_xfer - waitpid"));
 
     if (crc_flag)
-	rr = PyLong_FromLong( crc_i );
+	rr = PyLong_FromUnsignedLong( crc_i );
     else
 	rr = Py_BuildValue( "" );
     return (rr);
