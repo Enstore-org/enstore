@@ -320,7 +320,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 return
             # if not, is this an "earlier" volume that one we already found?
             Trace.trace(12,'next_write_vol blank found '+\
-                        repr(v['external_label'])
+                        repr(v['external_label']))
             if len(vol) == 0:
                 vol = copy.deepcopy(v)
             elif v['declared'] < vol['declared']:
