@@ -245,15 +245,9 @@ class EnDataFile(EnFile):
 	    cdcmd = " "
 	else:
 	    cdcmd = "cd %s;"%(indir,)
-	try:
-	    os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
-	    tmp = enstore_functions.strip_file_dir(inFile)
-	    self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
-	except:
-	    self.file_name = ""
-            exc, msg, tb=sys.exc_info()
-	    format = "%s: inquisitor plot system error: %s" % (sys.argv,msg)
-	    Trace.trace(9,"__init__ %s"%(format,))
+	os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
+	tmp = enstore_functions.strip_file_dir(inFile)
+	self.date = string.replace(tmp, enstore_constants.LOG_PREFIX, "")
 
     def read(self, max_lines):
 	i = 0
