@@ -133,7 +133,7 @@ class InquisitorPlots:
 	    self.output_dir = self.logfile_dir
 
 	Trace.trace(1, "Creating inq transfer plots")
-	#self.encp_plot() NOTE 
+	self.encp_plot()
 	Trace.trace(1, "Creating inq mount plots")
 	self.mount_plot()
 	# update the inquisitor plots web page
