@@ -221,8 +221,7 @@ def send_user_done( self, ticket, error_info ):
 # ticket received.
 #
 class MoverClient:
-    def __init__( self, config, csc ):
-        self.config = config
+    def __init__( self, csc ):
         self.csc = csc
 	self.state = 'idle'
 	# needs to be initialized for status
@@ -369,9 +368,9 @@ def bind_volume( object, external_label ):
 
 	object.vol_info['read_errors_this_mover'] = 0
         tmp_mc = ", "+str({"media_changer":mvr_config['media_changer']})
-        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(object.config['mc_device']))
-	try: rsp = object.mcc.loadvol( tmp_vol_info, object.config['name'],
-				object.config['mc_device'], vcc )
+        Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_REQ+'Requesting media changer load '+str(tmp_vol_info)+" "+tmp_mc+' '+str(mvr_config['mc_device']))
+	try: rsp = object.mcc.loadvol( tmp_vol_info, mvr_config['name'],
+				mvr_config['mc_device'], vcc )
 	except errno.errorcode[errno.ETIMEDOUT]:
             rsp = { 'status':('ETIMEDOUT',None) }
 	Trace.log(e_errors.INFO,Trace.MSG_MC_LOAD_DONE+'Media changer load status '+\
@@ -555,7 +554,7 @@ def forked_write_to_hsm( self, ticket ):
 
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = driver_object.tell()
-	    if do.loc_compare(eod_cookie,location_cookie) != 1: raise "bad eod"
+	    if driver_object.loc_compare(eod_cookie,location_cookie) != 1: raise "bad eod"
 	    t0 = time.time()
 	    stats = driver_object.get_stats()
 	    ticket['times']['get_stats_time'] = time.time() - t0
@@ -972,7 +971,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
             libm_config_dict[lib].update( self.csc.get_uncached(lib) )
             pass        
 
-	self.client_obj_inst = MoverClient( mvr_config, self.csc )
+	self.client_obj_inst = MoverClient( self.csc )
 	self.client_obj_inst.log_name = self.log_name # duplicate for do_fork
 	self.summoned_while_busy = []
         Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
