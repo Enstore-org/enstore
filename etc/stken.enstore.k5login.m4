@@ -27,7 +27,6 @@ enstore/cd/stkenmvr16a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr18a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr19a.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, stkensrv2, `oleynik/cron/stkenmvr20a.fnal.gov@FNAL.GOV', `dnl')
 enstore/cd/stkenmvr23a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr24a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr25a.fnal.gov@FNAL.GOV

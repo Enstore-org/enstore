@@ -9,13 +9,6 @@ enstore/cd/cdfensrv6.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr1a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr2a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr3a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr4a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr5a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr6a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr7a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr8a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr9a.fnal.gov@FNAL.GOV
-enstore/cd/cdfenmvr10a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr11a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr12a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr13a.fnal.gov@FNAL.GOV
@@ -29,6 +22,11 @@ enstore/cd/cdfenmvr20a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr21a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr22a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr23a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr24a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr25a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr26a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr27a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr28a.fnal.gov@FNAL.GOV
 aik@FNAL.GOV
 alcorn@FNAL.GOV
 baisley@FNAL.GOV

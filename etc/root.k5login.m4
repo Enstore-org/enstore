@@ -93,6 +93,10 @@ host/d0enmvr46a.fnal.gov@FNAL.GOV
 host/d0enmvr47a.fnal.gov@FNAL.GOV
 host/d0enmvr48a.fnal.gov@FNAL.GOV
 host/d0enmvr49a.fnal.gov@FNAL.GOV
+host/d0enmvr50a.fnal.gov@FNAL.GOV
+host/d0enmvr51a.fnal.gov@FNAL.GOV
+host/d0enmvr52a.fnal.gov@FNAL.GOV
+host/d0enmvr53a.fnal.gov@FNAL.GOV
 host/d0enout1a.fnal.gov@FNAL.GOV
 host/d0enout2a.fnal.gov@FNAL.GOV
 host/cmspnfs1.fnal.gov@FNAL.GOV
@@ -145,13 +149,6 @@ host/cdfensrv6.fnal.gov@FNAL.GOV
 host/cdfenmvr1a.fnal.gov@FNAL.GOV
 host/cdfenmvr2a.fnal.gov@FNAL.GOV
 host/cdfenmvr3a.fnal.gov@FNAL.GOV
-host/cdfenmvr4a.fnal.gov@FNAL.GOV
-host/cdfenmvr5a.fnal.gov@FNAL.GOV
-host/cdfenmvr6a.fnal.gov@FNAL.GOV
-host/cdfenmvr7a.fnal.gov@FNAL.GOV
-host/cdfenmvr8a.fnal.gov@FNAL.GOV
-host/cdfenmvr9a.fnal.gov@FNAL.GOV
-host/cdfenmvr10a.fnal.gov@FNAL.GOV
 host/cdfenmvr11a.fnal.gov@FNAL.GOV
 host/cdfenmvr12a.fnal.gov@FNAL.GOV
 host/cdfenmvr13a.fnal.gov@FNAL.GOV
@@ -165,6 +162,11 @@ host/cdfenmvr20a.fnal.gov@FNAL.GOV
 host/cdfenmvr21a.fnal.gov@FNAL.GOV
 host/cdfenmvr22a.fnal.gov@FNAL.GOV
 host/cdfenmvr23a.fnal.gov@FNAL.GOV
+host/cdfenmvr24a.fnal.gov@FNAL.GOV
+host/cdfenmvr25a.fnal.gov@FNAL.GOV
+host/cdfenmvr26a.fnal.gov@FNAL.GOV
+host/cdfenmvr27a.fnal.gov@FNAL.GOV
+host/cdfenmvr28a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')

@@ -56,6 +56,10 @@ enstore/cd/d0enmvr46a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr47a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr48a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr49a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr50a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr51a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr52a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr53a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout1a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout2a.fnal.gov@FNAL.GOV
 aik@FNAL.GOV
