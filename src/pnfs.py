@@ -57,6 +57,7 @@ class Pnfs:
         self.get_file_family_width()
         self.get_xreference()
         self.get_lastparked()
+        self.get_id()
         if all:
             self.get_pnfs_info()
         if timeit != 0:
@@ -130,9 +131,10 @@ class Pnfs:
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else:
-		    print "problem with pnfsFilename =",self.pnfsFilename
+                    print "problem with pnfsFilename =",self.pnfsFilename
                     raise sys.exc_info()[0],sys.exc_info()[1]
             self.pstatinfo()
+            self.get_id()
 
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
@@ -243,43 +245,71 @@ class Pnfs:
 
     # get all the extra pnfs information
     def get_pnfs_info(self):
-        if self.valid == VALID and self.exists == EXISTS:
+        self.get_const()
+        self.get_id()
+        self.get_nameof()
+        self.get_parent()
+        self.get_path()
+        self.get_cursor()
+        self.get_counters()
 
-            # get the numeric pnfs id of the file
+    # get the const info of the file, given the filename
+    def get_const(self):
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(const)('+self.file+')','r')
             self.const = f.readlines()
             f.close()
+        else:
+            self.const = UNKNOWN
 
-            # get the numeric pnfs id of the file
+    # get the numeric pnfs id, given the filename
+    def get_id(self):
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(id)('+self.file+')','r')
             i = f.readlines()
             f.close()
             self.id = regsub.sub("\012","",i[0])
+        else:
+            self.id = UNKNOWN
 
-            # get the showid information
-            f = open(self.dir+'/.(showid)('+self.id+')','r')
-            self.showid = f.readlines()
-            f.close()
-
-            # get the nameof information
+    # get the nameof information, given the id
+    def get_nameof(self):
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(nameof)('+self.id+')','r')
             self.nameof = f.readlines()
             f.close()
+        else:
+            self.nameof = UNKNOWN
 
-            # get the showid information
+    # get the parent information, given the id
+    def get_parent(self):
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(parent)('+self.id+')','r')
             self.parent = f.readlines()
             f.close()
+        else:
+            self.parent = UNKNOWN
 
-            # get the cursor information
-            f = open(self.dir+'/.(get)(cusor)','r')
+    # get the total path of the id
+    def get_path(self):
+        x=1
+    # get the cursor information
+    def get_cursor(self):
+        if self.valid == VALID and self.exists == EXISTS:
+            f = open(self.dir+'/.(get)(cursor)','r')
             self.cursor = f.readlines()
             f.close()
+        else:
+            self.cursor = UNKNOWN
 
-            # get the cursor information
+    # get the cursor information
+    def get_counters(self):
+        if self.valid == VALID and self.exists == EXISTS:
             f = open(self.dir+'/.(get)(counters)','r')
             self.counters = f.readlines()
             f.close()
+        else:
+            self.counters = UNKNOWN
 
 
     ##########################################################################
@@ -382,12 +412,19 @@ class Pnfs:
     # store the cross-referencing data
     def set_xreference(self,volume,cookie):
         self.volmap_filename(volume,cookie)
-        value=volume+'\012'+cookie+'\012'+ \
-             self.file_family+'\012'+self.pnfsFilename+'\012' +\
-             self.volume_file+'\012'
+        self.make_volmap_file()
+        print "self.dump"
+        self.dump()
+        value=volume+'\012' + \
+               cookie+'\012'+ \
+               self.file_family+'\012' + \
+               self.pnfsFilename+'\012' + \
+               self.volume_file+'\012' + \
+               self.id+'\012' + \
+               self.volume_fileP.id+'\012'
         self.writelayer(4,value)
-        self.make_volmap()
         self.get_xreference()
+        self.fill_volmap_file()
 
     # get the bit file id
     def get_bit_file_id(self):
@@ -612,7 +649,7 @@ class Pnfs:
             self.volume_file = UNKNOWN
 
     # create a duplicate entry in pnfs that is ordered by file number on tape
-    def make_volmap(self):
+    def make_volmap_file(self):
         if self.volume_file!=UNKNOWN:
             if posixpath.exists(self.voldir) == 0:
                 dir = ""
@@ -626,17 +663,23 @@ class Pnfs:
                         os.mkdir(dir)
 
             # create the volume map file and set its size the same as main file
-            volume_file=Pnfs(self.volume_file)
-            volume_file.touch()
-            volume_file.set_file_size(self.file_size)
+            self.volume_fileP = Pnfs(self.volume_file)
+            self.volume_fileP.touch()
+            self.volume_fileP.set_file_size(self.file_size)
+            print "self.volume_fileP.dump"
+            self.volume_fileP.dump()
 
+
+    # file in the already existing volume map file
+    def fill_volmap_file(self):
+        if self.volume_file!=UNKNOWN:
             # now copy the appropriate layers to the volmap file
             for layer in [1,4]: # bfid and xref
                 inlayer = self.readlayer(layer)
                 value = ""
                 for e in range(0,len(inlayer)):
                     value=value+inlayer[e]
-                    volume_file.writelayer(layer,value)
+                    self.volume_fileP.writelayer(layer,value)
 
             # protect it against accidental deletion - and give ownership to root.root
             os.chmod(self.volume_file,0644)  # disable write access except for owner
