@@ -286,9 +286,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         status = fcc.erase_volume(vol)
         del fcc
         if status[0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, 'erasing volume "%s" failed'%(vol))
             return status
         # erase volume record
         del self.dict[vol]
+        Trace.log(e_errors.INFO, 'volume "%s" has been erased'%(vol))
         return e_errors.OK, None
 
     # erase_volume(vol) -- server version of __erase_volume()
@@ -369,6 +371,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 record = self.dict[vol+'.deleted']
                 record['system_inhibit'][0] = e_errors.DELETED
                 self.dict[vol+'.deleted'] = record
+                Trace.log(e_errors.INFO, 'volume "%s" has been deleted'%(vol))
             else: # don't do anything further
                 return status
         else:    # never written
@@ -376,6 +379,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             # take care of bfid_db
             self.bfid_db.delete_all_bfids(vol)
             status = e_errors.OK, None
+            Trace.log(e_errors.INFO, 'Empty volume "%s" has been deleted'%(vol))
 
         # recycling it?
 
@@ -394,6 +398,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record['sum_rd_err'] = 0
             record['non_del_files'] = 0
             self.dict[vol] = record
+            Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
         else:
 
             # get storage group and take care of quota
@@ -476,6 +481,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 return e_errors.ERROR, error_msg
             else:    # never written, just erase it
                 del self.dict[vol]
+                Trace.log(e_errors.INFO, 'Empty volume "%s" is erased due to restoration of a previous version'%(vol))
 
         status = self.__rename_volume(vol+'.deleted', vol)
         if status[0] == e_errors.OK:
@@ -483,6 +489,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record = self.dict[vol]
             record['system_inhibit'][0] = 'none'
             self.dict[vol] = record
+            Trace.log(e_errors.INFO, 'volume "%s" has been restored'%(vol))
         return status
 
     # restore_volume(vol) -- server version of __restore_volume()
