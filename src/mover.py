@@ -147,6 +147,7 @@ class Buffer:
         self.wrapper = None
         self.first_block = 1
         self.bytes_for_crc = 0L
+        self.trailer_pnt = 0L
         
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -358,31 +359,28 @@ class Buffer:
             raise ValueError, "asked to write %s bytes, buffer has %s" % (nbytes, len(data))
         bytes_written = driver.write(data, 0, nbytes)
         if bytes_written == nbytes: #normal case
-            self.bytes_written = self.bytes_written + bytes_written
-            Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written))
+            Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written,))
+            number_to_skip = 0L
             if do_crc:
                 data_ptr = 0  # where data for CRC starts
                 bytes_for_cs = bytes_written
                 if self.first_block: #Handle variable-sized cpio header
                     #skip over the header
                     data_ptr = data_ptr + self.header_size
-                    bytes_for_cs = bytes_for_cs - self.header_size
+                    number_to_skip = self.header_size
+                    #bytes_for_cs = bytes_for_cs - self.header_size
                     if len(data) <= self.header_size:
                         raise "WRAPPER_ERROR"
                     self.first_block = 0
-                #if self.bytes_written == self.file_size+self.header_size:
-                Trace.trace(22, "block_write: block size %s" % (self.blocksize,))
-                if self.trailer_size >= 512:
-                    # trailer size + padding is more 512 bytes
-                    if self.bytes_written == self.file_size:
-                        
-                        bytes_for_cs = 0
-                    elif self.bytes_written + self.blocksize >= self.file_size:
-                        bytes_for_cs = bytes_for_cs - (self.trailer_size - 512)
-                else:
-                    if self.bytes_written == self.file_size:
-                        bytes_for_cs = bytes_for_cs - self.trailer_size    
-                        
+                Trace.trace(22, "block_write: written in this shot %s" % (bytes_written,))
+                
+                if self.bytes_written >= self.trailer_pnt:
+                    number_to_skip = bytes_written
+                elif self.bytes_written+bytes_written > self.trailer_pnt:
+                    number_to_skip = number_to_skip + self.bytes_written + bytes_written - self.trailer_pnt
+
+                bytes_for_cs = bytes_for_cs - number_to_skip
+
                 Trace.trace(22, "nbytes %s, bytes written %s, bytes for cs %s trailer size %s"%
                             (nbytes, bytes_written, bytes_for_cs,self.trailer_size))
                 if bytes_for_cs:
@@ -407,7 +405,8 @@ class Buffer:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
                         raise "CRC_ERROR"
             self._freespace(data)
-            
+            self.bytes_written = self.bytes_written + bytes_written
+
         else: #XXX raise an exception?
             Trace.trace(22,"actually written %s" % (bytes_written,))
             self._freespace(data)
@@ -1634,6 +1633,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.trailer_size = len(self.trailer)
             self.bytes_to_write = self.bytes_to_write + len(self.header) + len(self.trailer)
             self.buffer.file_size = self.bytes_to_write
+            self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None        
 
         if volume_label == self.current_volume: #no mount needed
