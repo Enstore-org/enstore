@@ -25,14 +25,21 @@ else
   place=$1
 fi
 
+if [ -z "${2-}" ] ; then
+  subdirs="1 2 3"
+else
+  subdirs="$2"
+fi
+
+
 if [ $writem -eq 1 ] ; then
-   for d in 1 2 3; do
+   for d in $subdirs; do
       (cd $d; echo starting writer in `pwd`; rm -f writer.output; ./writer $place ../data.in >writer.output 2>&1 &)
    done
 fi
 
 if [ $readem -eq 1 ] ; then
-   for d in 1 2 3; do
+   for d in $subdirs; do
       (cd $d; echo starting reader in `pwd`; rm -f reader.output; ./reader $place  >reader.output 2>&1 &)
    done
 fi
