@@ -71,6 +71,7 @@
 131.225.164.66		d0enout1a.fnal.gov	d0enout1a
 131.225.164.67		d0enout2a.fnal.gov	d0enout2a
 131.225.164.62		d0enload.fnal.gov	d0enload
+
 131.225.164.1		rip1.fnal.gov		rip1
 131.225.164.2		rip2.fnal.gov		rip2
 131.225.164.3		rip3.fnal.gov		rip3
@@ -84,6 +85,7 @@
 131.225.13.22		rip10.fnal.gov		rip10
 #131.225.13.23		rip10-ge.fnal.gov	rip10-ge
 131.225.164.9		ripcon.fnal.gov		ripcon
+
 131.225.13.59		stkensrv0.fnal.gov	stkensrv0
 131.225.13.1		stkensrv1.fnal.gov	stkensrv1
 131.225.13.2		stkensrv2.fnal.gov	stkensrv2
@@ -133,6 +135,7 @@
 131.225.13.88		stkendm4a.fnal.gov	stkendm4a
 131.225.13.76		stkenload.fnal.gov	stkenload
 131.225.13.18		stkentst1.fnal.gov	stkentst1
+
 131.225.215.17		cdfensrv0.fnal.gov	cdfensrv0
 131.225.215.3		cdfensrv1.fnal.gov	cdfensrv1
 131.225.215.4		cdfensrv2.fnal.gov	cdfensrv2
@@ -143,13 +146,6 @@
 131.225.215.1		cdfenmvr1a.fnal.gov	cdfenmvr1a
 131.225.215.2		cdfenmvr2a.fnal.gov	cdfenmvr2a
 131.225.215.9		cdfenmvr3a.fnal.gov	cdfenmvr3a
-131.225.215.10		cdfenmvr4a.fnal.gov	cdfenmvr4a
-131.225.215.16		cdfenmvr5a.fnal.gov	cdfenmvr5a
-131.225.215.15		cdfenmvr6a.fnal.gov	cdfenmvr6a
-131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
-131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
-131.225.215.12		cdfenmvr9a.fnal.gov	cdfenmvr9a
-131.225.215.11		cdfenmvr10a.fnal.gov	cdfenmvr10a
 131.225.215.35		cdfenmvr11a.fnal.gov	cdfenmvr11a
 131.225.215.23		cdfenmvr12a.fnal.gov	cdfenmvr12a
 131.225.215.26		cdfenmvr13a.fnal.gov	cdfenmvr13a
@@ -163,6 +159,11 @@
 131.225.215.32		cdfenmvr21a.fnal.gov	cdfenmvr21a
 131.225.215.33		cdfenmvr22a.fnal.gov	cdfenmvr22a
 131.225.215.7		cdfenmvr23a.fnal.gov	cdfenmvr23a
+131.225.215.8		cdfenmvr24a.fnal.gov	cdfenmvr24a
+131.225.215.37		cdfenmvr25a.fnal.gov	cdfenmvr25a
+131.225.215.38		cdfenmvr26a.fnal.gov    cdfenmvr26a
+131.225.215.36		cdfenmvr27a.fnal.gov    cdfenmvr27a
+131.225.215.18		cdfenmvr28a.fnal.gov    cdfenmvr28a
 131.225.215.22		cdfenload.fnal.gov	cdfenload
 
 131.225.206.146		cmspnfs1.fnal.gov	cmspnfs1
@@ -197,6 +198,13 @@
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
 #131.225.13.39		stkenout1.fnal.gov	stkenout1
 #131.225.13.40		stkenout2.fnal.gov	stkenout2
+#131.225.215.10 	cdfenmvr4a.fnal.gov	cdfenmvr4a
+#131.225.215.16 	cdfenmvr5a.fnal.gov	cdfenmvr5a
+#131.225.215.15 	cdfenmvr6a.fnal.gov	cdfenmvr6a
+#131.225.215.14 	cdfenmvr7a.fnal.gov	cdfenmvr7a
+#131.225.215.13 	cdfenmvr8a.fnal.gov	cdfenmvr8a
+#131.225.215.12 	cdfenmvr9a.fnal.gov	cdfenmvr9a
+#131.225.215.11 	cdfenmvr10a.fnal.gov	cdfenmvr10a
 #131.225.215.19		cdfendca3.fnal.gov	cdfendca3
 #131.225.215.20		cdfendca4.fnal.gov	cdfendca4
 #131.225.215.21		cdfendca5.fnal.gov	cdfendca5
