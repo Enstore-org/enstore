@@ -670,12 +670,16 @@ class Pnfs:
 
             # we need to find the mount point and create the volume file there
             command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
+            print command
             mountpoints = os.popen(command,'r').readlines()
+            print mountpoints
             mpchoose = ""
             for mplf in mountpoints:
                 mp = regsub.sub("\012","",mplf)
+                print mp, self.dir
                 if string.find(self.dir,mp) == 0:
                     if len(mp)>len(mpchoose):
+                        print "chosen", mpchoose
                         mpchoose = mp
             self.voldir = '/'+mpchoose+'/volmap/'+ ff+'/'+volume
             # make the filename lexically sortable.  since this could be a byte offset,
