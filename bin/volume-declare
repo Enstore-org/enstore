@@ -102,6 +102,40 @@ case $1 in
                       CA2914
                       CA2915
                       CA2916
+		      CA2917
+		      CA2918
+		      CA2919
+		      CA2920
+                      CA2921
+                      CA2922
+                      CA2923
+                      CA2924
+                      CA2925
+                      CA2926
+                      CA2927
+                      CA2928
+                      CA2929
+                      CA2930
+                      CA2931
+                      CA2932
+                      CA2933
+                      CA2934
+                      CA2935
+                      CA2936
+		      CA2937
+		      CA2938
+		      CA2939
+		      CA2940
+                      CA2941
+                      CA2942
+                      CA2943
+                      CA2944
+                      CA2955
+                      CA2956
+		      CA2957
+		      CA2958
+		      CA2959
+		      CA2960
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -121,6 +155,40 @@ case $1 in
                       ait   none 8MM     CA2914 26016563200 26016563200
                       ait   none 8MM     CA2915 26016563200 26016563200
                       ait   none 8MM     CA2916 26016563200 26016563200
+                      ait   none 8MM     CA2917 26016563200 26016563200
+                      ait   none 8MM     CA2918 26016563200 26016563200
+                      ait   none 8MM     CA2919 26016563200 26016563200
+                      ait   none 8MM     CA2920 26016563200 26016563200
+                      ait   none 8MM     CA2921 26016563200 26016563200
+                      ait   none 8MM     CA2922 26016563200 26016563200
+                      ait   none 8MM     CA2923 26016563200 26016563200
+                      ait   none 8MM     CA2924 26016563200 26016563200
+                      ait   none 8MM     CA2925 26016563200 26016563200
+                      ait   none 8MM     CA2926 26016563200 26016563200
+                      ait   none 8MM     CA2927 26016563200 26016563200
+                      ait   none 8MM     CA2928 26016563200 26016563200
+                      ait   none 8MM     CA2929 26016563200 26016563200
+                      ait   none 8MM     CA2930 26016563200 26016563200
+                      ait   none 8MM     CA2931 26016563200 26016563200
+                      ait   none 8MM     CA2932 26016563200 26016563200
+                      ait   none 8MM     CA2933 26016563200 26016563200
+                      ait   none 8MM     CA2934 26016563200 26016563200
+                      ait   none 8MM     CA2935 26016563200 26016563200
+                      ait   none 8MM     CA2936 26016563200 26016563200
+                      ait   none 8MM     CA2937 26016563200 26016563200
+                      ait   none 8MM     CA2938 26016563200 26016563200
+                      ait   none 8MM     CA2939 26016563200 26016563200
+                      ait   none 8MM     CA2940 26016563200 26016563200
+                      ait   none 8MM     CA2941 26016563200 26016563200
+                      ait   none 8MM     CA2942 26016563200 26016563200
+                      ait   none 8MM     CA2943 26016563200 26016563200
+                      ait   none 8MM     CA2944 26016563200 26016563200
+                      ait   none 8MM     CA2955 26016563200 26016563200
+                      ait   none 8MM     CA2956 26016563200 26016563200
+                      ait   none 8MM     CA2957 26016563200 26016563200
+                      ait   none 8MM     CA2958 26016563200 26016563200
+                      ait   none 8MM     CA2959 26016563200 26016563200
+                      ait   none 8MM     CA2960 26016563200 26016563200
                      "
          ;;
   samait)rm -fr    /pnfs/sam/ait/*
@@ -454,66 +522,66 @@ case $1 in
                      "
 #                     lib   ff   medtype   label   capacity    bytes left
          volumes="
-                      null7 none  diskfile  null7-01 2147483648000 2147483648000
-                      null7 none  diskfile  null7-02 2147483648000 2147483648000
-                      null7 none  diskfile  null7-03 2147483648000 2147483648000
-                      null7 none  diskfile  null7-04 2147483648000 2147483648000
-                      null7 none  diskfile  null7-05 2147483648000 2147483648000
-                      null7 none  diskfile  null7-06 2147483648000 2147483648000
-                      null7 none  diskfile  null7-07 2147483648000 2147483648000
-                      null7 none  diskfile  null7-08 2147483648000 2147483648000
-                      null7 none  diskfile  null7-09 2147483648000 2147483648000
-                      null7 none  diskfile  null7-10 2147483648000 2147483648000
-                      null7 none  diskfile  null7-11 2147483648000 2147483648000
-                      null7 none  diskfile  null7-12 2147483648000 2147483648000
-                      null7 none  diskfile  null7-13 2147483648000 2147483648000
-                      null7 none  diskfile  null7-14 2147483648000 2147483648000
-                      null7 none  diskfile  null7-15 2147483648000 2147483648000
-                      null7 none  diskfile  null7-16 2147483648000 2147483648000
-                      null7 none  diskfile  null7-17 2147483648000 2147483648000
-                      null7 none  diskfile  null7-18 2147483648000 2147483648000
-                      null7 none  diskfile  null7-19 2147483648000 2147483648000
-                      null7 none  diskfile  null7-20 2147483648000 2147483648000
-                      null1 none  diskfile  null1-01 2147483648000 2147483648000
-                      null1 none  diskfile  null1-02 2147483648000 2147483648000
-                      null1 none  diskfile  null1-03 2147483648000 2147483648000
-                      null1 none  diskfile  null1-04 2147483648000 2147483648000
-                      null1 none  diskfile  null1-05 2147483648000 2147483648000
-                      null1 none  diskfile  null1-06 2147483648000 2147483648000
-                      null1 none  diskfile  null1-07 2147483648000 2147483648000
-                      null1 none  diskfile  null1-08 2147483648000 2147483648000
-                      null1 none  diskfile  null1-09 2147483648000 2147483648000
-                      null1 none  diskfile  null1-10 2147483648000 2147483648000
-                      null1 none  diskfile  null1-11 2147483648000 2147483648000
-                      null1 none  diskfile  null1-12 2147483648000 2147483648000
-                      null1 none  diskfile  null1-13 2147483648000 2147483648000
-                      null1 none  diskfile  null1-14 2147483648000 2147483648000
-                      null1 none  diskfile  null1-15 2147483648000 2147483648000
-                      null1 none  diskfile  null1-16 2147483648000 2147483648000
-                      null1 none  diskfile  null1-17 2147483648000 2147483648000
-                      null1 none  diskfile  null1-18 2147483648000 2147483648000
-                      null1 none  diskfile  null1-19 2147483648000 2147483648000
-                      null1 none  diskfile  null1-20 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-01 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-02 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-03 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-04 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-05 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-06 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-07 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-08 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-09 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-10 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-11 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-12 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-13 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-14 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-15 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-16 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-17 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-18 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-19 2147483648000 2147483648000
-                      nullI none  diskfile  nullI-20 2147483648000 2147483648000
+                      null7 none  nullfile  null7-01 2147483648000 2147483648000
+                      null7 none  nullfile  null7-02 2147483648000 2147483648000
+                      null7 none  nullfile  null7-03 2147483648000 2147483648000
+                      null7 none  nullfile  null7-04 2147483648000 2147483648000
+                      null7 none  nullfile  null7-05 2147483648000 2147483648000
+                      null7 none  nullfile  null7-06 2147483648000 2147483648000
+                      null7 none  nullfile  null7-07 2147483648000 2147483648000
+                      null7 none  nullfile  null7-08 2147483648000 2147483648000
+                      null7 none  nullfile  null7-09 2147483648000 2147483648000
+                      null7 none  nullfile  null7-10 2147483648000 2147483648000
+                      null7 none  nullfile  null7-11 2147483648000 2147483648000
+                      null7 none  nullfile  null7-12 2147483648000 2147483648000
+                      null7 none  nullfile  null7-13 2147483648000 2147483648000
+                      null7 none  nullfile  null7-14 2147483648000 2147483648000
+                      null7 none  nullfile  null7-15 2147483648000 2147483648000
+                      null7 none  nullfile  null7-16 2147483648000 2147483648000
+                      null7 none  nullfile  null7-17 2147483648000 2147483648000
+                      null7 none  nullfile  null7-18 2147483648000 2147483648000
+                      null7 none  nullfile  null7-19 2147483648000 2147483648000
+                      null7 none  nullfile  null7-20 2147483648000 2147483648000
+                      null1 none  nullfile  null1-01 2147483648000 2147483648000
+                      null1 none  nullfile  null1-02 2147483648000 2147483648000
+                      null1 none  nullfile  null1-03 2147483648000 2147483648000
+                      null1 none  nullfile  null1-04 2147483648000 2147483648000
+                      null1 none  nullfile  null1-05 2147483648000 2147483648000
+                      null1 none  nullfile  null1-06 2147483648000 2147483648000
+                      null1 none  nullfile  null1-07 2147483648000 2147483648000
+                      null1 none  nullfile  null1-08 2147483648000 2147483648000
+                      null1 none  nullfile  null1-09 2147483648000 2147483648000
+                      null1 none  nullfile  null1-10 2147483648000 2147483648000
+                      null1 none  nullfile  null1-11 2147483648000 2147483648000
+                      null1 none  nullfile  null1-12 2147483648000 2147483648000
+                      null1 none  nullfile  null1-13 2147483648000 2147483648000
+                      null1 none  nullfile  null1-14 2147483648000 2147483648000
+                      null1 none  nullfile  null1-15 2147483648000 2147483648000
+                      null1 none  nullfile  null1-16 2147483648000 2147483648000
+                      null1 none  nullfile  null1-17 2147483648000 2147483648000
+                      null1 none  nullfile  null1-18 2147483648000 2147483648000
+                      null1 none  nullfile  null1-19 2147483648000 2147483648000
+                      null1 none  nullfile  null1-20 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-01 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-02 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-03 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-04 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-05 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-06 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-07 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-08 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-09 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-10 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-11 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-12 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-13 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-14 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-15 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-16 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-17 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-18 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-19 2147483648000 2147483648000
+                      nullI none  nullfile  nullI-20 2147483648000 2147483648000
                       disk none  diskfile  disk-01      140000      140000
                       disk none  diskfile  disk-02      140000      140000
                       disk none  diskfile  disk-03     1400000     1400000
