@@ -26,10 +26,6 @@ class ConfigurationClient(generic_client.GenericClient):
 	self.print_id = MY_NAME
         self.config_address=address
         self.u = udp_client.UDPClient()
-
-    def send (self, ticket,  rcv_timeout=0, tries=0):
-        x = self.u.send( ticket, self.config_address, rcv_timeout, tries )
-        return x
     
     # return the address of the configuration server
     def get_address(self):

@@ -72,13 +72,6 @@ class AlarmClient(generic_client.GenericClient):
         self.send(ticket, self.rcv_timeout, self.rcv_tries )
 	return self.alarm_func_lock.unlock()
 
-    def send(self, ticket, rcv_timeout, tries):
-        try:
-            x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            x = {'status' : (e_errors.TIMEDOUT, None)}
-        return x
-        
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
               alarm_info=None):
