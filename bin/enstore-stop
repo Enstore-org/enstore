@@ -5,7 +5,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # stop enstore processes on the current node
 
-PID_DIR=/tmp/enstore/$(whoami)
+me=`whoami`
+PID_DIR=/tmp/enstore/$me
 
 # NOTE: some options (w/ or w/o args) are currently provided just for restart
 # (compatible with start)

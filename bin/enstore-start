@@ -5,7 +5,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # start enstore processes on the current node
 
-PID_DIR=/tmp/enstore/$(whoami)
+me=`whoami`
+PID_DIR=/tmp/enstore/$me
 if [ ! -d $PID_DIR ]; then
     mkdir -p $PID_DIR
 fi
