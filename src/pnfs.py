@@ -363,7 +363,7 @@ class pnfs :
     # store new info and transaction log
     def set_info(self,value) :
         if self.valid == valid and self.exists == exists :
-            self.writelayer(2,value)
+            self.writelayer(3,value)
             self.get_info()
 
     # get the bit file id

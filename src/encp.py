@@ -252,7 +252,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
         if list:
             print "Adding transaction log to pnfs", "   cum=",time.time()-t0
         done_formatted  = pprint.pformat(done_ticket)
-        p.set_info(,done_formatted)
+        p.set_info(done_formatted)
         t2 = time.time() - t1
         if list:
             print "  dt:",t2, "   cum=",time.time()-t0
