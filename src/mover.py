@@ -20,6 +20,8 @@
 #    3   read_from_hsm
 # or 4   write_to_hsm
 #                           calls: get_user_sockets
+#                                  wrapper method (which may use read_block
+#                                                             or write_block
 #                                  send_user_last
 #                                  have_bound_volume_next
 #                                 (which sets up to send: have_bound_volume)
@@ -394,6 +396,8 @@ class Mover:
         # go around for more
         self.have_bound_volume_next()
 
+    # read a block from the network (from the user).  This method is call
+    # from the wrapper object when writing to the HSM
     def read_block(self):
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
@@ -408,6 +412,8 @@ class Mover:
                   errno.errorcode[badsock]
         return block
 
+    # write a block to the network (to the user).  This method is call
+    # from the wrapper object when reading from the HSM
     def write_block(self,buff):
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
