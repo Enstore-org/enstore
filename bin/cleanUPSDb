@@ -22,7 +22,7 @@ then
 
     for line in `ups list -a -K PRODUCT:VERSION:FLAVOR:QUALIFIERS:TABLE_DIR:PROD_DIR -z $db`;
     do
-	python ~/cleanUPSDb.py $PROD_DIR_PREFIX $db $line
+	python cleanUPSDb.py $PROD_DIR_PREFIX $db $line
     done
 
     IFS=$IFSsave
