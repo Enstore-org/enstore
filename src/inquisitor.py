@@ -1110,13 +1110,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	        mean[adate] = fypt
 	        ctr[adate] = 1
 	    if largest.has_key(adate):
-	        if ypt > largest:
+	        if fypt > largest[adate]:
 	            largest[adate] = fypt
 	    else:
 	        largest[adate] = fypt
 	    if smallest.has_key(adate):
-	        if ypt < smallest:
-	            smallst[adate] = fypt
+	        if fypt < smallest[adate]:
+	            smallest[adate] = fypt
 	    else:
 	        smallest[adate] = fypt
 	    ndata[adate] = ndata[adate] + fypt
