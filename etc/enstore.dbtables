@@ -96,3 +96,9 @@ create function lookup_stype(varchar) returns integer
 as 'select id from state_type where name = $1;'
 language sql;
 
+create table bad_file (
+	bfid		varchar references file(bfid) on delete cascade,
+	path		varchar
+);
+
+create index bad_file_bfid_idx on bad_file(bfid);
