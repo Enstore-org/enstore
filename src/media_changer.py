@@ -19,10 +19,6 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
-try:
-    from ETape import ET_Rewind
-except  ImportError:
-    print "ETape unavailable!"
 
 import string
 
@@ -58,25 +54,25 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
     # load volume into the drive
     def load(self, external_label, drive) :
         print 'I am load function and my type is IBM3494'
-        return {"status" : "ok"}
+        self.reply_to_caller({'status' : 'ok'})
 
     # unload volume from the drive
     def unload(self, external_label, drive) :
         print 'I am unload function and my type is IBM3494'
-        return {"status" : "ok"}
+        self.reply_to_caller({'status' : 'ok'})
 
 # FTT tape drives with no robot 
 class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
-    # load volume into the drive
+    # assumes volume is in drive
     def load(self, external_label, drive) :
-        ET_Rewind(drive)
-        return {"status" : "ok"}
+        os.system("mt -t " + drive + " rewind")
+        self.reply_to_caller({'status' : 'ok'})
 
-    # unload volume from the drive
+    # assumes volume is in drive and leave it there for testing
     def unload(self, external_label, drive) :
-        ET_Rewind(drive)
-        return {"status" : "ok"}
+        os.system("mt -t " + drive + " rewind")
+        self.reply_to_caller({'status' : 'ok'})
 
 # STK robot class
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
