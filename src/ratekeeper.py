@@ -18,6 +18,8 @@ import udp_client
 import enstore_functions2
 import enstore_constants
 import monitored_server
+import event_relay_client
+import event_relay_messages
 
 
 MY_NAME = "Ratekeeper"
@@ -50,18 +52,37 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
     interval = 15
     resubscribe_interval = 10*60 
-    def __init__(self, csc, ratekeeper_addr, event_relay_addr, filename_base,
-                 output_dir='/tmp/RATES'):
-        self.event_relay_addr = event_relay_addr
-        self.filename_base = filename_base
-        self.output_dir = output_dir
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def __init__(self):
+        #Get the configuration from the configuration server.
+        csc = configuration_client.ConfigurationClient()
+        ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
+        
+        ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
+        ratekeeper_host = ratekeep.get('hostip',ratekeep.get('host','MISSING'))
+        ratekeeper_port = ratekeep.get('port','MISSING')
+        ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
+        ratekeeper_addr = (ratekeeper_host, ratekeeper_port)
+        
+        if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
+            print "Error: Missing ratekeeper configdict directory.",
+            print "  (ratekeeper_dir)"
+            sys.exit(1)
+        if ratekeeper_host == 'MISSING' or not ratekeeper_host:
+            print "Error: Missing ratekeeper configdict directory.",
+            print "  (ratekeeper_host)"
+            sys.exit(1)
+        if ratekeeper_port == 'MISSING' or not ratekeeper_port:
+            print "Error: Missing ratekeeper configdict directory.",
+            print "  (ratekeeper_port)"
+            sys.exit(1)
+        if ratekeeper_nodes == 'MISSING':
+            ratekeeper_nodes = ''
+
+        self.filename_base = socket.gethostname()  #filename_base
+        self.output_dir = ratekeeper_dir
         self.outfile = None
         self.ymd = None #Year, month, date
         self.last_ymd = None
-        hostname = os.uname()[1]
-        self.sock.bind((hostname, 0))
-        self.addr = self.sock.getsockname()
         self.subscribe_time = 0
         self.mover_msg = {} #key is mover, value is last (num, denom)
 
@@ -70,13 +91,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   MY_NAME)
-                                                                  #keys)
+
+        #The generic server __init__ function creates self.erc, but it
+        # needs some additional paramaters.
+        self.erc.start([event_relay_messages.ALL,])
+        self.erc.subscribe()                                         
         self.erc.start_heartbeat(enstore_constants.RATEKEEPER, 
                                  self.alive_interval)
         
     def subscribe(self):
-        self.sock.sendto("notify %s %s" % (self.addr),
-                         (self.event_relay_addr))
+        self.erc.subscribe()
 
     def check_outfile(self, now=None):
         if now is None:
@@ -179,7 +203,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             if remaining <= 0: #Possible from ntp clock update???
                 continue
 
-            r, w, x = select.select([self.sock], [], [], remaining)
+            r, w, x = select.select([self.erc.sock], [], [], remaining)
 
             if not r:
                 continue
@@ -226,67 +250,9 @@ class RatekeeperInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     intf = RatekeeperInterface()
-    
-    #Get the configuration from the configuration server.
-    csc = configuration_client.ConfigurationClient()
-    ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
-    
-    ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
-    ratekeeper_host = ratekeep.get('hostip', ratekeep.get('host','MISSING'))
-    ratekeeper_port = ratekeep.get('port','MISSING')
-    ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
-    event_relay_host = ratekeep.get('event_relay_host','MISSING')
-    event_relay_port = enstore_constants.EVENT_RELAY_PORT
-    
-    if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
-        print "Error: Missing ratekeeper configdict directory.",
-        print "  (ratekeeper_dir)"
-        sys.exit(1)
-    if ratekeeper_host == 'MISSING' or not ratekeeper_host:
-        print "Error: Missing ratekeeper configdict directory.",
-        print "  (ratekeeper_host)"
-        sys.exit(1)
-    if ratekeeper_port == 'MISSING' or not ratekeeper_port:
-        print "Error: Missing ratekeeper configdict directory.",
-        print "  (ratekeeper_port)"
-        sys.exit(1)
-    if ratekeeper_nodes == 'MISSING':
-        ratekeeper_nodes = ''
-    if event_relay_host == 'MISSING' or not event_relay_host:
-        print "Error: Missing ratekeeper configdict directory.",
-        print "  (event_relay_host)"
-        sys.exit(1)
 
-    #If an option is specified, then use it.  But first check to see if it is
-    # listed in the 'nodes' dictionary.  Think of it as the key is the shortest
-    # number of characters needed for a match and the value is a tuple
-    # containing the full hostname and basename.
-    #Example: ratekeeper.py d0
-    # Here "d0" is placed into the host and file names.  Then it is compared
-    # with the values in the 'nodes' dictionary.  When a match is found, then
-    # "d0ensrv2" becomes the host and "d0en" becomes the base name.  If there
-    # is not a match, then it is left as simply "d0".
-    if intf.host:
-        event_relay_host = intf.host
-        filename_base = event_relay_host
-
-        if ratekeeper_nodes != 'MISSING':
-            for short_name in ratekeeper_nodes.keys():
-                if event_relay_host[:len(short_name)] == short_name:
-                    event_relay_host = ratekeeper_nodes[short_name][0]
-                    filename_base = ratekeeper_nodes[short_name][1]
-                    break
-    else:
-        filename_base = enstore_functions2.strip_node(event_relay_host)
+    rk = Ratekeeper()
     
-
-    print "Connecting to host %s on port %s." % \
-          (event_relay_host, event_relay_port)
-    rk = Ratekeeper(csc,
-                    (ratekeeper_host, ratekeeper_port),
-                    (event_relay_host, event_relay_port),
-                    filename_base, ratekeeper_dir)
-
     reply = rk.handle_generic_commands(intf)
 
     rk_main_thread = threading.Thread(target=rk.main)
