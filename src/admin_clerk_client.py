@@ -15,7 +15,7 @@ class AdminClerkClient(base_defaults.BaseDefaults,
 
     def __init__(self, csc=[],
                  host=base_defaults.default_host(),
-                 base_defaults.port=default_port()) :
+                 port=base_defaults.default_port()) :
         self.config_list = 0
         self.criteria={}
         self.dbname="volume"
@@ -25,10 +25,10 @@ class AdminClerkClient(base_defaults.BaseDefaults,
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
+        return base_defaults.BaseDefaults.config_options(self) + \
                ["config_list", "alive", "dbname=", "faccess=",
                 "laccess=","declared=","capacity=","rem_bytes=",] +\
-               BaseDefaults.options(self)
+               base_defaults.BaseDefaults.options(self)
 
     # define the single character options
     def charopts(self):
@@ -126,7 +126,7 @@ class AdminClerkClient(base_defaults.BaseDefaults,
         return newVal 
 
     def print_help(self):
-        BaseDefaults.print_help(self)
+        base_defaults.BaseDefaults.print_help(self)
         print "help             : to see this messsage and exit"
         print "dbname           : table name (volume or file)"
         print "faccess,laccess  : time(YYYYMMDDHHMM) of first/last access"
