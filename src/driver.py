@@ -44,9 +44,6 @@ class GenericDriver:
     # list of the files on the device
     LOC_SPEC = '%012d'		# bytes offset (arbitary width)
 
-    self.statisticsOpen = {}
-    self.statisticsClose = {}
-
     def __init__( self ):
 	# Note, I could pass "device" here save it, but I want to pass it to
 	#       open (to make open like python builtin open) so I might as
@@ -60,6 +57,10 @@ class GenericDriver:
 	self.shm.offset( 8, 0 )		# for possible sub-sub process pid info
 	self.shm.offset( 9, 0 )		# for possible other (future) info
 
+        # statistics info
+        self.statisticsOpen = {}
+        self.statisticsClose = {}
+	
 	# volume info
         self.remaining_bytes = 0
 	self.blocksize = 0		# for the volume - from vc
