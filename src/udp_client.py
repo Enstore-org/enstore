@@ -49,6 +49,40 @@ def get_client() :
                     repr((port1, port2)))
         time.sleep(10) # tried all ports, try later.
 
+def check_len( message ):
+    #print message
+    if len(message) > TRANSFER_MAX :
+	Trace.trace(0,"send:message "+\
+		    "too big. Size = "+repr(len(message))+" Max = "+\
+		    repr(TRANSFER_MAX)+" "+repr(message))
+	raise errno.errorcode[errno.EMSGSIZE],"udp_client.check_len:message "+\
+	      "too big. Size = "+repr(len(message))+" Max = "+\
+	      repr(TRANSFER_MAX)+" "+repr(message)
+
+def empty_socket( socket ):
+    try:
+	f = socket.fileno()
+	r, w, x = select.select([f],[],[f],0)
+	if r:
+	    badsock = socket.getsockopt(socket.SOL_SOCKET,
+					     socket.SO_ERROR)
+	    if badsock != 0 :
+		Trace.trace(0,"send pre recv, clearout error "+\
+			    repr(errno.errorcode[badsock]))
+		print "udp_client pre recv, clearout error:",\
+		      errno.errorcode[badsock]
+	    reply , server = socket.recvfrom(TRANSFER_MAX)
+	    badsock = socket.getsockopt(socket.SOL_SOCKET,
+					     socket.SO_ERROR)
+	    if badsock != 0 :
+		Trace.trace(0,"send post recv, clearout error"+\
+			    repr(errno.errorcode[badsock]))
+		print "udp_client post recv, clearout error:",\
+		      errno.errorcode[badsock]
+    except:
+	Trace.trace(0,'send clearout err'+str(sys.exc_info()[0])+\
+		    str(sys.exc_info()[1]))
+	print "clearout",sys.exc_info()[0],sys.exc_info()[1]
 
 
 class UDPClient:
@@ -79,8 +113,14 @@ class UDPClient:
         Trace.trace(10,'__del__ udpclient')
 
     # this (generally) is received/processed by dispatching worker
-    def send(self, text, address) :
+    def send(self, text, address, rcv_timeout=0):
         Trace.trace(20,'send add='+repr(address)+' text='+repr(text))
+	if rcv_timeout:
+	    once=1
+	else:
+	    once = 0
+	    rcv_timeout = 10		# default
+
         # make a new message number - response needs to match this number
         self.number = self.number + 1
 
@@ -92,39 +132,10 @@ class UDPClient:
         crc = binascii.crc_hqx(body, 0)
         # stringify message and check if it is too long
         message = `(body, crc)`
-        #print message
-        if len(message) > TRANSFER_MAX :
-            Trace.trace(0,"send:message "+\
-                        "too big. Size = "+repr(len(message))+" Max = "+\
-                        repr(TRANSFER_MAX)+" "+repr(message))
-            raise errno.errorcode[errno.EMSGSIZE],"UDPClient.send:message "+\
-                  "too big. Size = "+repr(len(message))+" Max = "+\
-                  repr(TRANSFER_MAX)+" "+repr(message)
+	check_len( message )
 
         # make sure the socket is empty before we start
-        try:
-            f = self.socket.fileno()
-            r, w, x = select.select([f],[],[f],0)
-            if r:
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_ERROR)
-                if badsock != 0 :
-                    Trace.trace(0,"send pre recv, clearout error "+\
-                                repr(errno.errorcode[badsock]))
-                    print "udp_client pre recv, clearout error:",\
-                          errno.errorcode[badsock]
-                reply , server = self.socket.recvfrom(TRANSFER_MAX)
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_ERROR)
-                if badsock != 0 :
-                    Trace.trace(0,"send post recv, clearout error"+\
-                                repr(errno.errorcode[badsock]))
-                    print "udp_client post recv, clearout error:",\
-                          errno.errorcode[badsock]
-        except:
-            Trace.trace(0,'send clearout err'+str(sys.exc_info()[0])+\
-                        str(sys.exc_info()[1]))
-            print "clearout",sys.exc_info()[0],sys.exc_info()[1]
+	empty_socket( self.socket )
 
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number
@@ -158,7 +169,7 @@ class UDPClient:
 
             # check for a response
             f = self.socket.fileno()
-            r, w, x = select.select([f],[],[f],10)
+            r, w, x = select.select( [f], [], [f], rcv_timeout )
 
             # exception mean trouble
             if x :
@@ -184,7 +195,7 @@ class UDPClient:
                 badsock = self.socket.getsockopt(socket.SOL_SOCKET,
                                                  socket.SO_ERROR)
                 if badsock != 0 :
-                    Trace.trace(0,"send pre recv"+ \
+                    Trace.trace(0,"send post recv"+ \
                                 repr(errno.errorcode[badsock]))
                     print "udp_client send, post-recv error:",\
                           errno.errorcode[badsock]
@@ -208,10 +219,9 @@ class UDPClient:
                                 repr(self.number))
                     print "UDPClient.send: stale_number=",number, "number=", \
                           self.number,"resending to ", address, message
-            else :
-                #print "UDPClient.send: resending to ", address, message
-                pass
-        Trace.trace(20,"}send "+repr(out))
+            elif once:
+		raise errno.errorcode[errno.ETIMEDOUT]
+	Trace.trace(20,"}send "+repr(out))
         return out
 
     # send message without waiting for reply and resend
@@ -225,13 +235,7 @@ class UDPClient:
         crc = binascii.crc_hqx(body, 0)
         # stringify message and check if it is too long
         message = `(body, crc)`
-
-        if len(message) > TRANSFER_MAX :
-            Trace.trace(0,"send_no_wait:message "+\
-                        "too big. Size = "+repr(len(message))+" Max = "+\
-                        repr(TRANSFER_MAX)+" "+repr(message))
-            raise errorcode[EMSGSIZE],"UDPCl.send_n_w:message too big.Size = "\
-                  +repr(len(message))+" Max = "+repr(TRANSFER_MAX)+" ",message
+	check_len( message )
 
         # send the udp message
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
