@@ -22,6 +22,8 @@ class DiskDriver(driver.Driver):
         self._total_time = 0
         self._bytes_transferred = 0L
         self.verbose = 0
+        self._active_time = 0
+
         
     def open(self, device=None, mode=None, retry_count=10):
         Trace.trace(25, "open %s"%(device,))
@@ -32,6 +34,7 @@ class DiskDriver(driver.Driver):
             raise ValueError, ("illegal mode", mode)
         self.device = device
         self.mode = mode
+        self._active_time = 0 #time actually spent in read or write call
         if self.fd < 0:
             if mode ==1: # WRITE
                 mode = mode|os.O_CREAT
@@ -91,6 +94,7 @@ class DiskDriver(driver.Driver):
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
+            self._active_time = now - self._start_time
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
             Trace.log(e_errors.ERROR, "read error on null device")
@@ -110,6 +114,7 @@ class DiskDriver(driver.Driver):
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
+            self._active_time = now - self._start_time
             self._rate = self._bytes_transferred/(now - self._start_time)
         if r == -1:
             Trace.log(e_errors.ERROR,  "write error on null device")
@@ -136,3 +141,6 @@ class DiskDriver(driver.Driver):
             return e_errors.READ_VOL1_READ_ERR, None
         else:
             return e_errors.OK, None
+
+    def tape_transfer_time(self):
+        return self._active_time
