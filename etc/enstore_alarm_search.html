@@ -1,0 +1,64 @@
+<HTML><HEAD><TITLE>Enstore Alarms</TITLE></HEAD>
+<BODY TEXT="#000066" BGCOLOR="#FFFFFF" LINK="#0000EF" VLINK="#55188A" ALINK="#FF0000" BACKGROUND="enstore.gif">
+
+<TABLE BORDER CELLSPACING=5 CELLPADDING=2 ALIGN=LEFT>
+  <TR>
+  <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="enstore_system.html">Home</A></FONT></B></TD>
+  <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="status_enstore_system.html">Servers</A></FONT></B></TD>
+  <TD BGCOLOR="#FFFFF0"><B><FONT SIZE=+2><A HREF="encp_enstore_system.html">Encp</A></FONT></B></TD>
+  </TR>
+  </TABLE>
+<BR><BR><BR>
+<CENTER><IMG SRC="en_alarms.gif" ALIGN=center></CENTER>
+<BR>
+<P>
+<FONT SIZE=+3>Either a list of <A HREF="enstore_alarms.html">currently active alarms</A> may be viewed, or a history of past alarms as specified below.</FONT>
+<BR><BR><HR><BR><P>
+<FONT SIZE=+3>Search the existing log files for alarms with the entered string.
+Wildcards are acceptable in the date field. Search strings are case insensitive. If no
+search string is entered, list all known alarms in the specified date(s).
+<BR><BR>
+
+<TABLE NOBORDER CELLSPACING=0 CELLPADDING=0>
+<TR><TD><FONT SIZE=+3>In addition the date may be one of the following:&nbsp;&nbsp;</FONT></TD>
+<TD><TABLE BORDER CELLSPACING=5 CELLPADDING=2 ALIGN=LEFT BGCOLOR="#DFF0FF">
+  <TR>
+  <TD>today</TD>
+  <TD>today's log file</TD>
+  </TR>
+  <TR>
+  <TD>week</TD>
+  <TD>the last 7 log files (if available) including today</TD>
+  </TR>
+  <TR>
+  <TD>month</TD>
+  <TD>the last 30 log files (if available) including today</TD>
+  </TR>
+  <TR>
+  <TD>all</TD>
+  <TD>all the log files</TD>
+  </TR>
+  </TABLE>
+</TD></TR>
+<TR><TD>&nbsp;</TD></TR>
+<TR><TD><FORM METHOD="POST" ACTION="http://www-d0en.fnal.gov:/cgi-bin/enstore/enstore_alarm_search_cgi.py">
+  <TABLE ALIGN=LEFT NOBORDER NOSAVE>
+  <TR>
+  <TH><FONT COLOR="#770000" SIZE=+2>Time frame</FONT></TH>
+  <TH>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TH>
+  <TH><FONT COLOR="#770000" SIZE=+2>Search string</FONT></TH>
+  <TR>
+  <TD><INPUT TYPE=TEXT NAME="logfile" VALUE="today"> </TD>
+  <TD>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+  <TD><INPUT TYPE=Text NAME="search" VALUE=""></TD>
+  </TR>
+  <TR><TD COLSPAN=3>&nbsp;</TD></TR>
+  <TR>
+  <TD ALIGN=LEFT><INPUT VALUE="Execute" TYPE="submit"></TD>
+  <TD ALIGN=LEFT COLSPAN=2><INPUT VALUE="Reset" TYPE="reset"></TD>
+  </TR>
+  </TABLE>
+  </FORM>
+</TD></TR>
+</TABLE>
+</BODY></HTML>
