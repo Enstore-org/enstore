@@ -1095,10 +1095,6 @@ def create_zero_length_files(filenames):
             return
         try:
             fd = atomic.open(f, mode=0666) #raises OSError on error.
-            if fd<0:
-                #The return code is the negitive return value.
-                error = int(math.fabs(fd))
-                raise OSError(error,os.strerror(error))
 
             os.close(fd)
 
@@ -1399,6 +1395,15 @@ def open_control_socket(listen_socket, mover_timeout):
         raise EncpError(errno.EPROTO, "Unable to obtain mover responce",
                         e_errors.TCP_EXCEPTION)
 
+    fds, junk, junk = select.select([control_socket], [], [], 5)
+    try:
+        if fds:
+            ticket = callback.read_tcp_obj(control_socket)
+    except e_errors.TCP_EXCEPTION:
+        raise EncpError(errno.ENOTCONN,
+                        "Control socket to longer usable after initalization.",
+                        e_errors.TCP_EXCEPTION, ticket)
+
     return control_socket, address, ticket
     
 ##############################################################################
@@ -1501,7 +1506,9 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             # handle_retries().
             ticket = work_ticket.copy()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket['status'] = (e_errors.RESUBMITTING, None)
+                ticket['status'] = (e_errors.TIMEDOUT, str(msg))
+                ###Why do this here???  This is a handle_retries thing...
+                #ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
                 ticket['status'] = (msg.type, str(msg))        
             else:
@@ -1553,12 +1560,28 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket['status'] = (e_errors.RESUBMITTING, None)
+                ticket['status'] = (e_errors.TIMEDOUT, str(msg))
+                ###Why do this here???  This is a handle_retries thing...
+                #ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
                 ticket['status'] = (msg.type, str(msg))
             else:
                 ticket['status'] = (e_errors.NET_ERROR, str(msg))
-                
+
+            #Combine the dictionaries (if possible).
+            if getattr(msg, 'ticket', None) != None:
+                #Do the initial munge.
+                ticket = combine_dict(ticket, msg.ticket)
+                #Attempt to match this ticket with the real ticket in the list.
+                # If this step wasn't done, then the code fails on the retry.
+                for i in range(0, len(work_tickets)):
+                    if work_tickets[i]['unique_id'] == ticket['unique_id']:
+                        #Make ticket and work_ticket[i] reference the same
+                        # info.  Otherwise error handling will be inconsistant.
+                        work_tickets[i] = combine_dict(ticket, work_tickets[i])
+                        ticket = work_tickets[i]
+                        break #Success, control socket opened!
+            
             #Since an error occured, just return it.
             return None, None, ticket
 
@@ -1578,6 +1601,10 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         # lost in the ether.
         for i in range(0, len(work_tickets)):
             if work_tickets[i]['unique_id'] == ticket['unique_id']:
+                #Make ticket and work_ticket[i] reference the same info.
+                # Otherwise error handling will be inconsistant.
+                work_tickets[i] = combine_dict(ticket, work_tickets[i])
+                ticket = work_tickets[i]
                 break #Success, control socket opened!
             
         else: #Didn't find matching id.
@@ -1588,8 +1615,8 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                 list_of_ids.append(work_tickets[j]['unique_id'])
 
             Trace.log(e_errors.INFO,
-                      "mover handshake: mover impostor called back\n"
-                      "   mover address: %s   got id: %s   expected: %s\n"
+                      "mover handshake: mover impostor called back"
+                      "   mover address: %s   got id: %s   expected: %s"
                       "   ticket=%s" %
                       (mover_address,ticket['unique_id'], list_of_ids, ticket))
             
@@ -1612,6 +1639,9 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
         #Attempt to get the data socket connected with the mover.
         try:
+            Trace.log(e_errors.INFO,
+                      "Atempting to connect data socket to mover at %s." \
+                      % (mover_addr,))
             data_path_socket = open_data_socket(mover_addr,
                                                 ticket['callback_addr'][0])
 
@@ -1622,7 +1652,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             exc, msg, tb = sys.exc_info()
             ticket['status'] = (e_errors.NET_ERROR, str(msg))
             #Trace.log(e_errors.INFO, str(msg))
-            
+            close_descriptors(control_socket)
             #Since an error occured, just return it.
             return None, None, ticket
 
@@ -1845,6 +1875,8 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         # [8] line number that the error occured on
         if msg.args[1] == errno.ENOSPC: #This should be non-retriable.
             error_type = e_errors.NOSPACE
+        elif msg.args[1] == errno.EBUSY: #This should be non-retriable.
+            error_type = e_errors.DEVICE_ERROR
         else:
             error_type = e_errors.IOERROR
             
@@ -1859,10 +1891,12 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
             EXfer_ticket['filename'] = msg.args[7]
             EXfer_ticket['line_number'] = msg.args[8]
             
-        Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" %
+        Trace.log(e_errors.WARNING, "EXfer file transfer error: %s" %
                   (str(msg),))
-        Trace.message(TRANSFER_LEVEL,"EXfer file transfer error. elapsed=%s"
-                  % (time.time() - tinfo['encp_start_time'],))
+        Trace.message(TRANSFER_LEVEL,
+                     "EXfer file transfer error: [Error %s] %s: %s  elapsed=%s"
+                      % (msg.args[1], msg.args[2], msg.args[0],
+                         time.time() - tinfo['encp_start_time'],))
 
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
@@ -1872,12 +1906,16 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     # be one... not only receiving one on error.
     if EXfer_ticket['status'][0] == e_errors.NOSPACE:
         done_ticket = {'status':(e_errors.OK, None)}
+    elif EXfer_ticket['status'][0] == e_errors.DEVICE_ERROR:
+        done_ticket = {'status':(e_errors.OK, None)}
     else:
         done_ticket = receive_final_dialog(control_socket)
 
-    if not e_errors.is_retriable(done_ticket['status'][0]):
+    if not e_errors.is_retriable(done_ticket) and \
+       not e_errors.is_ok(done_ticket):
         rtn_ticket = combine_dict(done_ticket, {'exfer':EXfer_ticket}, request)
-    elif not e_errors.is_retriable(EXfer_ticket['status'][0]):
+    elif not e_errors.is_retriable(EXfer_ticket) and \
+         not e_errors.is_ok(EXfer_ticket):
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
         rtn_ticket['status'] = EXfer_ticket['status'] #Set this seperately
     elif not e_errors.is_ok(done_ticket['status']):
@@ -2296,7 +2334,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Since a retriable error occured, resubmit the ticket.
             lm_responce = submit_one_request(request_dictionary)
 
-        except KeyError:
+        except KeyError, msg:
             lm_responce = {'status':(e_errors.NET_ERROR,
                             "Unable to obtain responce from library manager.")}
             sys.stderr.write("Error processing retry of %s.\n" %
