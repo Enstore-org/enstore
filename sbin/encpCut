@@ -271,7 +271,7 @@ for try in list doit; do
            fi
            ;;
 
-        4) tag=${REV}_$product_`uname`
+        4) tag=${REV}_${product}_`uname`
            echo "Step $Step:  cvs tag $tag    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
