@@ -41,7 +41,7 @@ if eod is None:
             if val[-1]==",":
                 val = val[:-1]
             if strip_quotes(key)=='eod_cookie':
-                eod_cookie = strip_quotes(val)
+                eod = strip_quotes(val)
                 break
     else:
         print "no EOD cookie for volume", vol
