@@ -317,7 +317,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         logname = self.config.get('logname', name)
         Trace.init(logname)
-        Trace.log(e_errors.INFO, "mover %s started" % (self.name,))
+        Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
         self.address = (self.config['hostip'], self.config['port'])
 
@@ -335,6 +335,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.media_type = self.config.get('media_type', '8MM') #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
+        self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc =  udp_client.UDPClient()
         self.state = IDLE
@@ -596,7 +597,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##Dynamic setting of low-water mark
                 if self.bytes_read >= self.buffer.min_bytes:
                     netrate, junk = self.net_driver.rates()
-                    taperate, junk = self.tape_driver.rates()
+                    taperate = self.max_rate
                     if taperate > 0:
                         ratio = netrate/(taperate*1.0)
                         optimal_buf = self.bytes_to_transfer * (1-ratio)
