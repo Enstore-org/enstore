@@ -29,9 +29,8 @@ on     = Ptrace.on
 mode   = Ptrace.mode
 
 # USER FUNCTIONS
-def log( severity, msg, *args ):
-    if args != (): msg = msg%args
-    trace( severity, msg )
+def log( severity, msg, msg_type=MSG_DEFAULT ):
+    trace( severity, msg_type+msg )
     return None
 
 def alarm( severity, root_error, rest={} ):
