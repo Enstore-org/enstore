@@ -1,0 +1,32 @@
+#!/bin/sh
+
+#
+# remove all the listed SCSI devices on bus 0 and re-add them
+#
+
+if [ $# -gt 1 ]
+then
+    drivids="$*"
+else
+    driveids="2 4 5 6"
+fi
+
+doit() {
+    echo "scsi $1-single-device 0 0 $2 0" > /proc/scsi/scsi
+}
+
+for i in $driveids
+do
+    doit remove $i
+done
+cat /proc/scsi/scsi
+for i in $driveids
+do
+    doit add $i
+done
+
+cat /proc/scsi/scsi
+
+sh mkscsidev.Linux
+
+chmod 777 /dev/rmt/* /dev/sc/*
