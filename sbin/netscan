@@ -1,0 +1,100 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+N=`/usr/local/bin/lsof -i TCP -i UDP`
+
+ALLOW_MVR="
+       LISTEN,inetd,:ftp,TCP,x
+       LISTEN,inetd,:telnet,TCP,x
+       LISTEN,inetd,:kshell,TCP,x
+       LISTEN,inetd,:klogin,TCP,x
+       LISTEN,inetd,:eklogin,TCP,x
+       LISTEN,inetd,:netperf,TCP,x
+       LISTEN,python,:,,/home/enstore/enstore/bin/encp
+       UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
+       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp
+       UDP,xntpd,:ntp,UDP,x
+       TCP,klogind,:eklogin,TCP,x
+       TCP,xemacs,:6000,TCP,x
+       TCP,rsh,:kshell,TCP,x
+       TCP,rsh,,TCP,/usr/krb5/bin/rsh
+       TCP,telnetd,telnet,TCP,telnetd -Pa valid
+       TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp
+"
+
+ALLOW_SRV5="$ALLOW_MVR
+       LISTEN,portmap,:sunrpc,TCP,x
+       LISTEN,conserver,:console,TCP,x
+       LISTEN,conserver,:listen,TCP,x
+       LISTEN,conserver,:nterm,TCP,x
+       LISTEN,conserver,:1024,TCP,x
+       LISTEN,conserver,:1027,TCP,x
+       LISTEN,X,:6000,TCP,x
+       UDP,portmap,:sunrpc,UDP,x
+       TCP,conserver,:nterm,TCP,x
+       TCP,netscape-,:http,TCP,x
+       TCP,console,console,TCP,x
+       TCP,console,nterm,TCP,x
+"
+
+ALLOW_SRV3="$ALLOW_SRV5
+       LISTEN,rpc.mount,:635,TCP,x
+       LISTEN,rpc.nfsd,:2049,TCP,x
+       UDP,rpc.mount,:mount,UDP,x
+       UDP,rpc.nfsd,:nfs,UDP,x
+"
+
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+
+case $node in
+     *srv3) ALLOW=$ALLOW_SRV3;;
+     *srv5*|*srv7*) ALLOW=$ALLOW_SRV5;;
+     *mvr*)  ALLOW=$ALLOW_MVR;; 
+         *)  ALLOW=$ALLOW_MVR;;
+esac
+
+
+allow() { tt=$1
+          for i in $ALLOW; do
+            t=`echo $i | cut -f1 -d,`
+            if [ $t != $tt ]; then continue; fi 
+            a=`echo $i | cut -f2 -d,`
+            b=`echo $i | cut -f3 -d,`
+            c=`echo $i | cut -f4 -d,`
+            p=`echo $i | cut -f5 -d,`
+            if [ $command = "$a" -a `echo $rest | grep -c "$b"`  -ne 0 -a `echo $rest | grep -c "$c"` -ne 0 ]; then 
+              if [ $p != "x" ]; then
+                 psline=`ps -wwwwfp $pid|egrep -v PPID`
+                 if [ `echo $psline | egrep -c "$p"` -eq 0 ]; then 
+                    echo UNAUTHORIZED $node $tt $command $pid $rest
+                    ps -wwwwfp $pid|grep -v PPID
+                    return 2
+                 fi
+              else
+                p=""
+              fi                
+              echo Allowing $node $c $tt $a $b $p
+               return 0
+            fi
+          done
+          echo UNAUTHORIZED $node $tt $command $pid $rest
+          ps -wwwwfp $pid|grep -v PPID
+          return 1
+         }
+
+echo "$N" | while read command pid rest; do
+    if [ $pid = "PID" ] ; then continue; fi
+    if [ `echo $rest | grep -c "LISTEN"` -ne 0 ]; then
+      allow LISTEN
+      x=1
+    elif [ `echo $rest | grep -c "UDP"` -ne 0 ]; then
+      allow UDP
+      x=2
+    elif [ `echo $rest | grep -c "TCP"` -ne 0 ]; then
+      allow TCP
+      x=3
+    fi
+done
