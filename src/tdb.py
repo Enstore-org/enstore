@@ -8,6 +8,7 @@ import linecache
 import pdb
 import thread
 import os
+import bdb
 
 Quit = "tdb.Quit"
 Help = "tdb.Help"
@@ -19,20 +20,30 @@ MODE_PDB = 3
 
 
 #
-# This class alters the behavoir of the PDB.  WE will try to 
-# stop it from throwing an execption on quitting, and allow continuation
-# of the daemon.. (no luck yet...)
+# This class alters the behavoir of the PDB.  We overrrrrride teh thing that
+# is seen directly by  sys.stetrace() in order to catch the bdbQuit excetion
+# which is generted when the user types "Q' or Quit.  WE re-install the 
+# saver.  WE still need to 
+#  1) communicate this back to the telnet thread
+#  2) restore stdin and stdout "back"  (right now, they are subverted
+#     by the PDB item in the telnet thread.  Maybe that is not the
+#     rgth place for the code.
+#  3) See if >1 user can eith see teh debug session or particiapt in it,
 
 class Hackpdb(pdb.Pdb) :
     def __init__(self):
         pdb.Pdb.__init__(self)
 
-    def do_quit(self, arg):
-        #self.quitting = 1
-        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        install()  # set the global trace function
-        tdb.mode = MODE_TRACE_ALL
-    do_q = do_quit
+
+    def trace_dispatch(self, frame, event, arg) :
+	try:
+	   return bdb.Bdb.trace_dispatch(self, frame, event, arg)
+	except bdb.BdbQuit:
+	   pass
+        # now, "all " have to do is to notify the telnet thread...
+	tdb.mode = MODE_TRACE_ALL
+	install()
+	return None	
 
 # WARNING VOODOO Code around:
 # The python we are using when I developed this seems to have 
