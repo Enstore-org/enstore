@@ -143,15 +143,16 @@ def create_assert_list(vol_list):
 
 	    #Create the ticket to submit to the library manager.
             ticket = {}
+            #Internally used values.
+            ticket['_csc'] = csc_list[i].server_address
+            #Required items.
             ticket['unique_id'] = encp.generate_unique_id()
             ticket['callback_addr'] = callback_addr
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
-            #Easier to do this than modify the mover.
-	    ticket['fc'] = {}
-            #Internally used values.
-            ticket['_csc'] = csc_list[i].server_address
             #The following are for the inquisitor.
+            ticket['vc']['file_family'] = ""
+	    ticket['fc'] = {}  #Easier to do this than modify the mover.
             ticket['fc']['external_label'] = vc['external_label']
             ticket['fc']['location_cookie'] = "0000_000000000_0000000"
 	    ticket['times'] = {}
