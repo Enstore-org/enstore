@@ -170,6 +170,7 @@ if __name__ == "__main__" :
 
     elif intf.get_timeout:
         ticket = iqc.get_timeout(intf.server)
+	pprint.pprint(ticket['timeout'])
 
     elif intf.reset_timeout:
         ticket = iqc.reset_timeout(intf.server)
@@ -182,6 +183,7 @@ if __name__ == "__main__" :
 
     elif intf.get_max_ascii_size:
         ticket = iqc.get_max_ascii_size()
+	pprint.pprint(ticket['max_ascii_size'])
 
     del iqc.csc.u
     del iqc.u           # del now, otherwise get name exception (just for python v1.5???)

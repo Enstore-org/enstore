@@ -239,11 +239,10 @@ if __name__ == "__main__":
         stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
         if intf.verbose:
             pprint.pprint(stati)
+
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.verbose:
-            print csc.config_list["list"]
-            #pprint.pprint(csc.config_list)
+        print csc.config_list["list"]
         stat = csc.config_list['status']
 
     elif intf.load:
@@ -255,6 +254,7 @@ if __name__ == "__main__":
 
     elif intf.get_keys:
         stati= csc.get_keys(intf.alive_rcv_timeout,intf.alive_retries)
+	pprint.pprint(stati['get_keys'])
         if intf.verbose:
             pprint.pprint(stati)
         stat=stati['status']

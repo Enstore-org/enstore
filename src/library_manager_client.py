@@ -147,8 +147,11 @@ if __name__ == "__main__" :
         ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     elif  intf.getwork:
         ticket = lmc.getwork(intf.verbose)
+	pprint.pprint(ticket['pending_work'])
+	pprint.pprint(ticket['at movers'])
     elif  intf.getmoverlist:
 	ticket = lmc.getmoverlist()
+	pprint.pprint(ticket['moverlist'])
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
@@ -163,9 +166,4 @@ if __name__ == "__main__" :
         pprint.pprint(ticket)
         Trace.trace(0,"lcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
-
-
-
-
-
 

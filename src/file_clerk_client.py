@@ -178,6 +178,8 @@ if __name__ == "__main__" :
 
     elif intf.bfid:
         ticket = fcc.bfid_info()
+        pprint.pprint(ticket['fc'])
+        pprint.pprint(ticket['vc'])
 
     if ticket['status'][0] == e_errors.OK:
         if intf.verbose:

@@ -382,6 +382,7 @@ if __name__ == "__main__":
                                              1) #first_found
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
+	pprint.pprint(ticket)
     elif intf.addvol:
         ticket = vcc.addvol(intf.args[0],              # library
                             intf.args[1],              # file family
