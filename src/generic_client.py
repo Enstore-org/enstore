@@ -86,7 +86,7 @@ class GenericClient:
             sys.stderr.write("Unknown server %s (no %s in config)\n" % ( MY_SERVER, detail))
             os._exit(1)
 
-    def send(self, ticket, rcv_timeout, tries):
+    def send(self, ticket, rcv_timeout=0, tries=0):
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except errno.errorcode[errno.ETIMEDOUT]:
