@@ -245,14 +245,14 @@ class MonitoredMover(MonitoredServer):
 		     enstore_constants.TRANSFERS_FAILED : DASH,
 		     enstore_constants.BYTES_READ : "-1",
 		     enstore_constants.BYTES_WRITTEN : "-1",
-		     enstore_constants.FILES : ["", ""],
+		     enstore_constants.FILES : ("", ""),
 		     enstore_constants.CURRENT_VOLUME : "",
 		     enstore_constants.MODE : "",
 		     enstore_constants.BYTES_TO_TRANSFER : "-1",
 		     enstore_constants.CURRENT_LOCATION : "0",
 		     enstore_constants.LAST_VOLUME : "",
 		     enstore_constants.LAST_LOCATION : "0",
-		     enstore_constants.STATUS : ""}
+		     enstore_constants.STATUS : ()}
 
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
@@ -270,7 +270,8 @@ class MonitoredLibraryManager(MonitoredServer):
     STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
 		     enstore_constants.SUSPECT_VOLUMES : [],
 		     enstore_constants.MOVERS : [],
-		     enstore_constants.ATMOVERS : []}
+		     enstore_constants.ATMOVERS : [],
+		     enstore_constants.PENDING_WORKS : {}}
 
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name)
@@ -280,6 +281,28 @@ class MonitoredLibraryManager(MonitoredServer):
 	self.stalled_time = 1800
 	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
 	self.status_keys = self.STATUS_FIELDS.keys()
+
+    def check_state(self, status):
+	# make sure this ticket has all of the fields we need
+	if not status.has_key(enstore_constants.STATE):
+	    status[enstore_constants.STATE] = self.STATUS_FIELDS[enstore_constants.STATE]
+
+    def check_suspect_vols(self, status):
+	# make sure this ticket has all of the fields we need
+	if not status.has_key(enstore_constants.SUSPECT_VOLUMES):
+	    status[enstore_constants.SUSPECT_VOLUMES] = self.STATUS_FIELDS[enstore_constants.SUSPECT_VOLUMES]
+
+    def check_active_vols(self, status):
+	# make sure this ticket has all of the fields we need
+	if not status.has_key(enstore_constants.MOVERS):
+	    status[enstore_constants.MOVERS] = self.STATUS_FIELDS[enstore_constants.MOVERS]
+
+    def check_work_queue(self, status):
+	# make sure this ticket has all of the fields we need
+	if not status.has_key(enstore_constants.ATMOVERS):
+	    status[enstore_constants.ATMOVERS] = self.STATUS_FIELDS[enstore_constants.ATMOVERS]
+	if not status.has_key(enstore_constants.PENDING_WORKS):
+	    status[enstore_constants.PENDING_WORKS] = self.STATUS_FIELDS[enstore_constants.PENDING_WORKS]
 
     def get_stalled_key(self, node, ff):
 	return "%s,%s"%(node, ff)

@@ -25,8 +25,6 @@ SEEN = 'seen'
 VOLUME = 'volume'
 STORAGE_GROUP = 'storage_group'
 STORAGE_GROUP_LIMIT = 'storage_group_limit'
-UNKNOWN = 'UNKNOWN'
-DASH = "-"
 QUESTION = "?"
 
 # locate and pull out the dictionaries in the text message. assume that if
@@ -323,7 +321,7 @@ class EnStatus:
 
     # output the library manager suspect volume list
     def output_suspect_vols(self, ticket, key):
-        sus_vols = ticket['suspect_volumes']
+        sus_vols = ticket[enstore_constants.SUSPECT_VOLUMES]
         if not self.text.has_key(key):
             self.text[key] = {}
         if sus_vols:
@@ -344,11 +342,11 @@ class EnStatus:
     def output_lmstate(self, ticket, key):
         if not self.text.has_key(key):
             self.text[key] = {}
-        self.text[key][enstore_constants.LMSTATE] = ticket.get('state', "")
+        self.text[key][enstore_constants.LMSTATE] = ticket['state']
 
     # output the library manager queues
     def output_lmqueues(self, ticket, key):
-        work = ticket['at movers']
+        work = ticket[enstore_constants.ATMOVERS]
         if not self.text.has_key(key):
             self.text[key] = {}
         self.text[key][enstore_constants.TOTALPXFERS] = 0
@@ -363,7 +361,7 @@ class EnStatus:
             self.text[key][enstore_constants.TOTALONXFERS] = self.text[key][enstore_constants.READONXFERS] + self.text[key][enstore_constants.WRITEONXFERS]
         else:
             self.text[key][enstore_constants.WORK] = enstore_constants.NO_WORK
-        pending_work = ticket['pending_works']
+        pending_work = ticket[enstore_constants.PENDING_WORKS]
         if pending_work:
             self.parse_lm_pend_queues(pending_work, key, enstore_constants.WRITEPXFERS,
 				      enstore_constants.READPXFERS)
@@ -375,57 +373,57 @@ class EnStatus:
     def output_moverstatus(self, ticket, key):
         # clean out all the old info but save the status
         self.text[key] = {enstore_constants.STATUS : self.text[key][enstore_constants.STATUS]}
-        self.text[key][enstore_constants.COMPLETED] = self.unquote(repr(ticket.get("transfers_completed", DASH)))
-        self.text[key][enstore_constants.FAILED] = self.unquote(repr(ticket.get("transfers_failed", DASH)))
+        self.text[key][enstore_constants.COMPLETED] = self.unquote(repr(ticket[enstore_constants.TRANSFERS_COMPLETED]))
+        self.text[key][enstore_constants.FAILED] = self.unquote(repr(ticket[enstore_constants.TRANSFERS_FAILED]))
         # these are the states where the information  in the ticket refers to a current transfer
-	lcl_state = ticket.get("state", "")
+	lcl_state = ticket[enstore_constants.STATE]
         if lcl_state in (mover_constants.ACTIVE, mover_constants.MOUNT_WAIT,
 			 mover_constants.DISMOUNT_WAIT):
-            self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket["bytes_read"]))
-            self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket["bytes_written"]))
-            self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
-            self.text[key][enstore_constants.FILES].append(ticket['files'][1])
-            self.text[key][enstore_constants.VOLUME] = ticket['current_volume']
-            if ticket["state"] == mover_constants.MOUNT_WAIT:
+            self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket[enstore_constants.BYTES_READ]))
+            self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket[enstore_constants.BYTES_WRITTEN]))
+            self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket[enstore_constants.FILES][0],)]
+            self.text[key][enstore_constants.FILES].append(ticket[enstore_constants.FILES][1])
+            self.text[key][enstore_constants.VOLUME] = ticket[enstore_constants.CURRENT_VOLUME]
+            if ticket[enstore_constants.STATE] == mover_constants.MOUNT_WAIT:
                 self.text[key][enstore_constants.STATE] = "busy mounting volume %s"%\
-                                                          (ticket['current_volume'],)
-            elif ticket["state"] == mover_constants.DISMOUNT_WAIT:
+                                                          (ticket[enstore_constants.CURRENT_VOLUME],)
+            elif ticket[enstore_constants.STATE] == mover_constants.DISMOUNT_WAIT:
                 self.text[key][enstore_constants.STATE] = "busy dismounting volume %s"%\
-                                                          (ticket['current_volume'],)
+                                                          (ticket[enstore_constants.CURRENT_VOLUME],)
             # in the following 2 tests the mover state must be 'ACTIVE'
             elif ticket["mode"] == mover_constants.WRITE:
                 self.text[key][enstore_constants.STATE] = "busy writing %s bytes to Enstore"%\
-                                                          (add_commas(str(ticket["bytes_to_transfer"])),)
+                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),)
             else:
                 self.text[key][enstore_constants.STATE] = "busy reading %s bytes from Enstore"%\
-                                                          (add_commas(str(ticket["bytes_to_transfer"])),)
+                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),)
             if ticket["mode"] == mover_constants.WRITE:
-                self.text[key][enstore_constants.EOD_COOKIE] = ticket["current_location"]
+                self.text[key][enstore_constants.EOD_COOKIE] = ticket[enstore_constants.CURRENT_LOCATION]
             else:
-                self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["current_location"]
+                self.text[key][enstore_constants.LOCATION_COOKIE] = ticket[enstore_constants.CURRENT_LOCATION]
         # these states imply the ticket information refers to the last transfer
         elif lcl_state in (mover_constants.IDLE, mover_constants.HAVE_BOUND,
 			   mover_constants.DRAINING, mover_constants.OFFLINE,
 			   mover_constants.CLEANING):
-            self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["bytes_read"]))
-            self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["bytes_written"]))
+            self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket[enstore_constants.BYTES_READ]))
+            self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket[enstore_constants.BYTES_WRITTEN]))
             if lcl_state == mover_constants.HAVE_BOUND:
                 self.text[key][enstore_constants.STATE] = "HAVE BOUND volume - IDLE"
             else:
                 self.text[key][enstore_constants.STATE] = "%s"%(lcl_state,)
-            if ticket['transfers_completed'] > 0:
-                self.text[key][enstore_constants.VOLUME] = ticket['last_volume']
-                self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
-                self.text[key][enstore_constants.FILES].append(ticket['files'][1])
+            if ticket[enstore_constants.TRANSFERS_COMPLETED] > 0:
+                self.text[key][enstore_constants.VOLUME] = ticket[enstore_constants.LAST_VOLUME]
+                self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket[enstore_constants.FILES][0],)]
+                self.text[key][enstore_constants.FILES].append(ticket[enstore_constants.FILES][1])
                 if ticket['mode'] == mover_constants.WRITE:
-                    self.text[key][enstore_constants.EOD_COOKIE] = ticket["last_location"]
+                    self.text[key][enstore_constants.EOD_COOKIE] = ticket[enstore_constants.LAST_LOCATION]
                 else:
-                    self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["last_location"]
+                    self.text[key][enstore_constants.LOCATION_COOKIE] = ticket[enstore_constants.LAST_LOCATION]
         # this state is an error state, we don't know if the information is valid, so do not output it
         elif lcl_state in (mover_constants.ERROR,):
             self.text[key][enstore_constants.STATE] = "ERROR - %s"%(ticket["status"],)
         # unknown state
         else:
 	    if not self.text[key][enstore_constants.STATUS]:
-		self.text[key][enstore_constants.STATUS] = UNKNOWN
-            self.text[key][enstore_constants.STATE] = "%s"%(ticket.get("state", UNKNOWN),)
+		self.text[key][enstore_constants.STATUS] = enstore_constants.UNKNOWN_S
+            self.text[key][enstore_constants.STATE] = "%s"%(ticket[enstore_constants.STATE],)
