@@ -3668,7 +3668,8 @@ def calculate_rate(done_ticket, tinfo):
                           sg,
                           done_ticket["encp_ip"],
                           done_ticket['unique_id'],
-                          rw)
+                          rw,
+                          encp_client_version(),)
 			
 
 ############################################################################
@@ -3956,16 +3957,18 @@ def set_pnfs_settings(ticket, intf_encp):
         #volume_label = ticket.get('volume', None)
         #csc = get_csc(volume_label) #Get the correct system (if necessary).
         #fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
-        fcc = get_fcc(ticket["fc"]["bfid"])
+        fcc = get_fcc()   #ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
         if not e_errors.is_ok(fc_reply['status'][0]):
             Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
+            ticket['status'] = fc_reply['status']
+            return
 
         Trace.message(TICKET_LEVEL, "FILE DB PNFS FIELDS SET")
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
 
-        ticket['status'] = fc_reply['status']
+        #ticket['status'] = fc_reply['status']
     except KeyboardInterrupt:
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -6678,12 +6681,19 @@ def main(intf):
 
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
-    if not intf.output:
-        t=None
+    if intf.put_cache:
+        p = pnfs.Pnfs(intf.put_cache, intf.pnfs_mount_point)
+        if getattr(p, "directory", None):
+            t = pnfs.Tag(p.directory)
+        else:
+            t = None
+    elif not intf.output:
+        t = None
     elif os.path.isdir(intf.output[0]):
-        t=pnfs.Tag(intf.output[0])
+        t = pnfs.Tag(intf.output[0])
     else:
-        t=pnfs.Tag(os.path.dirname(intf.output[0]))
+        t = pnfs.Tag(os.path.dirname(intf.output[0]))
+        
     try:
         library = t.get_library()
     except (OSError, IOError, KeyError, TypeError, AttributeError):
@@ -6726,7 +6736,7 @@ def main(intf):
     tag_line = "Library: %s  Storage Group: %s  File Family: %s  " \
                "FF Wrapper: %s  FF Width: %s" % \
                (library, storage_group,
-                file_family, file_family_wrapper, file_family_width)
+                file_family,file_family_wrapper, file_family_width)
     cwd_line = "Current working directory: %s:%s" % (hostname, cwd)
 
     #Print this information to make debugging easier.
