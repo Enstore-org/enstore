@@ -192,6 +192,7 @@ raise_alarm_errors = ( CRC_ENCP_ERROR,  #Set by encp
                        #NOVOLUME,
                        #QUOTAEXCEEDED,
                        #DEVICE_ERROR, #EXfer read/write call stuck in kernel
+                       CONFLICT, #Metadata is not consistant.
                        )
 
 email_alarm_errors = (CRC_ECRC_ERROR,  #Set by encp
