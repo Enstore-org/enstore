@@ -201,38 +201,57 @@ def get_system_name(intf):
 def get_entvrc_filename():
     return os.environ["HOME"] + "/.entvrc"
 
-def get_entvrc():
+def get_entvrc_file():
         #Variables and files to look for.
     f = open(get_entvrc_filename())
     lines = []
     for line in f.readlines():
         lines.append(line.strip())
-
+    f.close()
+    
     ###Don't remove blank lines and command lines from the output.  This
     ### output is used by the set_entvrc function which will use these
     ### extraneous lines.
 
     return lines
 
-def get_geometry(intf):
+def get_entvrc(intf):
 
     try:
         if intf.movers_file:
             address = "localhost"
         else:
             address = intf.csc.server_address[0]
-        #csc = intf.csc
         
-        for line in get_entvrc():
+        for line in get_entvrc_file():
+
+            #Check the line for problems or things to skip, like comments.
+            if len(line) == 0:
+                continue
             if line[0] == "#": #Skip comment lines.
                 continue
+            
+            #Split the string and look for problems.
             words = line.split()
+            if not words:
+                continue
+
             if socket.getfqdn(words[0])==socket.getfqdn(address):
-                geometry = words[1]
+                try:
+                    geometry = words[1]
+                except IndexError:
+                    geometry = "700x1600+0+0"
                 try:
                     background = words[2]
                 except IndexError:
                     background = DEFAULT_BG_COLOR
+                try:
+                    if words[3] == "animate":
+                        animate = 1
+                    else:
+                        animate = 0
+                except IndexError:
+                    animate = 1
                 break
         else:
             #If it wasn't found raise this to set the defaults.
@@ -241,22 +260,26 @@ def get_geometry(intf):
         geometry = "700x1600+0+0"
         background = DEFAULT_BG_COLOR
 
-    return geometry, background
+    return {'geometry':geometry, 'background':background, 'animate':animate}
 
-def set_geometry(geometry, intf):
+def set_entvrc(display, intf):
+
+    #If there isn't geometry don't do anything.
+    if not hasattr(display, "geometry") or display.geometry == None:
+        return
+    
     try:
         if intf.movers_file:
             address = "localhost"
         else:
             address = intf.csc.server_address[0]
-        #csc = intf.csc
         
         #Do this now to save the time to do the conversion for every line.
         csc_server_name = socket.getfqdn(address)
 
         #Get the current .entvrc file data if possible.
         try:
-            data = get_entvrc()
+            data = get_entvrc_file()
         except (OSError, IOError), msg:
             #If the file exists but still failed to open (ie permissions)
             # then skip this step.
@@ -292,10 +315,17 @@ def set_geometry(geometry, intf):
                     background = words[2]
                 except IndexError:
                     background = DEFAULT_BG_COLOR
-
+                try:
+                    if display.animate:
+                        animate = "animate"
+                    else:
+                        animate = "still"
+                except AttributeError:
+                    animate = "animate"
                 #Write the new geometry to the .entvrc file.
-                tmp_file.write("%-25s %-20s %-10s\n" %
-                               (csc_server_name, geometry, background))
+                tmp_file.write("%-25s %-20s %-10s %-7s\n" %
+                               (csc_server_name, display.geometry, background,
+                                animate))
 
                 new_line_written = 1
             else:
@@ -304,7 +334,7 @@ def set_geometry(geometry, intf):
         #If the enstore system entv display is not found, add it at the end.
         if not new_line_written:
             tmp_file.write("%-25s %-20s %-10s\n" %
-                           (csc_server_name, geometry, DEFAULT_BG_COLOR))
+                         (csc_server_name, display.geometry, DEFAULT_BG_COLOR))
             
         tmp_file.close()
 
@@ -577,10 +607,16 @@ def main(intf):
     #Get the short name for the enstore system specified.
     system_name = get_system_name(intf)
 
-    geometry, background = get_geometry(intf)
+    #geometry, background, animate = get_entvrc(intf)
+    entvrc_dict = get_entvrc(intf)
+    entvrc_dict['title'] = system_name #For simplicity put this here.
 
-    display = enstore_display.Display(title=system_name,
-                                      geometry=geometry, background=background)
+    #Even though background is passed in via entvrc_dict, the background
+    # works better when done this way.
+    display = enstore_display.Display(entvrc_dict,
+                              background = entvrc_dict.get('background', None))
+        #geometry=geometry,
+        #animate=animate)
 
     while ( not display.stopped or display.attempt_reinit() ) and not stop_now:
 
@@ -615,9 +651,9 @@ def main(intf):
 
         #Loop until user says don't.
         display.mainloop()
-
-        if hasattr(display, "geometry") and display.geometry != None:
-            set_geometry(display.geometry, intf)
+        
+        #Set the geometry of the file (if necessary).
+        set_entvrc(display, intf)
 
         Trace.trace(1, "waiting for threads to stop")
         status_thread.join()

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# $Id$
+
 import pprint
 import cmath
 import exceptions
@@ -1228,9 +1230,19 @@ class MoverDisplay(Tkinter.Toplevel):
 class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
-    def __init__(self, title="", window_width=None, window_height=None,
-                 geometry=None, x_position=None, y_position=None,
-                 **attributes):
+    #entvrc_info is a dictionary of various parameters.
+    def __init__(self, entvrc_info, **attributes):
+        #title="", window_width=None, window_height=None,
+        #geometry=None, x_position=None, y_position=None,
+        #**attributes):
+
+        geometry = entvrc_info.get('geometry', None)
+        window_width = entvrc_info.get('window_width', None)
+        window_height = entvrc_info.get('window_height', None)
+        x_position = entvrc_info.get('x_position', None)
+        y_position = entvrc_info.get('y_position', None)
+        title = entvrc_info.get('title', "")
+        animate = int(entvrc_info.get('animate', 1))#Python true for animation.
 
         tk = Tkinter.Tk()
         #Don't draw the window until all geometry issues have been worked out.
@@ -1302,8 +1314,6 @@ class Display(Tkinter.Canvas):
 ##        self.pack(side=Tkinter.LEFT)
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
-        self.animate = 0 #Initialize animations to off... get turned on later.
-
         #The toplevel widget the canvas created.
         toplevel = self.winfo_toplevel()
         #Various toplevel window attributes.
@@ -1313,11 +1323,19 @@ class Display(Tkinter.Canvas):
         self.menubar = Tkinter.Menu(master=self.master)
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
+        #Create the animate check button and set animate accordingly.
+        self.animate = animate
         self.option_menu.add_checkbutton(label="Animate",
-                                         indicatoron=Tkinter.YES,
+                                         indicatoron=Tkinter.TRUE,
+                                         onvalue="animate",
+                                         offvalue=0,
+                                         variable=Tkinter.FALSE,
                                          command=self.toggle_animation)
-        #Since this is a checkbutton, it must be set to on initially.
-        self.option_menu.invoke(0) #Use index 0.
+        #If the initial posistion is on, then invoke the command function
+        # and remember to keep the animate variable true.
+        if self.animate:
+            self.option_menu.invoke(0)
+            self.animate = 1 #keep it on
         #Added the menus to there respective parent widgets.
         self.menubar.add_cascade(label="options", menu=self.option_menu)
         toplevel.config(menu=self.menubar)
