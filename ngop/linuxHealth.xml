@@ -14,7 +14,7 @@
       <System Name="OSHealth" Cluster="localhost">
           <MonitoredElement Name="cpuLoad" Host="localhost" Type="sysUsage">
           <ConditionSet>
-        	<fn Name="plug_ins" Arg="uptime|/bin/sed s/.*load.*average://|awk -F',' '{print $3}'" RetVal="float:cpuLoad"/>
+                <fn Name="plug_ins" Arg="python /var/ngop/include/checkCpuLoad.py" RetVal="float:cpuLoad"/>
    	  <Condition State="0" SevLevel="0" Description="Average cpu load during last 15 min exceeds 4">
     		<apply>
        		<geq/>
