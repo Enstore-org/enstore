@@ -4,9 +4,7 @@
 
 import sys, os
 import time
-import select
 import string
-import exceptions
 
 import Trace
 import generic_driver
@@ -154,36 +152,36 @@ class FTTDriver(generic_driver.Driver):
             return None
         try:
             #Trace.trace(42, "ftt.get_position()")
-            file, block = self.ftt.get_position()
-            #Trace.trace(42, "%s,%s=ftt.get_position() done" % (file, block,))
+            fil, block = self.ftt.get_position()
+            #Trace.trace(42, "%s,%s=ftt.get_position() done" % (fil, block,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
             return -1
-        return file
+        return fil
     
     def seek(self, target, eot_ok=0): #XXX is eot_ok needed?
         if type(target)==type(""):
             target = long(target)
         try:
             #Trace.trace(42, "ftt.get_position()")
-            file, block = self.ftt.get_position()
+            fil, block = self.ftt.get_position()
         except ftt.FTTError, detail: 
             if detail.errno == ftt.ELOST:
                 Trace.log(e_errors.INFO, "seek: lost position, rewinding")
                 self.rewind() #don't know tape position, must rewind
             else:
-                Trace.log(e_errors.ERROR,"ftt_driver:seek: ftt error %s"%(detail,detail.value))
+                Trace.log(e_errors.ERROR,"ftt_driver:seek: ftt error %s %s"%(detail,detail.value))
                 raise ftt.FTTError, detail #some other FTT error
 
         #Trace.trace(42, "ftt.get_position()")
-        file, block = self.ftt.get_position()
-        Trace.log(e_errors.INFO, "tape position: target %s current %s %s" % (target, file, block,))
-        #Trace.trace(42, "%s,%s=ftt.get_position() done" % (file, block,))
-        if block==0 and file == target:
-            return 0
+        fil, block = self.ftt.get_position()
+        Trace.log(e_errors.INFO, "tape position: target %s current %s %s" % (target, fil, block,))
+        #Trace.trace(42, "%s,%s=ftt.get_position() done" % (fil, block,))
+        if block==0 and fil == target:
+            return
         else:
-            Trace.trace(25,"seek: current = %s,%s target=%s" %(file, block, target))
-        current = file
+            Trace.trace(25,"seek: current = %s,%s target=%s" %(fil, block, target))
+        current = fil
         if target>current:
             try:
                self.ftt.skip_fm(target-current)
@@ -478,6 +476,7 @@ class FTTDriver(generic_driver.Driver):
             try:
                 nbytes=self.read(buf, 0, expected_length)
             except e_errors.READ_ERROR, detail:
+                Trace.log(e_errors.ERROR, "verify_label returned: %s"%(detail,))
                 nbytes = 0
             # the returned data should be a modulo of 80.
             if not nbytes or nbytes%80 != 0:
