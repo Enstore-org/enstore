@@ -258,6 +258,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     except IndexError, detail:
                         Trace.log(e_errors.ERROR, "hostaddr failed with %s Req.= %s, addr= %s"%(detail,req, addr))
                         request = None
+                        return (request, addr)
                         #raise IndexError
                     
                     if not host_address:
