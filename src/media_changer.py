@@ -80,7 +80,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
            self.MaxWork = val
         return (self.MaxWork, self.work_list)        
 
-    # load volume into the drive
+    # load volume into the drive;  default, overridden for other media changers
     def load(self,
              external_label,    # volume external label
              drive,             # drive id
@@ -91,9 +91,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    time.sleep( self.mc_config['delay'] )
 	    self.enprint( 'continuing with reply' )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, ,0, None)})
+        self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 
-    # unload volume from the drive
+    # unload volume from the drive;  default overridden for other media changers
     def unload(self,
                external_label,  # volume external label
                drive,
@@ -102,7 +102,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    self.enprint("remove tape "+external_label+" from drive "+drive)
 	    time.sleep( self.mc_config['delay'] )
 	    pass
-        self.reply_to_caller({'status' : (e_errors.OK, ,0, None)})
+        self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
@@ -111,6 +111,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                media_type) :         # drive id
         pass
 
+    # Do the forking and call the function which will be load or unload
     def DoWork(self, function, ticket):
 
         Trace.trace(10, '>dowork')
@@ -124,16 +125,17 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                       ticket['vol_ticket']['external_label'] + " " + ticket['drive_id'])
         # otherwise, we can do this
         else:
-            # if this a duplicate request, drop it
             self.enprint( "DOWORK"+repr(ticket))
+            # set the reply address - note this could be a general thing in dispatching worker
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
+            # if this a duplicate request, drop it
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
                     return
             # if not duplicate, fork the work
             pipe = os.pipe()
-            # if in child process
             if not os.fork() :
+                # if in child process
                 Trace.trace(10, '>forked')
                 self.enprint( "FORKED"+repr(ticket))
                 os.close(pipe[0])
@@ -182,8 +184,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                           ticket['drive_id']+" "  +\
                                           repr(ticket['status']) )
         # report back ito original client - probably a mover
-        self.reply_with_address(ticket)
         Trace.trace(10, '<<< WorkDone')
+        self.reply_with_address(ticket)
 
 # EMASS robot loader server
 class EMASS_MediaLoader(MediaLoaderMethods) :
@@ -193,6 +195,7 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
         import EMASS
         self.load=EMASS.mount
+        self.unload=EMASS.dismount
         self.prepare=EMASS.dismount
 
 
