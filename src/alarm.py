@@ -94,6 +94,7 @@ class GenericAlarm:
             category = "MSS"
             type = self.type
             item = "ALARM"
+            print '$ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, long_message, submitter, user, password, category, type, item)
             os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, long_message, submitter, user, password, category, type, item))
             self.ticket_generated = "YES"
             
