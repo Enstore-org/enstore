@@ -189,52 +189,50 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	ftt_get_stats(d, &sbuf);
 	errno = save2;
 
-	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY))) {
-	    if (8 == atoi(p)){
-		res = -1;
-		save1 = ftt_errno = FTT_EBLANK;
-	    } else {
-		ftt_errno = save1;
-	    }
+	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
+	    DEBUG3(stderr, "Saw blank check sense key\n");
+	    res = -1;
+	    save1 = ftt_errno = FTT_EBLANK;
 	} else {
+	    DEBUG3(stderr, "Sense key was %s\n", p);
 	    ftt_errno = save1;
-	}
-	if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
-	    DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
-	    if (d->last_pos > 0 && atoi(p) == d->last_pos) {
-		ftt_errno = FTT_EBLANK;
-		res = -1;
+	    if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
+		DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
+		if ((d->last_pos > 0 && atoi(p) == d->last_pos) || atoi(p) == 0) {
+		    ftt_errno = FTT_EBLANK;
+		    res = -1;
+		} else {
+		    ftt_errno = save1;
+		}
+		d->last_pos = atoi(p);
+	    } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_REMAIN_TAPE))) {
+		DEBUG3(stderr, "Current remain %s, last remain %d\n", p, d->last_pos);
+		if (d->last_pos > 0 && atoi(p) == d->last_pos) {
+		    ftt_errno = FTT_EBLANK;
+		    res = -1;
+		} else {
+		    ftt_errno = save1;
+		}
+		d->last_pos = atoi(p);
 	    } else {
 		ftt_errno = save1;
 	    }
-	    d->last_pos = atoi(p);
-	} else if (0 != (p = ftt_extract_stats(&sbuf,FTT_REMAIN_TAPE))) {
-	    DEBUG3(stderr, "Current remain %s, last remain %d\n", p, d->last_pos);
-	    if (d->last_pos > 0 && atoi(p) == d->last_pos) {
-		ftt_errno = FTT_EBLANK;
-		res = -1;
-	    } else {
-		ftt_errno = save1;
+
+	    /*  if we didn't do a SCSI read ourselves, and we're at BOT,  */
+	    /*  but we do do some scsi operations,			  */
+	    /*  have verify_blank double check the report so we know it's */
+	    /*  not a mis-diagnosed error.                                */
+
+	    if (FTT_EBLANK == ftt_errno && 
+			d->current_file == 0 && d->current_block == 0 &&
+			(d->scsi_ops & FTT_OP_READ) == 0 && d->scsi_ops != 0 ) {
+		save1 = ftt_errno;
+		res = ftt_verify_blank(d);
+		if ( 0 <= res && ftt_errno == FTT_SUCCESS) {
+		     ftt_errno = FTT_EIO;
+		     res = -1;
+		}
 	    }
-	    d->last_pos = atoi(p);
-	} else {
-	    ftt_errno = save1;
-	}
-    }
-
-    /*  if we didn't do a SCSI read ourselves, and we're at BOT,  */
-    /*  but we do do some scsi operations,			  */
-    /*  have verify_blank double check the report so we know it's */
-    /*  not a mis-diagnosed error.                                */
-
-    if (FTT_EBLANK == ftt_errno && 
-	        d->current_file == 0 && d->current_block == 0 &&
-		(d->scsi_ops & FTT_OP_READ) == 0 && d->scsi_ops != 0 ) {
-        save1 = ftt_errno;
-	res = ftt_verify_blank(d);
-        if ( 0 <= res && ftt_errno == FTT_SUCCESS) {
- 	     ftt_errno = FTT_EIO;
-	     res = -1;
 	}
     }
     if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {

@@ -15,14 +15,14 @@ DIR=$(DEFAULT_DIR)
 #
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_2
+            VERS=v2_2a
        UPS_STYLE=new
           DEPEND=
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
            CHAIN=test
       UPS_SUBDIR=ups
- ADDPRODUCT_HOST=fnkits
+ ADDPRODUCT_HOST=fnkits.fnal.gov
 OLD_ADDPRODUCT_HOST=dcdsv0
 DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
 

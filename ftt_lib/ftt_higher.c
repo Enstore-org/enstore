@@ -198,19 +198,27 @@ ftt_init_stats(ftt_descriptor d){
 	ENTERING("ftt_init_stats");
 	PCKNULL("ftt_descriptor",d);
 
-	res = malloc(sizeof(ftt_stat_buf)*2);
-	if (0 == res) {
-	    ftt_eprintf("ftt_init_stats unable to allocate memory errno %d", errno);
-	    ftt_errno = FTT_ENOMEM;
-	    return 0;
-	}
-	res[LAST] = ftt_alloc_stat();
-	res[TOTALS] = ftt_alloc_stat();
+	res = ftt_alloc_stats();
 	ires = ftt_get_stats(d,res[LAST]);
 	if (ires < 0) {
 	    ftt_free_stats(res);
 	}
 	return res;
+}
+
+ftt_stat_buf *
+ftt_alloc_stats() {
+    ftt_stat_buf *res;
+
+    res = malloc(sizeof(ftt_stat_buf)*2);
+    if (0 == res) {
+	ftt_eprintf("ftt_init_stats unable to allocate memory errno %d", errno);
+	ftt_errno = FTT_ENOMEM;
+	return 0;
+    }
+    res[LAST] = ftt_alloc_stat();
+    res[TOTALS] = ftt_alloc_stat();
+    return res;
 }
 
 void

@@ -27,7 +27,10 @@ extern int errno;
 #include <sys/systeminfo.h>
 #define gethostname(b, l) sysinfo(SI_HOSTNAME, b, (long)l)
 #define bzero(b,l) memset(b,0,l)
+
+#ifdef BROKEN
 #define ARQ
+#endif
 
 #else /* SYSV */
 

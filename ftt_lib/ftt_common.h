@@ -10,6 +10,7 @@
 */
 
 extern ftt_stat_buf	ftt_alloc_stat(void);
+extern ftt_stat_buf	*ftt_alloc_stats(void);
 extern int		ftt_all_scsi(ftt_descriptor);
 extern char *		ftt_avail_mode(ftt_descriptor, int, int, int);
 extern char *		ftt_get_mode(ftt_descriptor, int *, int* mode, int *);
