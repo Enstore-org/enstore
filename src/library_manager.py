@@ -39,6 +39,7 @@ import priority_selector
 import mover_constants
 import charset
 import discipline
+import option
 
 KB=1L<<10
 MB=1L<<20
@@ -493,6 +494,7 @@ class LibraryManagerMethods:
             self.postponed_requests = PostponedRequests(self.postponed_requests_time)
         else: self.postponed_requests.init_rq_list()
         self.postponed_rq = 0
+        self.pending_work.start_cycle()
         
         self.checked_keys = [] # list of checked tag keys
         self.continue_scan = 0
@@ -521,6 +523,7 @@ class LibraryManagerMethods:
                 return None
             # we have saturated system with requests from the same storage group
             # see if there are pending requests for different storage group
+            Trace.trace(17,"PW1")
             tags = self.pending_work.get_tags()
             Trace.trace(16,"tags: %s"%(tags,))
             if len(tags) > 1:
@@ -551,6 +554,7 @@ class LibraryManagerMethods:
         Trace.trace(12,"process_read_request %s"%(rq.ticket,))
         # ok passed criteria. Get request by file location
         if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
+            Trace.trace(17,"PW2")
             rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
             if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
@@ -725,6 +729,7 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = bound
 
         # look in pending work queue for reading or writing work
+        Trace.trace(17,"PW3")
         rq=self.pending_work.get()
         while rq:
             rej_reason = None
@@ -747,6 +752,7 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                        Trace.trace(17,"PW4")
                         rq = self.pending_work.get(next=1) # get next request
                         continue
             if rq.work == "read_from_hsm":
@@ -757,8 +763,10 @@ class LibraryManagerMethods:
                     
                 if self.continue_scan:
                     if key:
+                        Trace.trace(17,"PW5")
                         rq = self.pending_work.get(key)
                     else:
+                        Trace.trace(17,"PW6")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
@@ -769,8 +777,10 @@ class LibraryManagerMethods:
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
+                        Trace.trace(17,"PW7")
                         rq = self.pending_work.get(key)
                     else:
+                        Trace.trace(17,"PW8")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
@@ -780,6 +790,7 @@ class LibraryManagerMethods:
                 Trace.log(e_errors.ERROR,
                           "next_work_any_volume assertion error in next_work_any_volume %s"%(rq.ticket,))
                 raise AssertionError
+            Trace.trace(17,"PW9")
             rq = self.pending_work.get(next=1)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
@@ -1290,8 +1301,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
-        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
-                                                      self.keys['port']))
+        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
+                                                             self.keys['port']))
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
         self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
@@ -2321,7 +2332,8 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
         # fill in the defaults for possible options
         generic_server.GenericServerInterface.__init__(self)
 
-    library_options = {} #There was a 'debug' option, what did it do???
+
+    library_options = {}
 
     # define the command line options that are valid
     def valid_dictionaries(self):
