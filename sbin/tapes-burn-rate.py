@@ -14,6 +14,11 @@ CAP_9940=60
 CAP_9940B=200
 CAP_LTO=100
 
+systems=['cdfen','d0en','stken']
+QUOTAS = {}
+libraries = {}
+for system in systems:
+    libraries[system] = {}
 
 def sort_the_file(infile):
     fi = open(infile,'r')
@@ -42,7 +47,26 @@ def sort_the_file(infile):
     fi.close()
     fo.close()
     
-    
+def get_capacity(volume, system):
+    rtn = os.popen("grep %s %s.vol_sizes"%(volume, system)).readlines()[0]
+    if rtn:
+        list = rtn.split()
+        try:
+            ret = int(float(list[4][:-2]))
+        except:
+            ret = 0
+    return ret
+
+def lib_capacity(g):
+    l, sg = g.split('.')
+    for system in libraries.keys():
+        if libraries[system].has_key(l) and sg in libraries[system][l]['storage_groups']:
+            cap = libraries[system][l]['volume_capacity']
+            break
+    else:
+        cap = 0
+    return cap
+
     
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
@@ -88,14 +112,17 @@ for cmd in \
            '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
            '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
            '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.vol_sizes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O d0en.vol_sizes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
+           '$ENSTORE_DIR/bin/Linux/wget -O stken.vol_sizes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
            '$ENSTORE_DIR/bin/Linux/wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
            '$ENSTORE_DIR/bin/Linux/wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
            '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
     print cmd
     os.system(cmd)
-
-QUOTAS = {}
-for thefile in 'cdfen','d0en','stken':
+for system in systems:
+    libraries[system] = {}
+for thefile in systems:
     print 'processing',thefile,'quotas'
     f = open(thefile+".quotas","r")
     while 1:
@@ -124,11 +151,14 @@ for thefile in 'cdfen','d0en','stken':
                 continue
 
         QUOTAS[l+'.'+sg] = (wv,bv,su,l)
+        if not l in  libraries[thefile].keys():
+            libraries[thefile][l]={'volume_capacity':None,'storage_groups':[]}
+        if not sg in libraries[thefile][l]['storage_groups']:
+            libraries[thefile][l]['storage_groups'].append(sg)
     f.close()
-
 print "QUOTAS"
 pprint.pprint(QUOTAS)
-#sys.exit()
+
 TAPES = {}
 for thefile in 'cdfen','d0en','stken':
     print 'processing',thefile,'volumes'
@@ -210,6 +240,18 @@ while 1:
         #o = open(g+'.tapes','w')
         o = open(g+'.tapes','a')
         group_fd[g] = o
+
+    #define the tape capacity
+    for system in libraries.keys():
+        if libraries[system].has_key(l) and sg in libraries[system][l]['storage_groups']:
+            if not libraries[system][l]['volume_capacity']:
+                cap = get_capacity(v, system)
+                if cap == 0:
+                    print "DON'T KNOW WHAT IS CAPACITY  FOR %s"%(g,)
+                    cap = 100
+                libraries[system][l]['volume_capacity'] = cap
+            break
+    
     # convert date
     ti = time.mktime(time.strptime(d,"%Y-%m-%d"))
     do = time.strftime("%d-%b-%y",time.localtime(ti))
@@ -254,6 +296,9 @@ for g in group_fd.keys():
     o = group_fd[g]
     o.close()
 
+#print "LIBRARIES"
+#pprint.pprint(libraries)
+
 #import pprint
 #pprint.pprint(QUOTAS)
 _9940_wv = _9940_bv = 0
@@ -283,6 +328,10 @@ for g in group_fd.keys():
     if QUOTAS.has_key(g):
         (wv,bv,su, l) = QUOTAS[g]
         
+        cap = lib_capacity(g)
+        if cap == 0:
+            print "DON'T KNOW WHAT IS CAPACITY FOR %s"(g,)
+        
         if l in ['D0-9940B', 'CDF-9940B', 'CD-9940B']:
           _9940b_wv = _9940b_wv + int(wv)
           _9940b_bv = _9940b_bv + int(bv)
@@ -299,7 +348,6 @@ for g in group_fd.keys():
           _9940_wv = _9940_wv + int(wv)
           _9940_bv = _9940_bv + int(bv)
           _9940_su = _9940_su + su
-          cap = CAP_9940
         
             
     elif g == "CD-9840":
@@ -310,7 +358,6 @@ for g in group_fd.keys():
         bv = string.atoi(bv1)+string.atoi(bv2)
         #su = '0.0GB'
         su="%.2f%s"%(eagle_mb / 1024.,"GB")
-        cap = CAP_9840
     elif g == "CD-9940":
         (wv1,bv1,su1,l) = QUOTAS.get('blank-9940.none',('-1','-1','-1','-1'))
         (wv2,bv2,su2,l) = QUOTAS.get('9940.none:',('-1','-1','-1','-1'))
