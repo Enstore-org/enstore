@@ -114,12 +114,26 @@ def get_interfaces():
 def get_interface_info(interface):
     config = get_config()
     if not config:
-        return
+        return {'ip':get_default_interface_ip(), 'interface':interface}
     interface_dict = config.get('interface')
     if not interface_dict:
-        return
+        return {'ip':get_default_interface_ip(), 'interface':interface}
 
     return interface_dict[interface]
+
+#Returns the dictionary, that represents one interface line in entore.conf.
+def get_interface_info_by_ip(interface_ip):
+    config = get_config()
+    if not config:
+        return {'ip':interface_ip}
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return {'ip':interface_ip}
+
+    for interface in interface_dict.keys():
+        if interface_dict[interface]['ip'] == interface_ip:
+            return interface_dict[interface]
+    return {'ip':interface_ip}
 
 ##############################################################################
 # The following function selects which CPU to run the process on.
@@ -204,7 +218,7 @@ def get_default_interface_ip():
 def choose_interface(dest=None):
     interfaces = get_interfaces()
     if not interfaces:
-        return None
+        return get_interface_info_by_ip(get_default_interface_ip())
     
     choose = []
     for interface in interfaces:
@@ -218,13 +232,14 @@ def check_load_balance(mode = None, dest = None):
     #mode should be 0 or 1 for "read" or "write"
     config = get_config()
     if not config:
-        return
+        return get_interface_info_by_ip(get_default_interface_ip())
     interface_dict = config.get('interface')
     if not interface_dict:
-        return
+        return get_interface_info_by_ip(get_default_interface_ip())
     interfaces = interface_dict.keys()
     if not interfaces:
-        return
+        return get_interface_info_by_ip(get_default_interface_ip())
+    
     #Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
     #Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
@@ -253,7 +268,12 @@ def check_load_balance(mode = None, dest = None):
 def setup_interface(dest, interface_ip):
     #Some architecures (like IRIX) attach a network card to a processor.
     # make sure the process runs on the correct cpu for the interface selected.
-    interface_dict = get_config().get('interface')
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return
     for interface in interface_dict.keys():
 	if interface_dict[interface]['ip'] == interface_ip:
 	    #pass in the interface (ie. eg0, eth0)
