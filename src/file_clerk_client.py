@@ -439,7 +439,13 @@ def do_work(intf):
             
             print "     label           bfid       size        location_cookie delflag original_name\n"
             tape = ticket['tape_list']
+            # sort it accordinbg to location cookies
+            klist = []
             for key in tape.keys():
+                klist.append((tape[key]['location_cookie'], tape[key]['bfid']))
+            klist.sort()
+            for k in klist:
+                key = k[1]
                 record = tape[key]
                 deleted = 'unknown'
                 if record.has_key('deleted'):
