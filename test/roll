@@ -13,9 +13,9 @@ find $ENSTORE_DIR/test/data -type f -print > $ENSTORE_DIR/test/data.in
 make jobs
 
 for d in 1 2  ; do
-   (cd $d; ./writer /pnfs/enstore/fndapr ../data.in >writer.output 2>&1 &)
+   (cd $d; rm -f writer.output; ./writer /pnfs/enstore/fndapr ../data.in >writer.output 2>&1 &)
 done
 
 for d in 1 2  ; do
-   (cd $d; ./reader /pnfs/enstore/fndapr  >r.out 2>&1 &)
+   (cd $d; rm -f reader.output; ./reader /pnfs/enstore/fndapr  >reader.output 2>&1 &)
 done
