@@ -68,14 +68,12 @@ class GenericServer(generic_client.GenericClient):
 
         #We want the servers to cache the config file contents, because
         # they can wait for the NEWCONFIGFILE message from the event relay.
-	#self.er_flag = generic_client.ErFlag()
-	#self.csc.new_config_obj = self.er_flag
         try:
-            self.csc.new_config_obj.enable_caching(self.erc.event_relay_addr)
+            self.csc.new_config_obj.enable_caching()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()
         except:
-            pass
+            Trace.log(e_errors.WARNING, "Unable to cache configuration.")
 
 
     __pychecker__ = "no-override"
