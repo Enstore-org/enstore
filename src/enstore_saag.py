@@ -32,17 +32,7 @@ class SaagInterface(generic_client.GenericClientInterface):
                                                        user_mode=user_mode)
 
     def valid_dictionaries(self):
-        return (self.help_options, self.saag_options)
-
-    saag_options = {
-        option.HTML_GEN_HOST:{option.HELP_STRING:
-                              "ip/hostname of the html server",
-                              option.VALUE_TYPE:option.STRING,
-                              option.VALUE_USAGE:option.REQUIRED,
-                              option.VALUE_LABEL:"node_name",
-                              option.USER_LEVEL:option.ADMIN,
-                              },
-        }
+        return (self.help_options,)
     
 def do_work(intf):
     # we do not want anything printed out
@@ -62,17 +52,6 @@ def do_work(intf):
 
     # gather all of the latest status of the enstore system
     (rtn, enstat) = enstore_up_down.do_real_work()
-    # and the network if it is not marked as down
-    if not offline_d.has_key(enstore_constants.NETWORK):
-	netstat = monitor_client.do_real_work(summary, intf.config_host, intf.config_port,
-					      intf.html_gen_host)
-    else:
-	netstat = {enstore_constants.NETWORK : enstore_constants.WARNING}
-
-    # check if the network status should be overridden
-    if enstore_constants.NETWORK in override_d_keys:
-	netstat[enstore_constants.NETWORK] = enstore_functions.override_to_status(\
-	    override_d[enstore_constants.NETWORK])
 
     # no media status yet.
     medstat = {}
@@ -130,7 +109,7 @@ def do_work(intf):
     filename = "%s/%s"%(html_dir, enstore_constants.SAAGHTMLFILE)
     saag_file = enstore_files.HtmlSaagFile(filename, system_tag)
     saag_file.open()
-    saag_file.write(enstat, netstat, medstat, alarms, nodes, outage_d, offline_d, 
+    saag_file.write(enstat, medstat, alarms, nodes, outage_d, offline_d, 
 		    enstore_files.status_html_file_name())
     saag_file.close()
     saag_file.install()
