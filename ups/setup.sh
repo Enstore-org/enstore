@@ -14,3 +14,7 @@ PYTHONINC=$PYTHON_DIR/include/$PVER
 export PYTHONINC
 PYTHONLIB=$PYTHON_DIR/lib/$PVER
 export PYTHONLIB
+
+. $ENSTORE_DIR/etc/defaults
+
+. $ENSTORE_DIR/etc/pnfs.sh
