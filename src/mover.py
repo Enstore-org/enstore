@@ -2023,6 +2023,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
             import ftt
+            stats = None
             try:
                 stats = self.tape_driver.ftt.get_stats()
                 r2 = long(stats[ftt.REMAIN_TAPE]) * 1024L
@@ -2031,7 +2032,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                           (detail,))
             except:
                 Trace.log(e_errors.ERROR, "ftt.get_stats cannot get remaining capacity")
-                Trace.trace(11,"stats %s"%(stats,))
+                 Trace.handle_error()
 
         capacity = self.vol_info['capacity_bytes']
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
