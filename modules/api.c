@@ -133,6 +133,11 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
     return (-1);
   }
 
+  if ( ( flag != INIT ) || ( flag != RECENT ) ) {
+    printf("ds_translate_ftt_stats(): Error, Wrong flag, stats not set\n");
+    return (-1);
+  }
+
   if ( _ds_set_flag_pointer(ds_desc, &stats_pointer, &flag_pointer, flag) != 0 ) {
     printf("ds_translate_ftt_stats(): Error, Wrong flag, stats not set\n");
     return (-1);
@@ -592,7 +597,7 @@ int ds_set_stats(DS_DESCRIPTOR* const ds_desc, const DS_STATS* const stat_buf, c
 int ds_extract_stats(DS_DESCRIPTOR* const ds_desc, DS_STATS* const stat_buf, const int flag)
 {
 
-  /* function to set DS_STATS struct of DS_DESCRIPTOR */
+  /* function to get DS_STATS struct of DS_DESCRIPTOR */
 
   DS_STATS* stats_pointer;
   int* flag_pointer;
