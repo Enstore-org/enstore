@@ -1083,6 +1083,13 @@ def main(intf):
         if uncollectable_count > 0:
             Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
+        if continue_working:
+            #As long as we are reinitializing, make sure we pick up any
+            # new configuration changes.  It is possible that the
+            # reinialization is happening because a NEWCONFIGFILE message
+            # was received; among other reasons.
+            csc.dump_and_save()
+
     #Perform the following two deletes explicitly to avoid obnoxious
     # tkinter warning messages printed to the terminal when using
     # python 2.2.

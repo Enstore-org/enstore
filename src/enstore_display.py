@@ -2535,6 +2535,9 @@ class Display(Tkinter.Canvas):
         self.number_of_movers = len(command_list[1:])
         self.create_movers(self.mover_names)
 
+    def newconfig_command(self, command_list):
+        self.reinitialize()
+
     #########################################################################
 
     def queue_command(self, command):
@@ -2585,7 +2588,8 @@ class Display(Tkinter.Canvas):
                               'mover_check':1},                            
                  'transfer' : {'function':transfer_command, 'length':3,
                               'mover_check':1},                               
-                 'movers' : {'function':movers_command, 'length':2}}
+                 'movers' : {'function':movers_command, 'length':2},
+                 'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
     def get_valid_command(self, command):
 
