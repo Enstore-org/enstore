@@ -324,8 +324,9 @@ def print_volumes_defind_status(volume_list, output_file):
                          volume['volume_family']))
     vd_file.close()
     
-def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, order):
+def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quotas):
 
+    order = quotas.get('order', {})
     vq_file = open(output_file, "w")
 
     vq_file.write("Date this listing was generated: %s\n" % \
@@ -1015,10 +1016,9 @@ def inventory(output_dir, cache_dir):
     vols.close()
     file.close()
 
-    order = quotas.get('order', {})
     #Create files that hold statistical data.
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
-                               volume_quotas_file, order)
+                               volume_quotas_file, quotas)
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
                             volume_quotas_file, volume_quotas_format_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
