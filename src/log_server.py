@@ -113,6 +113,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         tm = time.localtime(time.time()) # get the local time
         if message == self.last_message:
             self.repeat_count=self.repeat_count+1
+            Trace.trace(12, "last message repeated %d times"%self.repeat_count)
+            return
         elif self.repeat_count:
             self.logfile.write("%.2d:%.2d:%.2d last message repeated %d times\n"%
                                (tm[3],tm[4],tm[5], self.repeat_count))
