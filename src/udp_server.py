@@ -36,10 +36,13 @@ class UDPServer:
         self.address_family = socket.AF_INET
 
         try:
-	    #If an address was specified.
-            if type(server_address) == type(()) and len(server_address) == 2 \
-               and type(server_address[0]) == type("") and server_address[0] \
-               and type(server_address[1]) == type(0) and server_address[1]:
+            #If an address was not specified.
+            if type(server_address) != type(()) and len(server_address) != 2:
+                ip,port,self.server_socket = udp_common.get_default_callback()
+                self.server_address = (ip, port)
+	    #If an address was specified.                
+            elif (type(server_address[0]) == type("")
+                 and type(server_address[1]) == type(0)):
                 ip, port, self.server_socket = udp_common.get_callback(
                     server_address[0], server_address[1])
                 self.server_address = (ip, port)
