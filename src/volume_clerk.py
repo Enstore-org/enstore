@@ -1785,6 +1785,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def set_system_migrated(self, ticket):
         return self.set_system_inhibit(ticket, "migrated", 1)
 
+    # flag that the current volume is full #### DONE
+    def set_system_full(self, ticket):
+        return self.set_system_inhibit(ticket, "full", 1)
+
     #### DONE
     # set pause flag for the all Library Managers corresponding to
     # certain Media Changer

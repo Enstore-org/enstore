@@ -220,6 +220,7 @@ FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
+FULL = "full"                                #volume
 GET_ASSERTS = "get-asserts"                  #library
 GET_BFID = "get-bfid"                        #encp
 GET_CACHE = "get-cache"                      #encp
@@ -416,7 +417,7 @@ valid_option_list = [
     DOWN, DUMP, DUPLICATE,
     ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
-    FIND_SAME_FILE, FORCE,
+    FIND_SAME_FILE, FORCE, FULL,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,

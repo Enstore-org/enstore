@@ -603,6 +603,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
+    # mark volume as full
+    def set_system_full(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_full',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
     # mark volume as migrated
     def set_system_migrated(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_migrated',
@@ -783,6 +789,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.pvols = 0
         self.just = 0
         self.labels = 0
+	self.full = None
         self.in_state = 0
         self.next = 0
         self.vol = ""
@@ -1061,6 +1068,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
         option.READ_ONLY:{option.HELP_STRING:"set volume TO readonly",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
+        option.FULL:{option.HELP_STRING:"set volume TO full",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
@@ -1571,6 +1583,8 @@ def do_work(intf):
         Trace.trace(12, repr(ticket))
     elif intf.read_only:
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
+    elif intf.full:
+        ticket = vcc.set_system_full(intf.full) # name of this volume
     elif intf.migrated:
         ticket = vcc.set_system_migrated(intf.migrated) # name of this volume
     elif intf.no_access:
