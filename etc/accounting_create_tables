@@ -72,3 +72,19 @@ create index event_name_idx on event(name);
 create index event_node_idx on event(node);
 create index event_start_idx on event(start);
 create index event_oid_idx on event(oid);
+
+create table encp_error(
+	date		timestamp without time zone not null,
+	node		varchar not null,
+	pid		int not null,
+	username	varchar not null,
+	encp_id		varchar,
+	version		varchar not null,
+	type		varchar not null,
+	error		varchar not null,
+	src		varchar,
+	dst		varchar,
+	storage_group	varchar,
+	size		bigint
+);
+
