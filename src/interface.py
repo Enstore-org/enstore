@@ -318,6 +318,10 @@ class Interface:
 	        self.mail_node=value
             elif opt == "--alarm" :
                 self.alarm = 1
+            elif opt == "--resolve" :
+                self.resolve = 1
+            elif opt == "--id" :
+                self.id = string.atof(value)
             elif opt == "--patrol_file" :
                 self.patrol_file=1
             elif opt == "--root_error" :
