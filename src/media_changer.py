@@ -445,6 +445,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def doCleaningCycle(self, inTicket):
         """ do drive cleaning cycle """
         import aml2
+        Trace.log(e_errors.INFO, 'mc: ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
 	ticket = {}
         try:
@@ -454,17 +455,23 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    status = 1
             return "ERROR", status, "no device field found in ticket"
         try:
-	    ticket['media_type'] = inTicket['vol_info']['media_type']
+            ticket['mc_device'] = inTicket['moverConfig']['mc_device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'aml2 no mc_device field found in ticket.')
+	    status = 1
+            return "ERROR", status, "no mc_device field found in ticket"
+        try:
+	    ticket['media_type'] = inTicket['volInfo']['media_type']
         except KeyError:
             Trace.log(e_errors.ERROR, 'aml2 no media_type field found in ticket.')
 	    status = 1
             return "ERROR", status, "no media_type field found in ticket"
 	
-	driveType = ticket['drive'][:2]  # ... need device type, not actual device
+	driveType = ticket['mc_device'][:2]  # ... need device type, not actual device
         ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
 	
-        vcc = inTicket['vcc']
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
 	if type(vcc) == types.StringType:
 	    cleaningVolume = vcc
 	else:
@@ -477,7 +484,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
 			      vol_veto_list, first_found)  # get which volume to use
 	ticket['volume'] = cleaningVolume
 	
-        Trace.log(e_errors.LOG, 'mc: ticket='+repr(ticket))
 	for i in range(driveCleanCycles):
 	    rt = aml2.cleanADrive(ticket, classTicket)
 	if type(vcc) != types.StringType:
