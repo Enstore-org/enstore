@@ -1087,7 +1087,6 @@ class Interface:
 
             #Get the value in the correct type to set.
             try:
-                #opt_value = self.get_value_value(opt_dict, value)
                 opt_typed_value = self.get_value_type(opt_dict, value)
             except ValueError, detail:
                 msg = "option %s requires type %s" % \
@@ -1096,8 +1095,17 @@ class Interface:
                 self.print_usage(msg)
 
             setattr(self, opt_name, opt_typed_value)
-            
-        if not value or opt_dict.get(FORCE_SET_DEFAULT, None):
+
+        if opt_dict.get("extra_option", None) and \
+           opt_dict.get(VALUE_USAGE, None) in (OPTIONAL,):
+            #If there is no value, the option value is optional AND the
+            # option value is an extra option nothing should be done.  There
+            # was a problem because the "not value" clause of the elif below
+            # would be true when the value was optional and not present.
+            # This if catches this type of case.
+            pass
+
+        elif not value or opt_dict.get(FORCE_SET_DEFAULT, None):
             #Get the name to set.
             opt_name = self.get_default_name(opt_dict, long_opt)
 
@@ -1131,6 +1139,8 @@ class Interface:
                 next = self.next_argument(value)
             else:
                 next = self.next_argument(opt)
+
+            extra_option["extra_option"] = 1 #This is sometimes important...
 
             self.set_from_dictionary(extra_option, long_opt, next)
             try:
