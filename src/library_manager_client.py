@@ -105,7 +105,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        if work['vc'].has_key('file_family_width'):
                            ff_msg = string.join((ff_msg,"FF_W %s"%(work['vc']['file_family_width'],)),' ')
                        if (host == node) or (not node):
-                           print "%s %s %s %s %s P %d %s %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg, ff_msg)
+                           print "%s %s %s %s %s P %d %s %s %s %s" % (host,self.name,user,fn,pnfsfn, at_top, reject_reason[0], reject_reason[1], vol_msg, ff_msg)
                            
                for work in at_list:
                    host = work["wrapper"]["machine"][1]
@@ -121,11 +121,16 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    else:
                        mover = ''
                    if (host == node) or (not node):
-                       print "%s %s %s %s %s M %s %s" % (host,self.name, user,pnfsfn,fn, mover, vol)
                        if work["work"] == "read_from_hsm":
                           active_read_cnt = active_read_cnt + 1
+                          f1 = pnfsfn
+                          f2 = fn
                        elif work["work"] == "write_to_hsm":
                            active_write_cnt = active_write_cnt + 1
+                           f1 = fn
+                           f2 = pnfsfn
+                       print "%s %s %s %s %s M %s %s" % (host,self.name, user,f1,f2, mover, vol)
+
         print "Pending read requests: ", pending_read_cnt
         print "Pending write requests: ", pending_write_cnt
         print "Active read requests: ", active_read_cnt
