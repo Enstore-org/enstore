@@ -39,12 +39,12 @@ def _open2(pathname,mode=0666):
     try:
         os.link(tmpname, pathname)
         ok = 1
-    except:
+    except OSError, detail:
         try:
             s = os.stat(tmpname)
             if s and s[stat.ST_NLINK]==2:
                 ok = 1
-        except:
+        except OSError, detail:
             ok = 0
 
     if ok:
@@ -55,7 +55,7 @@ def _open2(pathname,mode=0666):
         return fd
     else:
         delete_at_exit.unregister(pathname)
-        return -1
+        return -(detail.errno) #return errno values as negative.
             
 open = _open2
 
