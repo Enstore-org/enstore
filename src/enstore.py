@@ -57,6 +57,9 @@ def call_function(executable, argv):
     str = executable
     for arg in argv:
         str = "%s %s"%(str, arg)
+    # check to see if we need to setup the environment a little
+    if not os.environ.has_key("ENSTORE_DIR"):
+        str = ". /usr/local/etc/setups.sh; setup enstore; %s"%str
     return os.system(str)
 
 def get_farmlet(default):
@@ -247,7 +250,7 @@ class EnstoreInterface(UserOptions):
             print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%cmd
             print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
             print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
-            print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
+            print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
             print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%cmd
         else:
             call_function("pnfs", "")            
@@ -368,7 +371,7 @@ class Enstore(EnstoreInterface):
                 self.node = DEFAULT_AML2_NODE
             cmd = 'rsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%self.node
             rtn = os.system(cmd)
-        elif not self.user_mode and arg1 == "Esys":
+        elif not self.user_mode and arg1 == "EPS":
             command=". /usr/local/etc/setups.sh; setup enstore; EPS"
             rtn = do_rgang_command("enstore",command)
         elif arg1 == "ps":
