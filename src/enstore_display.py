@@ -169,9 +169,19 @@ class Mover:
                                                               fill = 'green') #,font=8)
 
     def update_state(self, state):
+        mover_color=None
         if state == self.state:
             return
         self.state = state
+        if self.state not in ['ERROR', 'OFFLINE']:
+            pass
+        else:
+            if self.state == 'ERROR':
+                mover_color='red'
+            else:
+                mover_color='grey'
+            self.display.delete(self.outline) #undraw the mover
+            self.display.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill=mover_color) #redraw mover in new color
         x, y = self.x, self.y
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
@@ -570,18 +580,26 @@ class Display(Canvas):
     def handle_command(self, command):
         ## Accept commands of the form:
         # 1 word:
-        # quit
+        #      quit
+        #      robot
+        #      title
+        # 2 words:
+        #     delete MOVER_NAME
         # 3 words:
-        # state MOVER_NAME STATE_NAME
-        # connect MOVER_NAME CLIENT_NAME
-        # disconnect MOVER_NAME CLIENT_NAME
-        # load MOVER_NAME VOLUME_NAME
-        # unload MOVER_NAME VOLUME_NAME
+        #      client MOVER-NAME CLIENT_NAME
+        #      connect MOVER_NAME CLIENT_NAME
+        #      disconnect MOVER_NAME CLIENT_NAME
+        #      loaded MOVER_NAME VOLUME_NAME
+        #      loading MOVER_NAME VOLUME_NAME
+        #      moveto MOVER_NAME VOLUME_NAME
+        #      remove MOVER_NAME VOLUME_NAME
+        #      state MOVER_NAME STATE_NAME
+        #      unload MOVER_NAME VOLUME_NAME
         # 4 words:
-        # transfer MOVER_NAME nbytes total_bytes
-        # variable number of words
-        # movers M1 M2 M3 ...
-        # title (?)
+        #      transfer MOVER_NAME nbytes total_bytes
+        # (N) number of words:
+        #      movers M1 M2 M3 ...
+    
         
         now = time.time()
         command = string.strip(command) #get rid of extra blanks and newlines
