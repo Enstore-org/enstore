@@ -736,7 +736,7 @@ def headers(dummy):
     if pad:
         pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
         trailer = '\0'*pad
-    return "", trailer
+        return "", trailer
     
     return "", ""
 
