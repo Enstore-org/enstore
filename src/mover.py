@@ -339,7 +339,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.read_client_thread = None
         self.write_client_thread = None
         self.setup_transfer_thread = None
-        self.update_thread = None
+        self.mc_thread = None
         self.setup_lock = threading.Lock()
         self.dismount_time = None
         self.delay = 0
@@ -433,24 +433,29 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
                 
-
-    def update(self, reset_timer=None):
-        if self.update_thread and self.update_thread.isAlive():
-            return
-        self.update_thread = threading.Thread(group=None, target=self.update1,
-                                              name='update',args=(reset_timer,), kwargs={})
-        self.update_thread.start()
         
-    def update1(self, reset_timer=None):
-        Trace.trace(20,"update")
+    def update(self, reset_timer=None):
+        Trace.trace(20,"update: %s" % (state_name(self.state))
             
         if not hasattr(self,'_last_state'):
             self._last_state = None
 
         if self.state in (CLEANING, DRAINING, OFFLINE, MOUNT_WAIT, DISMOUNT_WAIT):
-            ### XXX when going offline, we still need to send a message to LM
-            return
+            if self.state == self._last_state:
+                return
 
+        if reset_timer:
+            self.reset_interval_timer()
+
+        ticket = self.format_lm_ticket()
+        
+        for lib, addr in self.libraries:
+            if self.state != self._last_state:
+                Trace.trace(10, "Send %s to %s" % (ticket, addr))
+            self.udpc.send_no_wait(ticket, addr)
+        self._last_state=self.state
+        
+            
         ## See if the delayed dismount timer has expired
         now = time.time()
         if self.state is HAVE_BOUND and self.dismount_time and now>self.dismount_time:
@@ -460,16 +465,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = IDLE
             self.clear_volume_status()
             self.mode = None
-            
-        ticket = self.format_lm_ticket()
-        
-        for lib, addr in self.libraries:
-            if self.state != self._last_state:
-                Trace.trace(10, "Send %s to %s" % (ticket, addr))
-            self.udpc.send_no_wait(ticket, addr)
-        self._last_state=self.state
-        if reset_timer:
-            self.reset_interval_timer()
+
             
     def nowork( self, ticket ):
 	return {}
