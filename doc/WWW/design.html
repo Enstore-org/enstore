@@ -3465,6 +3465,10 @@ reports this status back to the client.
 <h2><a name="db">
 2 Databases in Enstore
 </h2>
+Enstores use databases to store persistent information.
+Currently, there are two databases, "file" and "volume" used by
+file clerk and volume clerk respectively.
+<p>
 The database used in Enstore must provide the following:
 <ul>
 <li>
@@ -3568,6 +3572,11 @@ a new database is chosen, we are expecting that the database servers and
 clients will have to be redesigned to take advantage of the relational
 features.  Python interfaces will also have to be developed to allow the
 current framework to keep working.
+<p>
+In addition to databases, file clerk and volume clerk also maintain
+separate journal files.
+These journal files can be used to recover databases when they can not
+be recovered under normal circusmastance.
 
 <h3><a name="backup_recovery">
 2.2 Backup and Recovery Procedures
