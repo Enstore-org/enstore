@@ -825,7 +825,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(t)
 	return
 
-    def device_dump(self, sendto=None, notify=['huangch@fnal.gov']):
+    def device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov']):
         Trace.log(e_errors.INFO, 'device_dump('+`sendto`+', '+`notify`+')')
         # print 'device_dump('+`sendto`+', '+`notify`+')'
 
