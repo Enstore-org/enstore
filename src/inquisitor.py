@@ -1289,9 +1289,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		if num == 1:
 		    key = server_map[server]
 		elif not self.is_valid(key):
-		    key = None
+		    # we could not find this server amongst the existing ones, maybe
+		    # it is an old one.  allow it to be marked UP or NOOVERRIDE or
+		    # NOOUTAGE as these mean removing the name from the corresponding
+		    # dictionary
+		    if func not in [UP, NOOVERRIDE, NOOUTAGE]:
+			key = None
+			error = e_errors.DOESNOTEXIST
+		    else:
+			error = e_errors.DOESNOTEXISTSTILLDONE
 		    bad_servers.append(key)
-		    ticket["status"] = (e_errors.DOESNOTEXIST, bad_servers)
+		    ticket["status"] = (error, bad_servers)
 
 		if key is not None:
 		    # we found a match
@@ -1500,7 +1508,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         for key in self.config_d.keys():
             self.add_new_server(key, self.config_d)
-	
+
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.inquisitor.hostip,
                                                        self.inquisitor.port))
