@@ -31,7 +31,8 @@ LIBSO=		`$(PYMAKE) -s echodestshared`
 
 # Put the object files for your module here:
 
-CFLAGS=-g  -I./ -I$(FTT_DIR)/include 
+WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
+CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include 
 
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
@@ -51,13 +52,19 @@ YOURLIBS=$(OLIB)/libftt.a
 # can get installed.
 PYMODULES=
 
-all:	ETape Devcodes
+all:	EXfer ETape Devcodes
 
 ETape:
 	MODULE=ETape; \
 	YOURLIBS=$(FTT_DIR)/lib/libftt.a ; \
 	OBS=ETape.o ; \
- 	$(MAKEIT)
+	$(MAKEIT)
+
+EXfer:
+	MODULE=EXfer; \
+	YOURLIBS=$(FTT_DIR)/lib/libftt.a ; \
+	OBS=EXfer.o ; \
+	$(MAKEIT)
 
 Devcodes:
 	MODULE=Devcodes; \
