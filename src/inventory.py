@@ -899,6 +899,9 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     volume_sums = {}   #The summation of all of the file sizes on a volume.
     volumes_allocated = {} #Stats on usage of storage groups.
 
+    t_now = time.time()
+    two_day_ago = t_now - 60*60*24*2
+
     if string.find(output_dir, "/dev/stdout") != -1:
         fd_output = 1
     else:
@@ -933,9 +936,16 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     vc = vols.newCursor()
     vk, vv = vc.first()
     while vk:
+        # skipping deleted volumes
         if vk[-8:] == ".deleted":    # skip
             vk, vv = vc.next()
             continue
+
+        # skipping volumes that were not accessed in last two days
+        if vv['last_access'] != -1 and vv['last_access'] < two_day_ago:
+            vk, vv = vc.next()
+            continue
+
         print 'processing', vk, '...',
         if fd_output != 1:
             fd_output = os.open(output_dir + vv['external_label'],
