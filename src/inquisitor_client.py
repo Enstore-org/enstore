@@ -64,20 +64,6 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to reset the timeout for the inq select
 	return self.send(t)
 
-    def timestamp (self):
-	# tell the inquisitor to timestamp the ascii file
-	return self.send({"work"       : "do_timestamp" })
-
-    def max_ascii_size (self, value):
-	# tell the inquisitor to set the value for the timestamp for the ascii
-	# file
-	return self.send({"work"       : "set_maxi_size" ,
-                          "max_ascii_size"  : value })
-
-    def get_max_ascii_size (self):
-	# tell the inquisitor to return the maximum allowed ascii file size
-	return self.send({"work"       : "get_maxi_size" } )
-
     def max_encp_lines (self, value):
 	# tell the inquisitor to set the value for the max num of displayed
 	# encp lines
@@ -139,9 +125,6 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.get_interval = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-	self.timestamp = 0
-	self.max_ascii_size = 0
-	self.get_max_ascii_size = 0
 	self.refresh = 0
 	self.get_refresh = 0
 	self.max_encp_lines = 0
@@ -183,13 +166,11 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
             return self.client_options() +\
                    ["interval=", "get_interval=", "reset_interval=",
                     "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
-                    "update=", "timestamp", "max_ascii_size=",
-                    "get_max_ascii_size", "dump",
+                    "update=", "dump",
                     "refresh=", "get_refresh", "max_encp_lines=",
                     "get_max_encp_lines", "plot", "logfile_dir=",
                     "start_time=", "stop_time=", "media_changer=", "keep",
                     "keep_dir=", "output_dir="]
-
 
 # this is where the work is actually done
 def do_work(intf):
@@ -233,16 +214,6 @@ def do_work(intf):
 
     elif intf.reset_interval:
         ticket = iqc.reset_interval(intf.reset_interval)
-
-    elif intf.timestamp:
-        ticket = iqc.timestamp()
-
-    elif intf.max_ascii_size:
-        ticket = iqc.max_ascii_size(intf.max_ascii_size)
-
-    elif intf.get_max_ascii_size:
-        ticket = iqc.get_max_ascii_size()
-	print repr(ticket['max_ascii_size'])
 
     elif intf.max_encp_lines:
         ticket = iqc.max_encp_lines(intf.max_encp_lines)
