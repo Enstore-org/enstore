@@ -79,9 +79,9 @@ case `uname -n` in
     cmd="python /home/bakken/enstore/src/mover.py DC05MAM.mover &"; doit
     cmd="python /home/bakken/enstore/src/mover.py DC06MAM.mover &"; doit
     (sleep 2;ecmd mvc --alive DC03MAM.mover; if [ $? -ne 0 ]; then echo DC03MAM.MOVER DEAD; else echo dc03mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC04MAM.mover; if [ $? -ne 0 ]; then echo DC04MAM.MOVER DEAD; else echo dc05mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC05MAM.mover; if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD; else echo dc06mam.mover alive; fi) &
-    (sleep 2;ecmd mvc --alive DC06MAM.mover; if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD; else echo dc07mam.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC04MAM.mover; if [ $? -ne 0 ]; then echo DC04MAM.MOVER DEAD; else echo dc04mam.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC05MAM.mover; if [ $? -ne 0 ]; then echo DC05MAM.MOVER DEAD; else echo dc05mam.mover alive; fi) &
+    (sleep 2;ecmd mvc --alive DC06MAM.mover; if [ $? -ne 0 ]; then echo DC06MAM.MOVER DEAD; else echo dc06mam.mover alive; fi) &
     ;;
 
    rip2*)
