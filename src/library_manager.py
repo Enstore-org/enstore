@@ -143,7 +143,7 @@ class AtMovers:
         # see if this volume is in voulemes_at movers list
         for key in self.at_movers.keys():
             if external_label == self.at_movers[key]['external_label']:
-                Trace.log(e_errors.INFO, "volume %s is active. Mover=%s"%\
+                Trace.trace(11, "volume %s is active. Mover=%s"%\
                           (external_label, key))
                 rc = 1
                 break
