@@ -43,6 +43,17 @@ def address_to_name(addr):
     return name
     
 
+known_names = {}
+def name_to_address(name):
+    if name in known_names.keys():
+        return known_names[name]
+    try:
+        addr = socket.gethostbyname(name)
+    except socket.error:
+        addr = name
+    known_names[name] = addr
+    return addr
+    
 def get_interface_file_name():
     hostname, junk, junk = gethostinfo()
     filename = "%s.interface.conf"%hostname
@@ -97,7 +108,8 @@ if __name__ == "__main__":
     print address_to_name('127.0.0.1')
     print address_to_name('1.1.1.1')
     print address_to_name('131.225.84.156')
-
+    print name_to_address('rip8.fnal.gov')
+    
     
     
 
