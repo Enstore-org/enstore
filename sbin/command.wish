@@ -29,6 +29,20 @@ bind .top.cmd <Return> Run
 bind .top.cmd <Control-c> Stop
 focus .top.cmd
 
+#puts [trace vinfo done]
+
+############################################################################################################################################
+proc QRun {node port button done_proc} {
+    global command butc env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh $node $port 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w $done_proc}
+    trace variable done w $done_proc
+    $button config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+
 ############################################################################################################################################
 # configuration server
 frame .a -bg darkcyan -fg yellow
@@ -38,9 +52,10 @@ frame .a.config  -bg darkcyan -fg yellow
 pack .a.config -side left
 label .a.config.l -text "Configuration Server:" -width 25 -bg darkcyan -fg white
 pack .a.config.l -side left
-button .a.config.q -text "Query" -command CQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .a.config.q -side left
 set butc [button .a.config.s -text "????" -command CSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+#button .a.config.q -text "Query" -command CQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+button .a.config.q -text "Query" -command "QRun rip6 7500 $butc CQRun_done" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .a.config.q -side left
 pack .a.config.s -side left
 proc CQRun {} {
     global command butc env alive done
@@ -49,7 +64,6 @@ proc CQRun {} {
     set done ""
     catch {trace vdelete done w CQRun_done}
     trace variable done w CQRun_done
-    #puts [trace vinfo done]
     $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -57,7 +71,7 @@ proc CQRun_done { name element op } {
     global alive butc done more
     trace vdelete done w CQRun_done
     if {$alive == "alive"} {
-        $butc config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun 
+        $butc config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
     } else {
         $butc config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
     }
@@ -69,7 +83,6 @@ proc CSRun {} {
     set done ""
     catch {trace vdelete done w CSRun_done}
     trace variable done w CSRun_done
-    #puts [trace vinfo done]
     $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -84,7 +97,6 @@ proc CGRun {} {
     set done ""
     catch {trace vdelete done w CGRun_done}
     trace variable done w CGRun_done
-    #puts [trace vinfo done]
     $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -111,7 +123,6 @@ proc LQRun {} {
     set done ""
     catch {trace vdelete done w LQRun_done}
     trace variable done w LQRun_done
-    #puts [trace vinfo done]
     $butl config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -131,7 +142,6 @@ proc LSRun {} {
     set done ""
     catch {trace vdelete done w LSRun_done}
     trace variable done w LSRun_done
-    #puts [trace vinfo done]
     $butl config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -146,7 +156,6 @@ proc LGRun {} {
     set done ""
     catch {trace vdelete done w LGRun_done}
     trace variable done w LGRun_done
-    #puts [trace vinfo done]
     $butl config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -176,7 +185,6 @@ proc FQRun {} {
     set done ""
     catch {trace vdelete done w FQRun_done}
     trace variable done w FQRun_done
-    #puts [trace vinfo done]
     $butf config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -196,7 +204,6 @@ proc FSRun {} {
     set done ""
     catch {trace vdelete done w FSRun_done}
     trace variable done w FSRun_done
-    #puts [trace vinfo done]
     $butf config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -211,7 +218,6 @@ proc FGRun {} {
     set done ""
     catch {trace vdelete done w FGRun_done}
     trace variable done w FGRun_done
-    #puts [trace vinfo done]
     $butf config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -238,7 +244,6 @@ proc VQRun {} {
     set done ""
     catch {trace vdelete done w VQRun_done}
     trace variable done w VQRun_done
-    #puts [trace vinfo done]
     $butv config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -258,7 +263,6 @@ proc VSRun {} {
     set done ""
     catch {trace vdelete done w VSRun_done}
     trace variable done w VSRun_done
-    #puts [trace vinfo done]
     $butv config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -273,7 +277,6 @@ proc VGRun {} {
     set done ""
     catch {trace vdelete done w VGRun_done}
     trace variable done w VGRun_done
-    #puts [trace vinfo done]
     $butv config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -303,7 +306,6 @@ proc AQRun {} {
     set done ""
     catch {trace vdelete done w AQRun_done}
     trace variable done w AQRun_done
-    #puts [trace vinfo done]
     $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -317,14 +319,12 @@ proc AQRun_done { name element op } {
     }
     if {$more == 1} { MQRun }
 }
-
 proc ASRun {} {
-    global command buta done
-    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ~bakken/bin/zapit ait.library_manager"}
+    global command buta env done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just ait.library_manager"}
     set done ""
     catch {trace vdelete done w ASRun_done}
     trace variable done w ASRun_done
-    #puts [trace vinfo done]
     $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -335,11 +335,10 @@ proc ASRun_done { name element op } {
 }
 proc AGRun {} {
     global command buta done
-    set command {rsh rip5 "~bakken/e-ait.library_manager"}
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just ait.library_manager"}
     set done ""
     catch {trace vdelete done w AGRun_done}
     trace variable done w AGRun_done
-    #puts [trace vinfo done]
     $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -366,7 +365,6 @@ proc MQRun {} {
     set done ""
     catch {trace vdelete done w MQRun_done}
     trace variable done w MQRun_done
-    #puts [trace vinfo done]
     $butm config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -374,11 +372,39 @@ proc MQRun_done { name element op } {
     global alive butm done more
     trace vdelete done w MQRun_done
     if {$alive == "alive"} {
-        $butm config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butm config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command MSRun
     } else {
-        $butm config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butm config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command MGRun
     }
     if {$more == 1} { DQRun }
+}
+proc MSRun {} {
+    global command butm env done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just mammoth.library_manager"}
+    set done ""
+    catch {trace vdelete done w MSRun_done}
+    trace variable done w MSRun_done
+    $butm config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc MSRun_done { name element op } {
+    global done
+    trace vdelete done w MSRun_done
+    MQRun
+}
+proc MGRun {} {
+    global command butm done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just mammoth.library_manager"}
+    set done ""
+    catch {trace vdelete done w MGRun_done}
+    trace variable done w MGRun_done
+    $butm config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc MGRun_done { name element op } {
+    global done
+    trace vdelete done w MGRun_done
+    MQRun
 }
 
 
@@ -402,7 +428,6 @@ proc DQRun {} {
     set done ""
     catch {trace vdelete done w DQRun_done}
     trace variable done w DQRun_done
-    #puts [trace vinfo done]
     $butd config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -410,11 +435,39 @@ proc DQRun_done { name element op } {
     global alive butd done more
     trace vdelete done w DQRun_done
     if {$alive == "alive"} {
-        $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DSRun
     } else {
-        $butd config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butd config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DGRun
     }
     if {$more == 1} { R2QRun }
+}
+proc DSRun {} {
+    global command butd env done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just dlt.library_manager"}
+    set done ""
+    catch {trace vdelete done w DSRun_done}
+    trace variable done w DSRun_done
+    $butd config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DSRun_done { name element op } {
+    global done
+    trace vdelete done w DSRun_done
+    DQRun
+}
+proc DGRun {} {
+    global command butd done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just dlt.library_manager"}
+    set done ""
+    catch {trace vdelete done w DGRun_done}
+    trace variable done w DGRun_done
+    $butd config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DGRun_done { name element op } {
+    global done
+    trace vdelete done w DGRun_done
+    DQRun
 }
 
 ############################################################################################################################################
@@ -437,7 +490,6 @@ proc R2QRun {} {
     set done ""
     catch {trace vdelete done w R2QRun_done}
     trace variable done w R2QRun_done
-    #puts [trace vinfo done]
     $butr2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -445,11 +497,39 @@ proc R2QRun_done { name element op } {
     global alive butr2 done more
     trace vdelete done w R2QRun_done
     if {$alive == "alive"} {
-        $butr2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butr2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command R2SRun
     } else {
-        $butr2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butr2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command R2GRun
     }
     if {$more == 1} { R5QRun }
+}
+proc R2SRun {} {
+    global command butr2 env done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just red20.library_manager"}
+    set done ""
+    catch {trace vdelete done w R2SRun_done}
+    trace variable done w R2SRun_done
+    $butr2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc R2SRun_done { name element op } {
+    global done
+    trace vdelete done w R2SRun_done
+    R2QRun
+}
+proc R2GRun {} {
+    global command butr2 done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just red20.library_manager"}
+    set done ""
+    catch {trace vdelete done w R2GRun_done}
+    trace variable done w R2GRun_done
+    $butr2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc R2GRun_done { name element op } {
+    global done
+    trace vdelete done w R2GRun_done
+    R2QRun
 }
 
 ############################################################################################################################################
@@ -469,7 +549,6 @@ proc R5QRun {} {
     set done ""
     catch {trace vdelete done w R5QRun_done}
     trace variable done w R5QRun_done
-    #puts [trace vinfo done]
     $butr5 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -477,11 +556,39 @@ proc R5QRun_done { name element op } {
     global alive butr5 done more
     trace vdelete done w R5QRun_done
     if {$alive == "alive"} {
-        $butr5 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butr5 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command R5SRun
     } else {
-        $butr5 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butr5 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command R5GRun
     }
     if {$more == 1} { EQRun }
+}
+proc R5SRun {} {
+    global command butr5 env done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just red50.library_manager"}
+    set done ""
+    catch {trace vdelete done w R5SRun_done}
+    trace variable done w R5SRun_done
+    $butr5 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc R5SRun_done { name element op } {
+    global done
+    trace vdelete done w R5SRun_done
+    R5QRun
+}
+proc R5GRun {} {
+    global command butr5 done
+    set command {rsh rip5 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just red50.library_manager"}
+    set done ""
+    catch {trace vdelete done w R5GRun_done}
+    trace variable done w R5GRun_done
+    $butr5 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc R5GRun_done { name element op } {
+    global done
+    trace vdelete done w R5GRun_done
+    R5QRun
 }
 
 ############################################################################################################################################
@@ -504,7 +611,6 @@ proc EQRun {} {
     set done ""
     catch {trace vdelete done w EQRun_done}
     trace variable done w EQRun_done
-    #puts [trace vinfo done]
     $bute config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -512,11 +618,39 @@ proc EQRun_done { name element op } {
     global alive bute done more
     trace vdelete done w EQRun_done
     if {$alive == "alive"} {
-        $bute config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $bute config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command ESRun
     } else {
-        $bute config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $bute config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command EGRun
     }
     if {$more == 1} { STKQRun }
+}
+proc ESRun {} {
+    global command bute env done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just grau.media_changer"}
+    set done ""
+    catch {trace vdelete done w ESRun_done}
+    trace variable done w ESRun_done
+    $bute config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc ESRun_done { name element op } {
+    global done
+    trace vdelete done w ESRun_done
+    EQRun
+}
+proc EGRun {} {
+    global command bute done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just grau.media_changer"}
+    set done ""
+    catch {trace vdelete done w EGRun_done}
+    trace variable done w EGRun_done
+    $bute config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc EGRun_done { name element op } {
+    global done
+    trace vdelete done w EGRun_done
+    EQRun
 }
 
 
@@ -538,18 +672,45 @@ proc STKQRun {} {
     catch {trace vdelete done w STKQRun_done}
     trace variable done w STKQRun_done
     $butstk config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-    #puts [trace vinfo done]
     Run
 }
 proc STKQRun_done { name element op } {
     global alive butstk done more
     trace vdelete done w STKQRun_done
     if {$alive == "alive"} {
-        $butstk config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butstk config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command STKSRun
     } else {
-        $butstk config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butstk config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command STKGRun
     }
     if {$more == 1} { DM05QRun }
+}
+proc STKSRun {} {
+    global command butstk env done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK.media_changer"}
+    set done ""
+    catch {trace vdelete done w STKSRun_done}
+    trace variable done w STKSRun_done
+    $butstk config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STKSRun_done { name element op } {
+    global done
+    trace vdelete done w STKSRun_done
+    STKQRun
+}
+proc STKGRun {} {
+    global command butstk done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK.media_changer"}
+    set done ""
+    catch {trace vdelete done w STKGRun_done}
+    trace variable done w STKGRun_done
+    $butstk config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STKGRun_done { name element op } {
+    global done
+    trace vdelete done w STKGRun_done
+    STKQRun
 }
 
 ############################################################################################################################################
@@ -572,7 +733,6 @@ proc DM05QRun {} {
     set done ""
     catch {trace vdelete done w DM05QRun_done}
     trace variable done w DM05QRun_done
-    #puts [trace vinfo done]
     $butdm05 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -580,11 +740,39 @@ proc DM05QRun_done { name element op } {
     global alive butdm05 done more
     trace vdelete done w DM05QRun_done
     if {$alive == "alive"} {
-        $butdm05 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdm05 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DM05SRun
     } else {
-        $butdm05 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdm05 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DM05GRun
     }
     if {$more == 1} { DM06QRun }
+}
+proc DM05SRun {} {
+    global command butdm05 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM05AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM05SRun_done}
+    trace variable done w DM05SRun_done
+    $butdm05 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM05SRun_done { name element op } {
+    global done
+    trace vdelete done w DM05SRun_done
+    DM05QRun
+}
+proc DM05GRun {} {
+    global command butdm05 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM05AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM05GRun_done}
+    trace variable done w DM05GRun_done
+    $butdm05 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM05GRun_done { name element op } {
+    global done
+    trace vdelete done w DM05GRun_done
+    DM05QRun
 }
 
 ############################################################################################################################################
@@ -604,7 +792,6 @@ proc DM06QRun {} {
     set done ""
     catch {trace vdelete done w DM06QRun_done}
     trace variable done w DM06QRun_done
-    #puts [trace vinfo done]
     $butdm06 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -612,12 +799,42 @@ proc DM06QRun_done { name element op } {
     global alive butdm06 done more
     trace vdelete done w DM06QRun_done
     if {$alive == "alive"} {
-        $butdm06 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdm06 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DM06SRun
     } else {
-        $butdm06 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdm06 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DM06GRun
     }
     if {$more == 1} { DM07QRun }
 }
+proc DM06SRun {} {
+    global command butdm06 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM06AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM06SRun_done}
+    trace variable done w DM06SRun_done
+    $butdm06 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM06SRun_done { name element op } {
+    global done
+    trace vdelete done w DM06SRun_done
+    DM06QRun
+}
+proc DM06GRun {} {
+    global command butdm06 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM06AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM06GRun_done}
+    trace variable done w DM06GRun_done
+    $butdm06 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM06GRun_done { name element op } {
+    global done
+    trace vdelete done w DM06GRun_done
+    DM06QRun
+}
+
+
 ############################################################################################################################################
 # dm07 mover
 frame .h -bg darkcyan -fg yellow
@@ -638,7 +855,6 @@ proc DM07QRun {} {
     set done ""
     catch {trace vdelete done w DM07QRun_done}
     trace variable done w DM07QRun_done
-    #puts [trace vinfo done]
     $butdm07 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -646,11 +862,39 @@ proc DM07QRun_done { name element op } {
     global alive butdm07 done more
     trace vdelete done w DM07QRun_done
     if {$alive == "alive"} {
-        $butdm07 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdm07 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DM07SRun
     } else {
-        $butdm07 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdm07 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DM07GRun
     }
     if {$more == 1} { DM08QRun }
+}
+proc DM07SRun {} {
+    global command butdm07 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM07AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM07SRun_done}
+    trace variable done w DM07SRun_done
+    $butdm07 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM07SRun_done { name element op } {
+    global done
+    trace vdelete done w DM07SRun_done
+    DM07QRun
+}
+proc DM07GRun {} {
+    global command butdm07 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM07AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM07GRun_done}
+    trace variable done w DM07GRun_done
+    $butdm07 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM07GRun_done { name element op } {
+    global done
+    trace vdelete done w DM07GRun_done
+    DM07QRun
 }
 
 ############################################################################################################################################
@@ -670,7 +914,6 @@ proc DM08QRun {} {
     set done ""
     catch {trace vdelete done w DM08QRun_done}
     trace variable done w DM08QRun_done
-    #puts [trace vinfo done]
     $butdm08 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -678,11 +921,39 @@ proc DM08QRun_done { name element op } {
     global alive butdm08 done more
     trace vdelete done w DM08QRun_done
     if {$alive == "alive"} {
-        $butdm08 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdm08 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DM08SRun
     } else {
-        $butdm08 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdm08 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DM08GRun
     }
     if {$more == 1} { DC11QRun }
+}
+proc DM08SRun {} {
+    global command butdm08 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DM08AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM08SRun_done}
+    trace variable done w DM08SRun_done
+    $butdm08 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM08SRun_done { name element op } {
+    global done
+    trace vdelete done w DM08SRun_done
+    DM08QRun
+}
+proc DM08GRun {} {
+    global command butdm08 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DM08AIT.mover"}
+    set done ""
+    catch {trace vdelete done w DM08GRun_done}
+    trace variable done w DM08GRun_done
+    $butdm08 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DM08GRun_done { name element op } {
+    global done
+    trace vdelete done w DM08GRun_done
+    DM08QRun
 }
 
 ############################################################################################################################################
@@ -705,7 +976,6 @@ proc DC11QRun {} {
     set done ""
     catch {trace vdelete done w DC11QRun_done}
     trace variable done w DC11QRun_done
-    #puts [trace vinfo done]
     $butdc11 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -713,11 +983,39 @@ proc DC11QRun_done { name element op } {
     global alive butdc11 done more
     trace vdelete done w DC11QRun_done
     if {$alive == "alive"} {
-        $butdc11 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdc11 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DC11SRun
     } else {
-        $butdc11 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdc11 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DC11GRun
     }
     if {$more == 1} { DC12QRun }
+}
+proc DC11SRun {} {
+    global command butdc11 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DC11MAM.mover"}
+    set done ""
+    catch {trace vdelete done w DC11SRun_done}
+    trace variable done w DC11SRun_done
+    $butdc11 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DC11SRun_done { name element op } {
+    global done
+    trace vdelete done w DC11SRun_done
+    DC11QRun
+}
+proc DC11GRun {} {
+    global command butdc11 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DC11MAM.mover"}
+    set done ""
+    catch {trace vdelete done w DC11GRun_done}
+    trace variable done w DC11GRun_done
+    $butdc11 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DC11GRun_done { name element op } {
+    global done
+    trace vdelete done w DC11GRun_done
+    DC11QRun
 }
 
 ############################################################################################################################################
@@ -737,7 +1035,6 @@ proc DC12QRun {} {
     set done ""
     catch {trace vdelete done w DC12QRun_done}
     trace variable done w DC12QRun_done
-    #puts [trace vinfo done]
     $butdc12 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -745,11 +1042,39 @@ proc DC12QRun_done { name element op } {
     global alive butdc12 done more
     trace vdelete done w DC12QRun_done
     if {$alive == "alive"} {
-        $butdc12 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butdc12 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DC12SRun
     } else {
-        $butdc12 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butdc12 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DC12GRun
     }
     if {$more == 1} { DE13QRun }
+}
+proc DC12SRun {} {
+    global command butdc12 env done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DC12MAM.mover"}
+    set done ""
+    catch {trace vdelete done w DC12SRun_done}
+    trace variable done w DC12SRun_done
+    $butdc12 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DC12SRun_done { name element op } {
+    global done
+    trace vdelete done w DC12SRun_done
+    DC12QRun
+}
+proc DC12GRun {} {
+    global command butdc12 done
+    set command {rsh rip2 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DC12MAM.mover"}
+    set done ""
+    catch {trace vdelete done w DC12GRun_done}
+    trace variable done w DC12GRun_done
+    $butdc12 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DC12GRun_done { name element op } {
+    global done
+    trace vdelete done w DC12GRun_done
+    DC12QRun
 }
 
 ############################################################################################################################################
@@ -772,7 +1097,6 @@ proc DE13QRun {} {
     set done ""
     catch {trace vdelete done w DE13QRun_done}
     trace variable done w DE13QRun_done
-    #puts [trace vinfo done]
     $butde13 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -780,11 +1104,39 @@ proc DE13QRun_done { name element op } {
     global alive butde13 done more
     trace vdelete done w DE13QRun_done
     if {$alive == "alive"} {
-        $butde13 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butde13 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DE13SRun
     } else {
-        $butde13 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butde13 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DE13GRun
     }
     if {$more == 1} { DE14QRun }
+}
+proc DE13SRun {} {
+    global command butde13 env done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE13DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE13SRun_done}
+    trace variable done w DE13SRun_done
+    $butde13 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE13SRun_done { name element op } {
+    global done
+    trace vdelete done w DE13SRun_done
+    DE13QRun
+}
+proc DE13GRun {} {
+    global command butde13 done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE13DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE13GRun_done}
+    trace variable done w DE13GRun_done
+    $butde13 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE13GRun_done { name element op } {
+    global done
+    trace vdelete done w DE13GRun_done
+    DE13QRun
 }
 
 ############################################################################################################################################
@@ -804,7 +1156,6 @@ proc DE14QRun {} {
     set done ""
     catch {trace vdelete done w DE14QRun_done}
     trace variable done w DE14QRun_done
-    #puts [trace vinfo done]
     $butde14 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -812,11 +1163,39 @@ proc DE14QRun_done { name element op } {
     global alive butde14 done more
     trace vdelete done w DE14QRun_done
     if {$alive == "alive"} {
-        $butde14 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butde14 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DE14SRun
     } else {
-        $butde14 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butde14 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DE14GRun
     }
     if {$more == 1} { DE15QRun }
+}
+proc DE14SRun {} {
+    global command butde14 env done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE14DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE14SRun_done}
+    trace variable done w DE14SRun_done
+    $butde14 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE14SRun_done { name element op } {
+    global done
+    trace vdelete done w DE14SRun_done
+    DE14QRun
+}
+proc DE14GRun {} {
+    global command butde14 done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE14DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE14GRun_done}
+    trace variable done w DE14GRun_done
+    $butde14 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE14GRun_done { name element op } {
+    global done
+    trace vdelete done w DE14GRun_done
+    DE14QRun
 }
 
 ############################################################################################################################################
@@ -839,7 +1218,6 @@ proc DE15QRun {} {
     set done ""
     catch {trace vdelete done w DE15QRun_done}
     trace variable done w DE15QRun_done
-    #puts [trace vinfo done]
     $butde15 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -847,11 +1225,39 @@ proc DE15QRun_done { name element op } {
     global alive butde15 done more
     trace vdelete done w DE15QRun_done
     if {$alive == "alive"} {
-        $butde15 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butde15 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DE15SRun
     } else {
-        $butde15 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butde15 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DE15GRun
     }
     if {$more == 1} { DE16QRun }
+}
+proc DE15SRun {} {
+    global command butde15 env done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE15DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE15SRun_done}
+    trace variable done w DE15SRun_done
+    $butde15 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE15SRun_done { name element op } {
+    global done
+    trace vdelete done w DE15SRun_done
+    DE15QRun
+}
+proc DE15GRun {} {
+    global command butde15 done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE15DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE15GRun_done}
+    trace variable done w DE15GRun_done
+    $butde15 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE15GRun_done { name element op } {
+    global done
+    trace vdelete done w DE15GRun_done
+    DE15QRun
 }
 
 ############################################################################################################################################
@@ -871,7 +1277,6 @@ proc DE16QRun {} {
     set done ""
     catch {trace vdelete done w DE16QRun_done}
     trace variable done w DE16QRun_done
-    #puts [trace vinfo done]
     $butde16 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -879,11 +1284,39 @@ proc DE16QRun_done { name element op } {
     global alive butde16 done more
     trace vdelete done w DE16QRun_done
     if {$alive == "alive"} {
-        $butde16 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butde16 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command DE16SRun
     } else {
-        $butde16 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butde16 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command DE16GRun
     }
     if {$more == 1} { STK1QRun }
+}
+proc DE16SRun {} {
+    global command butde16 env done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just DE16DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE16SRun_done}
+    trace variable done w DE16SRun_done
+    $butde16 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE16SRun_done { name element op } {
+    global done
+    trace vdelete done w DE16SRun_done
+    DE16QRun
+}
+proc DE16GRun {} {
+    global command butde16 done
+    set command {rsh rip1 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just DE16DLT.mover"}
+    set done ""
+    catch {trace vdelete done w DE16GRun_done}
+    trace variable done w DE16GRun_done
+    $butde16 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc DE16GRun_done { name element op } {
+    global done
+    trace vdelete done w DE16GRun_done
+    DE16QRun
 }
 
 ############################################################################################################################################
@@ -906,7 +1339,6 @@ proc STK1QRun {} {
     set done ""
     catch {trace vdelete done w STK1QRun_done}
     trace variable done w STK1QRun_done
-    #puts [trace vinfo done]
     $butstk1 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -914,11 +1346,39 @@ proc STK1QRun_done { name element op } {
     global alive butstk1 done more
     trace vdelete done w STK1QRun_done
     if {$alive == "alive"} {
-        $butstk1 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butstk1 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command STK1SRun
     } else {
-        $butstk1 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butstk1 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command STK2GRun
     }
     if {$more == 1} { STK2QRun }
+}
+proc STK1SRun {} {
+    global command butstk1 env done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK1.mover"}
+    set done ""
+    catch {trace vdelete done w STK1SRun_done}
+    trace variable done w STK1SRun_done
+    $butstk1 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STK1SRun_done { name element op } {
+    global done
+    trace vdelete done w STK1SRun_done
+    STK1QRun
+}
+proc STK1GRun {} {
+    global command butstk1 done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK1.mover"}
+    set done ""
+    catch {trace vdelete done w STK1GRun_done}
+    trace variable done w STK1GRun_done
+    $butstk1 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STK1GRun_done { name element op } {
+    global done
+    trace vdelete done w STK1GRun_done
+    STK1QRun
 }
 
 ############################################################################################################################################
@@ -938,7 +1398,6 @@ proc STK2QRun {} {
     set done ""
     catch {trace vdelete done w STK2QRun_done}
     trace variable done w STK2QRun_done
-    #puts [trace vinfo done]
     $butstk2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
     Run
 }
@@ -946,16 +1405,41 @@ proc STK2QRun_done { name element op } {
     global alive butstk2 done more
     trace vdelete done w STK2QRun_done
     if {$alive == "alive"} {
-        $butstk2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command CSRun
+        $butstk2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop" -command STK2SRun
     } else {
-        $butstk2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command CGRun
+        $butstk2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start" -command STK2GRun
     }
     if {$more == 1} { set more 0 }
 }
+proc STK2SRun {} {
+    global command butstk2 env done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd stop --just STK2.mover"}
+    set done ""
+    catch {trace vdelete done w STK2SRun_done}
+    trace variable done w STK2SRun_done
+    $butstk2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STK2SRun_done { name element op } {
+    global done
+    trace vdelete done w STK2SRun_done
+    STK2QRun
+}
+proc STK2GRun {} {
+    global command butstk2 done
+    set command {rsh rip9 "source /usr/local/etc/setups.sh; setup enstore; ecmd start --just STK2.mover"}
+    set done ""
+    catch {trace vdelete done w STK2GRun_done}
+    trace variable done w STK2GRun_done
+    $butstk2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+    Run
+}
+proc STK2GRun_done { name element op } {
+    global done
+    trace vdelete done w STK2GRun_done
+    STK2QRun
+}
 
-
-#stk1.mover:rip9:7536
-#stk2.mover:rip9:7537
 
 ############################################################################################################################################
 # the command output
