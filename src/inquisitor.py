@@ -541,6 +541,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
         Trace.trace(10,"}update")
 
+    # dump everything we have
+    def dump(self, ticket):
+	Trace.trace(10,"{dump "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+	self.enprint("last_update - "+repr(self.last_update))
+	self.enprint("timeouts    - "+repr(self.timeouts))
+	self.enprint("server_keys - "+repr(self.server_keys))
+	self.enprint("reset       - "+repr(self.reset))
+	self.send_reply(ticket)
+	Trace.trace(10,"}dump")
+
     # set a new timeout value
     def set_timeout(self,ticket):
         Trace.trace(10,"{set_timeout "+repr(ticket))
