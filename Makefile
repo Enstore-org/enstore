@@ -13,26 +13,32 @@ DIR=$(DEFAULT_DIR)
 #------------------------------------------------------------------
 # Variables for ups declaration and setup of product
 #
+# product name, PRODUCT_DIR environment variable, VERSion, 
+# DEPENDency flags for ups, CHAIN name for ups, ups subdirectory name,
+# Flavor for ups declares, which is built up from the Operating System,
+# Qualifiers, and customization information, which is also used for 
+# "cmd addproduct", and finally the distribution file name.
+# this section may change in later ups|addproduct incarnations
+
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
             VERS=v2_3
-       UPS_STYLE=new
-          DEPEND=
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
            CHAIN=test
       UPS_SUBDIR=ups
  ADDPRODUCT_HOST=fnkits.fnal.gov
-OLD_ADDPRODUCT_HOST=dcdsv0
 DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
 
 #   QUALS is added qualifiers, like: "QUALS=mips3:debug"
 #
+      UPS_SUBDIR=ups
 # for Flavored products
          FLAVOR=$(DEFAULT_FLAVOR)
- 	      OS=$(DEFAULT_OS)
-          QUALS=
- 	    CUST=$(DEFAULT_CUST)
+          QUALS=""
+# for NULL products
+#         FLAVOR=$(DEFAULT_NULL_FLAVOR)
+#          QUALS=""
 #------------------------------------------------------------------
 # Files to include in Distribution
 #
@@ -48,12 +54,32 @@ ADDDIRS =.
 ADDFILES=
 ADDEMPTY=
   ADDCMD=
-   LOCAL=/fnal/ups/prd/$(PROD)/$(VERS)/$(OS)$(CUST)$(QUALS)
+   LOCAL=/fnal/ups/$(PROD)/$(VERS)/$(FLAVOR)$(QUALS)
  DOCROOT=/afs/fnal/files/docs/products/$(PROD)
+# - - - - - - - - - - - - -
+# For example, you could use
+# To take just the bin lib share and ups directories
+#    ADDIRS = bin lib share ups	 
+#   ADDFILES= 
+#
+# To take anything but *.out and *.bozo files
+#    ADDIRS = 
+#   ADDFILES= ! -name '*.out' ! -name '*.bozo'
+#
+# To take the whole nine yards
+#    ADDIRS = . 
+#   ADDFILES= 
 
+#------------------------------------------------------------------
+# --prefix=$(PREFIX) for gnu configure tools
+# you should have build_prefix as a dependency of "all" if you use this
 PREFIX=$(DEFAULT_PREFIX)
 
-VERSIONFILES=Makefile README $(UPS_SUBDIR)/INSTALL_NOTE $(UPS_SUBDIR)/Version
+#------------------------------------------------------------------
+# Files that have the version string in them
+# this is used by "make setversion" to know what files need
+# the version string replaced
+VERSIONFILES=Makefile README $(UPS_SUBDIR)/INSTALL_NOTE
 
 #------------------------------------------------------------------
 
@@ -76,13 +102,61 @@ spotless: clean
 	rm -rf bin lib
 	rm -f ftt_lib/local
 
+
+readable: 
+	chmod -R a+r .
+	chmod -R a+rx bin
+
+clean:
+	rm -f $(PREFIX)	
+
+spotless:
+
+test: proddir_is_set FORCE
+	sh test/TestScript
+
+regression: proddir_is_set clean FORCE
+	sh test/TestScript
+
+# test: runs regression tests 
+# regression: runs tests on "clean" product
+#      some religious discussions have centered on whether we should
+#      require a clean before testing; it is this way because we want
+#      to be sure clean doesn't remove anything neccesary to operating
+#      the product.
+#---------------
+# examples:
+# this is an *example* of a mythical product with a GNU Configure
+# based module "gnuproduct", an X11R6 imake based module "xproduct", 
+# and a locally developed product that uses "premake"
+# "all" should probably depend on the product directory being set.
+#all: proddir_is_set
+#	sh -c "cd imports/gnuproduct; \
+#	       test -f config.status || ./configure --prefix=$(PREFIX)"
+#	cd imports/diffutils ; make install
+#	sh -c "cd imports/xproduct; \
+#	       test -f Makefile || (xmkmf; make Makefiles)"
+#	cd imports/xproduct ; make DEST=$$$(PRODUCT_DIR) install
+#	cd fnal/premakedir ; premake -f $(FLAVOR) install
+#	make $(UPS_SUBDIR)/toman
+#
+#clean: 				# clean up unneeded files	#
+#	-cd imports/gnuproduct ; make clean; rm config.status
+#	-cd imports/xproduct ; make clean; rm Makefile
+#	-cd fnal/premakedir ; premake -f $(FLAVOR) clean
+#
+#spotless: clean
+#	rm -rf bin lib 
+
+#
+
 # we indirect this a level so we can customize it for bundle products
 
-declare: $(UPS_STYLE)_declare
-undeclare: $(UPS_STYLE)_undeclare
-addproduct: $(UPS_STYLE)_addproduct
-delproduct: $(UPS_STYLE)_delproduct
-autokits: $(UPS_STYLE)_autokits
+declare: new_declare
+undeclare: new_undeclare
+addproduct: new_addproduct
+delproduct: new_delproduct
+autokits: new_autokits
 
 #---------------------------------------------------------------------------
 # 		*** Do not change anything below this line: ***
@@ -94,6 +168,7 @@ autokits: $(UPS_STYLE)_autokits
 #    $Id$
 #---------------------------------------------------------------------------
 #
+# only new UPS style stuff is now supported
 
 # distribution -- currently makes tarfiles
 #
@@ -129,7 +204,7 @@ local: clean .manifest.$(PROD)
 	$(LISTALL) | cpio -dumpv $(LOCAL)
 	cd $(LOCAL); make check_manifest
 
-autolocal: dproducts_is_set distribution
+autolocal: distribution
 	@/bin/echo "Press enter to update database? \c"
 	@read line
 	test -d $(LOCAL) || mkdir -p $(LOCAL)
@@ -138,45 +213,15 @@ autolocal: dproducts_is_set distribution
 
 install: local
 
-#====================== OLD UPS COMMANDS =====================
-# addproduct -- add the distribution file to a distribution platform, 
-# and clean out the local copy
-#
-old_addproduct: dproducts_is_set distribution
-	@$(OLD_ADDPRODUCT)
-	@echo rm $(DISTRIBUTIONFILE);rm $(DISTRIBUTIONFILE)
-
-old_autokits: dproducts_is_set distribution
-	@/bin/echo "Press enter to update database? \c"
-	@read line
-	@$(OLD_ADDPRODUCT)
-	@echo rm $(DISTRIBUTIONFILE);rm $(DISTRIBUTIONFILE)
-
-# declare -- declares or redeclares the product; first we check
-#        if its already declared and if so remove the existing declaration
-#	Finally we declare it, and do a ups list so you can see the
-#	declaration.
-#
-old_declare: dproducts_is_set $(UPS_SUBDIR)/Version
-	@($(OLD_UPS_EXIST) && $(OLD_UPS_UNDECLARE)) || true
-	@$(OLD_UPS_DECLARE)
-	@$(OLD_UPS_LIST)
-
-old_undeclare: dproducts_is_set $(UPS_SUBDIR)/Version 
-	@$(OLD_UPS_UNDECLARE)
-
-old_delproduct:
-	@$(OLD_DELPRODUCT)
-
 #====================== NEW UPS COMMANDS =====================
 # addproduct -- add the distribution file to a distribution platform, 
 # and clean out the local copy
 #
-new_addproduct: dproducts_is_set distribution
-	$(NEW_ADDPRODUCT)
+new_addproduct: distribution
+	@$(NEW_ADDPRODUCT)
 	rm $(DISTRIBUTIONFILE)
 
-new_autokits: dproducts_is_set distribution
+new_autokits: distribution
 	@/bin/echo "Press enter to update database? \c"
 	@read line
 	@$(NEW_ADDPRODUCT)
@@ -189,16 +234,16 @@ new_autokits: dproducts_is_set distribution
 #  	For new ups, we need to do one declare with build, and
 #	one without.  Easiest with recursive calls...
 #
-new_declare: dproducts_is_set $(UPS_SUBDIR)/Version new_declare_one
-	@make UPS_STYLE=$(UPS_STYLE) "QUALS=build:$(QUALS)" new_declare_one
+new_declare: dproducts_is_set new_declare_one
+	@make "QUALS=build:$(QUALS)" new_declare_one
 
 new_declare_one:
 	@($(NEW_UPS_EXIST) && $(NEW_UPS_UNDECLARE)) || true
 	@$(NEW_UPS_DECLARE) || true
 	@$(NEW_UPS_LIST)
 
-new_undeclare: dproducts_is_set $(UPS_SUBDIR)/Version  new_undeclare_one
-	@make UPS_STYLE=$(UPS_STYLE) "QUALS=build:$(QUALS)" new_undeclare_one
+new_undeclare: dproducts_is_set  new_undeclare_one
+	@make "QUALS=build:$(QUALS)" new_undeclare_one
 
 new_undeclare_one:
 	@$(NEW_UPS_UNDECLARE)
@@ -206,32 +251,26 @@ new_undeclare_one:
 new_delproduct:
 	@$(NEW_DELPRODUCT)
 
-#====================== TRANSITION COMMANDS =====================
-
-both_addproduct: dproducts_is_set distribution
-	@$(NEW_ADDPRODUCT)
-	@$(OLD_ADDPRODUCT)
-	@echo rm $(DISTRIBUTIONFILE); rm $(DISTRIBUTIONFILE)
-
-both_delproduct:
-	@$(NEW_DELPRODUCT)
-	@$(OLD_DELPRODUCT)
-
 #=================================================================
 # this is the usual target for manually rebuilding the software if it's just
 # been checked out of the repository.  We declare it, set it up, and 
 # build and regression test it.  Note that the make test will indirectly
 # make clean (see above).
 # 
+SETUP_BUILD= echo $(SETUP_BUILD1); $(SETUP_BUILD1)
+SETUP_BUILD1=setup -P -q \"build?:$(QUALS)\" -f $(FLAVOR) $(PROD) 	\
+		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)	
+
+SETUP_PLAIN= echo $(SETUP_PLAIN1); $(SETUP_PLAIN1)
+SETUP_PLAIN1=setup -P -f $(FLAVOR) -q \"$(QUALS)\" $(PROD) 		\
+		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)
 build_n_test:
-	set +e						;\
+	@echo "\
 	UPS_SHELL=sh; export UPS_SHELL; . `ups setup ups` ;\
-	setup -q build? -f $(FLAVOR) $(PROD) 		\
-		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)	;\
-	make all 					;\
-	setup -f $(FLAVOR) $(PROD) 			\
-		-r $(DIR) -M $(TABLE_FILE_DIR) -m $(TABLE_FILE)	;\
-	make test
+	$(SETUP_BUILD)					;\
+	echo make all; make all 			;\
+	$(SETUP_PLAIN)					;\
+	echo make regression; make regression " | /bin/sh
 
 #
 #---------------------------------------------------------------------------
@@ -252,11 +291,10 @@ listall:
 
 # check extra vars when doing new ups...
 
-check_template_vars: check_common_vars check_$(UPS_STYLE)_vars
+check_template_vars: check_common_vars check_new_vars
 
 check_common_vars:
 	@$(CHECKIT_DEF) ;\
-	checkit "$(UPS_STYLE)" "UPS_STYLE"		;\
 	checkit "$(ADDPRODUCT_HOST)" "ADDPRODUCT_HOST"	;\
 	checkit "$(CHAIN)" "CHAIN"			;\
 	checkit "$(DIR)" "DIR"				;\
@@ -264,7 +302,6 @@ check_common_vars:
 	checkit "$(DOCROOT)" "DOCROOT"			;\
 	checkit "$(FLAVOR)" "FLAVOR"			;\
 	checkit "$(LOCAL)" "LOCAL"			;\
-	checkit "$(OS)" "OS"				;\
 	checkit "$(PROD)" "PROD"			;\
 	checkit "$(PRODUCT_DIR)" "PRODUCT_DIR"		;\
 	checkit "$(SHELL)" "SHELL"			;\
@@ -272,22 +309,10 @@ check_common_vars:
 	checkit "$(VERS)" "VERS"			;\
 	checkit "$(VERSIONFILES)" "VERSIONFILES"	
 
-check_old_vars:
-
 check_new_vars:
 	@$(CHECKIT_DEF) ;\
 	checkit "$(TABLE_FILE)" "TABLE_FILE"		;\
 	checkit "$(TABLE_FILE)" "TABLE_FILE_DIR"	;\
-
-#---------------------------------------------------------------------------
-#
-
-$(UPS_SUBDIR)/Version:
-	echo $(VERS) > $(UPS_SUBDIR)/Version
-
-$(UPS_SUBDIR)/upd_files.dat:
-	@echo "creating $@..."
-	@ $(LISTALL) > $@
 
 #---------------------------------------------------------------------------
 # .manifest file support
@@ -351,15 +376,9 @@ LISTALL =  ( \
 #
 
 # Default names for things
-DEFAULT_DISTRIBFILE="$(DIR)/../$(PROD)$(FLAVOR)$(VERS).tar"
-DEFAULT_OS=`uname -s | sed -e 's/IRIX64/IRIX/'`
-DEFAULT_FLAVOR=$(OS)$(CUST)$(QUALSEP)$(QUALS)
-DEFAULT_NULL_FLAVOR=NULL$(QUALSEP)$(QUALS)
-
-# note the plus sign in DEFAULT_CUST is really part of the string, not
-# appending to some other value or anything.
-DEFAULT_CUST=+`((uname -s | grep AIX >/dev/null && uname -v)||uname -r) | \
-		sed -e 's|\..*||'`
+DEFAULT_DISTRIBFILE="$(DIR)/../$(PROD)$(FLAVOR)$(QUALS)$(VERS).tar"
+DEFAULT_FLAVOR=`ups flavor -2`
+DEFAULT_NULL_FLAVOR=NULL
 
 # We try to undo common automount name munging here,
 # and correct afs paths to read-only volume paths, etc.   This way we get a
@@ -379,71 +398,30 @@ build_prefix: proddir_is_set $(PREFIX)
 $(PREFIX):
 	ln -s $$$(PRODUCT_DIR) $(PREFIX)
 
-
-# In old ups, we need "-f IRIX+6+qual1+qual2"
-# in new ups, we need "-f IRIX+6 -q qual1+qual2"
-# if no qualifiers, we want *nothing*
-#
-QUALSEP=`case $(UPS_STYLE)$(QUALS) in \
-	 new) ;; \
-	 old) ;; \
-	 new*) echo ' -q ';; \
-	 old*) echo '+';; \
-	 esac`
-
 # These are all basic ups commands with loads of options.
-
-OLD_UPS_EXIST= \
-        PRODUCTS="$(DPRODUCTS)"; export PRODUCTS; \
-	echo $(UPS_DIR)/bin/ups_exist \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS);\
-	$(UPS_DIR)/bin/ups_exist \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS)
 
 NEW_UPS_EXIST=\
 	echo $(UPS_DIR)/bin/ups exist \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS);\
 	$(UPS_DIR)/bin/ups exist \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
-		$(PROD) $(VERS)
-
-OLD_UPS_UNDECLARE= \
-        PRODUCTS="$(DPRODUCTS)"; export PRODUCTS; \
-	echo $(UPS_DIR)/bin/ups_undeclare \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS);\
-	$(UPS_DIR)/bin/ups_undeclare \
-		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS)
 
 NEW_UPS_UNDECLARE=\
 	echo $(UPS_DIR)/bin/ups undeclare \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS);\
 	$(UPS_DIR)/bin/ups undeclare \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
-		$(PROD) $(VERS)
-
-OLD_UPS_DECLARE= \
-        PRODUCTS="$(DPRODUCTS)"; export PRODUCTS; \
-	echo $(UPS_DIR)/bin/ups_declare \
-		$(DEPEND) \
-		-U $(DIR)/$(UPS_SUBDIR) \
-		-r $(DIR) \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS); \
-	$(UPS_DIR)/bin/ups_declare \
-		$(DEPEND) \
-		-U $(DIR)/$(UPS_SUBDIR) \
-		-r $(DIR) \
-		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS)
 
 NEW_UPS_DECLARE= \
@@ -454,6 +432,7 @@ NEW_UPS_DECLARE= \
 		-U $(UPS_SUBDIR) \
 		-r $(DIR) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS);\
 	$(UPS_DIR)/bin/ups declare \
 		-M $(TABLE_FILE_DIR) \
@@ -462,48 +441,20 @@ NEW_UPS_DECLARE= \
 		-U $(UPS_SUBDIR) \
 		-r $(DIR) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS)
-
-# make the declare.dat here so we don't try to make it otherwise
-
-OLD_UPS_LIST= \
-        PRODUCTS="$(DPRODUCTS)"; export PRODUCTS; \
-	echo $(UPS_DIR)/bin/ups_list \
-		-l \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS); \
-	$(UPS_DIR)/bin/ups_list \
-		-l \
-		-f $(FLAVOR) \
-		$(PROD) $(VERS) | \
-			(test  -d $(UPS_SUBDIR) && \
-				tee $(UPS_SUBDIR)/declare.dat || cat)
 
 NEW_UPS_LIST = \
 	echo $(UPS_DIR)/bin/ups list \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS);\
 	$(UPS_DIR)/bin/ups list \
 		-z $(DPRODUCTS) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS) 
-
-OLD_ADDPRODUCT = echo $(OLD_ADDPRODUCT_1); $(OLD_ADDPRODUCT_1)
-
-OLD_ADDPRODUCT_1 = \
-    rsh $(OLD_ADDPRODUCT_HOST) /bin/sh -c "'\
-	. /usr/local/etc/setpath.sh ; \
-	. /usr/local/etc/setupsI.sh ; \
-	cmd addproduct \
-		-t $(DISTRIBUTIONFILE) \
-		-o $(OS) \
-		-c $(CUST)$(QUALS) \
-		-m $(CUST)$(QUALS) \
-		-p $(PROD)  \
-		-C $(CHAIN) \
-		-v $(VERS) \
-		-y '"
 
 NEW_ADDPRODUCT = \
 	(test ! -z "$(UPD_DIR)" || (echo upd must be setup!; false ));\
@@ -515,8 +466,9 @@ NEW_ADDPRODUCT_1 = \
 		-T $(DISTRIBUTIONFILE) \
 		-M $(TABLE_FILE_DIR) \
 		-m $(TABLE_FILE) \
-		-U $(UPS_SUBDIR) \
+		`test -z '$(UPS_SUBDIR)'  || echo -U $(UPS_SUBDIR)` \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS)
 
 NEW_DELPRODUCT = \
@@ -527,21 +479,9 @@ NEW_DELPRODUCT_1 = \
 	upd delproduct \
                 -h $(ADDPRODUCT_HOST) \
 		-f $(FLAVOR) \
+		-q $(QUALS) \
 		$(PROD) $(VERS)
 
-OLD_DELPRODUCT = echo $(OLD_DELPRODUCT_1); $(OLD_DELPRODUCT_1)
-
-OLD_DELPRODUCT_1 = \
-    rsh $(OLD_ADDPRODUCT_HOST) /bin/sh -c "'\
-	. /usr/local/etc/setpath.sh ; \
-	. /usr/local/etc/setups.sh ; \
-	cmd delproduct \
-		-o $(OS) \
-		-c $(CUST)$(QUALS) \
-		-m $(CUST)$(QUALS) \
-		-p $(PROD)  \
-		-v $(VERS) \
-		-y '"
 
 FORCE:
 #
