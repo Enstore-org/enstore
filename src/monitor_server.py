@@ -159,49 +159,54 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         
         listen_sock.close()
 
+        #Determine the amount of bytes to transfer for the rate test.
+        bytes_to_transfer = ticket['block_size']*ticket['block_count']
+
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         if ticket['transfer'] == SEND_FROM_SERVER:
             bytes_sent = 0
             sendstr = "S"*ticket['block_size']
-            print "Blocking on write select for", self.timeout, "seconds"
-            while bytes_sent < ticket['block_size']*ticket['block_count']:
+            while bytes_sent < bytes_to_transfer:
                 r,w,ex = select.select([], [data_sock], [data_sock],
                                self.timeout)
-                if not w:
-                    print "passive write failed to reach monitor client via TCP"
-                    reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
-                    self.reply_to_caller(reply)
-                    data_sock.close()
-                    print "Timing out after send."
-                    return
-
-                bytes_sent = bytes_sent + data_sock.send(sendstr,
+                if w:
+                    bytes_left = bytes_to_transfer - bytes_sent
+                    if bytes_left < ticket['block_size']:
+                        sendstr = "S"*bytes_left
+                    try:
+                        bytes_sent = bytes_sent + data_sock.send(sendstr,
                                                          socket.MSG_DONTWAIT)
-            print "Data sent"
+                    except socket.error, detail:
+                        reply['status'] = (CLIENT_CLOSED_CONECTION, detail[1])
+                        self.reply_to_caller(reply)
+                        data_sock.close()
+                        print "Timing out after send."
+                        return
+
+                
+            print "Data sent", bytes_sent
             reply['elapsed'] = -1
 
         elif ticket['transfer'] == SEND_TO_SERVER:
             bytes_received = 0
             t0=time.time() #Grab the current time.
             print "Blocking on read select for", self.timeout, "seconds"
-            while bytes_received < ticket['block_size']*ticket['block_count']:
+            while bytes_received < bytes_to_transfer:
                 r,w,ex = select.select([data_sock], [], [data_sock],
                                self.timeout)
-                if not r:
-                    print "passive read did not hear back from monitor client via TCP"
-                    #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
-                    #self.reply_to_caller(reply)
-                    data_sock.close()
-                    print "Timming out after recv."
-                    return
-                data = data_sock.recv(ticket['block_size'])
-                if not data: #socket is closed
-                    print "Client closed connection before completion."
-                    data_sock.close()
-                    return
-                bytes_received=bytes_received+len(data)
-            print "Data recieved"
+                if r:
+                    try:
+                        data = data_socket.recv(ticket['block_size'])
+                        bytes_received=bytes_received+len(data)
+                    except socket.error, detail:
+                        reply['status'] = (CLIENT_CLOSED_CONNECTION, detail[1])
+                        self.reply_to_caller(reply)
+                        data_sock.close()
+                        print "Timming out after recv."
+                        return
+                
+            print "Data recieved", bytes_received
             reply['elapsed']=time.time()-t0
 
         reply['status'] = ('ok', None)

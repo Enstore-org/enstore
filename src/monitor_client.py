@@ -120,13 +120,13 @@ class MonitorServerClient(generic_client.GenericClient):
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
             print "timeout"
-        except SERVER_CLOSED_CONNECTION:
-            print "server closed connection"
-            sys.exit(1)
-            #reply = {}
-            #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
-            #reply['elapsed'] = self.timeout*10
-            #reply['block_count'] = 0
+        except SERVER_CLOSED_CONNECTION, detail:
+            reply = {}
+            reply['status'] = (SERVER_CLOSED_CONNECTION, "failed to simulate encp")
+            reply['elapsed'] = self.timeout*10
+            reply['block_count'] = 0
+            print detail
+            #sys.exit(1)
         
         return reply
 
@@ -141,13 +141,16 @@ class MonitorServerClient(generic_client.GenericClient):
         if not r :
             if not self.summary:
                 print "monitor server unresponsive via TCP"
-            raise  errno.errorcode[errno.ETIMEDOUT]
+            raise SERVER_CLOSED_CONNECTION, errno.errorcode[errno.ETIMEDOUT]
 
         #simulate the control socket between encp and the mover
         ms_socket, address = self.c_socket.accept()
+        #Security check.  Make sure the system is supposed to do send things
+        # here.  If not ignore.
         if not hostaddr.allow(address):
             return reply
-            
+
+        #simulate the control socket between encp and the mover
         returned_ticket = callback.read_tcp_obj(ms_socket)
         ms_socket.close()
 
@@ -160,9 +163,6 @@ class MonitorServerClient(generic_client.GenericClient):
         for retry in xrange(self.timeout):
             try:
                 data_socket.connect(returned_ticket['mover']['callback_addr'])
-                if not data_socket:
-                    print "unable to open connection to server"
-                    raise SERVER_CLOSED_CONNECTION
                 break #Success, so get out of the loop.
             except socket.error, detail:
                 #We have seen that on IRIX, when the connection succeds, we
@@ -171,48 +171,54 @@ class MonitorServerClient(generic_client.GenericClient):
                     break
                 #Rename this error to be handled the same as the others.
                 elif detail[0] == errno.ECONNREFUSED:
-                    print "connection refused"
-                    raise SERVER_CLOSED_CONNECTION, detail[0]
+                    raise SERVER_CLOSED_CONNECTION, detail[1]
                 else:
-                    pass #somethin...something...something...
+                    pass #Everything is okay.
                 time.sleep(1)
         else: #If we did not break out of the for loop, flag the error.
-            raise CLIENT_CLOSED_CONNECTION
+            raise SERVER_CLOSED_CONNECTION, errno.ECONNREFUSED
 
         #Success on the connection!  Restore flag values.
         fcntl.fcntl(data_socket.fileno(), FCNTL.F_SETFL, flags)
         
+        #Determine the amount of bytes to transfer for the rate test.
+        bytes_to_transfer = ticket['block_size']*ticket['block_count']
+
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         #Since we are recieving the data, recording the time is important.
         if ticket['transfer'] == SEND_FROM_SERVER:
             bytes_received = 0
             t0=time.time()
-            while bytes_received < ticket['block_size']*ticket['block_count']:
+            while bytes_received < bytes_to_transfer:
                 r,w,ex = select.select([data_socket], [], [data_socket],
                                        self.timeout)
-                if not r:
-                    print "passive read did not hear back from monitor server via TCP"
-                    raise SERVER_CLOSED_CONNECTION
-                    
-                data = data_socket.recv(ticket['block_size'])
-                if not data: #socket is closed
-                    raise SERVER_CLOSED_CONNECTION
-                bytes_received=bytes_received+len(data)
+                if r:
+                    try:
+                        data = data_socket.recv(ticket['block_size'])
+                        bytes_received=bytes_received+len(data)
+                    except socket.error, detail:
+                        raise SERVER_CLOSED_CONNECTION, detail[1]
+            print "recieved:", bytes_received
             reply['elapsed']=time.time()-t0
 
         #When sending, the time isn't important.
         elif ticket['transfer'] == SEND_TO_SERVER:
             bytes_sent = 0
             sendstr = "S"*ticket['block_size']
-            while bytes_sent < ticket['block_size']*ticket['block_count']:
+            while bytes_sent < bytes_to_transfer:
                 r,w,ex = select.select([], [data_socket], [data_socket],
                                self.timeout)
-
                 if w:
-                    bytes_sent = bytes_sent + data_socket.send(sendstr,
-                                                           socket.MSG_DONTWAIT)
-                print "bytes_sent:", bytes_sent
+                    bytes_left = bytes_to_transfer - bytes_sent
+                    if bytes_left < ticket['block_size']:
+                        sendstr = "S"*bytes_left
+                    try:
+                        num_sent=data_socket.send(sendstr, socket.MSG_DONTWAIT)
+                        bytes_sent = bytes_sent + num_sent
+                    except socket.error, detail:
+                        raise SERVER_CLOSED_CONNECTION, detail[1]
+            print "sent:", bytes_sent
             reply['elapsed'] = -1
 
         #If we get here, the status is ok.
