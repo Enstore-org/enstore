@@ -281,7 +281,7 @@ def next_work_this_volume(v):
 
 ##############################################################
 
-def summon_mover(self, mover):
+def summon_mover(self, mover, ticket):
     if not summon: return
     self.enprint("SUMMON", generic_cs.DEBUG, verbose)
     self.enprint(mover, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
@@ -293,6 +293,8 @@ def summon_mover(self, mover):
     self.enprint("MV= "+repr(mv), generic_cs.DEBUG, verbose)
     if not mv:
 	self.summon_queue.append(mover)
+    mover['work_ticket'] = {}
+    mover['work_ticket'] = ticket
 	    
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
@@ -407,10 +409,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
 	global mover_index
-	#generic_cs.enprint("PROCESSING TO\nsummon queue", generic_cs.DEBUG, \
-	#                    verbose)
-        #generic_cs.enprint(self.summon_queue, \
-	#                    generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
+	generic_cs.enprint("PROCESSING TO\nsummon queue", 
+			   generic_cs.DEBUG, \
+	                    verbose)
+        generic_cs.enprint(self.summon_queue, \
+	                    generic_cs.DEBUG|generic_cs.PRETTY_PRINT,
+			   verbose)
 	t = time.time()
 	"""
 	if mover state did not change from being summoned then
@@ -421,36 +425,74 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	being summoned
 	"""
 	if mover_cnt != 0:
-	    
 	    for mv in self.summon_queue:
 		if mv['state'] == 'summoned':
 		    if (t - mv['last_checked']) > self.rcv_timeout:
 			if mv['summon_try_cnt'] < self.max_summon_attempts:
 			    # retry summon
 			    Trace.trace(3,"handle_timeout retrying " + repr(mv))
-			    self.summon_mover(mv)
+			    summon_mover(self, mv, mv["work_ticket"])
 			else:
-                            generic_cs.enprint("mover "+repr(mv)+" is dead", \
-	                                       generic_cs.DEBUG, verbose)
+                            generic_cs.enprint("mover "+repr(mv)+\
+					       " is dead", \
+	                                       generic_cs.DEBUG, 
+					       verbose)
 			    # mover is dead. Remove it from all lists
-			    Trace.trace(3,"handle_timeout: mover " + repr(mv) \
-				    + " is dead")
+			    Trace.trace(3,"handle_timeout: mover " +\
+					repr(mv) + " is dead")
 			    movers.remove(mv)
 			    self.summon_queue.remove(mv)
 			    if mover_cnt > 0:
 				mover_cnt = mover_cnt - 1
 				if mover_index >= mover_cnt:
 				    mover_index = mover_cnt - 1
+			    if mover_cnt == 0:
+				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
+				pending_work.delete_job(mv["work_ticket"])
+				send_regret(mv["work_ticket"])
+				return
+				
+			    # try another mover
+			    next_mover_found = 0
+			    for i in range(0, mover_cnt):
+				next_mover = idle_mover_next(self, 
+							     mv["work_ticket"]["fc"]["external_label"])
+				self.enprint("current mover "+\
+					     repr(mv)+\
+					     " next mover "+\
+					     repr(next_mover), \
+					     generic_cs.DEBUG, 
+					     verbose)
+				if (next_mover != None) and \
+				   (next_mover['mover'] != mv['mover']):
+				    next_mover_found = 1
+				    break
+
+			    if next_mover_found:
+				self.enprint("TO processing "
+					     "will summon mover "+ \
+					     repr(next_mover), 
+					     generic_cs.DEBUG, 
+					     verbose)
+				summon_mover(self, next_mover, mv["work_ticket"])
+				break
+			    else:
+				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
+				pending_work.delete_job(mv["work_ticket"])
+				send_regret(mv["work_ticket"])
+			    
 				
 
-        #self.enprint("movers queue after processing TO\nmover count "+\
-	#               repr(mover_cnt), generic_cs.DEBUG, verbose)
-        #self.enprint(movers, generic_cs.DEBUG|generic_cs.PRETTY_PRINT,\
-	#              verbose)
-        #self.enprint("summon queue after processing TO, \
-	#              generic_cs.DEBUG, verbose)
-        #self.enprint(self.summon_queue, \
-	#             generic_cs.DEBUG|generic_cs.PRETTY_PRINT, verbose)
+        self.enprint("movers queue after processing TO\nmover count "+\
+	               repr(mover_cnt), generic_cs.DEBUG, verbose)
+        self.enprint(movers, 
+		     generic_cs.DEBUG|generic_cs.PRETTY_PRINT,
+	              verbose)
+        self.enprint("summon queue after processing TO", \
+	              generic_cs.DEBUG, verbose)
+        self.enprint(self.summon_queue, \
+	             generic_cs.DEBUG|generic_cs.PRETTY_PRINT, 
+		     verbose)
 	Trace.trace(3,"}handle_timeout")
 	
     def write_to_hsm(self, ticket):
@@ -493,7 +535,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	mv = idle_mover_next(self, label)
 	if mv != None:
 	    # summon this mover
-	    summon_mover(self, mv)
+	    summon_mover(self, mv, ticket)
 	Trace.trace(3,"}write_to_hsm")
 
     def read_from_hsm(self, ticket):
@@ -555,7 +597,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# summon this mover
                 self.enprint("read_from_hsm will summon mover "+repr(mv), \
 	                     generic_cs.DEBUG, verbose)
-		summon_mover(self, mv)
+		summon_mover(self, mv, ticket)
 
 	Trace.trace(3,"}read_from_hsm ")
 	
@@ -847,7 +889,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if next_mover_found:
                 self.enprint("unilateral_unbind will summon mover "+ \
 	                     repr(next_mover), generic_cs.DEBUG, verbose)
-		summon_mover(self, next_mover)
+		summon_mover(self, next_mover, w)
 	    else:
 		w['status'] = (e_errors.NOMOVERS, None)
 		pending_work.delete_job(w)
