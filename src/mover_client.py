@@ -110,13 +110,6 @@ class MoverClient(generic_client.GenericClient):
     def start_draining(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
 
-    # do not add stop_draining as an option.  Once a mover is put into a start_draining
-    # state, the only correct thing to do is to stop the mvoer and restart it.  Otherwise
-    # the library manager gets totally confused.  The only reason to put a mover into a
-    # draining state is to stop it.
-    #def stop_draining(self, rcv_timeout=0, tries=0):
-    #	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
-
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.mover)
         return self.u.send(ticket, (vticket['hostip'], vticket['port']), \
@@ -134,7 +127,6 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.enable = 0
 	self.status = 0
         self.start_draining = 0
-        self.stop_draining = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -142,7 +134,11 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover=", "clean_drive", "start_draining=" ]
+	    # start draining needs a parameter because the library manager uses the same
+	    # option and it needs a parameter.  the interface is dumb enough not to know
+	    # the difference between the mover and the library manager.
+            return self.client_options()+["status", "local_mover=", "clean_drive", 
+					  "start_draining="]
 
     #  define our specific help
     def parameters(self):
@@ -182,8 +178,6 @@ def do_work(intf):
         print ticket
     elif intf.start_draining:
         ticket = movc.start_draining(intf.alive_rcv_timeout, intf.alive_retries)
-    elif intf.stop_draining:
-        ticket = movc.stop_draining(intf.alive_rcv_timeout, intf.alive_retries)
     else:
 	intf.print_help()
         sys.exit(0)
