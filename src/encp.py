@@ -741,14 +741,18 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(
             __csc, rcv_timeout = 5, rcv_tries = 20)
-        volume_info = test_vcc.inquire_vol(volume, 5, 20)
-        if e_errors.is_ok(volume_info):
-            __vcc = test_vcc
-            return __csc
-        else:
+        if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
-                      "Volume clerk (%s) knows nothing about %s.\n"
-                      % (test_vcc.server_address, volume))
+                      "Locating cached volume clerk failed.\n")
+        else:
+            volume_info = test_vcc.inquire_vol(volume, 5, 20)
+            if e_errors.is_ok(volume_info):
+                __vcc = test_vcc
+                return __csc
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Volume clerk (%s) knows nothing about %s.\n"
+                          % (test_vcc.server_address, volume))
             
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -778,6 +782,11 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             #Get the next volume clerk client and volume inquiry.
             vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
+
+            if vcc_test.server_address == None:
+                #If we failed to find this volume clerk, move on to the
+                # next one.
+                continue
 
             if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
                 msg = "Using %s based on volume %s." % \
@@ -819,14 +828,17 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     if __csc != None:
         test_fcc = file_clerk_client.FileClient(__csc, rcv_timeout = 5,
                                                 rcv_tries = 20)
-        test_brand = test_fcc.get_brand()
-        if not is_brand(test_brand):
-            Trace.log(e_errors.WARNING,
-                      "File clerk (%s) returned invalid brand: %s\n"
-                      % (test_fcc.server_address, test_brand))
-        if brand[:len(test_brand)] == test_brand:
-            __fcc = test_fcc
-            return __csc
+        if test_fcc.server_address == None:
+            Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
+        else:
+            test_brand = test_fcc.get_brand()
+            if not is_brand(test_brand):
+                Trace.log(e_errors.WARNING,
+                          "File clerk (%s) returned invalid brand: %s\n"
+                          % (test_fcc.server_address, test_brand))
+            if brand[:len(test_brand)] == test_brand:
+                __fcc = test_fcc
+                return __csc
 
     #Before checking other systems, check the current system.
     # Get a configuration server.
@@ -864,6 +876,10 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
+            if fcc_test.server_address == None:
+                #If we failed to find this file clerk, move on to the
+                # next one.
+                continue
 
             system_brand = fcc_test.get_brand()
             if not is_brand(system_brand):
@@ -1014,13 +1030,16 @@ def get_fcc(parameter = None):
     #Next check the fcc associated with the cached csc.
     if __csc != None:
         fcc = file_clerk_client.FileClient(__csc, rcv_timeout=5, rcv_tries=2)
-        file_info = fcc.bfid_info(bfid)
-        if e_errors.is_ok(file_info):
-            __fcc = fcc
-            return __fcc
-        #fcc_brand = fcc.get_brand()
-        #if bfid[:len(fcc_brand)] == fcc_brand:
-        #    return __fcc
+        if fcc.server_address == None:
+            Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
+        else:
+            file_info = fcc.bfid_info(bfid)
+            if e_errors.is_ok(file_info):
+                __fcc = fcc
+                return __fcc
+            #fcc_brand = fcc.get_brand()
+            #if bfid[:len(fcc_brand)] == fcc_brand:
+            #    return __fcc
 
     #Before checking other systems, check the default system.
     config_host = enstore_functions2.default_host()
@@ -1057,6 +1076,11 @@ def get_fcc(parameter = None):
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
+
+            if fcc_test.server_address == None:
+                #If we failed to find this file clerk, move on to the
+                # next one.
+                continue
 
             system_brand = fcc_test.get_brand()
             if not is_brand(system_brand):
@@ -1132,14 +1156,18 @@ def get_vcc(parameter = None):
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(
             __csc, rcv_timeout = 5, rcv_tries = 20)
-        volume_info = test_vcc.inquire_vol(volume, 5, 20)
-        if e_errors.is_ok(volume_info):
-            __vcc = test_vcc
-            return __vcc
-        else:
+        if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
-                      "Volume clerk (%s) knows nothing about %s.\n"
-                      % (test_vcc.server_address, volume))
+                      "Locating cached volume clerk failed.\n")
+        else:
+            volume_info = test_vcc.inquire_vol(volume, 5, 20)
+            if e_errors.is_ok(volume_info):
+                __vcc = test_vcc
+                return __vcc
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Volume clerk (%s) knows nothing about %s.\n"
+                          % (test_vcc.server_address, volume))
 
 
     # get a configuration server
@@ -1171,6 +1199,11 @@ def get_vcc(parameter = None):
             #Get the next volume clerk client and volume inquiry.
             vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
+
+            if vcc_test.server_address == None:
+                #If we failed to find this volume clerk, move on to the
+                # next one.
+                continue
 
             if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
                 msg = "Using %s based on volume %s." % \
@@ -5445,6 +5478,11 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
                 #Get the pnfs interface class instance.
                 p = pnfs.Pnfs(ifullname)
+
+            #This is an attempt to deal with data that is incomplete
+            # from a failed previous transfer.
+            if fc_reply.get('pnfs_name0', None) == None:
+                fc_reply['pnfs_name0'] = ifullname
 
             #Determine the filesize.  None if non-existant.
             #file_size = get_file_size(ifullname)
