@@ -1885,19 +1885,32 @@ class Display(Tkinter.Canvas):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
         mover.draw()
+
+        #Perform some cleanup in case some UDP Mmessages were lost.
+
+        #If the mover should not have a volume, remove it.
+        if what_state in ['IDLE', 'Unknown']:
+            msg="need to unload tape because mover state changed to: %s"
+            Trace.trace(1, msg % (what_state,))
+            mover.unload_tape()
+
+        #If a transfer is not in progress, some things need to be undrawn.
         if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND'
                           'FINISH_WRITE', 'CLEANING']:
+            #If the connection line needs to be removed.
             msg="Need to disconnect because mover state changed to: %s"
             if self.connections.get(mover.name, None):
                 Trace.trace(1, msg % (what_state,))
-                #del self.connections[mover.name]
                 self.disconnect_command(["mover", mover.name, "Unknown"])
 
-            #Perform some cleanup in case some UDP Mmessages were lost.
-            if what_state in ['IDLE', 'Unknown']:
-                msg="need to unload tape because mover state changed to: %s"
-                Trace.trace(1, msg % (what_state,))
-                mover.unload_tape()
+        #Undraw these objects that correlate only to the ACTIVE/DRAINING
+        # state.
+        if what_state in ['ERROR', 'IDLE', 'OFFLINE', 'Unknown', 'HAVE_BOUND',
+                          'FINISH_WRITE', 'CLEANING', 'SEEK', 'SETUP',
+                          'DISMOUNT_WAIT', 'MOUNT_WAIT']:
+            mover.undraw_progress()
+            mover.undraw_buffer()
+            mover.undraw_rate()
                         
     def unload_command(self, command_list):
 
