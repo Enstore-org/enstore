@@ -457,6 +457,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/ups/encp_mni_install.sh     $INSTALLDIR/encp_mni_install.sh
                 copyit $ENSTORE_DIR/ups/chooseConfig            $INSTALLDIR/chooseConfig
 		copyit $ENSTORE_DIR/src/e_errors.py             $INSTALLDIR/e_errors.py
+		copyit $ENSTORE_DIR/sbin/ecrc             $INSTALLDIR/ecrc
                 manifest=$INSTALLDIR/.encpCut.manifest
 
               elif [ $product = "enstore" ]; then
