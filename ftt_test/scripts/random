@@ -1,0 +1,105 @@
+#!/bin/ksh
+# $Id$
+# =============================================================
+# Randomly generated test script to test ftt functionality
+# File created on <
+# =============================================================
+# 
+# Get the tape device by looking in $1. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${1:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+# =============================================================
+# =============================================================
+# Write the test data 
+# =============================================================
+ftt_write_tblock -nblock 4915 -bsize 10 -delta 65000 
+ftt_writefm
+ftt_write_tblock -nblock 2828 -bsize 10 -delta 65000 
+ftt_writefm
+ftt_write_tblock -nblock 303 -bsize 10 -delta 65000 
+ftt_writefm
+ftt_write_tblock -nblock 3632 -bsize 10 -delta 65000 
+ftt_writefm
+# =============================================================
+# Pick some positions and skip there 
+# =============================================================
+ftt_rewind
+ftt_skip_fm 1
+ftt_skip_rec 1490
+ftt_verify_position 1 1490
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 2
+ftt_skip_rec 367
+ftt_verify_position 3 367
+ftt_verify_tblock -nblock 1
+ftt_skip_fm -2
+ftt_skip_rec 216
+ftt_verify_position 2 216
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 1
+ftt_skip_rec 881
+ftt_verify_position 3 881
+ftt_verify_tblock -nblock 1
+ftt_rewind
+ftt_skip_rec 4764
+ftt_verify_position 0 4764
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 3
+ftt_skip_rec 2235
+ftt_verify_position 3 2235
+ftt_verify_tblock -nblock 1
+ftt_skip_fm -2
+ftt_skip_rec 275
+ftt_verify_position 2 275
+ftt_verify_tblock -nblock 1
+ftt_skip_rec -220
+ftt_verify_position 2 56
+ftt_verify_tblock -nblock 1
+ftt_skip_fm -2
+ftt_skip_rec 582
+ftt_verify_position 1 582
+ftt_verify_tblock -nblock 1
+ftt_rewind
+ftt_skip_rec 955
+ftt_verify_position 0 955
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 1
+ftt_skip_rec 2597
+ftt_verify_position 1 2597
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 2
+ftt_skip_rec 2454
+ftt_verify_position 3 2454
+ftt_verify_tblock -nblock 1
+ftt_skip_rec 997
+ftt_verify_position 3 3452
+ftt_verify_tblock -nblock 1
+ftt_skip_rec -1728
+ftt_verify_position 3 1725
+ftt_verify_tblock -nblock 1
+ftt_rewind
+ftt_skip_rec 1011
+ftt_verify_position 0 1011
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 1
+ftt_skip_rec 765
+ftt_verify_position 1 765
+ftt_verify_tblock -nblock 1
+ftt_rewind
+ftt_skip_rec 3470
+ftt_verify_position 0 3470
+ftt_verify_tblock -nblock 1
+ftt_skip_rec 357
+ftt_verify_position 0 3828
+ftt_verify_tblock -nblock 1
+ftt_skip_fm 3
+ftt_skip_rec 611
+ftt_verify_position 3 611
+ftt_verify_tblock -nblock 1
+ftt_skip_rec 367
+ftt_verify_position 3 979
+ftt_verify_tblock -nblock 1
+quit
+EOD

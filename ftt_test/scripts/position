@@ -1,4 +1,5 @@
 #!/bin/ksh
+# $Id$
 #===============================================================================
 # This will test positioning withing a test tape.
 # It assumes that the tape has been written with twrite

@@ -1,8 +1,7 @@
 #!/bin/ksh
 # $Id$
 #==============================================================================
-# This will verify the data from the test tape.
-# It assumes that the tape has been written with twrite.
+# This will list and describe tape devices
 #==============================================================================
  
 #===============================================================================
@@ -12,19 +11,34 @@ export FTT_TAPE
 FTT_TAPE=${1:-${FTT_TAPE:-""}}
 FTT_TAPE=${FTT_TAPE:?"No device specified"}
 #===============================================================================
+
+listfile=/tmp/list$$
+dupfile=/tmp/dup$$
  
-ftt_test << EOD
+ftt_test << EOD 2>&1 | tee $listfile
 ftt_open
-ftt_verify_vol_label -label fttest -type FTT_ANSI_HEADER
-ftt_verify_tblock -filemark
-ftt_verify_tblock -nblock 1000 
-ftt_verify_tblock -filemark
-ftt_verify_tblock -nblock 2000 
-ftt_verify_tblock -filemark
-ftt_verify_tblock -nblock 3000
-ftt_verify_tblock -filemark
-ftt_verify_tblock -filemark
-ftt_verify_tblock -status FTT_EBLANK
+ftt_list_all
 ftt_close
 quit
 EOD
+
+sort $listfile | uniq -c | grep -v '^  *1 ' > $dupfile
+if [ -s $dupfile ]
+then
+    echo "Duplicate listing of:"
+    cat $dupfile
+fi
+
+echo "Device Descriptions:"
+cat $listfile  | (
+   echo ftt_open
+   read line
+   while read tape
+   do
+       echo ftt_echo $tape
+       echo ftt_describe_dev $tape
+   done
+   echo ftt_close
+)  | ftt_test
+
+rm $listfile $dupfile

@@ -1,4 +1,5 @@
 #!/bin/ksh 
+# $Id$
 #==============================================================================
 # This will test all the commands that will write to
 # tape. They should all fail with FTT_EROFS
