@@ -43,7 +43,7 @@ echo `date` Starting to get files from $tape
 /data1/migrate_tape -l $tape >> $log 2>&1
 
 rm -f $gotit
-max_try=5
+max_try=10
 try=0
 while [ $try -le $max_try ]; do
   try=`expr $try + 1`
