@@ -1002,6 +1002,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# find mover in the work_at_movers
 	found = 0
 	for wt in self.work_at_movers.list:
+            Trace.trace(11, "work_at_movers: mover %s id %s" % (wt['mover'], wt['unique_id']))
 	    if wt['mover'] == self.requestor:
 		found = 1     # must do this. Construct. for...else will not
                               # do better 
@@ -1044,13 +1045,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                     w['fc']['external_label'],
                                                     w['vc']['wrapper'])
         w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
-        Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
-        self.udpc.send_no_wait(w, mticket['address'])
 
         w['mover'] = mticket['mover']
         Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
         self.work_at_movers.append(w)
         #work = string.split(w['work'],'_')[0]
+        Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
+        self.udpc.send_no_wait(w, mticket['address'])
 
         ### XXX are these all needed?
         mticket['external_label'] = w["fc"]["external_label"]
