@@ -6,21 +6,21 @@
 """
 	The purpose of this module is to provide a clean datagram
 	interface for Enstore. By "clean" we mean that we try to
-        provide a uniform interface on all platforms by masking specific
+                  provide a uniform interface on all platforms by masking specific
 	errors.
 
 	Specific errors that are masked:
 
 	1) Linux ipv4 -- returning an error on the next UDP send or recieve
-	when an ICMP port unreachable measage is recieved. The socket 
-	implementation will return, then automaticallay clear ECONNREFUSED.
-	To handle this, we transpearently retry self.retry_max times 
+	when an ICMP port unreachable message is recieved. The socket 
+	implementation will return, then automatically clear ECONNREFUSED.
+	To handle this, we transparently retry self.retry_max times 
 
 
 	Notice that the python socket is a primitive type in the 
 	language, like file descriptors, and so is not available for 
-	inheritance. therefore we have to pedantically code all the "methods".
-	This implementaion does nto handle all patterns of optional 
+	inheritance. therefore we have to code all the "methods".
+	This implementation does nto handle all patterns of optional 
 	arguments.
 
 	cleanUDP.select() must be used instead of select.select()
@@ -37,7 +37,7 @@ import e_errors
 def Select (R, W, X, timeout) :
 
 # we have an error under linux where we get an error, and
-# r and x are set, but there is no data. If the error is a spurrious error, 
+# r and x are set, but there is no data. If the error is a spurious error, 
 # we must delete the object from all lists.
 #
 
