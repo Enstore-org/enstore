@@ -67,7 +67,8 @@ class GenericClient:
 
         if self.__dict__.get('is_config', 0):
             # this is the configuration client, we don't need this other stuff
-            self.csc = self
+            #self.csc = self
+            csc = self
             #return
 
 	# get the configuration client
@@ -105,8 +106,9 @@ class GenericClient:
 	else:
 	    if not flags & enstore_constants.NO_LOG:
 		import log_client
-		self.logc = log_client.LoggerClient(self.csc, self.log_name,
-						    'log_server', 
+		self.logc = log_client.LoggerClient(self._get_csc(),
+                                                    self.log_name,
+                                                    'log_server', 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
@@ -119,24 +121,10 @@ class GenericClient:
 	else:
 	    if not flags & enstore_constants.NO_ALARM:
 		import alarm_client
-		self.alarmc = alarm_client.AlarmClient(self.csc, 
+		self.alarmc = alarm_client.AlarmClient(self._get_csc(), 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
-
-    def __del__(self):
-        try:
-            del self.u
-        except AttributeError:
-            pass
-        try:
-            del self.logc
-        except AttributeError:
-            pass
-        try:
-            del self.alarmc
-        except AttributeError:
-            pass
 
     def _is_csc(self):
         #If the server requested is the configuration server,
@@ -191,7 +179,7 @@ class GenericClient:
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             if exc == errno.errorcode[errno.ETIMEDOUT]:
                 x = {'status' : (e_errors.TIMEDOUT, msg)}
             else:
@@ -243,7 +231,7 @@ class GenericClient:
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, None)}
         except KeyError, detail:
-            print "Unknown server", server
+            sys.stderr.write("Unknown server %s\n" % (server,))
             sys.exit(-1)
         return x
     
