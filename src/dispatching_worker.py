@@ -371,7 +371,7 @@ class DispatchingWorker(udp_server.UDPServer):
         ticket['pid'] = os.getpid()
         Trace.log( e_errors.INFO, 'QUITTING... via os._exit')
         self.reply_to_caller(ticket)
-        os._exit(0)
+        os._exit(0) ##MWZ: Why not sys.exit()?  No servers fork() anymore...
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
