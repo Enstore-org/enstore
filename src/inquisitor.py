@@ -47,6 +47,8 @@ UP = 1
 DOWN = 2
 OUTAGE = 3
 NOOUTAGE = 4
+OVERRIDE = 5
+NOOVERRIDE = 6
 
 MY_NAME = "inquisitor"
 LOGHTMLFILE_NAME = "enstore_logs.html"
@@ -68,6 +70,11 @@ defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
             'alive_retries': 2,
             'max_encp_lines': 50}
+
+# delete a key from a dictionary if it exists
+def delkey(key, dict):
+    if dict.has_key(key):
+	del dict[key]
 
 # given a directory get a list of the files and their sizes
 def get_file_list(dir, prefix):
@@ -177,7 +184,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def is_server_known_down(self, server):
         # check to see if the server is known to be down by enstore.
-        sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
         if offline_d.has_key(server.name):
             # server is known to be down
             return 1
@@ -431,7 +438,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def suspect_vols(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.get_suspect_volumes())
-	except "TCP connection closed", detail:
+	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
 								   detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -452,7 +459,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def work_queue(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.getwork())
-	except "TCP connection closed", detail:
+	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
@@ -472,7 +479,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def lm_state(self, lib_man, time):
 	try:
 	    state = safe_dict.SafeDict(lib_man.client.get_lm_state())
-	except "TCP connection closed", detail:
+	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return
@@ -839,40 +846,33 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
 	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
-        sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
 	if sfile.opened != 0:
 	    for key in server_l:
 		# map the entered name to the name in the outage dictionary
 		num, server = self.find_server_match(key)
 		if num == 1:
+		    key = server_map[server]
+		elif not self.is_valid(key):
+		    key = None
+		    bad_servers.append(key)
+		    ticket["status"] = (e_errors.DOESNOTEXIST, bad_servers)
+
+		if key is not None:
 		    # we found a match
 		    if func == UP:
-			out_key = server_map[server]
-			if offline_d.has_key(out_key):
-			    del offline_d[out_key]
-		    elif func == DOWN:
-			offline_d[server_map[server]] = ticket["time"]
-		    elif func == OUTAGE:
-			outage_d[server_map[server]] = ticket["time"]
-		    elif func == NOOUTAGE:
-			out_key = server_map[server]
-			if outage_d.has_key(out_key):
-			    del outage_d[out_key]
-		elif self.is_valid(key):
-		    if func == UP:
-			if offline_d.has_key(key):
-			    del offline_d[key]
+			delkey(key, offline_d)
 		    elif func == DOWN:
 			offline_d[key] = ticket["time"]
 		    elif func == OUTAGE:
 			outage_d[key] = ticket["time"]
 		    elif func == NOOUTAGE:
-			if outage_d.has_key(key):
-			    del outage_d[key]
-		else:
-		    bad_servers.append(key)
-		    ticket["status"] = (e_errors.DOESNOTEXIST, bad_servers)
-	    if not sfile.write(outage_d, offline_d, seen_down_d):
+			delkey(key, outage_d)
+		    elif func == OVERRIDE:
+			override_d[key] = ticket["saagStatus"]
+		    elif func == NOOVERRIDE:
+			delkey(key, override_d)
+	    if not sfile.write(outage_d, offline_d, override_d):
 		ticket["status"] = (e_errors.IOERROR, None)
 		Trace.log(e_errors.ERROR, 
 			  "Could not write to file %s/%s"%(self.html_dir, 
@@ -908,18 +908,38 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
 				   "mark server nooutage work from user")
 
+    def override(self, ticket):
+	self.update_schedule_file(ticket, OVERRIDE)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, 
+		    "mark server override work from user")
+
+    def nooverride(self, ticket):
+	self.update_schedule_file(ticket, NOOVERRIDE)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, 
+		    "mark server nooverride work from user")
+
     def show(self, ticket):
 	ticket["status"] = (e_errors.OK, None)
-        sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
+	dfile, seen_down_d = enstore_functions.read_seen_down_file(self.html_dir)
 	if sfile.opened != 0:
 	    ticket["outage"] = outage_d
 	    ticket["offline"] = offline_d
-	    ticket["seen_down"] = seen_down_d
+	    ticket["override"] = override_d
 	else:
 	    ticket["status"] = (e_errors.IOERROR, None)
 	    Trace.log(e_errors.ERROR,
 		      "Could not read file %s/%s"%(self.html_dir, 
 						   enstore_constants.OUTAGEFILE))
+	if dfile.opened != 0:
+	    ticket["seen_down"] = seen_down_d
+	else:
+	    ticket["status"] = (e_errors.IOERROR, None)
+	    Trace.log(e_errors.ERROR,
+		      "Could not read file %s/%s"%(self.html_dir, 
+						   enstore_constants.SEENDOWNFILE))
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "show up/down status work from user")

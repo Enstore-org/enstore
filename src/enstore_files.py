@@ -550,7 +550,8 @@ class HtmlSaagFile(EnFile):
         self.real_file_name = name
 
     def write(self, enstore_contents, network_contents, media_contents, 
-              alarm_contents, node_contents, outage, offline, status_file_name):
+              alarm_contents, node_contents, outage, offline, 
+	      status_file_name):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
             media = enstore_functions.get_from_config_file(www_server.WWW_SERVER,
@@ -583,9 +584,9 @@ class ScheduleFile(EnFile):
 	    EnFile.open(self, mode)
 
     def close(self):
+	EnFile.close(self)
 	# get rid of the lock file first
 	os.system("rm %s"%(self.lockfile,))
-	EnFile.close(self)
 
     def read(self):
         try:
@@ -596,27 +597,27 @@ class ScheduleFile(EnFile):
             else:
                 outage = {}
                 offline = {}
-                seen_down = {}
+                override = {}
             try:
                 outage_d = outage
-            except AttributeError:
+            except UnboundLocalError:
                 outage_d = {}
             try:
                 offline_d = offline
-            except AttributeError:
+            except UnboundLocalError:
                 offline_d = {}
             try:
-                seen_down_d = seen_down
-            except AttributeError:
-                seen_down_d = {}
+                override_d = override
+            except UnboundLocalError:
+                override_d = {}
         except:
             # can't find the module
             outage_d = {}
             offline_d = {}
-            seen_down_d = {}
+            override_d = {}
         if self.openfile:
             self.close()
-        return outage_d, offline_d, seen_down_d
+        return outage_d, offline_d, override_d
 
     # turn the dictionary into python code to be written out to the file
     def write(self, dict1, dict2, dict3):
@@ -627,7 +628,69 @@ class ScheduleFile(EnFile):
         if self.openfile:
 	    self.do_write("outage = %s\n"%(dict1,))
 	    self.do_write("offline = %s\n"%(dict2,))
-	    self.do_write("seen_down = %s\n"%(dict3,))
+	    self.do_write("override = %s\n"%(dict3,))
+            rtn = 1
+            # close the file
+            self.close()
+        else:
+            # could not open the file
+            rtn = 0
+        return rtn
+
+
+class SeenDownFile(EnFile):
+
+    def __init__(self, dir, name):
+        self.html_dir = dir
+        EnFile.__init__(self, "%s/%s"%(dir, name))
+
+    def open(self, mode='w'):
+	# first check if we can get a lockfile for this
+	try:
+	    for attempt in [1,2,3,4,5]:
+		os.stat(self.lockfile)
+		# oops file exists, wait awhile then try again
+		time.sleep(1)
+	    else:
+		Trace.log(e_errors.ERROR,
+			"Could not create seen-down file lock file (%s)"%(self.lockfile,))
+	except OSError:
+	    # file does not exist, create it
+	    os.system("touch %s"%(self.lockfile,))
+	    EnFile.open(self, mode)
+
+    def close(self):
+        EnFile.close(self)
+        # get rid of the lock file
+        os.system("rm %s"%(self.lockfile,))
+
+    def read(self):
+        try:
+            self.open('r')
+            if self.openfile:
+                code=string.join(self.openfile.readlines(),'')
+                exec(code)
+            else:
+                seen_down = {}
+            try:
+                seen_down_d = seen_down
+            except AttributeError:
+                seen_down_d = {}
+        except:
+            # can't find the module
+            seen_down_d = {}
+        if self.openfile:
+            self.close()
+        return seen_down_d
+
+    # turn the dictionary into python code to be written out to the file
+    def write(self, dict1):
+        # open the file for writing
+        self.open()
+
+        # write out the dictionary
+        if self.openfile:
+            self.do_write("seen_down = %s\n"%(dict1,))
             rtn = 1
             # close the file
             self.close()

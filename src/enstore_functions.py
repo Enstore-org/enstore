@@ -49,6 +49,9 @@ def get_from_config_file(server, keyword, default):
 def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
 
+def get_mover_status_filename():
+    return "movers.html"
+
 def read_schedule_file(html_dir=None):
     if html_dir is None:
         html_dir = get_html_dir()
@@ -56,12 +59,24 @@ def read_schedule_file(html_dir=None):
     sfile = None
     if os.path.exists(html_dir):
         sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-        outage_d, offline_d, seen_down_d = sfile.read()
+        outage_d, offline_d, override_d = sfile.read()
     else:
         outage_d = {}
         offline_d = {}
+	override_d = {}
+    return sfile, outage_d, offline_d, override_d
+
+def read_seen_down_file(html_dir=None):
+    if html_dir is None:
+        html_dir = get_html_dir()
+    # check if the html_dir is accessible
+    sfile = None
+    if os.path.exists(html_dir):
+        sfile = enstore_files.SeenDownFile(html_dir, enstore_constants.SEENDOWNFILE)
+        seen_down_d = sfile.read()
+    else:
         seen_down_d = {}
-    return sfile, outage_d, offline_d, seen_down_d
+    return sfile, seen_down_d
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
@@ -75,6 +90,15 @@ def get_config_server_info():
 # strip off the day and reorganize things a little
 def format_time(theTime, sep=" "):
     return time.strftime("%Y-%b-%d"+sep+"%H:%M:%S", time.localtime(theTime))
+
+# return the directory
+def get_dir(str):
+    if os.path.isdir(str):
+	return str
+    else:
+	# strip off the last set of chars after the last /
+	file_spec = os.path.split(str)
+	return file_spec[0]
 
 # strip off anything before the '/'
 def strip_file_dir(str):

@@ -70,6 +70,7 @@ SERVER_NAMES = {LOGS : LOG_SERVER,
 		CONFIGS : CONFIG_SERVER}
 
 OUTAGEFILE = "enstore_outage.py"
+SEENDOWNFILE = "enstore_seen_down.py"
 SAAGHTMLFILE = "enstore_saag.html"
 BASENODE = "base_node"
 UP = 0
@@ -82,6 +83,10 @@ ENSTORE = "enstore"
 NETWORK = "network"
 TIME = "time"
 UNKNOWN = "UNKNOWN TIME"
+
+# these next 2 are related. both must be changed
+SAAG_STATUS = ["red", "yellow", "green", "question"]
+REAL_STATUS = [DOWN, WARNING, UP, SEEN_DOWN]
 
 # dictionary keys for the system status information
 STATUS = "status"

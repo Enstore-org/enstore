@@ -47,7 +47,7 @@ def do_work(intf):
 
     # get the information on any scheduled down time. 
     sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-    outage_d, offline_d, seen_down_d = sfile.read()
+    outage_d, offline_d, override_d = sfile.read()
 
     # gather all of the latest status of the enstore system
     (rtn, enstat) = enstore_up_down.do_real_work()

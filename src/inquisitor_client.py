@@ -89,6 +89,19 @@ class Inquisitor(generic_client.GenericClient):
 			  "servers" : server_list,
 			  "time"    : time}, rcv_timeout, tries)
 
+    def nooverride (self, server_list, rcv_timeout=0, tries=0):
+	# tell the inquisitor to mark the passed servers' status as no longer set
+	# to the user specified value
+	return self.send({"work"    : "nooverride",
+			  "servers" : server_list}, rcv_timeout, tries)
+
+    def override (self, server_list, status, rcv_timeout=0, tries=0):
+	# tell the inquisitor to mark the passed servers' status as to be set to
+	# the user specified value independent of what it really is
+	return self.send({"work"       : "override",
+			  "servers"    : server_list,
+			  "saagStatus" : status}, rcv_timeout, tries)
+
     def show (self, rcv_timeout=0, tries=0):
 	# tell the inquisitor to return the outage/status of the servers in the 
 	# schedule file
@@ -127,6 +140,18 @@ class Inquisitor(generic_client.GenericClient):
 	    else:
 		print ""
 
+	# output information on servers whose status is being overridden
+	override_d = ticket["override"]
+	if override_d:
+	    keys = override_d.keys()
+	    keys.sort()
+	    print "\n Enstore Items Being Overridden"
+	    print   " ------------------------------"
+	    for key in keys:
+		print "   %s : %s"%(key, override_d[key])
+	    else:
+		print ""
+
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
 
@@ -157,6 +182,9 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.time = ""
 	self.outage = ""
 	self.nooutage = ""
+	self.override = ""
+	self.nooverride = ""
+	self.saagStatus = ""
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
         
@@ -170,7 +198,8 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                 "update", "dump", "update-and-exit",
                 "refresh=", "get-refresh", "max-encp-lines=",
                 "get-max-encp-lines", "subscribe", "up=", "down=",
-		"outage=", "nooutage=", "show", "time="]
+		"outage=", "nooutage=", "override=", "nooverride=",
+		"saagStatus=", "show", "time="]
 
 # this is where the work is actually done
 def do_work(intf):
@@ -227,8 +256,22 @@ def do_work(intf):
     elif intf.nooutage:
 	ticket = iqc.nooutage(intf.nooutage)
 
+    elif intf.override and intf.saagStatus:
+	if intf.saagStatus in enstore_constants.SAAG_STATUS:
+	    ticket = iqc.override(intf.override, intf.saagStatus)
+	else:
+	    # we did not get legal status values
+	    sys.stderr.write("ERROR: Invalid saagStatus value.")
+	    sys.stderr.write("    Legal values are: red, yellow, green, question\n")
+	    intf.print_help()
+	    sys.exit(1)
+
+    elif intf.nooverride:
+	ticket = iqc.nooverride(intf.nooverride)
+
     elif intf.show:
 	ticket = iqc.show()
+	print ticket
 	if enstore_functions.is_ok(ticket):
 	    iqc.print_show(ticket)
 
