@@ -39,7 +39,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      bfid = self.unique_bit_file_id()
      record["bfid"] = bfid
      # record it to the database
-     dict[bfid] = record ## was deepcopy
+     self.dict[bfid] = record ## was deepcopy
      
      ticket["fc"]["bfid"] = bfid
      ticket["status"] = (e_errors.OK, None)
@@ -81,7 +81,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            record = dict[bfid] ## was deepcopy
+            record = self.dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR,"File Clerk: bfid %s not found"%bfid)
             Trace.log(e_errors.INFO, "%s"%ticket)
@@ -101,7 +101,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             pass
 
         # record our changes
-        dict[bfid] = record ## was deepcopy
+        self.dict[bfid] = record ## was deepcopy
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_pnfsid %s'%ticket)
@@ -113,7 +113,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      try:
         # look up in our dictionary the request bit field id
         try:
-            record = dict[bfid] ## was deepcopy
+            record = self.dict[bfid] ## was deepcopy
         except KeyError:
             status = (e_errors.KEYERROR, 
 		      "File Clerk: bfid %s not found"%bfid)
@@ -163,7 +163,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    return status, None, None 
 
         # record our changes
-        dict[bfid] = record ## was deepcopy
+        self.dict[bfid] = record ## was deepcopy
 
         Trace.log(e_errors.INFO,
                   "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
@@ -236,14 +236,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 	# find the file in db
 	bfid = None
-	dict.cursor("open")
-	key,value=dict.cursor("first")
+	self.dict.cursor("open")
+	key,value=self.dict.cursor("first")
 	while key:
 	    if value["pnfs_name0"] == fname:
 		bfid = value["bfid"]
 		break
-	    key,value=dict.cursor("next")
-	dict.cursor("close")
+	    key,value=self.dict.cursor("next")
+	self.dict.cursor("close")
 	# file not found
 	if not bfid:
 	    ticket["status"] = "ENOENT", "File %s not found"%fname
@@ -295,13 +295,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.get_user_sockets(ticket)
         ticket["status"] = (e_errors.OK, None)
         callback.write_tcp_obj(self.data_socket,ticket)
-        dict.cursor("open")
-        key,value=dict.cursor("first")
+        self.dict.cursor("open")
+        key,value=self.dict.cursor("first")
         while key:
             callback.write_tcp_raw(self.data_socket,repr(key))
-            key,value=dict.cursor("next")
+            key,value=self.dict.cursor("next")
         callback.write_tcp_raw(self.data_socket,"")
-        dict.cursor("close")
+        self.dict.cursor("close")
         callback.write_tcp_raw(self.data_socket,"")
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
@@ -326,7 +326,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = dict[bfid] ## was deepcopy
+            finfo = self.dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid %s not found"%bfid)
@@ -391,7 +391,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # look up in our dictionary the request bit field id
         try:
-            finfo = dict[bfid] ## was deepcopy
+            finfo = self.dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: bfid %s not found"%bfid)
@@ -423,7 +423,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # now just delete the bfid
-        del dict[bfid]
+        del self.dict[bfid]
         Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%bfid)
 
         # and return to the caller
@@ -455,7 +455,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"rename_volume %s"%ticket["status"])
             return
 
-	record = dict[bfid] ## was deepcopy
+	record = self.dict[bfid] ## was deepcopy
 	# replace old volume name with new one
 	record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
 						record["external_label"], 
@@ -474,7 +474,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 		self.reply_to_caller(ticket)
 		Trace.log(e_errors.ERROR,'rename_volume failed %s'%ticket)
 		return
-	dict[bfid] = record ## was deepcopy
+	self.dict[bfid] = record ## was deepcopy
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
@@ -489,7 +489,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def unique_bit_file_id(self):
         bfid = time.time()
         bfid = long(bfid)*100000
-        while dict.has_key(str(bfid)):
+        while self.dict.has_key(str(bfid)):
             bfid = bfid + 1
         return str(bfid)
 
@@ -515,8 +515,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      msg="     label            bfid       size        location_cookie delflag original_name\n"
      callback.write_tcp_raw(self.data_socket, msg)
      # now get a cursor so we can loop on the database quickly:
-     dict.cursor("open")
-     key,value=dict.cursor("first")
+     self.dict.cursor("open")
+     key,value=self.dict.cursor("first")
      while key:
          if value['external_label'] == external_label:
              if value.has_key('deleted'):
@@ -532,8 +532,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
              callback.write_tcp_raw(self.data_socket, msg)
-         key,value=dict.cursor("next")
-     dict.cursor("close")
+         key,value=self.dict.cursor("next")
+     self.dict.cursor("close")
      callback.write_tcp_raw(self.data_socket, "")
      self.data_socket.close()
      callback.write_tcp_obj(self.control_socket,ticket)
@@ -553,7 +553,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def start_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"start_backup")
-            dict.start_backup()
+            self.dict.start_backup()
             self.reply_to_caller({"status"        : (e_errors.OK, None),
                                   "start_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -568,7 +568,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def stop_backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"stop_backup")
-            dict.stop_backup()
+            self.dict.stop_backup()
             self.reply_to_caller({"status"       : (e_errors.OK, None),
                                   "stop_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -582,7 +582,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def backup(self,ticket):
         try:
             Trace.log(e_errors.INFO,"backup")
-            dict.backup()
+            self.dict.backup()
             self.reply_to_caller({"status"       : (e_errors.OK, None),
                                   "backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
@@ -635,7 +635,7 @@ if __name__ == "__main__":
         jouHome = dbHome
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    dict = db.DbTable("file", dbHome, jouHome, [])
+    fc.dict = db.DbTable("file", dbHome, jouHome, [])
     Trace.log(e_errors.INFO,"hurrah, file database is open")
 
     while 1:
