@@ -29,7 +29,11 @@ def get_file_family(volume):
 	global _ff
 	if not _ff.has_key(volume):
 		v = vcc[volume]
-		_ff[volume] = volume_family.extract_file_family(v['volume_family'])
+		# ignore migrated volume
+		if v['system_inhibit'][1] == 'migrated':
+			_ff[volume] = None
+		else:
+			_ff[volume] = volume_family.extract_file_family(v['volume_family'])
 	return _ff[volume]
 	
 def bfid2time(bfid):
@@ -174,7 +178,8 @@ if __name__ == '__main__':
 		if deleted == 'A':
 			try:
 				ff = get_file_family(volume)
-				out.write('%-20s %-10s %-12s %14s %14s %s\n'%(k, volume, ff, size, crc, pnfs_path))
+				if ff:
+					out.write('%-20s %-10s %-12s %14s %14s %s\n'%(k, volume, ff, size, crc, pnfs_path))
 			except:
 				print "None existing volume %s\n"%(volume)
 		try:
