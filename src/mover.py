@@ -22,7 +22,6 @@ import traceback
 # enstore modules
 
 import setpath
-
 import generic_server
 import interface
 import dispatching_worker
@@ -40,9 +39,9 @@ import hostaddr
 def print_args(*args):
     print args
 
-verbose=0
+verbose=0 
     
-Trace.trace = print_args
+##Trace.trace = print_args
 
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -195,30 +194,30 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.t0 = time.time()
         
         generic_server.GenericServer.__init__(self, csc_address, name)
-        Trace.init( self.log_name )
+
 
         self.config = self.csc.get( name )
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
 
+        logname = self.config.get('logname', name)
+        Trace.init(logname)
         
         self.address = (self.config['hostip'], self.config['port'])
 
         self.do_eject = 1
-
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
-        self.min_buffer = 16*MB;
-        self.max_buffer = 64*MB;
-        self.rate = 0
-
-        if self.config.has_key('min_buffer'):
-            self.min_buffer = string.atoi(self.config['min_buffer'])
-        if self.config.has_key('max_buffer'):
-            self.max_buffer = string.atoi(self.config['max_buffer'])
+        self.default_dismount_delay = self.config.get('dismount_delay', 30)
+        if self.default_dismount_delay < 0:
+            self.default_dismount_delay = 31536000 #1 year
             
+        self.min_buffer = self.config.get('min_buffer', 16*MB)
+        self.max_buffer = self.config.get('max_buffer', 64*MB)
+        self.fast_rate = self.config.get('fast_rate', 10*MB)
+        
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
             
         self.udpc =  udp_client.UDPClient()
@@ -237,19 +236,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.volume_family = None 
         self.volume_status = (['none', 'none'], ['none', 'none'])
         self.files = ('','')
-        self.hsm_drive_sn = ''
         self.transfers_completed = 0
         self.transfers_failed = 0
         self.current_work_ticket = {}
 
         self.vol_info = {}
         
-        self.default_dismount_delay = 30
+
         self.dismount_time = None
         self.delay = 0
         
-        
-        self.driveStatistics = {'mount':{},'dismount':{}}
 
 ##        self.mcc = media_changer_client.MediaChangerClient( self.csc,
 ##                                             self.config['media_changer'] )
@@ -262,6 +258,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         import net_driver
         self.net_driver = net_driver.NetDriver()
         self.client_socket = None
+
+
+        self.config['name']=self.name #XXX why?
+        self.config['product_id']='Unknown'
+        self.config['serial_num']=0
+        self.config['vendor_id']='Unknown'
+        self.config['local_mover'] = 0 #XXX yuk
         
         driver_type = self.config['driver']
         if driver_type == 'NullDriver':
@@ -271,25 +274,37 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif driver_type == 'FTTDriver':
             self.device = self.config['device']
             import ftt_driver
+            import ftt
             self.tape_driver = ftt_driver.FTTDriver()
+            self.tape_driver.open(self.device, 0)
+            self.tape_driver.verbose = verbose 
+            stats = self.tape_driver.ftt.get_stats()
+            self.config['product_id'] = stats[ftt.PRODUCT_ID]
+            self.config['serial_num'] = stats[ftt.SERIAL_NUM]
+            self.config['vendor_id'] = stats[ftt.VENDOR_ID]
+            self.tape_driver.close()
+            self.tape_driver.set_fast_rate(self.fast_rate)
+            try: #see if there's a tape already loaded
+                self.tape_driver.open(self.device, 0)
+                self.tape_driver.rewind()
+                buf=80*' '
+                self.tape_driver.read(buf, 0, 80)
+                ##self.tape_driver.close()
+                buf = string.split(buf)[0]
+                if buf[:4]=='VOL1':
+                    volname=buf[4:]
+                    self.current_volume = volname
+                    if verbose: print "have vol %s at startup" % (self.current_volume,)
+            except FTTError, detail:
+                if verbose:
+                    print "checking for loaded tape:", detail
+                try:
+                    self.tape_driver.close()
+                except:
+                    pass
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
-            
-
-##        stats = self.tape_driver.get_stats()
-        
-        
-##        if stats['serial_num'] != None: self.hsm_drive_sn = stats['serial_num']
-##        self.config['serial_num'] = stats['serial_num']
-##        self.config['product_id'] = stats['product_id']
-##        self.config['vendor_id'] = stats['vendor_id']
-        
-        self.config['name']=self.name
-        self.config['product_id']="Product ID"
-        self.config['serial_num']=12345
-        self.config['vendor_id']="fnal"
-        self.config['local_mover'] = 0 #yuk
             
 ##        # check for tape in drive
 ##        # if no vol one labels, I can only eject. -- tape maybe left in bad
@@ -315,22 +330,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             lib_config = self.csc.get(lib)
             self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
 
-
-            
         self.set_interval_func(self.update, 5) #this sets the period for messages to LM.
+        self.set_error_handler(self.handle_mover_error)
         ##end of __init__
         
         
-    def handle_error(self, request, client_address):
-        exc, msg, tb = sys.exc_info()
-        if self.current_work_ticket and self.state==ACTIVE:
+    def handle_mover_error(self, exc, msg, tb):
+        if verbose: print "handle mover error", exc, msg
+        print self.current_work_ticket, state_name(self.state)
+        if self.current_work_ticket:
             try:
                 if verbose: print "handle error: calling transfer failed",
                 if verbose: print "str(msg)=", str(msg)
-                self.transfer_failed(str(msg))
+                self.transfer_failed(msg)
             except:
                 pass
-        dispatching_worker.DispatchingWorker.handle_error(self, request, client_address)
+                
 
     def update(self, reset_timer=None):
         if verbose:
@@ -591,13 +606,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def transfer_failed(self, msg): #Client is gone...
         if verbose: print "transfer aborted", msg
+        msgstr = str(msg) #XXX convert to appropriate Enstore error
         self.transfers_failed = self.transfers_failed + 1
         self.timer('transfer_time')
         self.state = HAVE_BOUND
         self.remove_select_fd(self.net_driver)
         self.remove_select_fd(self.tape_driver)
         if msg:
-            self.send_client_done(self.current_work_ticket, msg)
+            self.send_client_done(self.current_work_ticket, msgstr)
+        self.net_driver.close()
         self.reset()
         self.update(reset_timer=1)
         
@@ -717,17 +734,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if verbose: print "self.vol_info =", self.vol_info
 
-        
-        if iomode is WRITE:
-            eod = vol_info['eod_cookie']
-            if eod in (None, "none"):
-                #XXX new tape, label it!
-                eod = 0
-            if location is None:
-                location = eod
-            if location != eod:
-                return 0# Can only write at end of tape
-
         if self.current_volume != volume_label:
             if self.current_volume:
                 self.dismount_volume()
@@ -743,6 +749,23 @@ class Mover(dispatching_worker.DispatchingWorker,
             print "tape driver", self.tape_driver.fileno()
             ##XXX need to set mode here?
 
+        if iomode is WRITE:
+            eod = vol_info['eod_cookie']
+            if eod in (None, "none"):
+                ## new tape, label it
+                self.tape_driver.rewind()
+                vol1_label = 'VOL1'+ volume_label
+                vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
+                if verbose: print "labeling new tape", vol1_label
+                self.tape_driver.write(vol1_label, 0, 80)
+                self.tape_driver.writefm()
+                eod = 1
+            if location is None:
+                location = eod
+            if location != eod:
+                return 0# Can only write at end of tape
+
+            
         self.seek_to_position(location)
         self.last_seek = self.current_location
         return 1
@@ -853,7 +876,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def status( self, ticket ):
 
 	tick = { 'status'       : (e_errors.OK,None),
-		 'drive_sn'     : self.hsm_drive_sn,
+		 'drive_sn'     : self.config['serial_num'],
+                 'drive_vendor' : self.config['vendor_id'],
+                 'drive_id'     : self.config['product_id'],
 		 #
 		 'crc_flag'     : str(self.crc_flag),
 		 'state'        : state_name(self.state),
@@ -937,19 +962,21 @@ class MoverInterface(generic_server.GenericServerInterface):
 if __name__ == '__main__':            
 
     if len(sys.argv)<2:
-        sys.argv=["python", "8500.mover"] #REMOVE cgw
+        sys.argv=["python", "m2.mover"] #REMOVE cgw
     # get an interface, and parse the user input
-    print sys.argv
 
     intf = MoverInterface()
 
     while 1:
-##        try:
+        try:
             mover =  Mover( (intf.config_host, intf.config_port), intf.name )
-            print mover.server_address
             mover.serve_forever()
-##        except:
-##            print sys.exc_info(), "restarting"
+        except:
+            try:
+                exc, msg, tb = sys.exc_info()
+                print exc, msg, "restarting"
+            except:
+                pass
             
     Trace.log(e_errors.INFO, 'ERROR returned from serve_forever')
     
