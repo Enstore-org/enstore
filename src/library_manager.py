@@ -1,15 +1,20 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import os
 import time
 import timeofday
-import log_client
 import traceback
-from SocketServer import UDPServer, TCPServer
-from configuration_client import configuration_client
-from volume_clerk_client import VolumeClerkClient
+
+# enstore imports
+import log_client
+import SocketServer
+import configuration_client
+import volume_clerk_client
 import callback
-from dispatching_worker import DispatchingWorker
-from generic_server import GenericServer
-from udp_client import UDPClient
+import dispatching_worker
+import generic_server
 import Trace
 
 pending_work = []       # list of read or write work tickets
@@ -107,7 +112,7 @@ def next_work_any_volume(csc) :
             if len(vol_veto_list) >= w["file_family_width"] :
                 continue
             # width not exceeded, ask volume clerk for a new volume.
-            vc = VolumeClerkClient(csc)
+            vc = volume_clerk_client.VolumeClerkClient(csc)
             first_found = 0
             t1 = time.time()
             v = vc.next_write_volume (w["library"], w["size_bytes"],\
@@ -165,7 +170,7 @@ def next_work_this_volume(v) :
 
 
 # methods that can be inherited by any library manager
-class LibraryManagerMethods(DispatchingWorker) :
+class LibraryManagerMethods(dispatching_worker.DispatchingWorker) :
 
     def write_to_hsm(self, ticket):
         ticket["status"] = "ok"
@@ -348,7 +353,9 @@ class LibraryManagerMethods(DispatchingWorker) :
         listen_socket.close()
 
 
-class LibraryManager(LibraryManagerMethods, GenericServer, UDPServer) :
+class LibraryManager(LibraryManagerMethods,\
+                     generic_server.GenericServer,\
+                     SocketServer.UDPServer) :
     pass
 
 if __name__ == "__main__" :
@@ -400,7 +407,7 @@ if __name__ == "__main__" :
 
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
+    csc = configuration_client.configuration_client(config_host,config_port)
     csc.connect()
 
     keys = csc.get(args[0])

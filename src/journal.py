@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 """Journaled dictionary
 
 To summarize the interface (key is a string, data is an arbitrary
@@ -22,6 +25,8 @@ Dependent on the implementation, closing a persistent dictionary may
 or may not be necessary to flush changes to disk.
 """
 
+
+# system imports
 import time
 
 class JournalDict:

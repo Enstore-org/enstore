@@ -1,7 +1,13 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import time
+import errno
+
+# enstore imports
 import lockfile
 import dict_to_a
-import errno
 import Trace
 
 # Import SOCKS module if it exists, else standard socket module socket

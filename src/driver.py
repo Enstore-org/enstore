@@ -1,8 +1,14 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import sys
 import errno
 import posix
 import string
 import time
+
+# enstore imports
 try:
     import ETape
 except  ImportError:

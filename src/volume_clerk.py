@@ -1,22 +1,28 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import sys
 import os
 import time
-import timeofday
 import copy
+import pprint
+
+# enstore imports
+import timeofday
 import callback
 import log_client
 import traceback
-from SocketServer import UDPServer, TCPServer
-from configuration_client import configuration_client
-from dispatching_worker import DispatchingWorker
-from generic_server import GenericServer
-from db import dBTable
-import pprint
+import SocketServer
+import configuration_client
+import dispatching_worker
+import generic_server
+import db
 import Trace
 
-class VolumeClerkMethods(DispatchingWorker) :
+class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
-    # add : some sort of hook to keep old versions of the s/w out
+    # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
      try:
@@ -35,7 +41,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             return
 
         # can't have 2 with same label
-        if dict.has_key(external_label) :
+        if dict.has_key(external_label):
             ticket["status"] = "Volume Clerk: volume "+external_label\
                                +" already exists"
             pprint.pprint(ticket)
@@ -44,7 +50,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # mandatory keys
         for key in  ['external_label','media_type', 'file_family', 'library',\
-                     'eod_cookie', 'remaining_bytes', 'capacity_bytes' ] :
+                     'eod_cookie', 'remaining_bytes', 'capacity_bytes' ]:
             try:
                 record[key] = ticket[key]
             except KeyError:
@@ -64,7 +70,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             record["first_access"] = -1
         try:
             record['declared'] = ticket['declared']
-            if record['declared'] == -1 :
+            if record['declared'] == -1:
                 x = ticket['force_key_error_to_get_except']
         except KeyError:
             record["declared"] = time.time()
@@ -104,7 +110,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             sizes = self.csc.get("blocksizes")
             try:
                 msize = sizes[ticket['media_type']]
-            except :
+            except:
                 ticket['status'] = "Volume Clerk: "\
                                    +"unknown media type = unknown blocksize"
                 pprint.pprint(ticket)
@@ -160,7 +166,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # Get the next volume that satisfy criteria
-    def next_write_volume (self, ticket) :
+    def next_write_volume (self, ticket):
      try:
         # make sure we have this vol_veto_list
         key="vol_veto_list"
@@ -192,20 +198,22 @@ class VolumeClerkMethods(DispatchingWorker) :
         # go through the volumes and find one we can use for this request
         vol = {}
         while 1:
-	    label=dict.next()
-	    if label : 	pass
-	    else : break
+            label=dict.next()
+            if label:
+                pass
+            else:
+                break
             v = copy.deepcopy(dict[label])
-	    #pprint.pprint(v)
-            if v["library"] != library :
+            #pprint.pprint(v)
+            if v["library"] != library:
                 continue
-            if v["file_family"] != file_family :
+            if v["file_family"] != file_family:
                 continue
-            if v["user_inhibit"] != "none" :
+            if v["user_inhibit"] != "none":
                 continue
-            if v["system_inhibit"] != "none" :
+            if v["system_inhibit"] != "none":
                 continue
-            if v["remaining_bytes"] < min_remaining_bytes :
+            if v["remaining_bytes"] < min_remaining_bytes:
                 # if it __ever__ happens that we can't write a file on a
                 # volume, then mark volume as full.  This prevents us from
                 # putting 1 byte files on old "golden" volumes and potentially
@@ -217,18 +225,18 @@ class VolumeClerkMethods(DispatchingWorker) :
                 v["system_inhibit"] = "full"
                 left = v["remaining_bytes"]/1.
                 totb = v["capacity_bytes"]/1.
-                if totb != 0 :
+                if totb != 0:
                     waste = left/totb*100.
                 print label,"is now full, bytes remaining = ",left,\
                       "wasted=",waste,"%"
                 dict[label] = copy.deepcopy(v)
                 continue
             vetoed = 0
-            for veto in vol_veto_list :
-                if label == veto :
+            for veto in vol_veto_list:
+                if label == veto:
                     vetoed = 1
                     break
-            if vetoed :
+            if vetoed:
                 continue
 
             # supposed to return first volume found?
@@ -237,9 +245,9 @@ class VolumeClerkMethods(DispatchingWorker) :
                 self.reply_to_caller(v)
                 return
             # if not, is this an "earlier" volume that one we already found?
-            if len(vol) == 0 :
+            if len(vol) == 0:
                 vol = copy.deepcopy(v)
-            elif v['declared'] < vol['declared'] :
+            elif v['declared'] < vol['declared']:
                 vol = copy.deepcopy(v)
 
         # return what we found
@@ -250,50 +258,52 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # nothing was available - see if we can assign a blank one.
         vol = {}
-        while 1 :
-	    label=dict.next()
-	    if label : pass
-	    else : break
+        while 1:
+            label=dict.next()
+            if label:
+                pass
+            else:
+                break
             v = copy.deepcopy(dict[label])
-            if v["library"] != library :
+            if v["library"] != library:
                 continue
-            if v["file_family"] != "none" :
+            if v["file_family"] != "none":
                 continue
-            if v["user_inhibit"] != "none" :
+            if v["user_inhibit"] != "none":
                 continue
-            if v["system_inhibit"] != "none" :
+            if v["system_inhibit"] != "none":
                 continue
-            if v["remaining_bytes"] < min_remaining_bytes :
+            if v["remaining_bytes"] < min_remaining_bytes:
                 continue
             vetoed = 0
             label = v["external_label"]
-            for veto in vol_veto_list :
-                if label == veto :
+            for veto in vol_veto_list:
+                if label == veto:
                     vetoed = 1
                     break
-            if vetoed :
+            if vetoed:
                 continue
 
             # supposed to return first blank volume found?
             if first_found:
                 v["file_family"] = file_family
-                logc.send(log_client.INFO,2, 
+                logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = "ok"
                 self.reply_to_caller(v)
                 return
             # if not, is this an "earlier" volume that one we already found?
-            if len(vol) == 0 :
+            if len(vol) == 0:
                 vol = copy.deepcopy(v)
-            elif v['declared'] < vol['declared'] :
+            elif v['declared'] < vol['declared']:
                 vol = copy.deepcopy(v)
 
         # return blank volume we found
         if len(vol) != 0:
             label = vol['external_label']
             vol["file_family"] = file_family
-            logc.send(log_client.INFO,2, 
+            logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = "ok"
@@ -315,7 +325,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # update the database entry for this volume
-    def set_remaining_bytes(self, ticket) :
+    def set_remaining_bytes(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -339,7 +349,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # update the fields that have changed
         try:
-            for key in ["remaining_bytes","eod_cookie"] :
+            for key in ["remaining_bytes","eod_cookie"]:
                 record[key] = ticket[key]
         except KeyError:
             ticket["status"] = "Volume Clerk: "+key+" key is missing"
@@ -349,10 +359,10 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         record["system_inhibit"] = "none"
         record["last_access"] = time.time()
-        if record["first_access"] == -1 :
+        if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
 
-        for key in ['wr_err','rd_err','wr_access','rd_access'] :
+        for key in ['wr_err','rd_err','wr_access','rd_access']:
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError:
@@ -376,7 +386,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # update the database entry for this volume
-    def update_counts(self, ticket) :
+    def update_counts(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -400,10 +410,10 @@ class VolumeClerkMethods(DispatchingWorker) :
 
         # update the fields that have changed
         record["last_access"] = time.time()
-        if record["first_access"] == -1 :
+        if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
 
-        for key in ['wr_err','rd_err','wr_access','rd_access'] :
+        for key in ['wr_err','rd_err','wr_access','rd_access']:
             try:
                 record['sum_'+key] = record['sum_'+key] + ticket[key]
             except KeyError:
@@ -427,7 +437,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # get the current database volume about a specific entry
-    def inquire_vol(self, ticket) :
+    def inquire_vol(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -461,7 +471,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # flag the database that we are now writing the system
-    def clr_system_inhibit(self, ticket) :
+    def clr_system_inhibit(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -499,7 +509,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # flag the database that we are now writing the system
-    def set_writing(self, ticket) :
+    def set_writing(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -537,7 +547,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # flag that the current volume is readonly
-    def set_system_readonly(self, ticket) :
+    def set_system_readonly(self, ticket):
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -575,7 +585,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # device is broken - what to do, what to do
-    def set_hung(self,ticket) :
+    def set_hung(self,ticket):
      try:
         self.reply_to_caller({"status" : "ok"})
         return
@@ -589,7 +599,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
 
     # return all the volumes in our dictionary.  Not so useful!
-    def get_vols(self,ticket) :
+    def get_vols(self,ticket):
         ticket["status"] = "ok"
         try:
             self.reply_to_caller(ticket)
@@ -605,21 +615,21 @@ class VolumeClerkMethods(DispatchingWorker) :
             return
         self.get_user_sockets(ticket)
         ticket["status"] = "ok"
-	callback.write_tcp_socket(self.data_socket,ticket,
+        callback.write_tcp_socket(self.data_socket,ticket,
                                   "volume_clerk get_vols, controlsocket")
-	msg=""
-	key=dict.next()
-	while key :
-		msg=msg+repr(key)+","
-		key=dict.next()
-		#send 16K message
-		if len(msg) >= 8192:
-		   callback.write_tcp_buf(self.data_socket,msg,
+        msg=""
+        key=dict.next()
+        while key:
+                msg=msg+repr(key)+","
+                key=dict.next()
+                #send 16K message
+                if len(msg) >= 8192:
+                   callback.write_tcp_buf(self.data_socket,msg,
                                   "volume_clerk get_vols, datasocket")
-		   msg=""
+                   msg=""
         #send the last message
         msg=msg[:-1]
-	callback.write_tcp_buf(self.data_socket,msg,
+        callback.write_tcp_buf(self.data_socket,msg,
                                   "volume_clerk get_vols, datasocket")
         self.data_socket.close()
         callback.write_tcp_socket(self.control_socket,ticket,
@@ -630,7 +640,7 @@ class VolumeClerkMethods(DispatchingWorker) :
 
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
-    def get_user_sockets(self, ticket) :
+    def get_user_sockets(self, ticket):
         volume_clerk_host, volume_clerk_port, listen_socket =\
                            callback.get_callback()
         listen_socket.listen(4)
@@ -649,10 +659,13 @@ class VolumeClerkMethods(DispatchingWorker) :
         dict.stop_backup()
         self.reply_to_caller({"status" : "ok",\
                 "stop_backup"  : 'yes' })
-class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
+
+class VolumeClerk(VolumeClerkMethods,\
+                  generic_server.GenericServer,\
+                  SocketServer.UDPServer):
     pass
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     Trace.init("Vol Clerk")
     import sys
     import getopt
@@ -676,14 +689,14 @@ if __name__ == "__main__" :
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
+    for (opt,value) in optlist:
+        if opt == "--config_host":
             config_host = value
-        elif opt == "--config_port" :
+        elif opt == "--config_port":
             config_port = value
-        elif opt == "--config_list" :
+        elif opt == "--config_list":
             config_list = 1
-        elif opt == "--help" :
+        elif opt == "--help":
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
@@ -694,9 +707,9 @@ if __name__ == "__main__" :
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
-    if config_list :
+    if config_list:
         print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
+    csc = configuration_client.configuration_client(config_host,config_port)
     csc.connect()
 
     keys = csc.get("volume_clerk")
@@ -707,7 +720,7 @@ if __name__ == "__main__" :
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     vc.set_logc(logc)
     indlst=['media_type','file_family','library']
-    dict = dBTable("volume",logc,indlst)
+    dict = db.dBTable("volume",logc,indlst)
     while 1:
         try:
             logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")

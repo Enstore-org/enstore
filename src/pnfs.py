@@ -1,3 +1,7 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import sys
 import os
 import copy
@@ -11,9 +15,11 @@ import grp
 import string
 import time
 import fcntl
-import lockfile
 import regsub
 import pprint
+
+# enstore imports
+import lockfile
 try:
     import Devcodes # this is a compiled enstore module
 except ImportError:

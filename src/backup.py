@@ -1,6 +1,11 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import os
 import sys
 import time
+
 def backup_dbase():
 
     dbFile=""

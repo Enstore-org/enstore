@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 #########################################################################
 #                                                                       #
 # Media Changer server.                                                 #
@@ -10,9 +13,11 @@
 # and dismounts                                                         #
 #                                                                       #
 #########################################################################
-#  $Id$
 
+# system imports
 import os
+
+# enstore imports
 import SocketServer
 import configuration_client
 import dispatching_worker

@@ -1,3 +1,7 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import sys
 import os
 import stat

@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 # system imports
 import pdb
 import sys

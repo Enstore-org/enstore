@@ -1,14 +1,20 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import socket
 import time
-import timeofday
 import select
 import os
 import errno
 import exceptions
 import errno
 import sys
-import generic_client_server
 import binascii
+
+# enstore imports
+import generic_client_server
+import timeofday
 
 TRANSFER_MAX=16384
 

@@ -1,5 +1,7 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#                                                                       
 #########################################################################
-#                                                                       #
 # Log Server.                                                           #
 # Receives log messages form the client process and logs them into      #
 # the log file.                                                         #
@@ -23,26 +25,28 @@
 #    SL - severity level abbreviation (see client code)                 #
 #    MESSAGE - arbitrary message received from the client               #
 #########################################################################
-#  $Id$
 
+# system imports
 import sys
 import os
-from SocketServer import UDPServer, TCPServer
-from configuration_client import configuration_client
-from callback import send_to_user_callback
-from dispatching_worker import DispatchingWorker
-from generic_server import GenericServer
 import string
 import time
-import timeofday
 import pprint
+
+#enstore imports
+import SocketServer
+import configuration_client
+import dispatching_worker
+import generic_server
+import timeofday
 import socket
 import Trace
 
 list = 0
 test = 0
 # Log Methods Class
-class LogMethods(DispatchingWorker) :
+
+class LogMethods(dispatching_worker.DispatchingWorker) :
 
     def open_logfile(self, logfile_name) :
         # try to open log file for append
@@ -78,7 +82,9 @@ class LogMethods(DispatchingWorker) :
    recommended. It is assumed that the only one Log Server will serve the
    whole system.
 """
-class Logger(LogMethods, GenericServer, UDPServer) :
+class Logger(LogMethods,\
+             generic_server.GenericServer,\
+             udp_client.UDPServer) :
 
     def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
@@ -169,7 +175,7 @@ if __name__ == "__main__" :
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
 
-    csc = configuration_client(config_host,config_port)
+    csc = configuration_client.configuration_client(config_host,config_port)
     csc.connect()
 
     keys = csc.get("logserver")

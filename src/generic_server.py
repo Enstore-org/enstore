@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 # Generic server class for enstore
 
 # Import SOCKS module if it exists, else standard socket module socket

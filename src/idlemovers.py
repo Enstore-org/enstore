@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 idle_movers = []        # list of mover tickets
 
 def queue_idle_mover(ticket):

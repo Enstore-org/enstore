@@ -1,23 +1,29 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import string
 import time
+
+# enstore imports
 import callback
 import dict_to_a
 import generic_client_server
 import generic_client
 import backup_client
-from configuration_client import configuration_client, set_csc
-from udp_client import UDPClient
-from db import do_backup
+import configuration_client 
+import udp_client
+import db
 import Trace
 import pdb
 
 class VolumeClerkClient(generic_client_server.GenericClientServer, \
                         generic_client.GenericClient,\
-                        backup_client.BackupClient) :
+                        backup_client.BackupClient):
 
     def __init__(self, csc=[], \
                  host=generic_client_server.default_host(), \
-                 port=generic_client_server.default_port()) :
+                 port=generic_client_server.default_port()):
         self.config_list = 0
         self.vol = ""
         self.vols = 0
@@ -28,8 +34,8 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         self.backup=0
         self.doalive = 0
         self.dolist = 0
-        set_csc(self, csc, host, port)
-        self.u = UDPClient()
+        configuration_client.set_csc(self, csc, host, port)
+        self.u = udp_client.UDPClient()
 
     # define the command line options that are valid
     def options(self):
@@ -47,7 +53,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         print "   delvol arguments: volume_name"
 
     # send the request to the volume clerk server and then send answer to user
-    def send (self, ticket) :
+    def send (self, ticket):
         vticket = self.csc.get("volume_clerk")
         return  self.u.send(ticket, (vticket['host'], vticket['port']))
 
@@ -77,7 +83,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
                sum_rd_access = 0,     # total number of read mounts
                wrapper = "cpio",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
-               ) :
+               ):
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -101,7 +107,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
 
 
     # delete a volume from the stockpile
-    def delvol(self, external_label) :
+    def delvol(self, external_label):
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label }
         return  self.send(ticket)
@@ -121,7 +127,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
                   "unique_id"          : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
-        if ticket['status'] != "ok" :
+        if ticket['status'] != "ok":
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
                   +repr(ticket)
 
@@ -130,19 +136,19 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         # and make sure that is it calling _us_ back, and not some sort of old
         # call-back to this very same port. It is dicey to time out, as it
         # is probably legitimate to wait for hours....
-        while 1 :
+        while 1:
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_socket(control_socket, "volume"+\
                                   "clerk client get_vols,  vc call back")
             import pprint
-            if ticket["unique_id"] == new_ticket["unique_id"] :
+            if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
             else:
                 print ("vcc.get_vols: imposter called us back, trying again")
                 control_socket.close()
         ticket = new_ticket
-        if ticket["status"] != "ok" :
+        if ticket["status"] != "ok":
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
@@ -157,7 +163,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
 #       workmsg=""
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+"client get_vols, reading worklist")
-          if len(msg)==0 :
+          if len(msg)==0:
 #               pprint.pprint(workmsg)
                 break
 #         workmsg=workmsg+msg
@@ -173,7 +179,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
         control_socket.close()
-        if done_ticket["status"] != "ok" :
+        if done_ticket["status"] != "ok":
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
@@ -181,19 +187,19 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         return worklist
 
     # what is the current status of a specified volume?
-    def inquire_vol(self, external_label) :
+    def inquire_vol(self, external_label):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
         return  self.send(ticket)
 
     # we are using the volume
-    def set_writing(self, external_label) :
+    def set_writing(self, external_label):
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
         return self.send(ticket)
 
     # we are using the volume
-    def set_system_readonly(self, external_label) :
+    def set_system_readonly(self, external_label):
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
         return self.send(ticket)
@@ -205,14 +211,14 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
         return self.send(ticket)
 
     # we are using the volume
-    def set_hung(self, external_label) :
+    def set_hung(self, external_label):
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
         return self.send(ticket)
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
-                            wr_err,rd_err,wr_access,rd_access) :
+                            wr_err,rd_err,wr_access,rd_access):
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
@@ -235,7 +241,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
 
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           file_family, vol_veto_list,first_found) :
+                           file_family, vol_veto_list,first_found):
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
@@ -245,7 +251,7 @@ class VolumeClerkClient(generic_client_server.GenericClientServer, \
 
         return self.send(ticket)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     Trace.init("VC client")
     import sys
     import pprint
@@ -261,9 +267,9 @@ if __name__ == "__main__" :
         ticket = vcc.alive()
     elif vcc.backup:
         ticket = vcc.start_backup()
-        do_backup("volume")
+        db.do_backup("volume")
         ticket = vcc.stop_backup()
-    elif vcc.vols :
+    elif vcc.vols:
         ticket = vcc.get_vols()
     elif vcc.nextvol:
         ticket = vcc.next_write_volume(vcc.args[0], #library
@@ -271,11 +277,11 @@ if __name__ == "__main__" :
                                        vcc.args[2], #file_family
                                             [], #vol_veto_list
                                              1) #first_found
-    elif vcc.vol :
+    elif vcc.vol:
         ticket = vcc.inquire_vol(vcc.vol)
     elif vcc.doaddvol:
         # bomb out if we don't have correct number of add vol arguments
-        if len(vcc.args) < 6 :
+        if len(vcc.args) < 6:
             print "   addvol arguments: library file_family media_type"\
                   +", volume_name, volume_byte_capacity remaining_capacity"
             sys.exit(1)
@@ -287,31 +293,21 @@ if __name__ == "__main__" :
                             string.atol(vcc.args[5])) # rem cap'y of volume
     elif vcc.dodelvol:
         # bomb out if we don't have correct number of del vol arguments
-        if len(vcc.args) < 1 :
+        if len(vcc.args) < 1:
             print "   delvol arguments: volume_name"
             sys.exit(1)
         ticket = vcc.delvol(vcc.args[0])              # name of this volume
     elif vcc.clrvol:
         # bomb out if we don't have correct number of clr_inhibit arguments
-        if len(vcc.args) < 1 :
+        if len(vcc.args) < 1:
             print "   clr_inhibit arguments: volume_name"
             sys.exit(1)
         ticket = vcc.clr_system_inhibit(vcc.args[0])  # name of this volume
 
-    if ticket['status'] != 'ok' :
+    if ticket['status'] != 'ok':
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
     elif vcc.dolist:
         pprint.pprint(ticket)
         sys.exit(0)
-
-
-
-
-
-
-
-
-
-

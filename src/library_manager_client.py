@@ -1,5 +1,11 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import time
 import errno
+
+#enstore imports
 import configuration_client
 import callback
 import generic_client_server

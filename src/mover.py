@@ -1,6 +1,7 @@
 ###############################################################################
-# $CVS file: src/mover.py $
-# $Revision$
+# src/$RCSfile$   $Revision$
+#
+###############################################################################
 #
 # This file controls data movement between the user and the storage device.
 # Other general informance about the "Mover" is in doc/servers.txt

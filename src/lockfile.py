@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 import struct, fcntl, FCNTL
 
 def writelock(f):

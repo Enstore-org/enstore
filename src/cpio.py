@@ -1,3 +1,7 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import os
 import sys
 import stat
@@ -6,6 +10,8 @@ import binascii
 import string
 import time
 import traceback
+
+# enstore imports
 import EXfer
 
 """

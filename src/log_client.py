@@ -1,3 +1,6 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 #########################################################################
 #                                                                       #
 # Log client.                                                           #
@@ -5,8 +8,8 @@
 # via port specified in the Log Server dictionary entry in the enstore  #
 # configuration file ( can be specified separately)                     #
 #########################################################################
-#  $Id$
 
+# system imports
 import sys
 import os
 import pwd
@@ -15,10 +18,12 @@ import select
 import exceptions
 import errno
 import socket
+
+#enstore imports
 import generic_client_server
 import generic_client
-from configuration_client import configuration_client, set_csc
-from udp_client import UDPClient
+import configuration_client
+import udp_client
 import pprint
 import Trace
 
@@ -44,7 +49,7 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
         if config_host == "" :
             (config_host,ca,ci) = socket.gethostbyaddr("pcfarm4.fnal.gov")
 
-        csc = configuration_client(config_host,config_port)
+        csc = configuration_client.configuration_client(config_host,config_port)
 	csc.connect()
 
         # get a logger
@@ -82,8 +87,8 @@ class LoggerClient(generic_client_server.GenericClientServer, generic_client.Gen
         self.doalive = 0
         self.test = 0
         self.logit1 = 0
-        set_csc(self, csc, host, port)
-        self.u = UDPClient()
+        configuration_client.set_csc(self, csc, host, port)
+        self.u = udp_client.UDPClient()
 
     # define the command line options that are valid
     def options(self):

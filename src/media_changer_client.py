@@ -1,13 +1,19 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
 #########################################################################
 #                                                                       #
 # Media Changer client.                                                 #
 # Media Changer access methods                                          #
-#  $Id$  #
 #                                                                       #
 #########################################################################
+
+# system imports
 import pdb
-from configuration_client import configuration_client, set_csc
-from udp_client import UDPClient
+
+#enstore imports
+import configuration_client 
+import udp_client
 import generic_client_server
 import generic_client
 import Trace
@@ -24,8 +30,8 @@ class MediaLoaderClient(generic_client_server.GenericClientServer, \
         self.config_list = 0
         self.doalive = 0
         self.dolist = 0
-        set_csc(self, csc, host, port)
-        self.u = UDPClient()
+        configuration_client.set_csc(self, csc, host, port)
+        self.u = udp_client.UDPClient()
 
     # define the command line options that are valid
     def options(self):

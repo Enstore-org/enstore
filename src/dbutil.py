@@ -1,5 +1,10 @@
+###############################################################################
+# src/$RCSfile$   $Revision$
+#
+# system imports
 import time
 import regex
+
 class numOper:
   def __init__(self,str=""):
     if len(str)==0:
