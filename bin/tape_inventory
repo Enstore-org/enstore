@@ -11,15 +11,21 @@ print time.strftime("%c",time.localtime('$1'))
 '
 }
 
-# write the output to a sub-directory in the inquisitor's web directory
-output=`conf.sh -k inquisitor | awk '($1 ~ /html_file/) {print $2}' | sed -e "s/'//g" -e "s/,//g"`tape_inventory
-if [ "$output" = "" ]; then exit 2; fi
-if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
-#echo $output
+if [ -z "${1-}" ] ; then
+  # get all the volumes that have been defined
+  vols=`enstore volume --vols | cut -f1 -d\ | grep -v label`
+  # write the output to a sub-directory in the inquisitor's web directory
+  output=`conf.sh -k inquisitor | awk '($1 ~ /html_file/) {print $2}' | sed -e "s/'//g" -e "s/,//g"`tape_inventory
+  if [ "$output" = "" ]; then exit 2; fi
+  if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
+  #echo $output
+else
+  vols="$1"
+  output=""
+fi
 
-# get all the volumes that have been defined
-vols=`enstore volume --vols | cut -f1 -d\ | grep -v label`
 number=`echo "$vols" | wc -l`
+
 
 # now loop over them and save the output
 count=0
@@ -34,14 +40,25 @@ for vol in $vols; do
   gb=`echo "$b / 1073741824" | bc`
   si=`echo "$vinfo"  | awk '($1 ~ /system_inhibit/ ) {print $2}' | sed -e "s/'//g" -e "s/,//g"`
   ui=`echo "$vinfo"  | awk '($1 ~ /user_inhibit/ )   {print $2}' | sed -e "s/'//g" -e "s/,//g"`
-  out=$output/$vol
-  if [ -e $out ]; then rm $out;fi
-  echo "Volume:           $vol"    >>$out
-  echo "Last accessed on: $lat"    >>$out
-  echo "GBytes free:      $gb"     >>$out
-  echo "Inhibits:         $si+$ui" >>$out
-  echo                             >>$out
-  echo "$finfo"                    >>$out
-  echo                             >>$out
-  echo "$vinfo"                    >>$out
+  if [ "$output" != "" ]; then
+    out=$output/$vol
+    if [ -e $out ]; then rm $out;fi
+    echo "Volume:           $vol"    >>$out
+    echo "Last accessed on: $lat"    >>$out
+    echo "GBytes free:      $gb"     >>$out
+    echo "Inhibits:         $si+$ui" >>$out
+    echo                             >>$out
+    echo "$finfo"                    >>$out
+    echo                             >>$out
+    echo "$vinfo"                    >>$out
+  else
+    echo "Volume:           $vol"
+    echo "Last accessed on: $lat"
+    echo "GBytes free:      $gb"
+    echo "Inhibits:         $si+$ui"
+    echo
+    echo "$finfo"
+    echo
+    echo "$vinfo"
+  fi
 done
