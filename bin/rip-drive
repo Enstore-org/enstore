@@ -4,29 +4,54 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 #set -u  # force better programming and ability to use check for not set
 
 # the user must specify a drive
-if [ -z "${1-}" ] ; then 
+if [ -z "${1-}" ] ; then
   echo "Usage eject drive-to-eject mt-command"
-fi 
+fi
 
 # the user can specify an mt command, or else we default to status
-if [ -n "${2-}" ] ; then 
+if [ -n "${2-}" ] ; then
   command=$2
-else 
+else
   command=status
 fi
 
+# we have nameserver lookup troubles - skip this step and use the numeric ip's
+rip1=131.225.164.1
+rip2=131.225.164.2
+
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 case $drive in
-  dm05) cmd="rsh rip2 'mt -f /dev/rmt/tps2d2 $command'" ;;
-  dm06) cmd="rsh rip2 'mt -f /dev/rmt/tps2d4 $command'" ;;
-  dm07) cmd="rsh rip2 'mt -f /dev/rmt/tps2d1 $command'" ;;
-  dm08) cmd="rsh rip2 'mt -f /dev/rmt/tps2d3 $command'" ;;
-  dc11) cmd="rsh rip2 'mt -f /dev/rmt/tps2d5 $command'" ;;
-  dc12) cmd="rsh rip2 'mt -f /dev/rmt/tps2d6 $command'" ;;
-  de13) cmd="rsh rip1 'mt -f /dev/rmt/tps2d1 $command'" ;;
-  de14) cmd="rsh rip1 'mt -f /dev/rmt/tps2d2 $command'" ;;
-  de15) cmd="rsh rip1 'mt -f /dev/rmt/tps2d3 $command'" ;;
-  de16) cmd="rsh rip1 'mt -f /dev/rmt/tps2d4 $command'" ;;
+  dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo $?'" ;;
+  dm06) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo $?'" ;;
+  dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo $?'" ;;
+  dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo $?'" ;;
+  dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5 $command 2>&1; echo $?'" ;;
+  dc12) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d6 $command 2>&1; echo $?'" ;;
+  de13) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo $?'" ;;
+  de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo $?'" ;;
+  de15) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo $?'" ;;
+  de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo $?'" ;;
 esac
+cmd2="x=\"\`$cmd\`\""
 echo $cmd
-eval $cmd
+#echo $cmd2
+
+# connection refused are a problem (Don't forget to option nowait.1000 in inetd.conf)
+# retries on busys as well
+count=0
+tries=60
+
+while [ $count -le $tries ]; do
+  eval $cmd2
+  #echo $x
+  if [ `echo $x | grep -ci "refused"` -eq 0 -a \
+       `echo $x | grep -ci "resource busy"` -eq 0 \
+     ] ; then break
+  fi
+  count=`expr $count + 1`
+  sleep 1
+done
+
+stat=`echo $x | awk '{print $NF}'`;
+echo $x
+exit $stat

@@ -1,0 +1,137 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
+
+# test/$RCSfile$  $Revision$
+
+aits="DM05-CA2901-8MM DM06-CA2902-8MM DM07-CA2903-8MM DM08-CA2904-8MM"
+mammoths="DC12-CA2251-8MM"
+dlts="DE13-CA2501-DECDLT DE14-CA2502-DECDLT DE15-CA2503-DECDLT DE16-CA2504-DECDLT"
+
+dm=1
+mo=1
+on=1
+co=1
+
+#dismount drive hack
+if [ "${1:-}" = "-d" ]; then dm=1; mo=0; on=0; co=0; shift; fi
+
+#mount drive hack
+if [ "${1:-}" = "-m" ]; then dm=0; mo=1; on=0; co=0; shift; fi
+
+#specify drive-tape-type hack
+if [ -n "${1-}" ]; then
+  if   [ "$1"=="aits"];     then sets="$aits"
+  elif [ "$1"=="dlts"];     then sets="$dlts"
+  elif [ "$1"=="mammoths"]; then sets="$mammoths"
+  else                            sets="$1"
+  fi
+  shift
+else
+  sets="$aits $mammoths $dlts"
+fi
+
+maxtries=300
+sleeptime=3
+
+checkdas()  { td=$1
+              count=0
+              while [ $count -le $maxtries ]; do
+                if [ `ps axuww| grep dasadmin | grep $td | egrep -c 'mount|dismoumt'` -eq 0 ]; then
+                  return 0
+                fi
+                sleep $sleeptime
+                count=`expr $count + 1`
+              done
+              return 1
+            }
+
+
+edismount() { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
+              checkdas $drv
+              if [ $? -eq 0 ]; then
+                rip-drive $drv offline 1>/dev/null 2>&1
+                if [ `rip-drive $drv status | grep -c "DR_OPEN"` -eq 1 ]; then
+                  dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
+                  return 0
+                fi
+              fi
+              return 1
+            }
+
+emount()    { typ=`echo $1 | tr '[a-z]' '[A-Z]'`
+              tap=`echo $2 | tr '[a-z]' '[A-Z]'`
+              drv=`echo $3 | tr '[a-z]' '[A-Z]'`
+              checkdas $drv
+              if [ $? -eq 0 ]; then
+                dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
+                return 0
+              fi
+              return 1
+            }
+
+eonline()   { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
+              checkdas $drv
+              if [ $? -eq 0 ]; then
+                count=0
+                while [ $count -le $maxtries ]; do
+                  if [ `rip-drive $drv status | grep -c "ONLINE"` -eq 1 ]; then
+                    return 0
+                  fi
+                  sleep $sleeptime
+                  count=`expr $count + 1`
+                done
+              fi
+              return 1
+            }
+
+while true; do
+
+# dismount drives
+  if [ $dm -eq 1 ]; then
+    for aset in $sets; do
+      drive=`echo $aset | cut -f1 -d-`
+      eval ok=\${I$drive:-0}
+      /bin/echo -n dismount $drive $ok
+      edismount $drive
+      stat=$?
+      eval I$drive=\$stat
+      echo " " $stat
+    done
+  fi
+
+# mount drives
+  if [ $mo -eq 1 ]; then
+    for aset in $sets; do
+      drive=`echo $aset | cut -f1 -d-`
+      tape=`echo  $aset | cut -f2 -d-`
+      mtype=`echo $aset | cut -f3 -d-`
+      eval ok=\${I$drive:-0}
+      if [ $ok -eq 0 ]; then
+        /bin/echo -n mount $mtype $tape $drive
+        emount $mtype $tape $drive
+        stat=$?
+        eval I$drive=\$stat
+        echo " " $stat
+      fi
+    done
+  fi
+
+# check for online of drives
+  if [ $on -eq 1 ]; then
+    for aset in $sets; do
+      drive=`echo $aset | cut -f1 -d-`
+      eval ok=\${I$drive:-0}
+      if [ $ok -eq 0 ]; then
+        /bin/echo -n online $drive
+        eonline $drive
+        stat=$?
+        eval I$drive=\$stat
+        echo " " $stat
+      fi
+    done
+  fi
+
+  if [ $co -eq 0 ]; then break; fi
+
+done
