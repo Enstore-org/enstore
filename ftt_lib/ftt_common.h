@@ -29,6 +29,7 @@ extern char *		ftt_extract_stats(ftt_stat_buf, int n);
 extern int		ftt_fork(ftt_descriptor);
 extern int 		ftt_format_label(char*,int,char*,int,int);
 extern int		ftt_free_stat(ftt_stat_buf);
+extern void 		ftt_free_stats(ftt_stat_buf *);
 extern char *		ftt_get_basename(ftt_descriptor d);
 extern char *		ftt_get_error(int *);
 extern int 		ftt_get_max_blocksize(ftt_descriptor);

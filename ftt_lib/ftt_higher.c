@@ -201,12 +201,16 @@ ftt_init_stats(ftt_descriptor d){
 	res[TOTALS] = ftt_alloc_stat();
 	ires = ftt_get_stats(d,res[LAST]);
 	if (ires < 0) {
-		ftt_free_stat(res[LAST]);
-		ftt_free_stat(res[TOTALS]);
-		free(res);
-		return 0;
+	    ftt_free_stats(res);
 	}
 	return res;
+}
+
+void
+ftt_free_stats( ftt_stat_buf *res ) {
+    ftt_free_stat(res[LAST]);
+    ftt_free_stat(res[TOTALS]);
+    free(res);
 }
 
 int
