@@ -717,6 +717,8 @@ static int finish_write(struct transfer *info)
 static int setup_direct_io(struct transfer *info)
 {
   struct stat file_info;  /* Information about the file to read/write from. */
+  int sts, rtn_fcntl;
+  
 
   /* If direct io was specified, check if it may work. */
   if(info->direct_io)
@@ -731,7 +733,33 @@ static int setup_direct_io(struct transfer *info)
     /* Direct IO can only work on regular files.  Even if direct io is 
        turned on the filesystem still has to support it. */
     if(! S_ISREG(file_info.st_mode))
+    {
       info->direct_io = 0;
+    }
+    else
+    {
+#ifdef O_DIRECT
+      /* If the system supports direct i/o attempt to turn it on. */
+  
+      /*Get the current file descriptor flags.*/
+      if((rtn_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
+      {
+	pack_return_values(info, 0, errno, READ_ERROR,
+			   "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
+	return 1;
+      }
+      sts = rtn_fcntl | O_DIRECT;  /* turn on O_DIRECT */
+      /*Set the new file descriptor flags.*/
+      if(fcntl(info->fd, F_SETFL, sts) < 0)
+      {
+	pack_return_values(info, 0, errno, READ_ERROR,
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
+	return 1;
+      }
+#else
+      info->direct_io = 0;
+#endif
+    }
   }
 
   return 0;
@@ -2411,9 +2439,10 @@ EXfd_ecrc(PyObject *self, PyObject *args)
   long nb, rest, i;           /*loop control variables*/
   struct stat stat_info;      /*used with fstat()*/
   int fd;                     /*the file descriptor*/
-  char buffer[1024*1024];     /*the data buffer*/
+  char buffer[buffer_size];   /*the data buffer*/
   int sts;                    /*system call return status*/
   int rtn;
+  int rtn_fcntl;
 
   /* Get the parameter. */
   sts = PyArg_ParseTuple(args, "i", &fd);
@@ -2425,21 +2454,24 @@ EXfd_ecrc(PyObject *self, PyObject *args)
   if(lseek(fd, 0, SEEK_SET) != 0) /* Set to beginning of file. */
     return(raise_exception("fd_ecrc - file lseek failed"));
 
-  /*Initialize values used looping through reading in the file.*/
-  nb = stat_info.st_size / buffer_size;
-  rest = stat_info.st_size % buffer_size;
-  
 #ifdef O_DIRECT
-  /* If O_DIRECT was used on the file descriptor, we need to turn it off. */
+  /* If O_DIRECT was used on the file descriptor, we need to turn it off.
+   It seems that (on Linux anyway) writing a file with direct i/o then
+   rewinding and rereading the file causes the reads to return the wrong
+   data. */
   
   /*Get the current file descriptor flags.*/
-  if((rtn = fcntl(fd, F_GETFL, 0)) < 0)
+  if((rtn_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
     return(raise_exception("fd_ecrc - file fcntl(F_GETFL) failed"));
-  sts = rtn & (~O_DIRECT);  /* turn off O_DIRECT */
+  sts = rtn_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
   /*Set the new file descriptor flags.*/
   if(fcntl(fd, F_SETFL, sts) < 0)
     return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
 #endif
+
+  /*Initialize values used looping through reading in the file.*/
+  nb = stat_info.st_size / buffer_size;
+  rest = stat_info.st_size % buffer_size;
 
   /*Read in the file in 'buf_size' sized blocks and calculate CRC.*/
   for (i = 0;i < nb; i++)
@@ -2461,9 +2493,11 @@ EXfd_ecrc(PyObject *self, PyObject *args)
     crc = adler32(crc, buffer, rest);  /* calc. the crc */
   }
 
+#ifdef O_DIRECT
   /*Set the original file descriptor flags.*/
-  if(fcntl(fd, F_SETFL, rtn) < 0)
+  if(fcntl(fd, F_SETFL, rtn_fcntl) < 0)
     return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));
+#endif
 
   return PyLong_FromUnsignedLong((unsigned long)crc);
 }

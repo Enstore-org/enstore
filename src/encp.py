@@ -1824,7 +1824,7 @@ def open_local_file(filename, e):
             # permissions until after everything else is set.  The read
             # permissions might be needed later (i.e. --ecrc).
             flags = os.O_RDWR
-    
+    """
     #On systems where O_DIRECT does exist we must set the value directly.
     # This must be done when the file is opened.  It doesn't work if it
     # is set by fcntl() later on.
@@ -1840,7 +1840,8 @@ def open_local_file(filename, e):
         O_DIRECT = 32768     #O_DIRECT
     else:
 	O_DIRECT = 0
-    
+    """
+    O_DIRECT = 0
     #Try to open the local file for read/write.
     try:
         local_fd = os.open(filename, flags | O_DIRECT, 0666)
