@@ -2609,7 +2609,7 @@ class encp(interface.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0
         self.bufsize = 65536*4     #XXX CGW Investigate this
-        self.delayed_dismount = 0
+        self.delayed_dismount = None
         self.max_retry = 2         # number of times to try again
         self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
