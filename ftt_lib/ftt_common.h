@@ -29,6 +29,7 @@ extern int 		ftt_format_label(char*,int,char*,int,int);
 extern int		ftt_free_stat(ftt_stat_buf);
 extern char *		ftt_get_basename(ftt_descriptor d);
 extern char *		ftt_get_error(int *);
+extern int 		ftt_get_max_blocksize(ftt_descriptor);
 extern int		ftt_get_mode_dev(ftt_descriptor,char*,int*,int*,int*,int*);
 extern int		ftt_get_position(ftt_descriptor, int *, int *);
 extern char *		ftt_get_scsi_devname(ftt_descriptor);

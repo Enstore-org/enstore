@@ -114,7 +114,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	DEBUGDUMP2(pcCmd,nCmd);
 	scsistat = ioctl((int)n, STIOCMD,&scBuf);
 	if (-1 == scsistat && errno != EIO) {
-		res = 255;
+		res = -255;
 	} else {
 		scsistat = scBuf.scsi_bus_status;
 		res = ftt_scsi_check(n,pcOp,scsistat);

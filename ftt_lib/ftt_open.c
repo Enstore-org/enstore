@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <ftt_private.h>
 
+extern int errno;
+
 ftt_descriptor
 ftt_open(const char *name, int rdonly) {
     char *basename;
@@ -102,15 +104,16 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 
     d.controller = devtable[i].controller;
     d.which_is_open = -1;
+    d.scsi_descriptor = -1;
     d.readonly = rdonly;
     d.scsi_ops = devtable[i].scsi_ops;
     d.flags = devtable[i].flags;
     d.errortrans = devtable[i].errortrans;
+    d.densitytrans = devtable[i].densitytrans;
     d.basename = basename;
-    d.max_blocksize = devtable[i].max_blocksize;
     d.prod_id = strdup(drivid);
     if( 0 == d.prod_id ) {
-	ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical\n" , drivid);
+	ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical, errno %d" , drivid, errno);
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
@@ -119,7 +122,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
         sprintf(buf, devtable[i].devs[j].device_name, n1, n2, string);
 	d.devinfo[j].device_name = strdup(buf);
 	if( 0 == d.devinfo[j].device_name ) {
-	    ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical\n" , buf);
+	    ftt_eprintf("out of memory allocating string for \"%s\" in ftt_open_logical, errno %d" , buf, errno);
 	    ftt_errno = FTT_ENOMEM;
 	    return 0;
 	}
@@ -130,12 +133,13 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 	d.devinfo[j].fixed   = devtable[i].devs[j].fixed;
 	d.devinfo[j].passthru= devtable[i].devs[j].passthru;
 	d.devinfo[j].first   = devtable[i].devs[j].first;
+        d.devinfo[j].max_blocksize = devtable[i].devs[j].max_blocksize;
     }
     d.devinfo[j].device_name = 0;
 
     pd = malloc(sizeof(ftt_descriptor_buf));
     if (pd == 0) {
-	ftt_eprintf("out of memory allocating descriptor in ftt_open_logical\n");
+	ftt_eprintf("out of memory allocating descriptor in ftt_open_logical errno %d", errno);
 	ftt_errno = FTT_ENOMEM;
 	return 0;
     }
@@ -146,7 +150,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 int
 ftt_close(ftt_descriptor d){
     int j;
-    int res;
+    int res, res2;
 
     ENTERING("ftt_close");
     CKNULL("ftt_descriptor", d);
@@ -166,7 +170,8 @@ ftt_close(ftt_descriptor d){
 	return -1;
     }
     d->which_is_open = -3;
-    res = ftt_close_dev(d);
+    res = ftt_close_scsi_dev(d);
+    res2 = ftt_close_dev(d);
     for(j = 0; 0 != d->devinfo[j].device_name ; j++ ) {
 	free(d->devinfo[j].device_name);
 	d->devinfo[j].device_name = 0;
@@ -179,7 +184,7 @@ ftt_close(ftt_descriptor d){
 	d->prod_id = 0;
     }
     free(d);
-    return res;
+    return res < 0 ? res : res2;
 }
 
 int
@@ -190,6 +195,9 @@ ftt_open_dev(ftt_descriptor d) {
     CKNULL("ftt_descriptor" , d);
     
    
+   /* can't have scsi passthru and regular device open at the same time */
+    ftt_close_scsi_dev(d);
+
     if (d->which_is_open < 0) {
 	res = ftt_set_hwdens_blocksize(d, 
 		d->devinfo[d->which_is_default].hwdens, 

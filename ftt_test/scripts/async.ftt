@@ -2,11 +2,15 @@
 # This will test the async mode it uses a test tape written by write.ftt.
 #===============================================================================
 ftt_open
+ftt_rewind
 ftt_skip_to_double_fm
-ftt_echo "look at the next two time stamps. they should be very close together"
+ftt_echo "look at the next three time stamps. the first two should be very"
+ftt_echo "   close together, and the third one several seconds later."
 ftt_date
 ftt_rewind -async
+ftt_status -status FTT_EBUSY
 ftt_date
 ftt_echo "wait for it to complete"
 ftt_wait
 ftt_date
+ftt_close

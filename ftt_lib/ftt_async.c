@@ -5,12 +5,13 @@
 #include <ftt_mtio.h>
 #include <string.h>
 
-int ftt_async_level;
-
-/* set max async level */
 /*
-** this process starts an asynchronous process to do the actual operation
-** if neccesary.  If successful it returns the result of fork().
+** this process starts an asynchronous process to do ftt operations
+** and sets up the pipe for ftt_report()ing status.
+** If successful it returns the result of fork().
+**
+** this is sort of like popen(), except we don't exec anything else
+** in the child.
 */
 int
 ftt_fork(ftt_descriptor d) {
@@ -88,7 +89,8 @@ ftt_wait(ftt_descriptor d) {
 
     DEBUG3(stderr,"async_pid is %d", d->async_pid );
     DEBUG3(stderr,"async_pf is %lx\n", (long)d->async_pf );
-    ftt_eprintf("unable to rondezvous with background process\n");
+    ftt_eprintf("unable to rondezvous with background process pid %d\n",
+		d->async_pid);
     ftt_errno = FTT_ENXIO;
     if (0 != d->async_pid ) {
 	fscanf(d->async_pf, "\n%d\n", &ftt_errno);
@@ -96,6 +98,9 @@ ftt_wait(ftt_descriptor d) {
 	if ( len > 0 ) {
 	    ftt_eprint_buf[len] = 0;
 	}
+	fclose(d->async_pf);
+	d->async_pf = 0;
+	d->async_pid = 0;
 	if (ftt_errno != 0) {
 	    return -1;
 	} else {

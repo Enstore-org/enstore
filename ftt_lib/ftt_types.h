@@ -20,6 +20,7 @@ typedef struct {
 	char fixed;		/* fixed blocksize */
 	char rewind;		/* rewind on close, ret on open */
 	char first;		/* first time this name appears in table */
+	int  max_blocksize;	/* maximum blocksize allowed in this mode */
 } ftt_devinfo;
 
 typedef struct {
@@ -27,6 +28,7 @@ typedef struct {
 	char 		*basename;		/* basename of device */
 	char            *prod_id;		/* SCSI ID prefix */
 	int 		**errortrans;		/* errno translation table */
+	char		**densitytrans;		/* density names */
 	char 		readonly;		/* we were opened readonly */
 	char 		unrecovered_error;	/* waiting for rewind... */
 	long 		file_descriptor;	/* fd or scsi handle */
@@ -44,9 +46,9 @@ typedef struct {
 	int 		which_is_open;		/* devinfo index open now */
 	int 		which_is_default;	/* devinfo index for open_dev*/
 	int		default_blocksize;	/* blocksize for open_dev */
-	int		max_blocksize;		/* maximum allowable blocksize*/
 	int		data_direction;		/* are we reading/writing */
 	int		nreads, nwrites;	/* operation counts */
+	scsi_handle     scsi_descriptor;
 } ftt_descriptor_buf, *ftt_descriptor;
 
 /* data directions */
@@ -117,10 +119,10 @@ typedef struct {
     long flags;			/* FTT_FLAG_XXX bits for behavior */
     long scsi_ops;		/* FTT_OP_XXX bits for ops to use SCSI */
     int **errortrans;		/* errortrans[FTT_OPN_XXX][errno]->ftt_errno */
+    char **densitytrans;	/* density names */
     char *baseconv;		/* basename parser scanf string */
     int nconv;			/* number of items scanf should return */
     char *drividcmd;		/* printf this to get shell command->driveid */
-    int	max_blocksize;		/* maximum allowable blocksize*/
     ftt_devinfo devs[MAXDEVSLOTS]; /* drive specs with printf strings */
 } ftt_dev_entry;
 
@@ -155,4 +157,6 @@ extern int ftt_set_hwdens_blocksize(ftt_descriptor, int, int);
 extern int ftt_findslot(char*, char*, char*, int*, int*, char *);
 extern void ftt_set_transfer_length(unsigned char *, int);
 extern int ftt_skip_fm_internal(ftt_descriptor, int);
+extern int ftt_open_scsi_dev(ftt_descriptor d);
+extern int ftt_close_scsi_dev(ftt_descriptor d);
 

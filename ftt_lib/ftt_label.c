@@ -2,7 +2,7 @@
 #include "ftt_private.h"
 #include <string.h>
 
-#define splice(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
+#define pack(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
 
 char *ftt_label_type_names[] = {
     /* FTT_ANSI_HEADER         0 */ "FTT_ANSI_HEADER",
@@ -24,6 +24,8 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 
     if (-1 == length && ftt_errno == FTT_EBLANK) {
 	return FTT_BLANK_HEADER;
+    } else if ( length < 80 ) {
+	return FTT_UNKNOWN_HEADER;
     }
     ftt_eprintf("Ok\n");
     ftt_errno = FTT_SUCCESS;
@@ -33,9 +35,9 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	return -1;
     }
 
-    switch(splice(buf[0],buf[1],buf[2],buf[3])) {
+    switch(pack(buf[0],buf[1],buf[2],buf[3])) {
 
-    case splice('V','O','L','1'):
+    case pack('V','O','L','1'):
 	if (vol) *vol = buf+4;
 	p = buf+10;
 	while (' ' == *p) {
@@ -44,13 +46,12 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	if (vlen) *vlen = (p - (buf + 4)) + 1;
 	return FTT_ANSI_HEADER;
 
-    case splice('0','7','0','7'):
+    case pack('0','7','0','7'):
 	if (vol)  *vol = buf + 0156;
 	if (vlen) *vlen = strlen(*vol);
 	return FTT_CPIO_HEADER;
-    }
 
-    if (0 ==strcmp(buf+257, "ustar")) {
+    case pack('u','s','t','a'):
 	if (vol) *vol = buf;
 	if (vlen) *vlen = strlen(*vol);
 	return FTT_TAR_HEADER;
@@ -73,18 +74,55 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
     
     switch(type) {
     case FTT_ANSI_HEADER:
-	if (length >= 80){
+	if (length >= 80) {
 	    sprintf(buf, "VOL1%-6.6s%-1.1s%-13.13s%-13.13s%-14.14s%-28.28s%-1.1s", 
 				vol, " ", " ", "ftt", " ", " " , "4");
 	    return 80;
+	 } else {
+	    ftt_errno = FTT_EBLKSIZE;
+	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    return -1;
 	}
 	break;
     case FTT_FMB_HEADER:
-	if (length >= 2048)
-	    sprintf(buf,"%s\n%s\n%s\n%s\n",
+	if (length >= 2048) {
+	    sprintf(buf, "%s\n%s\n%s\n%s\n",
 			vol, "never", "cpio", "16k");
 	    return 2048;
+	 } else {
+	    ftt_errno = FTT_EBLKSIZE;
+	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    return -1;
+	}
 	break;
+    case FTT_CPIO_HEADER:
+	 if (length >= 512) {
+	     memset(buf, 0, (size_t)512); 
+	     sprintf(buf, "070701000086f6000081a4000006c5000011ad0000000130f68764000000000000001e0000000500000000000000000000000a00000000%s\00007070100000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000b00000000TRAILER!!!", vol);
+	     return 512;
+	 } else {
+	    ftt_errno = FTT_EBLKSIZE;
+	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    return -1;
+	 }
+	 break;
+    case FTT_TAR_HEADER:
+	 if (length >= 10240) {
+	     memset(buf, 0, (size_t)10240); 
+	     sprintf(buf,     "%s", vol);
+	     sprintf(buf+0144,"000644 ");
+	     sprintf(buf+0154,"003305 ");
+	     sprintf(buf+0164,"00000000000 06075503544 014150");
+	     sprintf(buf+0232, " 0");
+	     sprintf(buf+0401, "ustar");
+	     sprintf(buf+0410, "00%s", "nobody");
+	     sprintf(buf+0451, "00%s", "other");
+	     return 10240;
+	 } else {
+	    ftt_errno = FTT_EBLKSIZE;
+	    ftt_eprintf("the buffer size of %d is too small for the indicated header type.");
+	    return -1;
+	 }
     }
     ftt_errno = FTT_ENOTSUPPORTED;
     if ( type < FTT_MAX_HEADER ) {

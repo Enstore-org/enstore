@@ -2,60 +2,90 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ftt_private.h"
+extern int errno;
 
 int
 ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel, 
 			int timeout, int rdonly) {
-    char buf[65536];
+    char *buf;
     char label_buf[512];
     int res;
     char *pname;
     int len;
+    int blocksize;
 
     ENTERING("ftt_verify_vol_label");
     CKNULL("ftt_descriptor", d);
     CKNULL("volume label", vollabel);
 
+    if (type >= FTT_MAX_HEADER || type < 0) {
+	ftt_errno = FTT_ENOTSUPPORTED;
+	ftt_eprintf("ftt_verify_vol_label called with type %d", type);
+	return -1;
+    }
+
     res = ftt_status(d,timeout);	if (res < 0) return res;
+
     if (0 == (res & FTT_ONLINE)) {
-	return FTT_ENOTAPE;
+	ftt_errno = FTT_ENOTAPE;
+	ftt_eprintf("Unable to verify volume label because the drive is empty");
+	return -1;
     }
+
     if (0 != (res & FTT_BUSY)) {
-	return FTT_EBUSY;
+	ftt_errno = FTT_EBUSY;
+	ftt_eprintf("Unable to verify volume label because the drive is busy");
+	return -1;
     }
+
     if (0 != (res & FTT_PROT) && rdonly == FTT_RDWR) {
 	ftt_eprintf("ftt_verify_vol_label found unexpected write protection\n");
 	ftt_errno = FTT_EROFS;
 	return -1;
     }
+
     if (0 == (res & FTT_PROT) && rdonly == FTT_RDONLY) {
 	ftt_eprintf("ftt_verify_vol_label did not find expected write protection\n");
 	ftt_errno = FTT_ERWFS;
 	return -1;
     }
+
     res = ftt_rewind(d);  			if (res < 0) return res;
+
     if (type == FTT_DONTCHECK_HEADER) {
 	return 0;
     } else {
-	res = ftt_read(d,buf,65536); 		/* errors to guess_label */
+	blocksize = ftt_get_max_blocksize(d);
+	buf = malloc(blocksize);
+	if (buf == 0) {
+	    extern int errno;
+	    ftt_errno = FTT_ENOMEM;
+	    ftt_eprintf("Unable to allocate block to read header, errno %d",
+			errno);
+	    return -1;
+	}
+	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
 	res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
 	if (type == res && 0 == strncmp(vollabel,pname,len) && len ==
 		    strlen(vollabel)) {
 	    return 0;
 	}
+
 	if (len > 512) len = 511;
 	strncpy(label_buf,pname,len);
 	label_buf[len] = 0;
-	ftt_eprintf("ftt_verify_vol_label expected type %s, vollabel %s, but\n\
-	    got type %d, vollabel %s.", ftt_label_type_names[type], vollabel,
-	    res, label_buf);
 	if (type == res) {
+	    ftt_eprintf("ftt_verify_vol_label expected vol '%s', but got '%s'.",
+			vollabel, label_buf);
 	    ftt_errno = FTT_EWRONGVOL;
 	    res = -1;
 	} else {
+	ftt_eprintf("ftt_verify_vol_label expected %s header, but got %d", 
+		ftt_label_type_names[type], ftt_label_type_names[res]);
 	    ftt_errno = FTT_EWRONGVOLTYP;
 	    res = -1;
 	}
+        free(buf);
     }
     return res;
 }
@@ -78,9 +108,18 @@ ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
     return res;
 }
 
+char *ftt_ascii_rewindflags[] = {
+	"rewind on close",
+	"retension on open",
+	"byte swap",
+	"read only",
+	0
+};
+
 int
 ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
     int i;
+    int j;
     int found;
     char *starter;
 
@@ -91,13 +130,21 @@ ftt_describe_dev(ftt_descriptor d, char *dev, FILE *pf) {
 
     found = 0;
     starter = dev;
-    for(i = 0; d->devinfo[i].device_name !=0; i++) {
-	if( 0 == strcmp(d->devinfo[i].device_name, dev)) {
-	    fprintf(pf, "%s supports density %d, mode %d, rewindflags %d\n",
+    for (i = 0; d->devinfo[i].device_name !=0; i++) {
+	if (0 == strcmp(d->devinfo[i].device_name, dev)) {
+	    fprintf(pf, "%s %s mode(%d), %s, (Density Code 0x%x), %s",
 			starter,
-			d->devinfo[i].density, 
-			d->devinfo[i].mode,
-			d->devinfo[i].rewind);
+			d->densitytrans[d->devinfo[i].density+1], 
+			d->devinfo[i].density+1, 
+			d->devinfo[i].mode? "compressed":"uncompressed",
+			d->devinfo[i].hwdens,
+			d->devinfo[i].fixed? "fixed block":"variable block");
+	    for (j = 0; ftt_ascii_rewindflags[j] != 0; j++) {
+		if (d->devinfo[i].rewind & (1<<j)) {
+		    fprintf(pf, ", %s", ftt_ascii_rewindflags[j]);
+		}
+	    }
+	    fprintf(pf, "\n");
 	    starter = "and also";
 	    found = 1;
 	}
@@ -122,7 +169,7 @@ ftt_init_stats(ftt_descriptor d){
 
 	res = malloc(sizeof(ftt_stat_buf)*2);
 	if (0 == res) {
-	    ftt_eprintf("ftt_init_stats unable to allocate memory");
+	    ftt_eprintf("ftt_init_stats unable to allocate memory errno %d", errno);
 	    ftt_errno = FTT_ENOMEM;
 	    return 0;
 	}
@@ -213,7 +260,7 @@ char *ftt_stat_names[] = {
  /* FTT_CLEANED_BIT     34 */ "FTT_CLEANED_BIT",
  /* FTT_WRITE_COMP	35 */ "FTT_WRITE_COMP",
  /* FTT_TRACK_RETRY	36 */ "FTT_TRACK_RETRY",
- /* FTT_UNDERRUN	37 */ "FTT_UDERRUN",
+ /* FTT_UNDERRUN	37 */ "FTT_UNDERRUN",
  /* FTT_MOTION_HOURS	38 */ "FTT_MOTION_HOURS",
  /* FTT_POWER_HOURS	39 */ "FTT_POWER_HOURS",
  /* FTT_TUR_STATUS	40 */ "FTT_TUR_STATUS",
@@ -255,6 +302,14 @@ ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
 	CKNULL("statitics buffer pointer", b);
 	CKNULL("stdio file handle", pf);
 
+	/* note that this only works 'cause we know what
+	** order the entries were printed in by dump_stats.
+	** therefore the next item on the input has to be
+	** one of the upcoming entries in the table.
+	** so we go through all the stats, and if the
+	** line we have read in is that stat we set it
+	** and get the next line.
+	*/
 	fscanf(pf, "%s is %s\n", name, value);
 	for( i = 0 ; i < FTT_MAX_STAT; i++ ) {
 	    if (0 != b->value[i]) {

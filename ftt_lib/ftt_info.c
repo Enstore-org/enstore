@@ -12,9 +12,26 @@ ftt_get_basename(ftt_descriptor d) {
     return d->basename;
 }
 
+int
+ftt_get_max_blocksize(ftt_descriptor d) {
+    int result;
+
+    ENTERING("ftt_get_max_blocksize");
+    CKNULL("ftt_descriptor", d);
+
+    result = d->devinfo[d->which_is_default].max_blocksize;
+
+    /* round down to nearest fixed blocksize */
+    if (d->default_blocksize != 0) {
+        result = result - (result % d->default_blocksize);
+    }
+
+    return result;
+}
+
 char **
 ftt_list_all(ftt_descriptor d) {
-    static char *table[65];
+    static char *table[MAXDEVSLOTS];
     int i,j;
 
     ENTERING("ftt_list_all");
@@ -49,7 +66,7 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode){
 }
 
 char *
-ftt_avail_mode(ftt_descriptor d, int density, int mode, int blocksize){
+ftt_avail_mode(ftt_descriptor d, int density, int mode, int fixedblock){
     int i;
 
     ENTERING("ftt_avail_mode");
@@ -58,12 +75,14 @@ ftt_avail_mode(ftt_descriptor d, int density, int mode, int blocksize){
     for( i = 0; d->devinfo[i].device_name != 0; i++ ){
 	if( d->devinfo[i].density == density &&
 		    d->devinfo[i].mode == mode &&
-		    (d->devinfo[i].fixed == 0) == (blocksize == 0)) {
+		    d->devinfo[i].rewind == 0 &&
+		    d->devinfo[i].fixed  == fixedblock) {
 	    return d->devinfo[i].device_name;
 	}
     }
-    ftt_eprintf("\tThe combination mode %d density %d blocksize %d is not\n\
-	avaliable on device %s", mode, density, blocksize, d->basename);
+    ftt_eprintf("\tThe combination mode %d density %d %s is not\n\
+	avaliable on device %s", mode, density, 
+		fixedblock?"fixed block" : "variable block", d->basename);
     ftt_errno = FTT_ENODEV;
     return 0;
 }
@@ -146,6 +165,14 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
     if (force) { 
 	/* not found in table, but force bit was set... */
 
+        if (i >= MAXDEVSLOTS - 1){
+	    /* there isn't room in the table for it */
+
+	    ftt_errno = FTT_ENOMEM;
+	    ftt_eprintf("an ftt_set_mode_dev tried to add a new device entry\
+	to the table when there was not room for it");
+	    return -1;
+	}
 	/* so add it to the table */
 	d->devinfo[i].device_name = devname;
 	d->which_is_default = i;
@@ -153,8 +180,11 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
 	/* and we know/set nothing ... */
 	d->devinfo[i].mode = -1;
 	d->devinfo[i].density = -1;
-	d->devinfo[i].fixed = -1;
+	d->devinfo[i].fixed = blocksize != 0;
 	d->default_blocksize = blocksize;
+
+	/* make sure sentinel null is in table */
+	d->devinfo[i+1].device_name = 0;
 
 	return 0;
     }

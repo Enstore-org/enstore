@@ -107,19 +107,10 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	DEBUGDUMP2(pcCmd,nCmd);
 	scsistat = doscsireq(getfd(dp),dp);
 	if (-1 == scsistat)
-		res = UNIX_ERRNO(errno);
+		res = -255;
 	else
 		res = ftt_scsi_check(n,pcOp,scsistat);
 
-	if ((res & ERR_SEVMASK) == INFORM){
-		DEBUG2(stderr,"resending scsi frame:\n");
-		scsistat = doscsireq(getfd(dp),dp);
-		DEBUGDUMP2(pcCmd,nCmd);
-		if (-1 == scsistat)
-			res = UNIX_ERRNO(errno);
-		else
-			res = ftt_scsi_check(n,pcOp,scsistat);
-	}
 	if (pcRdWr != 0 && nRdWr != 0){
 		DEBUG2(stderr,"Read/Write buffer:\n");
 		DEBUGDUMP2(pcRdWr,nRdWr);

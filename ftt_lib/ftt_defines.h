@@ -86,10 +86,13 @@ extern int ftt_debug;
 ** -- ftt_ascii_rewindflags[] in ftt_higher.c
 ** so ftt_describe_devs() knows how to print 'em out.
 */
+extern char *ftt_ascii_rewindflags[];
+
 #define FTT_RWOC 0x00000001	/* rewind on close */
 #define FTT_RTOO 0x00000002	/* retension on open */
 #define FTT_BTSW 0x00000004	/* byte swap on read/write */
 #define FTT_RDNW 0x00000008	/* we can read this density, but not write it */
+
 
 /* error returns 
 **
@@ -128,6 +131,7 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_EWRONGVOLTYP	25
 #define FTT_ELEADER		26
 #define FTT_EFILEMARK		27
+#define FTT_ELOST		28
 
 
 

@@ -394,7 +394,11 @@ FTT_T_CHECK_ESTATUS (estatus_str, estatus);	/* check expected status opt */
    ------------- */
 
 status = ftt_status(ftt_t_fd,nsec);
-if (status == -1) FTT_T_CHECK_CALL (status,estatus);
+if (status == -1) 
+   {
+   FTT_T_CHECK_CALL (status,estatus);
+   return 0;
+   }
 fprintf (stderr, 
    "At beginnining of tape:         %s\n",status & FTT_ABOT ? "true" : "false");
 fprintf (stderr, 
@@ -409,6 +413,7 @@ fprintf (stderr,
    "Tape loaded and online:         %s\n",status & FTT_ONLINE ?"true":"false");
 fprintf (stderr, 
    "Tape busy and not responding:   %s\n",status & FTT_BUSY ? "true" :"false");
+
 return 0;
 
 }

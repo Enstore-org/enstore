@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ftt_private.h>
+extern int errno;
 
 ftt_stat_buf
-ftt_alloc_stat(){
+ftt_alloc_stat() {
     void *res;
 
     ENTERING("ftt_alloc_stat");
@@ -14,7 +15,7 @@ ftt_alloc_stat(){
 	memset(res,0,sizeof(ftt_stat));
 	return res;
     } else {
-	ftt_eprintf("Unable to allocate statistics buffer\n");
+	ftt_eprintf("Unable to allocate statistics buffer errno %d\n", errno);
 	ftt_errno = FTT_ENOMEM;
 	return res;
     }
@@ -22,10 +23,17 @@ ftt_alloc_stat(){
 
 int
 ftt_free_stat(ftt_stat_buf b) {
+    int i;
 
     ENTERING("ftt_free_stat");
     CKNULL("statistics buffer pointer", b);
 
+    for (i = 0; i < FTT_MAX_STAT; i++) {
+	if (b->value[i]) {
+		free(b->value[i]);
+		b->value[i] = 0;
+	}
+    }
     free(b);
     return 0;
 }
@@ -39,23 +47,35 @@ itoa(long n) {
 }
 
 
+/* set_stat
+**
+** handy routine to fill in the n-th slot in the stat buffer
+*/
 static void
-set_stat( ftt_stat_buf b, int n, char *pc1, char *pc2) {
+set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
     char save;
 
-    if (pc1 == 0) {
-	return;
-    }
-    if (pc2 != 0) {
-	save = *pc2;
-	*pc2 = 0;
-    }
+    /* clean out old value */
     if (b->value[n] != 0) {
 	free(b->value[n]);
+	b->value[n] = 0;
     }
-    b->value[n] = strdup(pc1);
-    if (pc2 != 0) {
-	*pc2 = save;
+
+    /* if null, leave it */
+    if (pcStart == 0) {
+	return;
+    }
+
+    /* null terminate if pcEnd points somewhere, copy the string, 
+    ** and then put the byte back where we scribbled the null
+    */
+    if (pcEnd != 0) {
+	save = *pcEnd;
+	*pcEnd = 0;
+    }
+    b->value[n] = strdup(pcStart);
+    if (pcEnd != 0) {
+	*pcEnd = save;
     }
 }
 
@@ -258,13 +278,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	}
     }
 
-    /* varous mode checks */
+    /* various mode checks */
     stat_ops = ftt_get_stat_ops(d->prod_id);
 
     if (stat_ops & FTT_DO_TUR) {
         static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
 	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
 	set_stat(b,FTT_TUR_STATUS,itoa((long)-res), 0);
 	if (res < 0) {
@@ -313,6 +332,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	static unsigned char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
 
 	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
+	if (res == -2) {
+	    /* retry on a CHECK CONDITION, it may be okay */
+	    res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
+	}
 	if(res < 0){
 	    ftt_errno = FTT_EPARTIALSTAT;
 	    return res;
@@ -362,8 +385,16 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_SCSI_ASC,itoa((long)buf[12]),0);
 	    set_stat(b,FTT_SCSI_ASCQ,itoa((long)buf[13]),0);
 
-	    /* ASC/ASCQ data */
-
+	    /* ASC/ASCQ data parsing
+	    **
+	    ** these are the codes from the DLT book, because 
+	    ** it appears from the book that we may sometimes
+	    ** get them filled in with a sense code of 0 to
+	    ** indicate end of tape, etc.
+	    **
+	    ** it is not clear that this has ever actually happened,
+	    ** but we wanted to be complete.
+	    */
 	    switch( pack(0,0,buf[12],buf[13]) ){
 	    case 0x0005: /* peot */
 			set_stat(b,FTT_PEOT,"1",0);
@@ -416,7 +447,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		** and remaining tape on an EXB-8200 when rewound
 		*/
 #define 	EXB_FUDGE_FACTOR 1279
-		error_count = (buf[16]<<16)+(buf[17]<<8)+buf[18];
+		error_count = pack(0,buf[16],buf[17],buf[18]);
 		if (d->data_direction == FTT_DIR_READING) {
 		    set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
 		    set_stat(b,FTT_READ_COUNT,itoa(
@@ -574,7 +605,7 @@ ftt_extract_stats(ftt_stat_buf b, int stat){
     ENTERING("ftt_extract_stats");
     PCKNULL("statistics buffer pointer",b);
 
-    if (stat < FTT_MAX_STAT) {
+    if (stat < FTT_MAX_STAT && stat >= 0 ) {
 	return b->value[stat];
     } else {
 	ftt_eprintf("ftt_extract_stats was given an out of range statistic number.");

@@ -3,6 +3,7 @@
 #include <ftt_private.h>
 #include <ftt_mtio.h>
 #include <string.h>
+extern int errno;
 
 /*
 ** ioctlbuf is the tapeop strcture
@@ -47,6 +48,13 @@ ftt_mtop(ftt_descriptor d, int n, int mtop, int opn, char *what, unsigned char *
 	    ioctlbuf.tape_op = mtop;
 	    ioctlbuf.tape_count = n;
 	    res = ioctl(d->file_descriptor, FTT_TAPE_OP, &ioctlbuf);
+	    /*
+	    ** we do an lseek to reset the file offset counter
+	    ** so the OS doesn't get hideously confused if it 
+	    ** overflows...  We may need this to be a behavior
+	    ** flag in the ftt_descriptor and device tables.
+	    */
+	    (void) lseek(d->file_descriptor, 0L, 0);
 	    DEBUG3(stderr,"ioctl returned %d\n", res);
 	    if ( res < 0 ) {
 		res = ftt_translate_error(d, opn, "an mtio ioctl() call", res, what,0);
@@ -69,12 +77,13 @@ unsigned char ftt_cdb_writefm[]	= {0x10, 0x00, 0x00, 0x00, 0x00, 0x00};
 */
 int
 ftt_skip_fm(ftt_descriptor d, int n) {
+    int res;
 
     CKOK(d,"ftt_skip_fm",0,0)
     CKNULL("ftt_descriptor", d);
 
     if ( n < 0 ) {
-	ftt_write_fm_if_needed(d);
+	res = ftt_write_fm_if_needed(d); 	if (res < 0) {return res;}
     }
     return ftt_skip_fm_internal(d,n);
 }
@@ -90,12 +99,13 @@ ftt_skip_fm_internal(ftt_descriptor d, int n) {
 
 int
 ftt_skip_rec(ftt_descriptor d, int n){
+    int res;
 
     CKOK(d,"ftt_skip_rec",0,0);
     CKNULL("ftt_descriptor", d);
 
     if ( n < 0 ) {
-	ftt_write_fm_if_needed(d);
+	res = ftt_write_fm_if_needed(d);	if (res < 0){return res;}
     }
     d->current_block += n;
     return ftt_mtop(d, n, FTT_TAPE_FSR, (n > 0 ? FTT_OPN_SKIPREC:FTT_OPN_RSKIPREC),
@@ -104,12 +114,12 @@ ftt_skip_rec(ftt_descriptor d, int n){
 
 int
 ftt_rewind(ftt_descriptor d){
-    int res;
+    int res, res2;
 
     CKOK(d,"ftt_rewind",0,1);
     CKNULL("ftt_descriptor", d);
 
-    ftt_write_fm_if_needed(d);
+    res = ftt_write_fm_if_needed(d);
     d->data_direction = FTT_DIR_READING;
     d->current_block = 0;
     d->current_file = 0;
@@ -120,45 +130,62 @@ ftt_rewind(ftt_descriptor d){
     ** the second one waits for the first one to complete.
     ** Also, rewinding twice doesn't hurt...
     */
-    res = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
+    (void) ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
 		"an ftt_rewind", ftt_cdb_rewind);
-    res = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
+    res2 = ftt_mtop(d, 0, FTT_TAPE_REW, FTT_OPN_REWIND,
 	"an ftt_rewind", ftt_cdb_rewind);
-    return res;
+
+    /* we cleared unrecoverable errors if we succesfully rewound */
+    /* and we're hosed if we didn't */
+    d->unrecovered_error = (res2 < 0);
+    return res < 0 ? res : res2;
 }
 
 int
 ftt_retension(ftt_descriptor d) {
+    int res, res2;
 
     CKOK(d,"ftt_retension",0,1);
     CKNULL("ftt_descriptor", d);
 
-    ftt_write_fm_if_needed(d);
+    res = ftt_write_fm_if_needed(d);
     d->data_direction = FTT_DIR_READING;
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, FTT_TAPE_RETEN, FTT_OPN_RETENSION,
+    res2 = ftt_mtop(d, 0, FTT_TAPE_RETEN, FTT_OPN_RETENSION,
 		"an ftt_retension", ftt_cdb_retension);
+
+    /* we cleared unrecoverable errors if we succesfully retensioned */
+    /* and we're hosed if we didn't */
+    d->unrecovered_error = (res2 < 0);
+    return res < 0 ? res : res2;
 }
 
 int
 ftt_unload(ftt_descriptor d){
+    int res, res2;
 
     CKOK(d,"ftt_unload",0,1);
     CKNULL("ftt_descriptor", d);
 
     d->data_direction = FTT_DIR_READING;
-    ftt_write_fm_if_needed(d);
+    res = ftt_write_fm_if_needed(d);
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, FTT_TAPE_UNLOAD, FTT_OPN_UNLOAD,
+    res2 =  ftt_mtop(d, 0, FTT_TAPE_UNLOAD, FTT_OPN_UNLOAD,
 			"an ftt_unload", ftt_cdb_unload);
+
+    /* we cleared unrecoverable errors if we succesfully unloaded  */
+    /* and we're hosed if we didn't */
+    d->unrecovered_error = (res2 < 0);
+    return res < 0 ? res : res2;
 }
 
 int
 ftt_erase(ftt_descriptor d) {
+    int res;
 
     CKOK(d,"ftt_erase",0,1);
     CKNULL("ftt_descriptor", d);
@@ -166,8 +193,13 @@ ftt_erase(ftt_descriptor d) {
     d->current_block = 0;
     d->current_file = 0;
     d->current_valid = 1;
-    return ftt_mtop(d, 0, FTT_TAPE_ERASE, FTT_OPN_ERASE,
+    res =  ftt_mtop(d, 0, FTT_TAPE_ERASE, FTT_OPN_ERASE,
 		"an ftt_erase", ftt_cdb_erase);
+
+    /* we cleared unrecoverable errors if we succesfully erased  */
+    /* and we're hosed if we didn't */
+    d->unrecovered_error = (res < 0);
+    return res;
 }
 
 int
@@ -206,17 +238,28 @@ ftt_writefm(ftt_descriptor d) {
 
 int
 ftt_skip_to_double_fm(ftt_descriptor d) {
-    static char buf[65536];
+    char *buf;
+    int blocksize;
     int res;
 
     CKOK(d,"ftt_skip_to_double_fm",0,0);
     CKNULL("ftt_descriptor", d);
 
+    blocksize = ftt_get_max_blocksize(d);
+    buf = (char *)malloc(blocksize);
+    if (buf == 0) {
+	ftt_errno = FTT_ENOMEM;
+	ftt_eprintf("unable to allocate %d byte read buffer in ftt_skip_to_double_fm, errno %d", blocksize, errno);
+	return -1;
+    }
+	
     ftt_open_dev(d);
     do {
-	res = ftt_skip_fm(d,1);			if(res < 0) return res;
-	res = ftt_read(d, buf, 65536);		if(res < 0) return res;
+	res = ftt_skip_fm(d,1);		   if(res < 0) {free(buf);return res;}
+	res = ftt_read(d, buf, blocksize); if(res < 0) {free(buf);return res;}
     } while ( res > 0 );
+    /* res == 0 so we got an end of file after a skip filemark... */
+    free(buf);
     return ftt_skip_fm(d,-1);
 }
 
@@ -234,19 +277,11 @@ ftt_write_fm_if_needed(ftt_descriptor d) {
 	savefile = d->current_file;
 	saveblock = d->current_block;
 	DEBUG3(stderr,"Writing first filemark...\n");
-	res = ftt_writefm(d);
-	if (res >= 0) {
-		n--;
-	}
+	res = ftt_writefm(d); 			if (res < 0) { return res; } 
 	DEBUG3(stderr,"Writing second filemark...\n");
-	res = ftt_writefm(d);
-	if (res >= 0) {
-		n--;
-	}
-	if ( n < 0 ) {
-	    DEBUG3(stderr,"skipping %d filemarks...\n", n);
-	    ftt_skip_fm_internal(d, n);
-	}
+	res = ftt_writefm(d); 			if (res < 0) { return res; }
+        DEBUG3(stderr,"skipping -2 filemarks...\n", n);
+        res = ftt_skip_fm_internal(d, -2);	if (res < 0) { return res; }
 	d->last_operation = FTT_OP_SKIPFM;
 	d->current_file = savefile;
 	d->current_block = saveblock;

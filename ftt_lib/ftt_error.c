@@ -53,6 +53,7 @@ char *ftt_ascii_error[] = {
 /* FTT_EWRONGVOLTYP	25 */ "FTT_EWRONGVOLTYP",
 /* FTT_ELEADER		26 */ "FTT_ELEADER",
 /* FTT_EFILEMARK	27 */ "FTT_EFILEMARK",
+/* FTT_ELOST		29 */ "FTT_ELOST",
 /* FTT_MAX_ERROR	28 */ "FTT_MAX_ERROR",
 0 
 };
@@ -124,7 +125,9 @@ static char *messages[] = {
     "Beginning of tape was encountered before completing the operation",
 	/* FTT_EFILEMARK	27 */
     "A Filemark was encountered before completing the operation",
-	/* FTT_MAX_ERROR	28 */ 
+	/* FTT_ELOST	28 */
+    "We do not yet know our current tape position.",
+	/* FTT_MAX_ERROR	29 */ 
     "FTT_MAX_ERROR",
     0
 };
@@ -133,28 +136,32 @@ int
 ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
     extern int errno;
 
-    if (res >= 0) {
-	return res;
-    }
-    ftt_errno = d->errortrans[opn][errno];
     if( 0 == d ) {
 	ftt_eprintf("%s called with NULL ftt_descriptor\n", op);
 	ftt_errno = FTT_EFAULT;
 	return -1;
     }
+    if (res >= 0) {
+	return res;
+    }
+    if (errno >= MAX_TRANS_ERRNO) {
+        ftt_errno = FTT_ENOTSUPPORTED;
+    } else {
+        ftt_errno = d->errortrans[opn][errno];
+    }
     ftt_eprintf( "\
-error:	While doing %s on %s, \n\
-	I performed %s, which returned %d,\n\
-	and set errno to %d, which translates to ftt error %s(%d), \n\
-	indicating %s\n%s\
+error:	doing %s, returned %d,\n\
+	errno %d, => ftt error %s(%d), \n\
+	in %s on %s, \n\
+	meaning %s\n%s\
 			Sincerely,\n\
 			The ftt library\n",
 			
+	op, res, 
+	errno, ftt_ascii_error[ftt_errno], ftt_errno,
 	what,  (d->which_is_open >= 0 ? 
 				d->devinfo[d->which_is_open].device_name :
 				d->basename),
-	op, res, 
-	errno, ftt_ascii_error[ftt_errno], ftt_errno,
 	messages[ftt_errno], recoverable ? "": messages[FTT_EUNRECOVERED] );
 
     if (!recoverable) {
