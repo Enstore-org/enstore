@@ -80,7 +80,8 @@ import enstore_constants
 import enstore_functions2
 import accounting_client
 
-# forward declaration. It is assigned in get_clerks()
+
+# Forward declaration.  It is assigned in get_clerks().
 acc = None
 __csc = None
 __fcc = None
@@ -1618,19 +1619,21 @@ def inputfile_check(input_files, e):
         except KeyboardInterrupt:
             raise sys.exc_info()
         except EncpError:
-            msg = sys.exc_info()[1]
-            size = get_file_size(inputlist[i])
-            print_data_access_layer_format(inputlist[i], "", size,
-                                           {'status':(msg.type, msg.strerror)})
-            quit()
+            raise sys.exc_info()
+            #msg = sys.exc_info()[1]
+            #size = get_file_size(inputlist[i])
+            #print_data_access_layer_format(inputlist[i], "", size,
+            #                               {'status':(msg.type, msg.strerror)})
+            #quit()
         except (OSError, IOError):
-            msg = sys.exc_info()[1]
-            size = get_file_size(inputlist[i])
-            error = errno.errorcode.get(getattr(msg, "errno", None),
-                                        errno.errorcode[errno.ENODATA])
-            print_data_access_layer_format(
-                inputlist[i], "", size, {'status':(error, str(msg))})
-            quit()
+            raise sys.exc_info()
+            #msg = sys.exc_info()[1]
+            #size = get_file_size(inputlist[i])
+            #error = errno.errorcode.get(getattr(msg, "errno", None),
+            #                            errno.errorcode[errno.ENODATA])
+            #print_data_access_layer_format(
+            #    inputlist[i], "", size, {'status':(error, str(msg))})
+            #quit()
 
     return
 
@@ -1830,23 +1833,31 @@ def outputfile_check(inputlist, outputlist, e):
             except ValueError:
                 pass  #There is no error.
 
+        except KeyboardInterrupt:
+            raise sys.exc_info()
         except EncpError:
-            msg = sys.exc_info()[1]
-            size = get_file_size(inputlist[i])
-            print_data_access_layer_format("", outputlist[i], size,
-                                           {'status':(msg.type, msg.strerror)})
-            quit()
+            raise sys.exc_info()
+            #msg = sys.exc_info()[1]
+            #size = get_file_size(inputlist[i])
+            #print_data_access_layer_format("", outputlist[i], size,
+            #                               {'status':(msg.type, msg.strerror)})
+            #quit()
+        except (OSError, IOError):
+            raise sys.exc_info()
 
 #######################################################################
 
-def create_zero_length_pnfs_files(filenames, raise_error = None):
+#create_zero_length_pnfs_files() and create_zero_length_local_files()
+# raise an OSError exception on error.
+
+def create_zero_length_pnfs_files(filenames):
     if type(filenames) != types.ListType:
         filenames = [filenames]
 
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
-            fname = f['outfile']
+            fname = f['wrapper']['pnfsFilename']
         else:
             fname = f
             
@@ -1857,34 +1868,35 @@ def create_zero_length_pnfs_files(filenames, raise_error = None):
                 f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
 
             os.close(fd)
-            
-        except OSError:
-            if raise_error:
-                #Originally needed for "Get", don't abort.
-                exc, msg = sys.exc_info()[:2]
-                raise exc, msg
-            else:
-                #Keep the default action the same.
-                exc, msg = sys.exc_info()[:2]
-                error = errno.errorcode.get(getattr(msg, "errno", None),
-                                            errno.errorcode[errno.ENODATA])
-                print_data_access_layer_format('', fname, 0,
-                                               {'status': (error, str(msg))})
-                
-                quit()
+        except OSError, msg:
+            raise OSError, msg
+            #if raise_error:
+            #    #Originally needed for "Get", don't abort.
+            #    exc, msg = sys.exc_info()[:2]
+            #    raise exc, msg
+            #else:
+            #    #Keep the default action the same.
+            #    exc, msg = sys.exc_info()[:2]
+            #    error = errno.errorcode.get(getattr(msg, "errno", None),
+            #                                errno.errorcode[errno.ENODATA])
+            #    print_data_access_layer_format('', fname, 0,
+            #                                   {'status': (error, str(msg))})
+            #    
+            #    quit()
 
-def create_zero_length_local_files(filenames, raise_error = None):
+def create_zero_length_local_files(filenames):
     if type(filenames) != types.ListType:
         filenames = [filenames]
 
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
-            if f['outfile'] == "/dev/null":
+            if f['wrapper']['fullname'] == "/dev/null":
+                #If this raises an error, there are massive problems going on.
                 f['local_inode'] = os.stat("/dev/null")[stat.ST_INO]
                 return
             else:
-                fname = f['outfile']
+                fname = f['wrapper']['fullname']
         else:
             if f == "/dev/null":
                 return
@@ -1900,71 +1912,73 @@ def create_zero_length_local_files(filenames, raise_error = None):
             os.close(fd)
 
         except OSError:
-            if raise_error:
-                #Originally needed for "Get", don't abort.
-                exc, msg = sys.exc_info()[:2]
-                raise exc, msg
-            else:
-                #Keep the default action the same.
-                exc, msg = sys.exc_info()[:2]
-                error = errno.errorcode.get(getattr(msg, "errno", None),
-                                            errno.errorcode[errno.ENODATA])
-                print_data_access_layer_format('', fname, 0,
-                                               {'status': (error, str(msg))})
-                
-                quit()
+            raise sys.exc_info()
+            #if raise_error:
+            #    #Originally needed for "Get", don't abort.
+            #    exc, msg = sys.exc_info()[:2]
+            #    raise exc, msg
+            #else:
+            #    #Keep the default action the same.
+            #    exc, msg = sys.exc_info()[:2]
+            #    error = errno.errorcode.get(getattr(msg, "errno", None),
+            #                                errno.errorcode[errno.ENODATA])
+            #    print_data_access_layer_format('', fname, 0,
+            #                                   {'status': (error, str(msg))})
+            #    
+            #    quit()
 
-def create_zero_length_files(filenames, raise_error = None):
-    if type(filenames) != types.ListType:
-        filenames = [filenames]
-
-    #now try to atomically create each file
-    for f in filenames:
-        if f == "/dev/null":
-            return
-            
-        try:
-            fd = atomic.open(f, mode=0666) #raises OSError on error.
-
-            if type(f) == types.DictType:
-                f['output_inode'] = os.fstat(fd)[stat.ST_INO]
-            
-            os.close(fd)
-
-        except OSError:
-            if raise_error:
-                #Originally needed for "Get", don't abort.
-                exc, msg = sys.exc_info()[:2]
-                raise exc, msg
-            else:
-                #Keep the default action the same.
-                exc, msg = sys.exc_info()[:2]
-                error = errno.errorcode.get(getattr(msg, "errno", None),
-                                            errno.errorcode[errno.ENODATA])
-                print_data_access_layer_format('', f, 0,
-                                               {'status': (error, str(msg))})
-                
-                quit()
+#def create_zero_length_files(filenames, raise_error = None):
+#    if type(filenames) != types.ListType:
+#        filenames = [filenames]
+#
+#    #now try to atomically create each file
+#    for f in filenames:
+#        if f == "/dev/null":
+#            return
+#            
+#        try:
+#            fd = atomic.open(f, mode=0666) #raises OSError on error.
+#
+#            if type(f) == types.DictType:
+#                f['output_inode'] = os.fstat(fd)[stat.ST_INO]
+#            
+#            os.close(fd)
+#
+#        except OSError:
+#            raise sys.exc_info()
+#            #if raise_error:
+#            #    #Originally needed for "Get", don't abort.
+#            #    exc, msg = sys.exc_info()[:2]
+#            #    raise exc, msg
+#            #else:
+#            #    #Keep the default action the same.
+#            #    exc, msg = sys.exc_info()[:2]
+#            #    error = errno.errorcode.get(getattr(msg, "errno", None),
+#            #                                errno.errorcode[errno.ENODATA])
+#            #    print_data_access_layer_format('', f, 0,
+#            #                                   {'status': (error, str(msg))})
+#            #    
+#            #    quit()
 
 #######################################################################
 
-def file_check(e):
-    # check the output pnfs files(s) names
-    # bomb out if they exist already
-    inputlist, file_size = inputfile_check(e.input, e)
-    n_input = len(inputlist)
-
-    Trace.message(TICKET_LEVEL, "file count=" + str(n_input))
-    Trace.message(TICKET_LEVEL, "inputlist=" + str(inputlist))
-    Trace.message(TICKET_LEVEL, "file_size=" + str(file_size))
-
-    # check (and generate) the output pnfs files(s) names
-    # bomb out if they exist already
-    outputlist = outputfile_check(e.input, e.output, e)
-
-    Trace.message(TICKET_LEVEL, "outputlist=" + str(outputlist))
-
-    return n_input, file_size, inputlist, outputlist
+#def file_check(e):
+#    # check the output pnfs files(s) names
+#    # bomb out if they exist already
+#    inputlist, file_size = inputfile_check(e.input, e)
+#    n_input = len(inputlist)
+#
+#    Trace.message(TICKET_LEVEL, "file count=" + str(n_input))
+#    Trace.message(TICKET_LEVEL, "inputlist=" + str(inputlist))
+#    Trace.message(TICKET_LEVEL, "file_size=" + str(file_size))
+#
+#    # check (and generate) the output pnfs files(s) names
+#    # bomb out if they exist already
+#    outputlist = outputfile_check(e.input, e.output, e)
+#
+#    Trace.message(TICKET_LEVEL, "outputlist=" + str(outputlist))
+#
+#    return n_input, file_size, inputlist, outputlist
 
 #######################################################################
 
@@ -1978,28 +1992,27 @@ def get_clerks(bfid_or_volume=None):
     # the bfid's brand.
     csc = get_csc(bfid_or_volume)
 
-    #Don't pass a volume to the file clerk client.
+    #If a bfid was passed in, we must obtain the fcc first.  This will
+    # find the correct __csc.  The same is true with the vcc if a volume
+    # name is passed in.
     if is_volume(bfid_or_volume):
-        bfid = None
-        volume = bfid_or_volume
+        vcc = get_vcc(bfid_or_volume)  #Make sure vcc is done before fcc.
+        fcc = get_fcc(None)
+    elif is_bfid(bfid_or_volume):
+        fcc = get_fcc(bfid_or_volume)  #Make sure fcc is done before vcc.
+        vcc = get_vcc(None)
     else:
-        bfid = bfid_or_volume
-        volume = None
-
-    #Get the file clerk information.
-    #fcc = file_clerk_client.FileClient(csc, bfid)
-    fcc = get_fcc(bfid)
+        fcc = get_fcc(None)
+        vcc = get_vcc(None)
+        
     if not fcc:
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
                         e_errors.NET_ERROR)
     
-    #Get the volume clerk information.
-    #vcc = volume_clerk_client.VolumeClerkClient(csc)
-    vcc = get_vcc(volume)
     if not vcc:
         raise EncpError(errno.ENOPROTOOPT,
-                        "File clerk not available",
+                        "Volume clerk not available",
                         e_errors.NET_ERROR)
 
     # we only have the correct crc now (reads)
@@ -2646,9 +2659,17 @@ def submit_one_request(ticket):
     #Send work ticket to LM
     #Get the library manager info information.
     csc = get_csc(ticket)
-    lmc = library_manager_client.LibraryManagerClient(
-        csc, ticket['vc']['library'] + ".library_manager",
-        rcv_timeout = 5, rcv_tries = 20)
+    try:
+        lmc = library_manager_client.LibraryManagerClient(
+            csc, ticket['vc']['library'] + ".library_manager",
+            rcv_timeout = 5, rcv_tries = 20)
+    except SystemExit:
+        #On error the library manager client calls sys.exit().  This
+        # should catch that so we can handle it.
+        ticket['status'] = (e_errors.TIMEDOUT,
+              "Unable to locate %s.library_manager." % ticket['vc']['library'])
+        return ticket
+        
     if ticket['infile'][:5] == "/pnfs":
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
@@ -3741,14 +3762,14 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 
 #Verifies that the state of the files, like existance and permissions,
 # are accurate.
-def verify_write_file_consistancy(request_list, e):
-
-    for request in request_list:
-
-        #Verify that everything with the files (existance, permissions,
-        # etc) is good to go.
-        inputfile_check(request['infile'], e)
-        outputfile_check(request['infile'], request['outfile'], e)
+#def verify_write_file_consistancy(request_list, e):
+#
+#    for request in request_list:
+#
+#        #Verify that everything with the files (existance, permissions,
+#        # etc) is good to go.
+#        inputfile_check(request['infile'], e)
+#        outputfile_check(request['infile'], request['outfile'], e)
 
 
 #Args:
@@ -3998,13 +4019,13 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point)
-            try:
-                ofullname = p.get_path()
-            except (OSError, IOError), msg:
-                print_data_access_layer_format(
-                    e.input[0], e.put_cache, 0,
-                    {'status':(e_errors.OSERROR, str(msg))})
-                quit()
+            #try:
+            ofullname = p.get_path()
+            #except (OSError, IOError), msg:
+            #    print_data_access_layer_format(
+            #        e.input[0], e.put_cache, 0,
+            #        {'status':(e_errors.OSERROR, str(msg))})
+            #    quit()
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
 
@@ -4014,86 +4035,101 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         #Fundamentally this belongs in veriry_read_request_consistancy(),
         # but information needed about the input file requires this check.
+        #try:
         inputfile_check(ifullname, e)
+        #except KeyboardInterrupt:
+        #    raise sys.exc_info()
+        #except (OSError, IOError, EncpError):
+        #    msg = sys.exc_info()[1]
+        #    size = get_file_size(ifullname)
+        #    if hasattr(msg, "type"):
+        #        error = msg.type
+        #    else:
+        #        error = errno.errorcode.get(getattr(msg, "errno", None),
+        #                                errno.errorcode[errno.ENODATA])
+        #    print_data_access_layer_format(
+        #        ifullname, "", size, {'status':(error, str(msg))})
+        #    quit()
         
         #Fundamentally this belongs in veriry_write_request_consistancy(),
         # but information needed about the output file requires this check.
+        #try:
         outputfile_check(ifullname, ofullname, e)
-
-        # get fully qualified name
-        #imachine, ifullname, idir, ibasename = fullpath(e.input[i])
-        #omachine, ofullname, odir, obasename = fullpath(e.output[0])
-        # Add the name if necessary.
-        #if len(e.input) > 1:
-        #    ofullname = os.path.join(ofullname, ibasename)
-        #    omachine, ofullname, odir, obasename = fullpath(ofullname)
-        #elif len(e.input) == 1 and os.path.isdir(ofullname):
-        #    ofullname = os.path.join(ofullname, ibasename)
-        #    omachine, ofullname, odir, obasename = fullpath(ofullname)
-        #
-        #file_size = get_file_size(ifullname)
+        #except KeyboardInterrupt:
+        #    raise sys.exc_info()
+        #except (OSError, IOError, EncpError):
+        #    msg = sys.exc_info()[1]
+        #    size = get_file_size(ofullname)
+        #    if hasattr(msg, "type"):
+        #        error = msg.type
+        #    else:
+        #        error = errno.errorcode.get(getattr(msg, "errno", None),
+        #                                errno.errorcode[errno.ENODATA])
+        #    print_data_access_layer_format(
+        #        ofullname, "", size, {'status':(error, str(msg))})
+        #    quit()
 
         #Get these two pieces of information about the local input file.
-        try:
-            stats = os.stat(ifullname)
-            file_size = stats[stat.ST_SIZE]
-            file_inode = stats[stat.ST_INO]
-        except OSError, detail:
-            print_data_access_layer_format(
-                ifullname, ofullname, 0,
-                {'status':(e_errors.OSERROR, str(detail))})
-            quit()
+        #try:
+        stats = os.stat(ifullname)
+        file_size = stats[stat.ST_SIZE]
+        file_inode = stats[stat.ST_INO]
+        #except OSError, detail:
+        #    print_data_access_layer_format(
+        #        ifullname, ofullname, 0,
+        #        {'status':(e_errors.OSERROR, str(detail))})
+        #    quit()
 
         #Obtain the pnfs tag information.
-        try:
-            #t=pnfs.Tag(odir)
-            t=pnfs.Tag(os.path.dirname(ofullname))
+        #try:
+        #t=pnfs.Tag(odir)
+        t=pnfs.Tag(os.path.dirname(ofullname))
 
-            #There is no sense to get these values every time.  Only get them
-            # on the first pass.
-            if not library:
-                library = t.get_library()
-            #The pnfs file family may be overridden with the options
-            # --ephemeral or --file-family.
-            if not file_family:
-                if e.output_file_family:
-                    file_family = e.output_file_family
-                else:
-                    file_family = t.get_file_family()
-            if not file_family_width:
-                file_family_width = t.get_file_family_width()
-            if not file_family_wrapper:
-                file_family_wrapper = t.get_file_family_wrapper()
-            if not storage_group:
-                storage_group = t.get_storage_group()
-        except (OSError, IOError), msg:
-            print_data_access_layer_format(
-                '', '', 0, {'status':
-                            (errno.errorcode[getattr(msg, "errno", errno.EIO)],
-                             str(msg))})
-            quit()
+        #There is no sense to get these values every time.  Only get them
+        # on the first pass.
+        if not library:
+            library = t.get_library()
+        #The pnfs file family may be overridden with the options
+        # --ephemeral or --file-family.
+        if not file_family:
+            if e.output_file_family:
+                file_family = e.output_file_family
+            else:
+                file_family = t.get_file_family()
+        if not file_family_width:
+            file_family_width = t.get_file_family_width()
+        if not file_family_wrapper:
+            file_family_wrapper = t.get_file_family_wrapper()
+        if not storage_group:
+            storage_group = t.get_storage_group()
+        #except (OSError, IOError), msg:
+        #    print_data_access_layer_format(
+        #        '', '', 0, {'status':
+        #                    (errno.errorcode[getattr(msg, "errno", errno.EIO)],
+        #                     str(msg))})
+        #    quit()
 
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
         p = pnfs.Pnfs(ofullname)
 
-        try:
-            #Snag the three pieces of information needed for the wrapper.
-            pinfo = get_pinfo(p)
-            uinfo = get_uinfo()
-            finfo = get_finfo(ifullname, ofullname, e)
-
-            #Combine the data into the wrapper sub-ticket.
-            wrapper = get_winfo(pinfo, uinfo, finfo)
-            
-            #Create the sub-ticket of the command line argument information.
-            encp_el = get_einfo(e)
-        except EncpError, detail:
-            print_data_access_layer_format(
-                ifullname, ofullname, file_size,
-                {'status':(detail.type, detail.strerror)})
-            quit()
+        #try:
+        #Snag the three pieces of information needed for the wrapper.
+        pinfo = get_pinfo(p)
+        uinfo = get_uinfo()
+        finfo = get_finfo(ifullname, ofullname, e)
+        
+        #Combine the data into the wrapper sub-ticket.
+        wrapper = get_winfo(pinfo, uinfo, finfo)
+        
+        #Create the sub-ticket of the command line argument information.
+        encp_el = get_einfo(e)
+        #except EncpError, detail:
+        #    print_data_access_layer_format(
+        #        ifullname, ofullname, file_size,
+        #        {'status':(detail.type, detail.strerror)})
+        #    quit()
 
         # If this is not the last transfer in the list, force the delayed
         # dismount to be 'long.'  The last transfer should continue to use
@@ -4104,13 +4140,13 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         #only do this the first time.
         if not vcc or not fcc:
-            try:
-                vcc, fcc = get_clerks()
-            except EncpError, detail:
-                print_data_access_layer_format(
-                    ifullname, ofullname, file_size,
-                    {'status':(detail.type, detail.strerror)})
-                quit()
+            #try:
+            vcc, fcc = get_clerks()
+            #except EncpError, detail:
+            #    print_data_access_layer_format(
+            #        ifullname, ofullname, file_size,
+            #        {'status':(detail.type, detail.strerror)})
+            #    quit()
                 
         #Get the information needed to contact the file clerk, volume clerk and
         # the library manager.
@@ -4458,7 +4494,20 @@ def write_to_hsm(e, tinfo):
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
-    request_list = create_write_requests(callback_addr, routing_addr, e, tinfo)
+    try:
+        request_list = create_write_requests(callback_addr, routing_addr,
+                                             e, tinfo)
+    except KeyboardInterrupt:
+        raise sys.exc_info()
+    except (OSError, IOError, EncpError), msg:
+        if hasattr(msg, "type"):
+            error = msg.type
+        else:
+            error = errno.errorcode.get(getattr(msg, "errno", None),
+                                        errno.errorcode[errno.ENODATA])
+        print_data_access_layer_format(
+            "", "", 0, {'status':(error, str(msg))})
+        quit()
 
     #If this is the case, don't worry about anything.
     if len(request_list) == 0:
@@ -4466,7 +4515,7 @@ def write_to_hsm(e, tinfo):
 
     #This will halt the program if everything isn't consistant.
     try:
-        verify_write_file_consistancy(request_list, e)
+        #verify_write_file_consistancy(request_list, e)
         verify_write_request_consistancy(request_list)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
@@ -4476,9 +4525,15 @@ def write_to_hsm(e, tinfo):
     #Where does this really belong???
     if not e.put_cache: #Skip this for dcache transfers.
         for request in request_list:
-            #create_zero_length_files(request['outfile'])
-            create_zero_length_pnfs_files(request)
-
+            try:
+                #create_zero_length_files(request['outfile'])
+                create_zero_length_pnfs_files(request)
+            except OSError, msg:
+                request['status'] = (e_errors.OSERROR, msg.strerror)
+                print_data_access_layer_format(request['infile'], "",
+                                               0, request)
+                quit()
+                
     #Set the max attempts that can be made on a transfer.
     max_attempts(request_list[0]['vc']['library'], e)
 
@@ -4611,14 +4666,14 @@ def sort_cookie(r1, r2):
 
 #Verifies that the state of the files, like existance and permissions,
 # are accurate.
-def verify_read_file_consistancy(requests_per_vol, e):
-    vols = requests_per_vol.keys()
-    vols.sort()
-    for vol in vols:
-        request_list = requests_per_vol[vol]
-        for request in request_list:
-            inputfile_check(request['infile'], e)
-            outputfile_check(request['infile'], request['outfile'], e)
+#def verify_read_file_consistancy(requests_per_vol, e):
+#    vols = requests_per_vol.keys()
+#    vols.sort()
+#    for vol in vols:
+#        request_list = requests_per_vol[vol]
+#        for request in request_list:
+#            inputfile_check(request['infile'], e)
+#            outputfile_check(request['infile'], request['outfile'], e)
  
     
 #Args:
@@ -4653,11 +4708,6 @@ def verify_read_request_consistancy(requests_per_vol):
             #quit() #Harsh, but necessary.
             
         for request in request_list:
-
-            #Verify that everything with the files (existance, permissions,
-            # etc) is good to go.
-            #inputfile_check(request['infile'], e)
-            #outputfile_check(request['infile'], request['outfile'], e)
 
             try:
                 #Verify that file clerk and volume clerk returned the same
@@ -4832,11 +4882,6 @@ def verify_read_request_consistancy(requests_per_vol):
                 #                               request['file_size'], request)
                 #quit() #Harsh, but necessary.
 
-        #Create the zero length file entry.
-        #for request in request_list:
-        #    #Where does this really belong???
-        #    create_zero_length_files(request['outfile'])
-
 #######################################################################
 
 def get_file_clerk_info(fcc, bfid):
@@ -4950,7 +4995,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
     # Paranoid check to make sure that the output has only one element.
     if len(e.output)>1:
-        print e.output, type(e.output)
+        sys.stderr.write("%s %s\n" % e.output, type(e.output))
         raise EncpError(None,
                         'Cannot have multiple output files',
                         e_errors.USERERROR)
@@ -4959,75 +5004,74 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
         # get_clerks() can determine which it is and return the volume_clerk
         # and file clerk that it corresponds to.
+        #try:
+        vcc, fcc = get_clerks(e.volume)
+        #except EncpError, msg:
+        #    print_data_access_layer_format(
+        #        e.input, e.output, 0,
+        #        {'status':(msg.type, msg.strerror)})
+        #    quit(1)
+
         try:
-            vcc, fcc = get_clerks(e.volume)
-        except EncpError, msg:
-            print_data_access_layer_format(
-                e.input, e.output, 0,
-                {'status':(msg.type, msg.strerror)})
-            quit(1)
-        try:
-            #Get the system information from the clerks.  In this case
-            # e.input[i] doesn't contain the filename, but the volume.
-            #vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.input[i])
-            #reply = fcc.list_active(e.input[0])
-            #bfids_dict = fcc.get_bfids(e.input[0])
+            #Get the system information from the clerks.
             bfids_dict = fcc.get_bfids(e.volume)
-            bfids_list = bfids_dict['bfids']
-
-            #This reverse is a hack.  Observation has shone that the order
-            # of the bfids in the list is in reverse order of the file
-            # on tape.  Instead of messing around with funny mapping
-            # math later on, this is a much simpler fix.  Should the
-            # order get_bfids() returns them in be 'corrected' then
-            # removing this call will be necessary to avoid delays
-            # positioning tape.
-            bfids_list.reverse()
         except (ValueError, KeyError, TypeError, AttributeError), msg:
-            print_data_access_layer_format(
-                e.input, e.output, 0,
-                {'status':(msg.type, msg.strerror)})
-            quit(1)
+            rest = {'volume':e.volume}
+            raise EncpError(None,
+                    "Unable to obtain information about volume %s." % e.volume,
+                            e_errors.NOVOLUME, rest) 
+            #print_data_access_layer_format(
+            #    e.input, e.output, 0,
+            #    {'status':(msg.type, msg.strerror)})
+            #quit(1)
 
-        if not e_errors.is_ok(bfids_dict):
-            print_data_access_layer_format(
-                e.input, e.output, 0, {'status':bfids_dict['status']})
-            quit(1)
+        if e_errors.is_ok(bfids_dict):
+            bfids_list = bfids_dict['bfids']
+        else:
+            rest = {'volume':e.volume}
+            raise EncpError(None, bfids_dict['status'][1],
+                            bfids_dict['status'][0], rest)
+            #print_data_access_layer_format(
+            #    e.input, e.output, 0, {'status':bfids_dict['status']})
+            #quit(1)
 
         #Just be sure that the output target is a directory.
         if not os.path.exists(e.output[0]):
-            print_data_access_layer_format(
-                e.volume, e.output[0], 0,
-                {'status':(e_errors.USERERROR,
-                           "%s: %s" % (errno.errorcode[errno.ENOENT],
-                                       e.output[0]))})
-            quit(1)
-            
-            raise EncpError(errno.ENOENT,
-                            e.output[0],
-                            e_errors.USERERROR)
+            rest = {'volume':e.volume}
+            raise EncpError(errno.ENOENT, e.output[0],
+                            e_errors.USERERROR, rest)
+            #print_data_access_layer_format(
+            #    e.volume, e.output[0], 0,
+            #    {'status':(e_errors.USERERROR,
+            #               "%s: %s" % (errno.errorcode[errno.ENOENT],
+            #                           e.output[0]))})
+            #quit(1)
         elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
-            print_data_access_layer_format(
-                e.volume, e.output[0], 0,
-                {'status':(e_errors.USERERROR,
-                           "%s: %s" % (errno.errorcode[errno.ENOTDIR],
-                                       e.output[0]))})
-            quit(1)
+            rest = {'volume':e.volume}
+            raise EncpError(errno.ENOTDIR, e.output[0],
+                            e_errors.USERERROR, rest)                          
+            #print_data_access_layer_format(
+            #    e.volume, e.output[0], 0,
+            #    {'status':(e_errors.USERERROR,
+            #               "%s: %s" % (errno.errorcode[errno.ENOTDIR],
+            #                           e.output[0]))})
+            #quit(1)
 
         #Make sure there is a valid volume clerk inquiry.
-        try:
-            vc_reply = get_volume_clerk_info(vcc, e.volume)
-        except EncpError, msg:
-            print_data_access_layer_format(
-                e.volume, e.output[0], 0,
-                {'status':(msg.type, str(msg))})
-            if e_errors.is_non_retriable(msg.type):
-                #If the tape is NOACCESS or NOTALLOWED, "get" needs to
-                # return 2 instead of one.  Two indicates an error that
-                # a human needs to intervine.
-                quit(2)
-            else:
-                quit(1)
+        #try:
+        vc_reply = get_volume_clerk_info(vcc, e.volume)
+        #except EncpError, msg:
+        #    raise EncpError(None, ,
+        #                    msg.type, rest)
+            #print_data_access_layer_format(
+            #    e.volume, e.output[0], 0,
+            #    {'status':(msg.type, str(msg))})
+            #quit(1)
+        #Make sure that the volume exists.
+        if vc_reply['status'][0] == e_errors.KEYERROR:
+            rest = {'volume':e.volume}
+            raise EncpError(None, "",
+                            e_errors.NOVOLUME, rest)
 
         #Obtain the complete listing of the volume.  It is best to do
         # this now as opposed to each iteration in the large while
@@ -5036,8 +5080,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         
         #First check for errors.
         if not e_errors.is_ok(tape_ticket):
+            rest = {'volume':e.volume}
             raise EncpError(None, "Error obtaining tape listing.",
-                            e_errors.BROKEN)
+                            e_errors.BROKEN, rest)
 
         #Set these here.  ("Get" with --list.)
         if e.list:
@@ -5048,11 +5093,14 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 number_of_files = len(list_of_files)
                 f.close()
             except (IOError, OSError), msg:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status' : ("Unable to read list file", str(msg))})
-                quit(1)
-
+                rest = {'volume':e.volume}
+                raise EncpError(getattr(msg, "errno", errno.EIO),
+                                "List file not accessable.",
+                                e_errors.OSERROR, rest) 
+                #print_data_access_layer_format(
+                #    e.input, e.output, 0,
+                #    {'status' : ("Unable to read list file", str(msg))})
+                #quit(1)
 
         else:        
             number_of_files = len(bfids_dict['bfids'])
@@ -5072,117 +5120,86 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             # Check the file number on the tape to make sure everything is
             # correct.  This mass of code obtains a bfid or determines
             # that it is not known.
-            try:
-                #Get thenumber and filename for the next line on the file.
-                number, filename = list_of_files[i].split()[:2]
-                filename = os.path.basename(filename)
 
-                Trace.message(TRANSFER_LEVEL,
-                              "Preparing file number %s (%s) for transfer." %
-                              (number, filename))
-                
-                #If everything is okay, search the listing for the location
-                # of the file requested.
-                for item in tape_ticket.get("tape_list", {}).values():
-                    #For each file number on the tape, compare it with
-                    # a location cookie in the list of tapes.
+            #Get the number and filename for the next line on the file.
+            number, filename = list_of_files[i].split()[:2]
+            #Massage the two values.
+            number = int(number)
+            filename = os.path.basename(filename)
 
-                    if int(number) == \
-                       extract_file_number(item['location_cookie']):
+            Trace.message(TRANSFER_LEVEL,
+                          "Preparing file number %s (%s) for transfer." %
+                          (number, filename))
 
-                        #Check to make sure that this file is not marked
-                        # as deleted.  If so, print error and exit.
-                        if item.get('deleted', None) == "yes":
-                            status = (e_errors.USERERROR,
-                                  "Requesting file (%s) that has been deleted."
-                                  % (generate_location_cookie(number),))
-
-                            print_data_access_layer_format(
-                                filename, filename, 0,
-                                {'status' : status, 'volume' : e.volume})
-                            quit(1)
-                        #Check to make sure that the file was successfully
-                        # written to tape.
-                        if item.get('deleted', None) == None:
-                            status = (e_errors.USERERROR,
-                                  "Requesting file (%s) with unknown status."
-                                  % (generate_location_cookie(number),))
-
-                            print_data_access_layer_format(
-                                filename, filename, 0,
-                                {'status' : status, 'volume' : e.volume})
-                            quit(1)
-                            
-                        #If the file is already known to enstore.
-                        bfid = item['bfid']
-                        #p = pnfs.Pnfs(ifullname)
-                        break
-                else:
-                    #If we get here then we don't know anything about
-                    # the file location requested.
-                    #p = pnfs.Pnfs()
-                    bfid = None
-                    sys.stdout.write("Location %s has no known metadata.\n" %
-                                     (generate_location_cookie(number),))
-            except:
-                exc, msg = sys.exc_info()[:2]
-                print_data_access_layer_format(
-                    filename, filename, 0,
-                    {'status' : (str(exc), str(msg)), 'volume':e.volume})
-                quit(1)
-
-            #Contact the file clerk and get current bfid that is on the list.
-            if bfid:
-                try:
-                    #This is a paranoid check for the clerk classes.  Using
-                    # clerk client classes is a sizable performance hit, thus
-                    # we use the tape_ticket info instead.
-                    fc_reply = tape_ticket['tape_list'].get(bfid, {})
+            #If everything is okay, search the listing for the location
+            # of the file requested.  tape_ticket is used for performance
+            # reasons over fcc.get_bfid().
+            fc_reply = None
+            tape_list = tape_ticket.get("tape_list", [])
+            for i in range(len(tape_list)):
+                #For each file number on the tape, compare it with
+                # a location cookie in the list of tapes.
+                if number == \
+                   extract_file_number(tape_list[i]['location_cookie']):
+                    #Make a copy so the following "del tape_list[i]" will
+                    # not cause reference problems.
+                    fc_reply = tape_list[i].copy()
                     #Include the server address in the returned info.
                     # Normally, get_file_clerk_info() would do this for us,
                     # but since we are using tape_ticket instead (for
                     # performance reasons) we need to set the address
                     # explicitly.
                     fc_reply['address'] = fcc.server_address
-
-                except EncpError, msg:
-                    if msg.type == e_errors.DELETED:
-                        continue
-                    else:
-                        print_data_access_layer_format(
-                            e.volume, e.output[0], 0,
-                            {'status':(msg.type, msg.strerror),
-                             'volume':e.volume})
-                        quit(1)
+                    #Shrink the tape_ticket list for performance reasons.
+                    del tape_list[i]
+                    break
             else:
-                #Get the volume information.
-                vc_reply = vcc.inquire_vol(e.volume, 5, 2)
+                fc_reply = {
+                    'address' : fcc.server_address,
+                    'bfid' : None,
+                    'complete_crc' : None,
+                    'deleted' : None,
+                    'drive' : None,
+                    'external_label' : e.volume,
+                    'location_cookie':generate_location_cookie(number),
+                    'pnfs_mapname': None,
+                    'pnfs_name0': None,
+                    'pnfsid': None,
+                    'pnfsvid': None,
+                    'sanity_cookie': None,
+                    'size': None,
+                    'status' : (e_errors.OK, None)
+                    }
 
-                #Make sure that the volume exists.
-                if vc_reply['status'][0] == e_errors.KEYERROR:
-                    print_data_access_layer_format(
-                        e.volume, e.output[0], 0,
-                        {'status':(e_errors.NOVOLUME,
-                                   vc_reply['status'][1]),
-                         'volume':e.volume})
-                    quit(1)
-                    
-                vc_reply['address'] = vcc.server_address
-                fc_reply = {'address' : fcc.server_address,
-                            'bfid' : None,
-                            'complete_crc' : None,
-                            'deleted' : None,
-                            'drive' : None,
-                            'external_label' : e.volume,
-                            'location_cookie':generate_location_cookie(number),
-                            'pnfs_mapname': None,
-                            'pnfs_name0': None,
-                            'pnfsid': None,
-                            'pnfsvid': None,
-                            'sanity_cookie': None,
-                            'size': None,
-                            'status' : (e_errors.OK, None)
-                            }
+            #Check to make sure that this file is not marked
+            # as deleted.  If so, print error and exit.
+            if fc_reply.get('deleted', None) == "yes":
+                status = (e_errors.USERERROR,
+                          "Requesting file (%s) that has been deleted."
+                          % (generate_location_cookie(number),))
+                raise EncpError(None, status[1], status[0],
+                                {'volume' : e.volume})
+                #print_data_access_layer_format(
+                #    filename, filename, 0,
+                #    {'status' : status, 'volume' : e.volume})
+                #quit(1)
+
+            #Check to make sure that the file was successfully
+            # written to tape.
+            if fc_reply.get('deleted', None) == None:
+                status = (e_errors.USERERROR,
+                      "Requesting file (%s) with unknown status."
+                      % (generate_location_cookie(number),))
+                raise EncpError(None, status[1], status[0],
+                                {'volume' : e.volume})
+                #print_data_access_layer_format(
+                #    filename, filename, 0,
+                #    {'status' : status, 'volume' : e.volume})
+                #quit(1)
+
+            #These two lines should NEVER give an error.
+            bfid = fc_reply['bfid']
+            lc = fc_reply['location_cookie']
 
             #If the filename from the --list file and the path from the
             # command line do not match the name in the file database,
@@ -5197,18 +5214,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     # we will fall into the execpt clause.  If the file
                     # has been moved/renamed, then we need to find the
                     # new name based on the original pnfs id.
-
-                    #Attempt to get the location cookie.  This should NEVER
-                    # fail.
-                    try:
-                        lc = fc_reply['location_cookie']
-                    except KeyError:
-                        print_data_access_layer_format(
-                            filename, "", 0,
-                            {'status':(e_errors.CONFLICT,
-                                       'No location cookie found.'),
-                             'volume':e.volume})
-                        quit(1)
 
                     #Attempt to get the pnfs ID.  If an encp failed in the
                     # right way it is possible for this entry to not exist.
@@ -5237,18 +5242,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     #If we get here then there was a problem determining
                     # the name and path of the file.  Most likely, there
                     # is an entry in pnfs but the metadata is not complete.
-
-                    #Attempt to get the location cookie.  This should NEVER
-                    # fail.
-                    try:
-                        lc = fc_reply['location_cookie']
-                    except KeyError:
-                        print_data_access_layer_format(
-                            ifullname, "", 0,
-                            {'status':(e_errors.CONFLICT,
-                                       'No location cookie found.'),
-                             'volume':e.volume})
-                        quit(1)
 
                     ifullname = os.path.join(e.input[0], filename)
 
@@ -5295,19 +5288,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             Trace.message(TRANSFER_LEVEL,
                           "Preparing file number %s for transfer." % (i,))
 
-            # get_clerks() can determine which it is and return the
-            # volume_clerk and file clerk that it corresponds to.
             try:
-                if not vcc or not fcc:
-                    vcc, fcc = get_clerks(e.volume)
-            except EncpError:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror), 'volume':e.volume})
-                quit(1)
-
-            try:
-                fc_reply = tape_ticket.get("tape_list", {}).get(bfids_list[i])
+                fc_reply = tape_ticket.get("tape_list", [])[i]
                 #Include the server address in the returned info.
                 # Normally, get_file_clerk_info() would do this for us,
                 # but since we are using tape_ticket instead (for
@@ -5334,7 +5316,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                             'status' : (e_errors.OK, None)
                             }
             
-
             try:
                 lc = fc_reply['location_cookie']
             except KeyError:
@@ -5404,40 +5385,43 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
-            try:
-                vcc, fcc = get_clerks(e.get_bfid)
-            except EncpError:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror)})
-                quit()
+            #try:
+            vcc, fcc = get_clerks(e.get_bfid)
+            #except EncpError:
+            #    print_data_access_layer_format(
+            #        e.input, e.output, 0,
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit()
                 
-            try:
-                #Get the system information from the clerks.  In this case
-                # e.input[i] doesn't contain the filename, but the bfid.
-                vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid)
-            except EncpError, msg:
-                print_data_access_layer_format(
-                    e.get_bfid, e.output[0], 0,
-                    {'status':(msg.type, msg.strerror)})
-                quit()
+            #try:
+            #Get the system information from the clerks.  In this case
+            # e.input[i] doesn't contain the filename, but the bfid.
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid)
+            #except EncpError, msg:
+            #    print_data_access_layer_format(
+            #        e.get_bfid, e.output[0], 0,
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit()
 
             pnfsid = fc_reply.get("pnfsid", None)
             if not pnfsid:
-                print_data_access_layer_format(
-                    e.get_bfid, e.output[0], 0,
-                    {'status':(e_errors.KEYERROR,
-                               "Unable to obtain pnfsid from file clerk.")})
-                quit()
+                raise EncpError(None,
+                                "Unable to obtain pnfsid from file clerk.",
+                                e_errors.CONFLICT)
+                #print_data_access_layer_format(
+                #    e.get_bfid, e.output[0], 0,
+                #    {'status':(e_errors.KEYERROR,
+                #               "Unable to obtain pnfsid from file clerk.")})
+                #quit()
 
-            try:
-                p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
-            except (OSError, IOError), msg:
-                print_data_access_layer_format(
-                    e.get_cache, e.output[0], 0,
-                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-                               str(msg))})
-                quit()
+            #try:
+            p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
+            #except (OSError, IOError), msg:
+            #    print_data_access_layer_format(
+            #        e.get_cache, e.output[0], 0,
+            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+            #                   str(msg))})
+            #    quit()
 
             if e.shortcut:
                 ifullname = os.path.join(e.pnfs_mount_point,
@@ -5466,40 +5450,40 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #local_file = sys.argv[-1]
             #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
             #p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
-            try:
+            #try:
                 #p = pnfs.Pnfs(pnfs_id, mount_point=self.pnfs_mount_point)
-                p = pnfs.Pnfs(e.get_cache, mount_point=e.pnfs_mount_point)
+            p = pnfs.Pnfs(e.get_cache, mount_point=e.pnfs_mount_point)
 
-                ifullname = p.get_path()
-
-                file_size = get_file_size(ifullname)
-
-                bfid = p.get_bit_file_id()
-            except (OSError, IOError), msg:
-                print_data_access_layer_format(
-                    e.get_cache, e.output[0], 0,
-                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-                               str(msg))})
-                quit()
+            ifullname = p.get_path()
+            
+            file_size = get_file_size(ifullname)
+            
+            bfid = p.get_bit_file_id()
+            #except (OSError, IOError), msg:
+            #    print_data_access_layer_format(
+            #        e.get_cache, e.output[0], 0,
+            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+            #                   str(msg))})
+            #    quit()
 
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
-            try:
-                vcc, fcc = get_clerks(bfid)
-            except EncpError:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror)})
-                quit()
+            #try:
+            vcc, fcc = get_clerks(bfid)
+            #except EncpError:
+            #    print_data_access_layer_format(
+            #        e.input, e.output, 0,
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit()
 
-            try:
-                #Get the system information from the clerks.
-                vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
-            except EncpError, msg:
-                print_data_access_layer_format(
-                    e.get_cache, e.output[0], 0,
-                    {'status':(msg.type, msg.strerror)})
-                quit()
+            #try:
+            #Get the system information from the clerks.
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            #except EncpError, msg:
+            #    print_data_access_layer_format(
+            #        e.get_cache, e.output[0], 0,
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit()
 
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
@@ -5515,42 +5499,70 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             #Fundamentally this belongs in veriry_read_request_consistancy(),
             # but information needed about the input file requires this check.
+            #try:
             inputfile_check(ifullname, e)
-
+            #except KeyboardInterrupt:
+            #    raise sys.exc_info()
+            #except (OSError, IOError, EncpError):
+            #    msg = sys.exc_info()[1]
+            #    size = get_file_size(ofullname)
+            #    if hasattr(msg, "type"):
+            #        error = msg.type
+            #    else:
+            #        error = errno.errorcode.get(getattr(msg, "errno", None),
+            #                                    errno.errorcode[errno.ENODATA])
+            #    print_data_access_layer_format(
+            #        ofullname, "", size, {'status':(error, str(msg))})
+            #    quit()
+            
             #Fundamentally this belongs in veriry_read_request_consistancy(),
             # but information needed about the input file requires this check.
+            #try:
             outputfile_check(ifullname, ofullname, e)
-            
+            #except KeyboardInterrupt:
+            #    raise sys.exc_info()
+            #except (OSError, IOError, EncpError):
+            #    msg = sys.exc_info()[1]
+            #    size = get_file_size(ofullname)
+            #    if hasattr(msg, "type"):
+            #        error = msg.type
+            #    else:
+            #        error = errno.errorcode.get(getattr(msg, "errno", None),
+            #                                    errno.errorcode[errno.ENODATA])
+            #    print_data_access_layer_format(
+            #        ofullname, "", size, {'status':(error, str(msg))})
+            #    quit()
+
             file_size = get_file_size(ifullname)
 
-            try:
-                p = pnfs.Pnfs(ifullname)
-                bfid = p.get_bit_file_id()
-            except (OSError, IOError), msg:
-                print_data_access_layer_format(
-                    ifullname, ofullname, file_size,
-                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
-                               str(msg))})
-                quit()
+            #try:
+            p = pnfs.Pnfs(ifullname)
+            bfid = p.get_bit_file_id()
+            #except (OSError, IOError), msg:
+            #    print_data_access_layer_format(
+            #        ifullname, ofullname, file_size,
+            #        {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+            #                   str(msg))})
+            #    quit()
 
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
-            try:
-                vcc, fcc = get_clerks(bfid)
-            except EncpError:
-                print_data_access_layer_format(
-                    e.input, e.output, 0,
-                    {'status':(msg.type, msg.strerror)})
-                quit()
+            #try:
+            vcc, fcc = get_clerks(bfid)
+            #except EncpError:
+            #    print_data_access_layer_format(
+            #        e.input, e.output, 0,
+            #        {'status':(msg.type, msg.strerror)})
+            #    quit()
                 
-            try:
-                #Get the system information from the clerks.
-                vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
-            except EncpError, detail:
-                print_data_access_layer_format(
-                    ifullname, ofullname, file_size,
-                    {'status':(detail.type, detail.strerror)})
-                quit()
+            #try:
+            #Get the system information from the clerks.
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            #except EncpError, detail:
+            #    print_data_access_layer_format(
+            #        ifullname, ofullname, file_size,
+            #        {'status':(detail.type, detail.strerror)})
+            #    quit()
 
             read_work = 'read_from_hsm'
 
@@ -5584,22 +5596,22 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
-        try:
-            #Snag the three pieces of information needed for the wrapper.
-            uinfo = get_uinfo()
-            finfo = get_finfo(ifullname, ofullname, e)
-            pinfo = get_pinfo(p)
-
-            #Combine the data into the wrapper sub-ticket.
-            wrapper = get_winfo(pinfo, uinfo, finfo)
-            
-            #Create the sub-ticket of the command line argument information.
-            encp_el = get_einfo(e)
-        except EncpError, detail:
-            print_data_access_layer_format(
-                ifullname, ofullname, file_size,
-                {'status':(detail.type, detail.strerror)})
-            quit()
+        #try:
+        #Snag the three pieces of information needed for the wrapper.
+        uinfo = get_uinfo()
+        finfo = get_finfo(ifullname, ofullname, e)
+        pinfo = get_pinfo(p)
+        
+        #Combine the data into the wrapper sub-ticket.
+        wrapper = get_winfo(pinfo, uinfo, finfo)
+        
+        #Create the sub-ticket of the command line argument information.
+        encp_el = get_einfo(e)
+        #except EncpError, detail:
+        #    print_data_access_layer_format(
+        #        ifullname, ofullname, file_size,
+        #        {'status':(detail.type, detail.strerror)})
+        #    quit()
 
         #There is no need to deal with routing on non-multihomed machines.
         config = host_config.get_config()
@@ -5637,7 +5649,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
         requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
         nfiles = nfiles+1
-
+    
     #print time.ctime(time.time())
     return requests_per_vol
 
@@ -5998,8 +6010,20 @@ def read_from_hsm(e, tinfo):
     routing_addr, udp_server = get_routing_callback_addr(e)
     
     #Create all of the request dictionaries.
-    requests_per_vol = create_read_requests(callback_addr, routing_addr,
-                                            tinfo, e)
+    try:
+        requests_per_vol = create_read_requests(callback_addr, routing_addr,
+                                                tinfo, e)
+    except KeyboardInterrupt:
+        raise sys.exc_info()
+    except (OSError, IOError, EncpError), msg:
+        if hasattr(msg, "type"):
+            error = msg.type
+        else:
+            error = errno.errorcode.get(getattr(msg, "errno", None),
+                                        errno.errorcode[errno.ENODATA])
+        print_data_access_layer_format(
+            "", "", 0, {'status':(error, str(msg))})
+        quit()
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
@@ -6007,7 +6031,7 @@ def read_from_hsm(e, tinfo):
 
     #This will halt the program if everything isn't consistant.
     try:
-        verify_read_file_consistancy(requests_per_vol, e)
+        #verify_read_file_consistancy(requests_per_vol, e)
         if not e.volume: #Skip these tests for volume transfers.
             verify_read_request_consistancy(requests_per_vol)
     except EncpError, msg:
@@ -6019,8 +6043,14 @@ def read_from_hsm(e, tinfo):
     for vol in requests_per_vol.keys():
         #Where does this really belong???
         for request in requests_per_vol[vol]:
-            #create_zero_length_files(request['outfile'])
-            create_zero_length_local_files(request)
+            try:
+               #create_zero_length_files(request['outfile'])
+               create_zero_length_local_files(request)
+            except OSError, msg:
+                request['status'] = (e_errors.OSERROR, msg.strerror)
+                print_data_access_layer_format("", request['outfile'],
+                                               0, request)
+                quit()
     
     #Set the max attempts that can be made on a transfer.
     check_lib = requests_per_vol.keys()    
@@ -6257,11 +6287,6 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN,},
-        option.LIST:{option.HELP_STRING:
-                     "Is a get option only.  Do not use otherwise.",
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_TYPE:option.STRING,
-                     option.USER_LEVEL:option.ADMIN,},
         option.MAX_RETRY:{option.HELP_STRING:
                           "Specifies number of non-fatal errors that can "
                           "occur before encp gives up. (default = 3)",
