@@ -115,6 +115,7 @@ here = os.getcwd()
 os.chdir(check_dir)
 print timeofday.tod(),"Extracting database files from  backup container",container,'last modified on',time.ctime(mod_time)
 os.system("/bin/tar -xzf %s"%(container,))
+os.system("db_recover -h %s -v"%(check_dir,))
 
 db_files = os.listdir(check_dir)
 
