@@ -163,10 +163,14 @@ class UDPClient:
                         #Cleanup system resources now.
                         self.tsd[tid].socket.close()
                         del self.tsd[tid]
+                except KeyError, msg:
+                    pass # another thread could have done the cleanup...
+                except (KeyboardInterrupt, SystemExit):
+                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
                 except:
                     exc, msg = sys.exc_info()[:2]
                     sys.stderr.write("%s: %s" % (str(exc), str(msg)))
-                    pass # another thread could have done the cleanup...
+                    pass
              
 
     def get_tsd(self):
