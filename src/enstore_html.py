@@ -717,7 +717,6 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                   "USER ERROR, Duplicate request, ignored"    : "INPROGRESS",
                   "USER ERROR, File already exists"           : "EEXIST",
                   "TAPE ERROR, Tape not in robot or admin marked as bad" : "NOTALLOWED",
-                  "COMMUNICATION ERROR, retrying"             : "impostor",
                   "TAPE TROUBLE, At least 2 IO errors on vol, pending request cancelled": "STATUS=N O",
                   "HARDWARE FAILURE, Drive didn't go online, retrying"  : "BADSWMOUNT",
                   "HARDWARE FAILURE, AML/2 robot failed"      : "BADMOUNT",
@@ -761,6 +760,11 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
             if len(row)==4 and (row[3][:5] in ('Fatal', 'Error')):
                     continue
                 ##XXX end hack cgw
+	    ## another hack which can be removed when encp is recut (efb - aug, 02, 2000)
+	    if string.find(row[3], "imposter") != -1:
+		# found it, ignore this row
+		continue
+	    ## endof second hack
 
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
