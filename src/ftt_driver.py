@@ -2,6 +2,7 @@
 
 # $Id$
 
+import sys, os
 import time
 import select
 import string
@@ -262,11 +263,18 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
-            self.rewind() #XXX clears previous errors and makes unload succeed...
-            self.ftt.unload()
-            return 0
-        except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "eject %s %s" % ( detail, detail.value))
+            self.ftt_close_dev()
+        except:
+            pass
+        try:
+            p=os.popen("mt -f %s offline 2>&1" % (self.device),'r')
+            r=p.read()
+            s=p.close()
+            if s:
+                raise "mt offline failed", r
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "eject %s %s" % ( exc, msg))
             return -1
         
     def set_mode(self, density=None, compression=None, blocksize=None):
