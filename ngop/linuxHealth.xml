@@ -73,7 +73,7 @@
   	<MonitoredElement Name="Swap" Host="localhost" Type="sysUsage">
             <ConditionSet>
         	<fn Name="plug_ins" Arg="free -o|grep Swap:|awk '{print $2} {print $3} '" RetVal="float:total,float:used"/>
-   		<Condition State="0" SevLevel="6" Description="Swap utilization exceeds 30%">
+   		<Condition State="1" SevLevel="6" Description="Swap utilization exceeds 30%">
     		<apply>
        		<gt/>
         	   <apply>
