@@ -4717,7 +4717,7 @@ int main(int argc, char **argv)
   {
     (void)strncpy(abspath, argv[0], PATH_MAX);
     (void)fprintf(stderr,
-		  "Usage: %s [-evt] [-a <# of buffers>] [-b <buffer size>]\n"
+		  "Usage: %s [-cevt] [-a <# of buffers>] [-b <buffer size>]\n"
 		  "       [-l <mmap buffer size>] "
 		  "[-dmSDR] <source_file> [-dmSDR] <dest_file>\n",
 		  basename(abspath));
