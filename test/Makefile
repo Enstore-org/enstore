@@ -57,8 +57,10 @@ newdbs:
 	echo "   It takes a bit for them to die off"
 
 clean:
+	- killall -9 longtest
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
 	rm -f *.jou
 	rm -f *.fake
 	rm -f files.in
+	rm -f longtest_pid
