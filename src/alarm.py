@@ -48,6 +48,16 @@ class GenericAlarm:
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.alarm_info = {}
         self.patrol = 0
+	self.num_times_raised = 1L
+
+    def split_severity(self, sev):
+	l = string.split(sev)
+	sev = l[0]
+	if len(l) == 2:
+	    num_times_raised = l[1]
+	else:
+	    num_times_raised = 1
+	return sev, num_times_raised
 
     # output the alarm for patrol
     def prepr(self):
@@ -56,9 +66,16 @@ class GenericAlarm:
         self.patrol = 0
         return alarm
 
+    def seen_again(self):
+	try:
+	    self.num_times_raised = self.num_times_raised + 1
+	except errno.errorcode[errno.EOVERFLOW]:
+	    self.num_times_raised = -1
+
     # return the a list of the alarm pieces we need to output
     def list_alarm(self):
-	return [self.id, self.host, self.pid, self.uid, self.severity, 
+	return [self.id, self.host, self.pid, self.uid, 
+		"%s (%s)"%(self.severity, self.num_times_raised),
 		self.source, self.root_error, self.alarm_info]
 
     # output the alarm
@@ -139,13 +156,16 @@ class AsciiAlarm(GenericAlarm):
     def __init__(self, text):
         GenericAlarm.__init__(self)
 
-        [self.id, self.host, self.pid, self.uid, self.severity,
+        [self.id, self.host, self.pid, self.uid, sev,
          self.source, self.root_error, self.alarm_info] = eval(text)
+	self.severity, self.num_times_raised = self.split_severity(sev)
 
 class LogFileAlarm(GenericAlarm):
 
     def __init__(self, text, date):
 	GenericAlarm.__init__(self)
+
+	self.num_times_raised = 1
 
 	# get rid of the MSG_TYPE part of the alarm
 	[t, self.host, self.pid, self.uid, dummy, self.source,

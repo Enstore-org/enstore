@@ -106,6 +106,15 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             self.write_alarm_file(theAlarm)
 	    # write it to the web page
 	    self.write_html_file()
+	else:
+	    # this new alarm is the same as an old one.  bump the counter in the old one and
+	    # rewrite the web pages
+	    theAlarm.seen_again()
+            # rewrite the persistent alarm file
+            self.write_alarm_file()
+	    # write it to the web page
+	    self.write_html_file()
+	    
         return theAlarm
 
     def find_alarm(self, host, severity, root_error, source, alarm_info):
