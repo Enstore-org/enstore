@@ -96,7 +96,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 		** ... after eating blanks off the end
 		*/
 		if (pcEnd == 0) {
-		pcEnd = pcStart + strlen(pcStart) + 1;
+		pcEnd = pcStart + strlen(pcStart); /* pcEnd = pcStart if string has ) length */
 		}
 		if ( *pcEnd ) {
 		  do {
