@@ -3872,7 +3872,25 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
         except:
             exc, detail, tb = sys.exc_info()
-            self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
+            ########## Zalokar: April 1, 2004 ##########################
+            # If the error is FTT_EBLANK, do a similar action to that in
+            # Mover.read_tape() to return (READ_ERROR, READ_EOD) instead
+            # of positioning error if we believe that we reached the end
+            # of the tape.
+            if str(detail) == "FTT_EBLANK":
+                prev_loc = self.current_location
+                self.current_location = self.tape_driver.tell()
+                Trace.log(e_errors.INFO,
+                          "Reached EOT seeking location %s.  Current "
+                          "Location %s Previous location %s" %
+                          (location, self.current_location, prev_loc))
+                self.transfer_failed(e_errors.READ_ERROR, e_errors.READ_EOD,
+                                     error_source=TAPE)
+            else:
+                self.transfer_failed(e_errors.POSITIONING_ERROR,
+                                     'positioning error %s' % (detail,),
+                                     error_source=TAPE)
+            ########## Zalokar: April 1, 2004 ##########################
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
