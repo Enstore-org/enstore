@@ -30,7 +30,10 @@ PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
 GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
 	$(WWW)/enstore.gif
 
-WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(HOME_FILE)
+LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
+
+WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
+	$(HOME_FILE)
 
 #
 # TARGETS
@@ -46,6 +49,7 @@ www_new: $(WWW_NEW_FILES)
 	@cp $(HOME_FILE) $(WWW_NEW)
 	@cp $(PS_FILES) $(WWW_NEW)
 	@cp $(GIF_FILES) $(WWW_NEW)
+	@cp $(LOG_FILES) $(WWW_NEW)
 
 obj.ps:
 	./mk_inherit
