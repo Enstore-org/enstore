@@ -48,84 +48,84 @@ then
    echo "==============================================================="
    echo "align test - may cause scsi resets!"
    echo "==============================================================="
-   ftt_run_test align
+   ${FTT_DIR}/ftt_test/scripts/ftt_run_test align
 fi
 if $partition
 then
    echo "==============================================================="
    echo "partition test"
    echo "==============================================================="
-   ftt_run_test partition
+   ${FTT_DIR}/ftt_test/scripts/ftt_run_test partition
 fi
 echo "==============================================================="
 echo "mode test"
 echo "==============================================================="
-ftt_run_test mode
+${FTT_DIR}/ftt_test/scripts/ftt_run_test mode
 
 echo "==============================================================="
 echo "close test"
 echo "==============================================================="
-ftt_run_test close
+${FTT_DIR}/ftt_test/scripts/ftt_run_test close
 
 echo "==============================================================="
 echo "label test"
 echo "==============================================================="
-ftt_run_test label
+${FTT_DIR}/ftt_test/scripts/ftt_run_test label
 
 echo "==============================================================="
 echo "stats test"
 echo "==============================================================="
-ftt_run_test stats
+${FTT_DIR}/ftt_test/scripts/ftt_run_test stats
 
 echo "==============================================================="
 echo "2fm test"
 echo "==============================================================="
-ftt_run_test 2fm
+${FTT_DIR}/ftt_test/scripts/ftt_run_test 2fm
 
 echo "==============================================================="
 echo "write test"
 echo "==============================================================="
-ftt_run_test twrite
+${FTT_DIR}/ftt_test/scripts/ftt_run_test twrite
 
 echo "==============================================================="
 echo "read_only test"
 echo "==============================================================="
-ftt_run_test read_only
+${FTT_DIR}/ftt_test/scripts/ftt_run_test read_only
 
 echo "==============================================================="
 echo "verify test"
 echo "==============================================================="
-ftt_run_test verify
+${FTT_DIR}/ftt_test/scripts/ftt_run_test verify
 
 echo "==============================================================="
 echo "position test"
 echo "==============================================================="
-ftt_run_test position
+${FTT_DIR}/ftt_test/scripts/ftt_run_test position
 
 echo "==============================================================="
 echo "locate test"
 echo "==============================================================="
-ftt_run_test locate
+${FTT_DIR}/ftt_test/scripts/ftt_run_test locate
 
 echo "==============================================================="
 echo "async test"
 echo "==============================================================="
-ftt_run_test async
+${FTT_DIR}/ftt_test/scripts/ftt_run_test async
 
 echo "==============================================================="
 echo "root test"
 echo "==============================================================="
-ftt_run_test root
+${FTT_DIR}/ftt_test/scripts/ftt_run_test root
 
 echo "==============================================================="
 echo "describe test"
 echo "==============================================================="
-ftt_run_test describe
+${FTT_DIR}/ftt_test/scripts/describe
 
 if $unload 
 then
    echo "==============================================================="
    echo "notape test"
    echo "==============================================================="
-   ftt_run_test notape
+  ${FTT_DIR}/ftt_test/scripts/ftt_run_test notape
 fi

@@ -13,32 +13,32 @@ ftt_rewind
 ftt_echo "tape is rewound, remaining lines are remaining tape counters"
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats
 ftt_extract_stat FTT_REMAIN_TAPE
-ftt_write_tblock -n 64 -b 65536
+ftt_write_tblock -n 64 -b 32768
 ftt_close_dev
 
 ftt_get_stats

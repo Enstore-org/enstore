@@ -3,7 +3,8 @@
 #===============================================================================
 # This will test that close puts you in the suspected position
 #===============================================================================
- 
+ftt_echo " "
+ftt_echo "Close-Test will test that close puts you in the suspected position" 
 ftt_open
 ftt_rewind
 #===============================================================================
@@ -16,4 +17,6 @@ ftt_skip_rec -10
 ftt_verify_position 0 0
 ftt_verify_tblock -nblock 1
 ftt_close
+ftt_date
+ftt_echo " "
 quit

@@ -6,7 +6,7 @@ usage="ftt_rate [-s blocksize] [-n nblocks] [devfile]
                 [devfile] = name of device to use. FTT_TAPE is default"
 
 blocksize=32768
-nblocks=1000
+nblocks=10000
 while getopts n:s: i               # list valid options
 do
    case $i in
@@ -35,19 +35,29 @@ export FTT_TAPE blocksize nblocks
 # Rewind the tape first, so ftt_write_tblock will work
 #===============================================================================
 echo "rewinding $FTT_TAPE"
-ftt_test << EOD1
+${FTT_DIR}/ftt_test/ftt_test << EOD1
 ftt_open
 ftt_rewind
 ftt_close
 quit
 EOD1
 echo "done rewinding $FTT_TAPE"
-
+rew_time=`/usr/bin/time -p /bin/sh << EOT1 2>&1 | grep real
+${FTT_DIR}/ftt_test/ftt_test << EOD2
+ftt_open
+ftt_rewind
+ftt_close
+quit
+EOD2
+EOT1`
+set $rew_time
+rwtime=$2
 #===============================================================================
 # Let's time the command. Store value in timex_res
 #===============================================================================
-timex_res=`timex -opkm /bin/sh << EOT 2>&1 | grep real 
-ftt_test << EOD
+#timex_res=`timex -opkm /bin/sh << EOT 2>&1 | grep real 
+timex_res=`/usr/bin/time  -p /bin/sh << EOT 2>&1 | grep real
+${FTT_DIR}/ftt_test/ftt_test << EOD
 ftt_open
 ftt_rewind
 ftt_write_tblock -nblock $nblocks -bsize $blocksize
@@ -65,15 +75,22 @@ etime=$2
 # it took more than a day!
 #===============================================================================
 sec=0
-while [ `echo $etime | grep ':'` ]
+while [ `echo $etime | grep '[:.]'` ]
 do
-   val=`echo $etime | cut -d':' -f1`
-   let sec=sec*60+val*60
-   etime=`echo $etime | cut -d':' -f2-`
+   val=`echo $etime | cut -d'.' -f1`
+   etime=`echo $etime | cut -d'.' -f2-`
 done
-let sec=sec+etime
-let rate=blocksize/sec
-let rate=rate*nblocks/sec
 
+while [ `echo $rwtime | grep '[:.]'` ]
+do
+   rwval=`echo $rwtime | cut -d'.' -f1`
+   rwtime=`echo $rwtime | cut -d'.' -f2-`
+done
+
+let rwtime=rwval*100+rwtime
+let sec=val*100+etime
+let sec=sec-rwtime
+let rate=blocksize*100/sec
+let rate=rate*nblocks/1000
 echo "$nblocks blocks with a blocksize of $blocksize bytes were transferred in $sec seconds"
 echo "for a rate of $rate kbytes/sec"

@@ -14,7 +14,7 @@ ftt_rewind
 ftt_close
 quit
 EOF
-) | ftt_test
+) | ${FTT_DIR}/ftt_test/ftt_test
 
 # this used to have the following before the rewind, but
 # shouldn't be needed anymore.

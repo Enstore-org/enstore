@@ -5,7 +5,9 @@
 # This will read/write with a random delay to see if we can dredge up
 # any bugs.
 #===============================================================================
-
+ftt_echo " "
+ftt_echo "Delay-Test will read/write with a random delay to see if we can dredge up"
+ftt_date
 ftt_open
 ftt_rewind
 
@@ -20,5 +22,6 @@ ftt_update_stats -errors
 
 ftt_rewind
 ftt_close
+ftt_echo " "
 quit
 

@@ -5,16 +5,19 @@
 # File created on 
 # =============================================================
 ftt_open
+ftt_rewind
 # =============================================================
 # Write the test data 
 # =============================================================
-ftt_write_tblock -nblock 4915 -bsize 10 -delta 65000 
+ftt_echo "The Random-Test will write random number of files of random block size."
+ftt_echo "Test then randomly picks a position, skips to it, and verifies a random number of blocks."
+ftt_write_tblock -nblock 4915 -bsize 10 -delta 32000 
 ftt_writefm
-ftt_write_tblock -nblock 2828 -bsize 10 -delta 65000 
+ftt_write_tblock -nblock 2828 -bsize 10 -delta 32000 
 ftt_writefm
-ftt_write_tblock -nblock 303 -bsize 10 -delta 65000 
+ftt_write_tblock -nblock 303 -bsize 10 -delta 32000 
 ftt_writefm
-ftt_write_tblock -nblock 3632 -bsize 10 -delta 65000 
+ftt_write_tblock -nblock 3632 -bsize 10 -delta 32000 
 ftt_writefm
 # =============================================================
 # Pick some positions and skip there 
@@ -29,6 +32,7 @@ ftt_skip_rec 367
 ftt_verify_position 3 367
 ftt_verify_tblock -nblock 1
 ftt_skip_fm -2
+ftt_skip_fm 1
 ftt_skip_rec 216
 ftt_verify_position 2 216
 ftt_verify_tblock -nblock 1
@@ -45,6 +49,7 @@ ftt_skip_rec 2235
 ftt_verify_position 3 2235
 ftt_verify_tblock -nblock 1
 ftt_skip_fm -2
+ftt_skip_fm 1
 ftt_skip_rec 275
 ftt_verify_position 2 275
 ftt_verify_tblock -nblock 1
@@ -52,6 +57,7 @@ ftt_skip_rec -220
 ftt_verify_position 2 56
 ftt_verify_tblock -nblock 1
 ftt_skip_fm -2
+ftt_skip_fm 1
 ftt_skip_rec 582
 ftt_verify_position 1 582
 ftt_verify_tblock -nblock 1
@@ -96,5 +102,6 @@ ftt_skip_rec 367
 ftt_verify_position 3 979
 ftt_verify_tblock -nblock 1
 ftt_close
+ftt_echo "Random-Test -- O.K."
 quit
 

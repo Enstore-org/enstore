@@ -15,26 +15,28 @@ export FTT_TAPE
 FTT_TAPE=${1:-${FTT_TAPE:-""}}
 FTT_TAPE=${FTT_TAPE:?"No device specified"}
 #===============================================================================
-
+echo " "
+date
 echo "==============================================================="
 echo "excersizing $FTT_TAPE"
 
 echo "==============================================================="
 echo "write test"
 echo "==============================================================="
-ftt_run_test twrite
+${FTT_DIR}/ftt_test/scripts/ftt_run_test twrite
 
 echo "==============================================================="
 echo "verify test"
 echo "==============================================================="
-ftt_run_test verify
+${FTT_DIR}/ftt_test/scripts/ftt_run_test verify
 
 echo "==============================================================="
 echo "position test"
 echo "==============================================================="
-ftt_run_test position
+${FTT_DIR}/ftt_test/scripts/ftt_run_test position
 
 echo "==============================================================="
 echo "delay test"
 echo "==============================================================="
-ftt_run_test delay
+${FTT_DIR}/ftt_test/scripts/ftt_run_test delay
+echo "End of ftt_exercise"

@@ -22,9 +22,9 @@ x-p)	sequential=false;
 *)	;;
 esac
 
-base="$1"
+base="${FTT_DIR}/ftt_test/scripts/$1"
 
-script="$1"
+script="${FTT_DIR}/ftt_test/scripts/$1"
 
 shift
 
