@@ -113,6 +113,7 @@ def next_work_this_volume(v) :
 			w["external_label"] == v["external_label"] ) :
 			return w
 		else:
+			print w
 			raise "assertion error"
 	return {"status" : "nowork"}
 
