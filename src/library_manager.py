@@ -30,11 +30,6 @@ import volume_family
 import priority_selector
 import mover_constants
 
-def p(*args):
-    print args
-
-#Trace.trace = p
-
 ## Trace.trace for additional debugging info uses bits >= 11
 
 ##############################################################
@@ -158,8 +153,8 @@ class AtMovers:
 
 class LibraryManagerMethods:
     def __init__(self, csc, sg_limits):
-	# instantiate volume clerk client
-	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        # instantiate volume clerk client
+        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
                           'limits' : {}
@@ -405,7 +400,7 @@ class LibraryManagerMethods:
                 external_label = v["external_label"]
         else:
            external_label = self.process_for_bound_vol 
-		
+                
         # found a volume that has write work pending - return it
         rq.ticket["fc"]["external_label"] = external_label
         rq.ticket["fc"]["size"] = rq.ticket["wrapper"]["size_bytes"]
@@ -717,64 +712,64 @@ class LibraryManagerMethods:
     # allowed number of movers and, if yes, set volume 
     # as having no access and send a regret: noaccess.
     def bad_volume(self, suspect_volume, ticket):
-	ret_val = 0
-	if ticket['fc'].has_key('external_label'):
-	    label = ticket['fc']['external_label']
-	else: label = None
-	if len(suspect_volume['movers']) >= self.max_suspect_movers:
-	    ticket['status'] = (e_errors.NOACCESS, None)
-	    Trace.trace(13,"Number of movers for suspect volume %d" %
-			(len(suspect_volume['movers']),))
-				
-	    # set volume as noaccess
-	    v = self.vcc.set_system_noaccess(label)
+        ret_val = 0
+        if ticket['fc'].has_key('external_label'):
+            label = ticket['fc']['external_label']
+        else: label = None
+        if len(suspect_volume['movers']) >= self.max_suspect_movers:
+            ticket['status'] = (e_errors.NOACCESS, None)
+            Trace.trace(13,"Number of movers for suspect volume %d" %
+                        (len(suspect_volume['movers']),))
+                                
+            # set volume as noaccess
+            v = self.vcc.set_system_noaccess(label)
 
-	    #remove entry from suspect volume list
-	    self.suspect_volumes.remove(suspect_volume)
-	    # delete the job
+            #remove entry from suspect volume list
+            self.suspect_volumes.remove(suspect_volume)
+            # delete the job
             rq, err = self.pending_work.find(ticket)
             Trace.trace(13,"bad volume: find returned %s %s"%(rq, err))
             if rq:
                 self.pending_work.delete_job(rq)
                 self.send_regret(ticket)
-	    Trace.trace(13,"bad_volume: failed on more than %s for %s"%\
-			(self.max_suspect_movers,suspect_volume))
-	    ret_val = 1
-	return ret_val
+            Trace.trace(13,"bad_volume: failed on more than %s for %s"%\
+                        (self.max_suspect_movers,suspect_volume))
+            ret_val = 1
+        return ret_val
 
     # update suspect volumer list
     def update_suspect_vol_list(self, external_label, mover):
-	# update list of suspected volumes
-	Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
+        # update list of suspected volumes
+        Trace.trace(14,"SUSPECT VOLUME LIST BEFORE %s"%(self.suspect_volumes.list,))
         if not external_label: return None
-	vol_found = 0
-	for vol in self.suspect_volumes.list:
-	    if external_label == vol['external_label']:
-		vol_found = 1
-		break
-	if not vol_found:
-	    vol = {'external_label' : external_label,
-		   'movers' : [],
+        vol_found = 0
+        for vol in self.suspect_volumes.list:
+            if external_label == vol['external_label']:
+                vol_found = 1
+                break
+        if not vol_found:
+            vol = {'external_label' : external_label,
+                   'movers' : [],
                    'time':time.time()
-		   }
-	for mv in vol['movers']:
-	    if mover == mv:
-		break
-	else:
-	    vol['movers'].append(mover)
-	if not vol_found:
-	    self.suspect_volumes.append(vol)
+                   }
+        for mv in vol['movers']:
+            if mover == mv:
+                break
+        else:
+            vol['movers'].append(mover)
+        if not vol_found:
+            self.suspect_volumes.append(vol)
             # send alarm if number of suspect volumes is above a threshold
             if len(self.suspect_volumes.list) >= self.max_suspect_volumes:
                 Trace.alarm(e_errors.WARNING, e_errors.ABOVE_THRESHOLD,
                             {"volumes":"Number of suspect volumes is above threshold"}) 
             
-	Trace.trace(14, "SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
-	return vol
+        Trace.trace(14, "SUSPECT VOLUME LIST AFTER %s" % (self.suspect_volumes,))
+        return vol
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
-		     generic_server.GenericServer,
-		     LibraryManagerMethods):
+                     generic_server.GenericServer,
+                     LibraryManagerMethods):
 
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
     max_suspect_volumes = 100 # maximal number of suspected volumes for alarm
@@ -782,7 +777,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def __init__(self, libman, csc):
         self.name_ext = "LM"
         generic_server.GenericServer.__init__(self, csc, libman)
-	self.name = libman
+        self.name = libman
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
         #   get our port and host from the name server
@@ -814,7 +809,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.keys.has_key('storage_group_limits'):
             sg_limits = self.keys['storage_group_limits']
         LibraryManagerMethods.__init__(self, csc, sg_limits)
-	self.set_udp_client()
+        self.set_udp_client()
 
     # check startup flag
     def is_starting(self):
@@ -857,10 +852,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         lock_file.write(lock)
         lock_file.close()
         
-	
+        
     def set_udp_client(self):
-	self.udpc = udp_client.UDPClient()
-	self.rcv_timeout = 10 # set receive timeout
+        self.udpc = udp_client.UDPClient()
+        self.rcv_timeout = 10 # set receive timeout
 
     def write_to_hsm(self, ticket):
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
@@ -890,24 +885,25 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
 
         # check if work is in the at mover list before inserting it
-	for wt in self.work_at_movers.list:
-            # 2 requests cannot have the same output file names
-            if ((wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]) and
-                (wt['retry'] == ticket['retry'])):
-                ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-                break
-	    elif wt["unique_id"] == ticket["unique_id"]:
-		break
+##        for wt in self.work_at_movers.list:
+##            # 2 requests cannot have the same output file names
+##            if ((wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]) and
+##                (wt['retry'] == ticket['retry'])):
+##                ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
+##                break
+##            elif wt["unique_id"] == ticket["unique_id"]:
+##                break
+##        else:
+        if not ticket.has_key('lm'):
+            ticket['lm'] = {'address':self.server_address }
+        # set up priorities
+        ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
+        # put ticket into request queue
+        rq, status = self.pending_work.put(ticket)
+        if status == e_errors.INPROGRESS:
+            ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
         else:
-            if not ticket.has_key('lm'):
-                ticket['lm'] = {'address':self.server_address }
-            # set up priorities
-            ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
-            # put ticket into request queue
-            rq, status = self.pending_work.put(ticket)
-            if status == e_errors.INPROGRESS:
-                ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-            else: ticket['status'] = (status, None)
+            ticket['status'] = (status, None)
                 
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         if ticket['status'][0] == e_errors.INPROGRESS:
@@ -945,32 +941,32 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(ticket)
             Trace.notify("client %s %s" % (ticket['callback_addr'], self.lm_lock))
             return
-	# check if this volume is OK
-	v = self.vcc.inquire_vol(ticket['fc']['external_label'])
-	if (v['system_inhibit'][0] == e_errors.NOACCESS or
+        # check if this volume is OK
+        v = self.vcc.inquire_vol(ticket['fc']['external_label'])
+        if (v['system_inhibit'][0] == e_errors.NOACCESS or
             v['system_inhibit'][0] == e_errors.NOTALLOWED):
-	    # tape cannot be accessed, report back to caller and do not
-	    # put ticket in the queue
-	    ticket["status"] = (v['system_inhibit'][0], None)
-	    self.reply_to_caller(ticket)
-	    format = "read request discarded for unique_id=%s : volume %s is marked as %s"
-	    Trace.log(e_errors.ERROR, format%(ticket['unique_id'],
-					      ticket['fc']['external_label'],
-					      ticket["status"][0]))
-	    Trace.trace(11,"read_from_hsm: volume has no access")
+            # tape cannot be accessed, report back to caller and do not
+            # put ticket in the queue
+            ticket["status"] = (v['system_inhibit'][0], None)
+            self.reply_to_caller(ticket)
+            format = "read request discarded for unique_id=%s : volume %s is marked as %s"
+            Trace.log(e_errors.ERROR, format%(ticket['unique_id'],
+                                              ticket['fc']['external_label'],
+                                              ticket["status"][0]))
+            Trace.trace(11,"read_from_hsm: volume has no access")
             Trace.notify("client %s %s" % (ticket['callback_addr'], 'rejected'))
-	    return
+            return
 
-	if not ticket.has_key('lm'):
-	    ticket['lm'] = {'address' : self.server_address}
+        if not ticket.has_key('lm'):
+            ticket['lm'] = {'address' : self.server_address}
 
         # check if work is in the at mover list before inserting it
-	for wt in self.work_at_movers.list:
-	    if wt["unique_id"] == ticket["unique_id"]:
+        for wt in self.work_at_movers.list:
+            if wt["unique_id"] == ticket["unique_id"]:
                 status = e_errors.OK
                 ticket['status'] = (status, None)
                 rq = None
-		break
+                break
         else:
             # set up priorities
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
@@ -1019,27 +1015,27 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
         self.requestor = mticket['mover']
 
-	# check if there is a work for this mover in work_at_movers list
-	# it should not happen in a normal operations but it may when for 
-	# instance mover detects that encp is gone and returns idle or
-	# mover crashes and then restarts
-	
-	# find mover in the work_at_movers
-	found = 0
-	for wt in self.work_at_movers.list:
+        # check if there is a work for this mover in work_at_movers list
+        # it should not happen in a normal operations but it may when for 
+        # instance mover detects that encp is gone and returns idle or
+        # mover crashes and then restarts
+        
+        # find mover in the work_at_movers
+        found = 0
+        for wt in self.work_at_movers.list:
             Trace.trace(11, "work_at_movers: mover %s id %s" % (wt['mover'], wt['unique_id']))
-	    if wt['mover'] == self.requestor:
-		found = 1     # must do this. Construct. for...else will not
+            if wt['mover'] == self.requestor:
+                found = 1     # must do this. Construct. for...else will not
                               # do better 
-		break
-	if found:
+                break
+        if found:
             # check if it is a backed up request
             if mticket['unique_id'] and mticket['unique_id'] != wt['unique_id']:
                 Trace.trace(15,"found backed up mover %s" % (mticket['mover'],))
                 return
-	    self.work_at_movers.remove(wt)
-	    format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
-	    Trace.log(e_errors.INFO, format%(wt,mticket))
+            self.work_at_movers.remove(wt)
+            format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
+            Trace.log(e_errors.INFO, format%(wt,mticket))
         rq, status = self.schedule(mticket['mover'])
         Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
         # no work means we're done
@@ -1047,7 +1043,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
 
         if status[0] != e_errors.OK:
-	    Trace.log(1,"mover_idle: assertion error w=%s ticket=%"%
+            Trace.log(1,"mover_idle: assertion error w=%s ticket=%"%
                       (rq, mticket))
             raise AssertionError
             
@@ -1101,7 +1097,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
     # we have a volume already bound - any more work??
     def mover_bound_volume(self, mticket):
-	Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
+        Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
         if not mticket['external_label']:
             Trace.log(e_errors.ERROR,"mover_bound_volume: mover request with suspicious volume label %s" %
                       (mticket['external_label'],))
@@ -1148,7 +1144,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mticket['external_label']:
                 w['vc']['volume_family'] = mticket['volume_family']
                 Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
-	    self.work_at_movers.remove(w)
+            self.work_at_movers.remove(w)
 
         # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
@@ -1160,10 +1156,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             format = "%s next work on vol=%s mover=%s requester:%s"
             Trace.log(e_errors.INFO, format%(w["work"],
-					     w["vc"]["external_label"],
-					     mticket["mover"],
-					     w["wrapper"]["uname"]))
-	    w['times']['lm_dequeued'] = time.time()
+                                             w["vc"]["external_label"],
+                                             mticket["mover"],
+                                             w["wrapper"]["uname"]))
+            w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
                       (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'],
@@ -1296,7 +1292,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
-	Trace.trace(13,"get_suspect_volumes ")
+        Trace.trace(13,"get_suspect_volumes ")
         os._exit(0)
 
 
@@ -1316,29 +1312,29 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # remove work from list of pending works
     def remove_work(self, ticket):
-	id = ticket["unique_id"]
-	rq = self.pending_work.find(id)
-	if not rq:
-	    self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
-	else:
-	    self.pending_work.delete(rq)
-	    format = "Request:%s deleted. Complete request:%s"
-	    Trace.log(e_errors.INFO, format % (rq.unique_id, rq))
-	    self.reply_to_caller({"status" : (e_errors.OK, "Work deleted")})
-					 
+        id = ticket["unique_id"]
+        rq = self.pending_work.find(id)
+        if not rq:
+            self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
+        else:
+            self.pending_work.delete(rq)
+            format = "Request:%s deleted. Complete request:%s"
+            Trace.log(e_errors.INFO, format % (rq.unique_id, rq))
+            self.reply_to_caller({"status" : (e_errors.OK, "Work deleted")})
+                                         
     # change priority
     def change_priority(self, ticket):
-	rq = self.pending_work.find(ticket["unique_id"])
-	if not rq:
-	    self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
+        rq = self.pending_work.find(ticket["unique_id"])
+        if not rq:
+            self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
             return
-	ret = self.pending_work.change_pri(rq, ticket["priority"])
-	if not ret:
-	    self.reply_to_caller({"status" : (e_errors.NOWORK, "Attempt to set wrong priority")})
-	else:
-	    format = "Changed priority to:%s Complete request:%s"
-	    Trace.log(e_errors.INFO, format % (ret.pri, ret.ticket))
-	    self.reply_to_caller({"status" :(e_errors.OK, "Priority changed")})
+        ret = self.pending_work.change_pri(rq, ticket["priority"])
+        if not ret:
+            self.reply_to_caller({"status" : (e_errors.NOWORK, "Attempt to set wrong priority")})
+        else:
+            format = "Changed priority to:%s Complete request:%s"
+            Trace.log(e_errors.INFO, format % (ret.pri, ret.ticket))
+            self.reply_to_caller({"status" :(e_errors.OK, "Priority changed")})
 
     # change state of the library manager
     def change_lm_state(self, ticket):
@@ -1352,13 +1348,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 ticket["status"] = (e_errors.WRONGPARAMETER, None)
         else:
             ticket["status"] = (e_errors.KEYERROR,None)
-	self.reply_to_caller(ticket)
+        self.reply_to_caller(ticket)
 
     # get state of the library manager
     def get_lm_state(self, ticket):
         ticket['state'] = self.lm_lock
         ticket["status"] = (e_errors.OK, None)
-	self.reply_to_caller(ticket)
+        self.reply_to_caller(ticket)
 
 
     # get active volume known to LM
@@ -1431,7 +1427,7 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a library manager
         if len(self.args) < 1 :
-	    self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters())
             self.print_help(),
             sys.exit(1)
         else:
@@ -1456,10 +1452,10 @@ if __name__ == "__main__":
             Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%(intf.name,))
             lm.serve_forever()
-	except SystemExit, exit_code:
-	    sys.exit(exit_code)
+        except SystemExit, exit_code:
+            sys.exit(exit_code)
         except:
-	    traceback.print_exc()
-	    lm.serve_forever_error("library manager")
-	    continue
+            traceback.print_exc()
+            lm.serve_forever_error("library manager")
+            continue
     Trace.trace(1,"Library Manager finished (impossible)")
