@@ -12,6 +12,9 @@ import sys
 import socket
 import exceptions
 
+
+debug = 1 
+
 ###
 
 DEFAULTPORT = 60126
@@ -174,7 +177,30 @@ class Mover:
         self.display.delete(self.progress_bar_bg)
         self.display.delete(self.progress_bar)
         self.display.delete(self.progress_percent_display)
+    
+    def position(self, N):
+        k = self.index
+        if N == 0:
+            angle = math.pi/2
+        else:
+            angle = math.pi / (N-1)
+        x, y = 0.75 + 0.8 * math.cos(math.pi/2 + angle*k), 0.85 * math.sin(math.pi/2 + angle*k)
+        self.x, self.y = scale_to_display(x, y, self.display.width, self.display.height)
 
+    def reposition(self, N):
+        if self.volume:
+            volume_offset = self.volume.x-self.x, self.volume.y - self.y
+        self.undraw()
+        self.position(N)
+        self.draw()
+        if self.volume:
+            self.volume.undraw()
+            self.volume.x, self.volume.y = self.x+volume_offset[0], self.y + volume_offset[1]
+            self.volume.draw()
+        if self.connection:
+            self.connection.undraw()
+            self.connection.draw()
+        
     def __del__(self):
         self.undraw()
     
@@ -187,6 +213,7 @@ class Client:
         self.display = display
         self.last_activity_time = 0.0 
         self.n_connections = 0
+        self.waiting = 0
         i = 0
         ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
         while display.client_positions.has_key(i):
@@ -213,6 +240,13 @@ class Client:
         self.display.delete(self.outline)
         self.display.delete(self.label)
 
+    def update_state(self):
+        if self.waiting:
+            color = rgbtohex(100,100,100)
+        else:
+            color = 'green'
+        self.display.itemconfigure(self.outline, fill = color) 
+        
     def reposition(self):
         self.undraw()
         self.x, self.y = scale_to_display(-0.9, self.index/10.,
@@ -376,46 +410,27 @@ class Display(Canvas):
         
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
-        self.mover_names = mover_names #keep track of original ordering
         N = len(mover_names)
-        angle = math.pi / (N-1)
         for k in range(N):
             mover_name = mover_names[k]
             ##These are coordinates on the unit circle
-            M = Mover(mover_name, self)
+            M = Mover(mover_name, self, index=k)
             self.movers[mover_name] = M
-            x, y = 0.75 + 0.8 * math.cos(math.pi/2 + angle*k), 0.85 * math.sin(math.pi/2 + angle*k)
-            M.x, M.y = scale_to_display(x, y, self.width, self.height)
+            M.position(N)
             M.draw()
-            k=M.index
+            
+    def create_robot(self):
             x1, y1 = 0.35 + 0.2 * math.cos(math.pi/2 + angle*k), 0.2 * math.sin(math.pi/2 + angle*k)
             R=Robot(self)
             R.x1, R.y1 = scale_to_display(x1, y1, self.width, self.height)
             self.outline =  self.create_oval(R.x1-20, R.y1-120, self.width, self.height-160)
             R.draw()
-            
 
     def reposition_movers(self):
-        mover_names = self.mover_names
-        N = len(mover_names)
-        angle = math.pi / (N-1)
-        for k in range(N):
-            mover_name = mover_names[k]
-            ##These are coordinates on the unit circle
-            M = self.movers[mover_name]
-            if M.volume:
-                volume_offset = M.volume.x-M.x, M.volume.y - M.y
-            M.undraw()
-            x, y = 0.75 + 0.8 * math.cos(math.pi/2 + angle*k), 0.85 * math.sin(math.pi/2 + angle*k)
-            M.x, M.y = scale_to_display(x, y, self.width, self.height)
-            M.draw()
-            if M.volume:
-                M.volume.undraw()
-                M.volume.x, M.volume.y = M.x+volume_offset[0], M.y + volume_offset[1]
-                M.volume.draw()
-            if M.connection:
-                M.connection.undraw()
-                M.connection.draw()
+        items = self.clients.items()
+        N = len(items) #need this to determine angle
+        for mover_name, mover in items:
+            mover.reposition(N)            
                 
     def reposition_clients(self):
         for client_name, client in self.clients.items():
@@ -436,6 +451,10 @@ class Display(Canvas):
         # variable number of words
         # movers M1 M2 M3 ...
         # title (?)
+
+        if debug:
+            print command
+        
         now = time.time()
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
@@ -455,8 +474,9 @@ class Display(Canvas):
         if words[0]=='client':
             client_name = words[1]
             client = self.clients.get(client_name) 
-            if client is None:
+            if client is None: #new client
                 client = Client(client_name, self)
+                self.clients[client_name] = client
                 client.waiting = 1
                 client.draw()
             return
@@ -498,6 +518,8 @@ class Display(Canvas):
                 client = Client(client_name, self)
                 self.clients[client_name] = client
                 client.draw()
+            client.waiting = 0
+            client.update_state() #change fill color if needed
             client.last_activity_time = now
             connection = Connection(mover, client, self)
             mover.t0 = now
@@ -568,10 +590,13 @@ class Display(Canvas):
 
             for r in readable:
                 command = r.recv(1024)
-                try:
+                if debug:
                     self.handle_command(command)
-                except:
-                    print "cannot handle", command
+                else:
+                    try:
+                        self.handle_command(command)
+                    except: 
+                        print "cannot handle", command 
                     
             ## Here is where we handle periodic things
             now = time.time()
