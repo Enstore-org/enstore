@@ -34,14 +34,14 @@ newdbs:
 
 	rm -f $ENSTORE_DIR/test/files.in
 	if [ ! -d data ] ; then mkdir data ; fi
-	touch data/long0.dat
-	echo short > data/long1.dat
-	dd if=/dev/zero of=data/long2.dat count=10
-	dd if=/dev/zero of=data/long3.dat count=20
-	dd if=/dev/zero of=data/long4.dat count=30
-	dd if=/dev/zero of=data/long5.dat count=40
-	dd if=/dev/zero of=data/long6.dat count=50
-	dd if=/dev/zero of=data/long7.dat count=60
+	touch data/null0.dat
+	echo short > data/short1.dat
+	dd if=/dev/zero of=data/null1.dat count=10
+	dd if=/dev/zero of=data/null2.dat count=20
+	dd if=/dev/zero of=data/null3.dat count=60
+	python $$ENSTORE_DIR/src/ranfile.py --size=1024   --file=data/ran1.dat
+	python $$ENSTORE_DIR/src/ranfile.py --size=32768  --file=data/ran2.dat
+	python $$ENSTORE_DIR/src/ranfile.py --size=131072 --file=data/ran3.dat
 
 	if [ -d $(dpnfs) ] ; then rm -f $(dpnfs)/* ; else mkdir $(dpnfs); fi
 
