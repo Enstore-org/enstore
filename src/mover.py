@@ -3198,10 +3198,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             self.update_stat()
         except TypeError:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.ERROR, "in update_stat: %s %s" % (exc, msg))
+            Trace.handle_error()
+            #exc, msg = sys.exc_info()[:2]
+            #Trace.log(e_errors.ERROR, "in update_stat: %s %s" % (exc, msg))
             # perhaps it is due to scsi error
-            self.watch_syslog()
+            #self.watch_syslog()
         except:
             # I do not know what kind of exception this can be 
             exc, msg = sys.exc_info()[:2]
