@@ -1,5 +1,7 @@
 #!/bin/sh
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-n" ] ; then ALARM=0; shift; else ALARM=1; fi
+if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 
 . /usr/local/etc/setups.sh
 setup enstore
@@ -16,7 +18,7 @@ ALLOW_BASE="
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
        LISTEN,python,:,,/home/enstore/enstore/bin/encp
-       LISTEN,netserver,:,x
+       LISTEN,netserver,:,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
@@ -28,7 +30,7 @@ ALLOW_BASE="
        TCP,kshd,:,TCP,kshd kshd -5c
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
-       TCP,netserver,:netperf,x
+       TCP,netserver,TCP,:netperf,x
 "
 
 ALLOW_SRV5="$ALLOW_BASE
@@ -83,7 +85,9 @@ allow() { tt=$1
                     msg2=`ps -wwwwfp $pid|grep -v PPID`
                     echo $msg1
                     echo $msg2
-                    enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
+                    if [ $ALARM -eq 1 ]; then
+                      enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
+                    fi
                     return 2
                  fi
               else
@@ -97,7 +101,9 @@ allow() { tt=$1
           msg2=`ps -wwwwfp $pid|grep -v PPID`
           echo $msg1
           echo $msg2
-          enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
+          if [ $ALARM -eq 1 ]; then
+            enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
+          fi
           return 1
          }
 
