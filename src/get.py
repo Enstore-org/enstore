@@ -193,14 +193,14 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(5, "Waiting for final dialog (1).")
         mover_done_ticket = encp.receive_final_dialog(control_socket)
         Trace.message(5, "Received final dialog (1).")
-        Trace.message(10, "MOVER_DONE_TICKET:")
+        Trace.message(10, "FINAL DIALOG (tcp):")
         Trace.message(10, pprint.pformat(mover_done_ticket))
         Trace.message(5, "Waiting for final dialog (2).")
         #Keep the udp socket queues clear.
-        mover_request = udp_socket.process_request()
+        mover_udp_done_ticet = udp_socket.process_request()
         Trace.message(5, "Received final dialog (2).")
-        Trace.message(10, "MOVER_REQUEST:")
-        Trace.message(10, pprint.pformat(mover_request))
+        Trace.message(1, "MOVER RESPONCE udp:")
+        Trace.message(1, pprint.pformat(mover_udp_done_ticet))
 
         #Combine these tickets.
         work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
@@ -454,6 +454,10 @@ def main(e):
 
             rticket, use_listen_socket = encp.open_routing_socket(
                 udp_socket, [request['unique_id']], e)
+
+            #Print out the final ticket.
+            Trace.message(1, "ROUTING TICKET:")
+            Trace.message(1, pprint.pformat(rticket))
 
             if not e_errors.is_ok(rticket):
                 sys.stderr.write("Unable to handle routing: %s\n" %
