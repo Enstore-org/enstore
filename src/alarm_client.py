@@ -3,6 +3,7 @@
 import sys
 import os
 import pwd
+import errno
 
 # enstore imports
 import alarm_server
@@ -14,6 +15,9 @@ import e_errors
 
 MY_NAME = "ALARM_CLIENT"
 MY_SERVER = "alarm_server"
+
+RCV_TIMEOUT = 3
+RCV_TRIES = 2
 
 class Lock:
     def __init__(self):
@@ -28,7 +32,7 @@ class Lock:
 
 class AlarmClient(generic_client.GenericClient):
 
-    def __init__(self, csc):
+    def __init__(self, csc, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES):
         # we always need to be talking to our configuration server
         self.csc = csc
         # need the following definition so the generic client init does not
@@ -39,6 +43,8 @@ class AlarmClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
         ticket = self.csc.get(MY_SERVER)
         self.server_address = (ticket['hostip'], ticket['port'])
+        self.rcv_timeout = rcv_timeout
+        self.rcv_tries = rcv_tries
 	Trace.set_alarm_func( self.alarm_func )
 	self.alarm_func_lock = Lock() 
 
@@ -59,12 +65,15 @@ class AlarmClient(generic_client.GenericClient):
             # we were called from someplace like Trace.trace and we only
             # have a text string for an argument
             ticket['text'] = args[1]
-        self.u.send(ticket, self.server_address, 0, 0 )
+        self.send(ticket, self.rcv_timeout, self.rcv_tries )
 	return self.alarm_func_lock.unlock()
 
-    def send(self, ticket, rcv_timeout=0, tries=0):
-        # need this for the alive function
-        return self.u.send(ticket, self.server_address, rcv_timeout, tries)
+    def send(self, ticket, rcv_timeout, tries):
+        try:
+            x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, None)}
+        return x
         
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
               root_error=e_errors.DEFAULT_ROOT_ERROR,
@@ -72,23 +81,25 @@ class AlarmClient(generic_client.GenericClient):
         if 0: print self    # lint fix
         Trace.alarm(severity, root_error, alarm_info )
 
-    def resolve(self, id, rcv_timeout=0, tries=0):
+    def resolve(self, id):
         # this alarm has been resolved.  we need to tell the alarm server
         ticket = {'work' : "resolve_alarm",
                   alarm_server.ALARM   : id}
-        return self.u.send(ticket, self.server_address, rcv_timeout, tries)
+        return self.send(ticket, self.rcv_timeout, self.rcv_tries)
 
-    def get_patrol_file(self, rcv_timeout=0, tries=0):
+    def get_patrol_file(self):
         ticket = {'work' : 'get_patrol_filename'}
-        return self.u.send(ticket, self.server_address, rcv_timeout, tries)
+        return self.send(ticket, self.rcv_timeout, self.rcv_tries)
 
 class AlarmClientInterface(generic_client.GenericClientInterface,\
                            interface.Interface):
 
     def __init__(self):
         # fill in the defaults for the possible options
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
+        # we always want a default timeout and retries so that the alarm
+        # client/server communications does not become a weak link
+        self.alive_rcv_timeout = RCV_TIMEOUT
+        self.alive_retries = RCV_TRIES
         self.alarm = 0
         self.resolve = 0
         self.severity = e_errors.DEFAULT_SEVERITY
@@ -111,7 +122,8 @@ if __name__ == "__main__" :
     intf = AlarmClientInterface()
 
     # now get an alarm client
-    alc = AlarmClient((intf.config_host, intf.config_port))
+    alc = AlarmClient((intf.config_host, intf.config_port),
+                      intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(alc.get_name(MY_NAME))
 
     if intf.alive:

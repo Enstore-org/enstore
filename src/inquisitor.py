@@ -73,6 +73,10 @@ SERVER_KEYWORD = "server"
 TIMED_OUT_SP = "    "
 DEFAULT_SERVER_TIMEOUT = "default_server_timeout"
 
+CONFIG_S = "configuration_server"
+ALARM_S = "alarm_server"
+LOG_S = "log_server"
+
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the alive status of the server and output it
@@ -120,22 +124,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # fork off here so that the child can do the longer wait to
                     # see if the server is really alive not just busy.  we must
                     # keep track of the fact that we forked off so the next
-                    # time we find the server dead we do not do this again.
+                    # time we find the server dead we do not fork again.
                     Trace.trace(8,"Inquisitor forking to restart %s"%key)
                     self.forked[key] = 1
-                    self.pid = os.fork()
-                    if self.pid == 0:
+                    if not self.fork():
                         # we are the child ###################################
                         Trace.init("INQ_CHILD")
                         # we need to get new udp clients so we don't collide
                         # with our parent.
                         import udp_client
                         client.u = udp_client.UDPClient()
-                        self.csc.u = udp_client.UDPClient()
-                        self.logc.u = udp_client.UDPClient()
-                        self.alarmc.u = udp_client.UDPClient()
+                        if not key == CONFIG_S:
+                            self.csc.u = udp_client.UDPClient()
+                        if not key == LOG_S:
+                            self.logc.u = udp_client.UDPClient()
+                        if not key == ALARM_S:
+                            self.alarmc.u = udp_client.UDPClient()
                         # Check on server status but wait a long time
-                        self.alive_rcv_timeout = 180
+                        self.alive_rcv_timeout = 5
                         self.alive_retries = 2
                         ret = self.alive_status(client, (t['host'], t['port']),
                                                 prefix, time, key)
@@ -146,8 +152,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                             if t.has_key("norestart"):
                                 # do not restart, raise an alarm that the
                                 # server is dead.
-                                Trace.alarm(e_errors.ERROR,
-                                            e_errors.SERVERDIED, alarm_info)
+                                if not key == ALARM_S:
+                                    Trace.alarm(e_errors.ERROR,
+                                                e_errors.SERVERDIED,
+                                                alarm_info)
+                                else:
+                                    Trace.log(e_errors.ERROR,
+                                              "%s died and will not be restarted"%key)
                             else:
                                 # we should try to restart the server.  try 3X
                                 i = 0
@@ -165,13 +176,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                         i = i + 1
                                 else:
                                     # 4. we could not restart the server
-                                    Trace.alarm(e_errors.ERROR,
-                                                e_errors.CANTRESTART,
-                                                alarm_info)
+                                    if not key == ALARM_S:
+                                        Trace.alarm(e_errors.ERROR, 
+                                                    e_errors.CANTRESTART,
+                                                    alarm_info)
+                                    else:
+                                        Trace.log(e_errors.ERROR,
+                                                  "Can't restart %s"%key)
                         del client.u
-                        del self.csc.u
-                        del self.logc.u
-                        del self.alarmc.u
+                        if not key == CONFIG_S:
+                            del self.csc.u
+                        if not key == LOG_S:
+                            del self.logc.u
+                        if not key == ALARM_S:
+                            del self.alarmc.u
                         os._exit(0)
                         # end of the child ##################################
         else:
@@ -374,25 +392,34 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if 0: print time # quiet lint
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
-	t = self.logc.get_logfile_name()
-	logfile = t['logfile_name']
+        try:
+            t = self.logc.get_logfile_name(self.alive_rcv_timeout,
+                                           self.alive_retries)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            pass
+	logfile = t.get('logfile_name', "")
         # create the file which contains the encp lines from the most recent
         # log file.
-	encpfile = enstore_status.EnDataFile(logfile,
-                                             self.parsed_file+".encp",
-                                             "-e %s"%Trace.MSG_ENCP_XFER,
-	                                     "", "|sort -r")
-	encpfile.open('r')
-	encplines = encpfile.read(self.max_encp_lines)
-	encpfile.close()
+        if logfile:
+            encpfile = enstore_status.EnDataFile(logfile,
+                                                 self.parsed_file+".encp",
+                                                 "-e %s"%Trace.MSG_ENCP_XFER,
+                                                 "", "|sort -r")
+            encpfile.open('r')
+            encplines = encpfile.read(self.max_encp_lines)
+            encpfile.close()
 	
 	i = len(encplines)
 	if i < self.max_encp_lines:
 	    # we read in all the encps from the most recent log file. we
 	    # did not read in self.max_encp_lines, so get the 2nd most recent
 	    # log file and do the same.
-	    t = self.logc.get_last_logfile_name()
-	    logfile2 = t['last_logfile_name']
+            try:
+                t = self.logc.get_last_logfile_name(self.alive_rcv_timeout,
+                                                    self.alive_retries)
+            except errno.errorcode[errno.ETIMEDOUT]:
+                pass
+	    logfile2 = t.get('last_logfile_name', "")
 	    if (logfile2 != logfile) and logfile2:
 	        encpfile2 = enstore_status.EnDataFile(logfile2,
                                                   self.parsed_file+".encp2",
