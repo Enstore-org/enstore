@@ -94,8 +94,19 @@ class Cpio :
 
 
     # generate an enstore cpio archive: devices must be open and ready
-    def write(self, inode, mode, uid, gid, mtime, filesize,
-              major, minor, rmajor, rminor, filename, sanity_bytes=0) :
+    def write( self, ticket ):
+	inode        = ticket['pinfo']['inode']
+	mode         = ticket['pinfo']['mode']
+	uid          = ticket['pinfo']['uid']
+	gid          = ticket['pinfo']['gid']
+	mtime        = ticket['uinfo']['mtime']
+	filesize     = ticket['uinfo']['size_bytes']
+	major        = ticket['pinfo']['major']
+	minor        = ticket['pinfo']['minor']
+	rmajor       = ticket['pinfo']['rmajor']
+	rminor       = ticket['pinfo']['rminor']
+	filename     = ticket['pinfo']['pnfsFilename']
+	sanity_bytes = ticket["uinfo"]["sanity_size"]
 
         # generate the headers for the archive and write out 1st one
         format = "new"
@@ -452,14 +463,20 @@ if __name__ == "__main__" :
     rminor = 0
     sanity_bytes = 0
 
-    (size,crc,sanity_cookie) = wrapper.write(statb[stat.ST_INO],
-                                             statb[stat.ST_MODE],
-                                             statb[stat.ST_UID],
-                                             statb[stat.ST_GID],
-                                             statb[stat.ST_MTIME],
-                                             statb[stat.ST_SIZE],
-                                             major, minor, rmajor, rminor,
-                                             fin._file_.name, sanity_bytes)
+    ticket = {'pinfo':{},'unifo':{}}
+    ticket['pinfo']['inode']       = statb[stat.ST_INO]
+    ticket['pinfo']['mode']        = statb[stat.ST_MODE]
+    ticket['pinfo']['uid']         = statb[stat.ST_UID]
+    ticket['pinfo']['gid']         = statb[stat.ST_GID]
+    ticket['uinfo']['mtime']       = statb[stat.ST_MTIME]
+    ticket['uinfo']['size_bytes']  = statb[stat.ST_SIZE]
+    ticket['pinfo']['major']       = major
+    ticket['pinfo']['minor']       = minor
+    ticket['pinfo']['rmajor']      = rmajor
+    ticket['pinfo']['rminor']      = rminor
+    ticket['pinfo']['pnfsFilename']= fin._file_.name
+    ticket["uinfo"]["sanity_size"] = sanity_bytes
+    (size,crc,sanity_cookie) = wrapper.write( ticket )
     print "Cpio.write returned: size:",size,"crc:",crc,\
           "sanity_cookie:",sanity_cookie
 

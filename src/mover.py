@@ -223,7 +223,6 @@ class Mover:
         # setup values before transfer
         nb = ticket["uinfo"]["size_bytes"]
         wr_size = 0
-        sanity_size = ticket["uinfo"]["sanity_size"]
         media_error = 0
         media_full  = 0
         drive_error = 0
@@ -232,7 +231,6 @@ class Mover:
         sanity_crc = 0
         complete_crc = 0
         pnfs = ticket["pinfo"]
-        inode = 0
 
         self.logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
@@ -245,13 +243,8 @@ class Mover:
 
 	    # now write the file
             self.logc.send(log_client.INFO,2,"WRAPPER.WRITE")
-            (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
-                inode, pnfs["mode"], pnfs["uid"], pnfs["gid"],
-                ticket["uinfo"]["mtime"],
-                ticket["uinfo"]["size_bytes"], pnfs["major"], 
-		pnfs["minor"], pnfs["rmajor"], pnfs["rminor"], 
-		pnfs["pnfsFilename"], sanity_size)
-            file_cookie = self.driver.close_file_write()
+            (wr_size, complete_crc, sanity_cookie) = self.wrapper.write( ticket )
+	    file_cookie = self.driver.close_file_write()
         except:
             self.logc.send(log_client.ERROR,1,
               "Error writing "+str(ticket) )
