@@ -545,7 +545,7 @@ int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
 	/*    3	ESRCH	*/	FTT_ENOENT,
 	/*    4	EINTR	*/	FTT_EUNRECOVERED,
 	/*    5	EIO	*/	FTT_EIO,
-	/*    6	ENXIO	*/	FTT_ENNOSPC,
+	/*    6	ENXIO	*/	FTT_ENOSPC,
 	/*    7	E2BIG	*/	FTT_EBLKSIZE,
 	/*    8	ENOEXEC	*/	FTT_ENOEXEC,
 	/*    9	EBADF	*/	FTT_EROFS,
@@ -2787,7 +2787,7 @@ int devtable_size = sizeof(devtable);
 ftt_stat_entry ftt_stat_op_tab[] = {
     {"2SDX",
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px0f|FTT_DO_RS|
-	FTT_DO_SN|FTT_DO_LS|FTT_DO_RP},
+	FTT_DO_SN|FTT_DO_LS|FTT_DO_RP|FTT_DO_VSRS|FTT_DO_AITRS},
 
     {"1EXB-8200", 
 	FTT_DO_VSRS|

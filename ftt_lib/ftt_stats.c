@@ -570,6 +570,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
 		set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0); 
 	    }
+	    if (stat_ops & FTT_DO_AITRS) {
+		remain_tape=(double)pack(buf[22],buf[23],buf[24],buf[25]);
+		set_stat(b,FTT_REMAIN_TAPE,ftt_dtoa(remain_tape),0);
+		set_stat(b,FTT_CLEANING_BIT,ftt_itoa((long)bit(3,buf[26])), 0);
+            }
 	}
     }
     if (stat_ops & FTT_DO_SN) {
