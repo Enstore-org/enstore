@@ -66,6 +66,6 @@ EOF
 else
   f=STK-VOLUMES.html
   rm /tmp/$f
-  enrcp stkensrv4:$f /tmp/$f
+  enrcp copy_node:$f /tmp/$f
   cat /tmp/$f >>$output
 fi
