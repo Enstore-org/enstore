@@ -113,6 +113,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok":
+            Trace.trace(0,"vcc.get_vols: sending ticket"+repr(ticket))
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
                   +repr(ticket)
 
@@ -134,6 +135,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"] != "ok":
+            Trace(0,"vcc.get_vols: "\
+                  +"1st (pre-work-read) volume clerk callback on socket "\
+                  +repr(address)+" failed to setup transfer: "\
+                  +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
@@ -146,7 +151,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
         ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
         while 1:
-          msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+"client get_vols, reading worklist")
+          msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+\
+                                    "client get_vols, reading worklist")
           if len(msg)==0:
                 break
           pprint.pprint(msg)
@@ -159,6 +165,10 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"client get_vols, vc final dialog")
         control_socket.close()
         if done_ticket["status"] != "ok":
+            Trace(0,"vcc.get_vols "\
+                  +"2nd (post-work-read) volume clerk callback on socket "\
+                  +repr(address)+", failed to transfer: "\
+                  +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\

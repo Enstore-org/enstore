@@ -256,7 +256,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if vetoed:
                 continue
 
-            Trace.trace(12,'next_write_vol found '+repr(v['external_label'])
+            Trace.trace(12,'next_write_vol found '+repr(v['external_label']))
             # supposed to return first volume found?
             if first_found:
                 v["status"] = "ok"
