@@ -42,6 +42,32 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def getwork(self) :
 	return self.getlist("getwork")
 
+    def get_queue(self, node=None):
+        keys = self.csc.get_keys()
+        for key in keys['get_keys']:
+            if string.find(key, "library_manager") != -1:
+               self.name = key
+               lst = self.getwork()
+               pw_list = lst["pending_work"]
+               at_list = lst["at movers"]
+               for i in range(0, len(pw_list)):
+                   host = pw_list[i]["wrapper"]["machine"][1]
+                   user = pw_list[i]["wrapper"]["uname"]
+                   pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
+                   fn = pw_list[i]["wrapper"]["fullname"]
+                   at_top = pw_list[i]["at_the_top"]
+                   if (host == node) or (not node):
+                       print "%s %s %s %s P %d" % (host,user,pnfsfn,fn, at_top)
+               for i in range(0, len(at_list)):
+                   host = at_list[i]["wrapper"]["machine"][1]
+                   user = at_list[i]["wrapper"]["uname"]
+                   pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
+                   fn = at_list[i]["wrapper"]["fullname"]
+                   if (host == node) or (not node):
+                       print "%s %s %s %s M" % (host,user,pnfsfn,fn)
+               
+        return {"status" :(e_errors.OK, None)}
+
     def getmoverlist(self):
 	return self.getlist("getmoverlist")
 
@@ -63,12 +89,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
     def summon_mover(self, mover):
 	return self.send({"work":"summon", "mover":mover})
-
-    def get_mc(self):
-	mc = self.send({"work":"get_mc"})
-	if mc:
-	    return mc['mc']
-	return None
 
     def poll(self):
 	 return self.send({"work":"poll"})
@@ -141,6 +161,8 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 	self.load_mover_list = 0
 	self.summon = 0
 	self.poll = 0
+        self.queue_list = 0
+        self.host = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -148,7 +170,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         return self.client_options()+\
 	       ["getwork", "getmoverlist", "get_suspect_vols",
 		"get_del_dismount","del_work","change_priority","loadmovers",
-		"summon=", "poll"]
+		"summon=", "poll","queue","host="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -158,7 +180,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def parse_options(self):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a library
-        if len(self.args) < 1 :
+        if (len(self.args) < 1) and (not  self.queue_list) :
 	    self.missing_parameter(self.parameters())
             self.print_help(),
             sys.exit(1)
@@ -171,7 +193,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 		if len(self.args) != 3:
 		    self.print_change_priority_args()
 		    sys.exit(1)
-            self.name = self.args[0]
+            if not  self.queue_list: self.name = self.args[0]
 
     # print remove_work arguments
     def print_remove_work_args(self):
@@ -222,6 +244,9 @@ if __name__ == "__main__" :
 	print repr(ticket)
     elif intf.poll:
 	ticket = lmc.poll()
+	print repr(ticket)
+    elif intf.queue_list:
+	ticket = lmc.get_queue(intf.host)
 	print repr(ticket)
 	
     else:

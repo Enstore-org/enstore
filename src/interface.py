@@ -359,6 +359,8 @@ class Interface:
                 self.plot = 1
             elif opt == "--queue":
 	        self.queue_list=1
+            elif opt == "--host":
+	        self.host=value
             elif opt == "--ephemeral":
 	        self.output_file_family="ephemeral"
             elif opt == "--file_family":

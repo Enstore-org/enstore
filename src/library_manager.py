@@ -213,8 +213,7 @@ def is_volume_busy(self, external_label):
     Trace.trace(7,"is_volume_busy:vol=%s,return code=%s"%(external_label,repr(rc)))
     if check_vol_state:
 	# restore volume state
-	mc = self.get_mc_l()
-	mcstate =  self.vcc.update_mc_state(external_label, mc)
+	mcstate =  self.vcc.update_mc_state(external_label)
 	format = "vol:%s state recovered to %s"
 	Trace.log(e_errors.INFO,format%(external_label,mcstate["at_mover"][0]))
 	if at_mov:
@@ -522,12 +521,32 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # open all dbs that keep LM data
     def open_db(self):
+        import string
 	# if database directory is specified in configuration - get it
 	if self.keys.has_key('database'):
 	    self.db_dir = self.keys['database']
 	else:
 	    # if not - use default 
 	    self.db_dir = os.environ['ENSTORE_LM_DB']
+        # if directory does not exist, create it
+        try:	
+            if os.path.exists(self.db_dir) == 0:
+                dir = ""
+                dir_elements = string.split(self.db_dir,'/')
+                for element in dir_elements:
+                    dir=dir+'/'+element
+                    if os.path.exists(dir) == 0:
+                        # try to make the directory - just bomb out if we fail
+                        #   since we probably require user intervention to fix
+                        dir = string.replace(dir,"//","/")
+                        Trace.trace(11,'dir='+repr(dir)+" path="+repr(self.db_dir))
+                        os.mkdir(dir)
+                        os.chmod(dir,0777)
+                        break
+        except:
+	  exc, val, tb = e_errors.handle_error()
+	  sys.exit(1)
+       
 	# list of read or write work tickets    
 	self.pending_work = manage_queue.LM_Queue(self.db_dir)
 	# restore pending work
@@ -832,9 +851,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # check if tape is stuck in in the mounting state
 	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'mounting':
-		mc = self.get_mc_l()
-		if mc:
-		    mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'],mc)
+                mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
 		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
 						 mcstate["at_mover"][0], 
@@ -1117,6 +1134,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if work:
 		# see if mover for this work has been already summoned
 		for rq in self.summon_queue:
+                    Trace.trace(13,"force_summon.summon_q: %s........work:%s"\
+                                %(rq, work))
 		    if rq["work_ticket"]["unique_id"] == work["unique_id"]:
 			break
 		else:
@@ -1205,25 +1224,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         os._exit(0)
-
-    # get Media Changer serving this LM for the internal use
-    def get_mc_l(self):
-	mticket = self.csc.get(movers[0]["mover"])
-	if mticket.has_key('media_changer'):
-	    return mticket['media_changer']
-	else:
-	    return None
-
-    # get Media Changer serving this LM and send it to caller
-    def get_mc(self, ticket):
-	mc = self.get_mc_l()
-	if mc:
-	    return_ticket = {'mc': mc}
-	else:
-	    return_ticket = {}
-	
-	self.reply_to_caller(return_ticket)
-	
 
     # get list of suspected volumes 
     def get_suspect_volumes(self,ticket):
