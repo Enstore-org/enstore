@@ -65,10 +65,9 @@ IPC IPC.c
 
 Devcodes Devcodes.c
 
-Trace Trace.c trace.a -lc
-
 ECRC ECRC.c
-
 
 STK STK.c -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
 EMASS EMASS.c -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
+
+Trace Trace.c trace.a -lc

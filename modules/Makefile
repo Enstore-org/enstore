@@ -8,7 +8,7 @@ all:	 Trace Makefile.modules Modules
 # an appropriate Makefile (in a subdirectory) .   We copy it to
 # ../Makefile.modules for the Modules: target
 
-Makefile.modules: Setup $(PYTHON_DIR)/Python*/Misc/Makefile.pre.in
+Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
 	if [ ! -d mksetup ] ; then  mkdir mksetup; fi
 	cd mksetup/   ; \
