@@ -7,8 +7,8 @@ import errno
 import exceptions
 import errno
 import sys
+import generic_client_server
 import binascii
-from base_defaults import default_host, default_port, BaseDefaults
 
 TRANSFER_MAX=16384
 
@@ -36,7 +36,7 @@ def get_client() :
 
 
 
-class UDPClient(BaseDefaults):
+class UDPClient(generic_client_server.GenericClientServer):
 
     def __init__(self):
         self.number = 0
@@ -46,14 +46,13 @@ class UDPClient(BaseDefaults):
         self.dolist = 0
         self.msg = "All dogs have fleas, but cats are cuter!"
         self.sendport = 7
-        self.dolist = 0
         self.where_sent = {}
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.list_options(self)   + \
+        return generic_client_server.GenericClientServer.list_options(self) +\
                ["msg=","host=","port="] +\
-               BaseDefaults.options(self)
+               generic_client_server.GenericClientServer.options(self)
 
     # parse any command line options
     def parse_options(self):

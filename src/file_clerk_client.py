@@ -1,6 +1,7 @@
 from configuration_client import configuration_client, set_csc
-from base_defaults import default_host, default_port, BaseDefaults
-from client_defaults import ClientDefaults
+import generic_client_server
+import generic_client
+import backup_client
 from udp_client import UDPClient
 from db import do_backup
 import callback
@@ -8,13 +9,17 @@ import time
 import string
 import Trace
 
-class FileClerkClient(BaseDefaults, ClientDefaults) :
+class FileClerkClient(generic_client_server.GenericClientServer, \
+                      generic_client.GenericClient, \
+                      backup_client.BackupClient) :
 
-    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+    def __init__(self, csc=[], \
+                 host=generic_client_server.default_host(), \
+                 port=generic_client_server.default_port()) :
         # we always need to be talking to our configuration server
         self.config_list = 0
-        self.dolist = 0
         self.doalive = 0
+        self.dolist = 0
   	self.bfid = 0
     	self.bfids = 0
     	self.backup=0
@@ -23,10 +28,10 @@ class FileClerkClient(BaseDefaults, ClientDefaults) :
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
-      	       BaseDefaults.list_options(self)   + \
+        return generic_client_server.GenericClientServer.config_options(self)+\
+      	       generic_client_server.GenericClientServer.list_options(self)  +\
 	       ["config_list","bfids","bfid=","alive","backup"] +\
-	       BaseDefaults.options(self)
+	       generic_client_server.GenericClientServer.options(self)
 
     def send (self, ticket) :
         # who's our file clerk server that we should send the ticket to?

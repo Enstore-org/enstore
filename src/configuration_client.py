@@ -5,8 +5,8 @@ import time
 import errno
 
 # enstore imports
+import generic_client_server
 import udp_client
-from base_defaults import default_host, default_port, BaseDefaults
 import Trace
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -19,40 +19,40 @@ try:
 except ImportError:
     import socket
 
-def set_csc(self, csc=[], host=default_host(), port=default_port()):
+def set_csc(self, csc=[], host=generic_client_server.default_host(), port=generic_client_server.default_port()):
     if csc == []:
-        # this calls BaseDefaults.__init__ too
+        # this calls GenericClientServer.__init__ too
         self.csc = configuration_client(host, port)
     else:
         self.csc = csc
   
 
-class configuration_client(BaseDefaults) :
+class configuration_client(generic_client_server.GenericClientServer) :
 
-    def __init__(self, host=default_host(), port=default_port()):
+    def __init__(self, host=generic_client_server.default_host(), port=generic_client_server.default_port()):
         self.clear()
-	BaseDefaults.__init__(self, host, port)
+	generic_client_server.GenericClientServer.__init__(self, host, port)
         self.config_list = 0
         self.dict = 0
         self.doload = 0
-        self.dolist = 0
         self.doalive = 0
+        self.dolist = 0
        	self.config_file = ""
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
-      	       BaseDefaults.list_options(self)   + \
+        return generic_client_server.GenericClientServer.config_options(self)+\
+      	       generic_client_server.GenericClientServer.list_options(self)  +\
 	       ["config_file=","config_list","dict","load","alive"] + \
-	       BaseDefaults.options(self)
+	       generic_client_server.GenericClientServer.options(self)
 
-    # we cannot use the one in BaseDefaults because it assumes that the
+    # we cannot use the one in GenericClientServer because it assumes that the
     # value is actually stored in self.csc
     def parse_config_host(self, value):
         self.config_host = value
 	self.check_host()
 
-    # we cannot use the one in BaseDefaults because it assumes that the
+    # we cannot use the one in GenericClientServer because it assumes that the
     # value is actually stored in self.csc
     def parse_config_port(self, value):
 	self.check_port(value)

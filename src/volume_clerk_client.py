@@ -2,40 +2,46 @@ import string
 import time
 import callback
 import dict_to_a
+import generic_client_server
+import generic_client
+import backup_client
 from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 from db import do_backup
-from base_defaults import default_host, default_port, BaseDefaults
-from client_defaults import ClientDefaults
 import Trace
+import pdb
 
-class VolumeClerkClient(BaseDefaults, ClientDefaults) :
+class VolumeClerkClient(generic_client_server.GenericClientServer, \
+                        generic_client.GenericClient,\
+                        backup_client.BackupClient) :
 
-    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+    def __init__(self, csc=[], \
+                 host=generic_client_server.default_host(), \
+                 port=generic_client_server.default_port()) :
         self.config_list = 0
         self.vol = ""
         self.vols = 0
         self.nextvol = 0
-        self.dolist = 0
         self.doaddvol = 0
         self.dodelvol = 0
         self.clrvol = 0
         self.backup=0
         self.doalive = 0
+        self.dolist = 0
         set_csc(self, csc, host, port)
         self.u = UDPClient()
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
-      	       BaseDefaults.list_options(self)   + \
+        return generic_client_server.GenericClientServer.config_options(self)+\
+      	       generic_client_server.GenericClientServer.list_options(self)  +\
 	       ["config_list", "alive","clrvol", "backup" ] +\
                ["vols","nextvol","vol=","addvol","delvol" ] +\
-	       BaseDefaults.options(self)
+	       generic_client_server.GenericClientServer.options(self)
 
     # print out our extended help
     def print_help(self):
-        BaseDefaults.print_help(self)
+        generic_client_server.GenericClientServer.print_help(self)
         print "   addvol arguments: library file_family media_type"\
               +", volume_name, volume_byte_capacity remaining_capacity"
         print "   delvol arguments: volume_name"
@@ -240,7 +246,7 @@ class VolumeClerkClient(BaseDefaults, ClientDefaults) :
         return self.send(ticket)
 
 if __name__ == "__main__" :
-    Trace.trace("VC client")
+    Trace.init("VC client")
     import sys
     import pprint
 

@@ -6,16 +6,17 @@ import callback
 import dict_to_a
 import configuration_client
 import udp_client
-import base_defaults 
-import client_defaults
 import Trace
 
-class AdminClerkClient(base_defaults.BaseDefaults,
-                       client_defaults.ClientDefaults) :
+import generic_client_server
+import generic_client
 
-    def __init__(self, csc=[],
-                 host=base_defaults.default_host(),
-                 port=base_defaults.default_port()) :
+class AdminClerkClient(generic_client_server.GenericClientServer, \
+                       generic_client.GenericClient) :
+
+    def __init__(self, csc=[], \
+                 host=generic_client_server.default_host(), \
+                 port=generic_client_server.default_port()) :
         self.config_list = 0
         self.criteria={}
         self.dbname="volume"
@@ -25,10 +26,10 @@ class AdminClerkClient(base_defaults.BaseDefaults,
 
     # define the command line options that are valid
     def options(self):
-        return base_defaults.BaseDefaults.config_options(self) + \
+        return generic_client_server.GenericClientServer.config_options(self)+\
                ["config_list", "alive", "dbname=", "faccess=",
                 "laccess=","declared=","capacity=","rem_bytes=",] +\
-               base_defaults.BaseDefaults.options(self)
+               generic_client_server.GenericClientServer.options(self)
 
     # define the single character options
     def charopts(self):
@@ -126,7 +127,7 @@ class AdminClerkClient(base_defaults.BaseDefaults,
         return newVal 
 
     def print_help(self):
-        base_defaults.BaseDefaults.print_help(self)
+        generic_client_server.GenericClientServer.print_help(self)
         print "help             : to see this messsage and exit"
         print "dbname           : table name (volume or file)"
         print "faccess,laccess  : time(YYYYMMDDHHMM) of first/last access"

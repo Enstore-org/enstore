@@ -2,16 +2,16 @@ import time
 import errno
 import configuration_client
 import callback
+import generic_client_server
+import generic_client
 import udp_client
-import base_defaults
-import client_defaults
 import Trace
 
-class LibraryManagerClient(base_defaults.BaseDefaults,\
-                           client_defaults.ClientDefaults) :
-    def __init__(self, csc=[],\
-                 host=base_defaults.default_host(),\
-                 port=base_defaults.default_port()) :
+class LibraryManagerClient(generic_client_server.GenericClientServer, \
+                           generic_client.GenericClient) :
+    def __init__(self, csc=[], \
+                 host=generic_client_server.default_host(), \
+                 port=generic_client_server.default_port()) :
         # we always need to be talking to our configuration server
         self.name = ""
         self.config_list = 0
@@ -23,18 +23,18 @@ class LibraryManagerClient(base_defaults.BaseDefaults,\
 
     # define the command line options that are valid
     def options(self):
-        return base_defaults.BaseDefaults.config_options(self) + \
-               base_defaults.BaseDefaults.list_options(self)   + \
-               ["config_list", "getwork", "alive"] +\
-               base_defaults.BaseDefaults.options(self)
+        return generic_client_server.GenericClientServer.config_options(self)+\
+      	       generic_client_server.GenericClientServer.list_options(self) +\
+	       ["config_list", "getwork", "alive"] +\
+	       generic_client_server.GenericClientServer.options(self)
 
     #  define our specific help
     def help_line(self):
-        return base_defaults.BaseDefaults.help_line(self)+" library"
+        return generic_client_server.GenericClientServer.help_line(self)+" library"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):
-        base_defaults.BaseDefaults.parse_options(self)
+        generic_client_server.GenericClientServer.parse_options(self)
         # bomb out if we don't have a library
         if len(self.args) < 1 :
             self.print_help(),

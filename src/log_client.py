@@ -15,11 +15,11 @@ import select
 import exceptions
 import errno
 import socket
+import generic_client_server
+import generic_client
 from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 import pprint
-from base_defaults import default_host, default_port, BaseDefaults
-from client_defaults import ClientDefaults
 import Trace
 
 # Severity codes
@@ -58,7 +58,7 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 
 
 
-class LoggerClient(BaseDefaults, ClientDefaults):
+class LoggerClient(generic_client_server.GenericClientServer, generic_client.GenericClient):
 
     def __init__(self,
                  csc = [],                  # get our own configuration client
@@ -67,8 +67,8 @@ class LoggerClient(BaseDefaults, ClientDefaults):
                                             # not more than 8 characters long
                  servername = "logserver",  # log server name
                  debug=0,                   # debug output
-                 host=default_host(),
-                 port=default_port()):
+                 host=generic_client_server.default_host(),
+                 port=generic_client_server.default_port()):
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
@@ -87,19 +87,19 @@ class LoggerClient(BaseDefaults, ClientDefaults):
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
-               BaseDefaults.list_options(self)   + \
+        return generic_client_server.GenericClientServer.config_options(self)+\
+               generic_client_server.GenericClientServer.list_options(self) +\
                ["config_list", "config_file=", "test", "logit=", "alive"] +\
-               BaseDefaults.options(self)
+               generic_client_server.GenericClientServer.options(self)
 
     # parse our own options
     def parse_options(self):
-        BaseDefaults.parse_options(self)
+        generic_client_server.GenericClientServer.parse_options(self)
         self.debug = self.dolist
 
     # our help stuff 
     def help_line(self):
-        return BaseDefaults.help_line(self)+" media_changer volume drive"
+        return generic_client_server.GenericClientServer.help_line(self)+" media_changer volume drive"
 
     """ send the request to the Media Loader server and then send answer
     to user.
