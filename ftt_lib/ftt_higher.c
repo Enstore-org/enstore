@@ -492,3 +492,15 @@ ftt_retry( ftt_descriptor d, int  n, int (*op)(ftt_descriptor, char *, int),
     }
     return res;
 }
+
+/*
+** allow us to forge on ahead.
+*/
+int 
+ftt_clear_unrecovered(ftt_descriptor d) {
+	ENTERING("ftt_clear_unrecovered");
+	CKNULL("ftt_descriptor", d);
+
+	d->unrecovered_error = 0;
+	return 0;
+}

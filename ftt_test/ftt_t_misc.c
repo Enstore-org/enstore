@@ -153,3 +153,61 @@ else							/* change */
 
 return 0;
 }
+
+/* ============================================================================
+
+ROUTINE: ftt_t_all_scsi
+ 	
+	call ftt_all_scsi
+==============================================================================*/
+int	ftt_t_all_scsi (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_all_scsi(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}
+
+/* ============================================================================
+
+ROUTINE: ftt_t_clear_unrecovered
+ 	
+	call ftt_clear_unrecovered
+==============================================================================*/
+int	ftt_t_clear_unrecovered (int argc, char **argv)
+{
+int 		status;			/* status */
+int		estatus = 0;		/* expected status */
+static char	*estatus_str;		/* expected status string */
+ftt_t_argt	argt[] = {
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+estatus_str = NULL;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);
+
+status = ftt_clear_unrecovered(ftt_t_fd);                     
+FTT_T_CHECK_CALL (status,estatus);
+
+return 0;
+}

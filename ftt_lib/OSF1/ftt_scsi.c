@@ -262,11 +262,11 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     if (! successful && ccb.cam_scsi_status == 0 ) {
 	ccb.cam_scsi_status = 255; /* bogus system error status number */
     }
-    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,ccb.cam_resid);
+    res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status,nRdWr);
 
     if (pcRdWr != 0 && nRdWr != 0){
-	DEBUG2(stderr,"Read/Write buffer:\n");
-	DEBUGDUMP2(pcRdWr,nRdWr);
+	DEBUG4(stderr,"Read/Write buffer:\n");
+	DEBUGDUMP4(pcRdWr,nRdWr);
     }
 
     return res;

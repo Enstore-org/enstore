@@ -134,6 +134,13 @@ device which was not ready");
 	    switch(acSensebuf[2]& 0xf) {
 	    default:
 	    case 0x0:
+		    if ( (acSensebuf[2]&0x20) && (acSensebuf[0] & 0x80) ) {
+			len -=  (acSensebuf[3] << 24) + 
+				(acSensebuf[4] << 16) + 
+				(acSensebuf[5] <<  8) +
+				acSensebuf[6];
+			/* XXX -- does this work in block mode? */
+		    }
 		    ftt_errno =  FTT_SUCCESS;
 		    break;
 	    case 0x1:
@@ -174,5 +181,22 @@ ftt_get_scsi_devname(ftt_descriptor d){
 	    return  d->devinfo[j].device_name;
 	}
     }
+    return 0;
+}
+
+/* 
+** force us to use scsi pass-through ops to do everything
+*/
+int
+ftt_all_scsi(ftt_descriptor d) {
+    ENTERING("ftt_all_scsi");
+    PCKNULL("ftt_descriptor", d);
+
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && geteuid() != 0) {
+	ftt_eprintf("ftt_all_scsi: Must be root on this platform to do scsi pass through!");
+	ftt_errno = FTT_EPERM;
+	return -1;
+    }
+    d->scsi_ops = 0xffffffff;
     return 0;
 }

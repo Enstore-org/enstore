@@ -25,6 +25,7 @@ extern int errno;
 #include <sys/systeminfo.h>
 #define gethostname(b, l) sysinfo(SI_HOSTNAME, b, (long)l)
 #define bzero(b,l) memset(b,0,l)
+#define ARQ
 
 #else /* SYSV */
 
@@ -57,7 +58,10 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         struct uscsi_cmd cmd;
         union scsi_cdb cdb;
 	int scsistat, res;
+#ifdef ARQ
 	static int havesense;
+	static char acSensebuf[19];
+#endif
 
 
         /*
@@ -69,8 +73,8 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
 #ifdef ARQ
         if ( 0x03 == pcCmd[0] && havesense ) {
             havesense = 0;
-            if (pcRdWr != jgp_acSensebuf) {
-                bcopy(jgp_acSensebuf, pcRdWr, nRdWr<19?nRdWr:19);
+            if (pcRdWr != acSensebuf) {
+                bcopy(acSensebuf, pcRdWr, nRdWr<19?nRdWr:19);
             }
             return ftt_scsi_check(fd,pcOp,0,0);
         }
@@ -83,7 +87,8 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         cmd.uscsi_flags=USCSI_SILENT|(iswrite?USCSI_WRITE:USCSI_READ);
 	cmd.uscsi_timeout=delay;
 #ifdef ARQ
-        cmd.uscsi_rqbuf = jgp_acSensebuf;
+        cmd.uscsi_flags|=USCSI_RQENABLE;
+        cmd.uscsi_rqbuf = acSensebuf;
         cmd.uscsi_rqlen = 19;
 #else
         cmd.uscsi_rqbuf = 0;
@@ -96,18 +101,16 @@ ftt_scsi_command(scsi_handle fd, char *pcOp,unsigned char *pcCmd, int nCmd, unsi
         res = ioctl(fd, USCSICMD, &cmd);
 	DEBUG3(stderr, "USCSICMD ioctl returned %d, errno %d\n", res, errno);
 	if (-1 == res && errno != 5 ) {
-                res = ftt_scsi_check(fd,pcOp, 255,
-				cmd.uscsi_buflen - cmd.uscsi_resid);
+                res = ftt_scsi_check(fd,pcOp, 255, nRdWr);
         } else {
-                res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status,
-				cmd.uscsi_buflen - cmd.uscsi_resid);
+                res = ftt_scsi_check(fd,pcOp,cmd.uscsi_status, nRdWr);
 	}
         if (pcRdWr != 0 && nRdWr != 0) {
-                DEBUG2(stderr,"got back:\n");
-                DEBUGDUMP2(pcRdWr,nRdWr);
+                DEBUG4(stderr,"got back:\n");
+                DEBUGDUMP4(pcRdWr,nRdWr);
         }
 #ifdef ARQ
-        havesense = (cmd.uscsi_rqstatus == 0);
+        havesense = (cmd.uscsi_status == 0);
 #endif
 	return res;
 }

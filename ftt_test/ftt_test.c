@@ -29,7 +29,8 @@ void ftt_t_commandloop (char *prompt, ftt_t_cmd_table_t *);
 
 /* function prototypes for test routines 
    ------------------------------------- */
-
+int ftt_t_all_scsi(int, char **);
+int ftt_t_clear_unrecovered(int, char **);
 int ftt_t_date(int, char **);		int ftt_t_echo(int, char **);
 int ftt_t_debug_level(int, char **);
 int ftt_t_get_error(int, char **); 	int ftt_t_eprintf(int, char **);
@@ -72,6 +73,7 @@ int opt;
    function pointers. 
    ------------------------------------------------------------------ */
 ftt_t_cmd_table_t ftt_t_my_cmds[] = {
+	"ftt_all_scsi",		ftt_t_all_scsi,
 	"ftt_date",		ftt_t_date,
 	"ftt_echo", 		ftt_t_echo,
 	"ftt_debug",		ftt_t_debug_level,

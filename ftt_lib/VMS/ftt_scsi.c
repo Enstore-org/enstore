@@ -227,13 +227,13 @@ ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr,
  */
         switch(status) {
           case SS$_DEVOFFLINE:                                  /* device is offline -- what?!?!?  */
-		res = ftt_scsi_check(n, pcOp, 255, gk_iosb.scsilen);
+		res = ftt_scsi_check(n, pcOp, 255, nRdWr);
                 break;
 
           default:
                 CHECK(status);                                  /* check VMS status returns */
                 if ( !(status&1) ) {
-		   res = ftt_scsi_check(n, pcOp, 255, gk_iosb.scsilen);
+		   res = ftt_scsi_check(n, pcOp, 255, nRdWr);
                 }
         }
 
@@ -241,7 +241,7 @@ ftt_scsi_command(scsi_handle n, char *pcOp, char *pcCmd, int nCmd, char *pcRdWr,
  *      Check the scsi status byte to see if we were
  *      successful in completion of the command:
  */
-        res = ftt_scsi_check(n, pcOp, gk_iosb.scsists, gk_iosb.scsilen);
+        res = ftt_scsi_check(n, pcOp, gk_iosb.scsists, nRdWr);
         
         return res;                                     /* return the translated scsi status byte!! */
 }

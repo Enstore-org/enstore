@@ -115,14 +115,14 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	DEBUGDUMP2(pcCmd,nCmd);
 	scsistat = ioctl((int)n, STIOCMD,&scBuf);
 	if (-1 == scsistat && errno != EIO) {
-		res =  ftt_scsi_check(n,pcOp, 255, scBuf.data_length);
+		res =  ftt_scsi_check(n,pcOp, 255, nRdWr);
 	} else {
 		scsistat = scBuf.scsi_bus_status;
-	        res = ftt_scsi_check(n,pcOp,scsistat,scBuf.data_length);
+	        res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 	}
 	if (pcRdWr != 0 && nRdWr != 0){
-		DEBUG2(stderr,"got back:\n");
-		DEBUGDUMP2(pcRdWr,nRdWr);
+		DEBUG4(stderr,"got back:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
 	}
 	return res;
 }

@@ -1,11 +1,11 @@
 
           Verbose versions of ftt:
 
-Instance: 		v1_5
+Instance: 		v1_6
 Database: 		/usr/products/src1/devel_database
 Flavor : 		SunOS+5
 Home_dir:		/usr/products/src2/ftt/SunOS+5.d
-Declared date:		12-4-96
+Declared date:		1-2-97
 Declarer:		mengel
 Master Source:		Source not available
 Distribution:		Unrestricted

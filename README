@@ -1,12 +1,44 @@
 This is the Fermi Tape Tools product (ftt).
 
-It provides several pieces:
-(1) a platform-insulating direct SCSI i/o library
-(2) a platform-and-drive insulating tape i/o library
+				Overview
+				--------
+
+It provides an insulating layer which allows device and platform in-Dependant
+tape input, output, and control, including interrogating supported drives for
+usage, error, and other statistics.  Informational calls which are available
+for some drives/platforms and not others are allowed to yield an 
+"I don't know" result; this allows portable applications to take advantage of 
+such information when it is available.  Operations that require superuser
+privileges, like changing device density or obtaining statistics, are
+handed off to a set-uid-root executable; installers can replace the set-uid
+executable with /bin/true if they are unwilling or unable to allow those 
+privilege to the software, with a corresponding decrease in functionality.
+
+			    Supported Systems
+			    --------- -------
+
+Currently, ftt fully supports Exabyte 82xx, Exabyte 85xx, and Quantum DLT
+tape drives, on AIX, IRIX, Solaris (SunOS), and Digital Unix (OSF1).  Other
+drives are not specifically supported and receive "generic" drive support,
+which includes input, output, and positioning, but very little in the way
+of statistics collection.
+
+			      Organization
+			      ------------
+
+The ftt package provides several pieces:
+(1) platform-insulating direct SCSI i/o routines
+(2) platform-and-drive insulating tape i/o routines
 (3) a command line/script interpreter interface to (2)
 (4) test scripts for (3) to test the software and to test
     tape drives.
 Along with a users guide and porting guide.
+
+The first two layers are in the ftt_lib directory, and build libftt.a
+The second two layers are in the ftt_test directory.
+
+				People
+				------
 
 Authors & Maintainers: 
 	Marc Mengel <mengel@fnal.gov>

@@ -108,13 +108,13 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
 	DEBUGDUMP2(pcCmd,nCmd);
 	scsistat = doscsireq(getfd(dp),dp);
 	if (-1 == scsistat)
-		res = ftt_scsi_check(n,pcOp,255,DATASENT(dp));
+		res = ftt_scsi_check(n,pcOp,255,nRdWr);
 	else
-		res = ftt_scsi_check(n,pcOp,scsistat,DATASENT(dp));
+		res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 
 	if (pcRdWr != 0 && nRdWr != 0){
-		DEBUG2(stderr,"Read/Write buffer:\n");
-		DEBUGDUMP2(pcRdWr,nRdWr);
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
 	}
 	return res;
 }

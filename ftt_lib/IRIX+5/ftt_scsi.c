@@ -131,11 +131,11 @@ DEBUG3(stderr,"cmdsent %d datasent %d sensesent %d status %d ret %d msg %d\n",
 	if (!writeflag)
 		nRdWr = DATASENT(dp);
 
-	res = ftt_scsi_check(n,pcOp,scsistat,DATASENT(dp));
+	res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 
 	if (pcRdWr != 0 && nRdWr != 0){
-		DEBUG2(stderr,"Read/Write buffer:\n");
-		DEBUGDUMP2(pcRdWr,nRdWr);
+		DEBUG4(stderr,"Read/Write buffer:\n");
+		DEBUGDUMP4(pcRdWr,nRdWr);
 	}
 	return res;
 }

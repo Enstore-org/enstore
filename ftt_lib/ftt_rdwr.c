@@ -46,7 +46,7 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
 		ftt_set_transfer_length(ftt_cdb_read,length/d->default_blocksize);
 	}
 	res = ftt_do_scsi_command(d,"read",ftt_cdb_read, 6, 
-				(unsigned char*)buf, length, 5, 0);
+				(unsigned char*)buf, length, 60, 0);
     } else {
 	DEBUG2(stderr,"System Call\n");
 	if (0 != (d->last_operation &(FTT_OP_WRITE|FTT_OP_WRITEFM)) &&
@@ -106,7 +106,7 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 		ftt_set_transfer_length(ftt_cdb_write,length/d->default_blocksize);
 	}
 	res = ftt_do_scsi_command(d,"write",ftt_cdb_write, 6, 
-				(unsigned char *)buf, length, 5,1);
+				(unsigned char *)buf, length, 60,1);
     } else {
 	DEBUG2(stderr,"System Call\n");
 	if (0 != (d->last_operation &(FTT_OP_READ)) &&
