@@ -5,6 +5,7 @@ import getopt
 import restore
 import interface
 import configuration_client
+import time
 
 class Interface(interface.Interface):
 
@@ -44,13 +45,22 @@ if not intf.all:
 
 if intf.status:
 	for i in dbs:
-		d = restore.DbTable(i, dbHome, jouHome, [])
-		print "Checking "+i+" ... "
-		err = d.cross_check()
-		if err:
-			print I+" is inconsistent with journal"
-		else:
-			print i+" is OK"
+		try:
+			d = restore.DbTable(i, dbHome, jouHome, [])
+			print "Scanning "+i+" ..."
+			t0 = time.time()
+			l = len(d)
+			t = time.time() - t0
+			print "%d records in %d seconds : %f records/second" % (
+				l, t, l/t)
+			print "Checking "+i+" against journal ..."
+			err = d.cross_check()
+			if err:
+				print I+" is inconsistent with journal"
+			else:
+				print i+" is OK"
+		except:
+			print i + " is corrupt"
 
 if intf.dump:
 	for i in dbs:
