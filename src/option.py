@@ -72,6 +72,8 @@ import getopt
 import fcntl
 import TERMIOS
 
+import hostaddr
+
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = '7500'
 
@@ -140,6 +142,7 @@ CP = "cp"                                    #pnfs
 CURSOR = "cursor"                            #pnfs
 DATABASE = "database"                        #pnfs
 DATABASEN = "databaseN"                      #pnfs
+DBHOME = "dbHome"                            #restore
 DECR_FILE_COUNT = "decr-file-count"          #volume
 DELETE = "delete"                            #volume
 DELETED = "deleted"                          #file
@@ -190,6 +193,7 @@ ID = "id"                                    #pnfs
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
 IO = "io"                                    #pnfs
+JOUHOME = "jouHome"                          #restore
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
@@ -210,6 +214,7 @@ MOUNT = "mount"                              #media, plotter
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
+NOCHECK = "nocheck"                          #dbs
 NO_MAIL = "no-mail"                          #up_down
 NOT_ALLOWED = "not-allowed"                  #volume
 NOTIFY = "notify"                            #notify
@@ -234,6 +239,7 @@ RECYCLE = "recycle"                          #volume
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
+RESTORE_ALL = "restore_all"                  #dbs
 RETRIES ="retries"
 RM = "rm"                                    #pnfs
 RM_ACTIVE_VOL = "rm-active-vol"              #library
@@ -290,7 +296,7 @@ valid_option_list = [
     BACKUP, BFID, BFIDS,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
-    DATABASE, DATABASEN,
+    DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
     DISMOUNT,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
@@ -304,15 +310,16 @@ valid_option_list = [
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
+    JOUHOME,
     KEEP, KEEP_DIR,
     LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
-    NAMEOF, NEW_LIBRARY, NO_ACCESS, NOT_ALLOWED, NO_MAIL, NOTIFY,
+    NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NOTIFY,
     NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
-    RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
+    RESTORE, RESTORE_ALL, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG, SHOW, SHOWID, SIZE,
     SHOW_IGNORED_STORAGE_GROUPS, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
@@ -326,7 +333,53 @@ valid_option_list = [
 
 ############################################################################
 
+used_default_config_host = 0
+used_default_config_port = 0
+
+def getenv(var, default=None):
+    val = os.environ.get(var)
+    if val is None:
+        used_default = 1
+        val = default
+    else:
+        used_default = 0
+    return val, used_default
+
+def default_host():
+    val, used_default = getenv('ENSTORE_CONFIG_HOST', default=DEFAULT_HOST)
+    if used_default:
+        global used_default_config_host
+        used_default_config_host = 1
+    return val
+
+def default_port():
+    val, used_default = getenv('ENSTORE_CONFIG_PORT', default=DEFAULT_PORT)
+    val = int(val)
+    if used_default:
+        global used_default_config_port
+        used_default_config_port = 1
+    return val
+
+def log_using_default(var, default):
+    Trace.log(e_errors.INFO,
+              "%s not set in environment or command line - reverting to %s"\
+              %(var, default))
+
+def check_for_config_defaults():
+    # check if we are using the default host and port.  if this is true
+    # then nothing was set in the environment or passed on the command
+    # line. warn the user.
+    if used_default_config_host:
+        log_using_default('CONFIG HOST', DEFAULT_HOST)
+    if used_default_config_port:
+        log_using_default('CONFIG PORT', DEFAULT_PORT)
+
+############################################################################
+
 class Interface:
+
+    def check_host(self, host):
+        self.config_host = hostaddr.name_to_address(host)
 
     def __init__(self, args=sys.argv, user_mode=0):
         if not user_mode: #Admin
@@ -345,25 +398,20 @@ class Interface:
         
         self.parse_options()
 
-        self.config_host = self.default_host()
-        self.config_port = self.default_port()
+        self.config_host = default_host()
+        self.config_port = default_port()
+
+	if self.config_host == DEFAULT_HOST:
+	    self.check_host(hostaddr.gethostinfo()[0])
+	else:            
+	    self.check_host(self.config_host)
+
 
         if getattr(self, "help") and self.help:
             ret = self.print_help()
         if getattr(self, "usage") and self.usage:
             ret = self.print_usage()
         
-############################################################################
-
-    def default_host(self):
-        val = os.environ.get('ENSTORE_CONFIG_HOST', DEFAULT_HOST)
-        return val
-
-    def default_port(self):
-        val = os.environ.get('ENSTORE_CONFIG_PORT', DEFAULT_PORT)
-        val = int(val)
-        return val
-
 ############################################################################
 
     options = {}
@@ -599,7 +647,7 @@ class Interface:
             
             for line in lines_of_text:
                 print line
-        sys.exit(0)
+        #sys.exit(0)
 
     def get_usage_line(self, opts=None): #The opts is legacy from interface.py.
 
