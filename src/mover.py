@@ -2546,6 +2546,15 @@ class Mover(dispatching_worker.DispatchingWorker,
     def assert_vol(self):
         ticket = self.current_work_ticket
         self.t0 = time.time()
+        try:
+            #Setup self.client_ip to contain the correct value for
+            # enstore mov --status <mover> requests.  Also, send out a
+            # notify message for entv.
+            address = self.control_socket.getpeername()
+            self.client_ip = address[0]
+            Trace.notify("connect %s %s" % (self.shortname, self.client_ip))
+        except:
+            pass
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=ticket['vc']['address'])
         vc = ticket['vc']
@@ -2603,6 +2612,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.dismount_volume(after_function=self.idle)
 
+        #Tell entv that we are done.
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         
         
     def finish_transfer_setup(self):
