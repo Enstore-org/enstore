@@ -46,7 +46,8 @@ PIC_GIF_FILES = \
 	./read.gif \
 	./test_nodes.gif \
 	./test-stand.gif \
-	./write.gif
+	./write.gif \
+	./test-network.gif
 PIC_PS_FILES = \
 	./desy.ps \
 	./enstore.ps \
@@ -57,7 +58,8 @@ PIC_PS_FILES = \
 	./read.ps \
 	./test_nodes.ps \
 	./test-stand.ps \
-	./write.ps 
+	./write.ps \
+	./test-network.ps
 
 #
 # TARGETS
