@@ -287,10 +287,13 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 int
 ftt_get_stat_ops(char *name) {
     int i;
+
     DEBUG4(stderr, "Entering: get_stat_ops\n");
     if (*name == 0) {
 	return 0; /* unknown device id */
     }
+    name = ftt_unalias(name);
+
     for (i = 0; ftt_stat_op_tab[i].name != 0; i++ ) {
 	if (ftt_matches(name, ftt_stat_op_tab[i].name)) {
             DEBUG2(stderr, "found stat_op == %x\n", i);
@@ -742,6 +745,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	       	case 0x31: 
 		case 0x32:
 	       	case 0x39:
+		case 0x3c:
 
 		    cdb_log_sense[2] = 0x40 | do_page;
 		    res = ftt_do_scsi_command(d,"Log Sense", cdb_log_sense, 10, 
@@ -826,6 +830,15 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    }
 			    }
                             break;
+			case 0x3c:
+			    if (0 == strncmp(d->prod_id,"EXB-89",6) ||
+			        0 == strncmp(d->prod_id,"Mammoth",7) ) {
+				/* mammoth specific info we want */
+			
+			       decrypt_ls(b,buf,8,FTT_POWER_HOURS,60);
+			       decrypt_ls(b,buf,9,FTT_MOTION_HOURS,60);
+                            }
+			    break;
 		        }
                     }
 		    break;

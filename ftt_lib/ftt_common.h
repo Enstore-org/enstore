@@ -71,6 +71,7 @@ extern void 		ftt_sub_stats(ftt_stat_buf,ftt_stat_buf,ftt_stat_buf);
 extern int		ftt_unload(ftt_descriptor);
 extern int 		ftt_update_stats(ftt_descriptor,ftt_stat_buf *);
 extern int		ftt_undump_stats(ftt_stat_buf, FILE *);
+extern char *		ftt_unalias(const char *);
 extern int 		ftt_verify_vol_label(ftt_descriptor,int,char*,int,int);
 extern int 		ftt_wait(ftt_descriptor);
 extern int		ftt_write(ftt_descriptor, char*, int);

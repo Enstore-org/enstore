@@ -61,6 +61,9 @@ typedef struct {
 	int		nharderrors;		/* unrecovered r/w errors */
 } ftt_descriptor_buf, *ftt_descriptor;
 
+typedef struct {
+     char *alias, *real;
+} ftt_id_alias;
 
 /* operation flags for last_operation, scsi_ops */
 #define FTT_OPN_READ		 1

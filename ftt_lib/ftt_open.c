@@ -66,6 +66,26 @@ ftt_open(const char *name, int rdonly) {
     return res;
 }
 
+/*
+** lookup a real name for drives with ailases
+*/
+
+char *
+ftt_unalias( const char *s1 ) {
+    extern ftt_id_alias ftt_alias_table[];
+    ftt_id_alias *p;
+
+    p = ftt_alias_table;
+    while( p->alias && !ftt_matches( p->alias, s1 )) {
+       p++;
+    }
+    if( p->real ) {
+       return p->real;
+    } else {
+       return s1;
+    }
+}
+
 /* prefix match comparator -- returns true if either string is
 **		a prefix of the other
 */
@@ -108,6 +128,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     }
 
     /* look up in table, note that table order counts! */
+    drivid = ftt_unalias(drivid);
     i = ftt_findslot(basename, os, drivid, &s1, &s2, &s3);
 
     DEBUG3(stderr, "Picked entry %d number %d\n", i, s2.n);
