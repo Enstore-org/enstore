@@ -147,8 +147,8 @@ class MonitorServerClient(generic_client.GenericClient):
             try:
                 r,w,ex = select.select(sock_read_list, sock_write_list,
                                        [data_sock], wait_time)
-            except KeyboardInterrupt:
-                raise sys.exc_info()
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 r, w, ex = (None, None, None)
 
@@ -189,7 +189,7 @@ class MonitorServerClient(generic_client.GenericClient):
                 except socket.error, detail:
                     data_sock.close()
                     #raise SERVER_CONNECTION_ERROR, detail[1]
-                    raise MonitorError(os.strerror(detail[1]))
+                    raise MonitorError(str(detail))
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
@@ -210,7 +210,7 @@ class MonitorServerClient(generic_client.GenericClient):
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
-            raise MonitorError(detail[1])
+            raise MonitorError(str(detail))
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -231,11 +231,11 @@ class MonitorServerClient(generic_client.GenericClient):
             else:
                 Trace.trace(10, "connect failed: " + detail[1])
                 #raise CLIENT_CONNECTION_ERROR, detail[1]
-                raise MonitorError(detail[1])
+                raise MonitorError(str(detail))
 
         Trace.trace(10, "Obtaining error status for data socket.")
         #Check if the socket is open for reading and/or writing.
-        r, w, ex = select.select([sock], [sock], [], self.timeout)
+        r, w, unused = select.select([sock], [sock], [], self.timeout)
 
         if r or w:
             #Get the socket error condition...
@@ -263,8 +263,8 @@ class MonitorServerClient(generic_client.GenericClient):
     def _open_cntl_socket(self): #, monitor_server_ip):
         Trace.trace(10, "Waiting for control socket to connect.")
         #wait for a responce
-        r,w,ex = select.select([self.listen_sock], [], [self.listen_sock],
-                               self.timeout)
+        r, unused, unused = select.select([self.listen_sock], [], [],
+                                          self.timeout)
 
         if not r:
             Trace.trace(10, "Waiting for control socket timed out.")
@@ -273,7 +273,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
         Trace.trace(10, "Accepting control socket connetion.")
         #Wait for the client to connect creating the control socket.
-        cntl_sock, address = self.listen_sock.accept()
+        cntl_sock, unused = self.listen_sock.accept()
 
         #For machines with multiple network interfaces, pick the best one.
         #interface=hostaddr.interface_name(monitor_server_ip)
@@ -302,8 +302,8 @@ class MonitorServerClient(generic_client.GenericClient):
                  'block_count': ticket['block_count']}
 
         #A little easier to read now.
-        mon_serv_ip = ticket['server_addr'][0]
-        localaddr = ticket['client_addr']
+        #mon_serv_ip = ticket['server_addr'][0]
+        #localaddr = ticket['client_addr']
 
         #Simulate the opening and initial handshake of the control socket.
         try:
@@ -387,11 +387,16 @@ class MonitorServerClient(generic_client.GenericClient):
         #    reply['status'] = (exc, msg)
         #    reply['elapsed'] = self.timeout*10
         #    reply['block_count'] = 0
-        except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT],
-                MonitorError), detail:
-            exc, msg = sys.exc_info()[:2]
+        except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT]):
+            #exc, msg = sys.exc_info()[:2]
             reply = {}
-            reply['status'] = (exc, msg)  #(SERVER_CONNECTION_ERROR, detail)
+            reply['status'] = (e_errors.TIMEDOUT, None)  #(SERVER_CONNECTION_ERROR, detail)
+            reply['elapsed'] = self.timeout*10
+            reply['block_count'] = 0
+        except MonitorError, detail:
+            #exc, msg = sys.exc_info()[:2]
+            reply = {}
+            reply['status'] = (str(detail), None)  #(SERVER_CONNECTION_ERROR, detail)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
 
@@ -441,14 +446,14 @@ class MonitorServerClient(generic_client.GenericClient):
         #Send the information to the web server node.
         self._send_measurement(ticket)
             
-    def flush_measurements(self):
-        reply = self._send_measurement (
-            {
-            'work'   : 'flush_measurements',
-            'dir'    : self.html_dir,
-            'refresh': self.refresh
-            }
-            )
+    #def flush_measurements(self):
+    #    reply = self._send_measurement (
+    #        {
+    #        'work'   : 'flush_measurements',
+    #        'dir'    : self.html_dir,
+    #        'refresh': self.refresh
+    #        }
+    #        )
 
     #Either prints out message to screen, stores info. in a dictionary or both.
     #hostname: The current node that had its rate checked.
@@ -626,12 +631,15 @@ def get_host_list(csc, config_host, config_port, hostip=None):
     vetos = Vetos(config.get('veto_nodes', {}))
     host_list = []
 
-    #If they specified one specific machines, return a list of one item.
+    #If they specified one specific machine, return a list of one item.
     if hostip:
+        try:
+            host_list = (socket.gethostbyaddr(hostip)[0],
+                         socket.gethostbyname(hostip))
+        except socket.error:
+            print "Skipping: %s" % hostip
+            return [], vetos
         
-        host_list = (socket.gethostbyaddr(hostip)[0],
-                     socket.gethostbyname(hostip))
-
         return [host_list], vetos
 
     #Compile the list of servers to test.
@@ -743,7 +751,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
 
         #Cleanup stuff..
         if msc:
-            msc.flush_measurements()
+            #msc.flush_measurements()
             msc.listen_sock.close()
             
     if summary:
@@ -774,8 +782,15 @@ def do_work(intf):
         msc.handle_generic_commands(intf.name, intf)
     
     else:
-        do_real_work(intf.summary, intf.config_host, intf.config_port,
-                     intf.html_gen_host, hostip=intf.hostip)
+        try:
+            do_real_work(intf.summary, intf.config_host, intf.config_port,
+                         intf.html_gen_host, hostip=intf.hostip)
+        except KeyboardInterrupt:
+            print "Caught user interrupt.  Exiting."
+            sys.exit(1)
+        except SystemExit:
+            print "Caught system interrupt.  Exiting."
+            sys.exit(1)
 
 if __name__ == "__main__":
     
