@@ -58,11 +58,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    stat = lmc.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.output_alive("library manager : ", stat, file)
-	except errno.errorcode[errno.ETIMEDOUT]:	
+	    stat = lmc.getwork(list)
+	    file.write(self.format_lmc_queues(stat))
+	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.output_etimedout("library manager : ", file)
-	stat = lmc.getwork(list)
-	file.write("      "+pprint.pformat(stat)+"\n")
         Trace.trace(12,"}update_library_manager ")
+
+    # format the library manager work queues for output
+    def format_lmc_queues(self, ticket):
+	return "      "+pprint.pformat(ticket)+"\n"
 
     # get the information from the movers
     def update_mover(self, file, key):
@@ -383,5 +387,3 @@ if __name__ == "__main__":
             Trace.trace(0,format)
             continue
     Trace.trace(1,"Inquisitor finished (impossible)")
-
-
