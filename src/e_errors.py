@@ -61,7 +61,7 @@ WRITE_UNLOAD    = 'WRITE_UNLOAD'
 WRITE_NOBLANKS  = 'WRITE_NOBLANKS'
 
 if 0: print WRITE_NOTAPE,WRITE_TAPEBUSY,WRITE_BADMOUNT,WRITE_BADSPACE,\
-            WRITE_ERROR,WRITE_EOT,WRITE_UNLOAD,WRITE_UNMOUNT,WRITE_NOBLANKS # lint fix
+            WRITE_ERROR,WRITE_EOT,WRITE_UNLOAD,UNMOUNT,WRITE_NOBLANKS # lint fix
 
 # Read Errors:
 READ_NOTAPE     = 'READ_NOTAPE'
@@ -78,7 +78,7 @@ READ_UNLOAD     = 'READ_UNLOAD'
 UNMOUNT         = 'UNMOUNT'
 
 if 0: print READ_NOTAPE,READ_TAPEBUSY,READ_BADMOUNT,READ_BADLOCATE,\
-            READ_ERROR,READ_COMPCRC,READ_EOT,READ_EOD,READ_UNLOAD,READ_UNMOUNT # lint fix
+            READ_ERROR,READ_COMPCRC,READ_EOT,READ_EOD,READ_UNLOAD,UNMOUNT # lint fix
 
 #---------------------------------------
 
@@ -103,7 +103,7 @@ def is_retriable(error):
        error == READ_BADMOUNT or \
        error == READ_BADLOCATE or \
        error == READ_UNLOAD or \
-       error == READ_UNMOUNT:
+       error == UNMOUNT:
 	return 0
     return 1
     
