@@ -518,7 +518,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
         format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
                      "%s MB/S  requestor:%s     cum= %f"
-        logticket = logc.send(log_client.INFO, format, 2, p.pnfsFilename,
+        logticket = logc.send(log_client.INFO, 2, format, p.pnfsFilename,
                               uinfo["fullname"], fsize,
                               done_ticket["external_label"], tinfo["total"],
                               done_ticket["MB_per_S"], uinfo["uname"],
