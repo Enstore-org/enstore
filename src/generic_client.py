@@ -94,6 +94,7 @@ class GenericClient:
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
         except KeyError, detail:
             print "Unknown server", server
+            print "KeyError : ", detail
             sys.exit(-1)
         return x
 
