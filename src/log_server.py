@@ -154,7 +154,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         self.send_reply(ticket)
 
     def is_encp_xfer_msg(self, msg):
-	if string.find(msg, Trace.MSG_ENCP_XFER) == -1:
+	if (string.find(msg, Trace.MSG_ENCP_XFER) == -1) and \
+	   (string.find(msg, " E ENCP") == -1):
 	    # sub-string not found
 	    rtn = 0
 	else:
