@@ -13,7 +13,7 @@ fi
 
 now=`date +"%Y-%m-%d:%H:%M:%S"`
 gen=`head -n1 $VOLUME_QUOTAS | sed -e 's/.*generated: [A-Za-z][A-Za-z][A-Za-z] //'`
-generated=`date -d "$gen" +"%d-%b-%y"`
+generated=`date -d "$gen" +"%d-%b-%y:%H:%M"`
 last_quarter=`date --date "3 months ago"  +"%b-%y"`
 next_month=`date --date "34 days"  +"%b-%y"`
 
@@ -47,7 +47,7 @@ cat $VOLUME_QUOTAS | sed -e 's/none: emergency/emergency/' | \
     echo set title \"$lib $sg     Authorized=$auth Quota=$quota Allocated=$allocated Written=$written Bytes=$used\" >>$plt
     echo set ylabel \"Blank Tapes Left\" >>$plt
     echo set xdata time >>$plt
-    echo set timefmt \"%d-%b-%y\" >>$plt
+    echo set timefmt \"%d-%b-%y:%H:%M\" >>$plt
     echo set format x \"%m-%d-%y\" >>$plt
     echo set grid >>$plt
     echo \#set key left >>$plt
@@ -56,7 +56,7 @@ cat $VOLUME_QUOTAS | sed -e 's/none: emergency/emergency/' | \
     if [ -n "${alarm:-}" ]; then 
        echo set label \"$alarm\" at graph .2,.5 font \"Helvetica,50\" >>$plt
     fi
-    echo set xrange[\"01-$last_quarter\":\"01-$next_month\"] >>$plt
+    echo set xrange[\"01-$last_quarter:00:00\":\"01-$next_month:00:00\"] >>$plt
     echo set yrange [0:] >>$plt
     echo \#plot \"$data\" using 1:2 t\"Blanks Left\" pt 5 ps 3, \"$data\" using 1:3 t\"Vols Written\" pt 5 ps 3 >>$plt
     echo \#plot \"$data\" using 1:2 t\"Blanks Left\" with impulses lw 10 >>$plt
