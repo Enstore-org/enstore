@@ -457,8 +457,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if v["library"] != library:
                 Trace.trace(17,label+" rejected library "+v["library"]+' '+library)
                 continue
+
+            # checking the matched file family and blank volume at the
+            # same time. If vol is assigned, meaning there is at least
+            # one, normal or blank, that is good enough, then don't
+            # bother checking the blank volume.
+
             if v["file_family"] != file_family+"."+wrapper_type and \
-               (v["file_family"] != "none" or len(vol)):
+               (len(vol) or v["file_family"] != "none"):
                 Trace.trace(17,label+" rejected file_family "+v["file_family"]+' '+file_family+"."+wrapper_type)
                 continue
             #if v["wrapper"] != wrapper_type:
@@ -480,6 +486,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
                 Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
                 continue
+
+            # equal treatment for blank volume
+
             if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                 # if it __ever__ happens that we can't write a file on a
                 # volume, then mark volume as full.  This prevents us from
@@ -511,13 +520,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 
             # supposed to return first volume found?
+            # do not return blank volume at this point yet
             if first_found and v['file_family'] != "none":
                 v["status"] = (e_errors.OK, None)
                 Trace.trace(16,'next_write_vol label = '+ v['external_label'])
                 self.reply_to_caller(v)
                 self.dict.cursor("close")
                 return
-            # if not, is this an "earlier" volume that one we already found?
+            # if not, is there an "earlier" volume that we have already found?
+            # There are one three possibilities here:
+            # [1] vol is empty, set vol to v
+            # [2] vol is set to a blank volume, set vol to v
+            #     Note: only the first blank volume can ever reach this
+            #     point! see the test early in this loop ...
+            # [3] vol is set to a normal volume, continue to test its
+            #     time stamp
             if len(vol) == 0 or vol['file_family'] == "none":
                 Trace.trace(17,label+" ok")
                 vol = v  ## was deepcopy
@@ -530,6 +547,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # return what we found
         if len(vol) != 0:
+            # need to make up file family for the blank volume
             if vol["file_family"] == "none":
                 label = vol['external_label']
                 if file_family == "ephemeral":
