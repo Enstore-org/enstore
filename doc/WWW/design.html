@@ -61,16 +61,16 @@ Enstore has four major kinds of software components:
 <ul>
 <li><em>namespace</em>, implemented by the <em>pnfs</em> package from
         <em>DESY</em>
-<li><em>encp</em>, a program used to copy files to and from tape libraries
+<li><em>encp</em>, a program used to copy files to and from media libraries
 <li><em>servers</em>
         <ul>
-        <li>Configuration server
-        <li>Volume clerk
-        <li>File clerk
-        <li>Multiple, distributed library managers
-        <li>Multiple, distributed movers
-        <li>Media changer
-        <li>Log server
+        <li>Configuration Server
+        <li>Volume Clerk
+        <li>File Clerk
+        <li>Multiple, distributed Library Managers
+        <li>Multiple, distributed Movers
+        <li>Media Changer
+        <li>Log Server
         </ul>
 <li><em>administration tools</em>
 </ul>
@@ -80,7 +80,7 @@ Hardware components are connected via IP.
 Great care has been taken to ensure that the system will function well
 under extreme load conditions.
 By design, there is no preset limit on the number of concurrent user
-computers nor on the number of physical tape libraries or tape drives.
+computers nor on the number of physical media libraries or drives.
 The system is only limited by the availability of physical resources.
 We control all of the source code for the system except for that of
 <em>pnfs</em> (which is a well supported product from DESY).
@@ -89,7 +89,7 @@ We control all of the source code for the system except for that of
 <p>
 <a href="enstoreSimple.ps">(also available in Postscript)</a>
 <p>
-Enstore does not yet support a disk cache or buffer in front of tape.
+Enstore does not yet support a disk cache or buffer in front of the media.
 However, one is conceivable and planned for a future release.
 <p>
 Like <em>tcp</em>, the system is architected with distributed and
@@ -141,18 +141,18 @@ Enstore uses pnfs for three different kinds of access and information:
     These files are created in a specific part of the name space and are
      associated with a directory and not any specific file.
     Examples of configuration information include file family name, file
-     family width, library manager and so forth.
+     family width, Library Manager and so forth.
      <p>
 
 <li>User File information
     <br>
     The rest of the system identifies a file by a 64-bit numeric
     identifier, dubbed a "bit file ID".
-    After a file is written to tape, the file clerk generates a bfid and
+    After a file is written, the File Clerk generates a bfid and
      <em>encp</em>     stores this information
      in one of the pnfs file layers.
     <em>Encp</em> then reads this bit file ID and gives it to the servers
-    when fetching data from tape.
+    when fetching data.
      Other encp file transfer details, such as time of last access or location of
      where the file was copied to or transfer rates, are stored in a different
      layer of the same pnfs file.
@@ -209,7 +209,7 @@ since at most 15 will be active in the system at any time.
 1.3 Enstore servers
 </h2>
 
-Enstore servers are software entities which handle tape, and in a
+Enstore servers are software entities which handle media, and in a
 future release, disk caches.
 The high level  concepts are as follows:
 <dl>
@@ -235,13 +235,13 @@ virtual libraries.  In common usage, the term "library" in Enstore
 refers to a virtual library. Writes are directed to a specific (virtual)
 library, thus selecting the media.
 <p>
-<em>Drives</em> -- Drives are bound to special processes called mover
+<em>Drives</em> -- Drives are bound to special processes called Mover
 clients.
 The drives can be dynamically assigned allowing the number of drives
 to be less than the number of virtual libraries.
 <p>
 <em>Volumes</em> -- Are uniquely identified by an external label,
-which is known to the media changer.
+which is known to the Media Changer.
 <p>
 <dt><em>Quota Family</em>
 <dd>A quota family is a set of pairs of media names and maximum number of volumes.
@@ -263,20 +263,20 @@ family will be placed on the volume.
 By design, there is no pre-set limit on the number of file families.
 Clever use of file families will allow volumes to be faulted out to
 "shelf", and also to decrease access times for subsequent reads.  When a file
-family has filled all of its "width" tapes, new tapes, limited by a quota,
+family has filled all of its "width" media, new media, limited by a quota,
 are drawn out of pool of blanks.
 </dl>
 Media ejected to shelf are put into a shelf virtual library and
-are controlled by a shelf library manager.
+are controlled by a shelf Library Manager.
 Users are informed that this data is currently unavailable, and if
 they really want the data, arrangements should be made to have the
-tapes placed in a library which is accessible,
+media placed in a library which is accessible,
 or get it manually later.
 <p>
 <h3><a name="volume_clerk">
 1.3.1 Volume Clerk
 </h3>
-The volume clerk has a single table database.
+The Volume Clerk has a single table database.
 There is one record for each volume known to the system.
 The record is looked up by a key.
 The key is the volume's external label.
@@ -310,15 +310,15 @@ library currently holds the volume
 <td valign=top>first_access
 <td valign=top>int (-1)
 <td valign=top>Unix time when user issues the first write command to copy data to the volume.
-Set by the volume clerk.
+Set by the Volume Clerk.
 <tr>
 <td valign=top>last_access
 <td valign=top>int (-1)
-<td valign=top>Unix time when  user last accessed the volume. Set by the volume clerk.
+<td valign=top>Unix time when  user last accessed the volume. Set by the Volume Clerk.
 <tr>
 <td valign=top>declared
 <td valign=top>int
-<td valign=top>Unix time when the volume is declared available to the system. Set by the volume clerk.
+<td valign=top>Unix time when the volume is declared available to the system. Set by the Volume Clerk.
 <tr>
 <td valign=top>capacity_bytes
 <td valign=top>64-bit int
@@ -327,18 +327,18 @@ bytes that would fit on the volume.
 <tr>
 <td valign=top>blocksize
 <td valign=top>int
-<td valign=top>Set by the volume clerk; derived from the the media type.
+<td valign=top>Set by the Volume Clerk; derived from the the media type.
 <tr>
 <td valign=top>remaining_bytes
 <td valign=top>64-bit int
 <td valign=top>Specified by the user on volume creation; estimate of the number
-of bytes that would fit on the volume; updated by the volume clerk every time
+of bytes that would fit on the volume; updated by the Volume Clerk every time
 data are written to the media.
 <tr>
 <td valign=top>eod_cookie
 <td valign=top>string ("none")
 <td valign=top>Tells the driver how to space to the end of the volume; it is
-driver specific; updated by the volume clerk when data are written on the
+driver specific; updated by the Volume Clerk when data are written on the
 media.
 <tr>
 <td valign=top>wrapper
@@ -348,38 +348,38 @@ the volume.
 <tr>
 <td valign=top>sum_rd_err
 <td valign=top>int (0)
-<td valign=top>Read error count; volume clerk increments this field when the mover
+<td valign=top>Read error count; Volume Clerk increments this field when the Mover
 receives an error while reading from the volume.
 <tr>
 <td valign=top>sum_rd_access
 <td valign=top>int (0)
-<td valign=top>Read access count; volume clerk increments this field
+<td valign=top>Read access count; Volume Clerk increments this field
 every time a file is read.
 <tr>
 <td valign=top>sum_wr_err
 <td valign=top>int (0)
-<td valign=top>Write error count; volume clerk increments this field when the
-mover receives an error while writing to the volume.
+<td valign=top>Write error count; Volume Clerk increments this field when the
+Mover receives an error while writing to the volume.
 <tr>
 <td valign=top>sum_wr_access
 <td valign=top>int (0)
-<td valign=top>Write access count; volume clerk increments this field every
+<td valign=top>Write access count; Volume Clerk increments this field every
 time a file is written.
 <tr>
 <td valign=top>user_inhibit
 <td valign=top>string (d:"none" or "readonly", "all")
 <td valign=top>Specified by user at volume creation; access level for this
-volume, updated by volume clerk.
+volume, updated by Volume Clerk.
 <tr>
 <td valign=top>system_inhibit
 <td valign=top>string (d:"none" or "writing", "readonly", "full")
 <td valign=top>Administrator generated limitation on the kind of access permitted to
-this volume; update by volume clerk when data are written on the volume, an
+this volume; update by Volume Clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
 remaining number of bytes on the volume.
 </table>
 <p>
-The volume clerk does the following operations:
+The Volume Clerk does the following operations:
 <ul>
 <li>show the name of all the volumes
 <li>show volume information
@@ -396,7 +396,7 @@ The volume clerk does the following operations:
 <h3><a name="file_clerk">
 1.3.2 File Clerk
 </h3>
-The file clerk tracks files in the system. There is one record for each file
+The File Clerk tracks files in the system. There is one record for each file
 in the system.
 The records are keyed.
 The key is the string version of the bit file ID
@@ -430,12 +430,12 @@ traversal of the volume.
 <td valign=top>string ("(0,0)")
 <td valign=top>Number of bytes used for a sanity crc and the sanity crc
 itself.  The sanity crc is just the normal crc but only for the 1st N bytes in
-the file. This allows the mover to check early in the transfer process that it
+the file. This allows the Mover to check early in the transfer process that it
 probably has the right user file selected; it at least will know if it has the
 wrong file.
 </table>
 <p>
-The file clerk supports the following requests:
+The File Clerk supports the following requests:
 <ul>
 <li>show bfid of all the files
 <li>show file information
@@ -446,8 +446,8 @@ The file clerk supports the following requests:
 <h3><a name="library_manager">
 1.3.3 Library Manager
 </h3>
-The library manager is a server which queues up and dispatches work for
-a virtual library. There is one library manager for each virtual library.
+The Library Manager is a server which queues up and dispatches work for
+a virtual library. There is one Library Manager for each virtual library.
 It has three types of clients
 <ol>
 <li><em>Users</em> -- seeking to have their files read or written files.
@@ -462,16 +462,16 @@ It has three types of clients
 <dd>Based on the user's mss destination filename, a <em>pnfs</em> tag 
 associated with the destination directory, identifies
     the library for a write request allowing the <em>encp</em> program to compose
-    a write request and contact the appropriate library manager
+    a write request and contact the appropriate Library Manager
     directly.
-    The library manager queues the work, and acknowledges the request.
+    The Library Manager queues the work, and acknowledges the request.
 
 <dt>Read from the system
 <dd>Given the fact that users may mv the pnfs files, on reads from the system,
      <em>pnfs</em> can only provide the bit
     file ID associated with the file. In this case, <em>encp</em> contacts the
-     bit file clerk, and that
-    software ultimately contacts the appropriate library manager to
+     bit File Clerk, and that
+    software ultimately contacts the appropriate Library Manager to
     queue up the work.
 </dl>
 Work can be prioritized.
@@ -485,17 +485,17 @@ given that it has been mounted, regardless of priority.
 1.3.3.2 Movers' Requests
 </h3>
 Movers seek to transport data between media and users over a TCP socket.
-Movers contact library managers seeking work. If the library manager
-has work, the mover is requested to mount a volume, and report
-back. When reporting back, the mover may be told to contact a waiting
+Movers contact Library Managers seeking work. If the Library Manager
+has work, the Mover is requested to mount a volume, and report
+back. When reporting back, the Mover may be told to contact a waiting
 encp program and read or write a file.
-The mover may be told to unmount a volume as there is no more work for
+The Mover may be told to unmount a volume as there is no more work for
 the volume.
-A mover may have dismounted a volume unilaterally because it ran into
+A Mover may have dismounted a volume unilaterally because it ran into
 trouble.  This is summarized in the tables below
 <table>
 <td><b>Mover sends</b>
-<td><b>Library manager may respond</b>
+<td><b>Library Manager may respond</b>
 <tr>
 <td valign=top>idle_mover
 <td>if work needs to be done - bind a volume; <br>or if no work - just acknowledge
@@ -510,11 +510,11 @@ trouble.  This is summarized in the tables below
 <table>
 <td valign=top><b>Library has just responded</b>
 <td valign=top><b>Mover sends</b>
-<td valign=top><b>Library manager presumes</b>
+<td valign=top><b>Library Manager presumes</b>
 <tr>
 <td valign=top>bind or...<br>read or...<br>write
 <td valign=top>idle_mover
-<td valign=top>mover crashed and was re-started
+<td valign=top>Mover crashed and was re-started
 <tr>
 <td valign=top>
 <td valign=top>have_bound_volume
@@ -524,17 +524,17 @@ trouble.  This is summarized in the tables below
 <tr>
 <td valign=top>
 <td valign=top>unilateral_unbind
-<td valign=top>take any work reserved for that mover and put it back
+<td valign=top>take any work reserved for that Mover and put it back
    in the unassigned work queue
 <tr>
-<td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle mover
+<td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle Mover
 <td valign=top>idle_mover
-<td valign=top>mover is available for work, If more work available, bind a
+<td valign=top>Mover is available for work, If more work available, bind a
     volume
 <tr>
 <td valign=top>
 <td valign=top>have_bound_volume
-<td valign=top>it has restarted, the mover had a volume from a previous
+<td valign=top>it has restarted, the Mover had a volume from a previous
     instance of me, tell it to unbind
 <tr>
 <td valign=top>
@@ -542,15 +542,15 @@ trouble.  This is summarized in the tables below
 <td valign=top>Just acknowledge
 </table>
 
-Note that if a mover should crash holding a volume, the worst that can
-happen is that the library manager will be unable to schedule work for
+Note that if a Mover should crash holding a volume, the worst that can
+happen is that the Library Manager will be unable to schedule work for
 that volume. If the physical library has more than one drive, the system
 should be able to continue servicing requests.
 <p>
 <h3><a name="pub_request">
 1.3.3.3 Publisher Requests
 </h3>
-It is possible to query the library manager and get information about its
+It is possible to query the Library Manager and get information about its
 internal queues thereby knowing where work is.  The prototype has a
 rudimentary implementation of this feature. More work needs to be done before
 this can be considered functional.
@@ -558,46 +558,46 @@ this can be considered functional.
 <h3><a name="mover">
 1.3.4 Mover
 </h3>
-A mover task is bound to a single drive, and seeks to use that drive to service
-read and write requests.  It communicates with the library manager in a
+A Mover task is bound to a single drive, and seeks to use that drive to service
+read and write requests.  It communicates with the Library Manager in a
 defined protocol, as just described.
 <p>
-The mover is responsible for efficient data movement and as such is an
+The Mover is responsible for efficient data movement and as such is an
 integral part of the system.  The architecture allows for performance critical
 code to be written in "C" thus allowing efficient access to fundamental OS
 features such as forking with minimal to no language overhead.
 <p>
-Although a  mover is bound to a drive, and a drive may serve more than one
-virtual library, i.e., the mover has a dynamic list of of library managers
+Although a Mover is bound to a drive, and a drive may serve more than one
+virtual library, i.e., the Mover has a dynamic list of of Library Managers
 that it is supposed to service.  This has two benefits.
-First, since a library manager handles only one type of media, a drive which
+First, since a Library Manager handles only one type of media, a drive which
 handles multiple types of media (i.e. different capacity media) can be shared
 without a static partitioning of the system.
-Second, if we are partitioning resources in a library, we can assign a library
-manager to each type of use.  For example, suppose Group A and Group B want to share
+Second, if we are partitioning resources in a library, we can assign a Library
+Manager to each type of use.  For example, suppose Group A and Group B want to share
 the capacity of a library.
 Suppose half the tapes belong to Group A  and the half to Group B. We want to guarantee that
 Group A have one third of the tape drives, Group B have one third, and the last third
-be shared.  The movers can be configured to do this easily.  And with some slight
+be shared.  The Movers can be configured to do this easily.  And with some slight
 changes, this is how we can guarantee resources to data acquisition.
 <p>
-The mover hunts library managers that have work when it is idle by
-consulting a configuration server.
-A mover's configuration gives a list of library managers to hunt among
+The Mover hunts Library Managers that have work when it is idle by
+consulting a Configuration Server.
+A Mover's configuration gives a list of Library Managers to hunt among
 for work.
-If there is no work at any library manager,
-the mover sleeps for a while and begins the hunt again.
-While sleeping the mover is sensitive to datagrams at a
-specific UDP address. A library manager uses this mechanism to try to
-hasten a mover when the library manager has work queued up.
+If there is no work at any Library Manager,
+the Mover sleeps for a while and begins the hunt again.
+While sleeping the Mover is sensitive to datagrams at a
+specific UDP address. A Library Manager uses this mechanism to try to
+hasten a Mover when the Library Manager has work queued up.
 <p>
-When a mover has found a library manager that has work, it attempts
-to mount the salient volume, by contacting the physical library's media
-changer.  If there is some error, it issues a unilateral unbind to the
-library manager. If all is well, it issues a have_bound_volume to the
-library manager.
+When a Mover has found a Library Manager that has work, it attempts
+to mount the salient volume, by contacting the physical library's Media
+Changer.  If there is some error, it issues a unilateral unbind to the
+Library Manager. If all is well, it issues a have_bound_volume to the
+Library Manager.
 <p>
-Reads -- Once a volume is bound the mover may read a tape and send data
+Reads -- Once a volume is bound the Mover may read a volume and send data
 to a waiting encp program. Two tcp ports are involved.
         The steps are:
 <ol>
@@ -605,18 +605,18 @@ to a waiting encp program. Two tcp ports are involved.
 <li>Open the tcp port (control port) specified in the request,
     send the encp program the data transfer port address,
     hold the control port open. If it is dropped, abort.
-<li>Read the data from tape, (stripping any wrapper like tar headers)
+<li>Read the data from a volume, (stripping any wrapper like tar headers)
     verify the sanity crc. send the data to the user.
 <li>Close the data port.
 <li>Tell the user done and all is well.
 </ol>
 
-If any errors occur while reading the tape, an attempt is made to
+If any errors occur while reading the volume, an attempt is made to
 characterize them as either media or drive.  This is discussed more completely
 in the section on Error control.
 <p>
-Writes -- Once a volume is bound the mover may receive data and write it to
-tape. Two tcp ports are involved.
+Writes -- Once a volume is bound the Mover may receive data and write it to
+the volume. Two tcp ports are involved.
         The steps are:
 <ol>
 <li>Arbitrate for a TCP port for the data transfer.
@@ -627,16 +627,17 @@ tape. Two tcp ports are involved.
     not be selected for subsequent writes, should we crash.
 <li>Using the eod_space_cookie, space to end of volume. Try
     to verify that we are actually at the end of volume.
-<li>Receive data from encp, wrapper it, and write it to tape
+<li>Receive data from encp, wrapper it, and write it to the volume
 <li>Close the data port.
-<li>Compute new eod_cookie and tell volume clerk that the
+<li>Compute new eod_cookie and tell Volume Clerk that the
     volume is writable. Update remaining bytes as well.
 <li>Compute the file location cookie, and tell the bit
-    file clerk about the new file. Get a bit file ID in return.
+    File Clerk about the new file. Get a bit file ID in return.
 <li>Give the bit file ID to encp. We are done.
 </ol>
 
-If any errors occur while writing the tape, an attempt is made to characterize
+If any errors occur while writing the volume, an attempt is made to
+characterize
 them as either media or drive.  This is discussed more completely in the
 section on Error control.  If the user drops the control tcp
 channel unilaterally, assume he has aborted.
@@ -644,17 +645,17 @@ channel unilaterally, assume he has aborted.
 <h3><a name="config_server">
 1.3.5 Configuration Server
 </h3>
-The Configuration server maintains the crucial information about
+The Configuration Server maintains the crucial information about
 system configuration, such as the location and parameters of each server.
 The first thing that each server does when it starts up is to
-ask the configuration server for information (e.g. the location
+ask the Configuration Server for information (e.g. the location
 of any other server with which to communicate).  New configurations can be
-loaded into the Configuration server without disturbing the current running
+loaded into the Configuration Server without disturbing the current running
 system.
 <h3><a name="log_server">
 1.3.6 Log Server
 </h3>
-The Log server receives messages from other processes and logs them into
+The Log Server receives messages from other processes and logs them into
 formatted log files.
 Basically, these messages are transactional records.
 Log files are labeled by dates.
@@ -666,8 +667,8 @@ Additionally it is expected that a trace module will be developed.
 1.3.7 Media Changer
 </h3>
 The Media Changer mounts and dismounts the media into and from the drive
-according to a request from the mover.  One media changer can serve multiple
-drives and libraries.  When the drives are in the robot, the media changer
+according to a request from the Mover.  One Media Changer can serve multiple
+drives and libraries.  When the drives are in the robot, the Media Changer
 is the interface to the robotic software.
 <h2><a name="db">
 2 Databases in Enstore
@@ -872,7 +873,7 @@ Enstore system
 than a specified date
 <li> Delete specified files in the pnfs trashbin.
 <li>Find and recycle volumes where all files have been deleted.
-<li>Check for files known to the file clerk but unknown to pnfs
+<li>Check for files known to the File Clerk but unknown to pnfs
 </ul>
 
 <h2><a name="protocol">
@@ -902,10 +903,10 @@ before a response is received.
 The communications performed during a read operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
-NOTE: The communications between the Mover and the Configuration server happens
+NOTE: The communications between the Mover and the Configuration Server happens
 approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
-communications flow before the Mover contacts the Library manager.
+communications flow before the Mover contacts the Library Manager.
 <p>
 <img src=read.gif>
 <p>
@@ -918,40 +919,40 @@ for the named file.
 <li>
 PNFS returns the bfid to <em>encp</em>.
 <li>
-<em>Encp</em> asks the Configuration server with which File clerk should it be
+<em>Encp</em> asks the Configuration Server with which File Clerk should it be
 communicating.
 <li>
-The Configuration server returns the location of the appropriate File clerk.
+The Configuration Server returns the location of the appropriate File Clerk.
 <li>
-<em>encp</em> sends the read request to the File clerk.
+<em>encp</em> sends the read request to the File Clerk.
 <li>
-The file clerk asks the Volume clerk with which Library manger should it be
+The file Clerk asks the Volume Clerk with which Library manger should it be
 communicating.
 <li>
-The Volume clerk returns the location of the appropriate Library manager.
+The Volume Clerk returns the location of the appropriate Library Manager.
 <li>
-The File clerk asks the Library Manager to read the file.
+The File Clerk asks the Library Manager to read the file.
 <li>
-The Library manager tells the File clerk that the request has been placed in
+The Library Manager tells the File Clerk that the request has been placed in
 it's queue.
 <li>
-The File clerk informs <em>encp</em> that the read request has been queued.
+The File Clerk informs <em>encp</em> that the read request has been queued.
 <li>
-The Mover asks the Configuration server with which Library manager should it
+The Mover asks the Configuration Server with which Library Manager should it
 be communicating.
 <li>
-The Configuration server returns the location of the appropriate Library
-manager.
+The Configuration Server returns the location of the appropriate Library
+Manager.
 <li>
-The Mover asks the Library manager if there is any work for it to do.
+The Mover asks the Library Manager if there is any work for it to do.
 <li>
-The Library manager tells the Mover which volume to mount.
+The Library Manager tells the Mover which volume to mount.
 <li>
-The Mover asks the Media changer to mount a particular volume.
+The Mover asks the Media Changer to mount a particular volume.
 <li>
-The Media changer responds once the volume is mounted.
+The Media Changer responds once the volume is mounted.
 <li>
-The Mover tells the Library manager that the volume is mounted.
+The Mover tells the Library Manager that the volume is mounted.
 <li>
 The Library Manager tells the Mover which file to read.
 <li>
@@ -964,7 +965,7 @@ the crc information.
 <li>
 The read has completed.
 <li>
-The Mover tells the Library manager that he still has the volume mounted.
+The Mover tells the Library Manager that he still has the volume mounted.
 </ul>
 
 <h2><a name="write_protocol">
@@ -973,10 +974,10 @@ The Mover tells the Library manager that he still has the volume mounted.
 The communications performed during a write operation are illustrated in the
 diagram below and described more fully in the following text.
 <p>
-NOTE: The communications between the Mover and the Configuration server happens
+NOTE: The communications between the Mover and the Configuration Server happens
 approximately every two minutes.  It has been added to the following drawing
 to show that this communication is important, but it can occur anywhere in the
-communications flow before the Mover contacts the Library manager.
+communications flow before the Mover contacts the Library Manager.
 <p>
 <img src=write.gif>
 <p>
@@ -988,55 +989,55 @@ The user (through <em>encp</em>) contacts PNFS with a request to create a file.
 <li>
 PNFS returns the file family and volume library information to <em>encp</em>.
 <li>
-<em>encp</em> asks the Configuration server with which Library manager should
+<em>encp</em> asks the Configuration Server with which Library Manager should
 it be communicating.
 <li>
-The Configuration server returns the location of the appropriate Library
-manager.
+The Configuration Server returns the location of the appropriate Library
+Manager.
 <li>
-<em>encp</em> sends the write request to the Library manager, including file
+<em>encp</em> sends the write request to the Library Manager, including file
 family and number of bytes.
 <li>
-The Library manager tells the <em>encp</em> that the request has been placed in
+The Library Manager tells the <em>encp</em> that the request has been placed in
 it's queue.
 <li>
-The Mover asks the Configuration server with which Library manager should it
+The Mover asks the Configuration Server with which Library Manager should it
 be communicating.
 <li>
-The Configuration server returns the location of the appropriate Library
-manager.
+The Configuration Server returns the location of the appropriate Library
+Manager.
 <li>
-The Mover asks the Library manager if there is any work for it to do.
+The Mover asks the Library Manager if there is any work for it to do.
 <li>
-The Library manager asks the Volume clerk for a volume for the file with the
+The Library Manager asks the Volume Clerk for a volume for the file with the
 specified size and file family.
 <li>
-The Volume clerk returns the volume to the Library manager.
+The Volume Clerk returns the volume to the Library Manager.
 <li>
-The Library manager moves the file internally from one queue to another.
+The Library Manager moves the file internally from one queue to another.
 <li>
-The Library manager tells the Mover which volume to mount.
+The Library Manager tells the Mover which volume to mount.
 <li>
-The Mover asks the Media changer to mount a particular volume.
+The Mover asks the Media Changer to mount a particular volume.
 <li>
-The Media changer responds once the volume is mounted.
+The Media Changer responds once the volume is mounted.
 <li>
-The Mover tells the Library manager that the volume is mounted.
+The Mover tells the Library Manager that the volume is mounted.
 <li>
 The Mover tells <em>encp</em> to which host and port to write the data.
 <li>
-The Mover tells the Volume clerk that he is appending to this tape.
+The Mover tells the Volume Clerk that he is appending to this volume.
 <li>
-The Volume clerk acknowledges this.
+The Volume Clerk acknowledges this.
 <li>
 <em>Encp</em> sends the data to the Mover.
 <li>
-The Mover tells the Volume clerk that the append operation is done and how much
-space is left on the tape.
+The Mover tells the Volume Clerk that the append operation is done and how much
+space is left on the volume.
 <li>
-The Volume clerk acknowledges this.
+The Volume Clerk acknowledges this.
 <li>
-The Mover tells the File clerk which file has been created.
+The Mover tells the File Clerk which file has been created.
 <li>
 The File Clerk responds with the bit file id.
 <li>
@@ -1048,11 +1049,11 @@ be stored.
 <li>
 The write has completed.
 <li>
-The Mover tells the Library manager that he still has the volume mounted.
+The Mover tells the Library Manager that he still has the volume mounted.
 <li>
-The Library manager tells the mover that there is no work to be done.
+The Library Manager tells the Mover that there is no work to be done.
 <li>
-The mover tells the Media changer to dismount the volume.
+The Mover tells the Media Changer to dismount the volume.
 </ul>
 
 <h2><a name="error">
@@ -1066,94 +1067,94 @@ Error control in Enstore is simple, because much of the system state
 is stored in the <em>encp</em> client. The <em>encp</em> client can be given a
 "retryable error" and will resend data for a write into the system, or the
 system can restart a read from the system from scratch. This retry
-is given a very high priority when it is received by the library
-manager -- put on the head of the unassigned work queue.
+is given a very high priority when it is received by the Library
+Manager -- put on the head of the unassigned work queue.
 
 The Enstore system keeps unassigned read and write requests in a queue of
-unallocated work in the library manager. Once a read or write requests'
-turn comes, the library manager puts the request in a "work awaiting
+unallocated work in the Library Manager. Once a read or write requests'
+turn comes, the Library Manager puts the request in a "work awaiting
 mount" or "work at mover" queue. The reason for this is to track the
-volumes for scheduling : the library manager must not command a mover
-to mount a tape already in use by another mover. It is the mover, and not the library
-manager which completes requests.
+volumes for scheduling : the Library Manager must not command a Mover
+to mount a volume already in use by another Mover. It is the Mover, and not the
+Library Manager which completes requests.
 
-The three library manager queues are:
+The three Library Manager queues are:
 <ul>
 <li>Unscheduled work
 <li>work awaiting a volume mount
-<li>work at a mover.
+<li>work at a Mover.
 </ul>
 <p>
-It is important to keep these queues consistent. Tape and reading
-errors are handled in the mover, and can be handled by detailed design in
-the mover.
+It is important to keep these queues consistent. Volume and reading
+errors are handled in the Mover, and can be handled by detailed design in
+the Mover.
 <p>
-Many interesting errors are related to when the tape cannot be written
-or read, or when it is suspected that tape is jammed, etc.
+Many interesting errors are related to when the volume cannot be written
+or read, or when it is suspected that volume is jammed, etc.
 <p>
 We need experience with the actual hardware. In the interim we make the
 following assumptions:
 <ul>
 <li>
 If we have trouble during a load or unload operation, we assume that
-the tape is physically jammed. Until a human looks at the problem, we
+the volume is physically jammed. Until a human looks at the problem, we
 will permit no future operations on the drive or the volume.
 <li>
 If several drives have fatal errors on writing a volume, we will not write on that
 volume anymore.
 <li>
-If a tape drive has errors on "consecutive" tapes, we should "stop
-using the tape drive". The number of errors allowed should be picked
-up through the mover configuration, since we may have "more
+If a drive has errors on "consecutive" volumes, we should "stop
+using the drive". The number of errors allowed should be picked
+up through the Mover configuration, since we may have "more
 temperamental" and "less temperamental" drives, we may want to
-configure this parameter for each mover individually.
+configure this parameter for each Mover individually.
 <li>
-If tape reads or spaces give error, we should track the errors. If
-the recent history of the tape shows many errors, we should mark the
-tape "no access" and bring it to the attention of an administrator.
+If volume reads or spaces give error, we should track the errors. If
+the recent history of the volume shows many errors, we should mark the
+volume "no access" and bring it to the attention of an administrator.
 Therefore, the Volume Clerk needs to track the "recent history" of
-errors, and have a per-volume figure of merit which will mark the tape
+errors, and have a per-volume figure of merit which will mark the volume
 for no access, given many recent errors.
 <li>
-Library manager:
+Library Manager:
 <br>
 Two Features should be added to the tickets to support retries.
 <ul>
 <li>Tickets should be marked as retries or not by <em>encp</em>. Retries go
 to the head of the queue.
 <li>Tickets should be marked with an "avoid this mover" field for read
-retries, so the same tape drive can be avoided.
+retries, so the same drive can be avoided.
 </ul>
 <em>encp</em> should generate these fields appropriately, and the queuing logic
-in the library manager ought to implement the logic associated with these
+in the Library Manager ought to implement the logic associated with these
 fields.
 <p>
 </ul>
-The Enstore system should check the read/write state of a tape read very
+The Enstore system should check the read/write state of a volume read very
 early when the request is queued, to give a prompt error if the access
-is not allowed. However, an error may change the state of a tape while
-its corresponding work is in the library manager queue. Therefore, a
+is not allowed. However, an error may change the state of a volume while
+its corresponding work is in the Library Manager queue. Therefore, a
 late check is required. The system already performs a "late check"
 for writes, since a volume must be selected for every file. The system
 needs a "late check" for reads. Failing a late check means contacting
-<em>encp</em> to give it the bad news. The contact should be done in the mover,
-not in the library manager, just before the mover goes off to mount the volume
-for read, since the mover is better able to tolerate a very slow or
+<em>encp</em> to give it the bad news. The contact should be done in the Mover,
+not in the Library Manager, just before the Mover goes off to mount the volume
+for read, since the Mover is better able to tolerate a very slow or
 non-existent <em>encp</em>. It is good to contact
 <em>encp</em> before a mount, too, since people will ^C <em>encp</em>'s and
 it is best to discover this before incurring the expense of a mount.
 <ul>
 <li>
-"Freeze the tape in the drive" means:
+"Freeze the volume in the drive" means:
 <ul>
-<li>Not unloading the tape from the drive
-<li>Freezing the tape
+<li>Not unloading the volume from the drive
+<li>Freezing the volume
 <li>Off-lining the Drive
 </ul>
 <li>
-"Freezing the tape" means:
+"Freezing the volume" means:
 <ul>
-<li>mark the tape as "system noaccess"
+<li>mark the volume as "system noaccess"
 <li>log that this happened and let an administrator look at the
 problem in the morning.
 <li><em>encp</em> shall not retry.
@@ -1169,43 +1170,43 @@ the system falls below a threshold.
 </ul>
 
 <table>
-<th><font size=+1><b>Tape Write Errors</b></font>
+<th><font size=+1><b>Volume Write Errors</b></font>
 <tr>
 <td valign=top><b>WRITE_NOTAPE</b>
 <td valign=top>"no such tape" error in library mount failure on write.
     If this happens, the volume data base is inconsistent with reality.
-    Mover shall freeze the tape.
+    Mover shall freeze the volume.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_TAPEBUSY</b>
-<td valign=top>"The media changer says that the tape is in another drive"
-    Enstore has a bug, or some other system has mounted the tape or
-    library micro put the tape somewhere else.
-    Mover shall freeze the tape.
+<td valign=top>"The Media Changer says that the volume is in another drive"
+    Enstore has a bug, or some other system has mounted the volume or
+    library micro put the volume somewhere else.
+    Mover shall freeze the volume.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_DRIVEBUSY</b>
-<td valign=top>"The media changer says that some other tape is in the drive"
-    Need to investigate if this could ever be a clean tape otherwise a bug in
+<td valign=top>"The Media Changer says that some other volume is in the drive"
+    Need to investigate if this could ever be a clean volume otherwise a bug in
     Enstore or a misconfiguration.     Mover shall offline the drive.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_BADMOUNT</b>
 <td valign=top>Other mount failure on write, or load operation failed.
-    Must assume jammed tape.
-    Mover shall freeze the tape in the drive.
+    Must assume jammed volume.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall retry
 <tr>
 <td valign=top><b>WRITE_BADSPACE</b>
 <td valign=top>"EOD cookie does not produce EOD"
-    Wrong tape, software bug or drive space error.
-    Mover shall freeze the tape in the drive.
+    Wrong volume, software bug or drive space error.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_ERROR</b>
 <td valign=top>"Error when writing data block or file mark"
     Run of the mill write error.
-    If the drive has had many recent errors, mover shall
+    If the drive has had many recent errors, Mover shall
     "offline the drive"
     The volume shall be marked read-only.
     <em>encp</em> shall retry.
@@ -1216,109 +1217,110 @@ the system falls below a threshold.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_UNLOAD</b>
-<td valign=top>"error when unloading tape from drive"
-    Must assume that the tape is physically jammed.
-    Mover shall freeze the tape in the drive.
+<td valign=top>"error when unloading volume from drive"
+    Must assume that the volume is physically jammed.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall retry.
-    No <em>encp</em> is associated with the tape at this time.
+    No <em>encp</em> is associated with the volume at this time.
 <tr>
 <td valign=top><b>WRITE_UNMOUNT</b>
-<td valign=top>"Media changer gives error when unmounting tape"
-    Should not happen. Maybe the tape is hanging in the drive. Does no harm.
-    Mover shall freeze the tape in the drive.
-    No <em>encp</em> is associated with the tape at this time.
+<td valign=top>"Media Changer gives error when unmounting volume"
+    Should not happen. Maybe the volume is hanging in the drive. Does no harm.
+    Mover shall freeze the volume in the drive.
+    No <em>encp</em> is associated with the volume at this time.
 <tr>
 <td valign=top><b>WRITE_NOBLANKS</b>
-<td valign=top>The volume clerk has no blank volumes to give.
+<td valign=top>The Volume Clerk has no blank volumes to give.
     The requests shall return an error.
     (do not "wait forever" -- DAQ should switch to an alternate library)
     An administrator shall be paged.
 <tr>
-<th><font size=+1><b>Tape Read Errors</b></font>
+<th><font size=+1><b>Volume Read Errors</b></font>
 <tr>
 <td valign=top><b>READ_NOTAPE</b>
-<td valign=top>"No such tape in library" mount failure on read.
+<td valign=top>"No such volume in library" mount failure on read.
     If this happens, the volume data base is inconsistent with reality.
-    Mover shall freeze the tape.
+    Mover shall freeze the volume.
 <tr>
 <td valign=top><b>READ_TAPE_BUSY</b>
-<td valign=top>"The media changer says that the tape is in another drive"
-    Enstore has a bug, or some other system has mounted the tape or
-    the robotic software put the tape somewhere else.
-    Mover shall freeze the tape.
+<td valign=top>"The Media Changer says that the volume is in another drive"
+    Enstore has a bug, or some other system has mounted the volume or
+    the robotic software put the volume somewhere else.
+    Mover shall freeze the volume.
 <tr>
 <td valign=top><b>READ_DRIVEBUSY</b>
-<td valign=top>"The media changer says that some other tape is in the drive"
-    Need to investigate if this could ever be a clean tape otherwise a bug in
+<td valign=top>"The Media Changer says that some other volume is in the drive"
+    Need to investigate if this could ever be a clean volume otherwise a bug in
     Enstore or a misconfiguration.     Mover shall offline the drive.
     <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>READ_BADMOUNT</b>
 <td valign=top>Other Mount failure on read, or load operation failed.
-    We have to assume that the tape is jammed in the drive.
-    Mover shall freeze the tape in the drive.
+    We have to assume that the volume is jammed in the drive.
+    Mover shall freeze the volume in the drive.
 <tr>
 <td valign=top><b>READ_BADLOCATE</b>
 <td valign=top>Failed space or initial CRC's don't match on initial read.
-    We have attempted to space to a file on the tape. Either the file location
-    cookie is somehow corrupted, we have the wrong tape in the drive or
-    the tape drive cannot space properly.
-    Mover shall freeze the tape in the drive.
+    We have attempted to space to a file on the volume. Either the file
+    location
+    cookie is somehow corrupted, we have the wrong volume in the drive or
+    the volume drive cannot space properly.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall not retry
 <tr>
 <td valign=top><b>READ_ERROR</b>
 <td valign=top>Error when reading data block.
     Run of the mill read error.
     Mover shall consider the recent error history of the drive and the volume.
-    If the drive has had many recent errors, mover shall offline the drive.
+    If the drive has had many recent errors, Mover shall offline the drive.
     <em>encp</em> shall retry.
-    If the volume has had many recent errors, mover shall freeze the tape.
+    If the volume has had many recent errors, Mover shall freeze the volume.
     <em>encp</em> shall not retry.
     If the volume has had few recent errors,
-    mover shall fail the transfer,
-    <em>encp</em> shall retry, and annotate that this mover shall be avoided.
+    Mover shall fail the transfer,
+    <em>encp</em> shall retry, and annotate that this Mover shall be avoided.
 <tr>
 <td valign=top><b>READ_COMP_CRC</b>
 <td valign=top>Failure of complete CRC.
-    This needs investigating, as it should not happen. The drive and the tape
-    are suspicious. Corrupt file location cookie, drive space error, wrong tape
-    in the drive, etc.
-    Mover shall freeze the tape in the drive.
+    This needs investigating, as it should not happen. The drive and the volume
+    are suspicious. Corrupt file location cookie, drive space error, wrong 
+    volume in the drive, etc.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_EOT</b>
 <td valign=top>Hit EOT when reading.
     Should not happen. Corrupt file location cookie, drive space error, or
-    wrong tape in the drive. Should have hit an EOF.
-    Mover shall freeze the tape in the drive.
+    wrong volume in the drive. Should have hit an EOF.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_EOD</b>
 <td valign=top>Hit EOD when reading.
     Should not happen. Corrupt file location cookie, drive space error, or
-    wrong tape in the drive. Should have hit an EOF.
-    Mover shall freeze the tape in the drive.
+    wrong volume in the drive. Should have hit an EOF.
+    Mover shall freeze the volume in the drive.
     <em>encp</em> shall not retry.
 <tr>
 <td valign=top><b>READ_UNLOAD</b>
-<td valign=top>Error when unloading tape.
-    Must assume that the tape is physically jammed.
-    Mover shall freeze the tape in the drive.
-    No <em>encp</em> is associated with the tape at this time.
+<td valign=top>Error when unloading volume.
+    Must assume that the volume is physically jammed.
+    Mover shall freeze the volume in the drive.
+    No <em>encp</em> is associated with the volume at this time.
 <tr>
 <td valign=top><b>READ_UNMOUNT</b>
-<td valign=top>Error from media changer when unloading tape.
-    Should not happen. Maybe the tape is hanging in the drive. Does no harm.
-    Mover shall freeze the tape in the drive.
-    No <em>encp</em> is associated with the tape at this time
+<td valign=top>Error from Media Changer when unloading volume.
+    Should not happen. Maybe the volume is hanging in the drive. Does no harm.
+    Mover shall freeze the volume in the drive.
+    No <em>encp</em> is associated with the volume at this time
 <tr>
 <th><font size=+1><b>Other Errors</b></font>
 <tr>
 <td valign=top><b>ENCP_GONE</b>
 <td valign=top><em>encp</em> has gone away while request is queued.
-    The mover contacts <em>encp</em> to ping it before a mount, and if
-    <em>encp</em> is not there, the mover does not go on to contact the media
-    changer, but instead returns a UNILATERAL_UNBIND to the library manager.
+    The Mover contacts <em>encp</em> to ping it before a mount, and if
+    <em>encp</em> is not there, the Mover does not go on to contact the Media
+    Changer, but instead returns a UNILATERAL_UNBIND to the Library Manager.
 <tr>
 <td valign=top><b>TCP_HUNG</b>
 <td valign=top>DESY reports that
@@ -1336,15 +1338,15 @@ time for every socket operation and abort the transfer if the
 actual transfer takes more than several times the expected value.
 Right now, Enstore does not consider this to be an error and just
 waits. However, we are vulnerable to disaster. It is possible to see
-circumstances where we might tie all the movers up if, say, one clients
+circumstances where we might tie all the Movers up if, say, one clients
 system's disk fills up.
 <tr>
 <td valign=top><b>LM_CRASH</b>
-<td valign=top>If a library manager crashes, and loses its queue of pending work,
+<td valign=top>If a Library Manager crashes, and loses its queue of pending work,
     the <em>encp</em>'s will never be called back, and will wait
     forever.
     This is a problem. A basis for the solution is for a waiting
-    <em>encp</em> to ping its library manager,
+    <em>encp</em> to ping its Library Manager,
     every 30 mins to see if its request has gotten lost.
     It would also be good if a --timeout switch was available to
     <em>encp</em>,
@@ -1353,23 +1355,23 @@ system's disk fills up.
 <tr>
 <td valign=top><b>MOVER_CRASH</b>
 <td valign=top>
-Case 1) If a mover is connected to an <em>encp</em>, then <em>encp</em> will
+Case 1) If a Mover is connected to an <em>encp</em>, then <em>encp</em> will
 notice its sockets being torn down prematurely. <em>encp</em> shall retry. This
 is not good enough.
 <p>
-For reads, the volume is tied up because the library manager has the volume as
-being "at a mover". The retry will be hung in the library manager queue
-because the library manager is unaware of the mover crash.
+For reads, the volume is tied up because the Library Manager has the volume as
+being "at a mover". The retry will be hung in the Library Manager queue
+because the Library Manager is unaware of the Mover crash.
 <p>
 For writes, 1 is effectively deducted from the file family width,
-since the library manager is unaware of the mover crash.
+since the Library Manager is unaware of the Mover crash.
 <p>
-This is all a bug, the minimal effect of a mover crash should be:
+This is all a bug, the minimal effect of a Mover crash should be:
 <ul>
 <li>
 Since the status of the volume is unknown, the status should be akin
 to "freeze drive and volume". However, subsequent reads will not produce an
-error, but will be queued until the mover is restarted.
+error, but will be queued until the Mover is restarted.
 <li>
 Allow writes to continue on a different volume of the same file
 family, without affecting the "width".
