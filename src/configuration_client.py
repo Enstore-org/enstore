@@ -34,7 +34,7 @@ class ConfigurationClient(generic_client.GenericClient):
             request = {'work' : 'lookup', 'lookup' : key }
             while 1:
                 try:
-                    ret = self.u.send(request, self.config_address, timeout, retry)
+                    ret = self.send(request, timeout, retry)
                     break
                 except socket.error:
                     self.output_socket_error("get")
@@ -65,7 +65,6 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'load' ,  'configfile' : configfile }
         x = self.send(request, timeout, retry)
         return x
-
 
 
     def alive(self, server, rcv_timeout=0, tries=0):
@@ -153,7 +152,6 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                 self.element = self.args[0]
 
 def do_work(intf):
-
     csc = ConfigurationClient((intf.config_host, intf.config_port))
     csc.csc = csc
     result = csc.handle_generic_commands(MY_SERVER, intf)
