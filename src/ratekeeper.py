@@ -88,7 +88,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             outfile_name = os.path.join(self.output_dir, \
                                         "%s.RATES.%04d%02d%02d" %
                                         (self.filename_base, year, month, day))
-            self.outfile=open(outfile_name, 'a')
+            self.outfile=open(outfile_name, 'w')
 
     
     def main(self):
@@ -105,7 +105,6 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         bytes_written = 0L
         while 1:
             now = time.time()
-
             self.check_outfile(now)
             if now - self.subscribe_time > self.resubscribe_interval:
                 self.subscribe()
@@ -130,7 +129,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 remaining = end_time - now
 
             r, w, x = select.select([self.sock], [], [], remaining)
-
+            
             if not r:
                 continue
 
@@ -140,55 +139,42 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 cmd = r.recv(1024)
             except:
                 cmd = None
-
-            #Take the command and seperate the string spliting on whitespace.
+                
             if not cmd:
                 continue
             cmd = string.strip(cmd)
             words = string.split(cmd)
             if not words:
                 continue
-
-            #If the split strings don't contain the fields we are looking for
-            # then ignore them.
-            if words[0] != 'transfer' or words[4] != 'network':
+            if words[0] != 'transfer':
                 continue
-
             mover = words[1]
             mover = string.upper(mover)
             if string.find(mover, 'NULL')>=0:
                 continue
 
-            #Get the number of bytes moved (words[2]) and total bytes ([3]).
             num = atol(words[2])  #NB -bytes = read;  +bytes=write
             writing = num>0
             num = abs(num)
             denom = atol(words[3])
-
-            #Get the last pair of numbers for each mover.
+            
             prev = self.mover_msg.get(mover)
             self.mover_msg[mover] = (num, denom)
-
-            #When a new file is started, the first transfer occurs, a mover
-            # quits, et al, then initialize these parameters.
+            
             if not prev:
-                num_0 = denom_0 = 0
-            else:
-                num_0, denom_0 = prev
-            if num_0 >= denom or denom_0 != denom:
-                num_0 = denom_0 = 0
+                continue
 
-            #Caluclate the number of bytes transfered at this time.
+            num_0, denom_0 = prev
+            if num < num_0 or denom != denom_0:
+                #consider this the beginning of a new transfer
+                continue
             bytes = num - num_0
             if writing:
                 bytes_written = bytes_written + bytes
             else:
                 bytes_read = bytes_read + bytes
 
-            #If the file is known to be transfered, reset these to zero.
-            if num == denom:
-                num_0 = denom_0 = 0
-                
+
 class RatekeeperInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
