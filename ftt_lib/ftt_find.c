@@ -22,9 +22,11 @@ ftt_make_os_name(char *sys, char *release , char *version) {
 }
 
 int
-ftt_findslot (char *basename,char *os, char *drivid,  char *string, int *num) {
+ftt_findslot (char *basename, char *os, char *drivid,  
+			void *p1, void *p2, void *p3) {
     int i;
     char *lastpart;
+    int res;
 
     DEBUG2(stderr,"Entering ftt_findslot %s %s %s\n", basename, os, drivid );
 
@@ -39,15 +41,18 @@ ftt_findslot (char *basename,char *os, char *drivid,  char *string, int *num) {
     for( i = 0; devtable[i].os !=0 ; i++ ) {
 	if (ftt_matches(os, devtable[i].os) && 
 		ftt_matches(drivid, devtable[i].drivid)) {
-	   DEBUG3(stderr,"trying format \"%s\"\n", devtable[i].baseconv_in);
+	   DEBUG3(stderr,"trying format \"%s\" against %s\n", 
+		devtable[i].baseconv_in, lastpart);
 
 
-	   if (devtable[i].nconv == 
-		     sscanf(lastpart,devtable[i].baseconv_in,string,num)) {
+           res = sscanf(lastpart,devtable[i].baseconv_in,p1,p2,p3);
+
+	   if (devtable[i].nconv == res ) {
 		     DEBUG3(stderr, "format Matches!\n");
 		     return i;
 	   }
-	   DEBUG3(stderr, "format missed...\n");
+	   DEBUG3(stderr, "format missed... got %d, not %d\n",
+				res, devtable[i].nconv);
 	}
     }
     return -1;
@@ -57,7 +62,7 @@ extern char *
 ftt_strip_to_basename(const char *basename,char *os) {
     static char buf[512];
     static char buf2[512];
-    static char string[512];
+    static union { int n; char s[512];} s1, s2, s3;
     int bus,id;
     int i, res;
     int maxlinks=512;
@@ -67,7 +72,7 @@ ftt_strip_to_basename(const char *basename,char *os) {
     DEBUG2(stderr, "Entering ftt_strip_to_basename\n");
     memset(buf,0, 512);
     memset(buf2,0, 512);
-    memset(string,0, 512);
+    memset(s1.s,0, 512);
 
     strncpy(buf, basename, 512);
 #ifdef DO_SKIP_SYMLINKS
@@ -87,7 +92,7 @@ ftt_strip_to_basename(const char *basename,char *os) {
     }
 #endif
 
-    i = ftt_findslot(buf, os, "", string, &id);
+    i = ftt_findslot(buf, os, "", &s1, &s2, &s3);
     if (i < 0) {
 	return 0;
     }
@@ -101,9 +106,9 @@ ftt_strip_to_basename(const char *basename,char *os) {
     ** check for strings
     */
     if ( devtable[i].baseconv_out[1] == 's') {
-	sprintf(lastpart, devtable[i].baseconv_out, string, id);
+	sprintf(lastpart, devtable[i].baseconv_out, s1.s, s2.n, s3.n);
     } else {
-	sprintf(lastpart, devtable[i].baseconv_out,*(int*)string, id);
+	sprintf(lastpart, devtable[i].baseconv_out, s1.n, s2.n, s3.n);
     }
     return strdup(buf);
 }
@@ -142,14 +147,14 @@ extern char *
 ftt_get_driveid(char *basename,char *os) {
     static char cmdbuf[255];
     static char output[255];
-    static char string[255];
+    static union { int n; char s[512];} s1, s2, s3;
     int bus, id;
     FILE *pf;
     char *res = 0;
     int i;
 
     DEBUG2(stderr, "Entering ftt_get_driveid\n");
-    i = ftt_findslot(basename, os, "",  string, &id);
+    i = ftt_findslot(basename, os, "",  &s1, &s2, &s3);
     if (i < 0) {
 	return 0;
     }
@@ -166,9 +171,9 @@ ftt_get_driveid(char *basename,char *os) {
 	}
     } else {
 	if ( devtable[i].drivid[1] == 's') {
-	    sprintf(cmdbuf, devtable[i].drividcmd, string, id);
+	    sprintf(cmdbuf, devtable[i].drividcmd, s1.s, s2.n, s3.n);
 	} else {
-	    sprintf(cmdbuf, devtable[i].drividcmd,*(int*)string, id);
+	    sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
 	}
 	DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
 	pf = popen(cmdbuf, "r");

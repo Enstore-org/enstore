@@ -68,10 +68,9 @@ ftt_matches( char *s1, char *s2 ) {
 ftt_descriptor
 ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     static char buf[512];
-    static char string[512];
+    static union { int n; char s[512];} s1, s2, s3;
     static ftt_descriptor_buf d;
     char *basename;
-    int n1, n2;
     int i,j;
     ftt_descriptor pd;
     char *lastpart;
@@ -91,9 +90,9 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     }
 
     /* look up in table, note that table order counts! */
-    i = ftt_findslot(basename, os, drivid, string, &n1);
+    i = ftt_findslot(basename, os, drivid, &s1, &s2, &s3);
 
-    DEBUG3(stderr, "Picked entry %d number %d\n", i, n1);
+    DEBUG3(stderr, "Picked entry %d number %d\n", i, s2.n);
 
     /* if it wasn't found, it's not supported */
 
@@ -144,11 +143,12 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 	/*
 	** first item in the format can be either a string or a digit;
 	** check for strings -- "%s..."
+	** this ought to be more generic, but for now it's okay -- mengel
 	*/
 	if ( devtable[i].devs[j].device_name[1] == 's') {
-            sprintf(lastpart, devtable[i].devs[j].device_name, string, n1);
+            sprintf(lastpart, devtable[i].devs[j].device_name, s1.s, s2.n,s3.n);
 	} else {
-            sprintf(lastpart, devtable[i].devs[j].device_name,*(int*)string,n1);
+            sprintf(lastpart, devtable[i].devs[j].device_name, s1.n, s2.n,s3.n);
 	}
 
 	d.devinfo[j].device_name = strdup(buf);
@@ -182,7 +182,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
 int
 ftt_close(ftt_descriptor d){
     int j;
-    int res, res2;
+    int res;
 
     ENTERING("ftt_close");
     CKNULL("ftt_descriptor", d);
@@ -215,7 +215,7 @@ ftt_close(ftt_descriptor d){
     }
     d->which_is_open = -3;
     free(d);
-    return res < 0 ? res : res2;
+    return res;
 }
 
 int
@@ -292,28 +292,35 @@ ftt_open_dev(ftt_descriptor d) {
 		ftt_eprintf("ftt_open_dev: called with a read/write ftt_descriptor and a write protected tape.");
 		return -1;
 	    }
-	    if (!d->density_is_set) {
-	        res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
-		if (res < 0) {
-		    return res;
-		}
-		if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
-		    if (status_res & FTT_ABOT) {
-			DEBUG3(stderr,"setting density...\n");
-			res = ftt_set_hwdens(d, 
-				d->devinfo[d->which_is_default].hwdens);
-			if (res < 0) {
-			    return res;
-			}
-			d->density_is_set = 1;
-		    } else {
-			ftt_errno = FTT_ENOTBOT;
-			ftt_eprintf("ftt_open_dev: Need to change tape density for writing, but not at BOT");
-			return -1;
+	}
+
+	/*
+	 * set density *regardless* of read/write, it may matter 
+	 * mainly for OCS, who may be doing ocs_setdev before doing
+	 * a mount -- the tape we have may be readonly, etc. but we
+	 * may be setting it for the *next* tape
+	 */
+	if (!d->density_is_set) {
+	    res = ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+	    if (res < 0) {
+		return res;
+	    }
+	    if (ftt_get_hwdens(d,d->devinfo[d->which_is_default].device_name) != d->devinfo[d->which_is_default].hwdens) {
+		if ((status_res & FTT_ABOT)|| !(status_res & FTT_ONLINE)) {
+		    DEBUG3(stderr,"setting density...\n");
+		    res = ftt_set_hwdens(d, 
+			    d->devinfo[d->which_is_default].hwdens);
+		    if (res < 0) {
+			return res;
 		    }
-		} else {
 		    d->density_is_set = 1;
+		} else {
+		    ftt_errno = FTT_ENOTBOT;
+		    ftt_eprintf("ftt_open_dev: Need to change tape density for writing, but not at BOT");
+		    return -1;
 		}
+	    } else {
+		d->density_is_set = 1;
 	    }
 	}
 

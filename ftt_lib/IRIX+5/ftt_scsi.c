@@ -128,9 +128,6 @@ DEBUG3(stderr,"cmdsent %d datasent %d sensesent %d status %d ret %d msg %d\n",
 	CMDSENT(dp), DATASENT(dp), SENSESENT(dp), STATUS(dp), 
 	RET(dp), MSG(dp));
 
-	if (!writeflag)
-		nRdWr = DATASENT(dp);
-
 	res = ftt_scsi_check(n,pcOp,scsistat,nRdWr);
 
 	if (pcRdWr != 0 && nRdWr != 0){

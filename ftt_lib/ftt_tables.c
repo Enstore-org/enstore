@@ -35,6 +35,24 @@ int ftt_trans_open[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_in[MAX_TRANS_ERRNO] = {
@@ -70,6 +88,24 @@ int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -104,6 +140,24 @@ int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_EIO,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
@@ -139,6 +193,24 @@ int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -173,6 +245,24 @@ int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 int ftt_trans_skipf_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -207,6 +297,24 @@ int ftt_trans_skipf_AIX[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_EBLANK,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -241,6 +349,24 @@ int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
@@ -276,6 +402,24 @@ int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ELEADER,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
@@ -311,6 +455,24 @@ int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_ENOTAPE,
 	/*   31	EMLINK	*/	FTT_ELEADER,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
@@ -346,6 +508,24 @@ int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_EIO,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_out[MAX_TRANS_ERRNO] = {
@@ -381,6 +561,24 @@ int ftt_trans_out[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EROFS,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int ftt_trans_chall[MAX_TRANS_ERRNO] = {
@@ -416,6 +614,24 @@ int ftt_trans_chall[MAX_TRANS_ERRNO] = {
 	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
 	/*   30	EROFS	*/	FTT_EPERM,
 	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
 };
 
 int *ftt_trans_table_AIX[] = {
@@ -515,7 +731,7 @@ static char OSF1find[] =
    "IFS=\" \t\n\"\n\
     PATH=\"/usr/sbin:/sbin:/etc:/bin:/usr/bin\"\n\
     export PATH \n\
-    minor_num=`ls -l /dev/rmt%dh | sed -e 's/.*,\\([0-9]*\\).*/\\1/'` \n\
+    minor_num=`ls -l /dev/rmt%dh | sed -e 's/.*, *\\([0-9]*\\).*/\\1/'` \n\
     tmp=`expr $minor_num /  1024` \n\
     bus=`expr $tmp / 16` \n\
     target=`expr $tmp %% 16` \n\
@@ -1192,6 +1408,36 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
     }},
     /* note that %*[rmt] matches "rmt" or "mt" (or mrt, so sue me) -- mengel */
     /*      all of which we re-write into rmt */
+    {"IRIX", "EXB-82","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
+	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+	"%*[rmt]/tps%dd%d%*[nrsv.]890%d","rmt/tps%dd%d.8900", 3, IRIXfind,  {
+	    /*   string             den mod hwd  pas fxd rewind        sf,1st */
+	    /*   ======             === === ===  === === ======        ==  = */
+    /* Default, Passthru */
+	{ "rmt/tps%dd%dnrv",         2,  1,0x27, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "scsi/sc%dd%dl0",         -1,  0,  -1, 1,  0,                 0, 1, EXB_MAX_BLKSIZE},
+    /* Usable Variable */
+	{ "rmt/tps%dd%dnrnsv",       2,  1,0x27, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+    /* Usable Fixed */
+	{ "rmt/tps%dd%dnr",          2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrns",        2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+    /* Descriptive */
+	{ "rmt/tps%dd%dstat",       -1,  0,  -1, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            2,  1,0x27, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            1,  0,0x15, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            1,  1,0x90, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            0,  0,0x14, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            0,  1,0x8c, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnr",          2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrs",         2,  1,0x27, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrsv",        2,  1,0x27, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dns",          2,  1,0x27, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnsv",         2,  1,0x27, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%ds",           2,  1,0x27, 0,  1, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dsv",          2,  1,0x27, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dv",           2,  1,0x27, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ 0,},
+    }},
     {"IRIX", "DLT", "SCSI", FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
 	FTT_OP_GET_STATUS|FTT_OP_ERASE, ftt_trans_table, DLT_density_trans,
 	"%*[rmt]/tps%dd%d","rmt/tps%dd%d", 2, IRIXfind, {
@@ -1321,36 +1567,6 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	{ "rmt/tps%dd%dv.8500c",     1,  1,0x90, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
 	{ "rmt/tps%dd%dv.8500",      1,  0,0x00, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
         { 0,},
-    }},
-    {"IRIX", "EXB-82","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
-	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
-	"%*[rmt]/tp8900s%dd%d","rmt/tp8900s%dd%d", 2, IRIXfind,  {
-	    /*   string             den mod hwd  pas fxd rewind        sf,1st */
-	    /*   ======             === === ===  === === ======        ==  = */
-    /* Default, Passthru */
-	{ "rmt/tps%dd%dnrv",         2,  1,0x27, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "scsi/sc%dd%dl0",         -1,  0,  -1, 1,  0,                 0, 1, EXB_MAX_BLKSIZE},
-    /* Usable Variable */
-	{ "rmt/tps%dd%dnrnsv",       2,  1,0x27, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
-    /* Usable Fixed */
-	{ "rmt/tps%dd%dnr",          2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrns",        2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
-    /* Descriptive */
-	{ "rmt/tps%dd%dstat",       -1,  0,  -1, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%d",            2,  1,0x27, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%d",            1,  0,0x15, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%d",            1,  1,0x90, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%d",            0,  0,0x14, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%d",            0,  1,0x8c, 0,  1,          FTT_RWOC, 0, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnr",          2,  1,0x27, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrs",         2,  1,0x27, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnrsv",        2,  1,0x27, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dns",          2,  1,0x27, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dnsv",         2,  1,0x27, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%ds",           2,  1,0x27, 0,  1, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dsv",          2,  1,0x27, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ "rmt/tps%dd%dv",           2,  1,0x27, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
-	{ 0,},
     }},
     {"IRIX", "EXB-82","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
 	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,

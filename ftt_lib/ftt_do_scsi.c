@@ -217,11 +217,12 @@ ftt_all_scsi(ftt_descriptor d) {
 
 ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
-    static char mod_sen10[6] = { 0x1a, 0x00, 0x10, 0x00, 28, 0x00},
-    		mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
-                mod_sen0f[6] = { 0x1a, 0x00, 0x0f, 0x00, 28, 0x00},
-    		mod_sel0f[6] = { 0x15, 0x0f, 0x00, 0x00, 28, 0x00},
-	        buf [28];
+    static unsigned char 
+	mod_sen10[6] = { 0x1a, 0x00, 0x10, 0x00, 28, 0x00},
+	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
+	mod_sen0f[6] = { 0x1a, 0x00, 0x0f, 0x00, 28, 0x00},
+	mod_sel0f[6] = { 0x15, 0x0f, 0x00, 0x00, 28, 0x00},
+	buf [28];
     int res;
 
     ENTERING("ftt_set_compression");
@@ -289,5 +290,21 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 		res = ftt_wait(d);
 	}
     }
+    return res;
+}
+
+ftt_scsi_locate( ftt_descriptor d, int blockno) {
+
+    int res;
+    static unsigned char 
+        locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+     
+    locate_cmd[3] = (blockno >> 24) & 0xff;
+    locate_cmd[4] = (blockno >> 16) & 0xff;
+    locate_cmd[5] = (blockno >> 8)  & 0xff; 
+    locate_cmd[6] = blockno & 0xff;
+    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
+    res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+
     return res;
 }

@@ -25,7 +25,7 @@ OBJ= $(SYSOBJ) ftt_do_scsi.o ftt_error.o ftt_debug.o ftt_global.o \
 	ftt_open.o ftt_rdwr.o ftt_tables.o ftt_skip.o ftt_stats.o ftt_info.o \
 	ftt_label.o ftt_higher.o ftt_async.o ftt_find.o
 
-CFLAGS=-I. -Ilocal -g  $(WARN)
+CFLAGS=-I. -Ilocal -g  $(WARN) `cat local/flags`
 
 LIB=libftt.a
 

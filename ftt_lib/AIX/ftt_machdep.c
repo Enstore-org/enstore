@@ -162,7 +162,7 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 }
 
 ftt_set_compression(ftt_descriptor d, int compression) {
-    ftt_scsi_set_compression(d,compression);
+    return ftt_scsi_set_compression(d,compression);
 }
 
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {

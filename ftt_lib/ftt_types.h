@@ -6,7 +6,7 @@
 #define FTT_EPRINT_BUF_SIZE 512
 extern char ftt_eprint_buf[];
 
-#define MAX_TRANS_ERRNO 32	/* maximum error number we translate */
+#define MAX_TRANS_ERRNO 49	/* maximum error number we translate */
 
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 
@@ -173,7 +173,7 @@ extern int ftt_set_hwdens(ftt_descriptor, int);
 extern int ftt_set_compression(ftt_descriptor, int); 
 extern int ftt_set_blocksize(ftt_descriptor, int); 
 extern int ftt_get_hwdens(ftt_descriptor, char*); 
-extern int ftt_findslot(char*, char*, char*, char*, int*);
+extern int ftt_findslot(char*, char*, char*, void*, void*, void*);
 extern void ftt_set_transfer_length(unsigned char *, int);
 extern int ftt_skip_fm_internal(ftt_descriptor, int);
 extern int ftt_open_scsi_dev(ftt_descriptor d);
