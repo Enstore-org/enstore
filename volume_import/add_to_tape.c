@@ -1,7 +1,13 @@
 #include <stdio.h>
 
+#include <unistd.h> /*Portability?*/
+#include <string.h>
+#include <sys/stat.h>
+
 char *tape_device = NULL;
-char *tape_database = NULL;
+char *tape_db = NULL;
+char *volume_label = NULL;
+
 char *getenv(char *);
 char *malloc(int);
 
@@ -10,19 +16,137 @@ int verbose = 0;
 char *progname;
 int blocksize = 4096;
 
+#define MB 1024U*1024U
+#define GB 1024U*1024U*1024U
+
+extern int do_add_file(char *pnfs_dir, char *filename, int verbose, int force);
+
+#define MAXPATHLEN 4096  /* get this (portably) from system headers */
+
 void Usage()
 {
     fprintf(stderr,
-	    "Usage: %s [-v] [-f] [-t tape-device] [-d tape-database] volume-label filelist [...]\n\
+   "Usage: %s [-v] [-f] [-t tape-device] [-d tape-db] vol_label filelist [...]\n\
     each filelist is:  [-p pnfs-dir] file [...]\n\
     tape-device can be set using environment variable $TAPE\n\
-    tape-database can be set using environment variable $TAPE_DATABASE\n", progname);
+    tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
+	    progname);
     
     exit(-1);
 }
 
+/* The verify_ functions will return 1, or else exit with a -1 */
+/* All other functions return 0 on success and won't exit */
+
+int 
+verify_tape_device(){
+    return 1; /*XXX*/
+}
+
+int 
+verify_tape_db(){
+
+    struct stat sbuf;
+    int status;
+    char path[MAXPATHLEN];
+
+    status = stat(tape_db, &sbuf);
+    if (status){
+	fprintf(stderr,"%s: ",progname);
+	perror(tape_db);
+	exit(-1);
+    }
+    if (!S_ISDIR(sbuf.st_mode)){
+	fprintf(stderr,"%s: %s is not a directory\n", progname, tape_db);
+	exit(-1);
+    }
+    if ( (sbuf.st_mode & 0700) != 0700){
+	fprintf(stderr,"%s: insufficent permissions on directory %s\n",
+		progname, tape_db);
+	exit(-1);
+    }
+    
+    /* Check if "volumes" is a subdir of tape_db,  if it's not, try to create it */
+    sprintf(path, "%s/volumes", tape_db);
+    status = stat(path, &sbuf);
+    if (status){
+	if (mkdir(path, 0775)){
+	    fprintf(stderr, "%s: cannot create directory: ", progname);
+	    perror(path);
+	    exit(-1);
+	}
+    } else if (!S_ISDIR(sbuf.st_mode)){
+	fprintf(stderr, "%s: %s is not a directory\n", progname, path);
+	exit(-1);
+    }
+    return 1;
+}
+
+int 
+verify_file(char *pnfs_dir, char *filename){
+    
+    struct stat sbuf;
+    int status;
+
+    if (!pnfs_dir){
+	fprintf(stderr,"%s: no pnfs directory given\n", progname);
+	exit(-1);
+    }
+    if (strlen(pnfs_dir)<5 || strncmp(pnfs_dir,"/pnfs",5)){
+	fprintf(stderr,"%s: pnfs_dir must start with /pnfs\n", progname);
+	exit(-1);
+    }
+
+    status = stat(filename, &sbuf);
+    if (status){
+	fprintf(stderr,"%s: ", progname);
+	perror(filename);
+	exit(-1);
+    }
+    if (!S_ISREG(sbuf.st_mode)){
+	fprintf(stderr,"%s: %s: not a regular file\n", progname, filename);
+	exit(-1);
+    }
+    if ( (sbuf.st_mode & 0400)  != 0400){
+	fprintf(stderr,"%s: %s: no read permission\n", progname, filename);
+	exit(-1);
+    }
+    if ( (sbuf.st_size >= 2*GB) ){
+	fprintf(stderr,"%s: %s: file size larger than 2GB\n", progname, 
+		filename);
+	exit(-1);
+    }
+
+    return 1;
+}
+    
+int 
+verify_volume_label()
+{
+    /*TODO check that this matches what is in the drive */
+    
+    struct stat sbuf;
+    int status;
+    char path[MAXPATHLEN];  
+
+
+    /* check if it's in the database */
+    sprintf(path,"%s/volumes/%s", tape_db, volume_label);
+    status = stat(path, &sbuf);
+    if (status) {
+	fprintf(stderr,"%s: directory %s does not exist.\n%s",
+		progname, path,
+		"Has this volume been initialized?\n");
+	exit(-1);
+    }
+    return 1;
+}
+    
+
+/* Linked list implementation */
 typedef struct _list_node{
     char *pnfs_dir;
+    char *base_path;
     char *filename;
     struct _list_node *next;
 } list_node;
@@ -36,11 +160,11 @@ list_node
 	exit(-1);
     }   
     new_node->pnfs_dir = NULL;
+    new_node->base_path = NULL;
     new_node->filename = NULL;
     new_node->next = (list_node*)0;
     return new_node;
 }
-    
 
 list_node *file_list = NULL;
 list_node *last_node = NULL;
@@ -58,31 +182,20 @@ void append_to_file_list(char *pnfs_dir, char *filename)
     new_node->pnfs_dir = pnfs_dir;
     new_node->filename = filename;
 }
+
+
 	
-    
-int add_file(char *volume_label, char *pnfs_dir, char *filename)
-{
-    printf("requested pnfs_dir %s, file %s\n",    
-	   pnfs_dir, filename);
-    append_to_file_list(pnfs_dir, filename);
-    return 0; /*success*/
-}
-
-
-
 int    
 main(int argc, char **argv)
 {
     int i;
-    char *volume_label;
     char *pnfs_dir = NULL;
     char *filename;
-    int status;
     list_node *node;
     int nfiles;
 
     tape_device = getenv("TAPE");
-    tape_database = getenv("TAPE_DATABASE");
+    tape_db = getenv("TAPE_DB");
 
     progname = argv[0];
 
@@ -113,7 +226,7 @@ main(int argc, char **argv)
 		    fprintf(stderr, "%s: -d option requres an argument\n", progname);
 		    Usage();
 		} else 
-		    tape_database = argv[i];
+		    tape_db = argv[i];
 		break;
 	    case 'v':
 		verbose = 1;
@@ -147,13 +260,15 @@ main(int argc, char **argv)
 	Usage();
     }
 
-    if (!tape_database) {
-	fprintf(stderr, "%s: no tape database specified\n", progname);
+    if (!tape_db) {
+	fprintf(stderr, "%s: no tape db specified\n", progname);
 	Usage();
     }
 
+    verify_tape_device();
+    verify_tape_db();
+    verify_volume_label();
     
-
     for (; i<argc; ++i) {
 	if (argv[i][0] == '-') {
 	    if (argv[i][1] != 'p') {
@@ -172,19 +287,19 @@ main(int argc, char **argv)
 	    }
 	}
 	filename = argv[i];
-	status = add_file(volume_label, pnfs_dir, filename);
-	if (status) {
-	    fprintf(stderr,"%s: error adding file %s\n", progname, filename);
-	    exit(-1);
-	}
+	verify_file(pnfs_dir, filename);
+	append_to_file_list(pnfs_dir, filename);
     }
 
     for (nfiles=0,node=file_list; node; ++nfiles,node=node->next) {
 	printf("adding file %s to volume %s, pnfs_dir = %s, verbose=%d, force=%d\n",
 	       node->filename, volume_label, node->pnfs_dir, 
 	       verbose, force);
+	if (do_add_file(node->pnfs_dir, node->filename, verbose, force)){
+	    break;
+	}
     }
-    printf("handled %d files\n", nfiles);
+    printf("handled %d file%c\n", nfiles, nfiles==1?' ':'s');
 	       
     return 0;
 }
