@@ -1006,6 +1006,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
+        Trace.log(e_errors.INFO, "Starting in state %s"%(state_name(self.state),))
         if self.driver_type == 'NullDriver':
             self.check_written_file_period = 0 # no file check for null mover
             self.device = None
@@ -1023,7 +1024,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.ftt = __import__("ftt")
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
-            if self.state is IDLE:
+            if self.state in (IDLE, OFFLINE):
                 good_label = 1
                 have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
 
@@ -1033,13 +1034,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
 
                 if have_tape == 1:
+                    self.init_stat(self.device, self.logname)
                     status = self.tape_driver.verify_label(None)
                     if status[0]==e_errors.OK:
                         self.current_volume = status[1]
-                        self.state = HAVE_BOUND
-                        Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
-                        self.dismount_time = time.time() + self.default_dismount_delay
-                        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                        if self.state == OFFLINE:
+                            Trace.log(e_errors.INFO, "Mover is OFFLINE. Performing dismount at startup")
+                            self.dismount_volume(after_function=self.offline)
+                            self.current_volume = None
+                        else:
+                            self.state = HAVE_BOUND
+                            Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
+                            self.dismount_time = time.time() + self.default_dismount_delay
+                            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
                         
                     else:
                         # failed to read label eject tape
@@ -1055,7 +1062,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 time.sleep(2)
                                 sys.exit(-1)
                         have_tape=0
-                    self.init_stat(self.device, self.logname)
                 else:
                     self.tape_driver.close()
                 if not have_tape:
@@ -2807,7 +2813,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, msg, tb = sys.exc_info()
                     Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
             else:
-                self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
+                if self.vcc:
+                    self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
             self.transfers_failed = self.transfers_failed + 1
         encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK)
@@ -2862,13 +2869,11 @@ class Mover(dispatching_worker.DispatchingWorker,
            self.set_volume_noaccess(volume_label) 
         if dism_allowed:
             if save_state == DRAINING:
-                self.dismount_volume()
-                self.offline()
+                self.dismount_volume(after_function=self.offline)
             else:
                 if not after_dismount_function:
                     if not self.maybe_clean():
-                        self.dismount_volume()
-                    self.idle()
+                        self.dismount_volume(after_function=self.idle)
                 else:
                     self.dismount_volume(after_function=after_dismount_function)
             
@@ -2909,8 +2914,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             del(self.too_long_in_state_sent)
         
         if self.state == DRAINING or (self.state == FINISH_WRITE and self.draining):
-            self.dismount_volume()
-            self.offline()
+            self.dismount_volume(after_function=self.offline)
         else:
             self.state = HAVE_BOUND
             if self.maybe_clean():
@@ -4618,7 +4622,7 @@ class DiskMover(Mover):
     def no_work(self, ticket):
         x = ticket # to trick pychecker
         if self.state is HAVE_BOUND:
-            self.dismount_volume()
+            self.dismount_volume(after_function=self.idle)
         
     def setup_transfer(self, ticket, mode):
         self.lock_state()
@@ -4915,7 +4919,7 @@ class DiskMover(Mover):
                 dismount_allowed = 1
                 
         if dismount_allowed:
-            self.dismount_volume()
+            self.dismount_volume(after_function=self.idle)
 
         if save_state == DRAINING:
             self.dismount_volume()
@@ -4965,9 +4969,7 @@ class DiskMover(Mover):
         ##########################
         
         if self.state == DRAINING:
-            self.dismount_volume()
-            #self.state = OFFLINE
-            self.offline()
+            self.dismount_volume(after_function=self.offline)
         else:
             self.state = HAVE_BOUND
         self.need_lm_update = (1, None, 1, None)
