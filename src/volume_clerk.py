@@ -1210,7 +1210,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                        value['user_inhibit'],value['library'],
                                        value['file_family'])
                     if msg: msg = msg+","+formatted_string
-                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s, %s"%\
+                    else: msg = "%-10s  %-8s %-13s %-12s %-12s %-12s %-12s,%s"%\
                                 ("label","avail.","mount state",
                                  "sys_inhibit","usr_inhibit",
                                  "library","file_fam", formatted_string)
