@@ -442,7 +442,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     vq_file.write("   %-15s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %12s %-12s %-13s %s\n" %
           ("Library", "Storage Group", "Req. Alloc.",
            "Auth. Alloc.", "Quota", "Allocated",
-           "Blank Vols", "Written Vols", "Deleted Vols", "Space Used ",
+           "Blank Vols", "Used Vols", "Deleted Vols", "Space Used ",
            "Active Files", "Deleted Files", "Unknown Files"))
 
     if quotas.has_key('libraries'):
@@ -1103,12 +1103,12 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             quota = 'N/A'
 
         # for the list stuff
-        if total:
-            written_vol = 1
-            blank_vol = 0
-        else:
+        if not total and vv['volume_family'][-10:] == '.none.none':
             written_vol = 0
             blank_vol = 1
+        else:
+            written_vol = 1
+            blank_vol = 0
 
         if vv['system_inhibit'][0] == "DELETED":
             deleted_vol = 1
