@@ -432,13 +432,13 @@ class EnFile:
 	self.filedes = 0
 
     def open(self, mode='w'):
-	Trace.trace(10,"enfile open "+self.file_name)
 	try:
             self.filedes = open(self.file_name, mode)
-            Trace.trace(10,"enfile open ")
+            Trace.trace(10,"%s open "%self.file_name)
         except IOError:
             self.filedes = 0
-            Trace.trace(10,"enfile not open")
+            Trace.log(e_errors.WARNING,
+                      "%s not openable for %s"%(self.file_name, mode))
 
     def close(self):
 	Trace.trace(10,"enfile close "+self.file_name)
@@ -466,15 +466,10 @@ class EnStatusFile(EnFile):
     def open(self):
         Trace.trace(12,"open "+self.file_name)
         # try to open status file for append
-        try:
-            self.filedes = open(self.file_name, 'a')
-            Trace.trace(12, "opened for append")
-        except IOError:
-            self.filedes = 0
-	    Trace.trace(12, "enStatusFile not open")
-        except:
-            self.filedes = open(self.file_name, 'w')
-            Trace.trace(12, "opened for write")
+        EnFile.open(self, 'a')
+        if not self.filedes:
+            # could not open for append, try to create it
+            EnFile.open(self, 'w')
 
     # flush everything to the file
     def flush(self):
