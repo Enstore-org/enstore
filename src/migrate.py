@@ -428,7 +428,7 @@ def compare_metadata(p, f, pnfsid = None):
 	if p.complete_crc and long(p.complete_crc) != long(f['complete_crc']):
 		return "crc"
 	if p.drive and p.drive != "unknown:unknown" and \
-		p.drive != f['drive']:
+		p.drive != f['drive'] and f['drive'] != "unknown:unknown":
 		return "drive"
 	return None
 
@@ -778,7 +778,8 @@ def migrate_volume(vol):
 	# get all bfids
 	q = "select bfid from file, volume \
 		where file.volume = volume.id and label = '%s' \
-		and deleted = 'n' order by location_cookie;"%(vol)
+		and deleted = 'n' and pnfs_path != '' \
+		 order by location_cookie;"%(vol)
 	res = db.query(q).getresult()
 
 	bfids = []
