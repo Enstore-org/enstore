@@ -13,6 +13,7 @@ import os
 import string
 import fcntl
 import FCNTL
+import copy
 
 #enstore imports
 import cleanUDP
@@ -343,8 +344,8 @@ class DispatchingWorker:
     def reply_with_list(self, list):
         Trace.trace(19,"reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
-        request_dict[self.current_id] = list[0],list[1].copy(),list[2]
-        self.socket.sendto(repr(list), self.reply_address)
+        request_dict[self.current_id] = copy.deepcopy(list)
+        self.socket.sendto(request_dict[self.current_id], self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
