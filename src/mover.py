@@ -666,6 +666,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
             Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
+            del(pipeObj)
 
         
     def return_state(self):
@@ -680,6 +681,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
             Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
+            del(pipeObj)
             thread = threading.currentThread()
             if thread:
                 thread_name = thread.getName()
@@ -709,6 +711,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if result:
                     for l in result:
                         Trace.log(e_errors.INFO,"SYSLOG Entry:[%s] %s"%(l[:-1],self.current_volume))
+                del(pipeObj)
             except: # do not know what kind of exception it may be
                 Trace.handle_error()
 
@@ -855,6 +858,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
                 time.sleep(2)
                 sys.exit(-1)
+            del(pipeObj)
         
 
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
@@ -1334,6 +1338,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.method and self.method == 'read_next' and self.udp_cm_sent:
             send_rq = 0
         set_cm_sent = 1 # tape ingest, initially enable
+        Trace.trace(20, "send_rq %s"%(send_rq,))
         if send_rq:
             libraries = copy.deepcopy(self.libraries)
             if self.state == IDLE and len(libraries) > 1:
@@ -1470,6 +1475,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.file_info = {}
         self.current_volume = None
         self.current_library = None
+        self.method = None
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
