@@ -1,6 +1,52 @@
 
 dpnfs = `echo "/pnfs/enstore/test1-\`whoami\`"`
 
+newdbs:
+	- killall -9 longtest
+	- pidkill $$ENSTORE_DIR/test/longtest_pids
+	- for d in 1 2 3 4 5 6 7 8 9 ; do \
+		pidkill $$d/loop_longtest.pids ;\
+	done
+
+	ecmd stop
+
+	#rm -f $$ENSTORE_DIR/etc/*.jou
+
+	ecmd start
+
+	volume-declare
+
+	rm -f $ENSTORE_DIR/test/files.in
+	if [ ! -d data ] ; then mkdir data ; fi
+	touch data/null0.dat
+	echo short > data/short1.dat
+	dd if=/dev/zero of=data/null1.dat count=10
+	dd if=/dev/zero of=data/null2.dat count=20
+	dd if=/dev/zero of=data/null3.dat count=60
+	ecmd random-file --size=1024   --file=data/ran1.dat
+	ecmd random-file --size=32768  --file=data/ran2.dat
+	ecmd random-file --size=131072 --file=data/ran3.dat
+
+	if [ -d $(dpnfs) ] ; then rm -f $(dpnfs)/* ; else mkdir $(dpnfs); fi
+
+	rm -f $ENSTORE_DIR/test/files.in
+	( cd data; \
+	for f in * ; do \
+		f2=$(dpnfs)/`basename $$f`;\
+		ecmd encp --list $$f $$f2 ; \
+		echo $$f2 >> $$ENSTORE_DIR/test/files.in ; \
+	done ; )
+
+	for d in 1 2 3 4 5 6 7 8 9 ; do \
+		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
+		( cd $$d; rm -f *; \
+			cp $$ENSTORE_DIR/test/longtest . ; \
+			$$ENSTORE_DIR/test/kickoff & ); \
+	done
+
+	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
+	@ echo "   It takes a bit for them to die off"
+
 olddbs:
 	- killall -9 longtest
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
@@ -16,52 +62,6 @@ olddbs:
 	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
 	@ echo "   It takes a bit for them to die off"
 
-
-newdbs:
-	- killall -9 longtest
-	- pidkill $$ENSTORE_DIR/test/longtest_pids
-	- for d in 1 2 3 4 5 6 7 8 9 ; do \
-		pidkill $$d/loop_longtest.pids ;\
-	done
-
-	enstore-stop
-
-	rm -f $$ENSTORE_DIR/etc/*.jou
-
-	enstore-start
-
-	volume-declare
-
-	rm -f $ENSTORE_DIR/test/files.in
-	if [ ! -d data ] ; then mkdir data ; fi
-	touch data/null0.dat
-	echo short > data/short1.dat
-	dd if=/dev/zero of=data/null1.dat count=10
-	dd if=/dev/zero of=data/null2.dat count=20
-	dd if=/dev/zero of=data/null3.dat count=60
-	python $$ENSTORE_DIR/src/ranfile.py --size=1024   --file=data/ran1.dat
-	python $$ENSTORE_DIR/src/ranfile.py --size=32768  --file=data/ran2.dat
-	python $$ENSTORE_DIR/src/ranfile.py --size=131072 --file=data/ran3.dat
-
-	if [ -d $(dpnfs) ] ; then rm -f $(dpnfs)/* ; else mkdir $(dpnfs); fi
-
-	rm -f $ENSTORE_DIR/test/files.in
-	( cd data; \
-	for f in * ; do \
-		f2=$(dpnfs)/`basename $$f`;\
-		python $$ENSTORE_DIR/src/encp.py --list $$f $$f2 ; \
-		echo $$f2 >> $$ENSTORE_DIR/test/files.in ; \
-	done ; )
-
-	for d in 1 2 3 4 5 6 7 8 9 ; do \
-		if [ ! -d $$d ] ; then mkdir $$d ; fi; \
-		( cd $$d; rm -f *; \
-			cp $$ENSTORE_DIR/test/longtest . ; \
-			$$ENSTORE_DIR/test/kickoff & ); \
-	done
-
-	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
-	@ echo "   It takes a bit for them to die off"
 
 stop:
 	- killall -9 longtest

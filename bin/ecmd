@@ -14,13 +14,16 @@ ecmd config  [--config_list --config_file=  --dict --load --list --help]
 ecmd fcc     [--config_list --bfids --bfid= --list --help]
 ecmd vcc     [--config_list --vols  --vol=  --list --help']
 
+ecmd addvol  [--config_list --vols  --vol=  --list --help'] library file_family
+             media_type  volume_name, volume_byte_capacity remaining_capacity
+ecmd delvol  [--config_list --vols  --vol=  --list --help'] volume_name
+
 ecmd pnfs    [--test --status --file= --list --help]
 
-ecmd rddt    [--size= --device= --eod_cookie= --list --help]
-
-ecmd clbk    (no options/arguments)
-ecmd udpc    [--msg= --host= --port= --list --help]
-ecmd ranf    [--size= --file= --list= --help']
+ecmd rawdriver-test [--size= --device= --eod_cookie= --list --help]
+ecmd callback       (no options/arguments)
+ecmd udp-test       [--msg= --host= --port= --list --help]
+ecmd random-file    [--size= --file= --list= --help']
 "
 
 if [ -z "${1-}" ] ; then

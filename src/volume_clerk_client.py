@@ -135,10 +135,9 @@ if __name__ == "__main__" :
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
-            print "   addvol arguments: library, file family, media type"\
-                  +", volume name, capacity of this volume (bytes)"\
-                  +", remaining capacity of this volume (bytes)"
-            print "   delvol arguments: volume name"
+            print "   addvol arguments: library file_family media_type"\
+                  +", volume_name, volume_byte_capacity remaining_capacity"
+            print "   delvol arguments: volume_name"
             sys.exit(0)
 
     # bomb out if can't translate host
@@ -160,9 +159,8 @@ if __name__ == "__main__" :
     elif addvol:
         # bomb out if we don't have correct number of add vol arguments
         if len(args) < 6 :
-            print "   addvol arguments: library, file family, media type"\
-                  +", volume name, capacity of this volume (bytes)"\
-                  +", remaining capacity of this volume (bytes)"
+            print "   addvol arguments: library file_family media_type"\
+                  +", volume_name, volume_byte_capacity remaining_capacity"
             sys.exit(1)
         ticket = vcc.addvol(args[0],              # library
                             args[1],              # file family
@@ -173,7 +171,7 @@ if __name__ == "__main__" :
     elif delvol:
         # bomb out if we don't have correct number of del vol arguments
         if len(args) < 1 :
-            print "   delvol arguments: volume name"
+            print "   delvol arguments: volume_name"
             sys.exit(1)
         ticket = vcc.delvol(args[0])              # name of this volume
 

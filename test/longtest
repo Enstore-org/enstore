@@ -2,9 +2,9 @@
 
 while /bin/true; do
     cat $ENSTORE_DIR/test/files.in | while read f; do
-	rm -f loop_longtest.pids
-	echo $$ > loop_longtest.pids
-        python $ENSTORE_DIR/src/encp.py $f out.out;
+        rm -f loop_longtest.pids
+        echo $$ > loop_longtest.pids
+        ecmd encp $f out.out;
         diff out.out $ENSTORE_DIR/test/data/`basename $f` ;
     done ;
 done
