@@ -129,3 +129,8 @@ def header_size(header_start):
     filename_size = string.atoi( header_start[59:65], 8 )    
     header_size = 76+filename_size
     return header_size
+
+def create_wrapper_dict(ticket):
+    # the wrapper section already contains all of the information that we need
+    wrapper_d = ticket['wrapper']
+    return wrapper_d

@@ -15,3 +15,6 @@ min_header_size = 0
 
 def header_size(header_start):
     return 0
+
+def create_wrapper_dict(ticket):
+    return {}
