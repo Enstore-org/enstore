@@ -9,6 +9,17 @@ import string
 from gdb import Gdb
 from getline import getline
 
+#spin_chars='\\|/-'
+spin_chars=".oOo"
+spin_idx=0
+def spinner(cw=1):
+    global spin_idx
+    sys.stdout.write(spin_chars[spin_idx])
+    spin_idx = (spin_idx + cw)%4
+    sys.stdout.write('\b')
+    sys.stdout.flush()
+
+
 class PyGdb(Gdb):
     def dgdb_command(self, args):
         r=self.gdb_command(args)
@@ -19,9 +30,7 @@ class PyGdb(Gdb):
         pd=os.environ.get("PYTHON_DIR",None)
         if pd:
             pd=pd+"/Python-1.5.2"
-            self.gdb_command("dir %s/Python" % pd)
-            #self.gdb_command("dir %s/Objects" % pd)
-            #self.gdb_command("dir %s/Modules" % pd)
+            self.gdb_command("dir %s/Python:%s/Objects:%s/Modules" % (pd,pd,pd))
         self.gdb_command("b ceval.c:1539") #set_lineno
         self.breakpoints = {}
         self.ignore=[]
@@ -152,13 +161,12 @@ class PyGdb(Gdb):
         rsp=self.dgdb_command("print %s"%frame_expr)
         while rsp[0][:2]=="No":
             self.dgdb_command("up")
-            print "DIAG: searching for frame, going up"
+            spinner(-1)
             rsp=self.dgdb_command("print %s"%frame_expr)
-        print "DIAG: found frame"
         ret = []
         depth  = 0
         while 1:
-            print "DIAG: extracting python call stack"
+            spinner()
             file = self.c_string_expr(frame_expr+'->f_code->co_filename')
             line = self.c_numeric_expr(frame_expr+'->f_lineno')
             if depth==0:
@@ -350,7 +358,7 @@ if __name__ == "__main__":
                             if src is None:
                                 src = "?"
                             where="%s:%d"%(f,lineno)
-                            pad=132-(len(src)+len(where))
+                            pad=100-(len(src)+len(where))
                             if pad>0:
                                 src=src+' '*pad
                             src=src+where
@@ -365,8 +373,8 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             if pid:
                 os.kill(pid,signal.SIGINT)
-                print "*Break* at",
-            pygdb.cont = 1
+                print "*Break* "
+            pygdb.cont = 0
             pygdb.interrupted = 1
             response = pygdb.get_response()
             pygdb.break_next_line = 1
