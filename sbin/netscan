@@ -399,7 +399,7 @@ allow() { tt=${1:-UNKNOWN}
 	      p=""
 	    fi
 	    if [ $QUIET -ne 1 ]; then
-	      logit "Allowing $node $c $tt $a $b $p, ok"
+	       logit "Allowing $node $c $tt $a $b $p, ok"
 	    fi
 	    return 0
 	  done
@@ -412,7 +412,7 @@ allow() { tt=${1:-UNKNOWN}
 	  msg1="UNAUTHORIZED NETWORK SERVICE, type ${type}! $node $tt $command $pid $rest"
 	  logit "$msg1 $psline" "ps"
 	  if [ $ALARM -eq 1 ]; then
-	    enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
+	     enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
 	  fi
 	  return $type
 	 }
@@ -595,18 +595,18 @@ if [ $? -ne 0 ]; then
    done
    $SLEEP 30
    $MKDIR $ACTIVE 1>/dev/null 2>/dev/null
-   if [ $? -ne 0 ] ; then
-     msg="ERROR: netscan on $node already ACTIVE... exiting"
-     logit "$msg"
-     if [ $ALARM -eq 1 ]; then
-	enstore alarm --raise --severity "A" --root-error "$msg"
-     fi
-     exit 1
+   if [ $? -ne 0 ]; then
+      msg="ERROR: netscan on $node already ACTIVE... exiting"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+	 enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+      exit 1
    else
-     logit "netscan starting"
+      logit "netscan starting"
    fi
 else
-  logit "netscan starting"
+   logit "netscan starting"
 fi
 
 # make this a dry run if we are not a production node
@@ -614,13 +614,12 @@ fi
 
 
 # generate an informational alarm if we detect a server has rebooted
-if [ $REBOOT -eq 1 -a $SERVER -eq 1 ]
-then
-  msg="Server $node has rebooted"
-  logit "$msg"
-  if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "I" --root-error "$msg"
-  fi
+if [ $REBOOT -eq 1 -a $SERVER -eq 1 ]; then
+   msg="Server $node has rebooted"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "I" --root-error "$msg"
+   fi
 fi
 
 # check these files
@@ -660,7 +659,7 @@ done
 
 if [ -e /PRODUCTION ]
 then
-  check_mode	/PRODUCTION			0644
+   check_mode	/PRODUCTION			0644
 fi
 
 if $ECHO $node | $EGREP '^(d0|stk|cdf)en(srv[0-9]|mvr[1-9][0-9]?a)$' >/dev/null
@@ -692,7 +691,7 @@ then
   right_file	$ENSTORE_DIR/ngop/local_cronjob.xml	/var/ngop/cron_agent		0644
   right_file	$ENSTORE_DIR/ngop/start_cron		/var/ngop/cron_agent/.start	0755
   if   [ $SERVER -eq 1 ]; then
-    lh_xml=srv_linuxHealth	# servers
+    lh_xml=srv_linuxHealth	# server
   elif [ $DCACHE -eq 1 ]; then
     lh_xml=dca_linuxHealth	# dcache
   else
@@ -743,11 +742,11 @@ if [ "$INETD" = unknown ]; then
 else
   right_file $ENSTORE_DIR/etc/${INETD}.conf		/etc/${INETD}.conf
   if [ "$INETD" = xinetd ]; then
-    right_file $ENSTORE_DIR/etc/ftp			/etc/xinetd.d/ftp
-    right_file $ENSTORE_DIR/etc/klogin			/etc/xinetd.d/klogin
-    right_file $ENSTORE_DIR/etc/kshell			/etc/xinetd.d/kshell
-    right_file $ENSTORE_DIR/etc/telnet			/etc/xinetd.d/telnet
-    right_file $ENSTORE_DIR/etc/eklogin			/etc/xinetd.d/eklogin
+     right_file $ENSTORE_DIR/etc/ftp			/etc/xinetd.d/ftp
+     right_file $ENSTORE_DIR/etc/klogin			/etc/xinetd.d/klogin
+     right_file $ENSTORE_DIR/etc/kshell			/etc/xinetd.d/kshell
+     right_file $ENSTORE_DIR/etc/telnet			/etc/xinetd.d/telnet
+     right_file $ENSTORE_DIR/etc/eklogin		/etc/xinetd.d/eklogin
   fi
 fi
 
@@ -771,7 +770,7 @@ eth1_err="eth1: card reports no RX buffers"
 if $TAIL -n 10 /var/log/messages | $EGREP "$eth1_err" >/dev/null; then
    logit "ERROR: $eth1_err"
    if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$eth1_err"
+      enstore alarm --raise --severity "A" --root-error "$eth1_err"
    fi
    [ -e /PRODUCTION ] && $IFDOWN eth1 >>$LOG 2>&1
    [ -e /PRODUCTION ] && $IFUP   eth1 >>$LOG 2>&1
@@ -810,11 +809,11 @@ fi
 #      msg="DISK FULL: $mess"
 #      logit "$msg"
 #      if [ $ALARM -eq 1 ]; then
-#        enstore alarm --raise --severity "A" --root-error "$msg"
+#         enstore alarm --raise --severity "A" --root-error "$msg"
 #      fi
 #    else
 #      if [ $QUIET -ne 1 ]; then
-#        logit "DISK $a at $cap%, ok"
+#         logit "DISK $a at $cap%, ok"
 #      fi
 #    fi
 #  fi
@@ -832,10 +831,10 @@ if [ "${motherboard:-Unknown}" = Unknown ]; then
    model=`$AWK -F: '$1 ~ "model" && $2 !~ /[[:alpha:]]/ {print $2}' /proc/cpuinfo | $SORT -u`
    case `$EXPR $model` in
      11)	motherboard=SDS2	;;
-     7 | 8)	motherboard=Lancewood	;;
-     2)		motherboard=SE7505VB2	;;
-     5)		motherboard=N440BX	;;
-     *)		motherboard=Unknown	;;
+      7|8)	motherboard=Lancewood	;;
+      2)	motherboard=SE7505VB2	;;
+      5)	motherboard=N440BX	;;
+      *)	motherboard=Unknown	;;
    esac
 fi
 if [ $QUIET -ne 1 ]; then
@@ -942,25 +941,16 @@ if [ -e /PRODUCTION ]; then
 fi
 
 # check that we don't have too many processes running
-NPROC=`$LS -ld /proc/[1-9]* | $WC -l`
-if   $ECHO $node | $GREP dca >/dev/null
-then
-    maxproc=300	 # disk cache
-elif $ECHO $node | $GREP srv >/dev/null
-then
-    maxproc=200  # servers
-elif $ECHO $node | $GREP mvr >/dev/null
-then
-    maxproc=100  # movers
-else
-    maxproc=100  # ???
-fi
+NPROC=`$LS -d /proc/[1-9]* | $WC -l`
+let maxproc=100
+[ $SERVER -eq 1 ] && let maxproc+=100
+[ $DCACHE -eq 1 ] && let maxproc+=100
 
-if [ $NPROC -ge $maxproc ]; then
+if [ $NPROC -ge "$maxproc" ]; then
    msg="$NPROC processes running. Way too many"
    logit "$msg"
    if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
+      enstore alarm --raise --severity "A" --root-error "$msg"
    fi
 elif [ $QUIET -ne 1 ]; then
    logit "$NPROC processes, ok"
@@ -990,7 +980,7 @@ if [ $SERVER -eq 1 ]; then
       msg="$NPROC pnfsd processes running. Should be $npnfsd"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
-	enstore alarm --raise --severity "W" --root-error "$msg"
+	 enstore alarm --raise --severity "W" --root-error "$msg"
       fi
    elif [ $QUIET -ne 1 ]; then
       logit "$NPROC pnfsd processes, ok"
@@ -1015,22 +1005,23 @@ today=`$DATE -I`
 	 dbfile=$dbfdir/$dbname
 	 if [ -d /diska/pnfs/db/data/base ]; then
 	    dbpgid=`psql -t -A -U enstore template1 -c "select OID from pg_database where datname='$dbname'"`
-	    dbsize=`$DU -bs /diska/pnfs/db/data/base/$dbpgid | $AWK '{print $1}'`
+	    dbszKB=`$DU -ks /diska/pnfs/db/data/base/$dbpgid | $AWK '{print $1}'`
 	 else
 	    dbsize=`$LS -l $db | $AWK '{print $5}'`
+	    dbszKB=$(( (dbsize+512)>>10 ))
 	 fi
 	 if [ -r $dbfile ]; then
-	    if [ $dbsize -gt 1610612736 ] && [ $dbsize -gt $(<$dbfile) ]; then
-	       msg="DATABASE TOO BIG: $dbname - $(( (dbsize+524288)>>20 )) MB, exceeds 1500 MB and is growing"
+	    if [ $dbszKB -gt 1740800 ] && [ $dbszKB -gt $(<$dbfile) ]; then
+	       msg="DATABASE TOO BIG: $dbname - $(( (dbszKB+512)>>10 )) MB, exceeds 1700 MB and is growing"
 	       logit "$msg"
 	       if [ $ALARM -eq 1 ]; then
 		  enstore alarm --raise --severity "W" --root-error "$msg"
 	       fi
 	    else
-	       logit "$dbname - $(( (dbsize+524288)>>20 )) MB, not too big or not growing, ok"
+	       logit "$dbname - $(( (dbszKB+512)>>10 )) MB, not too big or not growing, ok"
 	    fi
 	 fi
-	 $ECHO $dbsize > $dbfile
+	 $ECHO $dbszKB > $dbfile
        done
     fi
     # check for pnfs manager for dCache on production server
@@ -1070,7 +1061,7 @@ today=`$DATE -I`
 	  let dt=logtime-`$DATE -r $logfile +%s`	# seconds
 	  let ds=logszKB-$(<$logfile)			# KBytes
 	  if [ $(( (`$DATE -d 2359 +%s`-logtime)*ds )) -gt $(( (1048576-logszKB)*dt )) ]; then
-	     msg="LOG FILE GROWING TOO FAST: $logname will exceed 1 GB by midnight"
+	     msg="LOG FILE GROWING TOO FAST: $logname may exceed 1 GB by midnight"
 	     logit "$msg"
 	     if [ $ALARM -eq 1 ]; then
 		enstore alarm --raise --severity "W" --root-error "$msg"
@@ -1122,7 +1113,7 @@ esac
 #	msg="$need not running (or more than 1 running) and file/volume clerk are running."
 #	logit "$msg"
 #	if [ $ALARM -eq 1 ]; then
-#	  enstore alarm --raise --severity "A" --root-error "$msg"
+#	   enstore alarm --raise --severity "A" --root-error "$msg"
 #	fi
 #     elif [ $QUIET -ne 1 ]; then
 #	logit "$need running, ok"
@@ -1141,7 +1132,7 @@ case $node in
 	  msg="httpd web server not running"
 	  logit "$msg"
 	  if [ $ALARM -eq 1 ]; then
-	    enstore alarm --raise --severity "A" --root-error "$msg"
+	     enstore alarm --raise --severity "A" --root-error "$msg"
 	  fi
        elif [ $QUIET -ne 1 ]; then
 	  logit "httpd web server running, ok"
@@ -1161,7 +1152,7 @@ case $node in
        msg="httpd web server running on illegal node"
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
-	 enstore alarm --raise --severity "A" --root-error "$msg"
+	  enstore alarm --raise --severity "A" --root-error "$msg"
        fi
     elif [ $QUIET -ne 1 ]; then
        logit "httpd web server not running, ok"
@@ -1289,12 +1280,12 @@ if [ -e /PRODUCTION ]; then
       do
 	ACTION=`$IPMI_DIR/dogread | $AWK '/^Actions:/ {print $2}'`
 	if [ -n "${ACTION:-}" ]; then
-	  break
+	   break
 	fi
-	$SLEEP 2
+	$SLEEP 3
       done
       if [ "$ACTION" != "00" ]; then
-	 msg="watchdog action is $ACTION - should be 00"
+	 msg="watchdog action is ${ACTION:-NULL} - should be 00"
 	 logit "$msg"
 	 if [ $ALARM -eq 1 ]; then
 	    enstore alarm --raise --severity "A" --root-error "$msg"
@@ -1302,7 +1293,7 @@ if [ -e /PRODUCTION ]; then
 	 # disable the action
 	 $IPMI_DIR/dogdisarm
       elif [ $QUIET -ne 1 ]; then
-	 logit "watchdog action, ok"
+	 logit "watchdog action is $ACTION, ok"
       fi
    fi
 
