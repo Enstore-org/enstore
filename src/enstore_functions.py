@@ -41,6 +41,19 @@ def get_from_config_file(server, keyword, default):
     else:
         return default
 
+#Similar to get_from_config_file(), but returns the entire dictionary
+# for the server.
+def get_dict_from_config_file(server, default):
+    cdict = get_config_dict()
+    if cdict:
+        server_dict = cdict.configdict.get(server, None)
+        if server_dict:
+            return server_dict
+        else:
+            return default
+    else:
+        return default
+
 def get_media():
     return get_from_config_file(www_server.WWW_SERVER,
 				www_server.MEDIA_TAG,
