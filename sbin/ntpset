@@ -4,6 +4,7 @@ if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-c" ] ; then CHKONLY=1;shift; else CHKONLY=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 
+BADCNT=6
 
 UNAME="/bin/uname"
 CMP="/usr/bin/cmp"
@@ -25,7 +26,7 @@ gang=`/home/enstore/enstore/sbin/gang`
 LOG=/tmp/ntpset.log
 HIST=/root/CRON/ntpsetH
 if [ ! -d `dirname $HIST` ]; then $MKDIR -p `dirname $HIST`;fi
-TIME_NOT_SYNCD=/root/time_not_syncd
+TIME_SYNC_COUNTER=/tmp/time_sync_counter
 
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
@@ -34,13 +35,19 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           fi
           $ECHO "$1"
         }
-# check that ntp is working, fix if not, complain if down more than once
+# check that ntp is working, fix if not, complain if down more 6 times in a row (hour)
+if [ ! -r $TIME_SYNC_COUNTER ]; then
+  echo '0'>$TIME_SYNC_COUNTER
+fi
+COUNT=`cat $TIME_SYNC_COUNTER`
+
 if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     x=`$XNTPDC -p`
     logit "NO TIME SYNC"
     logit "$x"
     if [ $ALARM -eq 1 ]; then
-      if [ -r $TIME_NOT_SYNCD ]; then
+      COUNT=`expr $COUNT + 1`
+      if [ $COUNT -gt $BADCNT ]; then
         enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
       fi
     fi
@@ -54,10 +61,12 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     fi
     $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 1 >>$HIST
 else
-  rm -f $TIME_NOT_SYNCD
+  COUNT='0'
   if [ $QUIET -ne 1 ]; then
     logit  "TIME SYNCD, ok"
   fi
   $ECHO `$DATE +"%Y-%m-%d:%H:%M:%S"` 0 >>$HIST
 fi
+rm -f $TIME_SYNC_COUNTER
+echo $COUNT > $TIME_SYNC_COUNTER
 
