@@ -1216,6 +1216,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # if so then we must hand trigger the web page update
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "encp periodic timeout")
+        now = time.time()
         if self.er_encp_event.isSet():
             self.event_relay.alive(now)
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
