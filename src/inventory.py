@@ -28,8 +28,15 @@ class match_list:
 def inventory_usage(message = None):
     if message:
         print "\n" + message + "\n"
-    print "Usage: " + sys.argv[0] + " [-v volume_file] [-f data_file]",
-    print "[[-o output_file] | [-stdout]] [--help]\n"
+    print "Usage: " + sys.argv[0] + " [-v volume_file] [-f metadata_file]",
+    print "[[-o output_directory] | [-stdout]] [--help]"
+    print "   -v       set the volume file to be inventoried"
+    print "   -f       set the metadata file to be inventoried"
+    print "   -o       set the output directory"
+    print "   -stdout  set the output directory to standard out"
+    print "  --help    print this message"
+    print "See configuration dictionary entries \"backup\" and \"inventory\""\
+          " for defaults."
 
 #Take in a long int or int and format it into human readable form.
 def format_storage_size(size_in_bytes):
@@ -668,10 +675,8 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir):
 
 
 def inventory_dirs():
-    csc = configuration_client.ConfigurationClient(
-        checkBackedUpDatabases.config)
-    inven = csc.get('inventory',checkBackedUpDatabases.timeout,
-                    checkBackedUpDatabases.tries)
+    csc = configuration_client.ConfigurationClient()
+    inven = csc.get('inventory',timeout=15,retry=3)
     checkBackedUpDatabases.check_ticket('Configuration Server', inven)
     
     inventory_dir = inven.get('inventory_dir','MISSING')

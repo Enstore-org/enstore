@@ -15,6 +15,13 @@ import hostaddr
 import configuration_client
 import verify_db
 
+
+def print_usage():
+    print "Usage:", sys.argv[0], "[--help]"
+    print "  --help   print this help message"
+    print "See configuration dictionary entry \"backup\" for defaults."
+
+
 def check_ticket(server, ticket,exit_if_bad=1):
     if not 'status' in ticket.keys():
         print timeofday.tod(),server,' NOT RESPONDING'
@@ -70,7 +77,7 @@ def remove_files(files,dir):
 
 def configure(configuration = None):
     csc = configuration_client.ConfigurationClient()
-    backup = csc.get('backup',timeout=15,tries=3)
+    backup = csc.get('backup',timeout=15,retry=3)
     check_ticket('Configuration Server',backup)
     
     backup_node = backup.get('hostip','MISSING')
@@ -98,6 +105,10 @@ def configure(configuration = None):
         remove_files(old_files,check_dir)
     
     current_dir = os.getcwd() #Remember the original directory
+
+    print timeofday.tod(), 'Checking Enstore on', csc.get_address()[0], \
+          'with timeout of', csc.get_timeout(), 'and retries of', \
+          csc.get_retry()
 
     #Return the directory the backup file is in and the directory the backup
     # file will be ungzipped and untared to, respectively.  Lastly, return
@@ -180,9 +191,10 @@ def clean_up(current_dir, check_dir = None):
 
 
 if __name__ == "__main__":
-    print timeofday.tod(), 'Checking Enstore on',config,'with timeout of',
-    print timeout,'and tries of',tries
-
+    if "--help" in sys.argv:
+        print_usage()
+        sys.exit(0)
+    
     (backup_dir, check_dir, current_dir, backup_node) = configure(1) #non-None argument!
     extract_backup(check_dir, check_backup(backup_dir, backup_node))
     check_files(check_dir)

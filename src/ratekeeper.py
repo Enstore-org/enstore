@@ -11,6 +11,13 @@ import time
 
 import configuration_client
 
+def print_usage():
+    print "Usage: " + sys.argv[0] + " [name] [--help]"
+    print "    name    name of the system to record rate statistics."
+    print "  --help    print this message"
+    print "See configuration dictionary entry \"ratekeeper\" for defaults."
+
+
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
@@ -159,9 +166,13 @@ class Ratekeeper:
 
 
 if __name__ == "__main__":
+    if "--help" in sys.argv:
+        print_usage()
+        sys.exit(0)
+    
     #Get the configuration from the configuration server.
     csc = configuration_client.ConfigurationClient()
-    ratekeep = csc.get('ratekeeper', timeout=15, tries=3)
+    ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
     
     ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING')

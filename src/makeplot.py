@@ -11,6 +11,15 @@ import configuration_client
 #Conversion from "bytes per 15 seconds" to "terabytes per day"
 BP15S_TO_TBPD = 5.7e-09
 
+def print_usage():
+    print "Usage:", sys.argv[0],
+    print "[-t <num>] [-n <name>] [--help]"
+    print "   -t     number of 15 second intervals smoothed.  (default=40)"
+    print "   -n     name of the system to plot." \
+          "  (default=$ENSTORE_CONFIG_HOST)"
+    print "  --help  print this message"
+    print "See configuration dictionary entry \"ratekeeper\" for defaults."
+
 #############################################################################
 #############################################################################
 #This is the "magic" class to use when filtering out elements that have the
@@ -33,7 +42,7 @@ class file_filter:
 def get_rate_info():
     #Get the configuration from the configuration server.
     csc = configuration_client.ConfigurationClient()
-    ratekeep = csc.get('ratekeeper', timeout=15, tries=3)
+    ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
     
     dir  = ratekeep.get('dir', 'MISSING')
     tmp_dir  = ratekeep.get('tmp', 'MISSING')
@@ -89,7 +98,6 @@ def filter_out_files(sys_name, log_dir):
 #rate_log_files is the list of files and scaled_filename is the file that
 # the merged data is written to.
 def write_scale_file(log_dir, rate_log_files, scaled_file):
-
     for file in rate_log_files:
         in_file = open(log_dir + file, "r")
         while 1:
@@ -138,7 +146,7 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
     plot_file.write("set format x \"%s\"\n" % ("%m-%d-%Y\\n%H:%M:%S"))
     plot_file.write("set grid ytics\n")
     plot_file.write("set terminal pbm small color\n")
-#    plot_file.write("set size 100 100\n")
+    plot_file.write("set size 1.4,1.2\n")
     plot_file.write("set output \"%s\"\n" % graphic_filename)
     plot_file.write("plot \"%s\" using 1:3 title \"read\" with lines," \
                     "\"%s\" using 1:4 title \"write\" with lines\n" %
@@ -149,8 +157,7 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
 
 if __name__ == "__main__":
     if "--help" in sys.argv:
-        print "Usage:", sys.argv[0],
-        print "[-t <num>] [-n <name>]"
+        print_usage()
         sys.exit(1)
     
     log_dir, tmp_dir, sys_name, rate_nodes, gif_filename = get_rate_info()
