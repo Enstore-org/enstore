@@ -637,21 +637,12 @@ class Pnfs:
             else:
                 cookie = kookie
 
-            # cookies are usually just the filenumber, but in some instances
-            # they are byte oriented (offset,length). In these cases, just use
-            # offset as the file number
-            try:
-                size = len(cookie)
-                exec("(volfile,size)="+cookie)
-            except:
-                volfile = cookie
-
             dir_elements = string.split(self.dir,'/')
             self.voldir = '/'+dir_elements[1]+'/'+dir_elements[2]+'/volmap/'+ \
                           ff+'/'+volume
             # make the filename lexically sortable.  since this could be a byte offset,
             #     allow for 100 GB offsets
-            self.volume_file = self.voldir+'/%12.12d'%volfile
+            self.volume_file = self.voldir+'/'+cookie
         else:
             self.volume_file = UNKNOWN
 
