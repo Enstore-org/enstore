@@ -215,7 +215,8 @@ def busy_vols_in_family (self, vc, family_name):
 		    # go into the volume veto list
 		    vols.append(mv["external_label"])
             # check if this mover can do the work
-	    if (vol_info['at_mover'][0] == 'mounted' and 
+	    if (vol_info['at_mover'][0] == 'mounted' and
+                mv['mover'] == vol_info['at_mover'][1] and 
 		mv['state'] == 'idle_mover'):
 		work_movers.append(mv)
     Trace.trace(11,"busy_vols_in_family. vols %s. movers %s"%\
