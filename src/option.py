@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# $Id: 
 ############################################################################
 """
 Example option group dictionaries:
@@ -694,7 +694,7 @@ class Interface:
         #If an argument uses an = for a value seperate it into two entries.
         self.split_on_equals(self.argv)
         argv = self.argv[1:]
-        print argv
+
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
         # with dashes.  It should be noted that the use of underscores is
@@ -836,7 +836,7 @@ class Interface:
                 args[i + offset:i + offset + 1] = list
                 offset = offset + 1
             else:
-                args[i] = argv[i + offset]
+                args.append(argv[i])
 
         #Set the temprary list to be the real list.
         argv[:] = args
