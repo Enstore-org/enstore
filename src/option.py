@@ -153,6 +153,7 @@ CONST = "const"                              #pnfs
 COUNTERS = "counters"                        #pnfs
 COUNTERSN = "countersN"                      #pnfs
 CP = "cp"                                    #pnfs
+CREATE = "create"                            #quota
 CURSOR = "cursor"                            #pnfs
 DATABASE = "database"                        #pnfs
 DATABASEN = "databaseN"                      #pnfs
@@ -309,10 +310,14 @@ SEQUENTIAL_FILENAMES = "sequential-filenames"  #get
 SET_CRCS = "set-crcs"                        #file
 SET_COMMENT = "set-comment"                  #volume
 SET_SG_COUNT = "set-sg-count"                #volume
+SET_REQUESTED = "set-requested"              #quota
+SET_AUTHORIZED = "set-authorized"            #quota
+SET_QUOTA = "set-quota"                      #quota
 SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
+SHOW_BY_LIBRARY = "show-by-library"          #quota
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
 SHOWID = "showid"                            #pnfs
@@ -373,7 +378,7 @@ valid_option_list = [
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CLIENT_NAME,
     COMMANDS_FILE, CONDITION, CONFIG_FILE, CONST,
-    COUNTERS, COUNTERSN, CP, CURSOR,
+    COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTROY,
@@ -416,9 +421,10 @@ valid_option_list = [
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
-    SHOW_BAD, SIZE, SKIP_PNFS,
+    SHOW_BAD, SIZE, SKIP_PNFS, SHOW_BY_LIBRARY,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
+    SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, TIME, TIMEOUT, TITLE, TITLE_GIF,
