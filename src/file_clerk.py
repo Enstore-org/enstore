@@ -95,9 +95,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # also need new pnfsid - make sure we have this
         try:
             key2="pnfsid";       pnfsid       = ticket["fc"][key2]
-            key2="pnfsvid";      pnfsvid      = ticket["fc"][key2]
-            key2="pnfs_name0";   pnfs_name0   = ticket["fc"][key2]
-            key2="pnfs_mapname"; pnfs_mapname = ticket["fc"][key2]
+            # temporary try block - sam doesn't want to update encp too often --> put back into main try in awhile
+            try: 
+                key2="pnfsvid";      pnfsvid      = ticket["fc"][key2]
+                key2="pnfs_name0";   pnfs_name0   = ticket["fc"][key2]
+                key2="pnfs_mapname"; pnfs_mapname = ticket["fc"][key2]
+            except:
+                pass
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
             self.enprint(ticket, generic_cs.PRETTY_PRINT)
@@ -123,10 +127,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # add the pnfsid
         record["pnfsid"] = pnfsid
-        record["pnfsvid"] = pnfsvid
-        record["pnfs_name0"] = pnfs_name0
-        record["pnfs_mapname"] = pnfs_mapname
-        record["deleted"] = "no"
+        # temporary try block - sam doesn't want to update encp too often --> put back into main try in awhile
+        try: 
+            record["pnfsvid"] = pnfsvid
+            record["pnfs_name0"] = pnfs_name0
+            record["pnfs_mapname"] = pnfs_mapname
+            record["deleted"] = "no"
+        except:
+            pass
 
         # record our changes
         dict[bfid] = copy.deepcopy(record)
