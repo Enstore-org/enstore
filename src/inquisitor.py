@@ -3,6 +3,7 @@
 #
 #  o allow it to respond to alive requests when it is in the middle of 
 #	updating the servers.
+#  o communicate with the movers
 #
 ##############################################################################
 # system import
