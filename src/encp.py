@@ -265,6 +265,16 @@ def get_file_size(file):
 
     return filesize
 
+#Return the number of requests in the list that have NOT had a non-retriable
+# error or have already finished.
+def get_queue_size(request_list):
+    queue_size=0
+    for req in request_list:
+        if not req.get('finished_state', 0):
+            queue_size = queue_size + 1
+
+    print queue_size
+    return queue_size
 ############################################################################
 
 #Return the correct configuration server client based on the 'brand' (if
@@ -476,6 +486,20 @@ def clients(config_host,config_port):
 
 ##############################################################################
 
+def get_callback_addr(e):
+    # get a port to talk on and listen for connections
+    (host, port, listen_socket) = callback.get_callback(verbose=e.verbose)
+    callback_addr = (host, port)
+    listen_socket.listen(4)
+
+    Trace.message(CONFIG_LEVEL,
+                  "Waiting for mover(s) to call back on (%s, %s)." %
+                  callback_addr)
+
+    return callback_addr, listen_socket
+
+##############################################################################
+
 # for automounted pnfs
 
 pnfs_is_automounted = 0
@@ -638,6 +662,7 @@ def inputfile_check(input_files):
                 p = pnfs.Pnfs(inputlist[i])
                 p.get_file_size()
                 file_size.append(p.file_size)
+                                                   
 	    #This would work if pnfs supported NFS version 3.  Untill it does
             # this can not be used in conjuction with large file support.
             else:
@@ -881,26 +906,32 @@ def open_control_socket(listen_socket, mover_timeout):
     read_fds,write_fds,exc_fds=select.select([listen_socket], [],
                                              [listen_socket], mover_timeout)
 
+    #If there are no successful connected sockets, then select timedout.
     if not read_fds:
-        #timed out!
-        msg = os.strerror(errno.ETIMEDOUT)
-        Trace.message(ERROR_LEVEL, msg)
-        raise socket.error, (errno.ETIMEDOUT, msg)
+        raise EncpError(errno.ETIMEDOUT,
+                        "Mover did not call back.", e_errors.TIMEDOUT)
+        #msg = os.strerror(errno.ETIMEDOUT)
+        #Trace.message(ERROR_LEVEL, msg)
+        #raise socket.error, (errno.ETIMEDOUT, msg)
     
     control_socket, address = listen_socket.accept()
 
     if not hostaddr.allow(address):
         control_socket.close()
-        msg = "host %s not allowed" % address[0]
-        Trace.message(ERROR_LEVEL, msg)
-        raise socket.error, (errno.EACCES, msg)
+        raise EncpError(errno.EPERM, "host %s not allowed" % address[0],
+                        e_errors.NOT_ALWD_EXCEPTION)
+        #msg = "host %s not allowed" % address[0]
+        #Trace.message(ERROR_LEVEL, msg)
+        #raise socket.error, (errno.EACCES, msg)
 
     try:
         ticket = callback.read_tcp_obj(control_socket)
     except e_errors.TCP_EXCEPTION:
-        msg = e_errors.TCP_EXCEPTION
-        Trace.message(ERROR_LEVEL, msg)
-        raise socket.error, (e_errors.NET_ERROR, msg)
+        raise EncpError(errno.EPROTO, "Unable to obtain mover responce",
+                        e_errors.TCP_EXCEPTION)
+        #msg = e_errors.TCP_EXCEPTION
+        #Trace.message(ERROR_LEVEL, msg)
+        #raise socket.error, (e_errors.NET_ERROR, msg)
 
     #try:
     #    a = ticket['mover']['callback_addr']
@@ -994,15 +1025,15 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout):
             control_socket, mover_address, ticket = open_control_socket(
                 listen_socket, mover_timeout)
 
-        except (socket.error,), detail:
+        except (socket.error, EncpError), detail:
             exc, msg, tb = sys.exc_info()
-            if detail.args[0] == errno.ETIMEDOUT:
+            if msg.errno == errno.ETIMEDOUT:
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
+            elif hasattr(msg, "type"):
+                ticket = {'status':(msg.type, msg.strerror)}                
             else:
-                ticket = {'status':(exc, msg)}
+                ticket = {'status':(e_errors.NET_ERROR, msg.strerror)}
                 
-            #Trace.log(e_errors.INFO, e_errors.RESUBMITTING)
-
             #Since an error occured, just return it.
             return None, None, ticket
 
@@ -1329,7 +1360,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If there is no error, then don't do anything
     if status == (e_errors.OK, None):
         result_dict = {'status':(e_errors.OK, None), 'retry':retry,
-                       'resubmits':resubmits, 'queue_size':len(request_list)}
+                       'resubmits':resubmits,
+                       'queue_size':len(request_list)}
         result_dict = combine_dict(result_dict, socket_dict)
         return result_dict
 
@@ -1742,7 +1774,7 @@ def set_pnfs_settings(ticket):
         p.set_xreference(ticket["fc"]["external_label"],
                          ticket["fc"]["location_cookie"],
                          ticket["fc"]["size"],
-                         t.file_family,
+                         ticket["vc"]["file_family"],
                          p.pnfsFilename,
                          "", #p.volume_filepath,
                          p.id,
@@ -2140,30 +2172,25 @@ def write_to_hsm(e, tinfo):
                  tinfo['encp_start_time']))
 
     # initialize
-    bytecount=None #Test moe only
-    storage_info=None #DCache only
-    unique_id = []
-    bytes = 0L
+    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
 
     # get a port to talk on and listen for connections
-    (host, port, listen_socket) = callback.get_callback(verbose=e.verbose)
-    callback_addr = (host, port)
-    listen_socket.listen(4)
-
-    Trace.message(CONFIG_LEVEL,
-                  "Waiting for mover(s) to call back on (%s, %s)." %
-                  callback_addr)
+    callback_addr, listen_socket = get_callback_addr(e)
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     request_list = create_write_requests(callback_addr, e, tinfo)
 
+    #If this is the case, don't worry about anything.
+    if len(request_list) == 0:
+        quit()
+
     #This will halt the program if everything isn't consistant.
     verify_write_request_consistancy(request_list)
 
     #Set the max attempts that can be made on a transfer.
-    #max_attempts(t.get_library(), e)
+    max_attempts(request_list[0]['vc']['library'], e)
 
     # loop on all input files sequentially
     for i in range(0,len(request_list)):
@@ -2174,7 +2201,6 @@ def write_to_hsm(e, tinfo):
         work_ticket = request_list[i]
         Trace.message(TICKET_LEVEL, "WORK_TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
-
 
         Trace.message(TRANSFER_LEVEL,
                       "Sending ticket to library manager,  elapsed=%s" %
@@ -2213,12 +2239,6 @@ def write_to_hsm(e, tinfo):
 
         bytes = bytes + done_ticket['file_size']
 
-        if (i == 0 and e.output_file_family):  # == "ephemeral"):
-            Trace.message(DONE_LEVEL,
-                          "New file family %s has been created for "
-                          "--ephemeral or --file-family request." %
-                          (e.output_file_family,))
-
         tstring = '%s_elapsed_finished' % done_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_start #-------------------------End
 
@@ -2230,7 +2250,7 @@ def write_to_hsm(e, tinfo):
         # to the right one.  In any event, I calculate an 
         # overall rate at the end of all transfers
         calculate_rate(done_ticket, tinfo)
-        
+
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
 
@@ -2738,7 +2758,8 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         delete_at_exit.unregister(done_ticket['outfile']) #localname
 
         # remove file requests if transfer completed succesfuly.
-        del(request_ticket)
+        #del(request_ticket)
+        del request_list[request_list.index(request_ticket)]
         if files_left > 0:
             files_left = files_left - 1
 
@@ -2801,9 +2822,9 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
                                                transfer['outfile'],
                                                transfer['file_size'],
                                                transfer)
-            except IndexError:
-                msg = "Unable to print data access layer.\n"
-                sys.stderr.write(msg)
+            except IndexError, msg:
+                #msg = "Unable to print data access layer.\n"
+                sys.stderr.write(str(msg)+"\n")
 
     return failed_requests, bytes, done_ticket
 
@@ -2814,18 +2835,14 @@ def read_from_hsm(e, tinfo):
     Trace.trace(16,"read_from_hsm input_files=%s  output=%s  verbose=%s  "
                 "chk_crc=%s t0=%s" % (e.input, e.output, e.verbose,
                                       e.chk_crc, tinfo['encp_start_time']))
-
-    ninput, file_size, inputlist, outputlist = file_check(e)
+    
+    # initialize
+    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    exit_status = 0 #Used to determine the final message text.
+    number_of_files = 0 #Total number of files where a transfer was attempted.
 
     # get a port to talk on and listen for connections
-    Trace.trace(20,'read_from_hsm calling callback.get_callback')
-    host, port, listen_socket = callback.get_callback(verbose = e.verbose)
-    callback_addr = (host, port)
-    listen_socket.listen(4)
-
-    Trace.message(CONFIG_LEVEL,
-                  "Waiting for mover(s) to call back on (%s, %s)." %
-                  (host, port))
+    callback_addr, listen_socket = get_callback_addr(e)
 
     #Create all of the request dictionaries.
     requests_per_vol = create_read_requests(callback_addr, tinfo, e)
@@ -2844,14 +2861,12 @@ def read_from_hsm(e, tinfo):
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
-    bytes = 0L
-    exit_status = 0
     
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
         request_list = requests_per_vol[vol]
-        number_of_files = len(request_list)
+        number_of_files = number_of_files + len(request_list)
 
         #The return value is the number of files successfully submitted.
         # This value may be different from len(request_list).  The value
@@ -2896,7 +2911,8 @@ def read_from_hsm(e, tinfo):
     close_descriptors(listen_socket)
 
     #Finishing up with a few of these things.
-    calc_ticket = calculate_final_statistics(bytes, ninput, exit_status, tinfo)
+    calc_ticket = calculate_final_statistics(bytes, number_of_files,
+                                             exit_status, tinfo)
 
     done_ticket = combine_dict(calc_ticket, data_access_layer_ticket)
 
