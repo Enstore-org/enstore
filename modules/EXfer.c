@@ -194,6 +194,7 @@ int thread_collect(int tid, time_t wait_time);
 static void* thread_read(void *info);
 static void* thread_write(void *info);
 static void* thread_monitor(void *monitor);
+unsigned int ecrc_readback(int fd);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count);
