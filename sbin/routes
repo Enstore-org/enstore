@@ -1,0 +1,281 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+job=${1:-test}
+
+NODES="d0ensrv1 d0ensrv2 d0ensrv3 d0ensrv4 d0ensrv5 \
+d0enmvr4a d0enmvr4b d0enmvr5a d0enmvr5b d0enmvr6a d0enmvr6b \
+d0enmvr7a d0enmvr7b d0enmvr8a d0enmvr8b d0enmvr9a d0enmvr9b \
+d0enmvr10a d0enmvr10b d0enmvr11a d0enmvr11b d0enmvr12a d0enmvr12b \
+d0enmvr13a d0enmvr13b d0enmvr14a d0enmvr14b d0enmvr15a d0enmvr15b \
+d0enmvr16a d0enmvr16b d0enmvr17a d0enmvr17b d0enmvr18a d0enmvr18b \
+d0enmvr1 d0enmvr2 d0enmvr3 \
+rip1 rip2 rip5 rip6 rip7 rip8"
+
+netperf=/opt/netperf/netperf
+N=/dev/null
+
+x=4
+while [ $x -le 18 ]; do
+ case $job in
+ add*)
+    /sbin/route add -host d0enmvr${x}a eth0
+    /sbin/route add -host d0enmvr${x}b eth1
+    ;;
+ del*)
+    /sbin/route del d0enmvr${x}a
+    /sbin/route del d0enmvr${x}b
+    ;;
+ esac
+ x=`expr $x + 1`
+done
+
+case $job in
+
+quickcheck*)
+
+KNODES="d0ensrv1: d0ensrv2: d0ensrv3: d0ensrv4: d0ensrv5: \
+d0enmvr4a: d0enmvr4b: d0enmvr5a: d0enmvr5b: d0enmvr6a: d0enmvr6b: \
+d0enmvr7a: d0enmvr7b: d0enmvr8a: d0enmvr8b: d0enmvr9a: d0enmvr9b: \
+d0enmvr10a: d0enmvr10b: d0enmvr11a: d0enmvr11b: d0enmvr12a: d0enmvr12b: \
+d0enmvr13a d0enmvr13b d0enmvr14a d0enmvr14b d0enmvr15a d0enmvr15b \
+d0enmvr16a d0enmvr16b d0enmvr17a d0enmvr17b d0enmvr18a d0enmvr18b \
+d0enmvr1 d0enmvr2 d0enmvr3 \
+rip1 rip2 rip5 rip6 rip7 rip8 \
+stkensrv1 stkensrv2 stkensrv3 stkensrv4 \
+stkenmvr1a stkenmvr2a stkenmvr3a stkenmvr4a stkenmvr5a \
+stkenmvr1b stkenmvr2b"
+
+black=#000000
+white=#FFFFFF
+
+red=#FF0000
+blue=#0000FF
+green=#00FF00
+
+magenta=#FF00FF
+cyan=#00FFFF
+yellow=#FFFF00
+
+silver=#C0C0C0
+coral=#FF7F50
+teal=#008080
+turquoise=#40E0D0
+navy=#000080
+
+bgcolor=$white
+text=$navy
+
+    storit="/root/quickcheck.eepro100.html"
+    rm -f $storit
+    color=$black
+    checkat=10
+    cat << EOF >>$storit
+<html> <head> <title>Network Rate Tests</title> </head>
+<body>
+<meta http-equiv="Refresh" content="1800">
+<body bgcolor="$bgcolor" text="$text">
+<h1><center>Network Rate Test</center><h1>
+<p>
+Expected nominal rate for (idle) Fast Ethernet connections is ~94 x 10^6 bits/S
+<p>
+Rate test between various nodes and `uname -n`
+<p>
+<hr>
+<center> <a href="http://heidrum.fnal.gov/MRTG/dzero/s-d0-fcc2w.html"> Today's MRTG Graphs</a></center>
+<hr>
+<h1><center>Begin: `date`</center><h1>
+<p>
+<table bgcolor="$silver" nosave >
+<tr>
+<td align=center><b><font color="$color">Node</font></b></td>
+<td align=center><b><font color="$color">In<br>Production</font></b></td>
+<td align=center><b><font color="$color">Rate<br>10^6 bits/S</font></b></td>
+<td align=center><b><font color="$color">Less than<br>${checkat}<br>10^6 bits/S?</font></b></td>
+</tr>
+EOF
+    for knode in $KNODES; do
+      node=`echo $knode | cut -f1 -d:`
+      production=`echo $knode|grep -c :`
+      if [ $production -ne 0 ]; then
+         color=$blue
+         P=YES
+      else
+         color=$teal
+         P=no
+      fi
+      echo "<tr><td align=center><font color=\"$color\">$node</font></td>" >> $storit
+      echo "<td align=center><font color=\"$color\">$P</font></td>" >> $storit
+      r=`$netperf -H $node -l 1`
+      if [ $? -ne 0 ]; then v=""; fi
+      v=`echo $r | awk '{print $NF}'`
+      i=`echo "$v -  $v % 1" | bc |  cut -f1 -d.`
+      if [ -z "$v" ]; then v=0; i=0; fi
+      if [ $i -lt 10 ]; then
+         flag=" <-------------- CHECK THIS. Problem is either NIC/NODE/6509";
+         color=$red
+         if [ $production -ne 0 ]; then
+           flag2="CHECK"
+         else
+           flag2="yes"
+         fi
+      else
+         flag=""
+         flag2=""
+      fi
+      echo $node:  ${v} x 10^6 bits/S $flag
+      echo "<td align=center><font color=\"$color\">$v</font></td>" >> $storit
+      echo "<td align=center><font color=\"$color\">$flag2</font></td>" >> $storit
+    done
+cat << EOF >>$storit
+</table>
+<hr>
+<h1><center>Done: `date`</center><h1>
+<hr>
+</body>
+EOF
+    # next line is not good...
+    rcp $storit d0ensrv2:/fnal/ups/prd/www_pages/enstore
+    ;;
+
+test*)
+    count=${2:-1}
+    testTime=${3:-30}
+
+    node=`uname -n| sed -e 's/.fnal.gov//'`
+    num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
+    num1=`expr $num + 1`
+
+    if [ `expr $num / 2 \* 2` -eq $num -a $num -lt 18 ]; then
+      loop=0
+      while [ $loop -lt $count ]; do
+
+        o=netperf.${num1}a-${num}a.output
+        rsh d0enmvr${num1}a "$netperf -l $testTime -H d0enmvr${num}a >> $o 2>&1 <$N &" &
+        o=netperf.${num1}b-${num}b.output
+        rsh d0enmvr${num1}b "$netperf -l $testTime -H d0enmvr${num}b >> $o 2>&1 <$N &" &
+        sleep $testTime
+        sleep 3
+        rsh d0enmvr${num1}a "(killall $netperf 2>$N) 1>&- 2>&- <&- &" &
+
+        o=netperf.${num}a-${num1}a.output
+        $netperf -l $testTime -H d0enmvr${num1}a >> $o 2>&1 <$N &
+        o=netperf.${num}b-${num1}b.output
+        $netperf -l $testTime -H d0enmvr${num1}b >> $o 2>&1 <$N &
+        sleep $testTime
+        sleep 3
+        killall $netperf 2>$N
+
+        loop=`expr $loop + 1`
+      done
+    fi
+    ;;
+
+rate*)
+    for i in netperf*.output; do
+       l=`tail -1 $i`
+       r=`echo $l | cut -f5 -d\ `
+       p=`echo $i | sed -e 's/netperf.//' -e 's/.output//'`
+       echo $p $r
+    done
+    ;;
+
+ifconfig)
+    node=`uname -n| sed -e 's/.fnal.gov//'`
+    num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
+    node0=`echo $node | sed -e "s/a\$//" -e "s/b\$//"`
+
+    e=`/sbin/ifconfig eth0`
+    f=`echo $e| sed -e 's/ Link .*HWaddr/ HWaddr/' -e 's/inet addr:/ addr /' -e 's/UP.*//'`
+    echo ${node0}a $f
+
+    e=`/sbin/ifconfig eth1`
+    f=`echo $e| sed -e 's/ Link .*HWaddr/ HWaddr/' -e 's/inet addr:/ addr /' -e 's/UP.*//'`
+    echo ${node0}b $f
+
+    ;;
+
+arp)
+    node=`uname -n| sed -e 's/.fnal.gov//'`
+    oldIFS=$IFS
+    IFS="
+"
+    for a in `/sbin/arp`; do
+       if [ `echo "$a" |grep -c d0en` -ne 0 ]; then
+         b=`echo $a | sed -e 's/.fnal.gov.*ether//'`
+         n=`echo $b | awk '{print \$1}'`
+         h=`echo $b | awk '{print \$2}'`
+         echo $node $n $h
+       fi
+    done
+    IFS=$oldIFS
+    ;;
+
+makearp)
+    ifmaster=${2:-ifconfig.master}
+
+    if [ ! -r $ifmaster ]; then
+      echo "Can not read file $ifmaster (made by 'rgang -n farmlet \"$0 ifconfig \" > $ifmaster ')"
+    fi
+    cat $ifmaster | while read node eth x hwaddr junk; do
+      echo /sbin/arp -i $eth -s $node $hwaddr
+    done
+    ;;
+
+#This is without a doubt an utter abomination.  But it is temporary
+# and lets em get on with testing.
+setarp)
+/sbin/arp -i eth0 -s d0enmvr4a 00:90:27:8D:24:90
+/sbin/arp -i eth1 -s d0enmvr4b 00:90:27:A3:30:1D
+/sbin/arp -i eth0 -s d0enmvr5a 00:90:27:8D:07:6E
+/sbin/arp -i eth1 -s d0enmvr5b 00:90:27:A3:30:1F
+/sbin/arp -i eth0 -s d0enmvr6a 00:90:27:8D:24:4C
+/sbin/arp -i eth1 -s d0enmvr6b 00:90:27:A3:30:1E
+/sbin/arp -i eth0 -s d0enmvr7a 00:90:27:8D:24:28
+/sbin/arp -i eth1 -s d0enmvr7b 00:90:27:A3:31:E7
+/sbin/arp -i eth0 -s d0enmvr8a 00:90:27:8D:25:BE
+/sbin/arp -i eth1 -s d0enmvr8b 00:90:27:A3:30:0F
+/sbin/arp -i eth0 -s d0enmvr9a 00:90:27:8D:06:9C
+/sbin/arp -i eth1 -s d0enmvr9b 00:90:27:A3:30:13
+/sbin/arp -i eth0 -s d0enmvr10a 00:90:27:8D:25:A4
+/sbin/arp -i eth1 -s d0enmvr10b 00:90:27:A3:30:12
+/sbin/arp -i eth0 -s d0enmvr11a 00:90:27:8D:25:38
+/sbin/arp -i eth1 -s d0enmvr11b 00:90:27:A3:30:14
+/sbin/arp -i eth0 -s d0enmvr12a 00:90:27:8D:24:50
+/sbin/arp -i eth1 -s d0enmvr12b 00:90:27:A3:30:20
+/sbin/arp -i eth0 -s d0enmvr13a 00:90:27:8D:23:DB
+/sbin/arp -i eth1 -s d0enmvr13b 00:90:27:A3:32:8E
+/sbin/arp -i eth0 -s d0enmvr14a 00:90:27:8D:25:7E
+/sbin/arp -i eth1 -s d0enmvr14b 00:90:27:A3:31:BD
+/sbin/arp -i eth0 -s d0enmvr15a 00:90:27:8D:24:D9
+/sbin/arp -i eth1 -s d0enmvr15b 00:90:27:A3:32:8A
+/sbin/arp -i eth0 -s d0enmvr16a 00:90:27:8D:24:D6
+/sbin/arp -i eth1 -s d0enmvr16b 00:90:27:A3:30:10
+/sbin/arp -i eth0 -s d0enmvr17a 00:90:27:8D:24:9B
+/sbin/arp -i eth1 -s d0enmvr17b 00:90:27:A3:32:8B
+/sbin/arp -i eth0 -s d0enmvr18a 00:90:27:8D:24:61
+/sbin/arp -i eth1 -s d0enmvr18b 00:90:27:A3:30:1B
+    ;;
+
+check)
+    ifmaster=${2:-ifconfig.master}
+    arplist=${3:-arp.list}
+
+    if [ ! -r $ifmaster ]; then
+      echo "Can not read file $ifmaster (made by 'rgang -n farmlet \"$0 ifconfig \" > $ifmaster ')"
+    fi
+    if [ ! -r $arplist ]; then
+      echo "Can not read file $arplist (made by 'rgang -n farmlet \"$0 arp \" > $arplist ')"
+    fi
+
+    cat $arplist | while read who node add; do
+      master=`grep $node $ifmaster`
+      masteradd=`echo $master | cut -f4 -d\ `
+      if [ "$masteradd" != "$add" ]; then
+         masternode=`grep $add $ifmaster| cut -f1 -d\ `
+        echo Node $who thinks $node points to $add but master says $masteradd \($add is $masternode\)
+        fi
+    done
+
+esac
