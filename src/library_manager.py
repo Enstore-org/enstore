@@ -413,10 +413,9 @@ def next_work_any_volume(self):
 		w['status'] = ret['status']
 		self.pending_work.delete_job(w)
 		send_regret(self, w)
-		Trace.log(e_errors.ERROR,"next_work_any_volume: cannot do"
-			  "the work for %s status:%s" % \
-			  (w['fc']['external_label'], 
-			   w['status'][0]))
+		Trace.log(e_errors.ERROR,
+                          "next_work_any_volume: cannot do the work for %s status:%s" % 
+			  (w['fc']['external_label'], w['status'][0]))
 		return {"status" : (e_errors.NOWORK, None)}
 	return w
     return {"status" : (e_errors.NOWORK, None)}

@@ -192,8 +192,7 @@ class UDPClient:
 	        except exceptions.SyntaxError :
                     exc,msg,tb=sys.exc_info()
 		    Trace.log(e_errors.ERROR,
-                              "send disaster: didn't read entire message"
-                              "server=%s, reply=%s, error=%s %s"%
+                              "send disaster: didn't read entire message: server=%s, reply=%s, error=%s %s"%
                               (server,reply,exc,msg))
                     raise exc,msg
 		# goofy test feature - need for client being echo service only
