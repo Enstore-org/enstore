@@ -1215,7 +1215,8 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
 	# Populate the first row in perf_table with headings 
 	head_row = HTMLgen.TR(valign="CENTER")
         self.perf_table.append(head_row)
-        for h in headings: head_row.append(HTMLgen.TD(h))
+        for h in headings:
+            head_row.append(HTMLgen.TD(h))
 
         
         
@@ -1229,7 +1230,8 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         #self.perf_table.append(measurement_row)
         
         self.perf_table.contents.insert(1,measurement_row)  
-        for m in measurement :  measurement_row.append(HTMLgen.TD(m))
+        for m in measurement :
+            measurement_row.append(HTMLgen.TD(m))
 
         if len(self.perf_table.contents) > 400 :
             self.perf_table.contents = self.perf_table.contents [:350]
