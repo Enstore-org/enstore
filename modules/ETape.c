@@ -16,6 +16,7 @@ typedef struct ET_descriptor
 /*
  An error reporter which produces an error string and raises an exception for python
 */
+static PyObject *ETErrObject;
 #ifdef HAVE_STDARG_PROTOTYPES
 static PyObject *
 raise_ftt_exception(char * location,  ET_descriptor *ET_desc, ...)
@@ -27,8 +28,10 @@ raise_ftt_exception(location, ET_desc, va_alist)
         va_dcl;
 #endif
 {
+  char errbuf[500];
 /*  dealloc and raise exception fix */
-  printf("Error in ETAPE module at %s - FTT reports: %s\n", location, ftt_get_error(ET_desc->ftt_desc));
+  sprintf(errbuf,"Error at %s - FTT reports: %s\n", location, ftt_get_error(ET_desc->ftt_desc));
+  PyErr_SetString(ETErrObject,errbuf);
   return NULL;
 }
 
@@ -378,6 +381,14 @@ static PyMethodDef ETape_Methods[] = {
 */
 void initETape()
 {
-  (void) Py_InitModule4("ETape", ETape_Methods, ETape_Doc, 
+  PyObject *m, *d;
+  m= Py_InitModule4("ETape", ETape_Methods, ETape_Doc, 
                                (PyObject*)NULL,PYTHON_API_VERSION);
+  d = PyModule_GetDict(m);
+  ETErrObject = PyErr_NewException("ETape.error", NULL, NULL);
+  if (ETErrObject != NULL)
+             PyDict_SetItemString(d,"error",ETErrObject);
+
+  
 }
+
