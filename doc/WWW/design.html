@@ -149,7 +149,7 @@ There are three kinds of accesses:
 <dt>Interact with Administration --
 <dd>An administrator can create special files in <em>pnfs</em> name space.
     For example, one type of file signifies that the system needs to be
-    drained. Existence of the file causes <em>ency</em> to stall.
+    drained. Existence of the file causes <em>encp</em> to stall.
 <dt>Configuration Information --
 <dd>When files are created on tape media quite a bit of information
     needs to be provided.
@@ -165,8 +165,6 @@ There are three kinds of accesses:
 	pnfs_uid = 01000
 	pnfs_uname = "petravic"
 	pnfs_gid = 0100
-	pnfs_uname = "users"
-<font color=#ff4400><blink>	^^^^^^^^^^ why are there two "pnfs_uname"?</blink></font>
 	pnfs_file_mode = 0644
 </pre>
 
