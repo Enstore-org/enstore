@@ -144,6 +144,9 @@ class DbTable:
       Trace.log(e_errors.INFO, "self.db.status() was not implemented")
       return None
 
+  def sync(self):	# Flush a database to stable storage
+    return self.db.sync()
+
   def __len__(self):
     try:	# to be backward compatible
       return self.db.__len__()
