@@ -44,9 +44,15 @@ import Trace
 
 list = 0
 test = 0
-# Log Methods Class
 
-class LogMethods(dispatching_worker.DispatchingWorker) :
+"""Logger Class. Instance of this class is a log server. Multiple instances
+   of this class can run using unique port numbers. But it actually is not
+   recommended. It is assumed that the only one Log Server will serve the
+   whole system.
+"""
+class Logger(  dispatching_worker.DispatchingWorker
+	     , generic_server.GenericServer
+             , SocketServer.UDPServer ):
 
     def open_logfile(self, logfile_name) :
         # try to open log file for append
@@ -76,15 +82,6 @@ class LogMethods(dispatching_worker.DispatchingWorker) :
         self.logfile.flush()
         if list :
             pprint.pprint(res)
-
-"""Logger Class. Instance of this class is a log server. Multiple instances
-   of this class can run using unique port numbers. But it actually is not
-   recommended. It is assumed that the only one Log Server will serve the
-   whole system.
-"""
-class Logger(LogMethods,\
-             generic_server.GenericServer,\
-             SocketServer.UDPServer) :
 
     def serve_forever(self, logfile_dir_path) :   # overrides UDPServer method
         tm = time.localtime(time.time())          # get the local time
@@ -180,7 +177,7 @@ if __name__ == "__main__" :
     if list :
         pprint.pprint(keys)
         pprint.pprint(args)
-    logserver =  Logger((keys['hostip'], keys['port']), LogMethods)
+    logserver =  Logger( (keys['hostip'],keys['port']), 'unused param' )
 
     logserver.set_csc(csc)
 
