@@ -49,8 +49,13 @@ def show_query_result(res):
 
 	# print the rows
 	for r in result:
-		for i in range(w):
+		for i in range(w-1):
 			print format[i]%(r[i]),
+		if r[w-1] == None:
+			print format[w-1]%(0),
+		else:
+			print format[w-1]%(r[w-1]),
+
 		# mark if the numbers are not quite right
 		if (r[-2] and r[-1] > r[-2]) or r[-2] > r[-3] or r[-3] > r[-4]:
 			print "*",
@@ -58,7 +63,10 @@ def show_query_result(res):
 			print " ",
 		# mark for approaching quota limit
 		if r[-2]:
-			ds = r[-2] - r[-1]
+			if r[-1] == None:
+				ds = r[-2]
+			else:
+				ds = r[-2] - r[-1]
 			if ds <= 0:
 				print "!!!"
 			elif ds < 3 or ds < r[-2] * 0.05:
@@ -99,14 +107,14 @@ class Quota:
 
 	# show summary by the libraries
 	def show_by_library(self):
-		q = "select sg_count.library, sum(requested) as requested, \
+		q = "select quota.library, sum(requested) as requested, \
 			sum(authorized) as authorized, \
 			sum(quota) as quota, \
-			sum(count) as allocated from sg_count \
-			left outer join quota on \
+			sum(count) as allocated from quota \
+			left outer join sg_count on \
 			sg_count.library = quota.library and \
 			sg_count.storage_group = quota.storage_group \
-			group by sg_count.library order by sg_count.library;"
+			group by quota.library order by quota.library;"
 		show_query_result(self.db.query(q))
 
 	# show [library [storage_group]]
@@ -118,12 +126,12 @@ class Quota:
 			# with specific library
 			if sg:
 				# with specific storage group
-				q = "select sg_count.library, \
-					sg_count.storage_group, \
+				q = "select quota.library, \
+					quota.storage_group, \
 					requested, authorized, quota, \
 					count as allocated \
-					from sg_count \
-					left outer join quota on\
+					from quota \
+					left outer join sg_count on\
 					quota.library = sg_count.library and \
 					quota.storage_group = sg_count.storage_group \
 					where \
@@ -132,12 +140,12 @@ class Quota:
 					library, sg)
 			else:
 				# without specific storage group
-				q = "select sg_count.library, \
-					sg_count.storage_group, \
+				q = "select quota.library, \
+					quota.storage_group, \
 					requested, authorized, quota, \
 					count as allocated \
-					from sg_count \
-					left outer join quota on \
+					from quota \
+					left outer join sg_count on \
 					quota.library = sg_count.library and \
 					quota.storage_group = sg_count.storage_group \
 					where \
@@ -146,11 +154,11 @@ class Quota:
 					library)
 		else:
 			# without specific library -- show all
-			q = "select sg_count.library, \
-				sg_count.storage_group, requested,\
+			q = "select quota.library, \
+				quota.storage_group, requested,\
 				authorized, quota, \
 				count as allocated \
-				from sg_count left outer join quota on\
+				from quota left outer join sg_count on \
 				quota.library = sg_count.library  and \
 				quota.storage_group = sg_count.storage_group \
 				order by library, storage_group;"
