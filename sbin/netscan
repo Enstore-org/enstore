@@ -193,6 +193,7 @@ ALLOW_BASE="
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        TCP,netserver,TCP,:netperf,x
+       TCP,ALARM_CLIENT,TCP, inet ,x
 "
 #       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
