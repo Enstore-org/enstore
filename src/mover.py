@@ -110,7 +110,6 @@ class Buffer:
         self.header_size = 0L
         self.trailer_size = 0
         self._lock.release()
-
         
     def nbytes(self):
         n = self._buf_bytes
@@ -619,10 +618,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.stream_write(self.buffer.header_size, None)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-
-
             if self.buffer.empty():
-                Trace.trace(15, "write_client: buffer empty %s/%s" % (self.buffer.nbytes(), self.buffer.min_bytes))
+                Trace.trace(15, "write_client: buffer empty %s/%s" %
+                            (self.buffer.nbytes(), self.buffer.min_bytes))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
 
@@ -1232,6 +1230,8 @@ if __name__ == '__main__':
 
     intf = MoverInterface()
     mover =  Mover( (intf.config_host, intf.config_port), intf.name )
+    mover.handle_generic_commands(intf)
+    
     while 1:
         try:
             mover.serve_forever()
