@@ -101,9 +101,6 @@ setup_products() {
     export GLOBUS_LOCATION=/home/enstore/globus
     set +u;. /home/enstore/globus/etc/globus-user-env.sh;set -u
 
-    # setup for srmcp
-    export X509_USER_PROXY=/home/enstore/.globus/k5-ca-proxy.pem
-
     # reset so we can see output if turned on.
     reset_set_vars
 }
@@ -345,6 +342,7 @@ gridftp_test() {
 #######################################################################
 
 srmcp_test() {
+    export X509_USER_PROXY=/home/enstore/.globus/k5-ca-proxy.pem
     grid-proxy-init
 
     read_back=/tmp/dcache_page_read_back_srm_$$
