@@ -2830,13 +2830,13 @@ have_bound_volume to the Library Manager and waits for further instructions.
 </h4>
 
 The Mover is started and controlled through a command line interface using
-ecmd. Option commands for "ecmd mov [--option_command] <mover>" include the
+ecmd. Option commands for "ecmd mvc [--option_command] <mover>" include the
 general option commands
 supported by all other servers.
 Additionally the "status" option command
 is supported and produces the following:
 <br><p>
-$ ecmd mov --status fndaprdisk.mover<br>
+$ ecmd mvc --status fndaprdisk.mover<br>
 {'wr_bytes': 6398896, 'rd_bytes': 6398896, 'no_xfers': 11, 'mode': 'w',
 'bytes_to_xfer': 6398896, 'crc_func': '<built-in function ECRC>',
 'state': 'idle', 'status': ('ok', None)}
@@ -2928,6 +2928,11 @@ Media Changer.</TD>
 <TD NOSAVE>device name used for driver device access. **</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>'/dev/rmt/tps2d2n' (make sure this is a no-rewind device)</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>norestart</TD>
+<TD NOSAVE>do not restart this server if it crashes</TD>
+<TD NOSAVE>do a restart</TD>
 </TR>
 </TABLE></center>
 <p>
@@ -3043,17 +3048,17 @@ supports the general commands supported by all other servers.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>load the specified Enstore config file into the configuration server</TD>
-<TD NOSAVE>ecmd config --config_file=/path/to/config_file --load</TD>
+<TD NOSAVE>ecmd cc --config_file=/path/to/config_file --load</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>output the currently loaded Enstore configuration file</TD>
-<TD NOSAVE>ecmd config --dict</TD>
+<TD NOSAVE>ecmd cc --dict</TD>
 <TD NOSAVE>(same as the example in the previous section)</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>output the keys in the currently loaded Enstore configuration file</TD>
-<TD NOSAVE>ecmd config --get_keys</TD>
+<TD NOSAVE>ecmd cc --get_keys</TD>
 <TD NOSAVE><pre>
 ['DE13DLT.mover',
  'alarm_server',
@@ -3300,112 +3305,112 @@ mentioned in the table below may be replaced by any legal server name.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the maximum size of the ascii status file</TD>
-<TD NOSAVE>ecmd inq --get_max_ascii_size</TD>
+<TD NOSAVE>ecmd ic --get_max_ascii_size</TD>
 <TD NOSAVE>maximum ascii size</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the maximum number of <em>encp</em> status lines displayed</TD>
-<TD NOSAVE>ecmd inq --get_max_encp_lines</TD>
+<TD NOSAVE>ecmd ic --get_max_encp_lines</TD>
 <TD NOSAVE>maximum number of <em>encp</em> lines</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the html status file auto refresh rate</TD>
-<TD NOSAVE>ecmd inq --get_refresh</TD>
+<TD NOSAVE>ecmd ic --get_refresh</TD>
 <TD NOSAVE>refresh time</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the frequency for monitoring the Volume Clerk</TD>
-<TD NOSAVE>ecmd inq --get_timeout volume_clerk</TD>
+<TD NOSAVE>ecmd ic --get_timeout volume_clerk</TD>
 <TD NOSAVE>volume_clerk timeout value</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the frequency for looking for work</TD>
-<TD NOSAVE>ecmd inq --get_timeout</TD>
+<TD NOSAVE>ecmd ic --get_timeout</TD>
 <TD NOSAVE>Inquisitor wakeup time</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the maximum size of the ascii status file</TD>
-<TD NOSAVE>ecmd inq --max_ascii_size=40000</TD>
+<TD NOSAVE>ecmd ic --max_ascii_size=40000</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the maximum number of <em>encp</em> status lines displayed</TD>
-<TD NOSAVE>ecmd inq --max_encp_lines=13</TD>
+<TD NOSAVE>ecmd ic --max_encp_lines=13</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots</TD>
-<TD NOSAVE>ecmd inq --plot</TD>
+<TD NOSAVE>ecmd ic --plot</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots, keep the data files and put them in /tmp.</TD>
-<TD NOSAVE>ecmd inq --plot --keep --keep_dir=/tmp</TD>
+<TD NOSAVE>ecmd ic --plot --keep --keep_dir=/tmp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and put the plot files in /tmp.</TD>
-<TD NOSAVE>ecmd inq --plot --out_dir=/tmp</TD>
+<TD NOSAVE>ecmd ic --plot --out_dir=/tmp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and use the log files located in the specified directory</TD>
-<TD NOSAVE>ecmd inq --plot --logfile_dir=/tmp/logs</TD>
+<TD NOSAVE>ecmd ic --plot --logfile_dir=/tmp/logs</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information after the specified start_time</TD>
-<TD NOSAVE>ecmd inq --plot --start_time=1998-12-25</TD>
+<TD NOSAVE>ecmd ic --plot --start_time=1998-12-25</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information before the specified stop_time</TD>
-<TD NOSAVE>ecmd inq --plot --stop_time=1998-12-31</TD>
+<TD NOSAVE>ecmd ic --plot --stop_time=1998-12-31</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information between the specified times</TD>
-<TD NOSAVE>ecmd inq --plot --start_time=1998-12-01 --stop_time=1998-12-31</TD>
+<TD NOSAVE>ecmd ic --plot --start_time=1998-12-01 --stop_time=1998-12-31</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the html status file auto refresh rate</TD>
-<TD NOSAVE>ecmd inq --refresh=60</TD>
+<TD NOSAVE>ecmd ic --refresh=60</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for monitoring the alarm_server to the value in the config file</TD>
-<TD NOSAVE>ecmd inq --reset_timeout alarm_server</TD>
+<TD NOSAVE>ecmd ic --reset_timeout alarm_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for looking for work to the value in the config file</TD>
-<TD NOSAVE>ecmd inq --reset_timeout</TD>
+<TD NOSAVE>ecmd ic --reset_timeout</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for monitoring the file_clerk</TD>
-<TD NOSAVE>ecmd inq --timeout=55 file_clerk</TD>
+<TD NOSAVE>ecmd ic --timeout=55 file_clerk</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for looking for work</TD>
-<TD NOSAVE>ecmd inq --timeout=10</TD>
+<TD NOSAVE>ecmd ic --timeout=10</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>close the current ascii status file and open a new one</TD>
-<TD NOSAVE>ecmd inq --timestamp</TD>
+<TD NOSAVE>ecmd ic --timestamp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor the Log Server now</TD>
-<TD NOSAVE>ecmd inq --update log_server</TD>
+<TD NOSAVE>ecmd ic --update log_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor all the servers now</TD>
-<TD NOSAVE>ecmd inq --update</TD>
+<TD NOSAVE>ecmd ic --update</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 </TABLE></center>
