@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# read current crontab, remove every one ...
+
+crontab -l 2> /dev/null | grep -v "no crontab for" | grep -v "^#" > /tmp/enstore_cron
+
+if [ ! -s /tmp/enstore_cron ]	# no crontab for this user!
+then
+	exit 0
+fi
+
+for i in $*
+do
+	grep -v "\-p $i" /tmp/enstore_cron > /tmp/e_cron_tmp
+	mv -f /tmp/e_cron_tmp /tmp/enstore_cron
+done
+
+if [ -s /tmp/enstore_cron ]
+then
+	crontab /tmp/enstore_cron
+else
+	crontab -r
+fi
+
+rm -rf /tmp/enstore_cron
+rm -rf /tmp/e_cron_tmp
