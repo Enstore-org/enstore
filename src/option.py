@@ -1454,8 +1454,9 @@ class Interface:
             elif opt_dict.get(EXTRA_VALUES, None) and \
                  not self.is_option(self.some_args[2]):
                 self.some_args = self.some_args[2:]
-            elif self.some_args[1] == value:
-                self.some_args = self.some_args[2:]
+            
+            ###elif self.some_args[1] == value:
+            ###    self.some_args = self.some_args[2:]
             else:
                 self.some_args = self.some_args[1:]
 
@@ -1550,13 +1551,11 @@ class Interface:
                 next = self.next_argument(value)
             else:
                 next = self.next_argument(opt)
-
-            if extra_option[VALUE_USAGE] == IGNORED:
-                next = None
-            elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
-                 next != None and self.is_option(next):
-                next = None
-
+            ###if extra_option[VALUE_USAGE] == IGNORED:
+            ###    next = None
+            ###elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
+            ###     next != None and self.is_option(next):
+            ###    next = None
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
             self.set_from_dictionary(extra_option, long_opt, next)
             try:
