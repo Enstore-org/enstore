@@ -95,7 +95,7 @@ if [ $DELETE_LOCAL_FILE -eq 1 ]; then
 fi
 
 
-ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+###ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
 
 #################################################################################################
 
@@ -133,12 +133,12 @@ cat $dirs | while read dir; do
          mkdir -p $disk_copy
   fi
   file_list=`grep $dir $files`
-  if [ $USE_A_DRIVE -eq 0 ]; then
-     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
-  else
-     #unset ENSTORE_SPECIAL_LIB
-     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
-  fi
+###  if [ $USE_A_DRIVE -eq 0 ]; then
+###     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+###  else
+###     #unset ENSTORE_SPECIAL_LIB
+###     ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+###  fi
   echo `date` encp --delayed-dismount=$delay $options $file_list $disk_copy
               encp --delayed-dismount=$delay $options $file_list $disk_copy &pid=$!
   echo $pid >> $pids
@@ -204,12 +204,12 @@ cat $files | while read file; do
        echo mkdir -p $dlfile
             mkdir -p $dlfile
      fi
-     if [ $USE_A_DRIVE -eq 0 ]; then
-        ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
-     else
-         #unset ENSTORE_SPECIAL_LIB
-         ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
-     fi
+###     if [ $USE_A_DRIVE -eq 0 ]; then
+###        ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+###     else
+###         #unset ENSTORE_SPECIAL_LIB
+###         ENSTORE_SPECIAL_LIB=A-Loan; export ENSTORE_SPECIAL_LIB
+###     fi
      echo `date` encp --delayed-dismount=$delay $options $file $lfile
                  encp --delayed-dismount=$delay $options $file $lfile
   fi
@@ -259,8 +259,8 @@ cat $files | while read file; do
             mkdir -p $bdir
     fi
     (cd $bdir; enstore pnfs --file-family $family )
-    ENSTORE_SPECIAL_LIB=CDF-Migration
-    export ENSTORE_SPECIAL_LIB
+###    ENSTORE_SPECIAL_LIB=CDF-Migration
+###    export ENSTORE_SPECIAL_LIB
     echo `date` $n encp --delayed-dismount=$delay $options $lfile $bfile
                    encp --delayed-dismount=$delay $options $lfile $bfile &pid=$!
     echo $pid >> $pidsw
