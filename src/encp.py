@@ -886,6 +886,11 @@ def outputfile_check(inputlist, outputlist, dcache):
     else:
         outputlist = [outputlist]
 
+    #Get the contents of the output directory.  They should all be the same.
+    # If we obtain seperatly for each file in the input list this could
+    # otherwise become a major performance hit for multi-file transfers. 
+    directory_listing = os.listdir(os.path.dirname(outputlist[0]))
+
     # Make sure we can open the files. If we can't, we bomb out to user
     for i in range(len(inputlist)):
 
@@ -908,7 +913,7 @@ def outputfile_check(inputlist, outputlist, dcache):
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
                 #Check if the filesystem is corrupted.
-                if outputlist[i] in os.listdir(os.path.dirname(outputlist[i])):
+                if outputlist[i] in directory_listing:
                     raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
                                     "Filesystem is corrupt.", e_errors.OSERROR)
                 #Check for permissions.
@@ -925,7 +930,7 @@ def outputfile_check(inputlist, outputlist, dcache):
             #The file does not already exits and it is a dcache transfer.
             elif not access_check(outputlist[i], os.F_OK) and dcache:
                 #Check if the filesystem is corrupted.
-                if outputlist[i] in os.listdir(os.path.dirname(outputlist[i])):
+                if outputlist[i] in directory_listing:
                     raise EncpError(getattr(errno, 'EFSCORRUPTED', 'EIO'),
                                     "Filesystem is corrupt.", e_errors.OSERROR)
                 else:
@@ -1431,9 +1436,10 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                   (ticket.get('mover', {}).get('name', "Unknown"),
                    ticket.get('unique_id', "Unknown")))
         Trace.log(e_errors.INFO,
-                  "Control socket %s is connected to %s. " %
+                  "Control socket %s is connected to %s for %s. " %
                   (control_socket.getsockname(),
-                   control_socket.getpeername()))
+                   control_socket.getpeername(),
+                   ticket.get('unique_id', "Unknown")))
         
         #verify that the id is one that we are excpeting and not one that got
         # lost in the ether.
@@ -1488,9 +1494,10 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             return None, None, ticket
 
         Trace.log(e_errors.INFO,
-                  "Data socket %s is connected to %s. " %
+                  "Data socket %s is connected to %s for %s. " %
                   (data_path_socket.getsockname(),
-                   data_path_socket.getpeername()))
+                   data_path_socket.getpeername(),
+                   ticket.get('unique_id', "Unknown")))
 
         #We need to specifiy which interface was used on the encp side.
         ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
