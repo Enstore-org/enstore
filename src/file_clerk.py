@@ -219,7 +219,7 @@ class FileClerkMethods(DispatchingWorker) :
         return repr(bfid)
      # even if there is an error - respond to caller so he can process it
      except:
-         print "can not generate a bit file id!!",sys.exc_info()[0]),sys.exc_info()[1]
+         print "can not generate a bit file id!!",sys.exc_info()[0],sys.exc_info()[1]
          sys.exit(1)
     def start_backup(self,ticket):
         dict.start_backup()

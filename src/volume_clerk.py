@@ -1,4 +1,4 @@
-exc_import sys
+import sys
 import os
 import time
 import timeofday
