@@ -63,6 +63,9 @@ def write_request_ok(ticket):
     for key in wrapper_keys:
         if not ticket['wrapper'].has_key(key):
             return key
+        else:
+            if type(ticket['wrapper'][key]) != type( wrapper_keys[key]):
+                return key
         
     return None
 
@@ -156,6 +159,9 @@ def read_request_ok(ticket):
     for key in wrapper_keys:
         if not ticket['wrapper'].has_key(key):
             return key
+        else:
+            if type(ticket['wrapper'][key]) != type(wrapper_keys[key]):
+                return key
         
     return None
 
@@ -200,7 +206,7 @@ if __name__ == "__main__" :
                                                           1075133530, 1075133530, 1075123605),
                           'mode': 32782, 'rmajor': 0, 'size_bytes': 36864036L,
                           'fullname': '/data/raid3/l2064f21b679m020m050/m0.012-t32/qf_stag_d_d_m0.0120_nt32_501032',
-                          'inode': 0, 'minor': 0},
+                          'inode': None, 'minor': 0},
               'times': {'lm_dequeued': 1075133535.3374989,'encp_start_time': 1075133530.6074851,
                         'job_queued': 1075133531.4478171,
                         't0': 1075133530, 'in_queue': 3.8894848823547363}}
@@ -236,7 +242,7 @@ if __name__ == "__main__" :
                             'uname': 'jurgen', 'pstat': (33188, 185388456L, 1310720L, 1, 1727, 1747,
                                                          80907408L, 1059340564, 997734565, 997734522),
                             'gid': 1747, 'mode': 33252, 'gname': 'e781', 'size_bytes': 80907408L,
-                            'fullname': '/spool03/scratch/jurgen/strip-123/a.tmp', 'inode': 0,
+                            'fullname': '/spool03/scratch/jurgen/strip-123/a.tmp', 'inode': None,
                             'minor': 0},
                 'times': {'lm_dequeued': 1075147989.9954801, 'encp_start_time': 1075147985.4076791,
                           'job_queued': 1075147987.235173, 't0': 1075147985,
@@ -248,19 +254,19 @@ if __name__ == "__main__" :
                 'routing_callback_addr': ('131.225.110.36', 65481)}
     
     import pprint
-    pprint.pprint(w_ticket)
 
     key=write_request_ok(w_ticket)
     if key == None:
         print "correct write request"
     else:
-        print "wrong ticket format. key %s is not present"%(key,)
+        pprint.pprint(w_ticket)
+        print "wrong write ticket format. key %s is not present"%(key,)
+    print "+++++++++++++++++++++++++++++++++++++++++++++++"
 
-    pprint.pprint(r_ticket)
-    
     key=read_request_ok(r_ticket)
     if key == None:
         print "correct read request"
     else:
-        print "wrong ticket format. key %s is not present"%(key,)
+        pprint.pprint(r_ticket)
+        print "wrong read ticket format. key %s is not present"%(key,)
         
