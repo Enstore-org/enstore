@@ -38,7 +38,7 @@ else
     if [ ! -r $zipped ]; then
       if [ ! -r $asc -o $asc -ot $1 ]; then
          echo $asc
-         nice -n 20 $ENSTORE_DIR/sbin/dump_emass_log.py $1 > $asc
+         nice -n 20 $ENSTORE_DIR/sbin/dump_aml2_log.py $1 > $asc
 	 nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
       fi
     fi
