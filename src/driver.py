@@ -21,7 +21,6 @@ class GenericDriver:
         # remember, this is just a guess. It is minimum number (no compression)
         self.remaining_bytes = remaining_bytes
         self.device = device
-        self.df = open(device, "a+")
         self.state = STATE_UNLOAD
         self.wr_err = 0
         self.rd_err = 0
@@ -65,6 +64,7 @@ class  RawDiskDriver(GenericDriver) :
 
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
+        self.df = open(device, "a+")
         self.set_eod(eod_cookie)
         self.blocksize = 4096
 

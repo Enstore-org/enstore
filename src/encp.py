@@ -165,6 +165,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     # Make sure we can open the unixfile. If we can't, we bomb out to user
     # Note that the unix file remains open
     dir,file = os.path.split(outfile)
+    if dir == '' :
+        dir = '.'
     command="if test -w "+dir+"; then echo -n ok; else echo -n no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok" != writable[0] :

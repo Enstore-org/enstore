@@ -25,9 +25,11 @@ class Mover :
         self.csc = configuration_client(self.config_host,self.config_port)
         self.u = UDPClient()
 
-    def sock_read(self) :
+    def read_block(self) :
         return self.data_socket.recv(self.driver.get_blocksize())
 
+    def write_block(self,buff) :
+        return self.data_socket.send(buff)
 
     # primary serving loop
     def move_forever(self, name) :
@@ -205,17 +207,15 @@ class Mover :
         # open the hsm file for writing
         self.driver.open_file_write()
 
-        self.wrapper = cpio.cpio(self.sock_read, \
-                                 self.driver.write_block,\
-                                 binascii.crc_hqx)
+        self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
 
         (wr_size,\
-         complete_crc) = self.wrapper.write(inode, pnfs["mode"], \
-                                            pnfs["uid"], pnfs["gid"], \
-                                            ticket["mtime"], \
-                                            ticket["size_bytes"], \
-                                            pnfs["major"],  pnfs["minor"], \
-                                            pnfs["rmajor"], pnfs["rminor"], \
+         complete_crc) = self.wrapper.write(inode, pnfs["mode"],
+                                            pnfs["uid"], pnfs["gid"],
+                                            ticket["mtime"],
+                                            ticket["size_bytes"],
+                                            pnfs["major"],  pnfs["minor"],
+                                            pnfs["rmajor"], pnfs["rminor"],
                                             pnfs["pnfsFilename"])
         #print "cpio.write returned:",wr_size,wr_crc
 
@@ -250,7 +250,7 @@ class Mover :
         if user_send_error:
             self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
                                                    remaining_bytes,
-                                                   eod_cookie,wr_err,\
+                                                   eod_cookie,wr_err,
                                                    wr_err,rd_err,wr_mnt,rd_mnt)
             msg = "Expected "+repr(ticket["size_bytes"])+" bytes,"\
                   " but only" +" stored"+repr(wr_size)
@@ -262,7 +262,7 @@ class Mover :
 
         # if media full, mark volume readonly, unbind it & tell user to retry
         elif media_full :
-            vcc.update_counts(ticket["external_label"],\
+            vcc.update_counts(ticket["external_label"],
                               wr_err,rd_err,wr_mnt,rd_mnt)
             vcc.set_system_readonly(ticket["external_label"])
             self.unilateral_unbind_next()
@@ -272,7 +272,7 @@ class Mover :
 
         # if media error, mark volume readonly, unbind it & tell user to retry
         elif media_error :
-            vcc.update_counts(ticket["external_label"],\
+            vcc.update_counts(ticket["external_label"],
                               wr_err,rd_err,wr_mnt,rd_mnt)
             vcc.set_system_readonly(ticket["external_label"])
             self.unilateral_unbind_next()
@@ -282,7 +282,7 @@ class Mover :
 
         # drive errors are bad:  unbind volule it & tell user to retry
         elif drive_error :
-            vcc.update_counts(ticket["external_label"],\
+            vcc.update_counts(ticket["external_label"],
                               wr_err,rd_err,wr_mnt,rd_mnt)
             vcc.set_hung(ticket["external_label"])
             self.unilateral_unbind_next()
@@ -295,15 +295,15 @@ class Mover :
         # All is well - write has finished successfully.
 
         # Tell volume server & update database
-        self.vticket = vcc.set_remaining_bytes(ticket["external_label"],\
-                                               remaining_bytes,\
-                                               eod_cookie,\
+        self.vticket = vcc.set_remaining_bytes(ticket["external_label"],
+                                               remaining_bytes,
+                                               eod_cookie,
                                                wr_err,rd_err,wr_mnt,rd_mnt)
 
 
         # connect to file clerk and get new bit file id
         fc = FileClerkClient(self.csc)
-        self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],\
+        self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
                                        sanity_cookie,complete_crc)
 
         # only bfid is needed, but save other useful information for user too
@@ -311,14 +311,14 @@ class Mover :
         ticket["volume_clerk"] = self.vticket
         ticket["file_clerk"] = self.fticket
         minfo = {}
-        for k in ['config_host', 'config_port', 'device', 'driver_name',\
-                  'library', 'library_device', 'library_manager_host',\
+        for k in ['config_host', 'config_port', 'device', 'driver_name',
+                  'library', 'library_device', 'library_manager_host',
                   'library_manager_port', 'media_changer', 'name' ] :
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
-        for k in ['blocksize', 'device', 'eod', 'first_write_block',\
-                  'rd_err', 'rd_mnt', 'remaining_bytes',\
+        for k in ['blocksize', 'device', 'eod', 'first_write_block',
+                  'rd_err', 'rd_mnt', 'remaining_bytes',
                   'state', 'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
@@ -364,9 +364,7 @@ class Mover :
         # open the hsm file for writing
         self.driver.open_file_read(ticket["bof_space_cookie"])
 
-        self.wrapper = cpio.cpio(self.driver.read_block,\
-                                 self.data_socket.send,\
-                                 binascii.crc_hqx)
+        self.wrapper = cpio.cpio(self.driver,self,binascii.crc_hqx)
 
         (bytes_sent, complete_crc, recorded_crc, match) = self.wrapper.read()
         #print "cpio.read returned: ",\
@@ -384,14 +382,14 @@ class Mover :
         # we've sent the hsm file to the user, shut down data transfer socket
         self.data_socket.close()
 
-	if match != "ok" :
-	    print "CRC ERROR: Read "+repr(complete_crc)+", wrote "\
-		  +repr(recorded_crc)
+        if match != "ok" :
+            print "CRC ERROR: Read "+repr(complete_crc)+", wrote "\
+                  +repr(recorded_crc)
 
 
         # get the error/mount counts and update database
         wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
-        vcc.update_counts(ticket["external_label"], \
+        vcc.update_counts(ticket["external_label"],
                           wr_err,rd_err,wr_mnt,rd_mnt)
 
         # if media error, mark volume readonly, unbind it & tell user to retry
@@ -417,21 +415,21 @@ class Mover :
         # add some info to user's ticket
         ticket["volume_clerk"] = self.vticket
         minfo = {}
-        for k in ['config_host', 'config_port', 'device', 'driver_name',\
-                  'library', 'library_device', 'library_manager_host',\
+        for k in ['config_host', 'config_port', 'device', 'driver_name',
+                  'library', 'library_device', 'library_manager_host',
                   'library_manager_port', 'media_changer', 'name' ] :
             exec("minfo["+repr(k)+"] = self."+k)
         ticket["mover"] = minfo
         dinfo = {}
-        for k in ['blocksize', 'device', 'eod', 'firstbyte',\
-                  'left_to_read', 'pastbyte', \
-                  'rd_err', 'rd_mnt', 'remaining_bytes',\
+        for k in ['blocksize', 'device', 'eod', 'firstbyte',
+                  'left_to_read', 'pastbyte',
+                  'rd_err', 'rd_mnt', 'remaining_bytes',
                   'state', 'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
         ticket["complete_crc"] = complete_crc
-	ticket["recorded_crc"] = recorded_crc
-	ticket["crc_match"] = match
+        ticket["recorded_crc"] = recorded_crc
+        ticket["crc_match"] = match
         ticket["sanity_cookie"] = sanity_cookie
 
         # tell user

@@ -27,6 +27,8 @@ class pnfs :
     def __init__(self,pnfsFilename,all=0) :
         self.pnfsFilename = pnfsFilename
         (dir,file) = os.path.split(pnfsFilename)
+        if dir == '' :
+            dir = '.'
         self.dir = dir
         self.file = file
         self.exists = unknown

@@ -65,9 +65,9 @@ class VolumeClerkMethods(DispatchingWorker) :
         except KeyError:
             record["declared"] = time.time()
         try:
-            record['error_inhibit'] = ticket['error_inhibit']
+            record['system_inhibit'] = ticket['system_inhibit']
         except KeyError:
-            record["error_inhibit"] = "none"
+            record["system_inhibit"] = "none"
         try:
             record['user_inhibit'] = ticket['user_inhibit']
         except KeyError:
@@ -178,9 +178,19 @@ class VolumeClerkMethods(DispatchingWorker) :
                 continue
             if v["user_inhibit"] != "none" :
                 continue
-            if v["error_inhibit"] != "none" :
+            if v["system_inhibit"] != "none" :
                 continue
             if v["remaining_bytes"] < min_remaining_bytes :
+                # if it __ever__ happens that we can't write a file on a
+                # volume, then mark volume as full.  This prevents us from
+                # putting 1 byte files on old "golden" volumes and potentially
+                # losing the entire tape. One could argue that a very large
+                # file write could prematurely flag a volume as full, but lets
+                # worry about if it is really a problem - I propose that an
+                # administrator reset the system_inhibit back to none in these
+                # special, and hopefully rare cases.
+                v["system_inhibit"] = "full"
+                dict[v[k]] = v
                 continue
             vetoed = 0
             extl = v["external_label"]
@@ -248,7 +258,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             self.reply_to_caller(ticket)
             return
 
-        record["error_inhibit"] = "none"
+        record["system_inhibit"] = "none"
         record["last_access"] = time.time()
         if record["first_access"] == -1 :
             record["first_access"] = record["last_access"]
@@ -359,7 +369,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             return
 
         # update the fields that have changed
-        record ["error_inhibit"] = "writing"
+        record ["system_inhibit"] = "writing"
         dict[external_label] = record # THIS WILL JOURNAL IT
 
         record["status"] = "ok"
@@ -388,7 +398,7 @@ class VolumeClerkMethods(DispatchingWorker) :
             return
 
         # update the fields that have changed
-        record ["error_inhibit"] = "readonly"
+        record ["system_inhibit"] = "readonly"
         dict[external_label] = record # THIS WILL JOURNAL IT
 
         record["status"] = "ok"

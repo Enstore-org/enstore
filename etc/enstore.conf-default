@@ -60,7 +60,7 @@ configdict['stk1.mover'] = { 'status'        : 'ok', \
                             'library_device' : '0,0,9,3', \
                             'media_changer'  : 'STK.media_changer' }
 
-configdict['blocksizes'] = { 'RDD'    : 1024, \
+configdict['blocksizes'] = { 'RDD'    : 512, \
                             'redwood' : 262144, \
-                            'floppy'  : 1024, \
+                            'floppy'  : 512, \
                             'status'  : 'ok' }

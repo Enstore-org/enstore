@@ -61,10 +61,14 @@ Offet Field Name   Length in Bytes Notes
 """
 class cpio :
 
-    # we need to tell cpio where to read/write and crc when we create it
-    def __init__(self,read_fun, write_fun, crc_fun) :
-        self.read_fun = read_fun
-        self.write_fun = write_fun
+    # read  object: needs a method read_block that will read the data, it
+    #               has no arguments
+    # write object: needs a method write_block that will write the data, it
+    #               has 1 argument - the data to be written
+    # crc_function: crc's the data, 2 arguments: 1=buffer, 2=initial_crc
+    def __init__(self,read_object, write_object, crc_fun) :
+        self.read_driver = read_object
+        self.write_driver = write_object
         self.crc_fun = crc_fun
 
     # create 2 headers (1 for data file and 1 for crc file) + 1 trailer
@@ -89,22 +93,27 @@ class cpio :
         # create the header for the data file and a header for a crc file
         heads = []
         for h in [(filename,filesize), (filename+".encrc",8)] :
+            fname = h[0]
+            fsize = h[1]
+            # make all filenames relative - strip off leading slash
+            if fname[0] == "/" :
+                fname = fname[1:]
             head = \
                  "070701" +\
                  "%08x" % inode +\
-                 "%08x" % mode +\
+                 "%08x" % (mode & 07777) +\
                  "%08x" % uid +\
                  "%08x" % gid +\
                  "%08x" % nlink +\
                  "%08x" % mtime +\
-                 "%08x" % h[1] +\
+                 "%08x" % fsize +\
                  "%08x" % major +\
                  "%08x" % minor +\
                  "%08x" % rmajor +\
                  "%08x" % rminor +\
-                 "%08x" % int(len(h[0])+1) +\
+                 "%08x" % int(len(fname)+1) +\
                  "%08x" % crc +\
-                 "%s\0" % h[0]
+                 "%s\0" % fname
             pad = (4-(len(head)%4)) %4
             heads.append(head + "\0"*pad)
 
@@ -146,8 +155,8 @@ class cpio :
         padt = (512-(size%512)) % 512
 
         # ok, send it back to so he can write it out
-        return("\0"*padd + \
-               head_crc + "%08x" % data_crc + "\0"*padc + \
+        return("\0"*padd +
+               head_crc + "%08x" % data_crc + "\0"*padc +
                trailer + "\0"*padt )
 
 
@@ -178,34 +187,35 @@ class cpio :
 
 
     # generate an enstore cpio archive: devices must be open and ready
-    def write(self, inode, mode, uid, gid, mtime, filesize, \
+    def write(self, inode, mode, uid, gid, mtime, filesize,
               major, minor, rmajor, rminor, filename) :
 
         # generate the headers for the archive and write out 1st one
         format = "new"
         nlink = 1
         header,head_crc,trailer = self.headers(format, inode, mode, uid,
-                                               gid, nlink, mtime, filesize, \
-                                               major, minor, rmajor, rminor, \
+                                               gid, nlink, mtime, filesize,
+                                               major, minor, rmajor, rminor,
                                                filename,0)
         size = len(header)
-        apply(self.write_fun,(header,))
+        apply(self.write_driver.write_block,(header,))
 
         # now read input and write it out
         data_crc = 0
         data_size = 0
         while 1:
-            b = apply(self.read_fun,())
+            b = apply(self.read_driver.read_block,())
             length = len(b)
             if length == 0 :
                 break
             size = size + length
             data_size = data_size + length
             data_crc = apply(self.crc_fun,(b,data_crc))
-            apply(self.write_fun,(b,))
+            apply(self.write_driver.write_block,(b,))
 
         # write out the trailers
-        apply(self.write_fun,(self.trailers(size,head_crc,data_crc,trailer),))
+        apply(self.write_driver.write_block,
+              (self.trailers(size,head_crc,data_crc,trailer),))
         return (data_size, data_crc)
 
 
@@ -221,7 +231,7 @@ class cpio :
         # now read input file and write it out
         while size < data_size:
             offset = 0
-            buffer = apply(self.read_fun,())
+            buffer = apply(self.read_driver.read_block,())
             length = len(buffer)
             if length == 0 :
                 raise "busted"
@@ -240,11 +250,11 @@ class cpio :
                 padd =  (4-(next%4)) %4
                 trailer = buffer[data_end+padd:]
             data_crc = apply(self.crc_fun,(buffer[offset:data_end],data_crc))
-            apply(self.write_fun,(buffer[offset:data_end],))
+            apply(self.write_driver.write_block,(buffer[offset:data_end],))
 
         # now read the crc file - just read to end of data and then decode
         while 1  :
-            buffer = apply(self.read_fun,())
+            buffer = apply(self.read_driver.read_block,())
             length = len(buffer)
             if length == 0 :
                 break
@@ -258,48 +268,96 @@ class cpio :
 
         return (data_size, data_crc, recorded_crc, match)
 
+# shamelessly stolen from python's posixfile.py
+class diskdriver:
+    states = ['open', 'closed']
+
+    # Internal routine
+    def __repr__(self):
+        file = self._file_
+        return "<%s diskdriver '%s', mode '%s' at %s>" % \
+               (self.states[file.closed], file.name, file.mode,
+                hex(id(self))[2:])
+
+    # Internal routine
+    def __del__(self):
+        self._file_.close()
+
+    # Initialization routines
+    def open(self, name, mode='r', bufsize=-1):
+        import __builtin__
+        return self.fileopen(__builtin__.open(name, mode, bufsize))
+
+    # Initialization routines
+    def fileopen(self, file):
+        if `type(file)` != "<type 'file'>":
+            raise TypeError, 'diskdriver.fileopen() arg must be file object'
+        self._file_  = file
+        # Copy basic file methods
+        for method in file.__methods__:
+            setattr(self, method, getattr(file, method))
+        return self
+
+    #
+    # New methods
+    #
+
+    # this is the name of the function that the wrapper uses to read
+    def read_block(self):
+        return self.read()
+
+    # this is the name fo the funciton that the wrapper uses to write
+    def write_block(self,buffer):
+        return self.write(buffer)
+
+# Public routine to obtain a diskdriver object
+def diskdriver_open(name, mode='r', bufsize=-1):
+    return diskdriver().open(name, mode, bufsize)
+
+
 
 if __name__ == "__main__" :
+
     import sys
     import Devcodes
 
-    fin  = open(sys.argv[1],"r")
-    fout = open(sys.argv[2],"w")
+    fin  = diskdriver_open(sys.argv[1],"r")
+    fout = diskdriver_open(sys.argv[2],"w")
 
     statb = os.fstat(fin.fileno())
     if not stat.S_ISREG(statb[stat.ST_MODE]) :
         raise errorcode[EINVAL],\
               "Invalid input file: can only handle regular files"
 
-    wrapper = cpio(fin.read,fout.write,binascii.crc_hqx)
+    wrapper = cpio(fin,fout,binascii.crc_hqx)
 
-    dev_dict = Devcodes.MajMin(fin.name)
+    dev_dict = Devcodes.MajMin(fin._file_.name)
     major = dev_dict["Major"]
     minor = dev_dict["Minor"]
     rmajor = 0
     rminor = 0
 
     (size,crc) = \
-               wrapper.write(statb[stat.ST_INO], statb[stat.ST_MODE], \
-                             statb[stat.ST_UID], statb[stat.ST_GID], \
-                             statb[stat.ST_MTIME], statb[stat.ST_SIZE], \
-                             major, minor, rmajor, rminor, fin.name)
+               wrapper.write(statb[stat.ST_INO], statb[stat.ST_MODE],
+                             statb[stat.ST_UID], statb[stat.ST_GID],
+                             statb[stat.ST_MTIME], statb[stat.ST_SIZE],
+                             major, minor, rmajor, rminor, fin._file_.name)
     print "cpio.write returned:",size,crc
 
     fin.close()
     fout.close()
 
     if size != statb[stat.ST_SIZE] :
-        raise "Size ERROR: Wrote "+repr(size)+" bytes, file was " \
+        raise "Size ERROR: Wrote "+repr(size)+" bytes, file was "\
               +repr(statb[stat.ST_SIZE])+" bytes long"
 
 
 
 
-    fin  = open(sys.argv[2],"r")
-    fout = open(sys.argv[1]+".copy","w")
+    fin  = diskdriver_open(sys.argv[2],"r")
+    fout = diskdriver_open(sys.argv[1]+".copy","w")
 
-    wrapper = cpio(fin.read,fout.write,binascii.crc_hqx)
+    wrapper = cpio(fin,fout,binascii.crc_hqx)
     (read_size, read_crc, recorded_crc, match) = wrapper.read()
     print "cpio.read  returned:",read_size,read_crc,recorded_crc,match
 
@@ -307,9 +365,8 @@ if __name__ == "__main__" :
     fout.close()
 
     if read_size != size :
-        raise "Size ERROR: Read "+repr(read_size)+" bytes, wrote " \
+        raise "Size ERROR: Read "+repr(read_size)+" bytes, wrote "\
               +repr(size)+" bytes"
 
     if match != "ok" :
         raise "CRC ERROR: Read "+repr(read_crc)+", wrote "+repr(recorded_crc)
-
