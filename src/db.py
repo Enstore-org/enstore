@@ -17,6 +17,28 @@ import libtpshelve
 JOURNAL_LIMIT=1000
 backup_flag=1
 
+# advance_all(max, curlist) -- advance all cursor such that no current
+# value is less than max. When all current values equal to max, there is
+# a common element that we want. Otherwise, if after advancing, any
+# current becomes larger than max, the current max is useless
+
+def advance_all(max, curlist):
+	for c in curlist:
+		# Although libtpshelve.py should and will address this,
+		# it is not a bad idea to safe guard it in here.
+		try:
+			key, value = c.current()
+		except:		# c is a funny cursor
+			return None
+
+		while value < max:
+			key, value = c.nextDup()
+			if value == None:
+				return None
+		if value > max:
+			return value
+	return max
+
 # Jcursor(primary_db, curlist) -- join cursor
 #
 # 	Join cursor looks like a db cursor but has different
@@ -82,28 +104,6 @@ class Jcursor:
 
 	def __del__(self):
 		self.close()
-
-# advance_all(max, curlist) -- advance all cursor such that no current
-# value is less than max. When all current values equal to max, there is
-# a common element that we want. Otherwise, if after advancing, any
-# current becomes larger than max, the current max is useless
-
-def advance_all(max, curlist):
-	for c in curlist:
-		# Although libtpshelve.py should and will address this,
-		# it is not a bad idea to safe guard it in here.
-		try:
-			key, value = c.current()
-		except:		# c is a funny cursor
-			return None
-
-		while value < max:
-			key, value = c.nextDup()
-			if value == None:
-				return None
-		if value > max:
-			return value
-	return max
 
 # join -- return a join cursor
 
