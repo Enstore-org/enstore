@@ -10,12 +10,12 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         #volumes.  File one in meta data is file two on tape
         print fileentry
         
-        f.write( str(int(fileentry[0]) + 1) + " " + fileentry[1] + "\n")
+        f.write( fileentry[0]) + " " + fileentry[1] + "\n")
 
     f.close()
 
-    #args = ("python", "/home/wellner/dev/enstore/src/get.py", "--list", fname, tapeLabel,pnfsDir, outputDir)
-    args = ("python", "/home/wellner/dev/enstore/src/get.py", "--verbose", "1", "--list", fname, tapeLabel,pnfsDir, outputDir)
+    #args = ("python", "/home/wellner/dev/enstore/src/get.py", "--verbose", "1", "--list", fname, tapeLabel,pnfsDir, outputDir)
+    args = ("python", "/home/wellner/dev/enstore/src/get.py", "--list", fname, tapeLabel,pnfsDir, outputDir)
 
     print "python", args
     return os.spawnvp(os.P_WAIT, "python", args)

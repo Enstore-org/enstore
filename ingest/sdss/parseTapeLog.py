@@ -10,9 +10,9 @@ def parseFile(filename, tapeLabel):
             (tape,filemark,run,frame,ccd) = string.split(line)
             filelist.append((filemark, 
                 makeTapelogFilename(tapeLabel,filemark, run,frame,ccd)))
-        if not string.find(line, "tarfile"):
+        if not string.find(line, "TARFILE"):
             (tape,filemark,contents,id) = string.split(line)
-            filelist.append((filemark, makeTarlogFilename(tapeLabel, filemark, contents, id)))
+            filelist.append((int(filemark)+1, makeTarlogFilename(tapeLabel, filemark, contents, id)))
         line = f.readline()
 
     return filelist
