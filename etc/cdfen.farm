@@ -4,6 +4,7 @@ cdfensrv1	cdfensrv	cdfen-alla	cdfen-all
 cdfensrv2	cdfensrv	cdfen-alla	cdfen-all
 cdfensrv3	cdfensrv	cdfen-alla	cdfen-all
 cdfensrv4	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv5	cdfensrv	cdfen-alla	cdfen-all
 cdfensrv6	cdfensrv	cdfen-alla	cdfen-all
 REMOVE		cdfenmvr*[ab]
 cdfenmvr1a	cdfenmvr-a	cdfen-alla	cdfen-all
@@ -29,3 +30,4 @@ cdfenmvr20a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr21a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr22a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr23a	cdfenmvr-a	cdfen-alla	cdfen-all
+REMOVE		d0enout*	rip*		rh73
