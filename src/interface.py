@@ -295,8 +295,7 @@ class Interface:
                 self.restore = 1
 	        self.file = value
             elif opt == "--logit" :
-                self.logit1 = 1
-                self.logmsg = value
+                self.logit = value
             elif opt == "--alive" :
                 self.alive = 1
             elif opt == "--alive_rcv_timeout" :

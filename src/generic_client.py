@@ -35,8 +35,6 @@ class GenericClient:
             # we only want to get these clients once per process
             init_done = 1
             import configuration_client
-            import log_client
-            import alarm_client
             if csc and (type(csc) == types.TupleType):
                 self.csc = configuration_client.ConfigurationClient((csc[0],
                                                                     csc[1]))
@@ -56,9 +54,11 @@ class GenericClient:
             # passed in name.
             self.log_name = self.get_name(name)
             if not self.__dict__.get('is_logger', 0):
+                import log_client
                 self.logc = log_client.LoggerClient(self.csc, self.log_name,
                                                     'log_server')
             if not self.__dict__.get('is_alarm', 0):
+                import alarm_client
                 self.alarmc = alarm_client.AlarmClient(self.csc)
         else:
             if csc and (not type(csc) == types.TupleType):
