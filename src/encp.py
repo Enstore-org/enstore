@@ -20,6 +20,7 @@ import select
 import signal
 import random
 import pprint
+import fcntl, FCNTL
 
 # enstore modules
 import setpath 
@@ -397,23 +398,19 @@ def outputfile_check(inputlist,output):
     for f in outputlist:
         if f=='/dev/null':
             continue
-        err = 0
+
         try:
             fd = atomic.open(f, mode=0666)
             if fd<0:
-                err = 1
-            else:
-                os.close(fd)
-        except:
-            err = 1
-        if err:
-            if os.path.exists(f):
-                print_data_access_layer_format('', f, 0, {'status':(
-                    'EEXIST', "File %s already exists"%(f,))})
-            else:
-                print_data_access_layer_format("",f,0,{'status':(
-                    'USERERROR',"No write access to %s"%(f,))})
+                raise OSError, (errno.EIO, os.strerror(errno.EIO))
+
+            os.close(fd)
+
+        except OSError, detail:
+            print_data_access_layer_format('', f, 0, {'status':(
+                e_errors.IOERROR, detail[1])})
             quit()
+
     return outputlist
 
 #######################################################################
@@ -887,7 +884,12 @@ def write_to_hsm(input_files, output, output_file_family='',
             #Set up any network load-balancing voodoo
             interface=check_load_balance(mode=1, dest=mover_addr[0])
             # Call back mover on mover's port and send file on that port
-            data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            data_path_socket = socket.socket(socket.AF_INET,
+                                             socket.SOCK_STREAM)
+            flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
+            fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
+                        flags | FCNTL.O_NONBLOCK)
+            
             if interface:
                 ip = interface.get('ip')
                 if ip:
@@ -899,19 +901,62 @@ def write_to_hsm(input_files, output, output_file_family='',
             try:
                 data_path_socket.connect(mover_addr)
             except socket.error, msg:
-                Trace.log(e_errors.ERROR, "connect: %s %s" % (mover_addr, msg))
-
-                print_error('EPROTO',  "failed to transfer: socket error %s" %(msg,))
-
-                retry = retry - 1
-                if retry>0:
-                    sys.stderr.write("Retrying\n")
-                    control_socket.close()
-                    continue
+                #We have seen that on IRIX, when the connection succeds, we
+                # get an ISCONN error.
+                if hasattr(errno, 'ISCONN') and msg[0] == errno.ISCONN:
+                    pass
+                #The TCP handshake is in progress.
+                elif msg[0] == errno.EINPROGRESS:
+                    pass
+                #A real or fatal error has occured.  Handle accordingly.
                 else:
-                    ### XXX data_access_layer_format!
-                    quit()
+                    Trace.log(msg[0], "connect: %s %s" % (mover_addr, msg))
 
+                    #If retries still left, retry the connect.
+                    retry = retry - 1
+                    if retry>0:
+                        sys.stderr.write("Retrying\n")
+                        control_socket.close()
+                        continue
+                    #When all else fails...
+                    else:
+                        msg = "socket error connecting to %s: %s" % \
+                              (mover_addr, msg[1])
+                        Trace.log(e_errors.ERROR, msg)
+                        print_data_access_layer_format(inputlist[i],
+                                                       outputlist[i],
+                                                       fsize,{'status':msg})
+                        quit()
+
+            #Check if the socket is open for reading and/or writing.
+            r, w, ex = select.select([data_path_socket],
+                                     [data_path_socket], [], 10)
+
+            if r or w:
+                #Get the socket error condition...
+                rtn = data_path_socket.getsockopt(socket.SOL_SOCKET,
+                                                  socket.SO_ERROR)
+            else:
+                msg = "socket error connecting to %s: %s" % \
+                      (mover_addr, os.strerror(errno.ETIMEDOUT))
+                Trace.log(e_errors.ERROR, msg)
+                print_data_access_layer_format(inputlist[i],outputlist[i],
+                                               fsize,{'status':msg})
+                quit()
+                
+            #...if it is zero then success, otherwise it failed.
+            if rtn != 0:
+                msg = "socket error connecting to %s: %s" % \
+                      (mover_addr, os.strerror(rtn))
+                Trace.log(e_errors.ERROR, msg)
+                print_data_access_layer_format(inputlist[i],outputlist[i],
+                                               fsize,{'status':msg})
+                quit()
+                
+            #Restore flag values to blocking mode.
+            fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL, flags)
+
+            
             in_file = open(inputlist[i], "r")
             mycrc = 0
             bufsize = 65536*4 #XXX CGW Investigate this
@@ -1314,7 +1359,7 @@ def read_hsm_files(listen_socket, submitted, requests,
     for rq in requests: 
         Trace.trace(7,"read_hsm_files: %s"%(rq['infile'],))
     files_left = ninput
-    bytes = 0
+    bytes = 0L
     control_socket_closed = 1
     data_path_socket_closed = 1
     out_fd = None
@@ -1344,7 +1389,23 @@ def read_hsm_files(listen_socket, submitted, requests,
                 
             control_socket, address = listen_socket.accept()
             control_socket_closed = 0
-            ticket = callback.read_tcp_obj(control_socket)
+            try:
+                ticket = callback.read_tcp_obj(control_socket)
+            except "TCP connection closed":
+                Trace.log(e_errors.NET_ERROR,
+                          "read_hsm_files: TCP connection closed - retrying")
+                return requests, bytes, 1#error
+            #NOTE: this catch all except should need to be here.  However,
+            # it has been observed that under some conditions (ie. encp
+            # submits 1000+ requests) that when a "TCP connection closed" is
+            # thrown it doesn't get caught above (python bug?).  So, far
+            # adding this catch all except has handled those that were
+            # missed above.  This is a reasonable thing to do, since on an
+            # error it should retry anyway.
+            except:
+                Trace.log(e_errors.NET_ERROR,
+                          "read_hsm_files: TCP connection closed - retrying")
+                return requests, bytes, 1#error
             if verbose > 3:
                 print "ENCP:read_from_hsm MV called back with", ticket
             callback_id = ticket['unique_id']
@@ -1405,7 +1466,11 @@ def read_hsm_files(listen_socket, submitted, requests,
         #set up any special network load-balancing voodoo
         interface=check_load_balance(mode=0, dest=mover_addr[0])
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
+        fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
+                    flags | FCNTL.O_NONBLOCK)
 
+        #load balencing...
         if interface:
             ip = interface.get('ip')
             if ip:
@@ -1414,14 +1479,71 @@ def read_hsm_files(listen_socket, submitted, requests,
                     Trace.log(e_errors.INFO, "bind %s" % (ip,))
                 except socket.error, msg:
                     Trace.log(e_errors.ERROR, "bind: %s %s" % (ip, msg))
+                    
         try:
             data_path_socket.connect(mover_addr)
             error = 0
         except socket.error, msg:
-            msg = "socket error connecting to %s: %s" % (mover_addr,msg,)
-            Trace.log(e_errors.ERROR, msg)
+            #We have seen that on IRIX, when the connection succeds, we
+            # get an ISCONN error.
+            if hasattr(errno, 'ISCONN') and msg[0] == errno.ISCONN:
+                pass
+            #The TCP handshake is in progress.
+            elif msg[0] == errno.EINPROGRESS:
+                pass
+            #A real or fatal error has occured.  Handle accordingly.
+            else:
+                msg = "socket error connecting to %s: %s" % (mover_addr,msg,)
+                Trace.log(e_errors.NET_ERROR, msg)
+                done_ticket = {'status':(e_errors.NET_ERROR, msg)}
+                error = e_errors.NET_ERROR
+                if ticket['retry'] >= maxretry:
+                    del(requests[j])
+                    if files_left > 0: files_left = files_left - 1
+                else:
+                    requests[j]['retry'] = requests[j]['retry']+1
+                continue
+
+        #Check if the socket is open for reading and/or writing.
+        t_sdf0 = time.time()
+        r, w, ex = select.select([data_path_socket], [data_path_socket],[],10)
+        t_sdf1 = time.time()
+        if r or w:
+            #Get the socket error condition...
+            rtn = data_path_socket.getsockopt(socket.SOL_SOCKET,
+                                              socket.SO_ERROR)
+            error = 0
+        #If the select didn't return sockets ready for read or write, then the
+        # connection timed out.
+        else:
+            msg = "socket error connecting to %s: %s" % \
+                  (mover_addr, os.strerror(errno.ETIMEDOUT))
+            Trace.log(e_errors.NET_ERROR, msg)
             done_ticket = {'status':(e_errors.NET_ERROR, msg)}
             error = e_errors.NET_ERROR
+            if ticket['retry'] >= maxretry:
+                del(requests[j])
+                if files_left > 0: files_left = files_left - 1
+            else:
+                requests[j]['retry'] = requests[j]['retry']+1
+            continue
+        #If the return value is zero then success, otherwise it failed.
+        if rtn != 0:
+            msg = "socket error connecting to %s: %s" % \
+                  (mover_addr, os.strerror(rtn))
+            Trace.log(e_errors.NET_ERROR, msg)
+            done_ticket = {'status':(e_errors.NET_ERROR, msg)}
+            error = e_errors.NET_ERROR
+            if ticket['retry'] >= maxretry:
+                del(requests[j])
+                if files_left > 0: files_left = files_left - 1
+            else:
+                requests[j]['retry'] = requests[j]['retry']+1
+            continue
+        
+        #Restore flag values to blocking mode.
+        fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL, flags)
+        
         data_path_socket_closed = 0
         try:
             if localname == '/dev/null':
@@ -1434,13 +1556,12 @@ def read_hsm_files(listen_socket, submitted, requests,
             error = e_errors.USERERROR
             done_ticket = {'status':(error,"Can't write %s"%(localname,))}
 
-
-        Trace.trace(8,"read_hsm_files: reading data to file %s, sockname=%s, peername=%s, bufsize=%s, chk_crc=%s"%
-                    (localname,data_path_socket.getsockname(),data_path_socket.getpeername(),
-                     bufsize,chk_crc))
-
         # read file, crc the data if user has request crc check
         if not error:
+            Trace.trace(8,"read_hsm_files: reading data to file %s, sockname=%s, peername=%s, bufsize=%s, chk_crc=%s"%
+                        (localname, data_path_socket.getsockname(),
+                         data_path_socket.getpeername(), bufsize,chk_crc))
+            
             try:
                 if chk_crc != 0:
                     crc_flag = 1
@@ -1898,7 +2019,7 @@ def read_from_hsm(input_files, output,
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
-    bytes = 0
+    bytes = 0L
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
