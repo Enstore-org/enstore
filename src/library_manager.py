@@ -508,7 +508,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.keys = self.csc.get(libman)
         if self.keys.has_key("movers_threshold"): self.min_mv_num = self.keys["movers_threshold"]
         if self.keys.has_key("volumes_threshold"): self.max_suspect_volumes = self.keys["volumes_threshold"]
-        print "MV TH",self.min_mv_num 
 	# open DB and restore internal data
 	self.open_db()
 	# instantiate volume clerk client
