@@ -779,10 +779,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	            # make sure we support this type of server first
 	            if InquisitorMethods.__dict__.has_key(inq_func):
 	                if type(InquisitorMethods.__dict__[inq_func]) == types.FunctionType:
-	                    exec("self.%s(key, ctime)"%(inq_func,))
-                            # we just updated the server info so record the
-                            # current time as the last time updated.
-	                    self.last_update[key] = ctime
+			    try:
+				exec("self.%s(key, ctime)"%(inq_func,))
+				# we just updated the server info so record the
+				# current time as the last time updated.
+				self.last_update[key] = ctime
+			    except:
+				# there was a problem getting info from the server
+				# change the color of the dispolayed info and
+				# continmue with the next guy.  do not delete the
+				# server from the list as the next time things may 
+				# be ok. report the error too.
+				e_errors.handle_error()
+				self.serve_forever_error(self.log_name)
+				self.htmlfile.text[key][enstore_status.STATUS][0] = "error"
                             # record the fact that we have done something. this
                             # will be used later to either update the html
                             # files or clean up.

@@ -13,6 +13,7 @@ AQUA     = "#DFF0FF"
 BRICKRED = "#770000"
 DARKBLUE = "#000066"
 TIMED_OUT_COLOR = "#FF9966"
+SERVER_ERROR_COLOR = "#FFFFF0"
 
 NAV_TABLE_COLOR = YELLOW
 NBSP = "&nbsp;"
@@ -259,6 +260,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# change the color of the first column if the server has timed out
 	if data[0] == "alive":
 	    tr = HTMLgen.TR(HTMLgen.TD(srvr))
+	elif  data[0] == "error":
+	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=SERVER_ERROR_COLOR))
 	else:
 	    tr = HTMLgen.TR(HTMLgen.TD(srvr, bgcolor=TIMED_OUT_COLOR))
 	for datum in data:
