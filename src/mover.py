@@ -794,18 +794,28 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
-    # device_dump(self, sendto, notify) -- internal device dump
-    #   This is mainly for M2 drives.
-    #   sendto is either an email address or a list of them which the
-    #   dump file will be sent to.
-    #   notify is either an email address or a list of them which the
-    #   notification is sent to
+    # device_dump(self, sendto=[], notify=['enstore-admin@fnal.gov'])
+    #   -- internal device dump
+    #   Initially, this is mainly for M2 drives. It can be generalized
+    #   for other drives.
+    #
+    #   if sendto is set, it is either an email address or a list of
+    #   them which the dump file will be sent to.
+    #
+    #   if notify is set, it is either an email address or a list of
+    #   them which the notification is sent to. By default, notify is
+    #   set to ['enstore-admin@fnal.gov']
     #
     # device_dump_S() is a server hook for device_dump()
 
     # device_dump_S(self, ticket) -- server hook for device_dump()
 
     def device_dump_S(self, ticket):
+
+        """
+        device_dump_S(self, ticket) -- server hook for device_dump()
+        """
+
         if ticket.has_key('sendto'):
             sendto = ticket['sendto']
         else:
@@ -826,6 +836,19 @@ class Mover(dispatching_worker.DispatchingWorker,
 	return
 
     def device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov']):
+
+        """
+        device_dump(self, sendto=None, notify=['enstore-admin@fnal.gov'])
+            -- internal device dump. This is mainly for M2 drives.
+
+        if sendto is set, it is either an email address or a list of
+        them which the dump file will be sent to.
+
+        if notify is set, it is either an email address or a list of
+        them which the notification is sent to. By default, notify is
+        set to ['enstore-admin@fnal.gov']
+        """
+
         Trace.log(e_errors.INFO, 'device_dump('+`sendto`+', '+`notify`+')')
         # print 'device_dump('+`sendto`+', '+`notify`+')'
 
