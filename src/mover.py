@@ -212,6 +212,17 @@ class Buffer:
         self.wrapper = None
         self.first_block = 1
         
+    def clear(self):
+        self._lock.acquire()
+        l = len(self._buf)
+        for i in range(l):
+            self._buf.pop(0)
+        l = len(self._free_list)
+        for i in range(l):
+            self._free_listuf.pop(0)
+        self._lock.release()
+        
+        self.write_ok.clear()
     def nbytes(self):
         return self._buf_bytes
         
@@ -586,8 +597,18 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def init_data_buffer(self):
         if self.buffer:
+            self.buffer.clear()
             del(self.buffer)
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        if self.log_mover_state:
+            cmd = "EPS | grep %s"%(self.name,)
+            pipeObj = popen2.Popen3(cmd, 0, 0)
+            if pipeObj is None:
+                return
+            stat = pipeObj.wait()
+            result = pipeObj.fromchild.readlines()  # result has returned string
+            Trace.log(e_errors.INFO,"Init d_b LOG(%s): PS %s"%(pid, result))
+
         
     def return_state(self):
         return state_name(self.state)
