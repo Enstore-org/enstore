@@ -72,6 +72,7 @@ DONE_LEVEL     = 1
 ERROR_LEVEL    = 2
 TRANSFER_LEVEL = 4
 TO_GO_LEVEL    = 6
+INFO_LEVEL     = 7
 CONFIG_LEVEL   = 8
 TICKET_LEVEL   = 10
 
@@ -271,6 +272,7 @@ def close_descriptors(*fds):
             # one ip per media device (tape drive/disk/cdrom), a static route
             # is not shared with any other encp.
             host_config.unset_route(route)
+	    pass
         except (AttributeError, KeyError), msg:
             pass
         except (OSError, IOError, socket.error), msg:
@@ -1131,18 +1133,21 @@ def get_einfo(e):
 ############################################################################
 
 def open_routing_socket(route_server, unique_id_list, encp_intf):
-    start_time = time.time()
+
+    Trace.message(INFO_LEVEL, "Setting up routing table.")
     route_ticket = None
 
     if not route_server:
         return
 
+    start_time = time.time()
     while(time.time() - start_time < encp_intf.mover_timeout):
+
         try:
             route_ticket = route_server.process_request()
         except socket.error, msg:
             Trace.log(e_errors.ERROR, str(msg))
-            raise EncpError(msg.errno, "Unable to obtain route information.",
+            raise EncpError(msg.args[0], str(msg),
                             e_errors.NET_ERROR)
 
         #If route_server.process_request() fails it returns None.
@@ -1172,6 +1177,22 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     if interface:
         ip = interface.get('ip')
         if ip and route_ticket.get('mover_ip', None):
+	    #With this loop, give another encp 10 seconds to delete the route
+	    # it is using.  After this time, it will be assumed that the encp
+	    # died before it deleted the route.
+	    start_time = time.time()
+	    while(time.time() - start_time < 10):
+
+		host_config.update_cached_routes()
+		route_list = host_config.get_routes()
+		for route in route_list:
+		    if route_ticket['mover_ip'] == route['Destination']:
+			break
+		else:
+		    break
+
+		time.sleep(1)
+	    
             try:
                 #This is were the interface selection magic occurs.
                 host_config.setup_interface(route_ticket['mover_ip'], ip)
@@ -1181,13 +1202,14 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     (route_ticket['callback_addr'], listen_socket) = \
 				    get_callback_addr(encp_intf, ip=ip)
     route_server.reply_to_caller_using_interface_ip(route_ticket, ip)
-    #route_server.reply_to_caller(route_ticket)
 
     return route_ticket, listen_socket
 
 ##############################################################################
 
 def open_control_socket(listen_socket, mover_timeout):
+
+    Trace.message(INFO_LEVEL, "Waiting for mover to connect control socket")
 
     read_fds,write_fds,exc_fds=select.select([listen_socket], [], [],
                                              mover_timeout)
@@ -1196,7 +1218,7 @@ def open_control_socket(listen_socket, mover_timeout):
     if not read_fds:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call back.", e_errors.TIMEDOUT)
-
+    
     control_socket, address = listen_socket.accept()
 
     if not hostaddr.allow(address):
@@ -1215,6 +1237,9 @@ def open_control_socket(listen_socket, mover_timeout):
 ##############################################################################
 
 def open_data_socket(mover_addr, interface_ip):
+    
+    Trace.message(INFO_LEVEL, "Connecting data socket.")
+
     data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
@@ -1317,11 +1342,36 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    # enabled or disabled.  If enabled, then the listening socket
 	    # returned from open_routing_socket is used.  Otherwise, the
 	    # original routing socket opened and the beginning is used.
-            control_socket, mover_address, ticket = open_control_socket(
-                use_listen_socket, encp_intf.mover_timeout)
+	    #If the routes were changed, then only wait 10 sec. before
+	    # initiating the retry.  If no routing was done, wait for the
+	    # mover to callback as originally done.
+	    if host_config.get_config():
+		for i in range(encp_intf.max_retry):
+		    try:
+			control_socket, mover_address, ticket = \
+					open_control_socket(
+					    use_listen_socket, 10)
+			break
+		    except (socket.error, EncpError), msg:
+			#If the error was timeout, resend the reply
+			# Since, there was an exception, "ticket" is still
+			# the ticket returned from the routing call.
+			if msg.errno == errno.ETIMEDOUT:
+			    route_server.reply_to_caller_using_interface_ip(
+				ticket, use_listen_socket.getsockname()[0])
+			else:
+			    raise msg
+		else:
+		    #If we get here then we had encp_intf.max_retry timeouts
+		    # occur.  Giving up.
+		    raise msg
+	    else:
+		control_socket, mover_address, ticket = open_control_socket(
+		    use_listen_socket, encp_intf.mover_timeout)
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:
+		print "CONTROL SOCKET TIMEOUT OCCURED!!!"
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             elif hasattr(msg, "type"):
                 ticket = {'status':(msg.type, msg.strerror)}                

@@ -34,21 +34,24 @@ class UDPServer:
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
-        #If an address was not specified.
+
         try:
+	    #If an address was specified.
             if type(server_address) == type(()) and len(server_address) == 2 \
                and type(server_address[0]) == type("") and server_address[0] \
                and type(server_address[1]) == type(0) and server_address[1]:
                 ip, port, self.server_socket = udp_common.get_callback(
                     server_address[0], server_address[1])
                 self.server_address = (ip, port)
+            #If an address was not specified.
             else:
-                ip, port, self.server_socket = udp_common.get_default_callback()
+                ip,port,self.server_socket = udp_common.get_default_callback()
                 self.server_address = (ip, port)
-                #If an address was specified.
-        except socket.error:
+	    
+        except socket.error, msg:
             self.server_address = ("", 0)
             self.server_socket = None
+	    Trace.log(e_errors.ERROR, str(msg))
             
         try:
             self.node_name, self.aliaslist, self.ipaddrlist = \
@@ -87,6 +90,7 @@ class UDPServer:
                 count = count+1
         Trace.trace(20,"purge_stale_entries count=%d"%(count,))
 
+    #Not used???
     def server_bind(self):
         """Called by constructor to bind the socket.
 
@@ -116,7 +120,10 @@ class UDPServer:
 
         for fd in r:
             if fd == self.server_socket:
-                req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+
+                req,addr = self.server_socket.recvfrom(self.max_packet_size,
+						       self.rcv_timeout)
+
                 request,inCRC = self.r_eval(req)
                 if request == None:
                     return (request, addr)
