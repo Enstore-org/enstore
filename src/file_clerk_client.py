@@ -29,11 +29,13 @@ import pprint
 
 MY_NAME = "FILE_C_CLIENT"
 MY_SERVER = "file_clerk"
+RCV_TIMEOUT = 10
+RCV_TRIES = 5
 
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_address=None, timeout=10, tries=1):
+    def __init__( self, csc, bfid=0, server_address=None, timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
 	self.bfid = bfid
 	if self.server_address == None:
@@ -422,7 +424,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 
 def do_work(intf):
     # now get a file clerk client
-    fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
+    fcc = FileClient((intf.config_host, intf.config_port), intf.bfid, None, intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(fcc.get_name(MY_NAME))
 
     ticket = fcc.handle_generic_commands(MY_SERVER, intf)
