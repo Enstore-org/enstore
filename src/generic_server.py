@@ -36,6 +36,8 @@ class GenericServerInterface(interface.Interface):
 class GenericServer(generic_client.GenericClient):
 
     def __init__(self, csc, name, function=None):
+        # make pychecker happy
+        self.socket = None
         # do this in order to centralize getting a log, alarm and configuration
         # client. and to record the fact that we only want to do it once.
         generic_client.GenericClient.__init__(self, csc, name)

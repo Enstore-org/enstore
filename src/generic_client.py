@@ -41,6 +41,10 @@ class GenericClient:
     def __init__(self, csc, name):
         global init_done
 
+        # to make pychecker happy
+        self.server_address = None
+        self.u = None
+
         import configuration_client
 
         if init_done:
