@@ -40,7 +40,7 @@ class Lock:
 
 class AlarmClient(generic_client.GenericClient):
 
-    def __init__(self, csc, name = MY_NAME, server_name = None,
+    def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
                  server_address = None, flags = 0, logc = None,
                  rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
 
