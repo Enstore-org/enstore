@@ -17,20 +17,6 @@ import option
 
 DEFAULTHTMLDIR = "."
 
-# REMOVE THIS FUNCTION AFTER UPDATE ALL SERVERS
-# this is done here to have central exception handling.  it cannot be
-# done in the erc read routine, because we cannot import Trace in that
-# module as Trace imports the erc module
-import socket
-def read_erc(erc, fd=None):
-    try:
-    	msg = erc.read()
-    except socket.error, detail:
-	Trace.log (e_errors.ERROR, 
-		   "socket error - could not read from erc (%s)"%(detail,))
-	return None
-    return msg
-
 def get_config_dict():
     name = os.environ.get("ENSTORE_CONFIG_FILE", "")
     if name:
