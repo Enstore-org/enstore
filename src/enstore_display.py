@@ -104,6 +104,22 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
     _font_cache[(height_wanted, width_wanted, len(fit_string), family)] = f
     return f
 
+def fit_string(font, string, width_wanted):
+
+    #Get the list in index ranges to check.
+    search = range(len(string) + 1)
+    search.reverse()
+
+    #Start at the end of the string and move toward the beginning.  Return
+    # only the portion of the string that will fit.
+    for i in search:
+        width = font.measure(string[:i])
+        if width <= width_wanted:
+            return string[:i]
+
+    return ""
+    
+
 def rgbtohex(r,g,b):
     r=hex(r)[2:]
     g=hex(g)[2:]
@@ -377,13 +393,17 @@ class Mover:
                 self.display.delete(self.state_display)
                 self.state_display = self.display.create_text(
                 x+self.state_offset.x, y+self.state_offset.y, font = self.font,
-                text=self.state, fill=self.state_color, anchor=Tkinter.CENTER)
+                text=fit_string(self.font, self.state, self.state_width),
+                         fill=self.state_color, anchor=Tkinter.CENTER)
             #if current state is in text and the new state is in text.
             else:
                 self.display.coords(self.state_display,
                                  x+self.state_offset.x, y+self.state_offset.y)
                 self.display.itemconfigure(self.state_display,
-                                           text=self.state, anchor=Tkinter.CENTER,
+                                           text=fit_string(self.font,
+                                                           self.state,
+                                                           self.state_width),
+                                           anchor=Tkinter.CENTER,
                                            fill=self.state_color)
         #No currect state display.
         else:
@@ -900,6 +920,7 @@ class Mover:
         #Size of the volume portion of mover display.
         self.vol_width = (self.width)/2.5
         self.vol_height = (self.height)/2.5
+        self.state_width = self.width - ((self.width)/2.5) - 6
 
         #These are the new offsets
         self.volume_offset         = XY(2, 2)
