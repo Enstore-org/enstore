@@ -14,6 +14,8 @@ extern int errno;
 
 int ftt_translate_error_WIN();
 
+#else
+#include <sys/file.h>
 #endif
 
 ftt_descriptor
