@@ -37,7 +37,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send(ticket)
 
     def getwork(self) :
-	return self.getlist("getwork")
+        return self.getlist("getwork")
 
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
@@ -139,11 +139,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return {"status" :(e_errors.OK, None)}
 
     def get_suspect_volumes(self):
-	return self.getlist("get_suspect_volumes")
+        return self.getlist("get_suspect_volumes")
 
     def remove_work(self, id):
-	print "ID", id
-	return self.send({"work":"remove_work", "unique_id": id})
+        print "ID", id
+        return self.send({"work":"remove_work", "unique_id": id})
 
     def change_lm_state(self, state):
         return self.send({"work":"change_lm_state", "state": state})
@@ -160,10 +160,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send({"work":"remove_active_volume", "external_label":volume})
 
     def priority(self, id, pri):
-	return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
+        return self.send({"work":"change_priority", "unique_id": id, "priority": pri})
 
     def poll(self):
-	 return self.send({"work":"poll"})
+         return self.send({"work":"poll"})
 
     def getlist(self, work):
         # get a port to talk on and listen for connections
@@ -247,11 +247,11 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.get_work = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-	self.get_susp_vols = 0
-	self.get_susp_vols = 0
+        self.get_susp_vols = 0
+        self.get_susp_vols = 0
         self.delete_work = 0
-	self.priority = -1
-	self.poll = 0
+        self.priority = -1
+        self.poll = 0
         self.get_queue = None
         self.host = 0
         self.start_draining = 0
@@ -277,14 +277,14 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
-	return "library"
+        return "library"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a library
         if len(self.args) < 1:
-	    self.missing_parameter(self.parameters())
+            self.missing_parameter(self.parameters())
             self.print_help()
             sys.exit(1)
         else:
@@ -318,32 +318,32 @@ def do_work(intf):
         pass
     elif  intf.get_work:
         ticket = lmc.getwork()
-	print ticket['pending_work']
-	print ticket['at movers']
+        print ticket['pending_work']
+        print ticket['at movers']
     elif  intf.get_susp_vols:
-	ticket = lmc.get_suspect_volumes()
-	print ticket['suspect_volumes']
+        ticket = lmc.get_suspect_volumes()
+        print ticket['suspect_volumes']
     elif intf.delete_work:
-	ticket = lmc.remove_work(intf.work_to_delete)
-	print repr(ticket)
+        ticket = lmc.remove_work(intf.work_to_delete)
+        print repr(ticket)
     elif intf.rm_suspect_vol:
         ticket = lmc.remove_suspect_volume(intf.suspect_volume)
     elif intf.rm_active_vol:
         ticket = lmc.remove_active_volume(intf.active_volume)
     elif not intf.priority == -1:
-	ticket = lmc.priority(intf.args[1], intf.priority)
-	print repr(ticket)
+        ticket = lmc.priority(intf.args[1], intf.priority)
+        print repr(ticket)
     elif intf.poll:
-	ticket = lmc.poll()
-	print repr(ticket)
+        ticket = lmc.poll()
+        print repr(ticket)
     elif intf.vols:
-	ticket = lmc.get_active_volumes()
+        ticket = lmc.get_active_volumes()
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
 
     elif intf.get_queue != None:
-	ticket = lmc.get_queue(intf.get_queue, intf.name)
-	print repr(ticket)
+        ticket = lmc.get_queue(intf.get_queue, intf.name)
+        print repr(ticket)
         
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
@@ -357,9 +357,8 @@ def do_work(intf):
     elif (intf.status):
         ticket = lmc.get_lm_state()
         print "LM state:%s"%(ticket['state'],)
-	
     else:
-	intf.print_help()
+        intf.print_help()
         sys.exit(0)
 
     lmc.check_ticket(ticket)
