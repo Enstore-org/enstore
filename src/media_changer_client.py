@@ -33,46 +33,30 @@ class MediaChangerClient(generic_client.GenericClient):
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
 
-    # default TO is set to 0 which means that receive will try forever
+    # default timeout is set to 0 which means that receive will try forever
     # for lengthy operations rcv_timeout will be set to 300 and tries=10
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
-    def loadvol(self, vol_ticket, mover, drive, vcc):
-        # issue the loadvol work ticket
+    def loadvol(self, vol_ticket, mover, drive):
 	ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket, 300, 10)
-	if rt['status'][0] == e_errors.OK:
-	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
-	    if v['status'][0] != e_errors.OK:
-		format = "cannot change to 'mounted' vol=%s mover=%s state=%s"
-		Trace.log( e_errors.INFO, format%(vol_ticket["external_label"],
-						  v['at_mover'][1],
-						  v['at_mover'][0]) )
-	    rt['status'] =  v['status']
+        if rt['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, "loadvol %s" % (rt['status'],))
         return rt
 
     def unloadvol(self, vol_ticket, mover, drive, vcc=None):
-        # issue the unloadvol work ticket
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
 	rt = self.send(ticket,300,10)
-	if rt['status'][0] == e_errors.OK and vcc != None:
-	    v = vcc.set_at_mover(vol_ticket['external_label'], 'unmounted', 
-				mover)
-	    if v['status'][0] != e_errors.OK:
-		format = "cannot change to 'unmounted' vol=%s mover=%s state=%s"
-		Trace.log(e_errors.INFO, format%(vol_ticket["external_label"],
-						 v['at_mover'][1],
-						 v['at_mover'][0]) )
-		rt['status'] =  v['status']
-		return rt
+        if rt['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, "unloadvol %s" % (rt['status'],))
         return rt
 
     def viewvol(self, volume, m_type):
@@ -251,14 +235,14 @@ def do_work(intf):
         vol_ticket = vcc.inquire_vol(intf.volume)
         v = vcc.set_at_mover(intf.volume, 'mounting', intf.drive)
         vol_ticket = vcc.inquire_vol(intf.volume)
-        ticket = mcc.loadvol(vol_ticket, intf.drive, intf.drive, vcc)
+        ticket = mcc.loadvol(vol_ticket, intf.drive, intf.drive)
 	del vcc
     elif intf.dismount:
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         vol_ticket = vcc.inquire_vol(intf.volume)
         v = vcc.set_at_mover(intf.volume, 'unmounting', intf.drive)
         vol_ticket = vcc.inquire_vol(intf.volume)
-        ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive, vcc)
+        ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
     elif intf._import:
 	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
     elif intf._export:
