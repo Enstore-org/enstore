@@ -1102,7 +1102,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.update_request = {}
         self.forked = {}
         self.intervals = {}
-        
+        self.cmds_to_do = keys.get('update_commands', {})
         # if no timeout was entered on the command line, get it from the 
         # configuration file.  this variable is used in dispatching worker to
         # set how often the udp select times out.
