@@ -12,7 +12,7 @@
 # Configuration Server for this type of Media Changer.                  #
 # It accepts then requests from its clients and performs tape mounts    #
 # and dismounts                                                         #
-# This is a test version allowing different returns for manual MC       #
+#                                                                       #
 #########################################################################
 
 # system imports
@@ -34,6 +34,7 @@ if sys.version_info < (2, 2, 0):
     fcntl.F_SETFL = FCNTL.F_RDLCK
     fcntl.F_SETFL = FCNTL.F_UNLCK
 import pprint
+import re
 
 # enstore imports
 import configuration_client
@@ -42,7 +43,6 @@ import generic_server
 import monitored_server
 import enstore_constants
 import option
-import generic_client
 import Trace
 import traceback
 import e_errors
@@ -63,6 +63,7 @@ def readlock(f):
 
 def unlock(f):
         _lock(f, fcntl.F_UNLCK)
+
 
 
 
@@ -90,6 +91,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
+        self.acls_host  =  self.mc_config.get('acls_host', 'UNKNOWN')
+	self.acls_uname =  self.mc_config.get('acls_uname','UNKNOWN')
+
         self.alive_interval = monitored_server.get_alive_interval(self.csc, medch, self.mc_config)
         dispatching_worker.DispatchingWorker.__init__(self,
                                                       (self.mc_config['hostip'], self.mc_config['port']))
@@ -97,6 +101,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
         self.set_this_error = e_errors.OK  # this is useful for testing mover errors
+
         self.timeInsert = time.time()
         ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_max_work)
@@ -109,7 +114,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # wrapper method for client - server communication
     def loadvol(self, ticket):
         ticket["function"] = "mount"
-	print "LOADING"
+        Trace.trace(11, "loadvol %s"%(ticket,))
         return self.DoWork( self.load, ticket)
 
     # wrapper method for client - server communication
@@ -173,7 +178,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             print "make sure tape %s in in drive %s"%(external_label,drive)
             time.sleep( self.mc_config['delay'] )
             print 'continuing with reply'
-	print "ERROR",self.set_this_error
 	if type(self.set_this_error) == type(1) and self.set_this_error > 9990:
 	    return("ERROR",self.set_this_error, None, None, None)
 	else:
@@ -184,7 +188,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,  # volume external label
                drive,           # drive id
                media_type):     # media type
-               
         if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
             Trace.log(e_errors.INFO, "remove tape "+external_label+" from drive "+drive)
             time.sleep( self.mc_config['delay'] )
@@ -370,10 +373,19 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
         else:
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
+	    # ok, this is a test only - see if we can mount readonly for 9840 and 9940 tapes
+	    media_type = ticket['vol_ticket']['media_type']
+	    if ticket['vol_ticket']['media_type'] in ('9840','9940','9940B') and ticket['function'] == 'mount':
+		    if ticket['vol_ticket']['system_inhibit'][1] in ('full','readonly','migrated') or ticket['vol_ticket']['user_inhibit'][1] in ('full','readonly'):
+			    media_type=media_type+"READONLY"
+	    #print ticket['function'],ticket['vol_ticket']['external_label'],ticket['vol_ticket']['system_inhibit'][1], ticket['vol_ticket']['user_inhibit'][1],media_type
+            
+            Trace.trace(12, 'ticket %s'%(ticket,))
+            Trace.trace(11, 'mcDoWork> child doing %s. Media type %s'%(msg, media_type))
             sts = function(
                 ticket['vol_ticket']['external_label'],
                 ticket['drive_id'],
-                ticket['vol_ticket']['media_type'])
+                media_type)
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
 
         # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
@@ -640,12 +652,13 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.lastWorkTime = time.time()
 
 # STK robot loader server
-class stk_MediaLoader(MediaLoaderMethods):
+class STK_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
-        self.DEBUG = 1
+        self.DEBUG = 0
+	self.driveCleanTime = self.mc_config.get('DriveCleanTime',{'9840':[60,1],'9940':[60,1]})
         print "STK MediaLoader initialized"
 
     # retry function call
@@ -708,6 +721,78 @@ class stk_MediaLoader(MediaLoaderMethods):
         return (rt[0], rt[1], rt[2], state)
 
 
+    def cleanCycle(self, inTicket):
+        #do drive cleaning cycle
+        Trace.log(e_errors.INFO, 'mc:ticket='+repr(inTicket))
+        classTicket = { 'mcSelf' : self }
+        try:
+            drive = inTicket['moverConfig']['mc_device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'mc:no device field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
+
+        driveType = drive[:2]  # ... need device type, not actual device
+        try:
+            if self.driveCleanTime:
+                cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds
+                driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+            else:
+                cleanTime = 60
+                driveCleanCycles = 1
+        except KeyError:
+            cleanTime = 60
+            driveCleanCycles = 1
+
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        min_remaining_bytes = 1
+        vol_veto_list = []
+        first_found = 0
+        libraryManagers = inTicket['moverConfig']['library']
+        if type(libraryManagers) == types.StringType:
+            lm = libraryManagers
+            library = string.split(libraryManagers,".")[0]
+        elif type(libraryManagers) == types.ListType:
+            lm = libraryManagers[0]
+            library = string.split(libraryManagers[0],".")[0]
+        else:
+            Trace.log(e_errors.ERROR, 'mc: library_manager field not found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        lm_info = self.csc.get(lm)
+        if not lm_info.has_key('CleanTapeVolumeFamily'):
+            Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
+        cleanTapeVolumeFamily = lm_info['CleanTapeVolumeFamily']
+        v = vcc.next_write_volume(library,
+                                  min_remaining_bytes, cleanTapeVolumeFamily,
+                                  vol_veto_list, first_found, exact_match=1)  # get which volume to use
+        if v["status"][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%
+                      (v["status"][0],v["status"][1]))
+            status = 37
+            return v["status"][0], 0, v["status"][1]
+
+        for i in range(driveCleanCycles):
+            Trace.log(e_errors.INFO, "STK clean drive %s, vol. %s"%(drive,v['external_label']))
+            rt = self.load(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+            if status != e_errors.OK:      # mount returned error
+                return status, 0, None
+
+            time.sleep(cleanTime)  # wait cleanTime seconds
+            rt = self.unload(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+	    if status != e_errors.OK:
+                return status, 0, None
+            Trace.log(e_errors.INFO,"STK Clean returned %s"%(rt,))
+
+        retTicket = vcc.get_remaining_bytes(v['external_label'])
+        remaining_bytes = retTicket['remaining_bytes']-1
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
+        return (e_errors.OK, 0, None)
+
     # simple elapsed timer
     def delta_t(self,begin):
             (ut, st,cut, cst,now) = os.times()
@@ -753,7 +838,8 @@ class stk_MediaLoader(MediaLoaderMethods):
             try:
                 #I know this is hard-coded and inflexible. That is what I want so as to
                 #prevent any possible security problem.
-                os.execv('/usr/bin/rsh',['fntt','-l','acsss',command])  #note 'fntt' is arvg[1] ???
+
+                os.execv('/usr/bin/rsh',[self.acls_host,'-l',self.acls_uname,command])
             finally:
                 exc, msg, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR, "timed_command execv failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
@@ -806,13 +892,63 @@ class stk_MediaLoader(MediaLoaderMethods):
         message = ""
         blanks=0
         nread=0
-        while blanks<2 and nread<100:
+	if string.find(cmd,'mount') != -1:  # this is a mount or a dismount command
+	    maxread=100  # quick response on queries
+	else:
+	    maxread=10000 # slow respone on mount/dismounts
+
+	nlines=0
+	ntries=0
+	jonflag=0
+        # async message start with a date:  2001-12-20 07:33:17     0    Drive   0, 0,10,12: Cleaned.
+        # unfortunately, not just async messages start with a date.  Alas, each message has to be parsed.
+        async_date=re.compile("20\d\d-\d\d-\d\d \d\d:\d\d:\d\d")  
+        while nlines<19 and ntries<3:
+	  ntries=ntries+1
+          while blanks<2 and nread<maxread:
             msg=os.read(c2pread,200)
             message = message+msg
             nread = nread+1
             if msg == '':
                 blanks = blanks+1
-        response = string.split(message,'\012')
+#	    if self.DEBUG:
+#	        nl=0
+#		ml=string.split(msg,'\012')
+#		for l in ml:
+#                   nl=nl+1
+#		   print "nread=",nread, "line=",nl, l
+          response = []
+          resp = string.split(message,'\012')
+	  nl=0
+	  for l in resp:
+            if async_date.match(l):
+              if string.find(l,'Place cartridges in CAP') != -1 or \
+                 string.find(l,'Remove cartridges from CAP') != -1 or \
+                 string.find(l,'Library error, LSM offline') != -1 or \
+                 string.find(l,'Library error, Transport failure') != -1 or \
+                 string.find(l,'Library error, LMU failure') != -1 or \
+                 string.find(l,'LMU Recovery Complete') != -1 or \
+                 string.find(l,': Offline.') != -1 or \
+                 string.find(l,': Online.') != -1 or \
+                 string.find(l,': Enter operation ') != -1 or \
+                 string.find(l,'Clean drive') != -1 or \
+                 string.find(l,'Cleaned') != -1:
+                if self.DEBUG:
+                  print "DELETED:", l
+                jonflag=1
+                continue
+	    if self.DEBUG:
+              print    "response line =",nl, l
+            response.append(l)
+	    nl=nl+1
+          nlines=len(response)
+
+	  nl=0
+	  if jonflag and self.DEBUG:
+	       for l in response:
+		  print    "parsed lines =",nl, l
+		  nl=nl+1
+
 	os.close(c2pread)
         size = len(response)
         if size <= 19:
@@ -841,7 +977,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "%s " % (volume,)
 
         # execute the command and read the response
-        status,response, delta = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,10)
         if status != 0:
             E=1
             msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
@@ -881,7 +1017,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
         # execute the command and read the response
         # FIXME - what if this hangs?
-        status,response, delta = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,10)
         if status != 0:
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
@@ -920,8 +1056,16 @@ class stk_MediaLoader(MediaLoaderMethods):
 
     def mount(self,volume, drive, media_type="",view_first=1):
 
+        # strip out the readonly if present
+	if string.find(media_type,'READONLY')!=-1:
+		media_type=string.replace(media_type,'READONLY','')
+		readonly=1
+	else:
+		readonly=0
         # build the command, and what to look for in the response
         command = "mount %s %s" % (volume,drive)
+	if readonly:
+		command = command + " readonly"
         answer_lookfor = "Mount: %s mounted on " % (volume,)
 
         # check if tape is in the storage location or somewhere else
@@ -1027,7 +1171,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "run"
 
         # execute the command and read the response
-        status,response,delta = self.timed_command(command,5,60)
+        status,response,delta = self.timed_command(command,5,10)
         if status != 0:
             E=18
             msg = "query server %i: %s => %i,%s" % (E,command,status,response)
@@ -1055,23 +1199,18 @@ class Manual_MediaLoader(MediaLoaderMethods):
             self.driveCleanTime = None
 
     def loadvol(self, ticket):
-        rc = 0
         if ticket['vol_ticket']['external_label']:
             rc = os.system("mc_popup_test 'Please load %s'"%(ticket['vol_ticket']['external_label'],)) >> 8
         if rc: self.set_this_error = rc + 9990
 	
         else: self.set_this_error = e_errors.OK
-
-	
         return MediaLoaderMethods.loadvol(self,ticket)
 
     def unloadvol(self, ticket):
-        rc = 0
         if ticket['vol_ticket']['external_label']:
             rc = os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
         if rc: self.set_this_error = rc + 9990
         else: self.set_this_error = e_errors.OK
-	#self.set_this_error = 9990+1
         return MediaLoaderMethods.unloadvol(self,ticket)
 
     def cleanCycle(self, inTicket):
@@ -1448,30 +1587,31 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
+    media_options = {
+	    option.LOG:{option.HELP_STRING:"",
+			option.VALUE_USAGE:option.REQUIRED,
+			option.VALUE_TYPE:option.STRING,
+			option.USER_LEVEL:option.ADMIN
+			},
+	    option.MAX_WORK:{option.HELP_STRING:"",
+			     option.VALUE_USAGE:option.REQUIRED,
+			     option.VALUE_TYPE:option.INTEGER,
+			     option.USER_LEVEL:option.ADMIN
+			     },
+	    }
+
     def valid_dictionaries(self):
-	return(self.help_options, self.trace_options, self.mc_test_options)
-
-    mc_test_options = {
-	option.MAX_WORK:{option.HELP_STRING:"",
-			 option.VALUE_TYPE:option.INTEGER,
-                         option.VALUE_USAGE:option.REQUIRED,
-			 option.USER_LEVEL:option.ADMIN,
-			 }
-	}
-
-    #  define our specific help
-    parameters =  "media_changer"
+	    return (self.media_options,) + \
+		 generic_server.GenericServerInterface.valid_dictionaries(self)
 
     # parse the options like normal but make sure we have a media changer
     def parse_options(self):
-        generic_client.GenericClientInterface.parse_options(self)
-
-	if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
-            pass
-        elif len(self.args) < 1:
-	    # bomb out if we don't have a media_changer
-            self.missing_parameter(self.parameters)
-            self.print_usage("expected media_changer parameter")
+        option.Interface.parse_options(self)
+        # bomb out if we don't have a media_changer
+        if len(self.args) < 1 :
+            self.missing_parameter(self.parameters())
+            self.print_help(),
+            sys.exit(1)
         else:
             self.name = self.args[0]
 
