@@ -1,87 +1,71 @@
-<MA-config>
-   <ID>local_cronjob</ID>
-   <Update>180</Update>
-   <Ncs heartbeat="300" port="19997" host="ngop.fnal.gov"/>
-   <System>
-      <ID>Cronjob</ID>
-      <Cluster>localhost</Cluster>
-      <Monitored-element>
-         <ID>enstore</ID>
-         <Type>Daeman</Type>
-         <Host>localhost</Host>
+<MA-config Update="180" Name="LocalCronEnstore">
+   <NCS Heartbeat="300" Port="19997" Host="ngop.fnal.gov" Type="Daemon"/>
+   <System Name="Cronjob" Cluster="localhost">
+      <MonitoredElement Name="enstore" Host="localhost" Type="Daemon">
          <ConditionSet>
-         <fn name="checkcron" arg="enstore" retVal="int:x"/>
-         <Condition sevLevel="0" description="enstore cron job has been running for 3 times of regular">
-            <State>0</State>
+         <fn Name="checkcron" Arg="enstore" RetVal="int:x"/>
+         <Condition State="0" SevLevel="0" Description="enstore cron job has been running for 3 times of regular">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>-2</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition>
-        <Condition sevLevel="0" description="enstore cron job info is not available">
-            <State>-1</State>
+        <Condition State="-2" SevLevel="0" Description="enstore cron job info is not available">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>-1</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition>
-         <Condition sevLevel="0" description="enstore cron job works good">
-            <State>1</State>
+         <Condition State="1" SevLevel="0" Description="enstore cron job works good">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>0</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition> 
          </ConditionSet>
-      </Monitored-element>
+      </MonitoredElement>
 
-      <Monitored-element>
-         <ID>root</ID>
-         <Type>Hardware</Type>
-         <Host>localhost</Host>
+      <MonitoredElement Name="root" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn name="checkcron" arg="root" retVal="int:x"/>
-         <Condition sevLevel="0" description="root cron job has been running for 3 times of regular">
-            <State>0</State>
+         <fn Name="checkcron" Arg="root" RetVal="int:x"/>
+         <Condition State="0" SevLevel="0" Description="root cron job has been running for 3 times of regular">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>-2</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition>
-        <Condition sevLevel="0" description="root cron job info is not available">
-            <State>-1</State>
+        <Condition State="-2" SevLevel="0" Description="root cron job info is not available">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>-1</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition>
-         <Condition sevLevel="6" description="root cron job has been running for 2 times of regular">
-            <State>1</State>
+         <Condition State="1" SevLevel="6" Description="root cron job has been running for 2 times of regular">
             <apply>
-               <reln>
+               <apply>
                   <eq/>
                   <ci>x</ci>
                   <cn>1</cn>
-               </reln>
+               </apply>
             </apply>
          </Condition>
          </ConditionSet>
-      </Monitored-element>
+      </MonitoredElement>
    </System>
 </MA-config>
 

@@ -107,9 +107,9 @@ class CJFunc(Worker):
            mins = self.setTime(m, 60)
            return 60*24*(self.calcuTime(dm, 31)-1) + 60*(hrs-1) + mins
         elif dw == '*' and dm == '*':
-           hrs = self.setTime(h, 24)
-           mins = self.setTime(m, 60)
-           return 60*24*31*(self.calcuTime(my,12)-1) + 60*24*(-1) + 60*(hrs-1) + mins
+           hrs = setTime(h, 24)
+           mins = setTime(m, 60)
+           return 60*24*31*(calcuTime(my,12)-1) + 60*24*(-1) + 60*(hrs-1) + mins
         elif my == "*" and dm == "*":
            hrs = self.setTime(h, 24)
            mins = self.setTime(m, 60)
@@ -121,23 +121,23 @@ class CJFunc(Worker):
            return 60*24*31*(self.calcuTime(my, 12)-1) + 60*24*(dayMs-1)\
                   + 60*(hrs-1) + mins
         elif my == "*":       			# this case needs to be improved
-           hrs = self.setTime(h, 24)
-           mins = self.setTime(m, 60)
-           return max((60*24*(self.calcuTime(dm,31)-1) + 60*(hrs-1) + mins),\
-                      (60*24*(self.calcuTime(dw,7) -1) + 60*(hrs-1) + mins))
+           hrs = setTime(h, 24)
+           mins = setTime(m, 60)
+           return max((60*24*(calcuTime(dm,31)-1) + 60*(hrs-1) + mins),\
+                      (60*24*(calcuTime(dw,7) -1) + 60*(hrs-1) + mins))
         elif dm == '*':       			# this case needs to be improved
-           hrs = self.setTime(h, 24)
-           mins = self.setTime(m, 60)
-           dayWks = self.setTime(dw, 7)
-           return 60*24*31*(self.calcuTime(my,12)-1) + 60*24*(dayWks - 1)\
+           hrs = setTime(h, 24)
+           mins = setTime(m, 60)
+           dayWks = setTime(dw, 7)
+           return 60*24*31*(calcuTime(my,12)-1) + 60*24*(dayWks - 1)\
                                                + 60*(hrs-1) + mins
         else:                              	# this case needs to improved
-           hrs = self.setTime(h, 24)
-           mins = self.setTime(m, 60)
-           dayWks = self.setTime(dw, 7)
-           dayMs = self.setTime(dm, 31)
+           hrs = setTime(h, 24)
+           mins = setTime(m, 60)
+           dayWks = setTime(dw, 7)
+           dayMs = setTime(dm, 31)
            days = min(dayMs, dayWks)
-           return 60*24*31*(self.calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
+           return 60*24*31*(calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
 
     def convertMonth(self, mon):
         if mon == 'Jan':
@@ -258,8 +258,9 @@ def usage():
 if __name__ == '__main__':
        import sys
        import getopt
+       cfg=None
        try:
-	   optlist,args = getopt.getopt(sys.argv[1:],"d:h",['help'])
+	   optlist,args = getopt.getopt(sys.argv[1:],"c:d:h",['help'])
        except getopt.error,error_msg:
 	   print "Error:",error_msg
 	   usage()
@@ -270,9 +271,12 @@ if __name__ == '__main__':
 		ngop_global.G_Debug=int(opt[1])
 	    except:
 		usage()
-		sys.exit(1)
+		sys.exit(1)	
+	elif opt[0]=='-c':
+	    cfg=opt[1]
+
       
-       if len(args) < 1:
+       if not cfg :
 	   print "You have to provides the name of xml file"
 	   sys.exit(1)
 
@@ -281,7 +285,6 @@ if __name__ == '__main__':
              flag = 1
 
        try:
-	   cfg=args[0]
 	   open(cfg,'r')
        except:
 	   print "Failed to open cfg xml file: %s,%s" %\
