@@ -688,7 +688,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     #Check the last used non-default brand for performance reasons.
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(__csc)
-        volume_info = vcc.inquire_vol(volume)
+        volume_info = vcc.inquire_vol(volume, 5, 3)
         if e_errors.is_ok(volume_info):
             return __csc
         else:
@@ -714,7 +714,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
 
-            if e_errors.is_ok(vcc_test.inquire_vol(volume)):
+            if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
                 msg = "Using %s based on volume %s." % \
                       (vcc_test.server_address, volume)
                 Trace.log(e_errors.INFO, msg)
@@ -4529,6 +4529,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
 
                     #Handle any errors.
+                    if vc_reply['status'][0] == e_errors.KEYERROR:
+                        raise EncpError(None, vc_reply['status'][1],
+                                        e_errors.NOVOLUME)
                     if not e_errors.is_ok(vc_reply):
                         raise EncpError(None, vc_reply['status'][1],
                                         vc_reply['status'][0])
@@ -4545,7 +4548,18 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                              'volume':e.volume})
                         quit(1)
             else:
-                vc_reply = vcc.inquire_vol(e.volume)
+                #Get the volume information.
+                vc_reply = vcc.inquire_vol(e.volume, 5, 2)
+
+                #Make sure that the volume exists.
+                if vc_reply['status'][0] == e_errors.KEYERROR:
+                    print_data_access_layer_format(
+                        e.volume, e.output[0], 0,
+                        {'status':(e_errors.NOVOLUME,
+                                   vc_reply['status'][1]),
+                         'volume':e.volume})
+                    quit(1)
+                    
                 vc_reply['address'] = vcc.server_address
                 fc_reply = {'address' : fcc.server_address,
                             'bfid' : None,
@@ -4685,6 +4699,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #Contact the file clerk and get current bfid that is on the list.
             try:
                 vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfids_list[i])
+
+                #Handle any errors.
+                if vc_reply['status'][0] == e_errors.KEYERROR:
+                    raise EncpError(None, vc_reply['status'][1],
+                                    e_errors.NOVOLUME)
+                if not e_errors.is_ok(vc_reply):
+                    raise EncpError(None, vc_reply['status'][1],
+                                    vc_reply['status'][0])
+                if not e_errors.is_ok(fc_reply):
+                    raise EncpError(None, fc_reply['status'][1],
+                                    fc_reply['status'][0])
             except EncpError, msg:
                 if msg.type == e_errors.DELETED:
                     continue
@@ -4697,7 +4722,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #This exception is raised if the bfids_list[] is empty, but
                 # number_of_files was set to one anyway to force a tape
                 # to be ingested.
-                vc_reply = vcc.inquire_vol(e.volume)
+                vc_reply = vcc.inquire_vol(e.volume, 5, 2)
+
+                #Make sure that the volume exists.
+                if vc_reply['status'][0] == e_errors.KEYERROR:
+                    print_data_access_layer_format(
+                        e.volume, e.output[0], 0,
+                        {'status':(e_errors.NOVOLUME,
+                                   vc_reply['status'][1]),
+                         'volume':e.volume})
+                    quit(1)
+                    
                 vc_reply['address'] = vcc.server_address
                 fc_reply = {'address' : fcc.server_address,
                             'bfid' : None,
