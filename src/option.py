@@ -149,6 +149,7 @@ DONT_ALARM = "dont-alarm"
 DO_LOG = "do-log"
 DONT_LOG = "dont-log"
 DO_PRINT = "do-print"
+DONT_ASK = "dont-ask"                        # super_remove
 DONT_PRINT = "dont-print"
 DOWN = "down"                                #pnfs, inqusitor, mover
 DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
@@ -242,6 +243,7 @@ SHOW = "show"                                #configuration, inquisitor, media
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
+SKIP_PNFS = "skip-pnfs"                      # super_remove
 START_DRAINING = "start-draining"            #library
 START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
@@ -285,7 +287,7 @@ valid_option_list = [
     DATABASE, DATABASEN,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
     DISMOUNT,
-    DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
+    DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
     ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
@@ -305,7 +307,7 @@ valid_option_list = [
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
-    SHOW_IGNORED_STORAGE_GROUPS,
+    SHOW_IGNORED_STORAGE_GROUPS, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE,
