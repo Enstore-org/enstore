@@ -537,15 +537,17 @@ class Display(Canvas):
         self.title_animation = None
         
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #use IP addressing and UDP protocol
-
-        port=0
-        myaddr = (os.uname()[1], int(port))
+        myaddr = (os.uname()[1], 0)
         s.bind(myaddr)
         self.inputs = [s]
-        if port==0:
-            host, port = s.getsockname()
-            print "addr=", host, port
+        host, port = s.getsockname()
+        print "addr=", host, port
+            
+        self.bind('<Button-1>', self.action)
 
+    def action(self, event):
+        print event.x, event.y
+        
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
         N = len(mover_names)
@@ -585,7 +587,6 @@ class Display(Canvas):
         if not words: #input was blank, nothing to do!
             return
         #"quit" is the only 1-word command
-
         if words[0]=='quit':
             self.stopped = 1
             return
