@@ -1716,8 +1716,8 @@ def submit_write_request(work_ticket, client, encp_intf):
               (work_ticket['outfile'], time.time())
 
     # send the work ticket to the library manager
-    while work_ticket['retry'] < encp_intf.max_retry:
-        
+    while work_ticket['retry'] <= encp_intf.max_retry:
+
         ##start of resubmit block
         Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
 
@@ -1731,13 +1731,16 @@ def submit_write_request(work_ticket, client, encp_intf):
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      None, encp_intf)
-        if result_dict['status'][0] == e_errors.RETRY or \
+	if result_dict['status'][0] == e_errors.OK:
+	    ticket['status'] = result_dict['status']
+            return ticket
+        elif result_dict['status'][0] == e_errors.RETRY or \
            e_errors.is_retriable(result_dict['status'][0]):
             continue
         else:
             ticket['status'] = result_dict['status']
             return ticket
-        
+	
     ticket['status'] = (e_errors.TOO_MANY_RETRIES, ticket['status'])
     return ticket
 
