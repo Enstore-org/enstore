@@ -194,6 +194,7 @@ class Buffer:
         do_crc = 1
         if type(driver) is type (""):
             driver = string_driver.StringDriver(driver)
+        if isinstance(driver, string_driver.StringDriver):
             do_crc = 0
         if not self._reading_block:
             self._reading_block = self._getspace()
@@ -216,6 +217,7 @@ class Buffer:
         return bytes_read
 
     def eof_read(self):
+        Trace.trace(10, "EOF reached, %s"%(self._read_ptr,))
         if self._reading_block and self._read_ptr:
             data = self._reading_block[:self._read_ptr]
             self.push(data)
@@ -261,7 +263,7 @@ class Buffer:
         self._lock.acquire()
         self._freelist.append(s)
         self._lock.release()
-
+    
 def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stuck with it :-(
     if type(cookie) is type(0L):
         return cookie
@@ -504,6 +506,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.net_driver
         if self.bytes_read == 0 and self.header: #splice in cpio headers, as if they came from client
             nbytes = self.buffer.header_size
+            ##XXX this will fail if nbytes>block_size.
             bytes_read = self.buffer.stream_read(nbytes,self.header)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
@@ -532,9 +535,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
-                nbytes = self.buffer.trailer_size
-                bytes_read = self.buffer.stream_read(nbytes, self.trailer)
-                Trace.trace(10, "read %s bytes of  trailer" % (bytes_read,))
+                trailer_driver = string_driver.StringDriver(self.trailer)
+                trailer_bytes_read = 0
+                while trailer_bytes_read < self.buffer.trailer_size:
+                    bytes_to_read = self.buffer.trailer_size - trailer_bytes_read
+                    bytes_read = self.buffer.stream_read(bytes_to_read, trailer_driver)
+                    trailer_bytes_read = trailer_bytes_read + bytes_read
+                    Trace.trace(10, "read %s bytes of trailer" % (bytes_read,))
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
 
