@@ -4,13 +4,6 @@
 
 # Top Level Makfile
 
-BIN_PATH = /afs/.desy.de/products/dcache
-
-CP    = cp
-RM    = rm -f
-LINK  = ln -s
-MV    = mv
-
 CFLAGS = -g
 INC = -I$(DCAP_DIR)/include -I.
 #LIBS = -L$(DCAP_DIR)/lib -L. -ldcap libktev.a
@@ -20,7 +13,7 @@ LIB_OBJS = ${LIB_SRC:.c=.o}
 
 
 ktev_main: libktev.a ktev_main.o
-	$(CC) -o $@ ktev_main.o $(LIBS)
+	$(CC) -static -o $@ ktev_main.o $(LIBS)
 #ktev_main: libktev.so ktev_main.o
 #	cc -o $@ ktev_main.o $(LIBS) -lc 
 
