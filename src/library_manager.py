@@ -1270,6 +1270,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         return active >= max_permitted
 
     def restrict_version_access(self, storage_group, legal_version, ticket):
+        Trace.trace(30, "restrict_version_access %s %s %s"%(storage_group,
+                                                            legal_version,
+                                                            ticket))
         if storage_group == ticket['vc']['storage_group']:
             if ticket.has_key('version'):
                 version=ticket['version'].split()[0]
