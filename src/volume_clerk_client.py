@@ -198,7 +198,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                        v['library'],v['file_family'])
         else:
             vlist = ''
-            for v in volumes["volumes"]:
+            for v in volumes.get("volumes",[]):
                 vlist = vlist+v['volume']+" "
             print vlist
                 
