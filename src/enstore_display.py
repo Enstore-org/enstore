@@ -276,7 +276,7 @@ class Mover:
         except Tkinter.TclError:
             pass #internal Tcl problems.
 
-#########################################################################
+    #########################################################################
 
     def draw_mover(self):
         x, y                    = self.x, self.y
@@ -447,9 +447,9 @@ class Mover:
         if self.connection:
             self.connection.draw()
 
-        self.display.update()
+        #self.display.update()
 
-#########################################################################
+    #########################################################################
 
     def undraw_mover(self):
         try:        
@@ -517,7 +517,7 @@ class Mover:
         self.undraw_volume()
         self.undraw_mover()
 
-#########################################################################
+    #########################################################################
         
     def update_state(self, state, time_in_state=0):
         if state == self.state:
@@ -592,7 +592,7 @@ class Mover:
         self.t0 = self.t1
         return rate
 
-#########################################################################
+    #########################################################################
 
     def position_circular(self, N):
         k = self.index
@@ -717,8 +717,11 @@ class Mover:
         self.x, self.y = self.position(N)
 
         self.draw()
-    
-    
+
+#########################################################################
+##
+#########################################################################
+
 class Client:
 
     def __init__(self, name, display):
@@ -729,13 +732,23 @@ class Client:
         self.waiting            = 0
         self.label              = None
         self.outline            = None
-        #self.font = get_font(12, 'arial')
 
         self.resize()
         self.position()
         self.update_state()
         self.draw()
+        
+    def __del__(self):
+        ##Mark this spot as unoccupied
+        try:
+            del self.display.client_positions[self.index]
+        except KeyError:
+            pass
 
+        self.undraw()
+
+    #########################################################################
+        
     def draw(self):
         x, y = self.x, self.y
 
@@ -769,6 +782,8 @@ class Client:
         except Tkinter.TclError:
             pass
 
+    #########################################################################
+
     def update_state(self):
 
         ### color
@@ -782,6 +797,8 @@ class Client:
 
         if self.outline:
             self.display.itemconfigure(self.outline, fill = self.color) 
+
+    #########################################################################
 
     def resize(self):
         self.width = self.display.width/12
@@ -812,15 +829,10 @@ class Client:
         self.position()
         self.draw()
 
-    def __del__(self):
-        ##Mark this spot as unoccupied
-        try:
-            del self.display.client_positions[self.index]
-        except KeyError:
-            pass
+#########################################################################
+##
+#########################################################################
 
-        self.undraw()
-        
 class Connection:
     """ a line connecting a mover and a client"""
     def __init__(self, mover, client, display):
@@ -834,35 +846,25 @@ class Connection:
         self.segment_start_time = 0
         self.segment_stop_time  = 0
         self.line               = None
+        self.path               = []
+
+        self.position()
+
+    def __del__(self):
+        self.client.n_connections = self.client.n_connections - 1
+        self.undraw()
+        
+    #########################################################################
         
     def draw(self):
-        path = []
-
-        # middle of left side of mover
-        mx,my = self.mover.x, self.mover.y + self.mover.height/2.0
-        path.extend([mx,my])
-        # if multiple columns are used, go in between.           
-        if self.mover.column == 1:
-            mx = self.display.mover_columns[0]
-            path.extend([mx,my])
-
-        #middle of right side of client
-        cx, cy = (self.client.x + self.client.width,
-                  self.client.y + self.client.height/2.0)
-        x_distance = mx - cx
-        path.extend([mx-x_distance/3., my, cx+x_distance/3., cy, cx, cy])
-
         #Draw or update the line.
         if self.line:
-            self.display.coords(self.line, tuple(path))
+            self.display.coords(self.line, tuple(self.path))
             self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
         else:
-            self.line = self.display.create_line(path, dash='...-',width=2,
-                                                 dashoffset = self.dashoffset,
-                                                 smooth=1)
-    def reposition(self):
-        self.undraw()
-        self.draw()
+            self.line = self.display.create_line(self.path, dash='...-',
+                                                 width=2, smooth=1,
+                                                 dashoffset = self.dashoffset)
 
     def undraw(self):
         try:
@@ -871,17 +873,6 @@ class Connection:
         except Tkinter.TclError:
             pass
 
-    def __del__(self):
-        self.client.n_connections = self.client.n_connections - 1
-        self.undraw()
-        
-    def update_rate(self, rate):
-        now                       = time.time()
-        self.segment_start_time   = now #starting time at this rate
-        self.segment_stop_time    = now + 5 #let the animation run 5 seconds
-        self.segment_start_offset = self.dashoffset
-        self.rate                 = rate
-        
     def animate(self, now=None):
         if now is None:
             now=time.time()
@@ -897,8 +888,44 @@ class Connection:
                 self.display.itemconfigure(self.line, dashoffset=new_offset)
             else:
                 self.draw()
+                
+    #########################################################################
+                
+    def update_rate(self, rate):
+        now                       = time.time()
+        self.segment_start_time   = now #starting time at this rate
+        self.segment_stop_time    = now + 5 #let the animation run 5 seconds
+        self.segment_start_offset = self.dashoffset
+        self.rate                 = rate
 
-        
+    #########################################################################
+
+    def position(self):
+        self.path = [] #remove old path
+
+        # middle of left side of mover
+        mx,my = self.mover.x, self.mover.y + self.mover.height/2.0
+        self.path.extend([mx,my])
+        # if multiple columns are used, go in between.           
+        if self.mover.column == 1:
+            mx = self.display.mover_columns[0]
+            self.path.extend([mx,my])
+
+        #middle of right side of client
+        cx, cy = (self.client.x + self.client.width,
+                  self.client.y + self.client.height/2.0)
+        x_distance = mx - cx
+        self.path.extend([mx-x_distance/3., my, cx+x_distance/3., cy, cx, cy])
+
+    def reposition(self):
+        self.undraw()
+        self.position()
+        self.draw()
+
+#########################################################################
+##  What does this class do?
+#########################################################################
+
 class Title:
     def __init__(self, text, display):
         self.text       = text #this is just a string
@@ -936,6 +963,10 @@ class Title:
     def __del__(self):
         self.display.delete(self.tk_text)
 
+#########################################################################
+##
+#########################################################################
+
 class MoverDisplay(Tkinter.Toplevel):
     """  The mover state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
@@ -945,27 +976,47 @@ class MoverDisplay(Tkinter.Toplevel):
         #Tell it to set the remaining configuration values and to apply them.
         self.title(mover.name)
         self.configure(attributes)
-        
-        csc = entv.get_csc()
-        mov = mover_client.MoverClient(csc, mover.name+".mover")
-        status = mov.status(rcv_timeout=5, tries=1)
+
+        self.mover = mover
+        self.status = self.get_mover_status()
 
         #Font geometry.
         self.font = get_font(12, 'arial')
         
-        msg = ""
-        for item, value in status.items():
-            msg = msg + "%s: %s\n" % (item, pprint.pformat(value))
         self.state_display = Tkinter.Label(master=self,
                                            justify=Tkinter.LEFT,
                                            font = self.font,
                                            width = 0,
-                                           text = msg,
+                                           text = self.status,
                                            foreground = mover.state_color,
                                            background = mover.mover_color,
                                            anchor=Tkinter.NW)
         self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
                                 fill=Tkinter.BOTH)
+
+        self.after(5000, self.update_status)
+
+    def get_mover_status(self):
+        csc = entv.get_csc()
+        mov = mover_client.MoverClient(csc, self.mover.name+".mover")
+        status = mov.status(rcv_timeout=5, tries=1)
+        order = status.keys()
+        order.sort()
+        msg = ""
+        for item in order:
+            msg = msg + "%s: %s\n" % (item, pprint.pformat(status[item]))
+        return msg
+
+    def update_status(self):
+        self.status = self.get_mover_status()
+        self.state_display.configure(text = self.status,
+                                     foreground = self.mover.state_color,
+                                     background = self.mover.mover_color,)
+        self.after(5000, self.update_status)
+
+#########################################################################
+##
+#########################################################################
 
 class Display(Tkinter.Canvas):
     """  The main state display """
@@ -978,20 +1029,26 @@ class Display(Tkinter.Canvas):
         tk = Tkinter.Tk()
         window_width = min(tk.winfo_screenwidth(), window_width)
         window_height= min(tk.winfo_screenheight(), window_height)
-        
-        if 1 or canvas_width is None:
-            canvas_width = window_width
-        if 1 or canvas_height is None:
-            canvas_height = window_height
 
-        Tkinter.Canvas.__init__(self, master,width=window_width,
-                                height=window_height,
-                                scrollregion=(0,0,canvas_width,canvas_height))
+        #Initialzie the window.
+        Tkinter.Canvas.__init__(self, master, width=window_width,
+                                height=window_height)
+
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
+##        if canvas_width is None:
+##            canvas_width = window_width
+##        if canvas_height is None:
+##            canvas_height = window_height
+
+##        #Initialzie the window.
+##        Tkinter.Canvas.__init__(self, master, width=window_width,
+##                                height=window_height,
+##                               scrollregion=(0,0,canvas_width,canvas_height))
+                                
 ##        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
 ##        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
-##       #When the canvas changes size or moves, update the scrollbars
+##        #When the canvas changes size or moves, update the scrollbars
 ##        self['xscrollcommand']= self.scrollX.set
 ##        self['yscrollcommand'] = self.scrollY.set
 
@@ -1004,41 +1061,46 @@ class Display(Tkinter.Canvas):
 ##        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
 ##        self.pack(side=Tkinter.LEFT)
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
+
         Tkinter.Tk.title(self.master, title)
         self.configure(attributes)
         self.pack(expand=1, fill=Tkinter.BOTH)
-        self.stopped = 0
-        self.width =  int(self['width'])
+        self.width  = int(self['width'])
         self.height = int(self['height'])
-        self.pack()
 
-        self.mover_names      = [] ## List of mover names.
-        self.movers           = {} ## This is a dictionary keyed by mover name,
-                                   ##value is an instance of class Mover
-        self.mover_columns    = {} #x-coordinates for columns of movers
-        #self.mover_label_width = None #width to allow for mover labels
-        self.clients          = {} ## dictionary, key = client name,
-                                   ##value is instance of class Client
-        self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
-                                   ##value is Client
-        self.connections      = {} ##dict. of connections.
-
-        self.command_queue = [] #List of notify commands to process.
+        self._init() #Other none window related attributes.
 
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
         self.bind('<Configure>', self.resize)
-
-        #Draw the window and update the canvas size.
-        self.update()
-        self.width, self.height = self.winfo_width(), self.winfo_height()
 
     def __del__(self):
         self.connections = {}        
         self.movers = {}
         self.clients = {}
         self.client_positions = {}
+
+    def _init(self):
+        self._reinit = 0
+        self.stopped = 0
         
+        self.mover_names      = [] ## List of mover names.
+        self.movers           = {} ## This is a dictionary keyed by mover name,
+                                   ##value is an instance of class Mover
+        self.mover_columns    = {} #x-coordinates for columns of movers
+        self.clients          = {} ## dictionary, key = client name,
+                                   ##value is instance of class Client
+        self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
+                                   ##value is Client
+        self.connections      = {} ##dict. of connections.
+
+        self.command_queue    = [] #List of notify commands to process.
+
+    def reinit(self):
+        self._init()
+        
+    #########################################################################
+    
     def undraw(self):
         for connection in self.connections.values():
             connection.undraw()
@@ -1047,22 +1109,45 @@ class Display(Tkinter.Canvas):
         for client in self.clients.values():
             client.undraw()
 
-        self.update()
+    #########################################################################
         
     def action(self, event):
         x, y = self.canvasx(event.x), self.canvasy(event.y)
         overlapping = self.find_overlapping(x-1, y-1, x+1, y+1)
-        print overlapping, (x, y)
+        Trace.trace(1, "%s %s" % (overlapping, (x, y)))
 
         for mover in self.movers.values():
             for i in range(len(overlapping)):
                 if mover.state_display == overlapping[i]:
                     mover_display = MoverDisplay(mover=mover)
-                    print mover.name, mover.state
 
+        for connection in self.connections.values():
+            for i in range(len(overlapping)):
+                if connection.line == overlapping[i]:
+                    self.itemconfigure(connection.line,
+                                       fill=rgbtohex(255, 0, 0))
+                else:
+                    self.itemconfigure(connection.line, fill=rgbtohex(0, 0, 0))
+                                                 
     def resize(self, event):
+        try:
+            self.after_cancel(self.after_timer_id)
+            self.after_cancel(self.after_animation_id)
+            self.after_cancel(self.after_clients_id)
+            self.after_cancel(self.after_idle_id)
+        except AttributeError:
+            pass  #Will get here when resize is called during __init__.
+        
         #If the user changed the window size, update.
         self.reposition_canvas()
+
+        try:
+            self.after_timer_id = self.after(30, self.update_timers)
+            self.after_animation_id = self.after(30, self.connection_animation)
+            self.after_clients_id = self.after(30, self.disconnect_clients)
+            self.after_idle_id = self.after(30, self.display_idle)
+        except AttributeError:
+            pass
 
     def reinititalize(self, event):
         self.after_cancel(self.after_timer_id)
@@ -1072,35 +1157,11 @@ class Display(Tkinter.Canvas):
         self._reinit = 1
         self.quit()
 
-    def reinit(self):
-        self._reinit = 0
-        self.stopped = 0
-        
-        self.mover_names      = [] ## List of mover names.
-        self.movers           = {} ## This is a dictionary keyed by mover name,
-                                   ##value is an instance of class Mover
-        self.mover_columns    = {} #x-coordinates for columns of movers
-        #self.mover_label_width = None #width to allow for mover labels
-        self.clients          = {} ## dictionary, key = client name,
-                                   ##value is instance of class Client
-        self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
-                                   ##value is Client
-        self.connections      = {} ##dict. of connections.
-
-        self.command_queue = [] #List of notify commands to process.        
-
     def attempt_reinit(self):
         return self._reinit
 
-    def position_canvas(self):
-        try:
-            size = self.winfo_width(), self.winfo_height()
-        except:
-            self.stopped = 1
-            return
+    #########################################################################
 
-        (self.width, self.height) = size
-            
     def reposition_canvas(self):
         try:
             size = self.winfo_width(), self.winfo_height()
@@ -1137,6 +1198,8 @@ class Display(Tkinter.Canvas):
     def reposition_connections(self):
         for connection in self.connections.values():
             connection.reposition()
+
+    #########################################################################
 
     #Called from self.after().
     def update_timers(self):
@@ -1187,6 +1250,8 @@ class Display(Tkinter.Canvas):
         ####force the display to refresh
         self.update()
 
+    #########################################################################
+    
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
         N = len(mover_names)
@@ -1195,10 +1260,28 @@ class Display(Tkinter.Canvas):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
+    #########################################################################
+    
     def queue_command(self, command):
         display_lock.acquire()
         self.command_queue.append(command)
         display_lock.release()
+
+    def get_valid_command(self, command):
+        comm_dict = {'quit' : 1, 'client' : 1, 'connect' : 1, 'disconnect' : 1,
+                     'loading' : 1, 'title' : 1, 'loaded' : 1, 'state' : 1,
+                     'unload': 1, 'transfer' : 1, 'movers' : 1}
+
+        command = string.strip(command) #get rid of extra blanks and newlines
+        words = string.split(command)
+        if not words: #input was blank, nothing to do!
+            return []
+
+        if words[0] not in comm_dict.keys():
+            #print "just passing"
+            return []
+
+        return words
 
     def handle_command(self, command):
         ## Accept commands of the form:
@@ -1222,22 +1305,12 @@ class Display(Tkinter.Canvas):
         #      transfer MOVER_NAME nbytes total_bytes
         # (N) number of words:
         #      movers M1 M2 M3 ...
-    
-        
-        comm_dict = {'quit' : 1, 'client' : 1, 'connect' : 1, 'disconnect' : 1,
-                     'loading' : 1, 'title' : 1, 'loaded' : 1, 'state' : 1,
-                     'unload': 1, 'transfer' : 1, 'movers' : 1}
 
         now = time.time()
-        command = string.strip(command) #get rid of extra blanks and newlines
-        words = string.split(command)
-        if not words: #input was blank, nothing to do!
-            return
+    
+        words = self.get_valid_command(command)
 
-        if words[0] not in comm_dict.keys():
-            pass
-            #print "just passing"
-        else:
+        if words:
             if words[0]=='quit':
                 self.stopped = 1
                 return
@@ -1389,6 +1462,8 @@ class Display(Tkinter.Canvas):
                     mover.connection.client.last_activity_time = time.time()
                 return
 
+    #########################################################################
+            
     def display_idle(self):
         display_lock.acquire()
         if self.command_queue: #If the queue is not empty:
@@ -1396,7 +1471,7 @@ class Display(Tkinter.Canvas):
             del self.command_queue[0]
         display_lock.release()
         self.after_idle_id = self.after(30, self.display_idle)
-
+    
     #overloaded 
     def update(self):
         try:
@@ -1417,6 +1492,7 @@ class Display(Tkinter.Canvas):
         self.undraw()
         self.stopped = 1
 
+#########################################################################
 
 if __name__ == "__main__":
     if len(sys.argv)>1:
