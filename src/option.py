@@ -71,6 +71,7 @@ import pprint
 import getopt
 import fcntl
 import TERMIOS
+import types
 
 import hostaddr
 
@@ -758,7 +759,7 @@ class Interface:
     #Compiles the dictionary groups into one massive dictionary named options.
     def compile_options_dict(self, *dictionaries):
         for i in range(0, len(dictionaries)):
-            if type(dictionaries[i]) != type({}):
+            if type(dictionaries[i]) != types.DictionaryType:
                 raise TypeError, "Dictionary required, not %s." % \
                       type(dictionaries[i])
             for key in dictionaries[i].keys():

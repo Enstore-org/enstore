@@ -17,6 +17,7 @@ import event_relay_client
 import event_relay_messages
 import Trace
 import mover_client
+import types
 # from Tkinter import *
 # import tkFont
 
@@ -143,7 +144,7 @@ def rgbtohex(r,g,b):
     return "#"+r+g+b
 
 def hextorgb(hexcolor):
-    if type(hexcolor) != type(""):
+    if type(hexcolor) != types.StringType:
         return 0, 0, 0
     
     #make sure the string is long enough
@@ -859,7 +860,7 @@ class Mover:
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
         self.b1 = num_bytes
-        if mover_time and type(mover_time) == type(0.0):
+        if mover_time and type(mover_time) == types.FloatType:
             #Newer mover code will include its current time.  This should
             # reduce bouncing rates from network delays, etc.
             self.t1 = mover_time
@@ -1720,7 +1721,7 @@ class Display(Tkinter.Canvas):
             self.library_colors = {}
 
         #Make some adjustments.
-        if type(library) == type([]):
+        if type(library) == types.ListType:
             library = library[0]
         if library[-16:] == ".library_manager":
             library = library[:-16]

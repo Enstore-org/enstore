@@ -115,7 +115,7 @@ class EncpError(Exception):
                 self.message = os.strerror(self.errno)
             else:
                 self.message = None
-        elif type(e_message) == type(""):
+        elif type(e_message) == types.StringType:
             self.message = e_message #There was a string message passed.
         else:
             self.message = None
@@ -237,15 +237,15 @@ def extract_brand(bfid):
 def combine_dict(*dictionaries):
     new = {}
     for i in range(0, len(dictionaries)):
-        if type(dictionaries[i]) != type({}):
+        if type(dictionaries[i]) != types.DictionaryType:
             raise TypeError, "Dictionary required, not %s." % \
                   type(dictionaries[i])
         for key in dictionaries[i].keys():
             #If both items in the dictionary are themselves dictionaries, then
             # do this recursivly.
             if new.get(key, None) and \
-               type(dictionaries[i][key]) == type({}) and \
-               type(new[key]) == type({}):
+               type(dictionaries[i][key]) == types.DictionaryType and \
+               type(new[key]) == types.DictionaryType:
                          new[key] = combine_dict(new[key],
                                                  dictionaries[i][key])
                          
@@ -324,7 +324,7 @@ def format_class_for_print(object, name):
         if pad:
             formated_string = formated_string + "\n"
         ret = getattr(object, var)
-        if type(ret) == type(""): #if a string, make it look like one.
+        if type(ret) == types.StringType: #if a string, make it look like one.
             ret = "'" + ret + "'"
         formated_string = formated_string + " " * pad + var \
                           + ": " + str(ret)
@@ -373,7 +373,7 @@ def update_times(input_path, output_path):
         pass #This one will fail if the output file is /dev/null.
 
 def bin(integer):
-    if type(integer) != type(0):
+    if type(integer) != types.IntType:
         print
 
     temp = integer
@@ -482,13 +482,13 @@ def get_csc(ticket_or_bfid=None):
     # On error return the default configuration server client (csc).
     if not ticket_or_bfid:
         return csc
-    elif type(ticket_or_bfid) == type({}):  #If passed a ticket with bfid.
+    elif type(ticket_or_bfid) == types.DictType: #If passed a ticket with bfid.
         bfid = ticket_or_bfid['fc'].get("bfid", "")
         if len(bfid) >= 4 and  bfid[:4].isupper():
             brand = bfid[:4]
         else:
             return csc
-    elif type(ticket_or_bfid) == type(''):  #If passed a bfid.
+    elif type(ticket_or_bfid) == types.StringType:  #If passed a bfid.
         if len(ticket_or_bfid) >= 4 and  ticket_or_bfid[:4].isupper():
                 brand = ticket_or_bfid[:4]
         else:
@@ -578,9 +578,9 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     if len(msg)==1:
         msg=msg[0]
         
-    if type(outputfile) == type([]) and len(outputfile) == 1:
+    if type(outputfile) == types.ListType and len(outputfile) == 1:
         outputfile = outputfile[0]
-    if type(inputfile) == type([]) and len(inputfile) == 1:
+    if type(inputfile) == types.ListType and len(inputfile) == 1:
         inputfile = inputfile[0]
 
     #Secondary information source to use.
@@ -916,7 +916,7 @@ def librarysize_check(target_filepath, inputfile):
 # check the input file list for consistency
 def inputfile_check(input_files):
     # create internal list of input unix files even if just 1 file passed in
-    if type(input_files)==type([]):
+    if type(input_files)==types.ListType:
         inputlist=input_files
     else:
         inputlist = [input_files]
@@ -988,13 +988,13 @@ def inputfile_check(input_files):
 def outputfile_check(inputlist, outputlist, dcache):
 
     # create internal list of input unix files even if just 1 file passed in
-    if type(inputlist)==type([]):
+    if type(inputlist)==types.ListType:
         inputlist = inputlist
     else:
         inputlist = [inputlist]
 
     # create internal list of input unix files even if just 1 file passed in
-    if type(outputlist)==type([]):
+    if type(outputlist)==types.ListType:
         outputlist = outputlist
     else:
         outputlist = [outputlist]
@@ -1086,7 +1086,7 @@ def outputfile_check(inputlist, outputlist, dcache):
 #######################################################################
 
 def create_zero_length_files(filenames):
-    if type(filenames) != type([]):
+    if type(filenames) != types.ListType:
         filenames = [filenames]
 
     #now try to atomically create each file
@@ -1302,8 +1302,9 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
         if not route_ticket:
             continue
         #If route_server.process_request() returns incorrect value.
-        elif route_ticket == type({}) and hasattr(route_ticket, 'unique_id') \
-           and route_ticket['unique_id'] not in unique_id_list:
+        elif route_ticket == types.DictionaryType and \
+             hasattr(route_ticket, 'unique_id') and \
+             route_ticket['unique_id'] not in unique_id_list:
             continue
         #It is what we were looking for.
         else:
@@ -2772,7 +2773,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
     library = storage_group = None
 
     # create internal list of input unix files even if just 1 file passed in
-    if type(e.input) == type([]):
+    if type(e.input) == types.ListType:
         e.input = e.input
     else:
         e.input = [e.input]
@@ -3618,7 +3619,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     vcc = fcc = None #Initialize these, so that they can be set only once.
     
     # create internal list of input unix files even if just 1 file passed in
-    if type(e.input)==type([]):
+    if type(e.input)==types.ListType:
         e.input = e.input
     else:
         e.input = [e.input]

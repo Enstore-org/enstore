@@ -12,6 +12,7 @@ import grp
 import string
 import time
 import re
+import types
 
 # enstore imports
 import Trace
@@ -42,7 +43,7 @@ ERROR = -1
 # by a f.readlines() where if is a file object.  Otherwise the result is
 # printed as is.
 def print_results(result):
-    if type(result) == type([]):
+    if type(result) == types.ListType:
          for line in result:
             print line, #constains a '\012' at the end.
     else:
@@ -112,7 +113,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # 3) Does the string as a filepath not exist?
         # 4) All characters are in the capital hex character set.
         #Note: Does it need to be capital set of hex characters???
-        if type(pnfsid) == type("") and len(pnfsid) == 24 and \
+        if type(pnfsid) == types.StringType and len(pnfsid) == 24 and \
            not os.path.exists(pnfsid):
             allowable_characters = string.upper(string.hexdigits)
             for c in pnfsid:
@@ -203,7 +204,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
 
         #If the value isn't a string, make it one.
-        if type(value)!=type(''):
+        if type(value)!=types.StringType:
             value=str(value)
 
         f = open(fname,'w')
@@ -1610,7 +1611,7 @@ class Tag:
     # the file needs to exist before you call this
     # remember, tags are a propery of the directory, not of a file
     def writetag(self, tag, value, directory=None):
-        if type(value) != type(''):
+        if type(value) != types.StringType:
             value=str(value)
         if directory:
             fname = os.path.join(directory, ".(tag)(%s)"%(tag,))
@@ -1810,14 +1811,14 @@ class Tag:
             print os.strerror(errno.EINVAL) + ": Incorrect owner field"
             return 1
         
-        if uid and type(uid) != type(1):
+        if uid and type(uid) != types.IntType:
             try:
                 uid = pwd.getpwnam(str(uid))[2]
             except KeyError:
                 print os.strerror(errno.EINVAL) + ": Not a valid user"
                 return 1
 
-        if gid and type(gid) != type(1):
+        if gid and type(gid) != types.IntType:
             try:
                 gid = grp.getgrnam(str(gid))[2]
             except KeyError:
@@ -2226,7 +2227,7 @@ def get_local_pnfs_path(p):
 class File:
 	# the file could be a simple name, or a dictionary of file attributes
 	def __init__(self, file):
-		if type(file) == type({}):	# a dictionary
+		if type(file) == types.DictionaryType:  # a dictionary
 			self.volume = file['external_label']
 			self.location_cookie = file['location_cookie']
 			self.size = file['size']

@@ -13,6 +13,7 @@ import pprint
 import time
 import errno
 import re
+import types
 
 # enstore imports
 import configuration_client
@@ -41,7 +42,7 @@ MY_NAME = "ASSERT"
 # a "#" is a comment and ignored.
 def parse_file(filename):
     #paranoid check
-    if type(filename) != type(""):
+    if type(filename) != types.StringType:
         return []
     #Handle file access problems gracefully.
     try:
@@ -66,7 +67,7 @@ def parse_file(filename):
 
 def parse_vol_list(comma_seperated_string):
     #paranoid check
-    if type(comma_seperated_string) != type(""):
+    if type(comma_seperated_string) != types.StringType:
         return []
 
     split_on_commas = comma_seperated_string.split(",")

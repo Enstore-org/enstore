@@ -4,6 +4,7 @@
 
 import sys
 import string
+import types
 
 OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
@@ -325,11 +326,11 @@ stypedict = { "died"               : "DIED",
 
 #Return true if the value is the same as e_errors.OK, false otherwise.
 def is_ok(e):
-    if type(e) == type(""):
+    if type(e) == types.StringType:
         error = e
-    elif type(e) == type(()) and len(e) == 2:
+    elif type(e) == types.TupleType and len(e) == 2:
         error = e[0]
-    elif type(e) == type({}) and e.get('status', None):
+    elif type(e) == types.DictionaryType and e.get('status', None):
         error = e['status'][0]
     else:
         error = e
@@ -341,11 +342,11 @@ def is_ok(e):
 #Return true if the value is in error but not in non_retriable or raise_alarm
 # status.  Return false otherwise.
 def is_retriable(e):
-    if type(e) == type(""):
+    if type(e) == types.StringType:
         error = e
-    elif type(e) == type(()) and len(e) == 2:
+    elif type(e) == types.TupleType and len(e) == 2:
         error = e[0]
-    elif type(e) == type({}) and e.get('status', None):
+    elif type(e) == types.DictionaryType and e.get('status', None):
         error = e['status'][0]
     else:
         error = e
@@ -360,11 +361,11 @@ def is_retriable(e):
 
 #If the value is in non_retriable or raise alarm return 1.  False otherwise.
 def is_non_retriable(e):
-    if type(e) == type(""):
+    if type(e) == types.StringType:
         error = e
-    elif type(e) == type(()) and len(e) == 2:
+    elif type(e) == types.TupleType and len(e) == 2:
         error = e[0]
-    elif type(e) == type({}) and e.get('status', None):
+    elif type(e) == types.DictionaryType and e.get('status', None):
         error = e['status'][0]
     else:
         error = e
@@ -377,11 +378,11 @@ def is_non_retriable(e):
 
 #If the value is alarmable, return 1 otherwise false.
 def is_alarmable(e):
-    if type(e) == type(""):
+    if type(e) == types.StringType:
         error = e
-    elif type(e) == type(()) and len(e) == 2:
+    elif type(e) == types.TupleType and len(e) == 2:
         error = e[0]
-    elif type(e) == type({}) and e.get('status', None):
+    elif type(e) == types.DictionaryType and e.get('status', None):
         error = e['status'][0]
     else:
         error = e
@@ -392,11 +393,11 @@ def is_alarmable(e):
 
 #If the value is RETRY or RESUBMITTING return 1 otherwise 0.
 def is_resendable(e):
-    if type(e) == type(""):
+    if type(e) == types.StringType:
         error = e
-    elif type(e) == type(()) and len(e) == 2:
+    elif type(e) == types.TupleType and len(e) == 2:
         error = e[0]
-    elif type(e) == type({}) and e.get('status', None):
+    elif type(e) == types.DictionaryType and e.get('status', None):
         error = e['status'][0]
     else:
         error = e
