@@ -18,6 +18,8 @@ import Trace
 import e_errors
 import hostaddr
 import callback
+import enstore_html
+import enstore_files
 
 MY_NAME = "Monitor_Server"
 
@@ -35,6 +37,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker):
 
         # always nice to let the user see what she has
         Trace.trace(10, repr(self.__dict__))
+        self.page = enstore_html.EnActiveMonitorPage(["Time", "user IP", "Enstore IP", "Blocks", "Bytes/Block",
+		    "Time", "Rate (MB/S)"])
 
     def simulate_encp_transfer(self, ticket):
         ticket['status'] = ('ok', None)
@@ -55,7 +59,20 @@ class MonitorServer(dispatching_worker.DispatchingWorker):
         for x in xrange(ticket['block_count']):
             xfer_sock.send(sendstr)
         xfer_sock.close()
-            
+        os._exit(0)
+
+    def recieve_measurement(self, ticket):
+        self.reply_to_caller({"status" : ('ok', "")})
+        self.page.add_measurement(ticket["measurement"])
+
+    def flush_measurements(self, ticket):
+        self.reply_to_caller({"status" : ('ok', "")})
+        file = enstore_files.EnFile("DOG.html")
+        file.open()
+        file.filedes.write(str(self.page))
+        file.close()
+
+        
 class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -69,15 +86,6 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
 
-    pid=os.fork()
-    if pid: #parent
-        os.waitpid(pid,0)
-        sys.exit(0)
-    else: #child
-        pid=os.fork()
-        if pid:
-            sys.exit(0)
-        
             
     Trace.init(MY_NAME)
     Trace.trace( 6, "called args="+repr(sys.argv) )
@@ -87,11 +95,8 @@ if __name__ == "__main__":
     intf = MonitorServerInterface()
     # get a monitor server:
     intf.config_host = "" #listen on all interfaces on this machine
-    intf.config_port = 9999 #HACK -- should ger port from config server
+    intf.config_port = 9999 #HACK -- should get port from config server
     ms = MonitorServer((intf.config_host, intf.config_port))
-    sys.stdin.close()
-    sys.stdout.close()
-    sys.stderr.close()
     while 1:
         try:
             Trace.trace(6,"Monitor Server (re)starting")

@@ -69,8 +69,40 @@ class MonitorServerClient:
         ticket['elapsed']=time.time()-t0
         return ticket
     
+    def send_measurement(self, measurement_dict):
+        block_count = measurement_dict['block_count']
+        block_size = measurement_dict['block_size']
+        elapsed = measurement_dict['elapsed']
+        callback_addr = measurement_dict['callback_addr'][0]
+        #be paranoid abou the dress translation. not spending the time
+        #to research it.
+        try:
+            callback_addr = socket.gethostbyaddr(callback_addr)[0]
+        except:
+            pass
         
+        reply = self.send (
+            {
+            'work' : 'recieve_measurement',
             
+            'measurement' : (
+            time.asctime(time.localtime(time.time())), 
+            callback_addr,
+            measurement_dict['remote_interface'],
+            block_count,
+            block_size,
+            elapsed,
+            (block_count * block_size) / elapsed / 1000000
+            )
+            }
+            )
+
+    def flush_measurements(self):
+        reply = self.send (
+            {
+            'work' : 'flush_measurements'
+            }
+            )
     
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
@@ -119,14 +151,19 @@ if __name__ == "__main__":
 
     logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
-
+    
     ip_list = get_all_ips()
-    ##ip_list = ["localhost"] #TEST FIXTURE
+
+    ##temp cmd line processing - should go through "interface"
+    if len(sys.argv)>1:
+        ip_list = sys.argv[1:]
     msport = 9999
     for ip in ip_list:
+        print "trying", ip
         msc = MonitorServerClient((ip, msport))
-        ret=msc.simulate_encp_transfer(ip)
-        pprint.pprint(ret)
-        Trace.log(e_errors.INFO, `ret`)
+        measurement=msc.simulate_encp_transfer(ip)
+        pprint.pprint(measurement)
+        msc.send_measurement(measurement)
+    msc.flush_measurements()
         
     
