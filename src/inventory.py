@@ -10,7 +10,7 @@ import pprint
 import cPickle
 
 #user imports
-import db
+import edb
 import checkBackedUpDatabases
 import configuration_client
 import enstore_constants
@@ -149,81 +149,6 @@ def get_authorized_tapes():
             values['blanks'] = line[7:]
 
     return values
-
-#############################################################################
-#############################################################################
-#The next group of functions read databases into memory.  The first (read_db)
-# attempts to read in the entire database in one shot.  This works well for
-# some smaller database files.  However this doesn't work for large database
-# files, which otherwise cause the OS to thrash greatly.  The second function
-# allows for the user to read in a large database by specifying the number of
-# records to read in durring the function call.  This means that the caller
-# of the function needs to be responsible enough to pass in the opened database
-# back to the function (from the second ([1]) tuple argement to the second
-# (also [1]) function parameter, along with a sensible value for the number
-# of records to read in.
-
-#dbname is a tuple containing in [0] the path and in [1] the file name
-def read_db(dbname):
-    count=0
-    list = []
-    try:
-        d = db.DbTable(dbname[1], dbname[0], dbname[0], [])
-        d.cursor('open')
-        t1 = time.time()
-        k,v = d.cursor('first')
-
-        while k:
-            count=count+1
-            v=d[k]
-            list.append(v)
-            k,v=d.cursor('next')
-            if count % 1000 == 0:
-                delta = time.time()-t1
-                print "%d lines read in at %.1f keys/S in %s." % \
-                      (count, count/delta, delta)
-        
-    except:
-        exc, msg = sys.exc_info()[:2]
-        print "DATABASE",dbname[1],"IS CORRUPT. Current count is",count
-        print exc, msg
-        return 1
-
-    return list
-
-#dbname is a tuple containing in [0] the path and in [1] the file name
-def read_long_db(dbname, d, num):
-    count=0
-    list = []
-    try:
-
-        if d == None:
-            d = db.DbTable(dbname[1], dbname[0], dbname[0], [])
-            d.cursor('open')
-            k,v = d.cursor('first')
-        else:
-            k,v=d.cursor('next')
-
-        while k:
-            count=count+1
-            list.append(v)
-           
-            #When num number of elements has been read in, stop.
-            if count % num == 0:
-                return list, d
-
-            #Advance to the next only after we are sure that the num bound
-            # hasn't been reached.
-            k,v=d.cursor('next')
-        
-    except:
-        exc, msg = sys.exc_info()[:2]
-        print "DATABASE",dbname[1],"IS CORRUPT. Current count is",count
-        print exc, msg
-        return 1
-
-    return list, d
-
 
 ##############################################################################
 ##############################################################################
@@ -766,152 +691,6 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
         
     
 
-##############################################################################
-##############################################################################
-
-def sort_inventory(data_file, volume_list, tmp_dir):
-    t1 = time.time()
-    STEP = 1000        #Number of records to read in at a time.
-    data_list = [1]    #List where STEP number of records is placed.
-    db = None          #The database needed by read_long_db()
-    count_metadata = 0 #keep track of the number of files processed.
-    #A cool thing this class is.  It is a class, but it acts like a function
-    # later on.  This is how the filter function allows me to pass in
-    # different filter values.
-    compare = match_list("")
-
-    #While there is still data to process.
-    while count_metadata % STEP == 0 and len(data_list):
-
-        #Get the data list in groups of 1000 records.  For the first call,
-        # pass None into second parameter, this will tell the function to
-        # create the database instance.
-        long_read_return = read_long_db(os.path.split(data_file), db, STEP)
-
-        #For readability rename the two parts of the return value.
-        data_list = long_read_return[0]
-        db = long_read_return[1]
-
-        for volume in volume_list:
-            #Determine the full file name path for the output.
-            file_string = tmp_dir + volume['external_label']
-
-            #It may seam that always opening a file is a waste.  But, this
-            # way there will always be a file for a volume (even empty
-            # volumes).
-            fd = os.open(file_string,
-                         os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0666)
-            if fd == -1:
-                print "Unable to open tmp file", volume['external_label'],
-                print "for writing."
-                sys.exit(1)
-                
-            #This is where the magic of that callable class happends.  I set
-            # the compare_value variable and it is automatically referenced
-            # when the class is executed like a function in the filter() call.
-            compare.compare_value = volume['external_label']
-            short_list = filter(compare, data_list)
-
-            #With the short list of files located on the current volume
-            # print them out to the corresponding temporary file.
-            process_out_string(short_list, fd)
-
-            #Close the open file to avoid opening to many at once.
-            os.close(fd)
-
-        #Since, the while loop takes a while to process all of the data,
-        # generate some running performace statistics.
-        delta = time.time()-t0
-        omega = time.time()-t1
-        count_metadata = count_metadata + len(data_list)
-        print "%d lines read in at %.1f keys/S in %s." % \
-              (count_metadata, count_metadata/omega, parse_time(delta))
-
-#        break #usefull for debugging
-
-    return count_metadata
-
-
-#Proccess the inventory of the files specified.  This is the main source
-# function where all of the magic starts.
-#Takes the full filepath name to the volume file in the first parameter.
-#Takes the full filepath name to the metadata file in the second parameter.
-#Takes the full path to the ouput directory in the third parameter.
-# If output_dir is set to /dev/stdout/ then everything is sent to standard out.
-def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
-    volume_sums = {}   #The summation of all of the file sizes on a volume.
-    volumes_allocated = {} #Stats on usage of storage groups.
-
-    volume_list = read_db(os.path.split(volume_file))
-    if volume_list == 1:
-        print "Database " + volume_file + " read in unsuccessfully."
-
-    #If the user entered a specific volume to check on the command line.
-    if volume:
-        for vol in volume_list:
-            if vol['external_label'] == volume:
-                volume_list = [vol]
-
-    #Process the tapes authorized file for the VOLUME_QUATAS page.
-    authorized_tapes = get_authorized_tapes()
-
-    #Sort all of the data in data_file into the correct temporary files.
-    count_metadata = sort_inventory(metadata_file, volume_list, tmp_dir)
-
-    #print information to a real file.
-    for volume in volume_list:
-        if string.find(output_dir, "/dev/stdout") != -1:
-            fd_output = 1
-        else:
-            fd_output = os.open(output_dir + volume['external_label'],
-                                os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0666)
-        fd_tmp = os.open(tmp_dir + volume['external_label'],
-                            os.O_RDONLY, 0666)
-        
-        print_header(volume, fd_output) #Print the header information.
-        
-        #Prints the data to the appropriot output file.  Also, returns a
-        # list of the lines in the tmp file, which is used to calculate
-        # some statistics.
-        file_data = print_data(volume, fd_tmp, fd_output)
-        
-        print_footer(volume, fd_output) #Print the footer information.
-
-        #Close the file descriptors, or else will open to many and crash.
-        if fd_output != 1:
-            os.close(fd_output)
-        os.close(fd_tmp)
-        
-        #Verifies the amount of data stored on the volumes.  Each call to
-        # this function adds an entry into volume_sums.  The data generated
-        # will be outputed by the print_volume_size_stats() funciton.
-        verify_volume_sizes(file_data, volume, volume_sums)
-        
-        #Verifies the amount of data stored in storage groups.  Each call to
-        # this function adds an entry into volumes_allocated.  The data
-        # generated will be outputed by the print_volume_quotas_stats()
-        # funciton.
-        verify_volume_quotas(file_data, volume, volumes_allocated)
-
-
-    last_access_file, volume_size_file, volumes_defined_file, \
-		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file, \
-                      declaration_error \
-                      = get_vol_filenames(output_dir)
-
-    #Create files that hold statistical data.
-    print_last_access_status(volume_list, last_access_file)
-    print_volume_size_stats(volume_sums, volume_list, volume_size_file)
-    print_volumes_defind_status(volume_list, volumes_defined_file)
-    print_volume_quotas_status(volumes_allocated, authorized_tapes,
-                               volume_quotas_file)
-    print_volume_quota_sums(volumes_allocated, authorized_tapes,
-                            volume_quotas_file, volume_quotas_format_file)
-    print_total_bytes_on_tape(volume_sums, total_bytes_file)
-
-    return len(volume_list), count_metadata
-
 def is_b_library(lib):
     if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
         return 1
@@ -941,8 +720,11 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     else:
         vol_sum = {}
 
-    vols = db.DbTable('volume', os.path.split(volume_file)[0], '/tmp', [], 0)
-    files = db.DbTable('file', os.path.split(metadata_file)[0], '/tmp', ['external_label'], 0)
+    csc = configuration_client.ConfigurationClient()
+    dbinfo = csc.get('database')
+
+    vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
+    file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp')
 
     n_vols = 0L
     n_files = 0L
@@ -1000,12 +782,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
     # read volume ... one by one
 
-    vc = vols.newCursor()
-    vk, vv = vc.first()
-    while vk:
+    for vk in vols.keys():
+        vv = vols[vk]
         # skipping deleted volumes
         if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
-            vk, vv = vc.next()
             continue
 
         print 'processing', vk, '...',
@@ -1024,7 +804,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             mounts = vv['sum_mounts']
         else:
             mounts = -1
-        if vsum and vsum['last'] == vv['last_access']:
+        if vsum and long(vsum['last']) == long(vv['last_access']):
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1053,17 +833,20 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             unknown_size = 0L
     
             # dealing with files
-    
-            fc = files.inx['external_label'].cursor()
-            fk, pfk = fc.set(vk)
-            while fk:
+
+            # get all bfids of the volume
+
+            q = "select bfid from file, volume\
+                 where volume.label = '%s' and \
+                     file.volume = volume.id;"%(vk)
+            res = file.db.query(q).getresult()
+            bfids = []
+            for i in res:
+                bfids.append(i[0])
+            for pfk in bfids:
                 # to work around the infamous missing key error due to
                 # live backup
-                try:
-                    f = files[pfk]
-                except:
-                    fk, pfk = fc.nextDup()
-                    continue
+                f = file[pfk]
                 if f.has_key('deleted'):
                     if f['deleted'] == 'yes':
                         deleted = deleted + 1
@@ -1085,8 +868,6 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                      f.get('pnfs_name0', "unknown")))
     
                 n_files = n_files + 1
-                fk, pfk = fc.nextDup()
-            fc.close()
             total = active+deleted+unknown
             total_size = active_size+deleted_size+unknown_size
             os.write(fd_output, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
@@ -1244,9 +1025,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         n_vols = n_vols + 1
         print 'done'
-        vk, vv = vc.next()
 
-    vc.close()
     # dump vol_sum
     sum_f = open(volume_summary_cache_file, 'w')
     cPickle.dump(vol_sum, sum_f)
@@ -1261,7 +1040,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
     vols.close()
-    files.close()
+    file.close()
 
     #Create files that hold statistical data.
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
@@ -1271,8 +1050,6 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return n_vols, n_files, n_unchanged, n_changed
-
-
 
 def inventory_dirs():
     csc = configuration_client.ConfigurationClient()
@@ -1372,11 +1149,6 @@ if __name__ == "__main__":
     #Remove the contents of existing direcories and create them if they do
     # not exist.
     create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
-
-    #If the backup needs to be extracted (the defualt) then do.
-    if "-f" not in sys.argv and "-v" not in sys.argv:
-        container = checkBackedUpDatabases.check_backup(backup_dir,backup_node)
-        checkBackedUpDatabases.extract_backup(inventory_extract_dir, container)
 
     #Inventory is the main function that does work.
     counts = inventory(volume_file, file_file, output_dir,
