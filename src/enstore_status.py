@@ -303,6 +303,7 @@ class EnStatus:
 	# state of the mover.  save the status which is in there first.
 	status = self.text[key][STATUS]
 	self.text[key] = {}
+	self.text[key][FILES] = []
 	self.text[key][STATUS] = status
 	self.text[key][COMPLETED] = repr(ticket["no_xfers"])
        	if ticket["state"] == "busy":
