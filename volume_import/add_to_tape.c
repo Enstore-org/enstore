@@ -5,10 +5,10 @@
 #include "volume_import.h"
 
 
-void Usage()
+void WriteUsage()
 {
     fprintf(stderr,"\
-Usage: %s [--verbose] [--tape-device=dev] [--tape-db=dir] \n  --volume-label=label filelist [...]\n\
+Usage: %s --write [--verbose] [--tape-device=dev] [--tape-db=dir] \n  --volume-label=label filelist [...]\n\
     each filelist is:  [--pnfs-dir=dir] [--strip-path=path] file [...]\n\
     tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
@@ -78,7 +78,7 @@ match_opt(char *optname, char *arg)
 }
 	
 int    
-main(int argc, char **argv)
+write_tape_main(int argc, char **argv)
 {
     int i;
     char *pnfs_dir = NULL;
@@ -93,7 +93,6 @@ main(int argc, char **argv)
     tape_device = getenv("TAPE_DEVICE");
     tape_db = getenv("TAPE_DB");
 
-    progname = argv[0];
 
     for (i=1; i<argc; ++i) {
 	if (argv[i][0] == '-') { 
@@ -111,12 +110,12 @@ main(int argc, char **argv)
 	    } else if ((cp=match_opt("--volume-label=", argv[i]))){
 		if (volume_label){
 		    fprintf(stderr,"%s: volume-label may be set only once\n",progname);
-		    Usage();
+		    WriteUsage();
 		} 
 		volume_label = cp;
 	    } else {
 		fprintf(stderr,"%s: unknown option %s\n", progname, argv[i]);
-		Usage();
+		WriteUsage();
 	    }
 	} else {
 	    /* it's a filename */
@@ -139,17 +138,17 @@ main(int argc, char **argv)
 
     if (!volume_label) {
 	fprintf(stderr,"%s: no volume label specified\n", progname);
-	Usage();
+	WriteUsage();
     } 
 
     if (!tape_device) {
 	fprintf(stderr, "%s: no tape device specified\n", progname);
-	Usage();
+	WriteUsage();
     }
 
     if (!tape_db) {
 	fprintf(stderr, "%s: no tape db specified\n", progname);
-	Usage();
+	WriteUsage();
     }
     
     if (verify_tape_device()

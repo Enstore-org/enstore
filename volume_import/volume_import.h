@@ -15,6 +15,9 @@ prototypes and necessary headers for the volume import package
 #include <sys/mtio.h>
 #include <sys/time.h>
 
+#include <sys/types.h>
+#include <dirent.h>  /*portability?*/
+
 #define MAX_PATH_LEN 4096  /* get this (portably) from system headers */
 #define MAX_LABEL_LEN 70   /* maximum length of  volume label */
 
@@ -63,6 +66,9 @@ int cpio_next_block(char *, int);
 int join_path(char *, char *, char *);
 int strip_path(char *, char *, char *);
 int timestamp(char *);
+int write_tape_main(int, char **);
+int init_tape_main(int, char **);
+int dump_db_main(int, char **);
 
 /* Global vars */
 

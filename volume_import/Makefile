@@ -1,12 +1,9 @@
 # $Id$
 
-PROGS=enstore_write_tape enstore_init_tape
+PROGS=enstore_tape
 
-WRITE_OBJS=add_to_tape.o do_add_file.o verify.o dbfuncs.o tape.o \
-	cpio.o pathutil.o ECRC.o time.o global_data.o	
-
-INIT_OBJS=init_tape.o verify.o tape.o dbfuncs.o pathutil.o time.o \
-	global_data.o 
+OBJS=ECRC.o add_to_tape.o cpio.o dbfuncs.o do_add_file.o dump_db.o \
+ global_data.o init_tape.o main.o pathutil.o tape.o time.o verify.o
 
 HDRS=volume_import.h
 
@@ -17,11 +14,11 @@ CC=gcc -Wall
 #For Irix and others
 #CC=cc
 
-enstore_write_tape: $(WRITE_OBJS)
-	$(CC) -o enstore_write_tape $(WRITE_OBJS)
+enstore_tape: $(OBJS)
+	$(CC) -o enstore_tape $(OBJS)
 
-enstore_init_tape: $(INIT_OBJS)
-	$(CC) -o enstore_init_tape $(INIT_OBJS)
+main.o: main.c
+	$(CC) -c main.c
 
 add_to_tape.o: add_to_tape.c $(HDRS)
 	$(CC) -c add_to_tape.c
@@ -53,6 +50,8 @@ pathutil.o: pathutil.c $(HDRS)
 time.o: time.c $(HDRS)
 	$(CC) -c time.c
 
+dump_db.o: dump_db.c
+	$(CC) -c dump_db.c
 clean:
 	rm -f *.o $(PROGS)
 

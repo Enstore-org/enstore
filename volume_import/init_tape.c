@@ -5,10 +5,10 @@ Labels tape and  creates database branch for new volume
 
 #include "volume_import.h"
 
-void Usage()
+void InitUsage()
 {
     fprintf(stderr,
-   "Usage: %s [--verbose] [--erase] [--tape-device=device] 
+   "Usage: %s --init [--verbose] [--erase] [--tape-device=device] 
   [--tape-db=db_dir] --volume_label=label\n\
     tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
@@ -42,7 +42,7 @@ match_opt(char *optname, char *arg)
 	
 
 int
-main(int argc, char **argv)
+init_tape_main(int argc, char **argv)
 {
     int i;
     int erase=0;
@@ -55,8 +55,6 @@ main(int argc, char **argv)
 
     tape_device = getenv("TAPE_DEVICE");
     tape_db = getenv("TAPE_DB");
-
-    progname = argv[0];
 
     for (i=1; i<argc; ++i) {
 	if (argv[i][0] == '-') {
@@ -73,27 +71,27 @@ main(int argc, char **argv)
 		volume_label = cp;
 	    } else {
 		fprintf(stderr,"%s: unknown option %s\n", progname, argv[i]);
-		Usage();
+		InitUsage();
 	    }
 	}
 	else {
-	    Usage();
+	    InitUsage();
 	}
     }
 
     if (!tape_device) {
 	fprintf(stderr, "%s: no tape device specified\n", progname);
-	Usage();
+	InitUsage();
     }
 
     if (!tape_db) {
 	fprintf(stderr, "%s: no tape db specified\n", progname);
-	Usage();
+	InitUsage();
     }
 
     if (!volume_label){
 	fprintf(stderr, "%s: no volume label given\n", progname);
-	Usage();
+	InitUsage();
     }
     
 
