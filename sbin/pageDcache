@@ -1,26 +1,208 @@
-#!/bin/sh
+#!/bin/sh 
 set -u  
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
+# useful functions
+raise_alarm() {
+    msg=$1
+    item_to_override=$2
+    error_code=$3
+###    enstore alarm --raise --severity "A" --root-error "$msg"
+    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail bakken@fnal.gov
+###    enstore sched --override $item_to_override --saagstatus red --time="$msg"
+###    enstore sched --override enstore    --saagstatus red --time="$msg"
+    exit $error_code
+}
+
+transfer_setup() {
+    file=$1
+    error_code=$2
+    try=0
+    maxtry=5
+    delay=30
+    stat=1
+    rm -f $1
+    touch $1
+    if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $write_in_progress; exit $2; fi
+}
+
+do_transfer() {
+    xfer=$1
+    xfer_file=$2
+    progress_file=$3
+    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+	try=`expr $try + 1`
+###	rm -f $xfer_file
+	echo `date` Try $try of $maxtry: $xfer
+###	                                 $xfer
+	stat=$?
+	if [ $stat -eq 0 ]; then 
+	    rm -f $progress_file
+	else
+	    echo `date` sleep $delay
+	                sleep $delay
+	fi
+    done
+}
+
+#######################################################################
+
+dccp_test() {
+# dccp write
+    transfer_setup $write_in_progress 7
+    do_transfer "dccp $test_file $w" $w $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache write failed." $dcache_saag 6
+    fi
+
+# dccp readback
+
+    transfer_setup $read_in_progress 5
+    do_transfer "dccp $w $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache read failed" $dcache_saag 4
+    fi
+
+# file comparison
+
+###    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "Ball Red: $dcache dcache cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+
+kftp_test() {
+# kftp passive write
+    transfer_setup $write_in_progress 7
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -m -p -v $test_file enstore@$dcache:$wp1" $wp $write_in_progress
+
+    if [ -r $write_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache passive kftp write failed." $dcache_saag 6
+    fi
+
+# kftp passive readback
+    transfer_setup $read_in_progress 5
+    # we need to strip off the pnfs dir from $wp
+    wp1=`echo $wp|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -m -p -v enstore@$dcache:$wp1 $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache passive kftp read failed" $dcache_saag 4
+    fi
+
+# kftp passive readback file comparison
+###    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "Ball Red: $dcache dcache passive kftp cmp failed" $dcache_saag 3
+    fi
+
+# kftp active write
+    transfer_setup $write_in_progress 7
+    # we need to strip off the pnfs dir from $wa
+    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -v $test_file enstore@$dcache:$wa" $wa $write_in_progress
+ 
+    if [ -r $write_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache write failed." $dcache_saag 6
+    fi
+
+# kftp active readback
+    transfer_setup $read_in_progress 5
+    # we need to strip off the pnfs dir from $wa
+    wa1=`echo $wa|sed -e "s%${strip_dir}%%"`
+    do_transfer "kftpcp -p $strong_port -v enstore@$dcache:$wa1 $read_back" $read_back $read_in_progress
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache read failed" $dcache_saag 4
+    fi
+
+# kftp active readback file comparison
+
+###    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "Ball Red: $dcache dcache kftp active cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+
+ftp_test() {
+    ftp_file=$1
+# ftp readback
+    transfer_setup $read_in_progress 5
+
+    while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+	try=`expr $try + 1`
+	rm -f $read_back
+	echo `date` Try $try of $maxtry: anonymous ftp read of $ftp_file
+	python -c '
+from ftplib import FTP
+import sys
+ftp=FTP()
+ftp.connect("'$dcache'",'$weak_port')
+ftp.login("enstore-test","anon-read")
+print ftp.retrbinary("RETR '$ftp_file'", open("'$read_back'", "wb").write)
+ftp.quit()
+'
+	stat=$?
+	if [ $stat -eq 0 ]; then 
+	    rm -f $read_in_progress
+	else
+	    echo `date` sleep $delay
+		        sleep $delay
+	fi
+    done
+
+    if [ -r $read_in_progress ]; then
+	raise_alarm "Ball Red: $dcache dcache ftp read failed" $dcache_saag 4
+    fi
+
+# ftp readback file comparison
+
+###    cmp $test_file $read_back
+    if [ $? -ne 0 ]; then
+	raise_alarm "Ball Red: $dcache dcache ftp cmp failed" $dcache_saag 3
+    fi
+}
+#######################################################################
+#######################################################################
+
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-N=`date +"%j"` #day of year
+gang=stken ###efb
+# N will have a leading 0 (if < 100) unless we pipe it to sed.
+N=`date +"%j"|sed -e 's%^0%%'` #day of year
 N1=`expr $N - 1`
+
 
 case $gang in
   stken) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
+	 wp=/pnfs/eagle/dcache-tests/$N.dcache_page_p_$$
+         wa=/pnfs/eagle/dcache-tests/$N.dcache_page_a_$$
          l=/pnfs/eagle/dcache-tests/$N1
+	 strip_dir="/pnfs/eagle"
          dcache=fndca
+	 strong_port=24127
+         weak_port=24126
+	 dcache_saag="dcache_stk"
           ;;
   cdfen) w=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_$$
          l=/pnfs/cdfen/jon/fcdfsgi2/$N1
+	 strip_dir="/pnfs/cdfen"
          dcache=cdfendca3
+	 dcache_saag="dcache_cdf"
           ;;
   d0en)  w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
          l=/pnfs/archive/dcache-tests/$N1
+	 strip_dir="/pnfs"
          dcache=d0endca3a
+	 dcache_saag="dcache_d0"
           ;;
        *) namespace="UNKNOWN"
           echo `date` UNKNOWN gang
@@ -39,17 +221,30 @@ if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 2; fi
 write_in_progress=/tmp/dcache_page_write_in_progress_$$
 read_in_progress=/tmp/dcache_page_read_in_progress_$$
 
-if [ -z "${DCAP_DIR:-}" ]; then
+# set up any necessary products
+if [ -z "${UPS_DIR:-}" ]; then
   source /usr/local/etc/setups.sh
   if [ $? -gt 0 ]; then
       echo `date` ERROR: unable to source /usr/local/etc/setups.sh.
       exit 9
   fi
-  setup dcap
-  if [ $? -gt 0 ]; then
-      echo `date` ERROR: unable to setup dcap.
-      exit 8
-  fi
+fi
+if [ "$gang" == "stken" ];
+then
+    if [ -z "${KFTP_DIR:-}" ]; then
+###	setup kftp
+	if [ $? -gt 0 ]; then
+	    echo `date` ERROR: unable to setup kftp.
+	    exit 8
+	fi
+    fi
+fi
+if [ -z "${DCAP_DIR:-}" ]; then
+###    setup dcap
+    if [ $? -gt 0 ]; then
+	echo `date` ERROR: unable to setup dcap.
+	exit 8
+    fi
 fi
 
 if /bin/false; then 
@@ -68,92 +263,19 @@ ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
 # ${krbdir}/klist -fea
 fi
 
-#############################################################################################################################
-
-# dccp write
-
-try=0
-maxtry=5
-delay=30
-stat=1
-rm -f $write_in_progress
-touch $write_in_progress
-if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $write_in_progress; exit 7; fi
-
-while [ $stat -ne 0 -a $try -lt $maxtry ]; do
-  try=`expr $try + 1`
-  rm -f $w
-  echo `date` Try $try of $maxtry: dccp write dccp $test_file $w
-                                   dccp $test_file $w
-  stat=$?
-  if [ $stat -eq 0 ]; then 
-    rm -f $write_in_progress
-  else
-    echo `date` sleep $delay
-                sleep $delay
-  fi
-done
- 
-if [ -r $write_in_progress ]; then
-   msg="Ball Red: $dcache dcache write failed."
-   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed."
-   echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed." | Mail bakken@fnal.gov
-   enstore sched --override dcache_cdf --saagstatus red --time="$msg"
-   enstore sched --override enstore    --saagstatus red --time="$msg"
-   exit 6
-fi
-
-
-#############################################################################################################################
-
-# dccp readback
-
-try=0
-maxtry=5
-delay=30
-stat=1
-rm -f $read_in_progress
-touch $read_in_progress
-if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $read_in_progress; exit 5; fi
-
-while [ $stat -ne 0 -a $try -lt $maxtry ]; do
-  try=`expr $try + 1`
-  rm -f $read_back
-  echo `date` Try $try of $maxtry: dccp readback dccp readback dccp $w $read_back
-                                                               dccp $w $read_back
-  stat=$?
-  if [ $stat -eq 0 ]; then 
-    rm -f $read_in_progress
-  else
-    echo `date` sleep $delay
-                sleep $delay
-  fi
-done
-
-if [ -r $read_in_progress ]; then
-   msg="Ball Red: $dcache dcache read failed"
-   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed"
-   echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed" | Mail bakken@fnal.gov
-   enstore sched --override dcache_cdf --saagstatus red --time="$msg"
-   enstore sched --override enstore    --saagstatus red --time="$msg"
-
-   exit 4
-fi
-
-#############################################################################################################################
-
-# file comparison
-
-cmp $test_file $read_back
-if [ $? -ne 0 ]; then
-    msg="Ball Red: $dcache dcache cmp failed"
-    enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed"
-    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed" | Mail bakken@fnal.gov
-    enstore sched --override dcache_cdf --saagstatus red --time="$msg"
-    enstore sched --override enstore    --saagstatus red --time="$msg"
-    exit $3
-fi
-
+case $gang in
+    cdfen)
+	dccp_test
+	;;
+    d0en)
+	dccp_test
+	;;
+    stken)
+	dccp_test
+	kftp_test
+###	ftp_test $wa
+	;;
+esac
 
 #clean up of old junk
 echo cleanup: rm -f ${l}*
@@ -162,7 +284,7 @@ echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
               rm -f $test_file $read_back $write_in_progress $read_in_progress
 
 # make sure the ball is ok
-enstore sched --nooverride dcache_cdf
+###enstore sched --nooverride %dcache_saag
 
 echo `date` Finished.
 exit 0
