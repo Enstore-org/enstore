@@ -831,7 +831,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if not vol_found:
 	    self.suspect_volumes.append(vol)
             # send alarm if number of suspect volumes is above a threshold
-            if len(self.suspect_volumes) >= max_suspect_volumes:
+            if len(self.suspect_volumes) >= self.max_suspect_volumes:
                 Trace.alarm(e_errors.WARNING, e_errors.ABOVE_THRESHOLD,
                             {"volumes":"Number of suspect volumes is above threshold"}) 
             
