@@ -105,7 +105,7 @@ if __name__=="__main__":
 	    sys.exit(0)
 
     if sys.argv[1]=="temp":
-	cmd="%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"%(os.environ['IPMI_DIR'],)
+	cmd="%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|cut -d '.' -f 1"%(os.environ['IPMI_DIR'],)
 	ret=check(cmd)
 	if len(ret)!=2:
 	    print -1
@@ -119,7 +119,7 @@ if __name__=="__main__":
 	    print -1
 	    sys.exit(0)
     elif sys.argv[1]=="fan":
-	cmd="%s/sdrread|grep 'Processor.*Fan:'|awk -F':' '{print $3}'|awk '{print $1}'"%(os.environ['IPMI_DIR'],)
+	cmd="%s/sdrread|grep 'Processor.*Fan.*:'|awk -F':' '{print $3}'|awk '{print $1}'"%(os.environ['IPMI_DIR'],)
 	ret=check(cmd)
 	if len(ret)!=2:
 	    print -1
@@ -131,6 +131,7 @@ if __name__=="__main__":
 	except:
 	    print -1
 	    print -1
+	    sys.exit(0)
     elif sys.argv[1]=="firmware":
 	retVal,reason=checkFirmware()
 	print retVal
