@@ -1426,7 +1426,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         try:
             record = self.dict[external_label]
             changed = 0
-            for i in ['at_mover', 'status', 'file_family']:
+            for i in ['at_mover', 'status', 'file_family', 'mounts']:
                 if record.has_key(i):
                     del record[i]
                     changed = 1
