@@ -10,8 +10,6 @@ import ftplib
 import stat
 import time
 
-#enstore imports
-import access
 
 record_size = 15+256
 
@@ -98,7 +96,7 @@ def dump_log_file(addr, month, day, output=sys.stdout, update=0):
     if not os.path.isdir(prefix):
         os.mkdir(prefix)
     filename = os.path.join(prefix, "%s.%02d.%02d.log"%(addr, month, day))
-    if update or not access.access(filename, access.R_OK):
+    if update or not os.access(filename, os.R_OK):
         fetch_log_file(addr, month, day, filename)
     f = open(filename, 'r')
     for n in range(n_records(filename)):
