@@ -1,4 +1,9 @@
 #!/bin/sh
+#
+#  NOTE:
+#   Please define the environment variable 'TRASH_CAN' in order to set a specific
+#   location where pnfs puts its trash.
+#
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
