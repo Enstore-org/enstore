@@ -88,6 +88,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
 	return self.send({"work":"load_mover_list"})
 
     def summon_mover(self, mover):
+        if mover == 'all': mover=None
 	return self.send({"work":"summon", "mover":mover})
 
     def poll(self):
@@ -170,7 +171,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         return self.client_options()+\
 	       ["get_work", "get_mover_list", "get_suspect_vols",
 		"get_delayed_dismount","delete_work=","priority=",
-                "load_movers", "summon=", "poll", "queue","host="]
+                "load_movers", "summon=", "poll", "get_queue","host="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):

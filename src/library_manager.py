@@ -288,7 +288,7 @@ def next_work_any_volume(self, csc):
 		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
-		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" % repr(v_info['status']))   # repr is needed here as status tuple
+		    Trace.trace(11,"next_work_any_volume:can_write_volume returned %s" % repr(v_info['status']))
 
 		
             # width not exceeded, ask volume clerk for a new volume.
@@ -851,7 +851,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # check if tape is stuck in in the mounting state
 	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'mounting':
-                mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
+                mcstate =  self.vcc.uupdate_mc_state(wt['fc']['external_label'])
 		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
 						 mcstate["at_mover"][0], 
@@ -1324,13 +1324,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		summon_mover(self, mv, ticket)
 	
     def summon(self, ticket):
-	mv = find_mover_by_name(ticket["mover"], movers)
-	if mv:
-	    # summon this mover
-	    summon_mover(self, mv, {})
-	    reply = {"status" :(e_errors.OK, "will summon")}
-	else: reply = {"status" :(e_errors.UNKNOWN, "mover is not found")}
-	self.reply_to_caller(reply)
+        if ticket["mover"] != None:
+            mv = find_mover_by_name(ticket["mover"], movers)
+            if mv:
+                # summon this mover
+                summon_mover(self, mv, {})
+                reply = {"status" :(e_errors.OK, "will summon")}
+            else: reply = {"status" :(e_errors.UNKNOWN, "mover is not found")}
+        else:
+            reply = {"status" :(e_errors.OK, "will summon")}
+            self.kickoff_movers()
+        self.reply_to_caller(reply)
 
     def poll(self, ticket):
 	mv = idle_mover_next(self, None)
@@ -1386,12 +1390,12 @@ if __name__ == "__main__":
 
     get_movers(lm.csc, intf.name)
 
-    # check if there is something pending
-    if (len(lm.pending_work.queue) != 0 or 
-	len(lm.work_at_movers.list) != 0 or
-	len(lm.del_dismount_list.list) != 0):
-	# try to kick off the mover
-	lm.kickoff_movers()
+    # check if there is something pending 
+    #if (len(lm.pending_work.queue) != 0 or 
+    #  len(lm.work_at_movers.list) != 0 or
+    #  len(lm.del_dismount_list.list) != 0):
+    # try to kick off movers
+    lm.kickoff_movers()
     while 1:
         try:
             #Trace.init(intf.name[0:5]+'.libm')

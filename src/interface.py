@@ -355,7 +355,7 @@ class Interface:
                 self.stop_time = value
             elif opt == "--plot":
                 self.plot = 1
-            elif opt == "--queue":
+            elif opt == "--get_queue":
 	        self.queue_list=1
             elif opt == "--host":
 	        self.host=value
