@@ -361,7 +361,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
               break
         # report back to original client - probably a mover
         fstat = ticket.get('status', None)
-        if fstat=="ok":
+        if fstat[0]=="ok":
             level = e_errors.INFO
         else:
             level = e_errors.ERROR
