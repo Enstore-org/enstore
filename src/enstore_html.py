@@ -1428,7 +1428,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagHelp.html", system_tag=system_tag)
 	self.title = title
 	self.script_title_gif = gif
-	self.source_server = "SPAM"
+	self.source_server = "Enstore"
 	self.description = ""
 
     def get_color_ball(self, dict, key, direction=""):
