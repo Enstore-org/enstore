@@ -831,7 +831,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             tinfo1["tot_to_mover_callback%d"%(i,)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-----------------------------Lap-End
             if verbose>1:
-                # NOTE: callback can be "None" if local_mover
+
                 print " ",ticket["mover"]["callback_addr"],\
                       "cum:",tinfo1["tot_to_mover_callback%d"%(i,)]
                 print "  dt:",dt,"   cumt=",time.time()-t0
@@ -842,87 +842,84 @@ def write_to_hsm(input_files, output, output_file_family='',
 
             fsize = file_size[i]
 
-            if ticket['mover']['local_mover']:
-                if bytecount:
-                    print "Fatal error:  test_mode not supported with local mover"
-                    sys.exit(-1)
-                # option is not applicable -- make sure it is disabled
-                chk_crc = 0
-            else:
-                # Call back mover on mover's port and send file on that port
-                data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1,
-                                                                  verbose=verbose)
-                in_file = open(inputlist[i], "r")
-                mycrc = 0
-                bufsize = 65536*4
 
-                Trace.trace(7,"write_to_hsm: sending data to EXfer file=%s, socket=%s bufsize=%s chk_crc=%s"
-                            %(inputlist[i],data_path_socket,bufsize,chk_crc))
+            # Call back mover on mover's port and send file on that port
 
-                statinfo = os.stat(inputlist[i])
-                if not bytecount and statinfo[stat.ST_SIZE] != fsize:
-                    print_data_access_layer_format(
-                        inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
-                    quit()
+            data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            data_path_socket.connect(ticket['mover']['callback_addr'])
 
-                try:
-                    if chk_crc: crc_flag = 1
-                    else:       crc_flag = 0
-                    if use_IPC: ipc_flag = 1
-                    else:       ipc_flag = "no"
-                    mycrc = EXfer.fd_xfer( in_file.fileno(),
-                                           data_path_socket.fileno(), 
-                                           fsize, bufsize, crc_flag, 0, ipc_flag )
-                except EXfer.error, msg:
-                    # this error used to be a 0
-                    Trace.trace(6,"write_to_hsm EXfer error: %s %s"%
-                                (sys.argv, msg))
+            in_file = open(inputlist[i], "r")
+            mycrc = 0
+            bufsize = 65536*4
 
-                    # might as well close our end --- we will either exit or
-                    # loop back around
-                    data_path_socket.close()
-                    in_file.close()
+            Trace.trace(7,"write_to_hsm: sending data to EXfer file=%s, socket=%s bufsize=%s chk_crc=%s"
+                        %(inputlist[i],data_path_socket,bufsize,chk_crc))
 
-                    #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
-                    if msg.args[1] == errno.EPIPE:
-                        # could be network or could be mover closing socket...
-                        # try to get done_ticket
-                        try:
-                            done_ticket = callback.read_tcp_obj(control_socket)
-                        except:
-                            # assume network error...
-                            # no done_ticket!
-                            #print_data_access_layer_format(inputlist[i], outputlist[i],
-                            #                               file_size[i], done_ticket)
-                            # exit here
-                            print_data_access_layer_format(inputlist[i],outputlist[i],0,
-                                                           {'status':('EPROTO',
-                                                                      'Network problem or mover crash')})
-                            quit()
+            statinfo = os.stat(inputlist[i])
 
-                        control_socket.close()
+            if not bytecount and statinfo[stat.ST_SIZE] != fsize:
+                print_data_access_layer_format(
+                    inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
+                quit()
 
-                        print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
-                        if not e_errors.is_retriable(done_ticket["status"][0]):
-                            # exit here
-                            quit()
-                        print_error('EPROTO',
-                                    "failed to transfer: status=%s"%(ticket['status'],),
-                                    fatal=(retry<2))
+            try:
+                if chk_crc: crc_flag = 1
+                else:       crc_flag = 0
+                if use_IPC: ipc_flag = 1
+                else:       ipc_flag = "no"
+                mycrc = EXfer.fd_xfer( in_file.fileno(),
+                                       data_path_socket.fileno(), 
+                                       fsize, bufsize, crc_flag, 0, ipc_flag )
+            except EXfer.error, msg:
+                # this error used to be a 0
+                Trace.trace(6,"write_to_hsm EXfer error: %s %s"%
+                            (sys.argv, msg))
 
-                        retry = retry - 1
-                        if retry>0:
-                            sys.stderr.write("Retrying\n")
-                            continue
-                        else:
-                            quit()
+                # might as well close our end --- we will either exit or
+                # loop back around
+                data_path_socket.close()
+                in_file.close()
 
+                #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
+                if msg.args[1] == errno.EPIPE:
+                    # could be network or could be mover closing socket...
+                    # try to get done_ticket
+                    try:
+                        done_ticket = callback.read_tcp_obj(control_socket)
+                    except:
+                        # assume network error...
+                        # no done_ticket!
+                        #print_data_access_layer_format(inputlist[i], outputlist[i],
+                        #                               file_size[i], done_ticket)
+                        # exit here
+                        print_data_access_layer_format(inputlist[i],outputlist[i],0,
+                                                       {'status':('EPROTO',
+                                                                  'Network problem or mover crash')})
+                        quit()
+
+                    control_socket.close()
+
+                    print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
+                    if not e_errors.is_retriable(done_ticket["status"][0]):
+                        # exit here
+                        quit()
+                    print_error('EPROTO',
+                                "failed to transfer: status=%s"%(ticket['status'],),
+                                fatal=(retry<2))
+
+                    retry = retry - 1
+                    if retry>0:
+                        sys.stderr.write("Retrying\n")
+                        continue
                     else:
-                        #some other error that needs coding
-                        traceback.print_exc()
-                        exc,msg,tb=sys.exc_info()
-                        raise exc,msg
-                    pass
+                        quit()
+
+                else:
+                    #some other error that needs coding
+                    traceback.print_exc()
+                    exc,msg,tb=sys.exc_info()
+                    raise exc,msg
+
 
                 # close the data socket and the file, we've sent it 
                 #to the mover
@@ -1393,7 +1390,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         tinfo["tot_to_mover_callback%d"%(j,)] = time.time() - t0 #-----Cum
         dt = time.time() - t2 #-------------------------------------Lap-End
         if verbose>1:
-            # NOTE: callback can be "None" if local_mover
+
             print " ",ticket["mover"]["callback_addr"],\
                   "cum:",tinfo["tot_to_mover_callback%d"%(j,)]
             print "  dt:",dt,"   cumt=",time.time()-t0
@@ -1404,107 +1401,107 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         tempname = requests[j]['outfile']
         if tempname != '/dev/null':
             tempname = tempname+'.'+requests[j]['unique_id']
-        if ticket['mover']['local_mover']:
-            # option is not applicable -- make sure it is disabled
-            chk_crc = 0
-        else:
-            t2 = time.time() #----------------------------------------Lap-Start
 
-            l = 0
-            mycrc = 0
-            bufsize = 65536*4
+        t2 = time.time() #----------------------------------------Lap-Start
 
-            data_path_socket = callback.mover_callback_socket(ticket, use_multiple=1,
-                                                              verbose=verbose)
-            data_path_socket_closed = 0
+        l = 0
+        mycrc = 0
+        bufsize = 65536*4
+
+
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['mover']['callback_addr'])
+
+        data_path_socket_closed = 0
+        try:
+            _f_ = open(tempname,"w")
+        except:
+            error = e_errors.USERERROR
+            done_ticket  = {'status':(error,"Can't write %s"%(tempname,))}
+
+
+        Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
+                    (tempname,data_path_socket.getsockname(),bufsize,chk_crc))
+
+        # read file, crc the data if user has request crc check
+        if not error:
             try:
-                _f_ = open(tempname,"w")
-            except:
-                error = e_errors.USERERROR
-                done_ticket  = {'status':(error,"Can't write %s"%(tempname,))}
+                if chk_crc != 0: crc_flag = 1
+                else:            crc_flag = 0
+                if use_IPC: ipc_flag = 1
+                else:       ipc_flag = "no"
+                mycrc = EXfer.fd_xfer( data_path_socket.fileno(),
+                                       _f_.fileno(),
+                                       requests[j]['file_size'], bufsize,
+                                       crc_flag, 0, ipc_flag )
+            except EXfer.error, msg: 
 
-                
-            Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
-                        (tempname,data_path_socket.getsockname(),bufsize,chk_crc))
+                Trace.trace(6,"read_from_hsm EXfer error: %s %s"%
+                            (sys.argv,msg))
 
-            # read file, crc the data if user has request crc check
-            if not error:
-                try:
-                    if chk_crc != 0: crc_flag = 1
-                    else:            crc_flag = 0
-                    if use_IPC: ipc_flag = 1
-                    else:       ipc_flag = "no"
-                    mycrc = EXfer.fd_xfer( data_path_socket.fileno(),
-                                           _f_.fileno(),
-                                           requests[j]['file_size'], bufsize,
-                                           crc_flag, 0, ipc_flag )
-                except EXfer.error, msg: 
+                if verbose > 1: traceback.print_exc()
 
-                    Trace.trace(6,"read_from_hsm EXfer error: %s %s"%
-                                (sys.argv,msg))
-                    
-                    if verbose > 1: traceback.print_exc()
-
-                    if msg.args[1]==errno.ENOSPC:
+                if msg.args[1]==errno.ENOSPC:
+                    try:
+                        if tempname!="/dev/null":
+                            os.unlink(tempname)
+                    except:
+                        pass
+                    print_data_access_layer_format(
+                        requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
+                        {'status':("ENOSPC", "No space left on device")})
+                    quit()
+                ###XXX we shouldn't be matching literal strings here... this is really wrong                        
+                if msg.args[0] == "fd_xfer - read EOF unexpected":
+                    error = 1
+                    data_path_socket.close()
+                    try:
+                        done_ticket = callback.read_tcp_obj(control_socket)
+                    except:
+                        # assume network error...
+                        # no done_ticket!
+                        # exit here
+                        print_data_access_layer_format(requests[j]['infile'],  
+                                                       requests[j]['outfile'],
+                                                       0,
+                                                       {'status':("EPROTO",
+                                                                  "Network problem or mover crash")})
                         try:
                             if tempname!="/dev/null":
                                 os.unlink(tempname)
                         except:
                             pass
-                        print_data_access_layer_format(
-                            requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
-                            {'status':("ENOSPC", "No space left on device")})
                         quit()
-                    ###XXX we shouldn't be matching literal strings here... this is really wrong                        
-                    if msg.args[0] == "fd_xfer - read EOF unexpected":
-                        error = 1
-                        data_path_socket.close()
-                        try:
-                            done_ticket = callback.read_tcp_obj(control_socket)
-                        except:
-                            # assume network error...
-                            # no done_ticket!
-                            # exit here
-                            print_data_access_layer_format(requests[j]['infile'],  
-                                                           requests[j]['outfile'],
-                                                           0,
-                                                           {'status':("EPROTO",
-                                                                      "Network problem or mover crash")})
-                            try:
-                                if tempname!="/dev/null":
-                                    os.unlink(tempname)
-                            except:
-                                pass
-                            quit()
 
-                        control_socket.close()
-                        print_data_access_layer_format(  requests[j]['infile'],  
-                                                         requests[j]['outfile'], 
-                                                         requests[j]['file_size'], 
-                                                         done_ticket )
-                        if not e_errors.is_retriable(done_ticket["status"][0]):
-                            del(requests[j])
-                            if files_left > 0: files_left = files_left - 1
-
-                            print_error ('EPROTO',
-                                         'Failed to transfer, status=%s' %(done_ticket["status"],),
-                                         fatal=1)
-
-                            error=1
-                            break
-                        print_error ('EPROTO',
-                                     'failed to transfer, status=%s'%(done_ticket["status"],),
-                                     fatal=1)
-                        pass
-
-                    if ticket['retry_cnt'] >= maxretry:
+                    control_socket.close()
+                    print_data_access_layer_format(  requests[j]['infile'],  
+                                                     requests[j]['outfile'], 
+                                                     requests[j]['file_size'], 
+                                                     done_ticket )
+                    if not e_errors.is_retriable(done_ticket["status"][0]):
                         del(requests[j])
                         if files_left > 0: files_left = files_left - 1
-                        pass
-                    else:
-                        requests[j]['retry'] = requests[j]['retry']+1
-                        pass
-                    continue
+
+                        print_error ('EPROTO',
+                                     'Failed to transfer, status=%s' %(done_ticket["status"],),
+                                     fatal=1)
+
+                        error=1
+                        break
+                    print_error ('EPROTO',
+                                 'failed to transfer, status=%s'%(done_ticket["status"],),
+                                 fatal=1)
+                    pass
+
+                if ticket['retry_cnt'] >= maxretry:
+                    del(requests[j])
+                    if files_left > 0: files_left = files_left - 1
+                    pass
+                else:
+                    requests[j]['retry'] = requests[j]['retry']+1
+                    pass
+                continue
 
             # if no exceptions, fsize is file_size[j]
             fsize = requests[j]['file_size']
@@ -1518,7 +1515,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 data_path_socket_closed = 1 
                 pass
 
-            pass               # done with not ticket['mover']['local_mover']:
+
 
         t2 = time.time() #----------------------------------------Lap-Start
 
