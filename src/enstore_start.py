@@ -349,7 +349,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         #Check the restarted server.  It sould not be this complicated, but
         # there were situations where TIMEDOUT still occured when there was
         # no good reason for it to occur.  Putting a loop here fixed it.
-        for i in (0, 1, 2):
+        for i in (0, 1, 2, 3, 4, 5):
             time.sleep(1)
             cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
             pipeObj = popen2.Popen3(cmd, 0, 0)
