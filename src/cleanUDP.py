@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
 
 """
         The purpose of this module is to provide a clean datagram
@@ -19,13 +22,17 @@
         cleanUDP.select() must be used instead of select.select()
 
 """
+
+# system imports
 import socket
 import Trace
 import errno
 import time
 import select
 
+# enstore imports
 import e_errors
+
 def Select (R, W, X, timeout) :
 
 ## we have an error under linux where we get an error, and
@@ -79,8 +86,9 @@ class cleanUDP :
                 r, w, x = select.select([self], [], [self], 0)
                 if r :
                         return 1 # it's clean - there really is a read to do
-                return 0 # it went away - just the icmp message under A. Cox's linux implementation
-
+		# it went away - just the icmp message under A. Cox's
+		# linux implementation
+                return 0  
 
         def __getattr__(self, attr):
                 return getattr(self.socket, attr)
@@ -90,7 +98,9 @@ class cleanUDP :
                 data = ("", ("", 0))
                 for n in range(self.retry_max) :
                         try:
-                                r,junk,junk=select.select([self.socket],[],[],rcv_timeout)
+                                r, junk, junk = select.select([self.socket],
+							      [], [],
+							      rcv_timeout)
                                 if r:
                                         data=self.socket.recvfrom(bufsize)
                                         return data
@@ -133,11 +143,14 @@ if __name__ == "__main__" :
         sout.sendto("all dogs have fleas", ('localhost', 303031))       
         r, w, x = select.select([sout],[sout],[sout], 1.0)
         if not x and not r and w:
-                print "expected select.select behavoir on non-linux" 
+                print "expected select.select behavoir on non-linux " \
+		      "and post 2.4 linux kernel"
         elif x and r and w:
-                print "expected select.select behavior on linux, pre 2.2 kernel"
+                print "expected select.select behavior on linux, " \
+		      "pre 2.2 kernel"
         elif not x and r and w:
-                print "expected select.select behavior on linux, post 2.2 kernel"
+                print "expected select.select behavior on linux, " \
+		      "post 2.2 kernel"
         else:
                 print "***unexpected  behavior on _any_ platform"
         r, w, x, remaining_time = Select([sout],[sout],[sout], 1.0)
