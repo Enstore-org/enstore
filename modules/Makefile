@@ -3,7 +3,7 @@ SHELL=/bin/sh
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp mouse_move autologinenstore
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
