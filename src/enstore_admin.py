@@ -6,7 +6,7 @@
 import enstore
 
 def do_work():
-    # user mode
+    # admin mode
     mode = 0
 
     #en = enstore.Enstore(mode)
