@@ -3090,7 +3090,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.control_socket is None:
             return
         ticket['status'] = (status, error_info)
-        Trace.trace(26, "send_client_done: %s"%(ticket))
+        Trace.trace(10, "send_client_done: %s"%(ticket))
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
         except:
@@ -3106,6 +3106,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
             self.control_socket = None
             self.listen_socket = None
+        Trace.trace(10, "send_client_done++")
         return
 
     def del_udp_client(self, udp_client):
