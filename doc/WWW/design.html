@@ -1802,7 +1802,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>default_server_timeout</TD>
-<TD NOSAVE>frequency to monitor servers not listed in <B>timeouts</B></TD>
+<TD NOSAVE>frequency to monitor servers not listed in <i>timeouts</i></TD>
 <TD NOSAVE>60</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -1853,18 +1853,18 @@ config file.  All frequencies are specified in seconds.<BR>
 </TABLE>
 <P>
 In addition to the information listed above, the inquisitor will look for the
-<B>inq_timeout</B> dictionary element in each of the individual server sections.
+<i>inq_timeout</i> dictionary element in each of the individual server sections.
 If present, the value of this dictionary element will be used to specify the 
 timeout value for monitoring this server.  This is the same as if the 
-<B>timeouts</B>  dictionary element mentioned
+<i>timeouts</i>  dictionary element mentioned
 above contained a dictionary element for the particular server.  For example, 
 in order to monitor the file_clerk every 65 seconds, the Enstore config file 
 must have one of the following in it:<BR>
 
 <UL>
-<LI>in the inquisitor section - a dictionary element, within the <B>timeouts</B>
+<LI>in the inquisitor section - a dictionary element, within the <i>timeouts</i>
 dictionary element, for the file clerk set to 65
-<LI>in the file_clerk section - the dictionary element <B>inq_timeout</B> set to
+<LI>in the file_clerk section - the dictionary element <i>inq_timeout</i> set to
 65
 </UL>
 The value in the individual server dictionary element will take precedence over
