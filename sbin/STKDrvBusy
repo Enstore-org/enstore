@@ -39,7 +39,7 @@ case $command in
         if [ $node = $getnode ] ; then
          dinfo=/tmp/dinfo
          rm -f $dinfo
-         /usr/bin/rsh $silo_node -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
+         /usr/bin/rsh $silo_node -l acsss "echo query drive all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
          n9840=`grep " 9840"  $dinfo | grep -c "in use"`
          a9840=`grep " 9840"  $dinfo | grep -c "online"`
          n9940_stk=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "in use"`
@@ -52,9 +52,9 @@ case $command in
         elif [ $node = $getnode_cdf ] ; then
          dinfo=/tmp/dinfo
          rm -f $dinfo
-         /usr/bin/rsh $silo_node -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
-         n9940_cdf=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "in use"`
-         a9940_cdf=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "online"`
+         /usr/bin/rsh $silo_node -l acsss "echo query drive all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
+         n9940_cdf=`grep "T9940"  $dinfo | grep "   0, [01]," | grep -c "in use"`
+         a9940_cdf=`grep "T9940"  $dinfo | grep "   0, [01]," | grep -c "online"`
          echo "$now 0 0 $n9940_cdf $a9940_cdf">>$busy_cdf
 
         else
