@@ -217,6 +217,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			exc, msg = sys.exc_info()[:2]
 			Trace.handle_error(exc,msg)
+			return 0
 		return 1
 
 	# __history(vol) -- show state change history of vol
