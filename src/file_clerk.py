@@ -493,7 +493,7 @@ class FileClerkInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     import sys
     Trace.init("file clerk")
-    Trace.trace(1,"file clerk called with args "+repr(sys.argv))
+    Trace.trace(6,"file clerk called with args "+repr(sys.argv))
 
     # get the interface
     intf = FileClerkInterface()
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     dict = db.DbTable("file",fc.logc,indlst)
     while 1:
         try:
-            Trace.trace(1,'File Clerk (re)starting')
+            Trace.trace(6,'File Clerk (re)starting')
             fc.logc.send(e_errors.INFO, 1, "File Clerk (re)starting")
             fc.serve_forever()
         except:

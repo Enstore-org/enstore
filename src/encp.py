@@ -2087,7 +2087,7 @@ class encp(interface.Interface):
 if __name__  ==  "__main__" :
     t0 = time.time()
     Trace.init("encp")
-    Trace.trace(1,"encp called at "+repr(t0)+":"+repr(sys.argv))
+    Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
 
     # use class to get standard way of parsing options
     e = encp()

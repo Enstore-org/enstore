@@ -39,30 +39,27 @@ def Select (R, W, X, timeout) :
 # we must delete the object from all lists.
 #
 
-	Trace.trace (0, "{cleanUDP.Select")
-
 	cleaned_r = []
 	while 1 :
 		t0 = time.time()
 		r, w, x = select.select(R, W, X, timeout)
 		timeout = timeout - (time.time() - t0)
 		timeout = max (0, timeout)
-		Trace.trace (1, "cleanUDP.Select: %s %s" % (r, cleaned_r))
+		Trace.trace( 6, "cleanUDP.Select: %s %s"%(r,cleaned_r) )
 
 		if r == cleaned_r :
 			# all except FD's as the saem as not scrubbed
 			# previously.
-			Trace.trace (0, "}cleanUDP.Select")
 			return r, w, x
 		cleaned_r = []
 		for obj in r :
 			try :
-				if obj.scrub() :
-				        Trace.trace (0, "cleaned_r cleanUDP object")
-					cleaned_r.append(obj)		
+			    if obj.scrub() :
+				Trace.trace( 6, "cleaned_r cleanUDP object" )
+				cleaned_r.append(obj)		
 			except : 
-				Trace.trace (0, "non clean UDP object")
-				cleaned_r.append(obj)
+			    Trace.trace( 6, "non clean UDP object" )
+			    cleaned_r.append(obj)
 
 
 class cleanUDP :
@@ -130,7 +127,7 @@ class cleanUDP :
 
 		for n in range(0, self.retry_max - 1) :
 			try:
-				Trace.trace (0, "about to sendto")
+				Trace.trace( 6, "about to sendto" )
 				return self.socket.sendto(string, address)
 			except socket.error:
 				self.logerror("sendto", n)
@@ -156,7 +153,7 @@ class cleanUDP :
 			  badsocktext, self.this_sendto_address,
 			  self.previous_sendto_address)
 
-		Trace.trace(0, etext)
+		Trace.trace( 6, etext )
 		# self.enprint(etext)
 
 if __name__ == "__main__" :

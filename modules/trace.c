@@ -6,7 +6,7 @@
     modules/trace.c
     $Revision$
 
-    compile with: cc -g -Wall -o trace trace.c
+    compile with: cc -g -Wall -c trace.c
     */
 
 #include <stdarg.h>		/* varargs */
@@ -25,40 +25,62 @@
 
 #include "trace.h"
 
+/* THESE COULE BE PASSED IN FROM THE COMPILER */
+#ifndef TRC_F0_INITIAL
+# define TRC_F0_INITIAL 0xffffffff; /* trace */
+#endif
+#ifndef TRC_F1_INITIAL
+# define TRC_F1_INITIAL 0x00000001; /* i.e. alarm = lvl0 */
+#endif
+#ifndef TRC_F2_INITIAL
+# define TRC_F2_INITIAL 0x0000003f; /* i.e. log   = lvl1-5, plus lvl0 */
+#endif
+#ifndef TRC_F3_INITIAL
+# define TRC_F3_INITIAL 0x00000000; /* i.e. print */
+#endif
+
+
 int			trc_sem_id;
 struct s_trc_cntl	*trc_cntl_sp;
 struct s_trc_ent	*trc_ent_sp;
 struct sembuf		trc_sem_get_s, trc_sem_put_s;
 pid_t			trc_pid;
 int			trc_tid;
+int			*trc_lvl_ip;
+void			trc_init_entry(int,const char*); /* fwd decl */
+oper_func_t		trc_print; /* forward declaration */
+oper_func_t		*trc_op1_fp=trc_print; /* default */
+oper_func_t		*trc_op2_fp=trc_print; /* default */
 
 
+/******************************************************************************
+ *  Main init file called by user code.  Inits the pre-process globals
+ *  trc_tid, trc_pid, trc_lvl_ip and trc_op{1,2}_fp (defined above).
+ */
 
 void
-trace_init(  const char	*name
-	   , const char	*key_file )
+trace_init(  const char		*name
+	   , const char		*key_file
+	   , oper_func_t	*op1_fp
+	   , oper_func_t	*op2_fp )
 {
 	int	ii;
 
-    trace_init_trc( key_file );
+    trace_init_trc( key_file );	/* init IPC */
 
     trc_pid = getpid();
 
     if (name[0] == '\0')
     {   
 	for (ii=0; ii<TRC_MAX_PIDS; ii++)
-	{
-	    if (trc_cntl_sp->pid_a[ii] == -1)
-	    {   trc_tid = ii;
-		trc_cntl_sp->pid_a[ii] = trc_pid;
-	    }
+	{   if (trc_cntl_sp->pid_a[ii] == -1) trc_tid = ii;
 	}
 	if (ii == TRC_MAX_PIDS)
 	{   trc_tid = 0 + TRC_MAX_PIDS; /* FULL - USE THIS IDX */
 	}
     }
     else
-    {   /* make sure it is not a repeat (note 1st empty */
+    {   /* make sure it is not a repeat (note 1st empty) */
 	int first_empty;
 	first_empty = -1;
 	for (ii=0; ii<TRC_MAX_PROCS; ii++)
@@ -76,15 +98,69 @@ trace_init(  const char	*name
 	{
 	    if (first_empty != -1)
 	    {   trc_tid = first_empty + TRC_MAX_PIDS;
-		strncpy(  trc_cntl_sp->t_name_a[first_empty], name
-			, TRC_MAX_NAME );
 	    }
-	    else
-	    {   trc_tid = 0 + TRC_MAX_PIDS; /* FULL - USE THIS IDX */
-	    }
+	    else trc_tid = 0 + TRC_MAX_PIDS; /* FULL - USE THIS IDX */
 	}
     }
-    trc_cntl_sp->lvl_a[trc_tid] =  trc_cntl_sp->intl_lvl;
+    trc_init_entry( trc_tid, name );
+    trc_lvl_ip = trc_cntl_sp->lvl_a[trc_tid];
+    if (op1_fp) trc_op1_fp = op1_fp; /* these do get init-ed from - */
+    if (op2_fp) trc_op2_fp = op2_fp; /* - trace_init_trc */
+}   /* trace_init */
+
+
+void
+trc_init_entry(  int		tid
+	       , const char	*name )
+{
+	int	ii;
+
+    if (tid >= TRC_MAX_PIDS)
+    {   /* name is meant to be used (this entry can be used by more than 1
+	   process). */
+	char *name_cp = trc_cntl_sp->t_name_a[tid-TRC_MAX_PIDS];
+	if (!*name_cp)
+	{   strncpy( name_cp , name, TRC_MAX_NAME );
+	    for (ii=TRC_NUM_OPERATIONS; ii--; )
+		trc_cntl_sp->lvl_a[tid][ii] =  trc_cntl_sp->intl_lvl[ii];
+	}
+    }
+    else
+    {   trc_cntl_sp->pid_a[tid] = trc_pid; /* this entry is alway
+					      associated with this 1
+					      process. */
+	for (ii=TRC_NUM_OPERATIONS; ii--; )
+	    trc_cntl_sp->lvl_a[tid][ii] =  trc_cntl_sp->intl_lvl[ii];
+    }
+}   /* trc_init_entry */
+
+
+void
+trc_print(  struct timeval	*tp
+	  , int			lvl
+	  , const char		*msg
+	  , va_list		ap )
+{
+	char 	traceLvlStr[33]="                                ";
+	char 	buf[TRC_MAX_MSG+200]; /* abritrary amount of space for
+					 (potential) formatting of arguments */
+    if (trc_tid >= TRC_MAX_PIDS)
+    {   sprintf(  buf
+		, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
+		, (int)tp->tv_sec, (int)tp->tv_usec
+		, trc_pid
+		, trc_cntl_sp->t_name_a[trc_tid-TRC_MAX_PIDS]
+		, &traceLvlStr[31-lvl], msg );
+    }
+    else
+    {   sprintf(  buf
+		, "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d %s%s\n"
+		, (int)tp->tv_sec, (int)tp->tv_usec
+		, trc_pid
+		, trc_tid
+		, &traceLvlStr[31-lvl], msg );
+    }
+    vprintf( buf, ap );
 }
 
 
@@ -101,94 +177,33 @@ trace_(  int lvl
       , const char	*msg
       , ... )
 {
-    if (trc_cntl_sp->lvl_a[trc_tid] & (1<<lvl))
-    {   
-	int	have_time_flg=0;
-	switch (trc_cntl_sp->mode-1)
-	{
-	    va_list	ap;
-	    int		ii, idx;
-	case 0:
-	    semop( trc_sem_id, &trc_sem_get_s, 1 );
-	    idx = trc_cntl_sp->head_idx;
-	    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
-		trc_cntl_sp->head_idx = 0;
-	    if      (trc_cntl_sp->full_flg)
-		trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
-	    else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)
-		trc_cntl_sp->full_flg = 1;
-	    gettimeofday( &(trc_ent_sp+idx)->time, 0 ); /* to prevent out of order times */
-	    have_time_flg = 1;
-	    semop( trc_sem_id, &trc_sem_put_s, 1 );
-	
-	    strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );
-	    va_start( ap, msg );
-	    for (ii=0; ii<TRC_MAX_PARAMS; ii++)
-		(trc_ent_sp+idx)->params[ii] = va_arg(ap,int);
-	    va_end( ap );
-	    (trc_ent_sp+idx)->pid = trc_pid;
-	    (trc_ent_sp+idx)->tid = trc_tid;
-	    (trc_ent_sp+idx)->lvl = lvl;
-	    break;
-	case 2:
-	    semop( trc_sem_id, &trc_sem_get_s, 1 );
-	    idx = trc_cntl_sp->head_idx;
-	    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)
-		trc_cntl_sp->head_idx = 0;
-	    if      (trc_cntl_sp->full_flg)
-		trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
-	    else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)
-		trc_cntl_sp->full_flg = 1;
-	    gettimeofday( &(trc_ent_sp+idx)->time, 0 ); /* to prevent out of order times */
-	    have_time_flg = 1;
-	    semop( trc_sem_id, &trc_sem_put_s, 1 );
-	
-	    strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );
-	    va_start( ap, msg );
-	    for (ii=0; ii<TRC_MAX_PARAMS; ii++)
-		(trc_ent_sp+idx)->params[ii] = va_arg(ap,int);
-	    va_end( ap );
-	    (trc_ent_sp+idx)->pid = trc_pid;
-	    (trc_ent_sp+idx)->tid = trc_tid;
-	    (trc_ent_sp+idx)->lvl = lvl;
-	case 1:
-	    if (trc_cntl_sp->tty_lvl & (1<<lvl))
-	    {   char 	buf[TRC_MAX_MSG+200]; /* abritrary amount of space for
-						 (potential) formatting of
-						 arguments */
-		char 	traceLvlStr[33]="                                ";
-		struct timeval	tt, *tp;
+	int		have_time_flg=0;
+	struct timeval	tt;
+	va_list		ap;
 
-		if (have_time_flg)
-		{   tp = &(trc_ent_sp+idx)->time;
-		}
-		else
-		{   tp = &tt;
-		    gettimeofday( tp, 0 );
-		}
-		if (trc_tid >= TRC_MAX_PIDS)
-		{   sprintf(  buf
-			    , "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s %s%s\n"
-			    , (int)tp->tv_sec, (int)tp->tv_usec
-			    , trc_pid
-			    , trc_cntl_sp->t_name_a[trc_tid-TRC_MAX_PIDS]
-			    , &traceLvlStr[31-lvl], msg );
-		}
-		else
-		{   sprintf(  buf
-			    , "%10d.%06d %5d %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d %s%s\n"
-			    , (int)tp->tv_sec, (int)tp->tv_usec
-			    , trc_pid
-			    , trc_tid
-			    , &traceLvlStr[31-lvl], msg );
-		}
-		va_start( ap, msg );
-		vprintf( buf, ap );
-		va_end( ap );
-	    }
-	default:
-	    break;
-	}
+    if ((trc_cntl_sp->mode&1) && (trc_lvl_ip[0]&(1<<lvl)))
+    {   /* circular queue put operation */
+	va_start( ap, msg );
+	TRACE_QPUT( &tt, lvl, msg, ap );
+	va_end( ap );
+	have_time_flg = 1;
+    }
+    if ((trc_cntl_sp->mode&2) && (trc_lvl_ip[1]&(1<<lvl)))
+    {   if (!have_time_flg) { gettimeofday( &tt, 0 ); have_time_flg = 1; }
+	va_start( ap, msg );
+	(trc_op1_fp)( &tt, lvl, msg, ap );
+	va_end( ap );
+    }
+    if ((trc_cntl_sp->mode&4) && (trc_lvl_ip[2]&(1<<lvl)))
+    {   if (!have_time_flg) { gettimeofday( &tt, 0 ); have_time_flg = 1; }
+	va_start( ap, msg );
+	(trc_op2_fp)( &tt, lvl, msg, ap );
+	va_end( ap );
+    }
+    if ((trc_cntl_sp->mode&8) && (trc_lvl_ip[3]&(1<<lvl)))
+    {   if (!have_time_flg) { gettimeofday( &tt, 0 ); have_time_flg = 1; }
+	trc_print( &tt, lvl, msg, ap );
+	va_end( ap );
     }
 }
 
@@ -209,12 +224,8 @@ trc_basename(  char	*name
 	int	size;
 
     size = strlen( name );
-
     while (size--)
-    {
-	if (*(name+size) == cc)
-	    break;
-    }
+	if (*(name+size) == cc) break;
     return (name+size+1);
 }
 
@@ -236,13 +247,13 @@ trc_basename(  char	*name
  *                      Check for any file with a .key extenstion???
  *                      Lock file will be key file with .lck substituted for
  *                      .key.
- *                      
+ *                      If key file exists, it's sanity is checked.
  *
  ******************************************************************************/
 
 
 void
-trace_init_trc( const char *key_file_spec )
+trace_init_trc( const char	*key_file_spec )
 {							/* @-Public-@ */
 	int			lck_fd, buf_fd;
 	int			idx, sts;
@@ -255,11 +266,8 @@ trace_init_trc( const char *key_file_spec )
     if (*key_file_spec == '\0') /* check if "" */
     {   /* check env */
         key_file_spec = getenv( "TRACE_KEY" );
-	if (key_file_spec == NULL)
-	    key_file_spec = ".";
-	else
-	{   used_env_key_flg = 1;
-	}
+	if (key_file_spec == NULL) key_file_spec = ".";
+	else                       used_env_key_flg = 1;
     }
 
     if ((stat(key_file_spec,&stat_s)==0) && S_ISDIR(stat_s.st_mode))
@@ -342,17 +350,17 @@ trace_init_trc( const char *key_file_spec )
 		}
 		trc_cntl_sp = shmat( shm_id, 0,0 );/* no adr hint, no flgs */
 
-		trc_cntl_sp->mode = 1;
-		trc_cntl_sp->tty_lvl  = 0x0000000f;
-		trc_cntl_sp->intl_lvl = 0x0000ffff;
+		trc_cntl_sp->mode = 0x7;
+		trc_cntl_sp->intl_lvl[0] = TRC_F0_INITIAL;
+		trc_cntl_sp->intl_lvl[1] = TRC_F1_INITIAL;
+		trc_cntl_sp->intl_lvl[2] = TRC_F2_INITIAL;
+		trc_cntl_sp->intl_lvl[3] = TRC_F3_INITIAL;
 		for (ii=TRC_MAX_PIDS; ii--; )
 		    trc_cntl_sp->pid_a[ii] = -1;
 		for (ii=TRC_MAX_PROCS; ii--; )
 		    trc_cntl_sp->t_name_a[ii][TRC_MAX_NAME]
 			= trc_cntl_sp->t_name_a[ii][0] = '\0';
-		strncpy(  trc_cntl_sp->t_name_a[0], "PROC_FULL_NAME"
-			, TRC_MAX_NAME );
-
+		trc_init_entry( TRC_MAX_PROCS, "PROC_FULL" );
 
 		trc_sem_id = -1;
 		trc_cntl_sp->head_idx = trc_cntl_sp->tail_idx = 0;
@@ -397,3 +405,83 @@ trace_init_trc( const char *key_file_spec )
     return;	
 }   /* trace_init_trc */
 
+
+/***************************************************************************
+ ***************************************************************************/
+
+int
+traceOnOff( int on, int mask, char *id_s, unsigned lvl1, unsigned lvl2 )
+{
+	unsigned	id_i, new_msk=0;
+	char		*end_p;
+	unsigned	old_lvl=0;
+	int		ii;
+
+    if (lvl1 > 31) lvl1 = 31;
+    if (lvl2 > 31) lvl2 = 31;
+
+    if (lvl1 > lvl2) new_msk = (1<<lvl1) | (1<<lvl2);
+    else for (; (lvl1<=lvl2); lvl1++) new_msk |= (1<<lvl1);
+
+    id_i = strtol(id_s,&end_p,10);
+    if (end_p != (id_s+strlen(id_s)))	/* check if conversion worked */
+    {   /* did not work - id_s must not have a pure number -
+	   check for name */
+	int	i;
+
+	/* first check special case */
+	if (  (strcmp(id_s,"global")==0)
+	    ||(strcmp(id_s,"Global")==0)
+	    ||(strcmp(id_s,"GLOBAL")==0))
+	{
+	    for (id_i=(TRC_MAX_PIDS+TRC_MAX_PROCS); id_i--; )
+	    {   
+		for (ii=TRC_NUM_OPERATIONS; ii--; )
+		{   if (!(mask&(1<<ii))) continue;
+		    old_lvl = trc_cntl_sp->lvl_a[id_i][ii];
+		    if (on)  trc_cntl_sp->lvl_a[id_i][ii] |=  new_msk;
+		    else     trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+		}
+	    }
+	    return (1);
+	}
+	if (  (strcmp(id_s,"initial")==0)
+	    ||(strcmp(id_s,"Initial")==0)
+	    ||(strcmp(id_s,"INITIAL")==0))
+	{   
+	    for (ii=TRC_NUM_OPERATIONS; ii--; )
+	    {   if (!(mask&(1<<ii))) continue;
+		old_lvl = trc_cntl_sp->intl_lvl[ii];
+		if (on)  trc_cntl_sp->intl_lvl[ii] |=  new_msk;
+		else     trc_cntl_sp->intl_lvl[ii] &= ~new_msk;
+	    }
+	    return (1);
+	}
+
+	for (i=TRC_MAX_PROCS; i--; )
+	{
+	    if (strcmp(trc_cntl_sp->t_name_a[i],id_s) == 0)
+		break;
+	}
+	if (i == -1)
+	{   printf( "invalid trace proc\n" );
+	    return (1);
+	}
+	id_i = i + TRC_MAX_PIDS;
+    }
+
+    /* at this point, either id_s was a number or it was a name that was
+       converted to a number */
+
+    if (id_i > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
+	id_i = (TRC_MAX_PIDS+TRC_MAX_PROCS-1);
+
+    for (ii=0; ii<TRC_NUM_OPERATIONS; ii++ )
+    {   if (!(mask&(1<<ii))) continue;
+	old_lvl = trc_cntl_sp->lvl_a[id_i][ii];
+	if (on)  trc_cntl_sp->lvl_a[id_i][ii] |=  new_msk;
+	else     trc_cntl_sp->lvl_a[id_i][ii] &= ~new_msk;
+    }
+
+    return (old_lvl);
+}

@@ -33,7 +33,7 @@ mover_index = 0  # index if current mover in the queue
 # add mover to the movers list
 def add_mover(name, address):
     global mover_cnt
-    Trace.trace(4, "{add_mover " + repr(name) + " " + repr(address))
+    Trace.trace( 7, "{add_mover " + repr(name) + " " + repr(address))
     found = 0
     for mv in movers:
 	# check if mover is already in the list
@@ -51,13 +51,13 @@ def add_mover(name, address):
 		 }
 	movers.append(mover)
 	mover_cnt = mover_cnt + 1
-	Trace.trace(4, "}add_mover " + repr(mover) + "mover count=" + \
+	Trace.trace( 7, "}add_mover " + repr(mover) + "mover count=" + \
 		    repr(mover_cnt))
     
 
 # get list of assigned movers from the configuration list
 def get_movers(config_client, lm_name, verbose=0):
-    Trace.trace(3, "{get_movers for " + repr(lm_name))
+    Trace.trace( 6, "{get_movers for %s"%lm_name )
     generic_cs.enprint("get_movers", generic_cs.SERVER, verbose,\
 	               generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
     movers_list = config_client.get_movers(lm_name)
@@ -69,7 +69,7 @@ def get_movers(config_client, lm_name, verbose=0):
 	    if (item.has_key('mover') and
 		item.has_key('address')):
 		add_mover(item['mover'], item['address'])
-    Trace.trace(3, "}get_movers " + repr(movers))
+    Trace.trace( 6, "}get_movers %s"%movers )
     if movers:
 	generic_cs.enprint(movers, generic_cs.SERVER, verbose,\
 	                   generic_cs.ENNONE, generic_cs.ENNONE, lm_name)
@@ -578,14 +578,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(10, '}__init__')
 
     def set_udp_client(self):
-	Trace.trace(3,"{set_udp_client")
 	self.udpc = udp_client.UDPClient()
 	self.rcv_timeout = 10 # set receive timeout
-	Trace.trace(3,"}set_udp_client")
 
     # overrides timeout handler from DispatchingWorker
     def handle_timeout(self):
-	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
 	global mover_index
 	generic_cs.enprint("PROCESSING TO\nsummon queue", 
@@ -695,7 +692,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.enprint(self.summon_queue, \
 	             generic_cs.SERVER|generic_cs.PRETTY_PRINT, 
 		     self.verbose)
-	Trace.trace(3,"}handle_timeout")
     
 	
     def write_to_hsm(self, ticket):
@@ -1306,12 +1302,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # load mover list form the configuration server
     def load_mover_list(self, ticket):
-	Trace.trace(3, "{load_mover_list for " + repr(self.name))
+	Trace.trace( 6, "{load_mover_list for %s"%self.name )
 	get_movers(self.csc, self.name, self.verbose)
 	ticket['movers'] = movers
 	ticket["status"] = (e_errors.OK, None)
 	self.reply_to_caller(ticket)
-	Trace.trace(3, "}load_mover_list for " + repr(movers))
 	
     # what is going on
     def getwork(self,ticket):
@@ -1541,7 +1536,7 @@ if __name__ == "__main__":
     import sys
     import string
     Trace.init("libman")
-    Trace.trace(1,"libman called with args "+repr(sys.argv))
+    Trace.trace( 6, "libman called with args "+repr(sys.argv) )
 
     # get an interface
     intf = LibraryManagerInterface()

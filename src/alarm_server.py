@@ -240,7 +240,7 @@ class AlarmServerInterface(interface.Interface):
 
 if __name__ == "__main__":
     Trace.init("alarm_server")
-    Trace.trace(1,"alarm server called with args "+repr(sys.argv))
+    Trace.trace( 6, "alarm server called with args "+repr(sys.argv) )
 
     # get interface
     intf = AlarmServerInterface()

@@ -10,29 +10,32 @@
 #include <unistd.h>		/* pid_t, ref. getpid(2) */
 #include <sys/types.h>		/* pid_t - unistd alone does not work */
 #include <sys/time.h>		/* struct timeval, ref. gettimeofday(2) */
+#include <stdarg.h>		/* varargs */
 
-
+				/* time, lvl, msg, ... */
+typedef void	(oper_func_t)( struct timeval*, int, const char*, va_list );
 
 void
-trace_init(  const char	*name
-	   , const char	*key_file );
+trace_init( const char*, const char*, oper_func_t*, oper_func_t* );
 void
-trace(  int		lvl
-      , const char	*msg
-      , ... );
+trace(  int lvl, const char	*msg, ... );
+void
+trace_init_trc( const char *key_file );
+int
+traceOnOff( int on, int mask, char *id, unsigned lvl1, unsigned lvl2 );
 
+/* one main use for mode setting is stopping circQPut when an error occurs
+   -- this should be done quickly (i.e. no file lookup, etc) */
 #define TRACE_MODE		trc_cntl_sp->mode
 #define TRACE_MODE_SET( mode )  (trc_cntl_sp->mode = mode)
 
-void
-trace_init_trc( const char *key_file );
 char *
-trc_basename(  char	*name
-	     , char	cc );
+trc_basename(  char	*name, char	cc );
 
 extern int			trc_sem_id;
 extern pid_t			trc_pid;
 extern int			trc_tid;
+extern int			*trc_lvl_ip;
 extern struct s_trc_cntl	*trc_cntl_sp;
 extern struct s_trc_ent		*trc_ent_sp;
 extern struct sembuf		trc_sem_get_s, trc_sem_put_s;
@@ -90,12 +93,12 @@ struct s_trc_ent
     struct timeval	time;	/* ref gettimeofday(2), ctime(3) */
 };
 
+#define TRC_NUM_OPERATIONS	4 /* circQPut, prnt, usrOp1, usrOp2 */
 
 struct s_trc_cntl
 {
     int		mode;
-    int		intl_lvl;
-    int		tty_lvl;
+    int		intl_lvl[TRC_NUM_OPERATIONS];
     int		last_idx;
     int		head_idx;
     int		tail_idx;
@@ -103,8 +106,10 @@ struct s_trc_cntl
     pid_t	pid_a[TRC_MAX_PIDS];	/* I will not have any way to
 					   automatically remove enties. */
     int		lvl_a[ TRC_MAX_PIDS
-		      +TRC_MAX_PROCS];	/* Could just have 1 global lvl or
-					   one for when pid_a above is
+		      +TRC_MAX_PROCS][TRC_NUM_OPERATIONS];/* Could just
+							     have 1 global
+							     lvl set or 
+					   a set for when pid_a above is
 					   filled??? */
 				/* LETS USE TIDS, WHICH ARE USER SPECIFIED */
 				/* search for pids using getpgid(2) */
@@ -113,3 +118,29 @@ struct s_trc_cntl
 					    how to get command (w/o argv) */ 
 };
 
+/* This should be in a trace "system" header file. */
+#define TRACE_QPUT( tp, lvl, msg, ap ) \
+do\
+{       int ii, idx;\
+    semop( trc_sem_id, &trc_sem_get_s, 1 );\
+    idx = trc_cntl_sp->head_idx;\
+    if (++trc_cntl_sp->head_idx > trc_cntl_sp->last_idx)\
+	trc_cntl_sp->head_idx = 0;\
+    if      (trc_cntl_sp->full_flg)\
+	trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;\
+    else if (trc_cntl_sp->head_idx == trc_cntl_sp->tail_idx)\
+	trc_cntl_sp->full_flg = 1;\
+    gettimeofday( tp, 0 ); /* to prevent out of order times */\
+    (trc_ent_sp+idx)->time = *(tp); /* in unlikely event that other modes\
+				     take so long that other processes\
+				     wrap trace buffer */\
+    semop( trc_sem_id, &trc_sem_put_s, 1 );\
+\
+    strncpy( (trc_ent_sp+idx)->msg_a, msg, TRC_MAX_MSG );\
+    for (ii=0; ii<TRC_MAX_PARAMS; ii++)\
+	(trc_ent_sp+idx)->params[ii] = va_arg(ap,int);\
+    (trc_ent_sp+idx)->pid = trc_pid;\
+    (trc_ent_sp+idx)->tid = trc_tid;\
+    (trc_ent_sp+idx)->lvl = lvl;\
+}\
+while (0)

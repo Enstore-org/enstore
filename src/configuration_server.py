@@ -25,15 +25,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
 	self.print_id="CONFIGD"
 
     def read_config(self, configfile, verbose=1):
-        Trace.trace(7,"{read_config configfile="+repr(configfile))
         xconfigdict = {} # will load new config file into xconfigdict - clear it
         try:
             f = open(configfile)
         except:
             msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config"\
-                   +repr(configfile)+" does not exists")
-            self.enprint(msg)
-            Trace.trace(0,"}read_config "+repr(msg))
+                   +srt(configfile)+" does not exists")
+            Trace.log( e_errors.ERROR, 1, msg[1] )
             return msg
         line = ""
 
@@ -350,7 +348,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
     def __init__(self, verbose=0, host=interface.default_host(), \
                  port=interface.default_port(), \
                  configfile=interface.default_file()):
-        Trace.trace(3,"{ConfigurationServer address="+repr(host)+" "+\
+        Trace.trace(6,"{ConfigurationServer address="+repr(host)+" "+\
                     repr(port)+" configfile="+repr(configfile)+" verbose="+\
                     repr(verbose))
 	self.running = 0
@@ -399,7 +397,7 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     Trace.init("configsrvr")
-    Trace.trace(1,"{called args="+repr(sys.argv))
+    Trace.trace( 6, "{called args="+repr(sys.argv) )
     import sys
 
 
@@ -412,7 +410,7 @@ if __name__ == "__main__":
 
     while 1:
         try:
-            Trace.trace(1,"Configuration Server (re)starting")
+            Trace.trace(6,"Configuration Server (re)starting")
             cs.serve_forever()
         except:
 	    cs.serve_forever_error("config server")

@@ -45,7 +45,6 @@ int	traceInfo( int start, int num );
 int	traceReset( void );
 int	tracePMC( int cntr, int val );
 int	traceMode( int mode );
-int	traceOnOff( int on, char *id, unsigned lvl1, unsigned lvl2 );
 
 static	char	*version = "Release- $Revision$ $Date$ $Author$";
 
@@ -81,10 +80,11 @@ main(  int	argc
 	}
 	if ((argc>arg) && (atoi(argv[arg])>=1)) delta_t=1;
 	if (argc >arg+1)  if ((lines=atoi(argv[arg+1])) < 0) lines=0;
+	trace_init_trc( trc_key_file );
 	exit_sts = traceShow( delta_t, lines, incHDR,incLVL,incINDT,optRevr, optCt );
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceInfo") == 0)
-    {   int	arg, start=0, num=0;
+    {   int	arg, start=0, num=TRC_MAX_PIDS+TRC_MAX_PROCS;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
@@ -99,8 +99,8 @@ main(  int	argc
 	{   sscanf( argv[2],"%d",&num );
 	    sscanf( argv[1],"%d",&start );
 	}
-	else if (argc-arg >= 1)
-	    sscanf( argv[1],"%d",&num );
+	else if (argc-arg >= 1) sscanf( argv[1],"%d",&num );
+	trace_init_trc( trc_key_file );
 	exit_sts = traceInfo( start, num );
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceReset") == 0)
@@ -115,6 +115,7 @@ main(  int	argc
 		exit( 1 );
 	    }
 	}
+	trace_init_trc( trc_key_file );
 	exit_sts = traceReset();
     }
     else if (strcmp(trc_basename(argv[0],'/'),"traceMode") == 0)
@@ -123,7 +124,7 @@ main(  int	argc
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
-	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
+	    {   fprintf(  stderr, "usage: %s [options] <0-15>\n"
 			, trc_basename(argv[0],'/') );
 		fprintf(  stderr, "valid option: --version\n" );
 		exit( 1 );
@@ -131,36 +132,45 @@ main(  int	argc
 	}
 	if (   (argc-arg<1)
 	    || (sscanf(argv[1],"%d",&mode)!=1)
-	    || ((mode<0)||(mode>5)))
-	{   fprintf( stderr, "usage: %s <0-5>\n", trc_basename(argv[0],'/') );
+	    || ((mode<0)||(mode>15)))
+	{   fprintf( stderr, "usage: %s <0-15>\n", trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
+	trace_init_trc( trc_key_file );
 	exit_sts = traceMode( mode );
     }
     else if (strncmp(trc_basename(argv[0],'/'),"traceO",6) == 0)
     {   unsigned	arg, lvl1, lvl2;
+	char            *modes="1";
+#       define          O_USAGE "<TIDorNANE> <lvl1> <lvl2>"
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
+	    else if (strcmp(argv[arg],"-modes") == 0)    OPT_ARG(modes);
 	    else
-	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
+	    {   fprintf(  stderr, "usage: %s [options] " O_USAGE "\n"
 			, trc_basename(argv[0],'/') );
-		fprintf(  stderr, "valid option: --version\n" );
+		fprintf(  stderr, "valid option: --version, -key, -modes\n" );
 		exit( 1 );
 	    }
 	}
-	if (   (argc-arg<3)
-	    || (sscanf(argv[2],"%d",&lvl1)!=1)
-	    || (sscanf(argv[3],"%d",&lvl2)!=1))
-	{   fprintf( stderr, "usage: %s <TIDorNANE> <lvl1> <lvl2>\n", trc_basename(argv[0],'/') );
+	printf( "argc=%d arg=%d\n", argc, arg );
+	if (   ((argc-arg)!=3)
+	    || (sscanf(argv[2+arg-1],"%d",&lvl1)!=1)
+	    || (sscanf(argv[3+arg-1],"%d",&lvl2)!=1))
+	{   fprintf( stderr, "usage: %s [options] " O_USAGE "\n"
+		    , trc_basename(argv[0],'/') );
 	    exit( 1 );
 	}
+	printf( "atoi(modes)=%d\n", atoi(modes) );
+	trace_init_trc( trc_key_file );
 	exit_sts = traceOnOff(  (strcmp(trc_basename(argv[0],'/'),"traceOn")==0)?1:0
-			      , argv[1], lvl1, lvl2 );
+			      , atoi(modes), argv[1+arg-1], lvl1, lvl2 );
+	printf( "old lvl: 0x%08x\n", exit_sts );
     }
 
     exit( exit_sts );
-}
+}   /* main */
 
 
 /***************************************************************************
@@ -179,8 +189,6 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
         char    str_buf[160+TRC_MAX_MSG], *c_p;
         char    traceLvlStr[33] = "                                ";
         int     line_count=0, c2=0;
-
-    trace_init_trc( trc_key_file );
 
     head = trc_cntl_sp->head_idx;
     if ((head==trc_cntl_sp->tail_idx) && !trc_cntl_sp->full_flg)
@@ -289,7 +297,7 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT, int optRev
     if (incHDR && c2) printf("entries: %d\n",c2);
 
     return (0);
-}
+}   /* traceShow */
 
 int
 trace_get_press( void )
@@ -318,7 +326,7 @@ trace_get_press( void )
 
     ioctl( 0, TCSETA, &arg_sav );
     return (a);
-}
+}   /* trace_get_press */
 
 void
 strncatCheck( char *str_buf, const char *msg, int num )
@@ -351,7 +359,7 @@ strncatCheck( char *str_buf, const char *msg, int num )
 	*str_buf++ = *cp++;
     }
     *str_buf = '\0';
-}
+}   /* strncatCheck */
 
 /***************************************************************************
  ***************************************************************************/
@@ -359,11 +367,9 @@ strncatCheck( char *str_buf, const char *msg, int num )
 int
 traceInfo( int start, int num )
 {
-	int	i, pid;
+	int	i, ii, pid;
 	int	begin, end, head, tail;
 	int	ents_qued;
-
-    trace_init_trc( trc_key_file );
 
     begin = 0;
     end   = trc_cntl_sp->last_idx;
@@ -385,10 +391,12 @@ traceInfo( int start, int num )
     printf( " entries queued: %5d\n", ents_qued );
 
 
+    /* ADD #define FOR GLOBAL MODE MASK BIT DEFINITIONS */
     printf( "\
-  initialLvl: 0x%08x TtyLvl: 0x%08x\n\
-trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
-	   , trc_cntl_sp->intl_lvl, trc_cntl_sp->tty_lvl
+  initialLvl: (0x%08x,0x%08x,0x%08x,0x%08x)\n\
+trace mode: %d  0=off (b3=print,b2=log,b1=alarm,b0=cirQ)\n"
+	   , trc_cntl_sp->intl_lvl[0], trc_cntl_sp->intl_lvl[1]
+	   , trc_cntl_sp->intl_lvl[2], trc_cntl_sp->intl_lvl[3]
 	   , trc_cntl_sp->mode );
 
     if (start > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
@@ -396,32 +404,40 @@ trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
     if (num)
     {
 	printf( "\n\
-(trace)TID    PID/NAME        level\n\
-----------  ------------   ----------\n");
+                                       f1 (alarm)  f2 (log)\n\
+(trace)TID    PID/NAME     QPut mask     mask        mask      print mask\n\
+----------  ------------   ----------  ----------  ----------  ----------\n");
 
 	for (i=start; (i<(start+num))&&(i<TRC_MAX_PIDS); i++)
 	{   pid = trc_cntl_sp->pid_a[i];
 	    if (pid != -1)
-		printf(  " %4d       %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d    0x%08x\n"
+	    {   printf(  " %4d       %" TRC_DEF_TO_STR(TRC_MAX_NAME) "d   "
 		       , i
-		       , pid
-		       , trc_cntl_sp->lvl_a[i] );
+		       , pid );
+		for (ii=0; ii<TRC_NUM_OPERATIONS; ii++)
+		{   printf( "  0x%08x", trc_cntl_sp->lvl_a[i][ii] );
+		}
+		printf( "\n" );
+	    }
 	}
 	for (  i=TRC_MAX_PIDS
 	     ; (i<(start+num))&&(i<(TRC_MAX_PIDS+TRC_MAX_PROCS))
 	     ; i++)
 	{   
 	    if (trc_cntl_sp->t_name_a[i-TRC_MAX_PIDS][0])
-	    {   printf(  " %4d       %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s    0x%08x\n"
+	    {   printf(  " %4d       %" TRC_DEF_TO_STR(TRC_MAX_NAME) "s   "
 		       , i
-		       , trc_cntl_sp->t_name_a[i-TRC_MAX_PIDS]
-		       , trc_cntl_sp->lvl_a[i] );
+		       , trc_cntl_sp->t_name_a[i-TRC_MAX_PIDS] );
+		for (ii=0; ii<TRC_NUM_OPERATIONS; ii++)
+		{   printf( "  0x%08x", trc_cntl_sp->lvl_a[i][ii] );
+		}
+		printf( "\n" );
 	    }
 	}
     }
 
     return (0);
-}
+}   /* traceInfo */
 
 
 /***************************************************************************
@@ -430,15 +446,13 @@ trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
 int
 traceReset( void )
 {   
-    trace_init_trc( trc_key_file );
-
     semop( trc_sem_id, &trc_sem_get_s, 1 );
     trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
     trc_cntl_sp->full_flg = 0;
     semop( trc_sem_id, &trc_sem_put_s, 1 );
 
     return (0);
-}
+}   /* traceReset */
 
 
 /***************************************************************************
@@ -449,107 +463,11 @@ traceMode( int mode )
 {   
     register int	_r_;
 
-    trace_init_trc( trc_key_file );
-
     _r_ = trc_cntl_sp->mode;
 
     trc_cntl_sp->mode = mode;
     printf( "old val: %d new val: %d\n", _r_, mode );
 
     return (_r_);
-}
+}   /* traceMode */
 
-
-/***************************************************************************
- ***************************************************************************/
-
-int
-traceOnOff( int on, char *id_s, unsigned lvl1, unsigned lvl2 )
-{
-	unsigned	id_i, new_msk=0;
-	char		*end_p;
-	unsigned	old_lvl;
-
-    trace_init_trc( trc_key_file );
-
-    if (lvl1 > 31) lvl1 = 31;
-    if (lvl2 > 31) lvl2 = 31;
-
-    if (lvl1 > lvl2) new_msk = (1<<lvl1) | (1<<lvl2);
-    else for (; (lvl1<=lvl2); lvl1++) new_msk |= (1<<lvl1);
-
-    id_i = strtol(id_s,&end_p,10);
-    if (end_p != (id_s+strlen(id_s)))	/* check if conversion worked */
-    {   /* did not work - id_s must not have a pure number -
-	   check for name */
-	int	i;
-
-	/* first check special case */
-	if (  (strcmp(id_s,"global")==0)
-	    ||(strcmp(id_s,"Global")==0)
-	    ||(strcmp(id_s,"GLOBAL")==0))
-	{
-	    for (id_i=(TRC_MAX_PIDS+TRC_MAX_PROCS); id_i--; )
-	    {   old_lvl = trc_cntl_sp->lvl_a[id_i];
-		if (on)
-		    trc_cntl_sp->lvl_a[id_i] |=  new_msk;
-		else
-		{   trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
-		}
-	    }
-	    return (1);
-	}
-	if (  (strcmp(id_s,"initial")==0)
-	    ||(strcmp(id_s,"Initial")==0)
-	    ||(strcmp(id_s,"INITIAL")==0))
-	{   old_lvl = trc_cntl_sp->intl_lvl;
-	    if (on)
-		trc_cntl_sp->intl_lvl |=  new_msk;
-	    else
-	    {   trc_cntl_sp->intl_lvl &= ~new_msk;
-	    }
-	    printf( "old lvl: 0x%08x\n", old_lvl );
-	    return (1);
-	}
-	if (  (strcmp(id_s,"tty")==0)
-	    ||(strcmp(id_s,"Tty")==0)
-	    ||(strcmp(id_s,"TTy")==0))
-	{   old_lvl = trc_cntl_sp->tty_lvl;
-	    if (on)
-		trc_cntl_sp->tty_lvl |=  new_msk;
-	    else
-	    {   trc_cntl_sp->tty_lvl &= ~new_msk;
-	    }
-	    printf( "old lvl: 0x%08x\n", old_lvl );
-	    return (1);
-	}
-
-	printf( "searching procs\n" );
-	for (i=TRC_MAX_PROCS; i--; )
-	{
-	    if (strcmp(trc_cntl_sp->t_name_a[i],id_s) == 0)
-		break;
-	}
-	if (i == -1)
-	{   printf( "invalid trace proc\n" );
-	    return (1);
-	}
-	id_i = i + TRC_MAX_PIDS;
-    }
-
-    /* at this point, either id_s was a number or it was a name that was
-       converted to a number */
-
-    if (id_i > (TRC_MAX_PIDS+TRC_MAX_PROCS-1))
-	id_i = (TRC_MAX_PIDS+TRC_MAX_PROCS-1);
-    printf( "id = %d\n", id_i );
-
-    old_lvl = trc_cntl_sp->lvl_a[id_i];
-    if (on)
-	trc_cntl_sp->lvl_a[id_i] |=  new_msk;
-    else
-	trc_cntl_sp->lvl_a[id_i] &= ~new_msk;
-
-    printf( "old lvl: 0x%08x\n", old_lvl );
-    return (old_lvl);
-}

@@ -198,7 +198,7 @@ class LoggerInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__" :
     import socket
     Trace.init("log server")
-    Trace.trace(1,"log server called with args "+repr(sys.argv))
+    Trace.trace(6,"log server called with args "+repr(sys.argv))
 
     # get the interface
     intf = LoggerInterface()
@@ -208,7 +208,7 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            Trace.trace(1,'Log Server (re)starting')
+            Trace.trace(6,'Log Server (re)starting')
             logserver.serve_forever()
         except:
 	    logserver.serve_forever_error("log server")

@@ -64,43 +64,31 @@ class LoggerClient(generic_client.GenericClient):
 	self.print_id = "LOGC"
         self.i_am = i_am_a
         self.pid = os.getpid()
-        self.uid = os.getuid()
-        pwdb_entry = pwd.getpwuid(self.uid)
-        self.uname = pwdb_entry[0]
-        self.logger = servername
+        self.uname = pwd.getpwuid(os.getuid())[0]
         self.log_priority = 7
         self.debug = verbose
 	self.verbose = verbose
         configuration_client.set_csc(self, csc, host, port, verbose)
+	lticket = self.csc.get( servername )
+	self.logger_address = (lticket['hostip'], lticket['port'])
         self.u = udp_client.UDPClient()
+	Trace.set_log_func( self.log_func )
 
-    def send (self, severity, priority, format, *args) :
-        if  ((1<<priority) & self.log_priority) == 0 :
-           return
+    def log_func( self, time, pid, name, args ):
+	severity = args[0]
+	msg      = args[1]
+	if severity > e_errors.MISC: severity = e_errors.MISC
+	msg = '%.6d %.8s %s %s  %s' % (self.pid,self.uname,
+				       e_errors.sevdict[severity],name,msg)
+	ticket = {'work':'log_message', 'message':msg}
+	self.u.send_no_wait( ticket, self.logger_address )
+	return None
 
-        if severity in range(e_errors.ERROR, e_errors.MISC) :
-            msg = '%.6d %.8s' % (self.pid, self.uname)
-            msg = msg + ' ' + e_errors.sevdict[severity] + ' ' + \
-                  self.i_am + ' '
-	    if args != ():
-                str = format % args
-	    else:
-	        str = format
-	    Trace.trace( severity, str )
-            msg = msg + ' ' + str
-	    if self.verbose & generic_cs.DEBUG:
-	        try:
-	            print generic_cs.add_id("", msg)
-	        except:
-	            pass
-            ticket = {'work' : 'log_message',
-                      'message' : msg }
-            lticket = self.csc.get(self.logger)
-            self.u.send_no_wait(ticket, (lticket['hostip'], lticket['port']))
-            return {"status" : (e_errors.OK, None)}
-        else :
-            return {"status" : (e_errors.WRONGPARAMETER, \
-				"wrong_severity_level")}
+
+    def send( self, severity, priority, format, *args ):
+	Trace.log( severity, format )
+	return {"status" : (e_errors.OK, None)}
+
 #
 # priorty allows turning logging on and off in a server.
 #  Coventions - setting log_priority to 0 should turn off all logging.
@@ -119,11 +107,9 @@ class LoggerClient(generic_client.GenericClient):
 
     # check on alive status
     def alive(self, rcv_timeout=0, tries=0):
-        lticket = self.csc.get("logserver")
         try:
-            x = self.u.send({'work':'alive'},
-                            (lticket['hostip'], lticket['port']),
-                            rcv_timeout, tries)
+            x = self.u.send( {'work':'alive'}, self.logger_address,
+                             rcv_timeout, tries )
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"}alive - ERROR, alive timed out")
             x = {'status' : (e_errors.TIMEDOUT, None)}
@@ -134,27 +120,24 @@ class LoggerClient(generic_client.GenericClient):
     # get the current log file name
     def get_logfile_name(self, rcv_timeout=0, tries=0):
         Trace.trace(10,'{get_logfile_name')
-        l = self.csc.get("logserver")
-        x = self.u.send({'work':'get_logfile_name'}, \
-	                (l['hostip'], l['port']), rcv_timeout, tries)
+        x = self.u.send( {'work':'get_logfile_name'}, self.logger_address,
+			 rcv_timeout, tries )
         Trace.trace(10,'}get_logfile_name'+repr(x))
         return x
 
     # get the last log file name
     def get_last_logfile_name(self, rcv_timeout=0, tries=0):
         Trace.trace(10,'{get_last_logfile_name')
-        l = self.csc.get("logserver")
-        x = self.u.send({'work':'get_last_logfile_name'}, \
-	                (l['hostip'], l['port']), rcv_timeout, tries)
+        x = self.u.send( {'work':'get_last_logfile_name'}, self.logger_address,
+	                 rcv_timeout, tries )
         Trace.trace(10,'}get_last_logfile_name'+repr(x))
         return x
 
     # reset the servers verbose flag
     def set_verbose(self, verbosity, rcv_timeout=0, tries=0):
         Trace.trace(10,'{set_verbose (client)')
-        l = self.csc.get("logserver")
-        x = self.u.send({'work':'set_verbose', 'verbose': verbosity}, \
-	                (l['hostip'], l['port']), rcv_timeout, tries)
+        x = self.u.send( {'work':'set_verbose', 'verbose': verbosity},
+	                 self.logger_address, rcv_timeout, tries )
         Trace.trace(10,'}set_verbose (client) '+repr(x))
         return x
 

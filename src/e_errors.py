@@ -27,17 +27,21 @@ if 0: print KEYERROR,OK,DOESNOTEXIST,WRONGPARAMETER,NOWORK,\
             TIMEDOUT # lint fix
 
 # Severity codes
-ERROR=0
-USER_ERROR=1
-WARNING=2
-INFO=3
-MISC=4
+# NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHNAGING
+#       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
+ALARM      = 0
+ERROR      = 1
+USER_ERROR = 2
+WARNING    = 3
+INFO       = 4
+MISC       = 5
 
 # severity translator
-sevdict = { ERROR      : 'E', \
-            USER_ERROR : 'U', \
-            WARNING    : 'W', \
-            INFO       : 'I', \
+sevdict = { ALARM      : 'A',
+            ERROR      : 'E',
+            USER_ERROR : 'U',
+            WARNING    : 'W',
+            INFO       : 'I',
             MISC       : 'M'
             }
 

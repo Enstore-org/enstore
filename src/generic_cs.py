@@ -8,6 +8,7 @@ import pprint
 
 #enstore imports
 import Trace
+import e_errors
 
 ENNONE = 0
 ENNONE_V = -1
@@ -34,7 +35,7 @@ if 0: print SERVER,CLIENT,CONNECTING,DATA_ACCESS_LAYER,SOCKET_ERROR,\
 
 global_print_id = ""
 global_logger = ENNONE
-global_severity = ENNONE
+global_severity = e_errors.INFO
 
 def add_id(id, msg):
     Trace.trace(25,"{add_id "+repr(id))

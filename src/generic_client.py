@@ -44,7 +44,7 @@ class GenericClient(generic_cs.GenericCS):
 	if not 'status' in ticket.keys(): return None
         if ticket['status'][0] == e_errors.OK:
 	    self.enprint(ticket, generic_cs.PRETTY_PRINT|msg_id, self.verbose)
-            Trace.trace(1,self.print_id+" exit ok")
+            Trace.trace( 6, '%s exit ok'%self.print_id )
             sys.exit(0)
         else:
 	    self.enprint("BAD STATUS: "+repr(ticket['status']), \

@@ -289,7 +289,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__" :
     Trace.init("medchanger")
-    Trace.trace(1,"media changer called with args "+repr(sys.argv))
+    Trace.trace( 6, "media changer called with args: %s"%sys.argv )
 
     # get an interface
     intf = MediaLoaderInterface()

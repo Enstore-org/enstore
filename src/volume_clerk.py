@@ -1,6 +1,6 @@
 import Trace
 Trace.init("Vol Clerk")
-Trace.trace(1,"GO")
+Trace.trace(6,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -1320,7 +1320,7 @@ class VolumeClerkInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     import sys
     Trace.init("Vol Clerk")
-    Trace.trace(1,"Volume clerk called with args "+repr(sys.argv))
+    Trace.trace(6,"Volume clerk called with args "+repr(sys.argv))
 
     # get the interface
     intf = VolumeClerkInterface()
@@ -1332,7 +1332,7 @@ if __name__ == "__main__":
     dict = db.DbTable("volume",vc.logc,indlst)
     while 1:
         try:
-            Trace.trace(1,'Volume Clerk (re)starting')
+            Trace.trace(6,'Volume Clerk (re)starting')
             vc.logc.send(e_errors.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:

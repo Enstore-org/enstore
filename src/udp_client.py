@@ -147,14 +147,12 @@ class UDPClient:
     def __del__(self):
         # tell file clerk we're done - this allows it to delete our unique id in
         # its dictionary - this keeps things cleaner & stops memory from growing
-        Trace.trace(10,'__del__ udpclient '+repr(self.ident))
         for server in self.where_sent.items() :
             #generic_cs.enprint("clearing "+server[0]+" "+ server[1])
             try:
                 self.send_no_wait({"work":"done_cleanup"}, server[0])
             except:
                 pass
-        Trace.trace(10,'__del__ udpclient')
 
     # this (generally) is received/processed by dispatching worker
     def send( self, text, address, rcv_timeout=0, tries=0 ):
@@ -222,7 +220,7 @@ class UDPClient:
                 Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
 		raise errno.errorcode[errno.ETIMEDOUT]
             else:
-                Trace.trace(0,"send no reply after tries="+repr(ntries))
+                Trace.trace(6,"send no reply after tries="+repr(ntries))
 
 	if self.pp and (not 'work' in out.keys() or out['work']!='nowork'):
 	    x=sys.stdout;sys.stdout=sys.stderr

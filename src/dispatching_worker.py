@@ -130,7 +130,6 @@ class DispatchingWorker:
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         
-        Trace.trace(4,"{serve_forever")
         while not self.is_child:
             self.handle_request()
             collect_children()
@@ -142,7 +141,6 @@ class DispatchingWorker:
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
-        Trace.trace(5,"{handle_request")
         # request is a "(idn,number,ticket)"
         request, client_address = self.get_request()
 	if request == '':
@@ -157,7 +155,6 @@ class DispatchingWorker:
 	    sys.exit( code )
 	except:
 	    self.handle_error(request, client_address)
-        Trace.trace(5,"}handle_request")
 
     server_fds = []    # fds that the worker/server also wants watched with select
 
@@ -172,8 +169,6 @@ class DispatchingWorker:
         #   read from socket where crc is stripped and return address is valid
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
-
-        Trace.trace(5,"{get_request")
 
         f = self.server_fds + [self.socket]
         r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
@@ -223,7 +218,7 @@ class DispatchingWorker:
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
         # the real info and work is in the ticket - get that
-        Trace.trace(5,"{process_request add="+repr(client_address))
+        Trace.trace(6,"{process_request add="+repr(client_address))
 
 	# ref udp_client.py (i.e. we may wish to have a udp_client method
 	# to get this information)
@@ -242,7 +237,7 @@ class DispatchingWorker:
             # handled it if we have a record of it in our dict
             list = eval(repr(request_dict[idn]))
             if list[0] == number:
-                Trace.trace(5,"}process_request "+repr(idn)+" already handled")
+                Trace.trace(6,"}process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
                 return
 
@@ -254,7 +249,7 @@ class DispatchingWorker:
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             else:
-                Trace.trace(5,"}process_request "+repr(idn)+" old news")
+                Trace.trace(6,"}process_request "+repr(idn)+" old news")
                 return #old news, timing race....
 
         # on the very 1st request, we don't have anything to compare to
@@ -281,7 +276,6 @@ class DispatchingWorker:
         
         # check for any zombie children and get rid of them
         collect_children()
-        Trace.trace(5,"}process_request idn="+repr(idn))
 
     def handle_error(self, request, client_address):
 	Trace.trace(0,"{handle_error request="+repr(request)+" add="+\
@@ -315,10 +309,7 @@ class DispatchingWorker:
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
-        try:
-            self.enprint("QUITTING... via os_exit python call")
-        except:
-            generic_cs.enprint("QUITTING-e... via os_exit python call")
+	Trace.log( e_errors.INFO, 'QUITTING... via os_exit python call' )
         self.reply_to_caller(ticket)
         os._exit(0)
 

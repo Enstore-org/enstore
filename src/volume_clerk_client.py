@@ -1,6 +1,6 @@
 import Trace
 Trace.init("VC client")
-Trace.trace(1,"GO")
+Trace.trace(6,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -75,7 +75,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                wrapper = "cpio_custom",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
                ):
-        Trace.trace(3,'add_vol label='+str(external_label))
+        Trace.trace( 6, 'add_vol label=%s'%external_label )
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -96,17 +96,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'wrapper'         : wrapper,
                    'blocksize'       : blocksize }
         x = self.send(ticket)
-        Trace.trace(3,'}add_vol '+str(x))
         return x
 
 
     # delete a volume from the stockpile
     def delvol(self, external_label):
-        Trace.trace(3,'del_vol label='+str(external_label))
+        Trace.trace( 6, 'del_vol label=%s'%external_label )
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}del_vol '+str(x))
         return x
 
 
@@ -123,7 +121,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            Trace.trace(0,"vcc.get_vols: sending ticket"+str(ticket))
+            Trace.log( e_errors.ERROR,
+		       'vcc.get_vols: sending ticket: %s'%ticket )
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
                   +str(ticket)
 
@@ -253,39 +252,35 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # get the state of the media changer for the volume
     def update_mc_state(self,external_label):
-        Trace.trace(3,'vcc.update_mc_state label='+str(external_label))
+        Trace.trace( 6, 'vcc.update_mc_state label=%s'%external_label )
         ticket= { 'work'           : 'update_mc_state',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}vcc.update_mc_state '+str(x))
         return x
 
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label):
-        Trace.trace(3,'clr_system_inhibit label='+str(external_label))
+        Trace.trace( 6, 'clr_system_inhibit label=%s'%external_label )
         ticket= { 'work'           : 'clr_system_inhibit',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}clr_system_inhibit '+str(x))
         return x
 
     # decrement the file count on a tape
     def decr_file_count(self,external_label, count=1):
-        Trace.trace(3,'decr_file_count label='+str(external_label)+"count="+str(count))
+        Trace.trace( 6, 'decr_file_count label=%s count=%s'%(external_label,count) )
         ticket= { 'work'           : 'decr_file_count',
                   'external_label' : external_label,
                   'count'          : count }
         x = self.send(ticket)
-        Trace.trace(3,'}decr_file_count '+str(x))
         return x
 
     # we are using the volume
     def set_hung(self, external_label):
-        Trace.trace(3,'set_hung label='+str(external_label))
+        Trace.trace( 6, 'set_hung label=%s'%external_label )
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}set_hung '+str(x))
         return x
 
     # this many bytes left - update database
@@ -304,7 +299,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
         x = self.send(ticket)
-        Trace.trace(10,'}set_remaining_bytes '+str(x))
         return x
 
 
@@ -490,7 +484,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
 if __name__ == "__main__":
     Trace.init("VC client")
-    Trace.trace(1,"vcc called with args "+str(sys.argv))
+    Trace.trace( 6, 'vcc called with args: %s'%sys.argv )
 
     # fill in the interface
     intf = VolumeClerkClientInterface()
