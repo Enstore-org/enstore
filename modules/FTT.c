@@ -435,6 +435,8 @@ send_writer(  enum e_mtype	mtype
     }
     if (sts == -1)
     {   perror( "FTT: fatal reader (send_writer) error" );
+        /* printf("%d %d %d %s %d \n",g_msgqid,mtype,d1,c1,sizeof(struct s_msgdat)); */
+        /*   system("/usr/bin/ipcs"); */
 	/* can not do much more, but lets try exitting */
 	exit( 1 );
     }
@@ -479,7 +481,7 @@ do_read(  int 		rd_fd
 		   , getpid() );
 	    goto semop_try;
 	}
-	if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
+	if (sts == -1) { printf("%s %d\n",__FILE__,__LINE__);send_writer( Err, errno, 0 ); return (1); }
 
 	if (rd_fd) /* i.e. if 'w' to HSM */
 	{   /* read from network OR a file -- but, as we will be writing to
@@ -495,7 +497,7 @@ do_read(  int 		rd_fd
 	    {   ask -= sts;
 		sts = read(  rd_fd, g_shmaddr_p+shm_off+shm_bytes
 			   , ask );
-		if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
+		if (sts == -1) { printf("%s %d\n",__FILE__,__LINE__);send_writer( Err, errno, 0 ); return (1); }
 		if (sts ==  0) { send_writer( Eof, errno, 0 ); return (1); }
 		*read_bytes_ip += sts;
 		shm_bytes += sts;
@@ -532,7 +534,7 @@ do_read(  int 		rd_fd
 			       , g_blocksize );
 		if (sts == -1)
 		{   printf( "ftt_read error %s\n", ftt_get_error(0) );
-		    send_writer( Err, errno, 0 ); return (1);
+		    printf("%s %d\n",__FILE__,__LINE__);send_writer( Err, errno, 0 ); return (1);
 		}
 		user_bytes = (no_bytes<g_blocksize)? no_bytes: g_blocksize;
 	    }
