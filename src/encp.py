@@ -158,30 +158,29 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # namespace with information about transfer.
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
-    tinfo["total"] = time.time()-t0
-    done_ticket["tinfo"] = tinfo
-    tf = time.time()
-    if tf!=t0:
-        done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
-    else:
-        done_ticket["MB_per_S"] = 0.0
+
     if done_ticket["status"] == "ok" :
         t1 = time.time()
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
-        done_formatted  = pprint.pformat(done_ticket)
-        p.writelayer(3,done_formatted)
         tinfo["pnfsupdate"] = time.time() - t1
 
-        if list :
-            done_ticket["tinfo"] = tinfo # update info
-            done_formatted  = pprint.pformat(done_ticket)
-            fticket=done_ticket["file_clerk"]
-            print p.pnfsFilename, p.bit_file_id, p.file_size,\
-                  done_ticket["external_label"], fticket["bof_space_cookie"],\
-                  "MB/S =",done_ticket["MB_per_S"],"\n",done_formatted,"\n"
+        tinfo["total"] = time.time()-t0
+        done_ticket["tinfo"] = tinfo
+        tf = time.time()
+        if tf!=t0:
+            done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
         else:
-            print p.pnfsFilename,"transferred at",done_ticket["MB_per_S"],\
-                  "MB/S"
+            done_ticket["MB_per_S"] = 0.0
+
+        done_formatted  = pprint.pformat(done_ticket)
+        p.writelayer(3,done_formatted)
+
+        if list :
+            fticket=done_ticket["file_clerk"]
+            print p.pnfsFilename, ":",p.file_size,"bytes",\
+                  "copied to", done_ticket["external_label"], \
+                  "in ",tinfo["total"],"seconds",\
+                  "at",done_ticket["MB_per_S"],"MB/S"
 
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
@@ -192,6 +191,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 ##############################################################################
 
 def read_from_hsm(pnfsfile, outfile, u, csc, list) :
+    t0 = time.time()
+    tinfo = {}
+    tinfo["abs_start"] = t0
 
     # first check the input pnfs file - this will also provide the bfid
     p = pnfs.pnfs(pnfsfile)

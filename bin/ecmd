@@ -36,8 +36,9 @@ ecmd rawdriver-test [--size= --device= --eod_cookie= --list --help]
 ecmd callback       (no options/arguments)
 ecmd udp-test       [--msg= --host= --port= --list --help]
 ecmd random-file    [--size= --file= --list= --help']
+ecmd cpio    inputfilename outputarchive
 
-ecmd zero   (no options/arguments)
+ecmd zero    (no options/arguments)
 "
 
 if [ -z "${1-}" ] ; then
@@ -143,6 +144,11 @@ case $cmd in
 
   ranf|random-file)
     python $ENSTORE_DIR/src/ranfile.py $@
+    stat=$?
+    ;;
+
+   cpio)
+    python $ENSTORE_DIR/src/cpio.py $@
     stat=$?
     ;;
 
