@@ -13,6 +13,7 @@ import alarm
 import enstore_html
 import enstore_functions
 import enstore_status
+import enstore_constants
 import e_errors
 
 TRUE = 1
