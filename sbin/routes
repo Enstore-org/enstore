@@ -1,489 +1,208 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # $Id$
 
 job=${1:-"route"}
 netperf=/opt/netperf/netperf
-N=/dev/null
 
-
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+host=`hostname -s`
 gang=`gang`
-case $node in
 
-  stken*) NODES="`cat /usr/local/etc/farmlets/stken-alla /usr/local/etc/farmlets/stken-allb`"
-          ;;
+# function to convert mover id to corresponding node name
+moverToNode() { enstore config --show $1 |
+		awk -F: '/\<data_ip\>/ {match($2, ".*((d0|stk|cdf)enmvr[1-9][0-9]?(a|b)).*", a); print a[1]}'
+	      }
 
-   d0en*) NODES="`cat /usr/local/etc/farmlets/d0en-alla /usr/local/etc/farmlets/d0en-allb`"
-          ;;
+# function to list known down movers
+lsKnownDown() { enstore sched --show |
+		awk '/Enstore Items/		 {known=0}
+		     /Enstore Items Known Down/  {known=1}
+		     /[A-Z0-9]*\.mover/ && known {print $1}' |
+		while read mover
+		do
+		  moverToNode $mover
+		done
+	      }
 
-  cdfen*) NODES="`cat /usr/local/etc/farmlets/cdfen-alla`"
-          ;;
-
-       *) NODES=UNKNOWN
-          ;;
-esac
-
-case $node in
-  stkensrv*|d0ensrv*|cdfensrv*) type=server
-          ;;
-  stkmvr*|d0enmvr*|cdfenmvr*) type=mover
-          ;;
-  stkendca*|cdfendca*|d0endca*) type=dcache
-          ;;
-       *) type=UNKNOWN
-          ;;
-esac
+# function to select critical nodes (servers *srv[0-46], mainly)
+criticalNode() { echo "$1" |
+		 egrep '(d0|stk|cdf)ensrv[0-46]|cmspnfs1' > /dev/null
+	       }
 
 case $job in
 
 ################################################################################
-add*)
+quickcheck)
+    # skip the host node, as well as known down nodes
+    omit="$host $(lsKnownDown)"
 
-    e=`/sbin/ifconfig eth1 2>/dev/null`
-    eth1=eth1
-    if [ `echo $e | grep -c UP` -eq 0 -o $type = "server" -o $type = "dcache" ]; then
-      eth1=eth0
-    fi
+    # test peer hosts (they are testing us, too)
+    for g in d0en stken cdfen; do
+	if [ $g != $gang ]; then
+	   peers="${peers:-}`echo $host | sed s/$gang/$g/`\n"
+	fi
+    done
 
-# This has become easier just to type in rather than to be fancy
+    NODES=`awk -v omit="$omit" -v host="$host" -v peers="$peers" \
+	   'BEGIN {split(omit, x); for (i in x) v[x[i]]=i}
+	    $1 == host {printf "%s", peers}
+	    ! ($1 in v)' /usr/local/etc/farmlets/${gang}-all`
 
-### d0en
+    black=#000000
+    white=#FFFFFF
 
-    /sbin/route add -host d0ensrv0    eth0
-    /sbin/route add -host d0ensrv1    eth0
-    /sbin/route add -host d0ensrv2    eth0
-    /sbin/route add -host d0ensrv3    eth0
-    /sbin/route add -host d0ensrv4    eth0
-    /sbin/route add -host d0ensrv5    eth0
+    red=#FF0000
+    blue=#0000FF
+    green=#00FF00
 
-    /sbin/route add -host d0enmvr1a   eth0;      /sbin/route add -host d0enmvr1b  $eth1
-    /sbin/route add -host d0enmvr2a   eth0;      /sbin/route add -host d0enmvr2b  $eth1
-    /sbin/route add -host d0enmvr3a   eth0;      /sbin/route add -host d0enmvr3b  $eth1
-    /sbin/route add -host d0enmvr4a   eth0;   
-    /sbin/route add -host d0enmvr5a   eth0;      /sbin/route add -host d0enmvr5b  $eth1
-    /sbin/route add -host d0enmvr6a   eth0;      /sbin/route add -host d0enmvr6b  $eth1
-    /sbin/route add -host d0enmvr7a   eth0;   
-    /sbin/route add -host d0enmvr8a   eth0;      /sbin/route add -host d0enmvr8b  $eth1
-    /sbin/route add -host d0enmvr9a   eth0;   
-    /sbin/route add -host d0enmvr10a  eth0;   
-    /sbin/route add -host d0enmvr11a  eth0;   
-    /sbin/route add -host d0enmvr12a  eth0;   
-    /sbin/route add -host d0enmvr13a  eth0;      /sbin/route add -host d0enmvr13b $eth1
-    /sbin/route add -host d0enmvr14a  eth0;   
-    /sbin/route add -host d0enmvr15a  eth0;      /sbin/route add -host d0enmvr15b $eth1
-    /sbin/route add -host d0enmvr16a  eth0;      /sbin/route add -host d0enmvr16b $eth1
-    /sbin/route add -host d0enmvr17a  eth0;   
-    /sbin/route add -host d0enmvr18a  eth0;   
-    /sbin/route add -host d0enmvr19a  eth0;   
-    /sbin/route add -host d0enmvr20a  eth0;   
-    /sbin/route add -host d0enmvr21a  eth0;   
-    /sbin/route add -host d0enmvr22a  eth0;   
-    /sbin/route add -host d0enmvr23a  eth0;   
-    /sbin/route add -host d0enmvr24a  eth0;   
+    cyan=#00FFFF
+    yellow=#FFFF00
+    magenta=#FF00FF
 
-    /sbin/route add -host d0endca3a   eth0;     
+    navy=#000080
+    teal=#008080
+    coral=#FF7F50
+    silver=#C0C0C0
+    turquoise=#40E0D0
 
-### stken
-
-    /sbin/route add -host stkensrv0   eth0
-    /sbin/route add -host stkensrv1   eth0
-    /sbin/route add -host stkensrv2   eth0
-    /sbin/route add -host stkensrv3   eth0
-    /sbin/route add -host stkensrv4   eth0
-
-    /sbin/route add -host stkenmvr1a  eth0;      /sbin/route add -host stkenmvr1b  $eth1
-    /sbin/route add -host stkenmvr2a  eth0;      /sbin/route add -host stkenmvr2b  $eth1
-    /sbin/route add -host stkenmvr3a  eth0;      /sbin/route add -host stkenmvr3b  $eth1
-    /sbin/route add -host stkenmvr4a  eth0;      /sbin/route add -host stkenmvr4b  $eth1
-    /sbin/route add -host stkenmvr5a  eth0;      /sbin/route add -host stkenmvr5b  $eth1
-    /sbin/route add -host stkenmvr6a  eth0;      /sbin/route add -host stkenmvr6b  $eth1
-    /sbin/route add -host stkenmvr7a  eth0;   
-    /sbin/route add -host stkenmvr8a  eth0;
-    /sbin/route add -host stkenmvr9a  eth0;   
-    /sbin/route add -host stkenmvr10a  eth0;   
-    /sbin/route add -host stkenmvr11a  eth0;   
-
-
-    /sbin/route add -host stkenout1  eth0;   
-    /sbin/route add -host stkenout2  eth0;   
-
-    /sbin/route add -host rip9        eth0
-    /sbin/route add -host rip10       eth0
-
-    /sbin/route add -host stkendca3a  eth0
-    /sbin/route add -host stkendca4a  eth0
-    /sbin/route add -host stkendca5a  eth0
-
-
-### cdfen
-
-    /sbin/route add -host cdfensrv0   eth0
-    /sbin/route add -host cdfensrv1   eth0
-    /sbin/route add -host cdfensrv2   eth0
-    /sbin/route add -host cdfensrv3   eth0
-    /sbin/route add -host cdfensrv4   eth0
-
-    /sbin/route add -host cdfenmvr1a  eth0;
-    /sbin/route add -host cdfenmvr2a  eth0;
-    /sbin/route add -host cdfenmvr3a  eth0;
-    /sbin/route add -host cdfenmvr4a  eth0;
-    /sbin/route add -host cdfenmvr5a  eth0;
-    /sbin/route add -host cdfenmvr6a  eth0;
-    /sbin/route add -host cdfenmvr7a  eth0;   
-    /sbin/route add -host cdfenmvr8a  eth0;
-    /sbin/route add -host cdfenmvr9a  eth0;   
-    /sbin/route add -host cdfenmvr10a eth0;   
-
-    /sbin/route add -host cdfendca3   eth0
-    /sbin/route add -host cdfendca4   eth0
-    /sbin/route add -host cdfendca5   eth0
-
-
-### rip
-
-    /sbin/route add -host rip1        eth0
-    /sbin/route add -host rip2        eth0
-    /sbin/route add -host rip3        eth0
-    /sbin/route add -host rip4        eth0
-    /sbin/route add -host rip5        eth0
-
-    /sbin/route add -host rip6        eth0
-    /sbin/route add -host rip7        eth0
-    /sbin/route add -host rip8        eth0
-
-    /sbin/route add -host cachen1a    eth0
-    /sbin/route add -host cachen2a    eth0
-
-### private lan
-
-    if [ "$type" = "server" ]; then
-
-      case $gang in
-         d0en)
-            /sbin/route add -host  d0ensrv0p eth1
-            /sbin/route add -host  d0ensrv1p eth1
-            /sbin/route add -host  d0ensrv2p eth1
-            /sbin/route add -host  d0ensrv3p eth1
-            /sbin/route add -host  d0ensrv4p eth1
-            /sbin/route add -host  d0ensrv5p eth1
-            /sbin/route add -host  adic2     eth1
-            ;;
-         stken)
-            /sbin/route add -host stkensrv0p eth1
-            /sbin/route add -host stkensrv1p eth1
-            /sbin/route add -host stkensrv2p eth1
-            /sbin/route add -host stkensrv3p eth1
-            /sbin/route add -host stkensrv4p eth1
-            /sbin/route add -host adic4      eth1
-            /sbin/route add -host fntt       eth1
-            ;;
-         cdfen)
-            /sbin/route add -host cdfensrv0p eth1
-            /sbin/route add -host cdfensrv1p eth1
-            /sbin/route add -host cdfensrv2p eth1
-            /sbin/route add -host cdfensrv3p eth1
-            /sbin/route add -host cdfensrv4p eth1
-            /sbin/route add -host fntt2      eth1
-            ;;
-      esac
-    fi
-
-    ;;
-
-################################################################################
-del*)
-
-# This has become easier just to type in rather than to be fancy
-
-### d0en
-
-    /sbin/route del       d0ensrv0        
-    /sbin/route del       d0ensrv1        
-    /sbin/route del       d0ensrv2        
-    /sbin/route del       d0ensrv3        
-    /sbin/route del       d0ensrv4        
-    /sbin/route del       d0ensrv5        
-
-    /sbin/route del       d0enmvr1a       ;      /sbin/route del       d0enmvr1b  
-    /sbin/route del       d0enmvr2a       ;      /sbin/route del       d0enmvr2b  
-    /sbin/route del       d0enmvr3a       ;      /sbin/route del       d0enmvr3b  
-    /sbin/route del       d0enmvr4a       ;   
-    /sbin/route del       d0enmvr5a       ;      /sbin/route del       d0enmvr5b  
-    /sbin/route del       d0enmvr6a       ;      /sbin/route del       d0enmvr6b  
-    /sbin/route del       d0enmvr7a       ;   
-    /sbin/route del       d0enmvr8a       ;      /sbin/route del       d0enmvr8b  
-    /sbin/route del       d0enmvr9a       ;   
-    /sbin/route del       d0enmvr10a      ;   
-    /sbin/route del       d0enmvr11a      ;   
-    /sbin/route del       d0enmvr12a      ;   
-    /sbin/route del       d0enmvr13a      ;      /sbin/route del       d0enmvr13b 
-    /sbin/route del       d0enmvr14a      ;   
-    /sbin/route del       d0enmvr15a      ;      /sbin/route del       d0enmvr15b 
-    /sbin/route del       d0enmvr16a      ;      /sbin/route del       d0enmvr16b 
-    /sbin/route del       d0enmvr17a      ;   
-    /sbin/route del       d0enmvr18a      ;   
-    /sbin/route del       d0enmvr19a      ;   
-    /sbin/route del       d0enmvr20a      ;   
-    /sbin/route del       d0enmvr21a      ;   
-    /sbin/route del       d0enmvr22a      ;   
-    /sbin/route del       d0enmvr23a      ;   
-    /sbin/route del       d0enmvr24a      ;   
-
-    /sbin/route del       d0endca3a       ;
-
-### stken
-
-    /sbin/route del       stkensrv0       
-    /sbin/route del       stkensrv1       
-    /sbin/route del       stkensrv2       
-    /sbin/route del       stkensrv3       
-    /sbin/route del       stkensrv4       
-
-    /sbin/route del       stkenmvr1a      ;      /sbin/route del       stkenmvr1b  
-    /sbin/route del       stkenmvr2a      ;      /sbin/route del       stkenmvr2b  
-    /sbin/route del       stkenmvr3a      ;      /sbin/route del       stkenmvr3b  
-    /sbin/route del       stkenmvr4a      ;      /sbin/route del       stkenmvr4b  
-    /sbin/route del       stkenmvr5a      ;      /sbin/route del       stkenmvr5b  
-    /sbin/route del       stkenmvr6a      ;      /sbin/route del       stkenmvr6b  
-    /sbin/route del       stkenmvr7a      ;   
-    /sbin/route del       stkenmvr8a      ;
-    /sbin/route del       stkenmvr9a      ;   
-    /sbin/route del       stkenmvr10a     ;   
-    /sbin/route del       stkenmvr11a     ;   
-
-    /sbin/route del       stkenout1
-    /sbin/route del       stkenout2
-
-
-    /sbin/route del       rip9            
-    /sbin/route del       rip10           
-
-    /sbin/route del       stkendca3a      
-    /sbin/route del       stkendca4a      
-    /sbin/route del       stkendca5a      
-
-
-### cdfen
-
-    /sbin/route del       cdfensrv0       
-    /sbin/route del       cdfensrv1       
-    /sbin/route del       cdfensrv2       
-    /sbin/route del       cdfensrv3       
-    /sbin/route del       cdfensrv4       
-
-    /sbin/route del       cdfenmvr1a      ;
-    /sbin/route del       cdfenmvr2a      ;
-    /sbin/route del       cdfenmvr3a      ;
-    /sbin/route del       cdfenmvr4a      ;
-    /sbin/route del       cdfenmvr5a      ;
-    /sbin/route del       cdfenmvr6a      ;
-    /sbin/route del       cdfenmvr7a      ;   
-    /sbin/route del       cdfenmvr8a      ;
-    /sbin/route del       cdfenmvr9a      ;   
-    /sbin/route del       cdfenmvr10a     ;   
-
-    /sbin/route del       cdfendca3      
-    /sbin/route del       cdfendca4      
-    /sbin/route del       cdfendca5      
-
-
-### rip
-
-    /sbin/route del       rip1            
-    /sbin/route del       rip2            
-    /sbin/route del       rip3            
-    /sbin/route del       rip4            
-    /sbin/route del       rip5            
-    /sbin/route del       rip6            
-    /sbin/route del       rip7            
-    /sbin/route del       rip8            
-
-    /sbin/route del       cachen1a        
-    /sbin/route del       cachen2a        
-
-### private lan
-
-    if [ "$type" = "server" ]; then
-
-      case $gang in
-         d0en)
-            /sbin/route del        d0ensrv0p eth1
-            /sbin/route del        d0ensrv1p eth1
-            /sbin/route del        d0ensrv2p eth1
-            /sbin/route del        d0ensrv3p eth1
-            /sbin/route del        d0ensrv4p eth1
-            /sbin/route del        d0ensrv5p eth1
-            /sbin/route del        adic2     eth1
-            ;;
-         stken)
-            /sbin/route del       stkensrv0p eth1
-            /sbin/route del       stkensrv1p eth1
-            /sbin/route del       stkensrv2p eth1
-            /sbin/route del       stkensrv3p eth1
-            /sbin/route del       stkensrv4p eth1
-            /sbin/route del       adic4      eth1
-            /sbin/route del       fntt       eth1
-            ;;
-         cdfen)
-            /sbin/route del       cdfensrv0p eth1
-            /sbin/route del       cdfensrv1p eth1
-            /sbin/route del       cdfensrv2p eth1
-            /sbin/route del       cdfensrv3p eth1
-            /sbin/route del       cdfensrv4p eth1
-            /sbin/route del       fntt2      eth1
-            ;;
-      esac
-    fi
-
-    ;;
-
-################################################################################
-quickcheck*)
-
-complain=3
-CF_current() { if [ ! -r $CF ]; then CF_set 0 ; fi;  cat $CF; }
-CF_set() { rm -fr $CF; echo $1 > $CF ; }
-
-black=#000000
-white=#FFFFFF
-
-red=#FF0000
-blue=#0000FF
-green=#00FF00
-
-magenta=#FF00FF
-cyan=#00FFFF
-yellow=#FFFF00
-
-silver=#C0C0C0
-coral=#FF7F50
-teal=#008080
-turquoise=#40E0D0
-navy=#000080
-
-bgcolor=$white
-text=$navy
+    bgcolor=$white
+    text=$navy
 
     storit="/root/quickcheck.eepro100.html"
     rm -f $storit
     color=$black
     checkat=10
-    cat << EOF >>$storit
-<html> <head> <title>Network Rate Tests</title> </head>
-<body>
+    cat << EOF >> $storit
+<html>
+<head>
+<title>Network Rate Tests</title>
 <meta http-equiv="Refresh" content="1800">
+</head>
 <body bgcolor="$bgcolor" text="$text">
-<h1><center>Network Rate Test</center><h1>
-<p>
-Expected nominal rate for (idle) Fast Ethernet connections is ~94 x 10^6 bits/S
-<p>
-Rate test between various nodes and `uname -n`
-<p>
+<h1><center>Network Rate Test</center></h1>
 <hr>
-<center> <a href="http://fndcg0.fnal.gov/search.html"> Today's MRTG Graphs</a></center>
-<p>
+<h1><center><a href="http://fndcg0.fnal.gov/~netadmin/onsite/mrtg-stuff">Today's MRTG Graphs</a></center></h1>
 <hr>
-<center> <a href="http://www-dcg.fnal.gov/stats.html"> CD DCG Statisics </a></center>
+<h1><center><a href="http://fndcg0.fnal.gov/~netadmin/onsite/stats.html">CD DCG Statistics</a></center></h1>
 <hr>
-<h1><center>Begin: `date`</center><h1>
+<h1>Rate test between various nodes and `uname -n`</h1>
+<h1>Begin: <font color="$green">`date`</font></h1>
 <p>
 <table bgcolor="$silver" nosave >
 <tr>
-<td align=center><b><font color="$color">Node</font></b></td>
-<td align=center><b><font color="$color">In<br>Production</font></b></td>
-<td align=center><b><font color="$color">Rate<br>10^6 bits/S</font></b></td>
-<td align=center><b><font color="$color">Less than<br>${checkat}<br>10^6 bits/S?</font></b></td>
-<td align=center><b><font color="$color">Previous<br>Rates</font></b></td>
+<th align=center><font color="$color">Node</font></th>
+<th align=center><font color="$color">In<br>Production</font></th>
+<th align=center><font color="$color">Rate<br>10^6 bits/S</font></th>
+<th align=center><font color="$color">Less than<br>$checkat<br>10^6 bits/S?</font></th>
+<th align=center colspan=10><font color="$color">Previous Rates<br>&lt;- (newest) . . . (oldest) -&gt;</font></th>
 </tr>
 EOF
-    for knode in $NODES; do
-      node=`echo $knode | cut -f1 -d:`
+
+    for node in $NODES; do
       CF=/tmp/routes_quickcheck_$node
-      current=`CF_current`
-      production=1 # `echo $knode|grep -c :`
+      production=1
       if [ $production -ne 0 ]; then
-         color=$blue
-         P=YES
+	 color=$blue
+	 prod=Yes
       else
-         color=$teal
-         P=no
+	 color=$teal
+	 prod=No
       fi
-      echo "<tr><td align=center><font color=\"$color\">$node</font></td>" >> $storit
-      echo "<td align=center><font color=\"$color\">$P</font></td>" >> $storit
-      r=`$netperf -H $node -l 1`
-      if [ $? -ne 0 ]; then v=""; fi
-      v=`echo $r | awk '{print $NF}'`
-      i=`echo "$v -  $v % 1" | bc |  cut -f1 -d.`
-      if [ -z "$v" ]; then v=0; i=0; fi
-      if [ $i -lt 10 ]; then
-         flag=" <-------------- CHECK THIS. Problem is either NIC/NODE/6509";
-         fcolor=$red
-         if [ $production -ne 0 ]; then
-           msg="Node $node has rate=$i.  FIX, or disable its mover"
-           flag2="CHECK"
-           current=`expr $current + 1`
-           if [ $current -gt $complain ]; then
-             enstore alarm --raise --severity 'A' --root_error="$msg"
-             #enstore sched --override enstore --saagStatus red
-             /usr/bin/Mail -s "$msg" $ENSTORE_MAIL <<EOF
+      echo "<tr>" >> $storit
+      echo "<td align=center><font color=\"$color\">$node</font></td>" >> $storit
+      echo "<td align=center><font color=\"$color\">$prod</font></td>" >> $storit
+      if line=`$netperf -H $node -l 1`; then
+	rate=`echo $line | awk '{print $NF}'`
+      else
+	rate=0
+      fi
+      if [ `echo "$rate" | cut -d. -f1` -lt $checkat ]; then
+	 fcolor=$red
+	 if [ $production -ne 0 ]; then
+	   msg="Node $node has rate $rate. FIX, or disable its mover."
+	   if [ -r $CF ]; then current=`cat $CF`; else current=0; fi
+	   current=`expr $current + 1`
+	   flag="CHECK"
+	   complain=3
+	   # important servers set the status ball red, causing a page
+	   if [ $complain -eq $current ]; then
+	     criticalNode $node && enstore sched --override enstore --saagStatus red
+	   fi
+	   # back off the frequency with which we complain (Fibonacci wise)
+	   fminus1=$complain
+	   until [ $complain -ge $current ]; do
+	     fminus2=$fminus1
+	     fminus1=$complain
+	     complain=`expr $fminus2 + $fminus1`
+	   done
+	   if [ $complain -eq $current ]; then
+	     enstore alarm --raise --severity 'A' --root_error="$msg"
+	     /usr/bin/Mail -s "$msg" $ENSTORE_MAIL << EOF
 `date`
 $msg
 EOF
-             current=0
-           fi
-         else
-           flag2="yes"
-           current=0
-         fi
+	   fi
+	 else
+	   flag="Yes"
+	   current=0
+	 fi
+	 flag2="<-------------- CHECK THIS. Problem is either NIC/NODE/6509."
       else
-         fcolor=$color
-         flag=""
-         flag2=""
-         current=0
+	 fcolor=$color
+	 flag="&nbsp;"
+	 current=0
+	 flag2=""
       fi
-      CF_set $current
-      echo $node:  ${v} x 10^6 bits/S $flag
-      echo "<td align=center><font color=\"$color\">$v</font></td>" >> $storit
-      echo "<td align=center><font color=\"$fcolor\">$flag2</font></td>" >> $storit
+      echo "$current" > $CF
+      echo "$node: $rate x 10^6 bits/S $flag2"
+      echo "<td align=center><font color=\"$fcolor\">$rate</font></td>" >> $storit
+      echo "<td align=center><font color=\"$fcolor\">$flag</font></td>" >> $storit
       if [ -r /rate-$node ]; then
-        #color=$yellow
-        tail -n 10 /rate-$node | while read line; do
-          rate=`echo $line | awk '{print $NF}'`
-          echo "<td align=center><font color=\"$color\">$rate</font></td>" >> $storit
-        done
+        # make history go right (oldest) to left (newest)
+	tail -n 10 /rate-$node | tac | while read line; do
+	  r=`echo $line | awk '{print $NF}'`
+	  if [ `echo "$r" | cut -d. -f1` -lt $checkat ]; then
+	    fcolor=$coral
+	  else
+	    fcolor=$color
+	  fi
+	  echo "<td align=center><font color=\"$fcolor\">$r</font></td>" >> $storit
+	done
       fi
-      echo "`date` $v">>/rate-$node 2>/dev/null
+      echo "</tr>" >> $storit
+      echo "`date` $rate" >> /rate-$node 2>/dev/null
     done
-cat << EOF >>$storit
+
+cat << EOF >> $storit
 </table>
-<hr>
-<h1><center>Done: `date`</center><h1>
-<hr>
+<h1>Done: <font color="$green">`date`</font></h1>
+<h1>Expected nominal rate for (idle) Fast Ethernet connections is ~94 x 10^6 bits/S</h1>
 </body>
+</html>
 EOF
+
     # next line is not good...
     enrcp $storit ${gang}srv2:/fnal/ups/prd/www_pages/enstore
     ;;
 
 ################################################################################
-test*)
+test)
 # needs work, parts re-written, not tested
     count=${2:-1}
     testTime=${3:-30}
 
-    node=`uname -n| sed -e 's/.fnal.gov//'`
     if [ $gang = "d0en" ];then
-      num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-      max=24
+      num=`echo $host | sed -e 's/d0enmvr//' -e 's/[ab]//'`
+      max=`tail -1 /usr/local/etc/farmlets/d0enmvr | sed -e 's/d0enmvr//' -e 's/[ab]//'`
     elif [ $gang = "stken" ]; then
-      num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-      max=9
+      num=`echo $host | sed -e 's/stkenmvr//' -e 's/[ab]//'`
+      max=`tail -1 /usr/local/etc/farmlets/stkenmvr | sed -e 's/stkenmvr//' -e 's/[ab]//'`
     elif [ $gang = "cdfen" ]; then
-      num=`echo $node | sed -e 's/cdfenmvr//' -e 's/a//' -e 's/b//'`
-      max=10
+      num=`echo $host | sed -e 's/cdfenmvr//' -e 's/[ab]//'`
+      max=`tail -1 /usr/local/etc/farmlets/cdfenmvr | sed -e 's/cdfenmvr//' -e 's/[ab]//'`
     fi
     num1=`expr $num + 1`
 
@@ -491,29 +210,29 @@ test*)
       loop=0
       while [ $loop -lt $count ]; do
 
-        o=netperf.${num1}a-${num}a.output
-        enrsh ${gang}mvr${num1}a "$netperf -l $testTime -H ${gang}mvr${num}a >> $o 2>&1 <$N &" &
-        o=netperf.${num1}b-${num}b.output
-        enrsh ${gang}mvr${num1}b "$netperf -l $testTime -H ${gang}mvr${num}b >> $o 2>&1 <$N &" &
-        sleep $testTime
-        sleep 3
-        #enrsh ${gang}mvr${num1}a '(. /fnal/ups/etc/setups.sh;setup enstore;$ENSTORE_DIR/sbin/ekill -9 $netperf 2>$N) 1>&- 2>&- <&- &' &
+	o=netperf.${num1}a-${num}a.output
+	enrsh ${gang}mvr${num1}a "$netperf -l $testTime -H ${gang}mvr${num}a >> $o 2>&1 </dev/null &" &
+	o=netperf.${num1}b-${num}b.output
+	enrsh ${gang}mvr${num1}b "$netperf -l $testTime -H ${gang}mvr${num}b >> $o 2>&1 </dev/null &" &
+	sleep $testTime
+	sleep 3
+	#enrsh ${gang}mvr${num1}a '(. /fnal/ups/etc/setups.sh;setup enstore;$ENSTORE_DIR/sbin/ekill -9 $netperf 2>/dev/null) 1>&- 2>&- <&- &' &
 
-        o=netperf.${num}a-${num1}a.output
-        $netperf -l $testTime -H ${gang}mvr${num1}a >> $o 2>&1 <$N &
-        o=netperf.${num}b-${num1}b.output
-        $netperf -l $testTime -H ${gang}mvr${num1}b >> $o 2>&1 <$N &
-        sleep $testTime
-        sleep 3
-        #$ENSTORE_DIR/sbin/ekill -9 $netperf 2>$N
+	o=netperf.${num}a-${num1}a.output
+	$netperf -l $testTime -H ${gang}mvr${num1}a >> $o 2>&1 </dev/null &
+	o=netperf.${num}b-${num1}b.output
+	$netperf -l $testTime -H ${gang}mvr${num1}b >> $o 2>&1 </dev/null &
+	sleep $testTime
+	sleep 3
+	#$ENSTORE_DIR/sbin/ekill -9 $netperf 2>/dev/null
 
-        loop=`expr $loop + 1`
+	loop=`expr $loop + 1`
       done
     fi
     ;;
 
 ################################################################################
-rate*)
+rate)
     for i in netperf*.output; do
        l=`tail -1 $i`
        r=`echo $l | cut -f5 -d\ `
@@ -524,52 +243,29 @@ rate*)
 
 ################################################################################
 ifconfig)
-    node=`uname -n| sed -e 's/.fnal.gov//'`
     server=1
-    if [ `echo $node | grep -c mvr` -ne 0 ]; then
+    if [ `echo $host | grep -c mvr` -ne 0 ]; then
       server=0
-      if [ $gang = "d0en" ];then
-        num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-        max=24
-      elif [ $gang = "stken" ]; then
-        num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-        max=9
-      elif [ $gang = "cdfen" ]; then
-        num=`echo $node | sed -e 's/cdfenmvr//' -e 's/a//' -e 's/b//'`
-        max=10
-      fi
-      node0=`echo $node | sed -e "s/a\$//" -e "s/b\$//"`
+      node0=`echo $host | sed -e 's/[ab]$//'`
     fi
 
     e=`/sbin/ifconfig eth0`
     f=`echo $e| sed -e 's/ Link .*HWaddr/ HWaddr/' -e 's/inet addr:/ addr /' -e 's/UP.*//'`
     if [ $server -eq 1 ]; then
-      echo $node $f
+      echo $host $f
     else
       echo ${node0}a $f
       e=`/sbin/ifconfig eth1`
       if [ `echo $e | grep -c UP` -ne 0 ]; then
-        f=`echo $e| sed -e 's/ Link .*HWaddr/ HWaddr/' -e 's/inet addr:/ addr /' -e 's/UP.*//'`
-        echo ${node0}b $f
+	f=`echo $e| sed -e 's/ Link .*HWaddr/ HWaddr/' -e 's/inet addr:/ addr /' -e 's/UP.*//'`
+	echo ${node0}b $f
       fi
     fi
     ;;
 
 ################################################################################
 arp)
-    node=`uname -n| sed -e 's/.fnal.gov//'`
-    oldIFS=$IFS
-    IFS="
-"
-    for a in `/sbin/arp`; do
-       if [ `echo "$a" |egrep -c "stken|d0en|cdfen"` -ne 0 ]; then
-         b=`echo $a | sed -e 's/.fnal.gov.*ether//'`
-         n=`echo $b | awk '{print \$1}'`
-         h=`echo $b | awk '{print \$2}'`
-         echo $node $n $h
-       fi
-    done
-    IFS=$oldIFS
+    /sbin/arp | awk -v host=$host '/^(d0|stk|cdf)en/ {print host,$1,$3}' | sed -e 's/\.fnal\.gov//'
     ;;
 
 ################################################################################
@@ -587,9 +283,9 @@ check_ifconfig_arp)
       master=`grep $node $ifmaster`
       masteradd=`echo $master | cut -f4 -d\ `
       if [ "$masteradd" != "$add" ]; then
-         masternode=`grep $add $ifmaster| cut -f1 -d\ `
-        echo Node $who thinks $node points to $add but master says $masteradd \($add is $masternode\)
-        fi
+	 masternode=`grep $add $ifmaster| cut -f1 -d\ `
+	echo Node $who thinks $node points to $add but master says $masteradd \($add is $masternode\)
+	fi
     done
     ;;
 
