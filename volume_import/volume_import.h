@@ -33,6 +33,7 @@ int verify_db_volume();
 unsigned int adler32(int adler, char *buf, int len);
 int write_db_s(char *path, char *key, char *value);
 int write_db_i(char *path, char *key, int value);
+int write_db_u(char *path, char *key, unsigned  value);
 
 int open_tape();
 int rewind_tape();

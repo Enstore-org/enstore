@@ -82,7 +82,8 @@ do_add_file(char *pnfs_dir, char *filename)
     if (write_db_i(path,"size", size) 
 	||write_db_s(path,"source", filename)
 	||write_db_s(path,"pnfs_dir", pnfs_dir)
-	||write_db_i(path,"early_checksum_size", early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
+	||write_db_i(path,"early_checksum_size", 
+		     early_checksum_size=min(size, EARLY_CHECKSUM_SIZE))
 	||cpio_start(filename))
 	goto cleanup;
     
@@ -100,8 +101,8 @@ do_add_file(char *pnfs_dir, char *filename)
     }
     
     if (nbytes<0
-	||write_db_i(path,"early_checksum", early_checksum)
-	||write_db_i(path,"checksum", checksum))
+	||write_db_u(path,"early_checksum", early_checksum)
+	||write_db_u(path,"checksum", checksum))
 	goto cleanup;
     
     return 0;

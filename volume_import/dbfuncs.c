@@ -37,10 +37,10 @@ write_db_i(char *db_path, char *key, int value)
 }
 
 int
-write_db_ul(char *db_path, char *key, unsigned long int value)
+write_db_u(char *db_path, char *key, unsigned int value)
 {
     verbage("adding %s=%u to database\n", key, value);
-    return write_db_fmt(db_path, "%ul\n", key, value);
+    return write_db_fmt(db_path, "%u\n", key, value);
 }
 
 

@@ -23,7 +23,7 @@ static char *cpio_filename=NULL;
 static int cpio_pos=0; /*Offset into the generated archive*/
 static int early_checksum_done;
 static unsigned int file_len;
-static unsigned int file_bytes_left, total_bytes;
+static unsigned int file_bytes_left, file_bytes_read;
 static int cpio_fd = -1;
 
 static char *cpio_trailer = "\
@@ -84,10 +84,9 @@ cpio_start(char *filename){
     printf("%s\n",cpio_header);
 #endif
     cpio_header_len = strlen(cpio_header)+1;
-    checksum = early_checksum = early_checksum_size = 
-	early_checksum_done = 0;
+    checksum = early_checksum = early_checksum_done = 0;
     cpio_pos = 0;
-    total_bytes = 0;
+    file_bytes_read = 0;
     return 0;
 }
 
@@ -116,21 +115,22 @@ cpio_read_file(char *read_buffer, int nbytes){
     }
     
     if (!early_checksum_done){
-	if (total_bytes+bytes_read >= early_checksum_size){
+	printf("1:early checksum %d\n", early_checksum);
+	if (file_bytes_read+bytes_read >= early_checksum_size){
 	    /* finish early checksum */
 	    early_checksum = adler32(early_checksum, read_buffer,
-				     early_checksum_size - total_bytes);
+				     early_checksum_size - file_bytes_read);
 	    early_checksum_done = 1;
 	} else {
 	    early_checksum = adler32(early_checksum, read_buffer, nbytes);
 	}
+	printf("2:early checksum %d\n", early_checksum);
     }
     checksum = adler32(checksum, read_buffer, nbytes);
-    total_bytes += bytes_read;
+    file_bytes_read += bytes_read;
     file_bytes_left -= bytes_read;
 
-    if (verbose)
-	printf("handled %d bytes, %d bytes left\nchecksums: %d, %d\n", total_bytes, 
+    verbage("handled %d bytes, %d bytes left\nchecksums: %d, %d\n", file_bytes_read, 
 	       file_bytes_left, early_checksum, checksum);
 
     return 0;
