@@ -293,7 +293,9 @@ class MonitorServerClient(generic_client.GenericClient):
         ticket= { 'work'             : 'simulate_encp_transfer',
                   'transfer'         : transfer,
                   'client_addr'      : self.localaddr,
+                  'callback_addr'    : self.localaddr, #backward compatibilty
                   'server_addr'      : server_address,
+                  'remote_interface' : server_address[0], #backward compat.
                   'block_count'      : self.block_count,
                   'block_size'       : self.block_size,
                   }
@@ -555,11 +557,13 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get('monitor')
 
-    if not config:
+    if config['status'][0] != 'ok':
+
         summary_d = {'monitor' : " not found in config dictionary."}
         if summary:
             return summary_d
         else:
+            print "Item 'monitor' not found in config dictionary."
             return
 
     #Get a list of hosts, and a class instance of host to avoid.
