@@ -33,7 +33,7 @@ clean:
 	fi
 
 ../checksum_wrap.c: checksum.i
-	swig -python checksum.i ; \
+	swig -python checksum.i 
 	mv checksum_wrap.c ..
 
 
@@ -44,6 +44,6 @@ clean:
 	fi
 
 ../socket_ext_wrap.c: socket_ext.i
-	swig -python socket_ext.i ; \
-	mv socket_ext_wrap.c .. ; \
+	swig -python socket_ext.i 
+	mv socket_ext_wrap.c .. 
 
