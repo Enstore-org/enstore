@@ -7,6 +7,7 @@ import time
 import errno
 import pprint
 import os
+import socket
 
 # enstore imports
 import generic_client
@@ -15,7 +16,7 @@ import udp_client
 import Trace
 import callback
 import e_errors
-import socket
+import hostaddr
 
 MY_NAME = "CONFIG_CLIENT"
 MY_SERVER = "configuration_server"
@@ -65,7 +66,12 @@ class ConfigurationClient(generic_client.GenericClient):
 
         x=self.send(request, timeout, retry)
         control_socket, addr = listen_socket.accept()
-        d = callback.read_tcp_obj(control_socket)
+        if hostaddr.allow(addr):
+            d = callback.read_tcp_obj(control_socket)
+        else:
+            d = {}
+        control_socket.close()
+        listen_socket.close()
         return d
         
     # get all keys in the configuration dictionary
