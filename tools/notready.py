@@ -59,7 +59,7 @@ for file in filelist[:]:
         
     found = 0
     for line in cvsinfo[10:L]:
-        if string.find(line, " production ") >= 0:
+        if string.find(line, "\tproduction ") >= 0:
             tokens = string.split(line)
             if len(tokens) <3:
                 print "Cannot parse production", line
