@@ -8,7 +8,7 @@ if [ -d /dev/rmt ]
 then
 	list="`ls /dev/rmt/*[0-9] | head -${n}`"
 else
-	list="`ls /dev/rmt*[0-9] | head -${n}`"
+	list="`ls /dev/rmt[0-9] | head -${n}`"
 	if [ -z "$list" ]
 	then
 	    list="`ls /dev/rmt*[0-9]a | head -${n}`"
