@@ -278,6 +278,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
             }
 	    set_stat(b,stat,printbuf,0);
 	    DEBUG3(stderr," stat %d - value %s = %g \n",stat,printbuf,value / divide);
+            return;
 	}
 	page += 4 + thislength;
     }
