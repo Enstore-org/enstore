@@ -160,7 +160,10 @@ def get_config(intf):
     if _config_cache:
         return _config_cache
     csc = intf.csc
-    _config_cache = csc.dump()
+    try:
+        _config_cache = csc.dump()
+    except errno.errorcode[errno.ETIMEDOUT]:
+        return {}
     return _config_cache
 
 def get_system_name(intf):
@@ -234,17 +237,6 @@ def get_entvrc(intf):
             #Split the string and look for problems.
             words = line.strip().split()
             if not words:
-                continue
-            #If the line gives outline color for movers based on their
-            # library manager, pass this information along.
-            if words[0] == "library":
-                print "1111111"
-                try:
-                    library_colors[words[1]] = words[2]
-                    print "2222222"
-                except (IndexError, KeyError, AttributeError, ValueError,
-                        TypeError):
-                    pass
                 continue
 
             if socket.getfqdn(words[0])==socket.getfqdn(address):
