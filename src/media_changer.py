@@ -624,7 +624,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.lastWorkTime = time.time()
 
 # STK robot loader server
-class stk_MediaLoader(MediaLoaderMethods):
+class STK_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
