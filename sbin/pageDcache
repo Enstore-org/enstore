@@ -214,7 +214,7 @@ case $gang in
          wa=/pnfs/cdfen/jon/fcdfsgi2/$N.dcache_page_a_$$
          l=/pnfs/cdfen/jon/fcdfsgi2/$N1
 	 strip_dir="/pnfs/cdfen"
-         dcache=cdfendca3
+         dcache=cdfdca
 	 dcache_saag="dcache_cdf"
           ;;
   d0en)  w=/pnfs/archive/dcache-tests/$N.dcache_page_$$
