@@ -19,6 +19,7 @@ import callback
 import host_config
 import Trace
 import udp_client
+import checksum
 
 
 def print_usage():
@@ -35,6 +36,7 @@ def print_usage():
 def transfer_file(in_fd, out_fd):
 
     bytes = 0L #Number of bytes transfered.
+    crc = 0L
 
     while 1:
 
@@ -42,24 +44,27 @@ def transfer_file(in_fd, out_fd):
 
         if in_fd not in r:
             status = (e_errors.TIMEDOUT, "Read")
-            return {'status' : status, 'bytes' : bytes}
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
         
         data = os.read(in_fd, 1048576)
 
         if len(data) == 0: #If read the EOF, return number of bytes transfered.
             status = (e_errors.OK, None)
-            return {'status' : status, 'bytes' : bytes}
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
 
         r, w, x = select.select([], [out_fd], [], 15 * 60)
 
         if out_fd not in w:
             status = (e_errors.TIMEDOUT, "Write")
-            return {'status' : status, 'bytes' : bytes}
+            return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
 
         bytes = bytes + os.write(out_fd, data)
 
+        #Calculate the checksum
+        crc = checksum.adler32(crc, data, len(data))
+
     return {'status' : (e_errors.BROKEN, "Reached unreachable code."),
-            'bytes' : bytes}
+            'bytes' : bytes, 'encp_crc' : crc}
 
 #Update the ticket so that next file can be read.
 def next_request_update(work_ticket, file_number):
@@ -84,7 +89,7 @@ def next_request_update(work_ticket, file_number):
 def get_single_file(work_ticket, control_socket, udp_socket, e):
 
     #Loop around in case the file transfer needs to be retried.
-    while work_ticket.get('retry', 0) <= e.max_retry:
+    #while work_ticket.get('retry', 0) <= e.max_retry:
 
         Trace.message(5, "Opening local file.")
 
@@ -147,57 +152,73 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         Trace.message(5, "Completed reading from tape.")
 
-        # Close these desriptors before they are forgotten about.
-        #encp.close_descriptors(out_fd, data_path_socket, request_socket)
-        encp.close_descriptors(out_fd, data_path_socket)
-
-        #Get the final success/failure message from the mover.  If this side
-        # has an error, don't wait for the mover in case the mover is waiting
-        # for "Get" to do something.
-        if e_errors.is_ok(done_ticket):
-            Trace.message(5, "Waiting for final dialog (1).")
-            mover_done_ticket = encp.receive_final_dialog(control_socket)
-            Trace.message(5, "Received final dialog (1).")
-
-            Trace.message(5, "Waiting for final dialog. (2)")
-            #Keep the udp socket queues clear.
-            udp_socket.process_request()
-            Trace.message(5, "Received final dialog. (2)")
-        else:
-            Trace.message(5, "Error occured, will retry if possible: %s\n"
-                          % done_ticket['status'])
-        
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
                                      done_ticket, None,
                                      None, None, e)
+
+        if not e_errors.is_ok(result_dict):
+            work_ticket = encp.combine_dict(result_dict,
+                                            work_ticket)
+            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+            return work_ticket
+
+        #Combine these tickets.  Encp would have this already done, in
+        # its transfer_file() function, but not gets transfer_file() function.
+        work_ticket = encp.combine_dict({'exfer' : done_ticket}, work_ticket)
+
+        #Get the final success/failure message from the mover.  If this side
+        # has an error, don't wait for the mover in case the mover is waiting
+        # for "Get" to do something.
+        Trace.message(5, "Waiting for final dialog (1).")
+        mover_done_ticket = encp.receive_final_dialog(control_socket)
+        Trace.message(5, "Received final dialog (1).")
+        Trace.message(5, "Waiting for final dialog. (2)")
+        #Keep the udp socket queues clear.
+        udp_socket.process_request()
+        Trace.message(5, "Received final dialog. (2)")
+        
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                     mover_done_ticket, None,
-                                     None, None, e)
+                                                mover_done_ticket, None,
+                                                None, None, e)
 
-        #Everything is fine.
-        if e_errors.is_ok(result_dict) and e_errors.is_ok(mover_result_dict):
+        if not e_errors.is_ok(mover_result_dict):
+            work_ticket = encp.combine_dict(mover_result_dict,
+                                            result_dict,
+                                            work_ticket)
+            Trace.log(e_errors.ERROR, str(mover_result_dict['status']))
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+            return work_ticket
+            
+        #Check the crc.  Note: done_ticket has any error status set to it by
+        # check_crc.
+        encp.check_crc(done_ticket, e, out_fd)
+
+        # Verify that everything went ok with the transfer.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                          done_ticket, None,
+                                          None, None, e)
+
+        if not e_errors.is_ok(result_dict):
             work_ticket = encp.combine_dict(result_dict, work_ticket)
-            delete_at_exit.unregister(work_ticket['outfile']) #don't delete
-            return encp.combine_dict(result_dict, work_ticket)
-        #The requested file does not exist on the tape.  (i.e. the tape has
-        # only 6 files and the seventh file was requested.)
-        if mover_result_dict['status'] == (e_errors.READ_ERROR,
-                                           e_errors.READ_EOD):
-            return result_dict
-        #Give up.
-        elif e_errors.is_non_retriable(result_dict['status'][0]) or \
-             e_errors.is_non_retriable(mover_result_dict['status'][0]):
-            return result_dict
-        #Keep trying.
-        elif e_errors.is_retriable(result_dict['status'][0]) or \
-             e_errors.is_retriable(mover_result_dict['status'][0]):
-            continue
+            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+            return work_ticket
         
+        #verify_file_size(done_ticket) #Verify size is the same.
 
-    # Can we get here?
-    return {'status' : (e_errors.TOO_MANY_RETRIES, None)}
+        # Close these desriptors before they are forgotten about.
+        encp.close_descriptors(out_fd, data_path_socket)
+
+        return work_ticket
+        
+        # Can we get here?
+        #return {'status' : (e_errors.TOO_MANY_RETRIES, None)}
 
 def main(e):
 
@@ -326,7 +347,7 @@ def main(e):
             file_number = file_number + 1
             next_request_update(request, file_number)
             #Create the local file.
-            encp.create_zero_length_files(request['outfile'])
+            #encp.create_zero_length_files(request['outfile'])
     
     # ... Or there is file information is already known.
     else:
@@ -348,11 +369,6 @@ def main(e):
 
             #print "DONE_TICKET:"
             #pprint.pprint(done_ticket)
-            
-            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            #check_crc(done_ticket, e, out_fd) #Check the CRC.
-            #verify_file_size(done_ticket) #Verify size is the same.
-            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
 
     #We are done, tell the mover.
     nowork_ticket = {'work': "nowork", 'method' : "no_work"}
