@@ -1487,7 +1487,7 @@ def max_attempts(csc, library, encp_intf):
         if e_errors.is_ok(kcs):
             del kcs['status']
         else:
-            return # Give up on error.
+            return resend # Give up on error.  Return what we know.
 
         for item in kcs.values():
             _csc = configuration_client.ConfigurationClient(address = item)
@@ -1495,8 +1495,8 @@ def max_attempts(csc, library, encp_intf):
             if e_errors.is_ok(lm):
                 break
         else:
-            #If we didn't find a match just return.
-            return
+            #If we didn't find a match just return what we know.
+            return resend
 
     #If the library does not have the following entries (or the library name
     # was not found in config file(s)... very unlikely) then go with
@@ -1507,19 +1507,12 @@ def max_attempts(csc, library, encp_intf):
     else:
         resend['max_retry'] = lm.get('max_encp_retries',
                                      enstore_constants.DEFAULT_ENCP_RETRIES)
-    #    try:
-    #        encp_intf.max_retry = int(encp_intf.max_retry) #make integer.
-    #    except TypeError:
-    #        encp_intf.max_retry = None
+        
     if encp_intf.use_max_resubmit:
         resend['max_resubmits'] = encp_intf.max_resubmit
     else:
         resend['max_resubmits'] = lm.get('max_encp_resubmits',
                                  enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
-    #    try:
-    #        encp_intf.max_resubmit = int(encp_intf.max_resubmit) #make integer.
-    #    except TypeError:
-    #        encp_intf.max_resubmit = None
 
     return resend
 
@@ -3194,6 +3187,12 @@ def submit_one_request(ticket):
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
+        ticket['status'] = (e_errors.USERERROR,
+              "Unable to locate %s.library_manager." % ticket['vc']['library'])
+        return ticket
+
+    #If the lmc is not in a valid state, return an error.
+    if lmc.server_address == None:
         ticket['status'] = (e_errors.USERERROR,
               "Unable to locate %s.library_manager." % ticket['vc']['library'])
         return ticket
@@ -5072,7 +5071,8 @@ def submit_write_request(work_ticket, encp_intf):
 
     # send the work ticket to the library manager
     while encp_intf.max_retry == None or \
-              work_ticket['resend']['retry'] <= encp_intf.max_retry:
+         work_ticket.get('resend', {}).get('retry', 0) <= encp_intf.max_retry:
+        
         ##start of resubmit block
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
