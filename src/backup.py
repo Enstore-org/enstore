@@ -196,9 +196,19 @@ if __name__=="__main__":
         hst_bck = backup_config['host']
     except:
 	hst_bck = hst_local
+
+  
+    logthis(e_errors.INFO, "Stop to backup databases")
+    os.system("enstore stop")
+    
     logthis(e_errors.INFO, "Start database backup")
     backup_dbase(dbHome)
     logthis(e_errors.INFO, "End database backup")
+
+    logthis(e_errors.INFO, "Restarting after database backup")
+    os.system("enstore Estart `uname -n`")
+    time.sleep(10)
+
     logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
     logthis(e_errors.INFO, "End  volume backup")
