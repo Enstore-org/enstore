@@ -249,6 +249,11 @@ class FTTDriver(driver.Driver):
             return -1
         
     def set_mode(self, density=None, compression=None, blocksize=None):
+        ##HACK: this seems to trigger a core dump in ftt, and it's
+        ## not clear we're really changing the mode anyhow.
+        ## XXX investigate this!
+        return 0
+    
         r = -1
         try:
             mode = self.ftt.get_mode()
