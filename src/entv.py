@@ -66,6 +66,14 @@ stop_now = 0
 # common support functions
 #########################################################################
 
+def entv_client_version():
+    ##this gets changed automatically in {enstore,encp}Cut
+    ##You can edit it manually, but do not change the syntax
+    version_string = "v0_0  CVS $Revision$ "
+    entv_file = globals().get('__file__', "")
+    if entv_file: version_string = version_string + entv_file
+    return version_string
+
 def open_files(message):
     print message,
     os.system("ls -l /proc/`(EPS | grep \"entv\" | head -n 1 | cut -c8-15 | tr -d ' ')`/fd | wc -l")
@@ -665,7 +673,8 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         self.verbose = 0
         self.movers_file = ""
         self.commands_file = ""
-        self.profile = 0 
+        self.profile = 0
+        self.version = 0
         generic_client.GenericClientInterface.parse_options(self)
         
         #Setup the necessary cache global variables.
@@ -700,6 +709,11 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         option.VERBOSE:{option.HELP_STRING:"Print out information.",
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,},
+        option.VERSION:{option.HELP_STRING:
+                        "Display entv version information.",
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.DEFAULT_VALUE:1,
                         option.USER_LEVEL:option.USER,},
         }
 
@@ -814,5 +828,8 @@ if __name__ == "__main__":
         profile.run("main(intf)", "/tmp/entv_profile")
         p = pstats.Stats("/tmp/entv_profile")
         p.sort_stats('cumulative').print_stats(100)
+    elif intf.version:
+        #Just print the version of entv.
+        print entv_client_version()
     else:
         main(intf)
