@@ -167,9 +167,14 @@ def get_interface_info_by_ip(interface_ip):
 # dependent.
 def get_netstat_r():
 
-    #Obtain the netstat information needed (netstat -r).
+    #Obtain the netstat information needed (netstat -rn).  The option -r is
+    # to specify displaying the routing table.  The option -n will display
+    # the -r routing table output in FQDN form.  This is desirable, since
+    # each interface has a unique ip and not ip alias.  Also, netstat -r will
+    # truncate long user names.  This avoid having to convert a truncated
+    # hostname to the desired ip address.
     netstat_cmd = multiple_interface._find_command("netstat")
-    p = os.popen(netstat_cmd + " -r", 'r')
+    p = os.popen(netstat_cmd + " -rn", 'r')
 
     data = p.readlines()
     status = p.close()
@@ -203,17 +208,30 @@ def get_netstat_r():
             for i in range(len(titles)):
                 tmp[titles[i]] = info[i]
             output.append(tmp)
-
+    print output
     return output
+
+_cached_netstat = None
+
+def get_routes():
+    global _cached_netstat
+    if not _cached_netstat:
+        _cached_netstat = get_netstat_r()
+    return _cached_netstat
+
+def update_cached_routes():
+    global _cached_netstat
+    _cached_netstat = get_netstat_r()
+    return _cached_netstat
 
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
-    route_table = get_netstat_r()
+    route_table = get_routes()
     for route in route_table:
-        #Most platforms attempt to give names instead of FQDN, convert the
-        # names to ip addresses.
-        if socket.gethostbyname(route['Destination']) == dest:
+        #Since netstat -rn gives the numerical address, coversions are not
+        # necessary.
+        if route['Destination'] == dest:
             return 1
 
     return 0
@@ -356,3 +374,5 @@ def setup_interface(dest, interface_ip):
     #Set the static route.
     set_route(dest, interface_ip)
 
+    #Since the routing table just changed, the cached version needs updating.
+    update_cached_routes()
