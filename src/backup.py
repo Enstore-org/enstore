@@ -21,7 +21,7 @@ import hostaddr
 
 journal_backup = 'JOURNALS'     # for journal file backup
 
-pgdb = 0
+pgdb = 1
 
 def logthis(code, message):
     #Trace.log(code,message)
