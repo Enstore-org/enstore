@@ -66,3 +66,31 @@ create table sg_count (
 create function lookup_vol(varchar) returns integer
 as 'select id from volume where label = $1;'
 language sql;
+
+create sequence state_type_seq;
+create table state_type (
+	id		int primary key default nextval('state_type_seq'::text),
+	name		varchar not null unique
+);
+
+create table state (
+	time		timestamp without time zone default now(),
+	volume		int not null references volume(id),
+	type		int references state_type(id),
+	value		varchar
+);
+create index state_time_idx on state(time);
+create index state_volume_idx on state(volume);
+create index state_type_idx on state(type);
+create index state_value_idx on state(value);
+
+insert into state_type (name) values ('system_inhibit_0');
+insert into state_type (name) values ('system_inhibit_1');
+insert into state_type (name) values ('user_inhibit_0');
+insert into state_type (name) values ('user_inhibit_1');
+insert into state_type (name) values ('write_protect');
+
+create function lookup_stype(varchar) returns integer
+as 'select id from state_type where name = $1;'
+language sql;
+
