@@ -2,7 +2,6 @@ static char rcsid[] = "@(#)$Id$";
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <ftt_private.h>
 extern int errno;
 

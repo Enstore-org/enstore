@@ -1,6 +1,5 @@
 static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
-#include <unistd.h>
 #include <ftt_private.h>
 
 static int table_debug;

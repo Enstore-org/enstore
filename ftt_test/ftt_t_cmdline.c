@@ -45,7 +45,6 @@ static char rcsid[] = "@(#)$Id$";
 #include <termio.h>
 #include <signal.h>     /* Needed for signal function */
 #include <sys/types.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 

@@ -1,9 +1,7 @@
 static char rcsid[] = "@(#)$Id$";
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <sys/wait.h> 
 #include <ftt_private.h>
-#include <ftt_mtio.h>
 #include <string.h>
 
 /*

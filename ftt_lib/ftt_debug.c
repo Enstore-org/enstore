@@ -1,6 +1,4 @@
 static char rcsid[] = "@(#)$Id$";
-#include <unistd.h>
-#include <ctype.h>
 #include <stdio.h>
 
 int
