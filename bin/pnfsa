@@ -30,11 +30,11 @@ Commonly used commands are:
 
    enstore pnfs --ls   file [layer]   does an ls on the named layer in the file
 
-   enstore pnfs {--cat|--more|--less}          file layer     lists the layer of the file
-   enstore pnfs {--tagcat|--tagmore|--tagless} tag  directory lists the tag in the directory
+   enstore pnfs {--cat|--more|--less}           file layer     lists the layer of the file
+   enstore pnfs {--tagcat|--tagmore|--tagless}  tag  directory lists the tag in the directory
 
-   enstore pnfs --enstore_state          lists whether enstore is still accepting transfers
-   enstore pnfs --pnfs_state mount-point lists whether pnfs mountpoint is up
+   enstore pnfs --enstore_state pnfs_directory  lists whether enstore is still accepting transfers
+   enstore pnfs --pnfs_state pnfs_directory     lists whether pnfs mountpoint is up
 
 Don't use these unless you know what you are doing:
 
@@ -51,6 +51,9 @@ Don't use these unless you know what you are doing:
    enstore pnfs --tagrm tag              removes the tag (tricky, see DESY documents)
 
    enstore pnfs --io file                sets io mode (can't clear it easily)
+
+   enstore pnfs --down <reason>          creates enstore system-down wormhole to prevent transfers
+   enstore pnfs --up                     removes enstore system-down wormhole
 
 Don't use these unless you can interpret the results:
 
@@ -190,20 +193,32 @@ pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               fi ; }
 
 pio()       { if [ -z "${1-}" ] ; then p_error "io filename"; fi
-              eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
+              eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)(on)\"" ; }
+
+pdown()     { if [ "`whoami`" != "root" ]; then p_error "must be root to create enstore system-down wormhole"; fi
+              if [ -z "${1-}" ] ; then p_error "down <reason for taking system down>"; fi
+              ls /pnfs/fs/admin/etc/config/flags 2>&1 >/dev/null; if [ $? -ne 0 ]; then p_error "/pnfs/fs is not mounted"; fi
+	      (cd /pnfs/fs/admin/etc/config/flags;  echo "${1}" > disabled; touch ".(fset)(disabled)(io)(on)" ) }
+
+pup()       { if [ "`whoami`" != "root" ]; then p_error "must be root to remove enstore system-down wormhole"; fi
+              ls /pnfs/fs/admin/etc/config/flags 2>&1 >/dev/null; if [ $? -ne 0 ]; then p_error "/pnfs/fs is not mounted"; fi
+	      rm -f /pnfs/fs/admin/etc/config/flags/disabled }
 
 ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
               eval more `p_tag $@` ; }
 ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
               eval less `p_tag $@` ; }
 ppnfs_state() 
-            { if [ -z "${1-}" ] ; then p_error "pnfs_state"; fi
+            { if [ -z "${1-}" ] ; then p_error "pnfs_state <pnfs_mountpoint>"; fi
               if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
-	      file="\"`p_pnfs`.(config)(flags)/.(id)(enstore.conf)\""
-	      state="down"; ec=1
-              /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
-	      state=`eval cat  $file`'
-	      if  [ "$state" != "down" ] ; then state="up"; ec=0; fi
+	      file="\"`dirname $1`/.(config)(flags)/.(id)(pnfs_state)\""
+              state=`eval cat  $file`
+	      if [ "$state" != "down" -a -n "$state" ] ; then
+                 state="working"; ec=0; 
+              else
+  	         state="down"; ec=1
+ 	         
+	      fi
               echo "Pnfs $state" 
 	      exit $ec; }
 
