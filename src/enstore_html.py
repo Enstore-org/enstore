@@ -56,6 +56,9 @@ PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
 	     [enstore_constants.XFER_FILE, "Transfer Activity"]]
 
 DEFAULT_LABEL = "UNKNOWN INQ PLOT"
+# these defaults mean, output all the lines on the main page
+DEFAULT_LM_ATWORKQ_ROWS = -1
+DEFAULT_LM_PENDINGQ_ROWS = -1
 
 def sort_keys(dict):
     keys = dict.keys()
@@ -223,6 +226,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.table_top_b(table, td)
 	return table
 
+	
+    def server_heading(self, server):
+	return HTMLgen.Bold(HTMLgen.Font(server, size="+1"))
+
     def set_refresh(self, refresh):
 	self.refresh = refresh
 
@@ -239,15 +246,45 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR(size=2, noshade=1))))
 	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href("http://www.fnal.gov/pub/disclaim.html", "Legal Notices"))))
 
+
+class EnExtraLmQueuePages(EnBaseHtmlDoc):
+
+    def __init__(self, status_page, lm):
+	extra_text = "(Extra %s queue rows)"%(lm,)
+	EnBaseHtmlDoc.__init__(self, refresh=status_page.refresh, 
+			       help_file="serverStatusLMQHelp.html",
+			       system_tag="%s %s"%(status_page.system_tag, extra_text))
+	self.title = "%s %s"%(status_page.title, extra_text)
+	self.source_server = THE_INQUISITOR
+	self.script_title_gif = status_page.script_title_gif
+	self.description = ""
+	self.lm = lm
+	
+    # generate the body of the file
+    def body(self, row):
+	# create the outer table and its rows
+	table = self.table_top()
+	table.append(empty_row())
+	table.append(empty_row())
+	table.append(HTMLgen.TR(HTMLgen.TD(self.server_heading(self.lm), colspan=6)))
+	table.append(row)
+	self.trailer(table)
+	self.append(table)
+
+
 class EnSysStatusPage(EnBaseHtmlDoc):
 
-    def __init__(self, refresh = 60, system_tag=""):
+    def __init__(self, refresh = 60, system_tag="", max_lm_pendingq_rows={},
+		 max_lm_atworkq_rows={}):
 	EnBaseHtmlDoc.__init__(self, refresh=refresh, help_file="serverStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "ENSTORE System Status"
 	self.script_title_gif = "ess.gif"
 	self.source_server = THE_INQUISITOR
 	self.description = ""
+	self.extra_lm_queue_pages = {}
+	self.max_lm_pendingq_rows = max_lm_pendingq_rows
+	self.max_lm_atworkq_rows = max_lm_atworkq_rows
 
     # output the list of shortcuts on the top of the page
     def shortcut_table(self):
@@ -301,10 +338,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	fill_out_row(num_tds_so_far, tr)
 	table.append(tr)
 	return table
-	
+
     # make the row with the servers alive information
     def alive_row(self, server, data, color=None):
-	srvr = HTMLgen.Bold(HTMLgen.Font(server, size="+1"))
+	srvr = self.server_heading(server)
 	# change the color of the first column if the server has timed out
 	if data[0] == "alive":
 	    if color:
@@ -368,96 +405,139 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		text = "Pending%sTape%sRead"%(NBSP,NBSP)
 	return text
 
-    # put together the rows for either lm queue
-    def lm_queue_rows(self, lm, queue, intro):
+    def priorities_row(self, qelem):
+	tr = HTMLgen.TR(self.spacer_data("Priorities"))
+	tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Current", color=BRICKRED), 
+				       NBSP*3, qelem[enstore_constants.CURRENT]),
+			     html_escape='OFF'))
+	tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Base", color=BRICKRED),
+				       NBSP*3, qelem[enstore_constants.BASE]),
+			     html_escape='OFF'))
+	tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Delta", color=BRICKRED),
+				       NBSP*3, qelem[enstore_constants.DELTA]),
+			     html_escape='OFF'))
+	tr.append(HTMLgen.TD(HTMLgen.Font("Agetime", color=BRICKRED)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.AGETIME]))
+	return tr
+
+    def queue_times_row(self, qelem):
+	tr = HTMLgen.TR(self.spacer_data("Job%sSubmitted"%(NBSP,)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.SUBMITTED]))
+	if qelem.has_key(enstore_constants.DEQUEUED):
+	    tr.append(HTMLgen.TD(HTMLgen.Font("Dequeued", color=BRICKRED)))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.DEQUEUED]))
+	else:
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	if qelem.has_key(enstore_constants.MODIFICATION):
+	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sModified"%(NBSP,),
+					      color=BRICKRED, html_escape='OFF')))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.MODIFICATION]))
+	else:
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	return tr
+
+    def file_families_row(self, qelem):
+	if qelem.has_key(enstore_constants.DEVICE):
+	    tr = HTMLgen.TR(self.spacer_data("Device%sLabel"%(NBSP,)))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.DEVICE]))
+	else:
+	    tr = HTMLgen.TR(empty_data())
+	    tr.append(empty_data())
+	if qelem.has_key(enstore_constants.FILE_FAMILY):
+	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily"%(NBSP,), color=BRICKRED,
+					      html_escape='OFF')))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY]))
+	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily%sWidth"%(NBSP, NBSP),
+					      color=BRICKRED, html_escape='OFF')))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY_WIDTH]))
+	elif qelem.has_key(enstore_constants.VOLUME_FAMILY):
+	    tr.append(HTMLgen.TD(HTMLgen.Font("Volume%sFamily"%(NBSP,), color=BRICKRED,
+					      html_escape='OFF')))
+	    tr.append(HTMLgen.TD(qelem[enstore_constants.VOLUME_FAMILY]))
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	else:
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	    tr.append(empty_data())
+	return tr
+
+    def first_queue_row(self, qelem, intro):
+	text = self.get_intro_text(qelem[enstore_constants.WORK], intro)
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, 
+						html_escape='OFF')))
+	if qelem.has_key(enstore_constants.MOVER) and \
+	   not qelem[enstore_constants.MOVER] == ' ':
+	    tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(qelem[enstore_constants.MOVER],),
+					      qelem[enstore_constants.MOVER])))
+	else:
+	    tr.append(empty_data())
+	tr.append(HTMLgen.TD(HTMLgen.Font("Node", color=BRICKRED)))
+	tr.append(HTMLgen.TD(enstore_functions.strip_node(qelem[enstore_constants.NODE])))
+	tr.append(HTMLgen.TD(HTMLgen.Font("Port", color=BRICKRED)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.PORT]))
+	return tr
+
+    def local_file_row(self, qelem):
+	tr = HTMLgen.TR(self.spacer_data("Local%sfile"%(NBSP,)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.FILE], colspan=5))
+	return tr
+	    
+    def bytes_id_row(self, qelem):
+	tr = HTMLgen.TR(self.spacer_data("Bytes"))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.BYTES]))
+	tr.append(HTMLgen.TD(HTMLgen.Font("ID", color=BRICKRED)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.ID], colspan=3))
+	return tr
+
+    def reject_reason_row(self, qelem, table):
+	tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
+	tr.append(HTMLgen.TD(qelem[enstore_constants.REJECT_REASON], colspan=5))
+	return tr
+
+    def make_lm_queue_rows(self, qelems, intro):
 	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
 				  align="LEFT", bgcolor=YELLOW, width="100%")
-	qelems = self.data_dict[lm][queue]
-	qelems.sort()
-	for qelem in self.data_dict[lm][queue]:
-	    text = self.get_intro_text(qelem[enstore_constants.WORK], intro)
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, html_escape='OFF')))
-	    if qelem.has_key(enstore_constants.MOVER):
-		tr.append(HTMLgen.TD(HTMLgen.Href("#%s"%(qelem[enstore_constants.MOVER],),
-						  qelem[enstore_constants.MOVER])))
-	    else:
-		tr.append(empty_data())
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Node", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(enstore_functions.strip_node(qelem[enstore_constants.NODE])))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Port", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.PORT]))
-	    table.append(tr)
-	    if qelem.has_key(enstore_constants.DEVICE):
-		tr = HTMLgen.TR(self.spacer_data("Device%sLabel"%(NBSP,)))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.DEVICE]))
-	    else:
-		tr = HTMLgen.TR(empty_data())
-		tr.append(empty_data())
-	    if qelem.has_key(enstore_constants.FILE_FAMILY):
-		tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily"%(NBSP,), color=BRICKRED,
-						  html_escape='OFF')))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY]))
-		tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily%sWidth"%(NBSP, NBSP),
-						  color=BRICKRED, html_escape='OFF')))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.FILE_FAMILY_WIDTH]))
-	    elif qelem.has_key(enstore_constants.VOLUME_FAMILY):
-		tr.append(HTMLgen.TD(HTMLgen.Font("Volume%sFamily"%(NBSP,), color=BRICKRED,
-						  html_escape='OFF')))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.VOLUME_FAMILY]))
-		tr.append(empty_data())
-		tr.append(empty_data())
-	    else:
-		tr.append(empty_data())
-		tr.append(empty_data())
-		tr.append(empty_data())
-		tr.append(empty_data())
-	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("Job%sSubmitted"%(NBSP,)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.SUBMITTED]))
-	    if qelem.has_key(enstore_constants.DEQUEUED):
-		tr.append(HTMLgen.TD(HTMLgen.Font("Dequeued", color=BRICKRED)))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.DEQUEUED]))
-	    else:
-		tr.append(empty_data())
-		tr.append(empty_data())
-	    if qelem.has_key(enstore_constants.MODIFICATION):
-		tr.append(HTMLgen.TD(HTMLgen.Font("File%sModified"%(NBSP,),
-						  color=BRICKRED, html_escape='OFF')))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.MODIFICATION]))
-	    else:
-		tr.append(empty_data())
-		tr.append(empty_data())
-	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("Priorities"))
-	    tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Current",
-							color=BRICKRED), 
-					   NBSP*3, qelem[enstore_constants.CURRENT]),
-				 html_escape='OFF'))
-	    tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Base",
-							color=BRICKRED),
-					   NBSP*3, qelem[enstore_constants.BASE]),
-				 html_escape='OFF'))
-	    tr.append(HTMLgen.TD("%s%s%s"%(HTMLgen.Font("Delta",
-							color=BRICKRED),
-					   NBSP*3, qelem[enstore_constants.DELTA]),
-				 html_escape='OFF'))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Agetime", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.AGETIME]))
-	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("Local%sfile"%(NBSP,)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.FILE], colspan=5))
-	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("Bytes"))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.BYTES]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("ID", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.ID], colspan=3))
-	    table.append(tr)
+	for qelem in qelems:
+	    table.append(self.first_queue_row(qelem, intro))
+	    table.append(self.file_families_row(qelem))
+	    table.append(self.queue_times_row(qelem))
+	    table.append(self.priorities_row(qelem))
+	    table.append(self.local_file_row(qelem))
+	    table.append(self.bytes_id_row(qelem))
 	    if qelem.has_key(enstore_constants.REJECT_REASON):
-		tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
-		tr.append(HTMLgen.TD(qelem[enstore_constants.REJECT_REASON], colspan=5))
-		table.append(tr)
+		table.append(self.reject_reason_row(qelem))
 	    table.append(empty_row(6))
 	return HTMLgen.TR(HTMLgen.TD(table, colspan=5))
+
+    # put together the rows for either lm queue
+    def lm_queue_rows(self, lm, queue, intro, max_queue_rows, default_queue_rows):
+	qelems = self.data_dict[lm][queue]
+	qelems.sort()
+	qlen = len(qelems)
+	tr0 = None
+	# reemove the following line when the values come from the config file
+	max_queue_rows = 28
+	if (not max_queue_rows == default_queue_rows) and (qlen > max_queue_rows):
+	    # we will need to cut short the number of queue elements that we output on 
+	    # the main status page, and add a link to point to the rest that will be
+	    # on another page. however, there is only one other page at this time
+	    filename = "%s_%s.html"%(lm, queue)
+	    tr0 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(filename, 
+						    'Extra Queue Rows (%s)'%(qlen - 
+									max_queue_rows,)),
+					colspan=5))
+	    qlen = max_queue_rows
+	    new_key = "%s-%s"%(lm, queue)
+	    self.extra_lm_queue_pages[new_key] = (EnExtraLmQueuePages(self, lm), filename)
+	    self.extra_lm_queue_pages[new_key][0].body(self.make_lm_queue_rows(qelems[qlen:], 
+									  intro))
+
+	tr1 = self.make_lm_queue_rows(qelems[:qlen], intro)
+	return tr1, tr0
 
     # add the work at movers info to the table
     def work_at_movers_row(self, lm, cols):
@@ -468,12 +548,16 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	the_work = self.data_dict[lm].get(enstore_constants.WORK,
 					  enstore_constants.NO_WORK)
 	if not the_work == enstore_constants.NO_WORK:
-	    row = self.lm_queue_rows(lm, enstore_constants.WORK, AT_MOVERS)
+	    row1, row0 = self.lm_queue_rows(lm, enstore_constants.WORK, AT_MOVERS, 
+					    self.max_lm_atworkq_rows.get(lm, 
+								  DEFAULT_LM_ATWORKQ_ROWS),
+					    DEFAULT_LM_ATWORKQ_ROWS)
 	else:
-	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_WORK,
-						     color=BRICKRED), 
-					colspan=cols))
-	return row
+	    row0 = None
+	    row1 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_WORK,
+						      color=BRICKRED), 
+					 colspan=cols))
+	return row1, row0
 
     # add the pending work row to the table
     def pending_work_row(self, lm, cols):
@@ -483,12 +567,16 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	the_work = self.data_dict[lm].get(enstore_constants.PENDING,
 					  enstore_constants.NO_PENDING)
 	if not the_work == enstore_constants.NO_PENDING:
-	    row = self.lm_queue_rows(lm, enstore_constants.PENDING, PENDING)
+	    row1, row0 = self.lm_queue_rows(lm, enstore_constants.PENDING, PENDING,
+					    self.max_lm_atworkq_rows.get(lm,
+								  DEFAULT_LM_PENDINGQ_ROWS),
+					    DEFAULT_LM_PENDINGQ_ROWS)
 	else:
-	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_PENDING,
-						     color=BRICKRED),
-					colspan=cols))
-	return row
+	    row0 = None
+	    row1 = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_constants.NO_PENDING,
+						      color=BRICKRED),
+					 colspan=cols))
+	return row1, row0
 
     # output the state of the lirary manager
     def lm_state_row(self, lm):
@@ -542,8 +630,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    lm_table.append(self.pending_xfer_row(lm))
 	    lm_table.append(self.null_row(cols))
 	    lm_table.append(empty_row(cols))
-	    lm_table.append(self.work_at_movers_row(lm, cols))
-	    lm_table.append(self.pending_work_row(lm, cols))
+	    row1, row0 = self.work_at_movers_row(lm, cols)
+	    if row0:
+		lm_table.append(row0)
+	    lm_table.append(row1)
+	    row1, row0 = self.pending_work_row(lm, cols)
+	    if row0:
+		lm_table.append(row0)
+	    lm_table.append(row1)
 	    tr = HTMLgen.TR(empty_data())
 	    tr.append(HTMLgen.TD(lm_table, colspan=5))
 	    table.append(tr)

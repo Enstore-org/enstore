@@ -99,9 +99,13 @@ class EnFile:
 	    self.openfile = 0
 
     def install(self):
-	# copy the file we created to the real file name
-	if not self.real_file_name == self.file_name:
+	# move the file we created to the real file name
+	if (not self.real_file_name == self.file_name) and os.path.exists(self.file_name):
 	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
+
+    def remove(self):
+	if os.path.exists(self.file_name):
+	    os.remove(self.file_name)
 
     # remove the file
     def cleanup(self, keep, pts_dir):
@@ -147,6 +151,7 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 
     def __init__(self, file, refresh, system_tag=""):
 	EnStatusFile.__init__(self, file, system_tag)
+	self.file_name = "%s.new"%(file,)
 	self.refresh = refresh
 
     def set_alive_error_status(self, key):
@@ -157,16 +162,41 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 	    pass
 
     # write the status info to the file
-    def write(self):
+    def write(self, max_lm_pendingq_rows={}, max_lm_atworkq_rows={}):
         if self.openfile:
-	    doc = enstore_html.EnSysStatusPage(self.refresh, self.system_tag)
+	    doc = enstore_html.EnSysStatusPage(self.refresh, self.system_tag,
+					       max_lm_pendingq_rows,
+					       max_lm_atworkq_rows)
 	    doc.body(self.text)
             self.openfile.write(str(doc))
+	    # check if there are any extra pages that should be generated. this happens if
+	    # the libman queue was too long and the extra should be written to another
+	    # file
+	    if doc.extra_lm_queue_pages:
+		html_dir = enstore_functions.get_html_dir()
+		for extra_page_key in doc.extra_lm_queue_pages.keys():
+		    filename = "%s/%s"%(html_dir, 
+				   doc.extra_lm_queue_pages[extra_page_key][1])
+		    extra_file = HTMLLMQFile(filename,
+				   doc.extra_lm_queue_pages[extra_page_key][0].refresh,
+				   doc.extra_lm_queue_pages[extra_page_key][0].system_tag)
+		    extra_file.open()
+		    extra_file.write(doc.extra_lm_queue_pages[extra_page_key][0])
+		    extra_file.close()
+		    extra_file.install()
+					     
+
+class HTMLLMQFile(HTMLStatusFile, enstore_status.EnStatus):
+
+    def write(self, doc):
+	if self.openfile:
+	    self.openfile.write(str(doc))
 
 class HTMLEncpStatusFile(EnStatusFile):
 
     def __init__(self, file, refresh, system_tag=""):
 	EnStatusFile.__init__(self, file, system_tag)
+	self.file_name = "%s.new"%(file,)
 	self.refresh = refresh
 
     def get_lines(self, day, lines, formatted_lines):
@@ -174,14 +204,17 @@ class HTMLEncpStatusFile(EnStatusFile):
 	    encp_line = enstore_status.EncpLine(line)
 	    if encp_line.valid:
 		if encp_line.status == e_errors.sevdict[e_errors.INFO]:
-		    formatted_lines.append(["%s %s"%(day, encp_line.time), encp_line.node, 
-					    encp_line.user, encp_line.bytes, 
-					    "%s %s"%(encp_line.direction, encp_line.volume), 
+		    formatted_lines.append(["%s %s"%(day, encp_line.time), 
+					    encp_line.node, encp_line.user, 
+					    encp_line.bytes, 
+					    "%s %s"%(encp_line.direction, 
+						     encp_line.volume), 
 					    encp_line.xfer_rate, encp_line.user_rate,
 					    encp_line.infile, encp_line.outfile])
 		elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
-		    formatted_lines.append(["%s %s"%(day, encp_line.time), encp_line.node, 
-					    encp_line.user, encp_line.text])
+		    formatted_lines.append(["%s %s"%(day, encp_line.time), 
+					    encp_line.node, encp_line.user, 
+					    encp_line.text])
 
     # output the encp info
     def write(self, day1, lines1, day2, lines2):
@@ -207,6 +240,10 @@ class HTMLLogFile(EnFile):
 
 class HTMLConfigFile(EnFile):
 
+    def __init__(self, file, system_tag=""):
+	EnFile.__init__(self, file, system_tag)
+	self.file_name = "%s.new"%(file,)
+
     # format the config entry and write it to the file
     def write(self, cdict):
         if self.openfile:
@@ -215,6 +252,10 @@ class HTMLConfigFile(EnFile):
             self.openfile.write(str(doc))
 
 class HTMLPlotFile(EnFile):
+
+    def __init__(self, file, system_tag=""):
+	EnFile.__init__(self, file, system_tag)
+	self.file_name = "%s.new"%(file,)
 
     # format the config entry and write it to the file
     def write(self, jpgs, stamps, pss):
@@ -329,8 +370,8 @@ class EnMountDataFile(EnDataFile):
 	    minfo = self.parse_line(line)
             if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
                 self.data.append([minfo[MDEV], string.replace(minfo[0],
-                                                              enstore_constants.LOG_PREFIX,
-							      ""), minfo[MSTART]])
+                                                             enstore_constants.LOG_PREFIX,
+							     ""), minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 
@@ -341,7 +382,8 @@ class EnEncpDataFile(EnDataFile):
 	    if encp_line.valid:
 		if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
 		    etime = enstore_functions.strip_file_dir(encp_line.time)
-		    self.data.append([string.replace(etime, enstore_constants.LOG_PREFIX, ""), 
+		    self.data.append([string.replace(etime, 
+						     enstore_constants.LOG_PREFIX, ""), 
 				      encp_line.bytes, encp_line.direction])
 
 class HtmlAlarmFile(EnFile):
