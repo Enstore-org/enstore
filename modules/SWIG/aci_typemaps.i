@@ -128,12 +128,44 @@ typedef int bool_t;
 %typemap(python, memberout) aci_range{
     int i;
     for (i=0; i<ACI_MAX_RANGES; ++i){
-	if ($source[i][0]){
+    	if ($source[i][0]){
 	    $target = return_list($target,PyString_FromString($source[i]));
 	}
     }
 }
 
 #endif
+
+/* tgj */
+
+%typemap(python, ignore) char *volser_ranges[ANY] {
+    static char *result[$dim0];
+    $target = &result[0];
+}
+
+%typemap(python, argout) char *volser_ranges[ANY]{
+    int i;
+    for (i=0; i< $dim0; ++i){
+	if ($source[i][0]){
+	    $target = return_list($target,PyString_FromString($source[i]));
+	} else {
+	    break;
+	}
+    }
+}
+
+
+/* the enum aci_media might be handled in the aci_typedefs.h file
+ instead of using these typemaps by adding this line there:
+ typedef int enum aci_media */
+ 
+%typemap(python, ignore) enum aci_media * {
+    static enum aci_media result;
+    $target = &result;
+}
+
+%typemap(python, argout) enum aci_media * {
+    $target = return_list($target, PyInt_FromLong(* $source ));
+}
 
 
