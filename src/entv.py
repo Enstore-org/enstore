@@ -970,8 +970,6 @@ def main(intf):
     continue_working = 1
 
     while continue_working:
-        print "111111111", csc.new_config_obj.have_new_config()
-        
         display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
 

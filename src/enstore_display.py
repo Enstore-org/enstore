@@ -2030,9 +2030,7 @@ class Display(Tkinter.Canvas):
 
         #Make sure to reserve the movers' positions before creating them.
         self.reserve_mover_columns(N)
-        #for k in range(N):
-        #    mover_name = mover_names[k]
-        #    self.add_mover_position(mover_name)
+
         #Create a Mover class instance to represent each mover.
         for k in range(N):
             mover_name = mover_names[k]
