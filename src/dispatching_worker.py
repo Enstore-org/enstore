@@ -6,19 +6,12 @@ import errno
 import time
 import os
 import traceback
-import select
 import ECRC
 import sys
-# Import SOCKS module if it exists, else standard socket module socket
-# This is a python module that works just like the socket module, but uses
-# the SOCKS protocol to make connections through a firewall machine.
-# See http://www.w3.org/People/Connolly/support/socksForPython.html or
-# goto www.python.org and search for "import SOCKS"
 import socket
 
 #enstore imports
 import cleanUDP
-import timeofday
 import Trace
 import e_errors
 import generic_cs
@@ -144,8 +137,8 @@ class DispatchingWorker:
 
         Trace.trace(5,"{get_request")
 
-        f = self.server_fds + [self.socket.fileno()]
-        r, w, x = select.select(f,[],f, self.rcv_timeout)
+        f = self.server_fds + [self.socket]
+        r, w, x = cleanUDP.Select(f,[],f, self.rcv_timeout)
         Trace.trace(20,'get_request select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
         
         if r:
@@ -158,36 +151,8 @@ class DispatchingWorker:
                        self.server_fds.remove(fd)
                        return request
             # else the input is on the udp socket
-            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            refused = 1
-            while badsock==errno.ECONNREFUSED and refused<25:
-                refused = refused+1
-                Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock != 0 :
-                self.enprint("DispatchingWorked get_request, pre-recvfrom error: "+\
-                        errno.errorcode[badsock])
-                Trace.trace(0,"DispatchingWorker get_request pre-recv error "+\
-                        repr(errno.errorcode[badsock]))
-            else:
-                pass
-
             # req is (string,address) where string has CRC
             req = self.socket.recvfrom(self.max_packet_size)
-            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            refused = 1
-            while badsock==errno.ECONNREFUSED and refused<25:
-                refused = refused+1
-                Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR get_request")
-                req = self.socket.recvfrom(self.max_packet_size)
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock != 0 :
-                self.enprint("DispatchingWorker get_request, post-recvfrom error:"+\
-                             repr(errno.errorcode[badsock]))
-                Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
-                     repr(errno.errorcode[badsock]))
-                Trace.trace(5,"}get_request"+repr(req))
-            #exec("request, inCRC="+req[0])
             request,inCRC = eval(req[0])
             # calculate CRC
             crc = ECRC.ECRC(request, 0)
@@ -342,49 +307,7 @@ class DispatchingWorker:
         Trace.trace(19,"{reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
         request_dict[self.current_id] = list
-        badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        refused = 1
-        while badsock==errno.ECONNREFUSED and refused<25:
-            refused = refused+1
-            Trace.trace(3,"ECONNREFUSED...retrying (reply_with_list)")
-            badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0:
-            Trace.trace(0,"reply_with_list pre-send error "+\
-                        repr(errno.errorcode[badsock]))
-            self.enprint("dispatching_worker reply_with_list, pre-sendto error: "+\
-                         repr(errno.errorcode[badsock]))
-        sent = 0
-        tries = 0
-        while sent == 0:
-            try:
-                self.socket.sendto(repr(list), self.reply_address)
-                badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                refused = 1
-                while badsock==errno.ECONNREFUSED and refused<25:
-                    refused = refused+1
-                    Trace.trace(3,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR reply_with_list")
-                    #self.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR reply_with_list")
-                    self.socket.sendto(repr(list), self.reply_address)
-                    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                if badsock != 0:
-                    Trace.trace(0,"reply_with_list post-send error "+\
-                                repr(errno.errorcode[badsock]))
-                    Trace.trace(19,"}reply_with_list number="+repr(self.client_number))
-                    tries = tries+1
-                    if badsock==errno.ECONNREFUSED and tries%25==25:
-                        self.enprint("dispatching_worker reply_with_list, post-sendto error: "+\
-                                     repr(errno.errorcode[badsock]))
-                else:
-                    sent = 1
-            except socket.error:
-                Trace.trace(0,"reply_with_list socket error "+\
-                            "add="+repr(self.reply_address)+\
-                            str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                self.enprint(repr(timeofday.tod())+\
-                          " reply_with_list socket error\n"+\
-                          repr(self.reply_address)+"\n"+str(sys.exc_info()[0])+"\n"+\
-	                  str(sys.exc_info()[1]))
-                time.sleep(3)
+        self.socket.sendto(repr(list), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child

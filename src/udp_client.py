@@ -4,7 +4,6 @@
 # system imports
 import socket
 import time
-import select
 import os
 import errno
 import exceptions
@@ -13,10 +12,10 @@ import sys
 
 # enstore imports
 import interface
-import timeofday
 import Trace
 import ECRC
 import generic_cs
+import cleanUDP
 
 TRANSFER_MAX=16384
 
@@ -24,9 +23,6 @@ TRANSFER_MAX=16384
 def try_a_port(host, port) :
     Trace.trace(20,'{try_a_port '+repr((host,port)))
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#	uncomment these lines to try clean UDP
-	import cleanUDP
 	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((host, port))
     except:
@@ -63,151 +59,41 @@ def empty_socket( sock ):
     xcountmax = 2      # retry count if select exception
     rcountalert = 10   # complain if we read too much
     while xcount < xcountmax:
-        try:
-            f = sock.fileno()
-            r, w, x = select.select([f],[],[f],0)
-            Trace.trace(20,'empty_socket select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
-            #generic_cs.enprint("empty socket "+repr(sock))
-	    #generic_cs.enprint(sock.__dict__, generic_cs.PRETTY_PRINT)
-	    #generic_cs.enprint(repr(f)+" "+repr(xcount)+" "+repr(r)+" "+\
-	    #                    repr(w)+" "+repr(x))
-
-            # exception mean trouble
-            if x:
-                xcount = xcount+1
-                Trace.trace(0, "empty_socket: exception on select to " +repr(f))
-                Trace.trace(0,"empty_socket"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-                #generic_cs.enprint("empty socket exception "+repr(xcount))
-	        #generic_cs.enprint(sock.__dict__, generic_cs.PRETTY_PRINT)
-	        #generic_cs.enprint(repr(r)+" "+repr(w)+" "+repr(x)+" "+\
-	        #                    str(sys.exc_info()[0])+\
-	        #                    " "+str(sys.exc_info()[1]))
-
-            elif r:
-                rcount = rcount+1
-                if rcount%rcountalert == 0:
-                    Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
-                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                refused = 1
-                while badsock==errno.ECONNREFUSED and refused<25:
-                    refused = refused+1
-                    Trace.trace(3,"ECONNREFUSED...retrying (empty_socket r:)")
-                    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                if badsock != 0:
-                    Trace.trace(0,"empty pre recv, clearout error "+\
-                                repr(errno.errorcode[badsock]))
+        r, w, x = cleanUDP.Select([sock],[],[sock],0)
+        Trace.trace(20,'empty_socket select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
+        if r:
+            rcount = rcount+1
+            if rcount%rcountalert == 0:
+                Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
                 reply , server = sock.recvfrom(TRANSFER_MAX)
                 Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
-                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                refused = 1
-                while badsock==errno.ECONNREFUSED and refused<25:
-                    refused = refused+1
-                    Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
-                    #generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
-                    reply , server = sock.recvfrom(TRANSFER_MAX)
-                    Trace.trace(10,"empty_socket read from "+repr(server)+":"+repr(reply))
-                    badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                if badsock != 0:
-                    Trace.trace(0,"empty post recv, clearout error"+\
-                                repr(errno.errorcode[badsock]))
-            else:
-                xcount = xcountmax # nothing to read - no more retries
-
-        except:
-            Trace.trace(0,'empty_socket clearout err'+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-            xcount = xcountmax # no more retries on unhandled exception
-
+	elif x or w :
+	    raise "imposible to get these set w/out [r]"
+        else:
+            xcount = xcountmax # nothing to read - no more retries
     return
+
 def send_socket( sock, message, address ):
-    badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(3,"ECONNREFUSED...retrying (send_socket)")
-        badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-    if badsock != 0:
-	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
-	generic_cs.enprint("udp_client send_socket, pre-sendto error: "+\
-	      repr(errno.errorcode[badsock]))
-    sent = 0
-    tries = 0
-    while sent == 0:
-	try:
-	    sock.sendto( message, address )
-            badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            refused = 1
-            while badsock==errno.ECONNREFUSED and refused<25:
-                refused = refused+1
-                Trace.trace(0,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
-		#generic_cs.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
-                sock.sendto( message, address )
-                badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock != 0:
-                Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
-                tries = tries+1
-                if badsock==errno.ECONNREFUSED and tries%25==25:
-                    generic_cs.enprint("udp_client send_socket, post-sendto "+\
-                                       repr(address)+" error: "+ \
-                                       repr(errno.errorcode[badsock]))
-            else:
-                sent = 1
-	except socket.error:
-	    Trace.trace(  0
-			, 'send_socket socket error  add='
-			  +repr(address)+str(sys.exc_info()[0])
-			  +str(sys.exc_info()[1]) )
-	    generic_cs.enprint(repr(timeofday.tod())+ \
-		  "send_socket socket error\n"+\
-		  message+"\n"+repr(address)+"\n"+\
-		  str(sys.exc_info()[0])+"\n"+str(sys.exc_info()[1]))
-	    time.sleep(3)		# arbitrary time - don't beat on NS
-    return
+    Trace.trace(20,'{send_socket')
+    return sock.sendto( message, address )
 
 def wait_rsp( sock, address, rcv_timeout ):
     # init return vals
     reply=''
     server=''
 
-    f = sock.fileno()
-    r, w, x = select.select( [f], [], [f], rcv_timeout )
+    r, w, x = cleanUDP.Select( [sock], [], [sock], rcv_timeout )
     Trace.trace(20,'wait_rsp select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
-
-    # exception mean trouble
-    if x:
+    if r:
+	reply , server = sock.recvfrom( TRANSFER_MAX )
+    elif x or w :
 	Trace.trace( 0, "send: exception on select after send to "
 		        +repr(address)+" "+repr(x) )
 	Trace.trace(0,"send"+str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 	generic_cs.enprint("UDPClient.send: exception on select after send to "+\
 	      repr(address)+" "+repr(x)+" "+str(sys.exc_info()[0])+" "+\
 	      str(sys.exc_info()[1]))
-
-    # something there - read it and see if we have response that
-    # matches the number we sent out
-    elif r:
-	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-        refused = 1
-        while badsock==errno.ECONNREFUSED and refused<25:
-            refused = refused+1
-            Trace.trace(3,"ECONNREFUSED...retrying (wait_rsp r:)")
-            badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-	if badsock != 0:
-	    Trace.trace( 0,"send pre recv"+repr(errno.errorcode[badsock]) )
-	    generic_cs.enprint("udp_client send, pre-recv error: "+\
-	                       repr(errno.errorcode[badsock]))
-	reply , server = sock.recvfrom( TRANSFER_MAX )
-	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-        refused = 1
-        while badsock==errno.ECONNREFUSED and refused<25:
-            refused = refused+1
-            Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
-            #generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
-            reply , server = sock.recvfrom( TRANSFER_MAX )
-            badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-	if badsock != 0:
-	    Trace.trace( 0,"send post recv"+repr(errno.errorcode[badsock]))
-	    generic_cs.enprint("udp_client send, post-recv error: "+ \
-	                       repr(errno.errorcode[badsock]))
-
+	raise "impossible to get these set w/out [r]"
     return reply, server
 
 def protocolize( self, text ):
@@ -240,7 +126,7 @@ def protocolize( self, text ):
 class UDPClient:
 
     def __init__(self, host="", port=0, socket=0):
-        Trace.trace(10,'__init__ udpclient '+repr((host,port,socket)))
+        Trace.trace(10,'{__init__ udpclient '+repr((host,port,socket)))
         if host == "":
             host, port, self.socket = get_client()
         else:
@@ -256,7 +142,7 @@ class UDPClient:
 	    self.pp = 1
 	except:
 	    self.pp = 0
-        Trace.trace(10,'{__init__ udpclient '+repr(self.ident))
+        Trace.trace(10,'}__init__ udpclient '+repr(self.ident))
 
     def __del__(self):
         # tell file clerk we're done - this allows it to delete our unique id in
@@ -293,7 +179,6 @@ class UDPClient:
 
         # make sure the socket is empty before we start
 	empty_socket( self.socket )
-
         # send the udp message until we get a response that it was sent
         number = "0"  # impossible "number"
         ntries = 0  
@@ -301,7 +186,8 @@ class UDPClient:
 	    send_socket( self.socket, message, address )
             ntries = ntries+1
             
-            # check for a response
+            # check for a response	
+
 	    reply , server = wait_rsp( self.socket, address, rcv_timeout )
 
 	    if reply != "":
@@ -368,6 +254,9 @@ class UDPClientInterface(interface.Interface):
     def __init__(self):
         Trace.trace(10,'__init__ ci')
         self.msg = "All dogs have fleas, but cats make you sick!"
+        self.verbose = 0           # no output yet
+	self.sendhost="localhost"
+	self.sendport=9998
         self.host, self.port, self.socket = get_client()
         interface.Interface.__init__(self)
 

@@ -23,11 +23,47 @@
 	This implementaion does nto handle all patterns of optional 
 	arguments.
 
+	cleanUDP.select() must be used instead of select.select()
 
 """
 import socket
 import Trace
 import errno
+import time
+import select
+
+def Select (R, W, X, timeout) :
+
+# we have an error under linux where we get an error, and
+# r and x are set, but there is no data. If the erro ris a spurrious erro, 
+# we must delete the object from all lists.
+#
+
+	Trace.trace (0, "{cleanUDP.Select")
+
+	dirty_x = []
+	while 1 :
+		t0 = time.time()
+		r, w, x = select.select(R, W, X, timeout)
+		timeout = timeout - (time.time() - t0)
+		timeout = max (0, timeout)
+		Trace.trace (1, "cleanUDP.Select: %s %s" % (x, dirty_x))
+
+		if x == dirty_x :
+			# all except FD's as the saem as not scrubbed
+			# previously.
+			Trace.trace (0, "}cleanUDP.Select")
+			return r, w, x
+		dirty_x = []
+		for obj in x :
+			try :
+				if not obj.scrub() :
+				        Trace.trace (0, "dirty cleanUDP object")
+					dirty_x.append(obj)		
+			except : 
+				Trace.trace (0, "non clean UDP object")
+				dirty_x.append(obj)
+
 
 class cleanUDP :
 
@@ -41,6 +77,14 @@ class cleanUDP :
 		self.socket = socket.socket(protocol, kind)
 		return
 	
+	def scrub(self) :
+		self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+		r, w, x = select.select([], [], [self], 0)
+		Trace.trace (20, "cleanUDP.scrub : %s %s %s" % (r, w, x))
+		if x :
+			return 0
+		return 1
+
 	def accept(self) : 
 		return self.socket.accept()
 	def bind(self, address) : 
@@ -72,7 +116,7 @@ class cleanUDP :
 			try:
 				return self.socket.recvfrom(bufsize)
 			except socket.error:
-				self.logerror("sendto", n)
+				self.logerror("recvfrom", n)
 		return self.socket.recvfrom(bufsize)
 
 
@@ -86,6 +130,7 @@ class cleanUDP :
 
 		for n in range(0, self.retry_max - 1) :
 			try:
+				Trace.trace (0, "about to sendto")
 				return self.socket.sendto(string, address)
 			except socket.error:
 				self.logerror("sendto", n)
@@ -112,28 +157,30 @@ class cleanUDP :
 			  self.previous_sendto_address)
 
 		Trace.trace(0, etext)
-		print (etext)
 		# self.enprint(etext)
 
 if __name__ == "__main__" :
 	sout = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
 	sout.bind(('localhost',303030))
 	# on linux, should see one retry from the following.
+
 	sout.sendto("all dogs have fleas", ('localhost', 303031))	
+	r, w, x = select.select([sout],[sout],[sout], 1.0)
+	if not x and not r and w:
+		print "expected select.select behavoir on non-linux" 
+	elif x and r and w:
+		print "expected select.select behavior on linux"
+	else:
+		print "***unexpected  behavior on _any_ platform"
+	r, w, x = Select([sout],[sout],[sout],1.0)
+
+	if not r and not x :
+		print "expected behavior"
+	else :
+		print "***unexpected behavior"
+
 	sout.sendto("all dogs have fleas", ('localhost', 303031))
 	sin = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
 	sin.bind(('localhost',303031))
-	sout.sendto("recv seem to work", ('localhost', 303031))
+	sout.sendto("Expected behavior", ('localhost', 303031))
 	print sin.recvfrom(1000)
-
-
-
-
-
-
-
-
-
-
-
-
