@@ -24,7 +24,8 @@ import volume_clerk_client
 # loop on rsh and dump rgang
 CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
 
-CMD2 = ">>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+# the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
+CMD2 = "|tee /dev/ttyS0>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
 
 
 
