@@ -12,14 +12,14 @@ for file in filelist[:]:
 
     working_revision = repository_revision = production_revision = '(none)'
     if os.path.isdir(file):
-        print file, "is a directory, ignoring"
+        print file, file,"is a directory, ignoring"
         filelist.remove(file)
         continue
     
     cvsinfo = os.popen('cvs status -v %s 2>/dev/null' % (file,)).readlines()
     L = len(cvsinfo)
     if not cvsinfo or L<6:
-        print "A Cannot parse cvs output", cvsinfo, L
+        print "A Cannot parse cvs output", file,cvsinfo, L
         sys.exit(1)
 
     if string.find(cvsinfo[4], "No revision control file\n") > 0:
@@ -27,10 +27,15 @@ for file in filelist[:]:
         filelist.remove(file)
         continue
 
-    if L<8:
+    if L<10:
         print "B Cannot parse cvs output", cvsinfo, L
         sys.exit(1)
         
+    if string.find(cvsinfo[1], 'Status: Up-to-date\n') < 0:
+        out_of_date = 1
+    else:
+        out_of_date = 0
+
     if string.find(cvsinfo[3], '   Working revision') != 0:
         print "Cannot find Working revision", cvsinfo
         sys.exit(1)
@@ -50,7 +55,7 @@ for file in filelist[:]:
     repository_revision = tokens[2]
         
     found = 0
-    for line in cvsinfo[5:L]:
+    for line in cvsinfo[10:L]:
         if string.find(line, "production") >= 0:
             tokens = string.split(line)
             if len(tokens) <3:
@@ -60,8 +65,8 @@ for file in filelist[:]:
             found = 1
             break
 
-    if repository_revision != production_revision or working_revision != production_revision :
-        print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision)
+    if repository_revision != production_revision or working_revision != production_revision or out_of_date:
+        print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision), cvsinfo[1]
     else:
         print '%s\t ok'%(file,)
         
