@@ -18,10 +18,10 @@ import Trace
 import pdb
 
 class VolumeClerkClient(generic_client.GenericClient,\
-                        backup_client.BackupClient) :
+                        backup_client.BackupClient):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
-                 port=interface.default_port()) :
+                 port=interface.default_port()):
         Trace.trace(10,'{__init__ csc='+repr(csc)+' list='+repr(list)+\
                     ' host='+repr(host)+' port='+repr(port))
         configuration_client.set_csc(self, csc, host, port, list)
@@ -300,15 +300,15 @@ class VolumeClerkClientInterface(interface.Interface):
                 self.print_addvol_args()
                 sys.exit(1)
         elif self.addvol:
-            if len(self.args) < 6 :
+            if len(self.args) < 6:
                 self.print_addvol_args()
                 sys.exit(1)
         elif self.delvol:
-            if len(self.args) < 1 :
+            if len(self.args) < 1:
                 self.print_delvol_args()
                 sys.exit(1)
         elif self.clrvol:
-            if len(self.args) < 1 :
+            if len(self.args) < 1:
                 self.print_clr_inhibit_args()
                 sys.exit(1)
         Trace.trace(16,'}parse_options')
