@@ -24,12 +24,12 @@
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
 <li><a href="#pcmd">1.1.4 pcmd: Enstore related <em>pnfs</em> commands</a>
 <li><a href="#volmaps">1.1.5 <em>Pnfs</em> Volume Maps</a>
-<li><a href="#encp">1.2 <i>Encp</i></a></li>
-<li><a href="#encp_options">1.2.1 <i>Encp</i> command line options</a></li>
+<li><a href="#encp">1.2 <em>Encp</em></a></li>
+<li><a href="#encp_options">1.2.1 <em>Encp</em> command line options</a></li>
 <li><a href="#encp_throttle">1.2.2 Throttling in <i>encp</i></a></li>
 <li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
-<li><a href="#encp_queue">1.2.4 Encp Transfer Lists</a>
-<li><a href="#encp_client">1.2.5 Encp Client Installation</a>
+<li><a href="#encp_queue">1.2.4 <em>Encp</em> Transfer Lists</a>
+<li><a href="#encp_client">1.2.5 <em>Encp</em> Client Installation</a>
 <li><a href="#servers">1.3 Enstore Servers</a>
 <li><a href="#servers_cmds">1.3.0.1 General Command Line Control of Servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
@@ -75,6 +75,7 @@
 <li><a href="#test_system">6 Test System</a>
 <li><a href="#ts_results">6.1 Test System Results</a>
 <li><a href="#interface">7 Interfaces and Integration</a>
+<li><a href="#d0req">8 D0 Requirements</a>
 
 </ul>
 
@@ -961,7 +962,7 @@ user deletes his entry in <em>pnfs</em>, we still have the duplicate entry and c
 
 <hr>
 <h2><a name="encp">
-1.2 ENCP
+1.2 <em>Encp</em>
 </h2>
 Reading and writing files means interacting with media.
 Most users will just want to get their data file and do their work. They do
@@ -1068,8 +1069,12 @@ QWAIT_TIME=0.023627
 TIME2NOW=0.888241
 STATUS=ok
 </pre>
-This output is easily parsable and provides information about input and output files, file size, volume label, drive used to read/write data, transfer time, file seek time,
-volume mount time, wait time in the request queue, operation completion status, total time sinse the invocation of encp till the end of the operation.
+
+This output is easily parsable and provides information about input and
+output files, file size, volume label, drive used to read/write data,
+transfer time, file seek time, volume mount time, wait time in the request
+queue, operation completion status, total time sinse the invocation of <em>encp</em>
+till the end of the operation.
 
 <h3><a name="encp_throttle">
 1.2.2 Throttling in <em>encp</em>
@@ -1199,7 +1204,7 @@ in the library manager queues and "M"
 signifies a active transfer at a <u>M</u>over.
 
 <h3><a name="encp_client">
-1.2.4 <em>Encp</em> Client Installation
+1.2.5 <em>Encp</em> Client Installation
 </h3>
 
 <em>Encp</em> is distributed via the Fermilab UPD mechanism. It is a static
@@ -1360,7 +1365,7 @@ functionality and specific command line interfaces.
 Enstore servers implement a common uniform interface.  Common parsing is used
 to determine command line options.  All servers support a set of general options
 as well as those specific in functionality.  Control of the servers is done via
-<i>ecmd</i>.  This command provides a general way of accessing the individual
+<em>ecmd</em>.  This command provides a general way of accessing the individual
 servers as well as the Enstore system as a whole.  Examples of using this command
 to accomplish this are given following the table of general options. <i>ecmd</i>
 recognizes the following server names when sending commands to the server:
@@ -1665,7 +1670,7 @@ relation between Library Managers and Movers is many to many, that is one
 Library Manger may have many Movers associated with it and, one Mover may have
 more than one Library Managers associated with it.
 
-Information about Library Managers is contained in the enstore configuration
+Information about Library Managers is contained in the Enstore configuration
 dictionary and is available to client via requests to the Configuration Server.
 Each Library Manager is presented in the configuration dictionary as follows:
 <pre>
@@ -2152,6 +2157,9 @@ be shared.  The Movers can be configured to do this easily.  And with some sligh
 changes, this is how we can guarantee resources to data acquisition.
 <p>
 
+
+DUPLICATE DATA SECTION NEEDED.
+
 <!-- ----------------------------------------------------->
 When the Mover starts up, the 'idle_mover' request/command is sent to each
 Library Manager configured and the responses from the Library Managers are
@@ -2554,6 +2562,7 @@ The media changer returns three status values:
 <li>The status returned by the underlying agent
 <li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GNEREAL_ERR
 <li>A text description returned by the underlying agent
+</ul>
 <p>
 The media changer supports the following requests:
 <ul>
@@ -3295,7 +3304,7 @@ and dispatching_worker.py which contain the classes UDPclient and DispatchingWor
 For example, a mover is a client of the media_changer; i.e., it sends mount and dismount requests
 to the media_changer and waits for replies.  The client and the server may run on the same or
 different machines and messages, that is requests and replies, are passed using the UDP network protocol.
-UDP is not a guaranteed reliable protocol but the enstore protocols, described later, implement reliability.
+UDP is not a guaranteed reliable protocol but the Enstore protocols, described later, implement reliability.
 
 <p>
 Generally, each server module has a corresponding client module that implements the client interface
@@ -3365,7 +3374,7 @@ same client id and time stamp and if it finds a match it resends the reply rathe
 <p>
 The request dictionary contains all replies.
 If it grows beyond a certain size (currently 1000 entries) then entries older
-than 10 minutes are deleted.
+than 30 minutes are deleted.
 <p>
 
 he scheme described so far rquires that servers handle one request at a time and that clients
@@ -4912,7 +4921,7 @@ tapes outside of Enstore and import them into the system, and to write tapes
 inside of Enstore and remove them from the system. In this way, for example,
 Enstore can be used as a kind of tape copy facility (one that always copies from tape to disk to tape).
 
-<p> What follows are draft design notions, importing and exporting are to be
+<p> What follows are draft design notions, importing and exporting are 
 not yet fully implemented.
 
 <h3><a name="volexp">
@@ -5016,7 +5025,8 @@ to fit into the Enstore name space.
 
 <ul>
  <li> Files that are accessed together should likely be put on the same tape. 
- <li> Most likely, the same file should not be placed on more than one tape. 
+ <li> Most likely, the same file should not be placed on more than one
+      tape. Duplicate data files (very important data) is handled differently.
  <li> Files must definitely not span tapes. 
  <li> If a likely order of future access is known, files should be put on 
 	tape in that order.
@@ -5064,7 +5074,10 @@ determine the metadata and this defeats the purpose if importing volumes!
 
 <ul>
  <li>Identify the files you want to put on a tape.
- <li>Put an optically bar-coded tape in the tape drive.
+ <li>Put an optically bar-coded tape in the tape drive. Sheets of bar codes
+      could be sent to the remote site or actual pre-labled tapes could be
+      used. The important point is that the robot will be able to recognize
+      the tapes.
  <li>Using a tool we provide:
  <ul>
    <li>Place the files on the tape.
@@ -5302,7 +5315,7 @@ that will most likely be used in conjunction with the EMASS robot.
 <tr>
 <td> &nbsp;
 <td> Mover
-<td> User's ENCP
+<td> User's <em>Encp</em>
 <tr>
 <td> no crc
 <td> 5-10%
@@ -5394,8 +5407,7 @@ part of the software project.
 
 <p> Interfacing to an experiment means placing Enstore in a larger
 system context. 
-
-<p> From the point of view of Enstore with network attached tapes, there is an
+ From the point of view of Enstore with network attached tapes, there is an
 Enstore system which interfaces to the rest of D0 on at the NIC-card cable
 connector. In addition to the interfaces to the user and administrators (which
 are intrinsic to Enstore software), there are other miscellaneous interface
@@ -5462,60 +5474,51 @@ constraints:
 </TABLE></center>
 
 
-<h2>Integration for D0.</h2>
-
-
-
-<h3> Salient entities for D0</h3>
-
 <p>All production hardware is to come from the D0 Budget, requisitioned by
-D0. This includes the Enstore system, tape drives and other peripherals.</p>
-
-<p>D0 have a baseline system design. From the point of view of the storage
-management project, The main features the D0 system are:    </p>
+D0. This includes the Enstore system, tape drives and other peripherals.
+D0 have a baseline system design. From the point of view of the storage
+management project, The main features the D0 system are:    
 
 <ul>
  <li>IP Based connectivity.
 
- <li>A few SMP boxes back-ending their D.A. at the D0 assembly building.
+ <li>A few SMP boxes back-ending their DA at the D0 assembly building.
 
  <li>An analysis facility in FCC consisting of a large SMP box and
  smaller SMP boxes.
 
- <li>Many hundred farm nodes, most likely an ensemble of small P.C.'s or
+ <li>Many hundred farm nodes, most likely an ensemble of small PC's or
  economical RISC work stations provided by the lowest bidder.  Whether there
  are "I/O nodes" associated with the farm is  TBD.
 
- <li>An Enstore system with about 8-10 mover nodes.
+ <li>An Enstore system with about 8-10 mover nodes, and sufficient other
+      nodes to run the rest of the system.
 </ul>
-
-<h3>Network system design and integration issues</h3>
 
 <p> Given the discussion above, the main interface issues with D0 are:
 
 <ul>
- <li> Specification  and design of a data Lan
+ <li> Specification  and design of a data lan.
  <li> The number and type of NIC cards on each computer.
  <li> Tuning the features in Enstore for the significant multiple NIC card
       machines.
 </ul>
-
 
 <p> To keep transfers efficient, It is important to have a network design
 which avoids congestion.  
 
 <p> It is important to characterize the rate achievable on a NIC card, and the
 amount of CPU required to drive NIC cards.  Typically, there is less CPU/BYTE
-when writing to the network, then when read from it. One vendor reports, fro
+when writing to the network, then when read from it. One vendor reports, for
 CPU's available in late 1998:
 
 <pre>
-	10-11 MB/sec on a 100mbps ethernet NIC
-	30-35 MB/sec on a Gbit ethernet card (standard MTU)
-	70-80 MB/sec on a Gbit ethernet card (jumbo MTU)
+	10-11 MB/S on a 100 mbps ethernet NIC
+	30-35 MB/S on a Gbit ethernet card (standard MTU)
+	70-80 MB/S on a Gbit ethernet card (jumbo MTU)
 	
-	30-35 MB/sec/CPU   standard ethernet frames
-	78    MB/sec/CPU   "jumbo" (~9000 byte) frames.
+	30-35 MB/S/CPU   standard ethernet frames
+	78    MB/S/CPU   "jumbo" (~9000 byte) frames.
 					(n.b. GB ethernet here...)
 </pre>
 
@@ -5525,19 +5528,18 @@ this is best effected by fewer, fatter pipes.  Ideally, there is little packet
 loss and traffic is regulated by the TCP window.  If Jumbo frames were
 acceptable not generally, but only between the Enstore system and the D0
 analysis machine, statistical load balancing over four GB NICs consuming two
-CPUS could be could easily sustain the (imagined) 150 MB/sec peak tape rate
+CPUS could be could easily sustain the (imagined) 150 MB/S peak tape rate
 for D0, with very little congestion.
 
 <p>The problem becomes more difficult as the throughput of a NIC card
 decreases. The basic unit of transfer is a stream carrying the full tape
-rate.  (i.e 5MB/sec for AIT-2 + some allowance for expansion).  It is in fact,
+rate.  (i.e 5 MB/Sfor AIT-2 + some allowance for expansion).  It is in fact,
 a little questionable whether two such tape streams should be multiplexed onto
-a single 100MBPS nic card -- Congestion, slow start and other rate-inhibiting
+a single 100 MBPS NIC card -- Congestion, slow start and other rate-inhibiting
 mechanisms may be invoked.
 
 
-
-<h3>Other system design and integration issues</h3>
+<p>Other system design and integration issues<p>
 
 <ul>
 <li> A specific site for the Enstore installation has not been identified.
@@ -5551,9 +5553,385 @@ mechanisms may be invoked.
 
 
 
+<hr>
+<h2><a name="d0req">
+8 D0 Requirements
+</h2>
 
+<H3>Summary of D0 Functional Specifications</h3>
+
+Below is a list of functional specifications on Enstore generated by D0.
+For the most part, the product complies in software features. Execptions
+are noted. The operational procedures (Section 6)are mostly to be constructed.
+<H3>
+The Functionality we expect of a Storage Management Layer</H3>
+There are 6 major functional areas.&nbsp; They are described in more detail
+and broken down further below.
+<UL>
+<LI>
+Cataloging and
+Database Functions for Files and Tape Volumes</LI>
+
+<LI>
+Specification
+and Control of&nbsp; Tape Volume Storage Locations</LI>
+
+<LI>
+Control of various
+parameters which govern the functional behavior and performance of the
+system</LI>
+
+<LI>
+Management of
+the robot resources (including error recovery and tracking)</LI>
+
+<LI>
+Movement of files
+between users machine/local disk and tape in robot.</LI>
+
+<LI>
+Operational procedures
+to run and manage the robot, the data stored in the system, the tape drives,&nbsp;
+and the "databases"</LI>
+</UL>
+
+<H3>
+1) Cataloging and Database Functions</H3>
+
+
+<H3>
+1.1) Maintenance of the primary "database" of file
+to tape volume information</H3>
+
+<UL>
+<LI>
+reliable and backed up
+"database" of each&nbsp; volume and file. the volume location of each file,&nbsp;
+and the position within each volume for each file</LI>
+
+<p> <b><it> PNFS backup issues will be treated in DESY visit this February </it></b></P>
+
+<LI>
+assurance that all movement
+of files/deletion of files is correctly reflected in the "database"</LI>
+
+<LI>
+notation of volume/file
+status (e.g. if unreadable or errors)</LI>
+
+<LI>
+tracking of the tape volume format</LI>
+</UL>
+
+
+
+<H3>
+1.2) Provide access to File namespace
+and Volume Information</H3>
+
+<UL>
+<LI>
+tools for users to easily
+and intuitively view all files in the system along with other commonly
+needed information about the file - such as owner, 'grouping', date written,
+etc.</LI>
+
+<LI>
+tools for users to easily
+and intuitively view all volumes in the system</LI>
+
+<LI>
+tools for viewing file/volume
+related information such as all files on a volume</LI>
+
+<LI>
+tools for exporting all,&nbsp;
+or recently changed parts,&nbsp; of the file and volume database to the
+data access layer (for performance reasons) or to remote institutions</LI>
+</UL>
+
+
+<H3>
+2) Specification and control of Tape storage locations</H3>
+
+<UL>
+<LI>
+ability
+to handle several distinct robot storage locations</LI>
+
+<LI>
+ability
+to treat a single physical robot as multiple logical storage locations</LI>
+
+<LI>
+ability
+to handle various physical&nbsp; 'shelves' as possible storage locations</LI>
+
+<LI>
+ability
+to migrate tape volumes between storage locations</LI>
+
+<LI>
+ability
+to import volumes into storage locations (given sufficient meta-data in
+an acceptable format)</LI>
+
+<LI>
+ability
+to export volumes (with their associate meta-data)</LI>
+
+<LI>
+possibly
+implementation of quota system for particular user/group within a storage
+location</LI>
+</UL>
+
+<H3>
+3) Control of parameters which govern the functional
+behavior of the system</H3>
+
+
+<H3>
+3.1) Control of parameters which govern allocation
+and use of tape drives</H3>
+
+<UL>
+<LI>
+possibly specicification of preference
+or affinity between certain access modes, users&nbsp; or groups, and certain
+subsets or classes of physical tape drives</LI>
+<p> <b><it> Cannot do this right now, requires hook in Library Manager </it></b></P>
+</UL>
+
+
+<H3>
+3.2) Control of parameters which govern how files
+are written to tape</H3>
+
+<UL>
+<LI>
+specification of "groupings" or File
+Families for files</LI>
+
+<LI>
+specification of "width" for a grouping
+- ie number of tapes allowed to be written in //</LI>
+
+<LI>
+possibly specification of a list of
+files to be treated logically as one 'work unit'</LI>
+
+<LI>
+specification of&nbsp; "append to tapes"
+policy</LI>
+
+<LI>
+specification of file wrappering format</LI>
+
+<LI>
+associaton of tape volumes to a particular
+file family and tape library</LI>
+</UL>
+
+<H3>
+<B>3.3) Control of parameters which govern how files
+are read from tape</B></H3>
+
+<UL>
+<LI>
+specification of error/retry behavior</LI>
+<p> <b><it> Cannot do this dynamically, have static retry behavior, and will makr this comply to D0 needs. </it></b></P>
+</UL>
+<H3>
+<B>3.4) Control of parameters which govern</B> <B>access
+to files and volumes</B></H3>
+
+<UL>
+<LI>
+access control based on user/group
+for each file and each file family</LI>
+</UL>
+
+<H3>
+<B>3.5) Control of parameters which govern network
+routing between storage system movers and client machines</B></H3>
+
+<UL>
+<LI>
+ability to choose optimal path to load
+balance in the case of multiple network interfaces on a single machine</LI>
+</UL>
+
+<H3>
+<B>3.6) Ability to set defaults for many/most of
+the above parameters</B></H3>
+
+<UL>
+<LI>
+storing of default values to be used
+for all transfers/work done for</LI>
+
+<UL>
+<LI>
+a particular user/group</LI>
+
+<LI>
+a particular file family</LI>
+
+<LI>
+a particular storage location</LI>
+
+<LI>
+? possibly others</LI>
+</UL>
+</UL>
+
+
+<H3>
+4) Management of the robot resources (including error
+recovery and tracking)</H3>
+
+<UL>
+<LI>
+Maintenance of a queue of work to do
+in case of excess demand on the robot or on the tape drives</LI>
+
+<LI>
+Ability to specify policies governing
+the ordering and manipulation of that queue of work, and therefore the
+delay seen by the user, including (but not limited to)</LI>
+
+<UL>
+<LI>
+specification of a priority for all
+work requested</LI>
+
+<LI>
+specification of a priority increment
+and delta time in order to implement a priority boost/aging algorithm (or
+equivalent mechanisms)</LI>
+
+<LI>
+specification of&nbsp; policy for dismounting
+of tapes after work completed</LI>
+
+<LI>
+other possible parameters to be decided
+based on tests/tuning of system</LI>
+</UL>
+
+<LI>
+Cleanup of work queue in case of errors
+and cancelled requesting processes</LI>
+
+<LI>
+Allocation of tape drives to units
+of work in the queue</LI>
+
+<LI>
+Retry of errored file reads/writes
+up to specified maximum</LI>
+
+<LI>
+Repeat attempts at failed work using
+alternate tape drive resources</LI>
+
+<LI>
+Notation and tracking of all work done,
+all errors encountered, all retries performed</LI>
+<p> <b><it> Does does not track reties in a user-visible way, except that the delay is apparent. </it></b></P>
+</UL>
+
+
+<H3>
+<B>5) Movement of Files&nbsp;
+between users machine/local disk and tape in robot.</B></H3>
+
+<UL>
+<LI>
+ability
+to transfer files from any network-connected machine to/from tape drive
+in robot</LI>
+
+<LI>
+ability
+to transfer files reliably and with error detection, and correction by
+retry</LI>
+
+<LI>
+ability
+to transfer files at > N% of raw tape bandwidth. N is probably about 50.</LI>
+
+<LI>
+nothing
+done to exclude the possibility of adding an intermediate disk cache layer
+to rate adjust movement of data from tape drive to end user data sink -
+should that become necessary</LI>
+
+<LI>
+nothing
+done to exclude the possibility of cooperation with the data access layer
+as a distributed disk cache of recently requested data</LI>
+</UL>
+
+<H3>
+6) Operational procedures to run and manage the robot,
+tape drives and "databases"</H3>
+
+
+<H3>
+6.1) Robot and Tape Drive Hardware</H3>
+
+
+<UL>
+<LI>
+Well defined and safe procedures for
+dealing with repair and maintenance of the robot itself</LI>
+
+<LI>
+Procedures for monitoring the status
+of&nbsp; tape drives and for replacing faulty drives with drives which
+have been checked and tested through another well-defined process.</LI>
+</UL>
+
+<H3>
+6.2) Operator procedures for import/export of batches
+of tapes</H3>
+
+<UL>
+<LI>
+Interface between Storage Management
+system and Operator work/console system</LI>
+
+<LI>
+Definition of policies for executing
+batch imports/exports of tape volumes</LI>
+</UL>
+
+<H3>
+6.3) Quality assurance procedures to assure integrity
+of the data and metadata</H3>
+
+<UL>
+<LI>
+Routine backup of "database"</LI>
+
+<LI>
+Maintenance of a water-tight redo log
+of all transaction to be used in case of errors</LI>
+
+<LI>
+Recovery procedures in place, tested
+and executed in case of failures</LI>
+
+<LI>
+Ability to recover files and data on
+tape in case of complete and catastrophic loss of all "databases"</LI>
+
+<LI>
+Routine checks on readability of sample
+of tapes - maintenance of statistics</LI>
+</UL>
 
 </body>
 </html>
-
-
