@@ -214,7 +214,7 @@ def generate_unique_msg_id():
 def generate_unique_id():
     global _counter
     thishost = hostaddr.gethostinfo()[0]
-    ret = "%s-%d-%d-%d" % (thishost, int(time.time()),_counter, os.getpid())
+    ret = "%s-%d-%d-%d" % (thishost, int(time.time()), os.getpid(), _counter)
     _counter = _counter + 1
     return ret
 
@@ -1283,9 +1283,10 @@ def open_data_socket(mover_addr, interface_ip):
 
     try:
         data_path_socket.bind((interface_ip, 0))
-        Trace.log(e_errors.INFO, "bind %s" % (interface_ip,))
+        #Trace.log(e_errors.INFO, "bind %s" % (interface_ip,))
     except socket.error, msg:
-        Trace.log(e_errors.ERROR, "bind: %s %s" % (interface_ip, msg))
+        raise socket.error, msg
+        #Trace.log(e_errors.ERROR, "bind: %s %s" % (interface_ip, msg))
         
 
     try:
@@ -1371,8 +1372,13 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             #Since an error occured, just return it.
             return None, None, ticket
 
-        Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (ROUTING)")
-        Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
+        if config and config.get('interface', None):
+            Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (ROUTING)")
+            Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
+            Trace.log(e_errors.INFO,
+                      "Received routing ticket from %s for transfer %s." % \
+                      (ticket.get('mover', {}).get('name', "Unknown"),
+                       ticket.get('unique_id', "Unknown")))
 
         #Attempt to get the control socket connected with the mover.
         try:
@@ -1420,7 +1426,15 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
         Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL)")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-
+        Trace.log(e_errors.INFO,
+                  "Received callback ticket from mover %s for transfer %s." % \
+                  (ticket.get('mover', {}).get('name', "Unknown"),
+                   ticket.get('unique_id', "Unknown")))
+        Trace.log(e_errors.INFO,
+                  "Control socket %s is connected to %s. " %
+                  (control_socket.getsockname(),
+                   control_socket.getpeername()))
+        
         #verify that the id is one that we are excpeting and not one that got
         # lost in the ether.
         for i in range(0, len(work_tickets)):
@@ -1472,6 +1486,11 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             
             #Since an error occured, just return it.
             return None, None, ticket
+
+        Trace.log(e_errors.INFO,
+                  "Data socket %s is connected to %s. " %
+                  (data_path_socket.getsockname(),
+                   data_path_socket.getpeername()))
 
         #We need to specifiy which interface was used on the encp side.
         ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
@@ -1568,6 +1587,8 @@ def receive_final_dialog(control_socket):
     
     try:
         done_ticket = callback.read_tcp_obj(control_socket)
+        Trace.log(e_errors.INFO, "Received final dialog for %s." %
+                  done_ticket.get('unique_id', "Unknown"))
     except e_errors.TCP_EXCEPTION, msg:
         done_ticket = {'status':(e_errors.TCP_EXCEPTION,
                                  msg)}
@@ -2137,7 +2158,7 @@ def calculate_rate(done_ticket, tinfo):
                      "drive_id=%s drive_sn=%s drive_vendor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
                      "'driver' : '%s', 'storage_group':'%s', " \
-                     "'encp_ip': '%s'}"
+                     "'encp_ip': '%s', 'unique_id': '%s'}"
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
@@ -2176,7 +2197,8 @@ def calculate_rate(done_ticket, tinfo):
 					       done_ticket["mover"]['host']),
                       done_ticket["mover"]["driver"],
                       sg,
-                      done_ticket["encp_ip"])
+                      done_ticket["encp_ip"],
+                      done_ticket['unique_id'])
         
         Trace.message(DONE_LEVEL, print_format % print_values)
 
