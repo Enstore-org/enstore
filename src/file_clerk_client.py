@@ -7,24 +7,40 @@ import string
 
 # enstore imports
 import configuration_client
+import generic_client_server
 import generic_client
 import backup_client
 import udp_client
 import db
 import callback
-import interface
 import Trace
 
-class FileClerkClient(generic_client.GenericClient, \
+class FileClerkClient(generic_client_server.GenericClientServer, \
+                      generic_client.GenericClient, \
                       backup_client.BackupClient):
 
-    def __init__(self, csc=0, list=0, host=interface.default_host(), \
-                 port=interface.default_port()):
+    def __init__(self, csc=[], \
+                 host=generic_client_server.default_host(), \
+                 port=generic_client_server.default_port()):
         # we always need to be talking to our configuration server
         Trace.trace(10,'{__init__')
-        configuration_client.set_csc(self, csc, host, port, list)
+        self.config_list = 0
+        self.doalive = 0
+        self.dolist = 0
+        self.bfid = 0
+        self.bfids = 0
+        self.backup=0
+        configuration_client.set_csc(self, csc, host, port)
         self.u = udp_client.UDPClient()
         Trace.trace(10,'}__init')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16,"{}options")
+        return generic_client_server.GenericClientServer.config_options(self)+\
+               generic_client_server.GenericClientServer.list_options(self)  +\
+               ["config_list","bfids","bfid=","alive","backup"] +\
+               generic_client_server.GenericClientServer.options(self)
 
     def send (self, ticket):
         Trace.trace(12,"{send"+repr(ticket))
@@ -52,9 +68,9 @@ class FileClerkClient(generic_client.GenericClient, \
         Trace.trace(16,"{get_bfids")
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
+	uinfo = {"callback_addr" : (host, port)}
         ticket = {"work"               : "get_bfids",
-                  "user_callback_port" : port,
-                  "user_callback_host" : host,
+                  "user_info"          : uinfo,
                   "unique_id"          : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
@@ -125,60 +141,35 @@ class FileClerkClient(generic_client.GenericClient, \
         Trace.trace(10,"}bfid_info"+repr(r))
         return r
 
-class FileClerkClientInterface(interface.Interface):
-
-    def __init__(self):
-        Trace.trace(10,'{fci.__init__')
-        # fill in the defaults for the possible options
-        self.config_list = 0
-    	self.bfids = 0
-  	self.bfid = 0
-        self.alive = 0
-    	self.backup = 0
-        interface.Interface.__init__(self)
-
-        # now parse the options
-        self.parse_options()
-        Trace.trace(10,'}fci.__init')
-
-    # define the command line options that are valid
-    def options(self):
-        Trace.trace(16,"{}options")
-        return self.config_options()+self.list_options()  +\
-	       ["config_list","bfids","bfid=","alive","backup"] +\
-	       self.help_options()
-
-
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     import pprint
     Trace.init("FC client")
     Trace.trace(1,"fcc called with args "+repr(sys.argv))
 
-    # fill in interface
-    intf = FileClerkClientInterface()
+    # fill in defaults
+    fcc = FileClerkClient()
 
-    # now get a file clerk client
-    fcc = FileClerkClient(0, intf.config_list, intf.config_host, \
-                          intf.config_port)
+    # see what the user has specified. bomb out if wrong options specified
+    fcc.parse_options()
+    fcc.csc.connect()
 
-    if intf.alive:
+    if fcc.doalive:
         ticket = fcc.alive()
 
-    elif intf.backup:
+    elif fcc.backup:
         ticket = fcc.start_backup()
         db.do_backup("file")
         ticket = fcc.stop_backup()
 
-    elif intf.bfids:
+    elif fcc.bfids:
         ticket = fcc.get_bfids()
 
-    elif intf.bfid:
+    elif fcc.bfid:
         ticket = fcc.bfid_info()
 
     if ticket['status'] == 'ok':
-        if intf.list:
+        if fcc.dolist:
             pprint.pprint(ticket)
         Trace.trace(1,"fcc exit ok")
         sys.exit(0)
