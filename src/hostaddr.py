@@ -156,7 +156,7 @@ def interface_name(ip):
         interface=None
 
         #a regular expression to match an IP address in dotted-quad format
-        ip_re = re.compile(r'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)')
+        ip_re = re.compile('([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)')
         for line in text:
             if not line:
                 interface=None
