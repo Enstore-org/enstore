@@ -11,8 +11,8 @@ olddbs:
 		( cd $$d; $$ENSTORE_DIR/test/kickoff & ); \
 	done
 
-	echo "Tests are running. Do a    killall -9 longtest    to stop"
-	echo "   It takes a bit for them to die off"
+	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
+	@ echo "   It takes a bit for them to die off"
 
 
 newdbs:
@@ -53,8 +53,8 @@ newdbs:
 			$$ENSTORE_DIR/test/kickoff & ); \
 	done
 
-	echo "Tests are running. Do a    killall -9 longtest    to stop"
-	echo "   It takes a bit for them to die off"
+	@ echo "Tests are running. Do a    killall -9 longtest    to stop"
+	@ echo "   It takes a bit for them to die off"
 
 clean:
 	- killall -9 longtest
