@@ -19,7 +19,12 @@ import traceback
 import select
 import signal
 import random
-import fcntl, FCNTL
+if sys.version_info < (2, 2, 0):
+    import fcntl, FCNTL
+    fcntl.F_GETFL = FCNTL.F_GETFL
+    fcntl.F_SETFL = FCNTL.F_SETFL
+else: #FCNTL is depricated in python 2.2 and later.
+    import fcntl
 import math
 import exceptions
 import re
@@ -1462,8 +1467,8 @@ def open_data_socket(mover_addr, interface_ip):
         raise socket.error, msg
 
     #Put the socket into non-blocking mode.
-    flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
-    fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
+    flags = fcntl.fcntl(data_path_socket.fileno(), fcntl.F_GETFL)
+    fcntl.fcntl(data_path_socket.fileno(), fcntl.F_SETFL,
                 flags | os.O_NONBLOCK)
 
     try:
@@ -1504,7 +1509,7 @@ def open_data_socket(mover_addr, interface_ip):
         raise socket.error, (rtn, os.strerror(rtn))
 
     #Restore flag values to blocking mode.
-    fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL, flags)
+    fcntl.fcntl(data_path_socket.fileno(), fcntl.F_SETFL, flags)
 
     return data_path_socket
 

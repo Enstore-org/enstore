@@ -11,8 +11,12 @@ import sys
 import socket
 import signal
 import string
-import fcntl
-import FCNTL
+if sys.version_info < (2, 2, 0):
+    import fcntl, FCNTL
+    fcntl.F_SETFD = FCNTL.F_SETFD
+    fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
+else: #FCNTL is depricated in python 2.2 and later.
+    import fcntl
 import copy
 import types
 import rexec
@@ -80,8 +84,8 @@ class UDPServer:
         self.rexec = rexec.RExec()
         
         # set this socket to be closed in case of an exec
-        fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD,
-                    FCNTL.FD_CLOEXEC)
+        fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD,
+                    fcntl.FD_CLOEXEC)
 
     def __del__(self):
         self.server_socket.close()
