@@ -481,11 +481,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+\
-                   ["clear=", "backup", "vols","next","vol=","check=","add=",
-                    "delete=","new_library=","read_only=",
-                    "no_access=", "decr_file_count=","force",
-                    "restore=", "all","destroy=", "modify="]
+            return self.client_options()+[
+                "clear=", "backup", "vols","next","vol=","check=","add=",
+                "delete=","new-library=","read-only=",
+                "no-access=", "decr-file-count=","force",
+                "restore=", "all","destroy=", "modify="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -504,7 +504,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 sys.exit(1)
 
     def print_new_library_args(self):
-        print "   new_library arguments: volume_name"
+        print "   new-library arguments: volume_name"
 
     def print_add_args(self):
         print "   add arguments: volume_name library storage_group file_family wrapper"\

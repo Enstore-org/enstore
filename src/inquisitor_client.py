@@ -163,14 +163,14 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options() +\
-                   ["interval=", "get_interval=", "reset_interval=",
-                    "inq_timeout=", "get_inq_timeout", "reset_inq_timeout",
-                    "update=", "dump", "update_and_exit",
-                    "refresh=", "get_refresh", "max_encp_lines=",
-                    "get_max_encp_lines", "plot", "logfile_dir=",
-                    "start_time=", "stop_time=", "media_changer=", "keep",
-                    "keep_dir=", "output_dir="]
+            return self.client_options() +[
+                "interval=", "get-interval=", "reset-interval=",
+                "inq-timeout=", "get-inq-timeout", "reset-inq-timeout",
+                "update=", "dump", "update-and-exit",
+                "refresh=", "get-refresh", "max-encp-lines=",
+                "get-max-encp-lines", "plot", "logfile-dir=",
+                "start-time=", "stop-time=", "media-changer=", "keep",
+                "keep-dir=", "output-dir="]
 
 # this is where the work is actually done
 def do_work(intf):

@@ -133,9 +133,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+\
-                   ["max_work=","get_work","import",
-                    "export","mount","dismount"]
+            return self.client_options()+[
+                "max-work=","get-work","import",
+                "export","mount","dismount"]
     #  define our specific help
     def parameters(self):
         return "media_changer"
@@ -195,8 +195,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        #print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
-        #print "        --get_work          List operations in progress"
+        #print "        --max-work=N        Max simultaneous operations allowed (may be 0)"
+        #print "        --get-work          List operations in progress"
         #print "        --import insertNewLib [IOarea]"
         #print "        --export media_type volume1 [volume2 ...]"
         

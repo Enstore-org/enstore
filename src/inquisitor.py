@@ -1292,9 +1292,8 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 
     # define the command line options that are valid
     def options(self):
-	return generic_server.GenericServerInterface.options(self)+\
-	       ["html_file=","inq_timeout=", "max_encp_lines=", "refresh="]+\
-	       self.alive_rcv_options()
+	return generic_server.GenericServerInterface.options(self)+[
+            "html-file=","inq-timeout=", "max-encp-lines=", "refresh="] + self.alive_rcv_options()
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))

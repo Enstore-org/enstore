@@ -112,11 +112,10 @@ class UserOptions(GenericUserOptions):
 
     server_options = {
         "file" : ["bfid=", "restore=", "list=", "recursive"],
-        "library" : ["priority=", "delete_work=", "get_queue"],
-        "volume" : ["add=", "delete=", "new_library=", "no_access=",
-                    "read_only=", "restore=", "update=", "vol="],
-	"monitor" : []
-        }
+        "library" : ["priority=", "delete-work=", "get_queue"],
+        "volume" : ["add=", "delete=", "new-library=", "no-access=",
+                    "read-only=", "restore=", "update=", "vol="],
+        "monitor" : [] }
     server_intfs = {}
 
     # get a new server interface and store it to use later if needed
@@ -258,19 +257,27 @@ class EnstoreInterface(UserOptions):
         else:
             intf.print_usage_line()
 
+    def get_usage_line(self, server, intf):
+        if self.user_mode:
+            # only print the options we support
+            return intf.get_usage_line(self.get_valid_options(server))
+        else:
+            return intf.get_usage_line()
+            
+            
     def print_help(self):
         cmd = "enstore"
         if not self.user_mode:
             call_function("pnfsa", "")
             print "\n%s start   [--just server --ping --asynch --nocheck]"%(cmd,)
-            print   "%s stop    [--just server --xterm server]"%(cmd,)
-            print   "%s restart [--just server --xterm server]"%(cmd,)
-            print   "%s ping    [timeout_seconds]"%(cmd,)
-            print   "%s qping   [timeout_seconds]"%(cmd,)
-            print   "%s ps                 (list enstore related processes)"%(cmd,)
+            print "%s stop    [--just server --xterm server]"%(cmd,)
+            print "%s restart [--just server --xterm server]"%(cmd,)
+            print "%s ping    [timeout-seconds]"%(cmd,)
+            print "%s qping   [timeout-seconds]"%(cmd,)
+            print "%s ps                 (list enstore related processes)"%(cmd,)
             print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%(cmd,)
-            print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%(cmd,)
-            print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%(cmd,)
+            print "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%(cmd,)
+            print "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%(cmd,)
             print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%(cmd,)
             print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%(cmd,)
         else:
@@ -279,10 +286,11 @@ class EnstoreInterface(UserOptions):
         servers = self.get_valid_servers()
         for server in servers:
             # print the usage line for each server
+            print
             print "%s %s "%(cmd, server),
             intf = self.get_server_intf(server, 0)
-            if not intf == None:
-                self.print_usage_line(server, intf)
+            if intf:
+                print self.get_usage_line(server, intf),
             print " "
 
 class Enstore(EnstoreInterface):

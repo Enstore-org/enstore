@@ -504,9 +504,8 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+\
-                   ["message=", "get_logfile_name", "get_last_logfile_name",
-		    "get_logfiles="]
+            return self.client_options()+[
+                "message=", "get-logfile-name", "get-last-logfile-name","get-logfiles="]
 
 
     """ 

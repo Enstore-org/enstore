@@ -228,7 +228,7 @@ class LoggerInterface(generic_server.GenericServerInterface):
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
-	       ["config_file=", "test"]
+	       ["config-file=", "test"]
 
 
 if __name__ == "__main__" :

@@ -31,7 +31,7 @@ class SaagInterface(generic_client.GenericClientInterface):
 	generic_client.GenericClientInterface.__init__(self)
 
     def options(self):
-	return self.help_options() + ["html_gen_host="]
+	return self.help_options() + ["html-gen-host="]
   
 def do_work(intf):
     # we do not want anything printed out

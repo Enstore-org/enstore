@@ -229,12 +229,12 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+\
-                   ["get_work", "get_suspect_vols",
-                    "delete_work=","priority=",
-                    "poll", "get_queue=","host=",
-                    "start_draining=", "stop_draining", "status", "vols",
-                    "storage_groups", "rm_suspect_vol=","rm_active_vol="]
+            return self.client_options()+[
+                "get-work", "get-suspect-vols",
+                "delete-work=","priority=",
+                "poll", "get-queue=","host=",
+                "start-draining=", "stop-draining", "status", "vols",
+                "storage-groups", "rm-suspect-vol=","rm-active-vol="]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -261,7 +261,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 
 def do_work(intf):
     # get a library manager client
-    print "DO WORK: name=", intf.name
     lmc = LibraryManagerClient((intf.config_host, intf.config_port), intf.name)
     Trace.init(lmc.get_name(lmc.log_name))
 

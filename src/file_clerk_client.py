@@ -244,7 +244,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         else:
             return self.client_options()+[
                 "bfids","bfid=","deleted=","list=","backup",
-                "get_crcs=","set_crcs=",
+                "get-crcs=","set-crcs=",
                 "restore=", "recursive"]
             
 
