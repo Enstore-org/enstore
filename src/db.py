@@ -222,6 +222,7 @@ class Index:
 	# check the consistency of index
 	def check(self):
 		# meaningless if there is no primary db
+		# don't test primary_db directly, explained above
 		if type(self.primary_db) == type(None):
 			Trace.log(e_errors.INFO, "Index.check(): no primary db to check against")
 			return(0)
