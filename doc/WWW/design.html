@@ -2724,10 +2724,15 @@ among the possible implementations:
        the master Mover.
 </ul>
 
-A planned, near term feature addition will allow for the mover process to
+The "local mover" feature allows the mover process to
 read/write the user data file directly, if the file/directory is accessible
 and on a filesystem local to the computer on which the mover process is
-running.
+running. By default, this feature is enabled. It can be controlled via
+the "ecmd" command. For example:
+<p>
+<center>
+ecmd mvc --local_mover=0 fndaprdisk.mover
+</center>
 
 <p>
 <!-- ----------------------------------------------------->
