@@ -26,11 +26,11 @@ cat $f | while read tape; do
   echo
   echo
   sys_inh=`enstore vol --vol $tape | grep system_inhibit|cut -f2 -d:`
-  echo `date` Starting tape $tape $sys_inh
 
   notallowed=`echo $sys_inh|grep -c NOTALLOWED`
   migrated=`echo $sys_inh|grep -c migrated`
   if [ $notallowed -ne 1 -a $migrated -ne 1 ]; then 
+      echo `date` Starting tape $tape $sys_inh
       echo `date` ERROR $tape wrong initial state +++++++++MIGRATION ERROR +++++++++++
       echo
       echo `date` check /tmp/finalscanXXX  on `uname -n` for errors | /usr/bin/Mail -s "$tape +++++++++MIGRATION ERROR +++++++++++" enstore-admin@fnal.gov 
@@ -40,6 +40,7 @@ cat $f | while read tape; do
   enstore fil --ls-active $tape | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' > $files 2>&1
   #cat $files
   n=`wc $files|awk '{print $1}'`
+  echo `date` Starting tape $tape $sys_inh, $n files
   
   echo "encp --delayed=3 --priority=300000 "          >> $command
   cat $files | while read f; do
