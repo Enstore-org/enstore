@@ -38,24 +38,38 @@ def main():
 
     #Detect tape type errors from the command line.
     if tapeStyle != "TarTape" and tapeStyle != "TapeLog":
-        print "tape style must be TapeLog or TarTape"
+        print "Tape style must be TapeLog or TarTape."
         sys.exit(125)
 
-    #Build the "par" filename.
-    metaFileName = "id" + tapeStyle + "-" + tapeLabel + ".par"
+    #Build the TarTape "par" filename.
+    #metaTarTapeFileName = "id" + "TarTape" + "-" + tapeLabel + ".par"
     #Set the fullpath of this file.
-    localMetaFilePath = os.path.join("/tmp", metaFileName)
-    print "localMetaFilePath", localMetaFilePath
+    #localMetaTarTapeFilePath = os.path.join("/tmp", metaTarTapeFileName)
 
-    #Copy the catalog metadata file to the /tmp directory.
-    if getNames.getFile("sdssdp", metaFileName, mjd,
-                        "sdssdp30", localMetaFilePath) < 0:
-        if os.path.exists(localMetaFilePath):
-            os.remove(localMetaFilePath)
+    #Build the TapeLog "par" filename.
+    #metaTapeLogFileName = "id" + "TapeLog" + "-" + tapeLabel + ".par"
+    #Set the fullpath of this file.
+    #localMetaTapeLogFilePath = os.path.join("/tmp", metaTapeLogFileName)
+
+    par_filename = getNames.findFile("sdssdp", "sdssdp30", mjd, tapeLabel)
+
+    if not par_filename:
+        print "Unable to find .par file for volume %s." % tapeLabel
         sys.exit(124)
 
+    #print "Using the par file:" , par_filename
+
+    #Determine the local file to copy the .par file to.
+    localMetaFilePath = os.path.join("/tmp", os.path.basename(par_filename))
+
+    #Copy the catalog metadata file to the /tmp directory.
+    if getNames.getFile("sdssdp", "sdssdp30", par_filename, localMetaFilePath):
+
+        print "Unable to get .par file for volume %s." % tapeLabel
+        sys.exit(123)
+
     #Read in the metadata catalog file just copied over.
-    files = parseTapeLog.parseFile(localMetaFilePath)  #, tapeLabel)
+    files = parseTapeLog.parseFile(localMetaFilePath)
 
     #Shrink the list to remove files already copied.  If the output is
     # /dev/null, this step is unecessary.
