@@ -642,6 +642,20 @@ class LibraryManagerMethods:
         rq=self.pending_work.get()
         while rq:
             if rq.ticket.has_key('reject_reason'): del(rq.ticket['reject_reason'])
+            ## check if there are any additional restrictions
+            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
+            if rc and fun and action:
+                rq.ticket["status"] = (e_errors.OK, None)
+                if fun == 'restrict_host_access':
+                    ret = apply(getattr(self,fun), args)
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                        format = "access delayed for %s : library=%s family=%s requester:%s"
+                        Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                         rq.ticket["vc"]["library"],
+                                                         rq.ticket["vc"]["volume_family"],
+                                                         rq.ticket["wrapper"]["uname"]))
+                        rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                        continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
                 if rq:
@@ -1513,8 +1527,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if status[0] != e_errors.OK:
             self.reply_to_caller({'work': 'no_work'})
-            Trace.log(1,"mover_idle: assertion error w=%s ticket=%"%
-                      (rq, mticket))
+            Trace.log(e_errors.ERROR,"mover_idle: assertion error w=%s ticket=%s"%(rq, mticket))
             raise AssertionError
             
         # ok, we have some work - try to bind the volume
@@ -1671,6 +1684,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             w['mover'] = mticket['mover']
 	    log_add_to_wam_queue(w['vc'])
             self.work_at_movers.append(w)
+            Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
             self.reply_to_caller(w)
             #self.udpc.send_no_wait(w, mticket['address']) 
             # if new work volume is different from mounted
