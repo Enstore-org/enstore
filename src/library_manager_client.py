@@ -109,10 +109,11 @@ if __name__ == "__main__" :
     config_list = 0
     list = 0
     getwork = 0
+    printwork = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port="\
-               ,"config_list","getwork","list","help"]
+               ,"config_list","getwork","printwork","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -123,6 +124,8 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--getwork" :
             getwork = 1
+        elif opt == "--printwork" :
+            printwork = 1
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -150,6 +153,9 @@ if __name__ == "__main__" :
 
     if  getwork:
         ticket = lmc.getwork(list)
+
+    elif printwork:
+	ticket = lmc.printwork()
 
     if ticket["status"] != "ok"  :
         print "BAD status returned"
