@@ -1675,6 +1675,11 @@ def calculate_rate(done_ticket, tinfo):
         else:
             tinfo['drive_rate_%s'%(id,)] = 0.0
             
+        sg = done_ticket.get('fc', {}).get('storage_group', "")
+        if not sg:
+            sg = volume_family.extract_storage_group(
+                done_ticket.get('vc', {}).get('volume_family', ""))
+        
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
                  "\t(%.3g MB/S network) (%.3g MB/S drive)\n " \
@@ -1687,7 +1692,7 @@ def calculate_rate(done_ticket, tinfo):
                      "mover=%s " \
                      "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%.05g "\
                      "{'media_changer' : '%s', 'mover_interface' : '%s', " \
-                     "'driver' : '%s'}"
+                     "'driver' : '%s', 'storage_group':'%s'}"
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
@@ -1724,7 +1729,8 @@ def calculate_rate(done_ticket, tinfo):
                       #socket.gethostbyaddr(done_ticket["mover"]["hostip"])[0],
 		      done_ticket["mover"].get('data_ip',
 					       done_ticket["mover"]['host']),
-                      done_ticket["mover"]["driver"])
+                      done_ticket["mover"]["driver"],
+                      sg)
         
         Trace.message(DONE_LEVEL, print_format % print_values)
 
