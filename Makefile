@@ -42,7 +42,7 @@ DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
 # for Flavored products
          FLAVOR=$(DEFAULT_FLAVOR)
  	      OS=$(DEFAULT_OS)
-          QUALS=
+           QUALS=
  	    CUST=$(DEFAULT_CUST)
 # for NULL products
 #	 FLAVOR=$(DEFAULT_NULL_FLAVOR)
@@ -97,12 +97,12 @@ ENDBG=
 
 all: proddir_is_set build_prefix
 	for d in bin src test etc doc ups; do \
-		cd $$d; make all $(ENDBG); \
+		(cd $$d; $(MAKE) $(MFLAGS) all $(ENDBG);) \
 	done 
 
 clean:
 	for d in bin src test etc doc ups; do \
-		cd $$d; make clean $(ENDBG); \
+		(cd $$d; $(MAKE) $(MFLAGS) clean $(ENDBG);) \
 	done 
 	@ $(ENSTORE_DIR)/bin/enstoreClean
 
