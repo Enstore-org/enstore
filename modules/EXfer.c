@@ -99,6 +99,14 @@ raise_exception( method_name, ETdesc, va_alist )
 
 static char EXto_HSM_Doc[] = "Xfers the from user to HSM (and crc)";
 
+#ifdef OSF1
+union semun {
+  int val;
+  struct semid_ds *buf;
+  ushort_t *array;
+};
+#endif
+
 static PyObject *
 EXto_HSM(  PyObject	*self
 	 , PyObject	*args )
