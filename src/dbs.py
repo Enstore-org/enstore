@@ -206,13 +206,12 @@ def do_work(intf):
 		    # get the node that the volume clerk runs on, and our's
 		    dbs = do_node_check(csc, dbs, intf)
 	    if dbs:
-		os.system("enstore stop --just inquisitor")
 		os.system("enstore stop --just file_clerk")
 		os.system("enstore stop --just volume_clerk")
+		os.system("enstore stop --just data")
 		restore(csc, intf, dbs, dbHome, jouHome)
 		os.system("enstore start --just file_clerk")
 		os.system("enstore start --just volume_clerk")
-		os.system("enstore start --just inquisitor")
     else:
 	    if not intf.all:
 		    dbs = intf.args
