@@ -320,6 +320,7 @@ unsigned char *s;
 
 int n_byte2int(s, n)
 unsigned char *s;
+int n;
 {
 	int res = 0;
 
