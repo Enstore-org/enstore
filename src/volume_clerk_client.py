@@ -451,6 +451,11 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket)
 
+    def recycle_volume(self, vol):
+        ticket = {'work': 'recycle_volume',
+                  'external_label': vol}
+        return self.send(ticket)
+
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -480,6 +485,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.lm_to_clear = ""
         self.list = None
         self.list_active = None
+        self.recycle = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -492,7 +498,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=","force",
-                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active="]
+                "restore=", "all","destroy=", "modify=","VOL1OK","reset-lib=", "list=", "ls-active=", "recycle="]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -634,6 +640,8 @@ def do_work(intf):
     elif intf.restore:
         # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
         ticket = vcc.restore_volume(intf.restore)  # name of volume
+    elif intf.recycle:
+        ticket = vcc.recycle_volume(intf.recycle)
     elif intf.clear:
         nargs = len(intf.args)
         what = None
