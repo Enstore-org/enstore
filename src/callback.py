@@ -211,9 +211,19 @@ def mover_callback_socket(ticket, use_multiple=1, verbose=0) :
     Trace.trace(16,'mover_callback_socket host='+\
                 repr(host)+" port="+\
                 repr(port))
-    ##sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    localhost, localport, sock = get_callback_port(7001, 8000, use_multiple=use_multiple,
-                                                   verbose=verbose)
+
+
+
+    ##XXX this hack is to work around  a problem on Linux 2.0 (?) where socket/bind/connect
+    ##fails with an errno 99.  If the multiple interface configuration file is not found,
+    ##don't bind the socket before doing the connect
+    if not hostaddr.get_interface_file_name():
+        localhost, localport, sock = ("<Not bound>", "<Not bound>",
+                                      socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    else:
+        localhost, localport, sock = get_callback_port(7001, 8000, use_multiple=use_multiple,
+                                                       verbose=verbose)
+        
     Trace.trace(16, "mover_callback_socket: using %s %s" % (localhost, localport))
     sock.connect(host, port)
     Trace.trace(16, "mover_callback_socket: connected,  local=%s peer=%s" % (sock.getsockname(),
