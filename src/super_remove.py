@@ -9,6 +9,7 @@ import file_clerk_client
 import generic_client
 import configuration_client
 import e_errors
+import string
 # just for now, while bfid_db is still alive
 import bfid_db
 
