@@ -11,7 +11,7 @@ General use commands:
 encp [--config_host=  --config_port= --config_list --list --help ] inputfilename outputfilename
         copies input to output
 
-pnfs [--test --status --file= --list --nolist  --help]
+pnfs [--test --status --file= --list --help]
         provides information about a file in pnfs space or runs pnfs tests
         --test    runs pnfs tests
         --file    specifies the file you want information about
@@ -21,6 +21,11 @@ econ [--config_host= --config_port= --config_file= --config_list --dict --load -
         --dict    dumps the dictionary
         --load    load the file specified in --config_file
         --config_file=  the name of the file to be loaded.
+
+bfid [--config_host= --config_port= -config_file= -config_list --bfids --bfid= -list -help]
+        list the information from the file clerk and volume clerk about a specific bit field id
+        --bfids   dumps all bit field ids
+        --bfid=   dumps info about specific bit field id
 
 rddt [--size= --device= --eod_cookie= --list --help]
         tests the raw disk driver

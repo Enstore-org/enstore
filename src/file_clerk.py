@@ -1,6 +1,8 @@
 import sys
 import os
 import time
+import pprint
+from dict_to_a import *
 from SocketServer import *
 from configuration_client import *
 from volume_clerk_client import VolumeClerkClient
@@ -10,64 +12,110 @@ from generic_server import GenericServer
 from udp_client import UDPClient
 from journal import JournalDict
 
-
 dict = JournalDict({}, "file_clerk.jou")
 
 class FileClerkMethods(DispatchingWorker) :
 
-        def new_bit_file(self, ticket) :
-                bfid = self.unique_bit_file_id()
-                dict[bfid] = ticket
-                ticket["bfid"] = bfid
-                ticket["status"] = "ok"
-                self.reply_to_caller(ticket)
-                return
+    # we need a new bit field id for each new file in the system
+    def new_bit_file(self, ticket) :
+        bfid = self.unique_bit_file_id()
+        dict[bfid] = ticket
+        ticket["bfid"] = bfid
+        ticket["status"] = "ok"
+        self.reply_to_caller(ticket)
 
-        def read_from_hsm(self, ticket) :
-                # verify that the bit file id is o.k.
-                # call the volume server to find the library
-                # copy to the work ticket the salient information
-                try :
-                        finfo = dict[ticket["bfid"]]
-                        ticket["external_label"]   = finfo["external_label"]
-                        ticket["bof_space_cookie"] = finfo["bof_space_cookie"]
-                        ticket["external_label"]   = finfo["external_label"]
-                        ticket["sanity_cookie"]    = finfo["sanity_cookie"]
-                        ticket["complete_crc"]     = finfo["complete_crc"]
-                except KeyError :
-                        self.reply_to_caller({"status" : `dict.keys()`})
-                        return
+    # To read from the hsm, we need to verify that the bit file id is ok,
+    # call the volume server to find the library, and copy to the work
+    # ticket the salient information
+    def read_from_hsm(self, ticket) :
 
-                # found the bit file i.d, now go and find the library
-                vc = VolumeClerkClient(self.csc)
-                vticket = vc.inquire_vol(ticket["external_label"])
-                if not vticket["status"] == "ok" :
-                        self.reply_to_caller(vticket)
-                        return
-                library = vticket["library"]
+        try :
+            # look up in our dictionary the request bit field id
+            finfo = dict[ticket["bfid"]]
+            # copy all file information we have to user's ticket
+            ticket["external_label"]   = finfo["external_label"]
+            ticket["bof_space_cookie"] = finfo["bof_space_cookie"]
+            ticket["external_label"]   = finfo["external_label"]
+            ticket["sanity_cookie"]    = finfo["sanity_cookie"]
+            ticket["complete_crc"]     = finfo["complete_crc"]
 
-                # got the library, now send it to the apropos vol mgr
-                vmticket = csc.get(library + ".library_manager")
-                if not vmticket["status"] == "ok" :
-                        self.reply_to_caller(vmticket)
-                        return
-                u = UDPClient()
-                # send to volulme mgr and tell user what ever....
-                ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
-                self.reply_to_caller(ticket)
-                return
+        except KeyError :
+            self.reply_to_caller({"status" : "bfid not found" })
+            return
 
-        def unique_bit_file_id(self) :
-                # make a 64-bit number whose most significant
-                # part is based on the time, and the least significant
-                # part is a count to make it unique
-                bfid = time.time()
-                bfid = long(bfid)*100000
-                while dict.has_key(`bfid`) :
-                        bfid = bfid + 1
-                return `bfid`
+        # found the bit file id, now go and find the library
+        # become a client of the volume clerk server first
+        vc = VolumeClerkClient(self.csc)
 
-class FileClerk(FileClerkMethods, GenericServer, UDPServer) : pass
+        # ask the volume clerk server which library has "external_label" in it
+        vticket = vc.inquire_vol(ticket["external_label"])
+        if vticket["status"] != "ok" :
+            self.reply_to_caller(vticket)
+            return
+        library = vticket["library"]
+
+        # got the library, now send it to the apropos library manager
+        # we get the library manager from our configuration server, of course
+        vmticket = csc.get(library + ".library_manager")
+        if not vmticket["status"] == "ok" :
+            self.reply_to_caller(vmticket)
+            return
+        u = UDPClient()
+
+        # send to library manager and tell user
+        ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
+        self.reply_to_caller(ticket)
+
+    # return all the bfids in our dictionary.  Not so useful!
+    def get_bfids(self,ticket) :
+            self.reply_to_caller({"status" : "ok",\
+                                  "bfids"  :repr(dict.keys()) })
+
+    # return all info about a certain bfid - this does everything that the
+    # read_from_hsm method does, except send the ticket to the library manager
+    def bfid_info(self, ticket) :
+
+        try :
+            # look up in our dictionary the request bit field id
+            finfo = dict[ticket["bfid"]]
+            # copy all file information we have to user's ticket
+            ticket["external_label"]   = finfo["external_label"]
+            ticket["bof_space_cookie"] = finfo["bof_space_cookie"]
+            ticket["external_label"]   = finfo["external_label"]
+            ticket["sanity_cookie"]    = finfo["sanity_cookie"]
+            ticket["complete_crc"]     = finfo["complete_crc"]
+
+        except KeyError :
+            self.reply_to_caller({"status" : "bfid not found" })
+            return
+
+        # found the bit file id, now go and find the library
+        # become a client of the volume clerk server first
+        vc = VolumeClerkClient(self.csc)
+
+        # ask the volume clerk server which library has "external_label" in it
+        vticket = vc.inquire_vol(ticket["external_label"])
+        if vticket["status"] != "ok" :
+            self.reply_to_caller(vticket)
+            return
+
+        # ok, now merge the dictionaries and return to user
+        # make sure original ticket values override vticket values
+        self.reply_to_caller(merge_dicts(vticket,ticket))
+
+    # A bit file id is defined to be a 64-bit number whose most significant
+    # part is based on the time, and the least significant part is a count
+    # to make it unique
+    def unique_bit_file_id(self) :
+        bfid = time.time()
+        bfid = long(bfid)*100000
+        while dict.has_key(repr(bfid)) :
+            bfid = bfid + 1
+        return repr(bfid)
+
+
+class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
+    pass
 
 if __name__ == "__main__" :
     import getopt

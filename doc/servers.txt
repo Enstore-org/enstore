@@ -54,9 +54,33 @@ etc directory.  That's the journal database file for the volume clerk.
 The file clerk keeps track of, and generates, bit file id's for the files that
 have been written to the volumes.
 
-There isn't any nice way to dump the file information right now.  But all the
-information can be seen simply by listing file_clerk.jou in the enstore etc
-directory.  That's the journal database file for the file clerk.
+All the information can be seen simply by listing file_clerk.jou in the
+enstore etc directory.  That's the journal database file for the file clerk.
+There is also 2 options to the bfid command:
+
+IRIX-hppc[2513] 14:43:01 src$ bfid --list --bfids
+{'bfids': "['88785533200000L', '88785532100000L', '88785533000000L', \
+            '88785532500000L', '88785533400000L', '88785531900000L', \
+            '88785532300000L', '88785532600000L']",
+ 'status': 'ok'}
+
+IRIX-hppc[2514] 14:43:05 src$ bfid --list --bfid=88785532500000L
+{'bfid': '88785532500000L',
+ 'bof_space_cookie': '(778239, 788479)',
+ 'capacity_bytes': 1400000L,
+ 'complete_crc': 0,
+ 'eod_cookie': '888832',
+ 'error_inhibit': 'none',
+ 'external_label': 'flop2',
+ 'file_family': 'family_raw',
+ 'library': 'activelibrary',
+ 'media_type': 'floppy',
+ 'remaining_bytes': 1273024L,
+ 'sanity_cookie': 0,
+ 'status': 'ok',
+ 'user_inhibit': 'none',
+ 'work': 'bfid_info'}
+I
 
 
 --------------------------LIBRARY MANAGER-------------------------------------

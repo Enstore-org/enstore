@@ -1,34 +1,97 @@
-
 import sys
+import pprint
 from configuration_client import *
 from udp_client import UDPClient
-from pnfs_surrogate import *
 
 class FileClerkClient :
-	def __init__(self, configuration_client) :
-		self.csc = configuration_client
-		self.u = UDPClient()
 
-	def send (self, ticket) :
-		vticket = self.csc.get("file_clerk")
-		ticket = self.u.send(ticket,
-					(vticket['host'], vticket['port'])
-				     )
-		return ticket
- 
-	def read_from_hsm(self, bitfileid) :
-		ticket = self.send(ticket)
-		return ticket
+    def __init__(self, configuration_client) :
+        # we always need to be talking to our configuration server
+        self.csc = configuration_client
+        self.u = UDPClient()
 
-	def new_bit_file(self, bof_space_cookie, 
-				external_label, 
-				sanity_cookie,
-				complete_crc ) :
-		ticket = {"work" : "new_bit_file",
-			  "bof_space_cookie" : bof_space_cookie,
-			  "external_label" : external_label,
-			  "sanity_cookie" : sanity_cookie,
-			  "complete_crc" : complete_crc
-			 }
-		ticket = self.send(ticket)
-		return ticket
+    def send (self, ticket) :
+        # who's our file clerk server that we should send the ticket to?
+        vticket = self.csc.get("file_clerk")
+        # send user ticket and return answer back
+        return self.u.send(ticket, (vticket['host'], vticket['port']) )
+
+    def read_from_hsm(self, ticket) :
+        return self.send(ticket)
+
+    def new_bit_file(self, bof_space_cookie \
+                         , external_label \
+                         , sanity_cookie \
+                         , complete_crc ) :
+
+        ticket = {"work"             : "new_bit_file", \
+                  "bof_space_cookie" : bof_space_cookie, \
+                  "external_label"   : external_label, \
+                  "sanity_cookie"    : sanity_cookie, \
+                  "complete_crc"     : complete_crc \
+                  }
+
+        return self.send(ticket)
+
+    def get_bfids(self):
+        return self.send({"work" : "get_bfids"} )
+
+    def bfid_info(self,bfid):
+        return self.send({"work" : "bfid_info",\
+                          "bfid" : bfid } )
+
+if __name__ == "__main__" :
+    import getopt
+    import socket
+
+    # defaults
+    config_host = "localhost"
+    #(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    config_port = "7500"
+    config_file = ""
+    config_list = 0
+    bfid = 0
+    bfids = 0
+    list = 0
+
+    # see what the user has specified. bomb out if wrong options specified
+    options = ["config_host=","config_port=","config_file="\
+               ,"config_list","bfids","bfid=","list","help"]
+    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    for (opt,value) in optlist :
+        if opt == "--config_host" :
+            config_host = value
+        elif opt == "--config_port" :
+            config_port = value
+        elif opt == "--config_list" :
+            config_list = 1
+        elif opt == "--bfids" :
+            bfids = 1
+        elif opt == "--bfid" :
+            bfid = value
+        elif opt == "--list" :
+            list = 1
+        elif opt == "--help" :
+            print "python ",sys.argv[0], options
+            print "   do not forget the '--' in front of each option"
+            sys.exit(0)
+
+    # bomb out if can't translate host
+    ip = socket.gethostbyname(config_host)
+
+    # bomb out if port isn't numeric
+    config_port = string.atoi(config_port)
+
+    if config_list :
+        print "Connecting to configuration server at ",config_host,config_port
+    csc = configuration_client(config_host,config_port)
+
+    fcc = FileClerkClient(csc)
+
+    if bfids :
+        ticket = fcc.get_bfids()
+    elif bfid :
+        ticket = fcc.bfid_info(bfid)
+
+    if list:
+        pprint.pprint(ticket)

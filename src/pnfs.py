@@ -562,7 +562,7 @@ if __name__ == "__main__" :
     list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["test","status","file=","list","nolist","help"]
+    options = ["test","status","file=","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--test" :
@@ -574,8 +574,6 @@ if __name__ == "__main__" :
             file = value
         elif opt == "--list" :
             list = 1
-        elif opt == "--nolist" :
-            list = 0
         elif opt == "--help" :
             print "python",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
@@ -583,7 +581,8 @@ if __name__ == "__main__" :
 
     if info :
         p=pnfs(file,1)
-        p.dump() # always list, otherwise why is the user asking?
+        if list :
+            p.dump()
 
     elif status :
         print "not yet"

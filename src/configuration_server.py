@@ -119,11 +119,11 @@ if __name__ == "__main__" :
     config_host = "localhost"
     config_port = "7500"
     config_file = "/pnfs/enstore/.(config)(flags)/enstore.conf"
-    list = 1
+    list = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file="\
-               ,"list", "nolist","help"]
+               ,"list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -134,8 +134,6 @@ if __name__ == "__main__" :
             config_file = value
         elif opt == "--list" :
             list = 1
-        elif opt == "--nolist" :
-            list = 0
         elif opt == "--help" :
             print "python", sys.argv[0], options
             print "   do not forget the '--' in front of each option"
