@@ -51,7 +51,7 @@ class Wrapper :
 
     def read_pre_data( self, driver, info ):
         header = driver.read(self.recordLength)
-        if headerheader[0:3] == "VOL":
+        if header[0:3] == "VOL":
             header = driver.read(self.recordLength)
 	header = driver.read(self.recordLength)
 	header = driver.read(self.recordLength)
