@@ -136,7 +136,7 @@
     <For Each="Disk" In="DiskList" Name="SystemDisk" Var="{%Var}">
  	   <MonitoredElement Name="{%Var}" Host="localhost" Type="FileSystem">
 		<ConditionSet>
-                   <fn Name="plug_ins" Arg="if [ `df {%Var}  2> /dev/null | grep -v Filesystem|wc -l` -eq 1 ];then echo `df {%Var}  2> /dev/null | grep -v Filesystem|awk '{print $5}'|sed s/\\%//`;else echo -1;fi" RetVal="int:size"/>
+                   <fn Name="plug_ins" Arg="python /var/ngop/include/checkDisk.py {%Var}" RetVal="int:size"/>
                    <Condition State="-2" SevLevel="0" Description="{%Var} not mounted">
                      <apply>
                       <eq/>
