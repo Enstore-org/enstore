@@ -209,9 +209,10 @@ def read_tcp_socket(sock,errmsg="") :
                   repr(errno.errorcode[badsock]))
             Trace.trace(0,"read_tcp_socket post-recv error "+errmsg+\
                         repr(errno.errorcode[badsock]))
-        if len(buf) == 0 :
-            break
-        workmsg = workmsg+buf
+        if len(buf) == 0: break
+	# temporary??? sanity check to help find intermittent bug
+	if workmsg == buf: generic_cs.enprint( "WEIRD - DUPLICATE CONTROL MESSAGE RECEIVED" )
+	else: workmsg = workmsg+buf
         try:
             worklist = dict_to_a.a_to_dict(workmsg)
             return worklist
