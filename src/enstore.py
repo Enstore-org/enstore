@@ -237,7 +237,7 @@ class EnstoreInterface(UserOptions):
         cmd = "enstore"
         if not self.user_mode:
             call_function("pnfsa", "")
-            print "\n%s start   [--just server --ping]"%cmd
+            print "\n%s start   [--just server --ping --asynch --nocheck]"%cmd
             print   "%s stop    [--just server --xterm server]"%cmd
             print   "%s restart [--just server --xterm server]"%cmd
             print   "%s ping    [timeout_seconds]"%cmd
