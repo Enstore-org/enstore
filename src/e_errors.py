@@ -318,10 +318,88 @@ stypedict = { "died"               : "DIED",
               "u"                  : "USERERR",
               "m"                  : "MISCERR" }
 
-def is_retriable(e):
-    if e in non_retriable_errors:
+#Return true if the value is the same as e_errors.OK, false otherwise.
+def is_ok(e):
+    if type(e) == type(""):
+        error = e
+    elif type(e) == type(()) and len(e) == 2:
+        error = e[0]
+    elif type(e) == type({}) and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+        
+    if error in non_retriable_errors:
         return 0
-    elif e in raise_alarm_errors:
+    elif error in raise_alarm_errors:
         return 0
     return 1
 
+#Return true if the value is in error but not in non_retriable or raise_alarm
+# status.  Return false otherwise.
+def is_retriable(e):
+    if type(e) == type(""):
+        error = e
+    elif type(e) == type(()) and len(e) == 2:
+        error = e[0]
+    elif type(e) == type({}) and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+
+    if is_ok(error):
+        return 0
+    elif error in non_retriable_errors:
+        return 0
+    elif error in raise_alarm_errors:
+        return 0
+    return 1
+
+#If the value is in non_retriable or raise alarm return 1.  False otherwise.
+def is_non_retriable(e):
+    if type(e) == type(""):
+        error = e
+    elif type(e) == type(()) and len(e) == 2:
+        error = e[0]
+    elif type(e) == type({}) and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+
+    if error in non_retriable_errors:
+        return 1
+    elif error in raise_alarm_errors:
+        return 1
+    return 0
+
+#If the value is alarmable, return 1 otherwise false.
+def is_alarmable(e):
+    if type(e) == type(""):
+        error = e
+    elif type(e) == type(()) and len(e) == 2:
+        error = e[0]
+    elif type(e) == type({}) and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+        
+    if error in raise_alarm_errors:
+        return 1
+    return 0
+
+#If the value is RETRY or RESUBMITTING return 1 otherwise 0.
+def is_resendable(e):
+    if type(e) == type(""):
+        error = e
+    elif type(e) == type(()) and len(e) == 2:
+        error = e[0]
+    elif type(e) == type({}) and e.get('status', None):
+        error = e['status'][0]
+    else:
+        error = e
+
+    if error == RETRY:
+        return 1
+    elif error == RESUBMITTING:
+        return 1
+    return 0
