@@ -90,6 +90,7 @@ class GenericDriver:
 				 self.blocksize, crc_fun, crc, self.shm )
 	    self.remaining_bytes = self.remaining_bytes - siz_bytes
 	    pass
+	del self.sem,self.msg		# sys.exit??? forking???
 	return crc
 
     def rd_bytes_get( self ):
@@ -201,6 +202,7 @@ class  FTTDriver(GenericDriver) :
 	if self.mode != 'r':
 	    self.remaining_bytes = self.remaining_bytes - siz_bytes
 	    pass
+	del self.sem,self.msg		# sys.exit??? forking???
 	return crc
 
     def writefm( self ):
