@@ -4,10 +4,5 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
-vols=`enstore volume --vols | sed -e "s/'//g" -e "s/,/ /g"`
-for vol in $vols; do
-  #enstore volume --atmover $vol
-  #status=`enstore volume --vol=$vol | egrep 'at_mover|label|inhibit'`
-  #echo $status
-  enstore volume --check=$vol
-done
+enstore volume --vols
+
