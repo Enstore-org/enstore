@@ -213,7 +213,7 @@ class Mover:
         x, y                       = self.x, self.y
         bar_width                  = 38
         img_offset                 =  XY(90, 2)
-        label_offset               = XY(60, 40)
+        label_offset               = XY(-35, 20)
         percent_disp_offset        = XY(60, 22)
         progress_bar_offset        = XY(6, 22)
         progress_bar_bg_offset1    = XY(5, 17)
@@ -403,9 +403,8 @@ class Mover:
         if N == 1:
             y = self.display.height / 2.
         else:
-            y = (k*2.5)*(self.display.height  / (N+1))
-        x = self.display.width - 200 #offset of 200
-            
+            y = (k+0.5)*(self.display.height  / (N+1))
+        x = self.display.width - 200
         return int(x), int(y)
     
     def position(self, N):
@@ -684,9 +683,9 @@ class Display(Tkinter.Canvas):
     def __init__(self, master, title, window_width, window_height, canvas_width=None, canvas_height=None, **attributes):
  
         
-        if canvas_width is None:
+        if 1 or canvas_width is None:
             canvas_width = window_width
-        if canvas_height is None:
+        if 1 or canvas_height is None:
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
         Tkinter.Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
@@ -694,21 +693,21 @@ class Display(Tkinter.Canvas):
 ##        self.QUIT = Button(self, text='QUIT', background='blue', height=1, command=self.quit)
 ##        self.QUIT.pack(side=BOTTOM, fill=BOTH)
 
-        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
-        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
+##        self.scrollX = Tkinter.Scrollbar(self, orient=Tkinter.HORIZONTAL)
+##        self.scrollY = Tkinter.Scrollbar(self, orient=Tkinter.VERTICAL)
 
        #When the canvas changes size or moves, update the scrollbars
-        self['xscrollcommand']= self.scrollX.set
-        self['yscrollcommand'] = self.scrollY.set
+##        self['xscrollcommand']= self.scrollX.set
+##        self['yscrollcommand'] = self.scrollY.set
 
         #When scrollbar clicked on, move the canvas
-        self.scrollX['command'] = self.xview
-        self.scrollY['command'] = self.yview
+##        self.scrollX['command'] = self.xview
+##        self.scrollY['command'] = self.yview
 
         #pack 'em up
-        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
-        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        self.pack(side=Tkinter.LEFT)
+##        self.scrollX.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
+##        self.scrollY.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
+##        self.pack(side=Tkinter.LEFT)
 
         Tkinter.Tk.title(self.master, title)
         self.configure(attributes)
