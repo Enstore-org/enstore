@@ -34,7 +34,8 @@ import dispatching_worker
 import generic_server
 import monitored_server
 import enstore_constants
-import interface
+import option
+import generic_client
 import Trace
 import traceback
 import e_errors
@@ -1428,23 +1429,30 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+[
-            "log=","max_work="]
+    def valid_dictionaries(self):
+	return(self.help_options, self.trace_options, self.mc_test_options)
+
+    mc_test_options = {
+	option.MAX_WORK:{option.HELP_STRING:"",
+			 option.VALUE_TYPE:option.INTEGER,
+                         option.VALUE_USAGE:option.REQUIRED,
+			 option.USER_LEVEL:option.ADMIN,
+			 }
+	}
 
     #  define our specific help
-    def parameters(self):
-        return "media_changer"
+    parameters =  "media_changer"
 
     # parse the options like normal but make sure we have a media changer
     def parse_options(self):
-        interface.Interface.parse_options(self)
-        # bomb out if we don't have a media_changer
-        if len(self.args) < 1 :
-            self.missing_parameter(self.parameters())
-            self.print_help(),
-            sys.exit(1)
+        generic_client.GenericClientInterface.parse_options(self)
+
+	if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
+            pass
+        elif len(self.args) < 1:
+	    # bomb out if we don't have a media_changer
+            self.missing_parameter(self.parameters)
+            self.print_usage("expected media_changer parameter")
         else:
             self.name = self.args[0]
 
