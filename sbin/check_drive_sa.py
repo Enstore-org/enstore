@@ -121,6 +121,7 @@ def check_mover(drive, test_tape, media, f_size=250):
         sts = FTT.write(ran_arr)
         #print "WRITTEN",sts,"bytes"
     t2 = time.time()
+    print "WRITE TIME",t2-t1,"secs"
     #print block_size/1024./1024.*f_size,"Mbytes written in",t2-t1,"secs"
     FTT.writefm()
     FTT.rewind()
@@ -143,6 +144,7 @@ def check_mover(drive, test_tape, media, f_size=250):
         #print "READ", len(ret)
     t2 = time.time()
     #print block_size*f_size/1024./1024.,"Mbytes read in",t2-t1,"secs"
+    print "READ TIME",t2-t1,"secs"
     read_t_r = block_size*f_size/1024./1024./(t2-t1)
     FTT.rewind()
 
