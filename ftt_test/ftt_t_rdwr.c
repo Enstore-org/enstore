@@ -184,7 +184,7 @@ for (i = 0; i < nblock; i++)
    ------------------------ */
 
    status = ftt_write (ftt_t_fd, wdata, thissize);
-   FTT_T_CHECK_CALL (status,estatus);
+   FTT_T_CHECK_WRITE (status,estatus,thissize);
 
    }
 

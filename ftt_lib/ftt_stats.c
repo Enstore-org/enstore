@@ -292,7 +292,6 @@ ftt_get_stat_ops(char *name) {
     if (*name == 0) {
 	return 0; /* unknown device id */
     }
-    name = ftt_unalias(name);
 
     for (i = 0; ftt_stat_op_tab[i].name != 0; i++ ) {
 	if (ftt_matches(name, ftt_stat_op_tab[i].name)) {
@@ -513,7 +512,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	     * look up based on ANSI version *and* product id, so
 	     * we can have generic SCSI-2 cases, etc.
 	     */
-	    sprintf(buf, "%d%s", buf[2] & 0x3, d->prod_id);
+	    sprintf(buf, "%d%s", buf[2] & 0x3, ftt_unalias(d->prod_id));
 	    stat_ops = ftt_get_stat_ops(buf);
 	}
     }
@@ -578,6 +577,14 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		remain_tape=(double)pack(buf[22],buf[23],buf[24],buf[25]);
 		set_stat(b,FTT_REMAIN_TAPE,ftt_dtoa(remain_tape),0);
 		set_stat(b,FTT_CLEANING_BIT,ftt_itoa((long)bit(3,buf[26])), 0);
+                /* AIT sets R.S. remain tape to zero when empty, so
+                   if its zero and we're not at EOM, then... */
+                if ( remain_tape == 0 && !(buf[2]&0x40) ) {
+	           set_stat(b,FTT_READY,"0", 0);
+		   set_stat(b,FTT_TNP,  "1", 0);
+                } else {
+		   set_stat(b,FTT_TNP,  "0", 0);
+                }
             }
 	}
     }
@@ -706,12 +713,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
 				  buf, 20, 10, 0);
 	
-	if (!(stat_ops & FTT_DO_RP_SOMETIMES)) {
-	    if (res < 0) {
-	       set_stat(b,FTT_TNP,  "1", 0);
-	    } else {
-	       set_stat(b,FTT_TNP,  "0", 0);
-	    }
+        /* 
+        ** 850x drives (for example) don't do RP in lower densities, so if it
+        ** fails there its not really a failure
+        */
+	if (!(stat_ops & FTT_DO_RP_SOMETIMES) && res < 0) {
+	    failures++;
 	} 
         if ( res >= 0 ) {
 	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
@@ -800,9 +807,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 			    ** since we never want the max values
 			    */
 
-			    slot = ((current_partition & 0x7f) << 1) |
-				    (current_partition & 0x01);
-			    (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1);
+			    if( b->value[FTT_REMAIN_TAPE] == 0) {
+			      slot = ((current_partition & 0x7f) << 1) |
+				      (current_partition & 0x01);
+			      (void)decrypt_ls(b,buf,slot+1,FTT_REMAIN_TAPE,1);
+			    }
 			    break;
 		        case 0x32:
 			    (void)decrypt_ls(b,buf,0,FTT_READ_COMP,1);
@@ -855,7 +864,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	loadpart = (buf[BD_SIZE+3] >> 1) & 0x3f;
 	set_stat(b,FTT_MOUNT_PART,ftt_itoa(loadpart),0);
     }
-    if (failures > 0) {
+    /*
+    ** if we have stats failures, return EPARTIALSTAT, but only if there's
+    ** a tape present -- if we don't have a tape its okay if some stats fail...
+    */
+    if (failures > 0 && !( b->value[FTT_TNP] && atoi(b->value[FTT_TNP])) ) {
 	ftt_eprintf("ftt_get_stats, %d scsi requests failed\n", failures);
 	ftt_errno = FTT_EPARTIALSTAT;
 	return -1;

@@ -53,8 +53,10 @@ if (ftt_t_nerror > ftt_t_max_error)				\
       }						\
    }
 
-#define FTT_T_CHECK_CALL(status,estatus) {				\
-   if ((int)(status) >= 0)						\
+#define FTT_T_CHECK_WRITE(s,e,l) FTT_T_CHECK_COND(s,e, == l)
+#define FTT_T_CHECK_CALL(s,e)    FTT_T_CHECK_COND(s,e, >= 0)
+#define FTT_T_CHECK_COND(status,estatus,cond) {				\
+   if ((int)(status) cond)						\
       {									\
       if (estatus != 0) 						\
 	 {								\

@@ -131,6 +131,20 @@ ftt_read( ftt_descriptor d, char *buf, int length ) {
     return res;
 }
 
+#ifdef DEBUGWRITES
+int
+mywrite( int fd, char *buf, int len ) {
+    int res;
+    res = write(fd,buf,len);
+    fprintf(stderr, "mywrite: write really returned %d, return? " );
+    fflush(stderr);
+    fscanf(stdin, "%d", &res);
+    return res;
+}
+#define write mywrite
+
+#endif
+
 int
 ftt_write( ftt_descriptor d, char *buf, int length ) {
     int res;
