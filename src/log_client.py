@@ -121,7 +121,6 @@ class LoggerClient(generic_client.GenericClient):
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
-        self.test = 0
         self.logit = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
@@ -132,8 +131,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["test", "logit="] +\
-	       ["get_logfile_name", "get_last_logfile_name"]
+               ["logit=", "get_logfile_name", "get_last_logfile_name"]
 
 
     """ 
@@ -171,11 +169,6 @@ if __name__ == "__main__" :
         ticket = logc.get_logfile_name(intf.alive_rcv_timeout,\
 	                               intf.alive_retries)
 	print(ticket['logfile_name'])
-
-    elif intf.test:
-        Trace.log( e_errors.ERROR,
-		   "This is a test message %s %d"%('TEST',3456) )
-        ticket = {}
 
     elif intf.logit:
         ticket = logit(logc, intf.logit)
