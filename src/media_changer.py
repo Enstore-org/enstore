@@ -303,10 +303,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		        time.sleep(10)
 			rpcErrors = rpcErrors + 1
                         Trace.log(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
-		    elif sts[1] != 0:
-                        Trace.log(e_errors.ERROR, 'mcDoWork >>> status returned%s, count= :%s'%(repr(sts[1]),repr(count)))
+		    #elif sts[1] != 0:
+                    else:
+                        Trace.log(e_errors.ERROR, 'mcDoWork >>> status returned %s, count=%s'%(repr(sts[1]),repr(count)))
 			count = count - 1
-                        time.sleep(60)
+                        #time.sleep(60)
                     #print "RET",sts
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
