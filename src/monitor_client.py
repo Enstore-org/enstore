@@ -213,10 +213,11 @@ class MonitorServerClient(generic_client.GenericClient):
             if read_rate == 0.0 or write_rate == 0.0:
                 summary_d[hostname] = enstore_constants.WARNING
                 summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
-        elif measurement['status'] == (e_errors.OK, None):
-                print "  Error.    Status is %s"%(measurement['status'],)
-                summary_d[hostname] = enstore_constants.WARNING
-                summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
+        else:
+            print "  Error.    Status is (%s,%s)"%(read_rate['status'],
+                                                   write_rate['status'])
+            summary_d[hostname] = enstore_constants.WARNING
+            summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
 
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
