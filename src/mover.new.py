@@ -93,14 +93,14 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	   
 
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
-    vcc.set_system_readonly( self.vol_info['external_label'] )
+    vcc.set_system_noaccess( self.vol_info['err_external_label'] )
 
     logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
-    vcc.set_system_readonly( self.vol_info['external_label'] )
+    vcc.set_system_noaccess( self.vol_info['err_external_label'] )
 
     logc.send( log_client.ERROR, 1, "MOVER SETTING VOLUME \"SYSTEM NOACCESS\""+str(error_info)+str(self.vol_info) )
 
@@ -226,6 +226,7 @@ def bind_volume( self, external_label ):
     if self.vol_info['external_label'] == '':
 
 	# NEW VOLUME FOR ME - find out what volume clerk knows about it
+	self.vol_info['err_external_labe'] = external_label
 	tmp_vol_info = vcc.inquire_vol( external_label )
 	if tmp_vol_info['status'][0] != "ok": return 'NOTAPE' # generic, not read or write specific
 
@@ -251,6 +252,7 @@ def bind_volume( self, external_label ):
 	self.vol_info.update( tmp_vol_info )
 	pass
     elif external_label != self.vol_info['external_label']:
+	self.vol_info['err_external_labe'] = external_label
 	fatal_enstore( self, "unbind label %s before read/write label %s"%(self.vol_info['external_label'],external_label) )
 	return 'NOTAPE' # generic, not read or write specific
 
