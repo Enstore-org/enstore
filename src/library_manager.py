@@ -644,7 +644,6 @@ class LibraryManagerMethods:
         while rq:
             if rq.ticket.has_key('reject_reason'): del(rq.ticket['reject_reason'])
             if rq.work == "read_from_hsm":
-                if self.process_for_bound_vol
                 rq, key = self.process_read_request(rq, requestor)
                 if rq:
                     Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
