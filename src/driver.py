@@ -223,8 +223,11 @@ class GenericDriver:
         try:
             label=self.read(80)
             if debug_paranoia:  print "label=",label,"len(label)=", len(label)
-            label=string.split(label)[0]
-            typ,val=label[:4],label[4:]
+            if len(label)<80:
+                typ,val=None, None
+            else:
+                typ=label[:4]
+                label=string.split(label[4:])[0]
         except:
             typ,val=None, None
         if debug_paranoia:  print "check_header: return",typ,val
