@@ -134,7 +134,7 @@ class MeterPanel(Tkinter.Canvas):
     bottom_margin = 20
     def __init__(self, master, system_name, **attributes):
         width, height = 475, 150
-        Canvas.__init__(self, master, width=width, height=height)
+        Tkinter.Canvas.__init__(self, master, width=width, height=height)
         self.system_name = system_name
         title = "Ratemeter: "+system_name
         Tkinter.Tk.title(self.master, title)
