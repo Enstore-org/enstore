@@ -91,7 +91,7 @@ class LoggerClient:
         interpretation is: %s', err, os.strerror(err))
     """
     def send (self, severity, priority, format, *args) :
-        if priority & self.log_priority :
+        if  (priority & self.log_priority) == 0 :
            return
 
         if severity in range(ERROR, MISC) :
