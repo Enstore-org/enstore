@@ -9,9 +9,9 @@ import types
 import configuration_server
 import enstore_constants
 import enstore_files
-import interface
 import Trace
 import e_errors
+import option
 
 DEFAULTHTMLDIR = "."
 
@@ -115,10 +115,8 @@ def override_to_status(override):
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
-    port, junk = interface.getenv('ENSTORE_CONFIG_PORT',
-                                  interface.DEFAULT_PORT)
-    dict = {'port' : string.atoi(port)}
-    dict['host'], junk = interface.getenv('ENSTORE_CONFIG_HOST', interface.DEFAULT_HOST)
+    dict = {'port' : option.default_port()}
+    dict['host'] = option.default_host()
     return dict
 
 # translate time.time output to a person readable format.
