@@ -15,6 +15,7 @@ import signal
 import threading
 import socket 
 import re
+import copy
 
 # enstore imports
 import setpath
@@ -330,14 +331,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     server.restart_thread.setDaemon(1)
                     server.restart_thread.start()
 
+    # this is the file writing thread
     def make_server_status_html_file(self):
-        if self.new_server_status:
-            self.serverfile.open()
-            self.serverfile.write()
-            self.serverfile.close()
-            self.serverfile.install()
-            enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
-				       "make new html server status file")
+	while 1:
+	    self.server_status_file_event.wait(5.0)
+	    if self.server_status_file_event.isSet():
+		enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+					   "Starting write of status files")
+		self.serverfile_new.open()
+		self.serverfile_new.write()
+		self.serverfile_new.close()
+		self.serverfile_new.install()
+		self.server_status_file_event.clear()
+
+    # signal the thread that the server status file can be written
+    def write_server_status_file(self):
+	if not self.server_status_file_event.isSet() and self.new_server_status:
+	    # there is no thread doing this, we can do it
+	    # copy the information to write out
+	    self.serverfile_new = copy.deepcopy(self.serverfile)
+	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+				       "Signaling thread to write out status files")
+	    self.server_status_file_event.set()
             self.new_server_status = 0
 
     # create an html file that has a link to all of the current log files
@@ -732,7 +747,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_exit(self, exit_code):
         self.serverfile.output_alive(self.inquisitor.host,
                                      "exiting", time.time(), self.name)
-        self.new_server_status = 1
         # the above just stored the information, now write the page out
         self.make_server_status_html_file()
         # Don't fear the reaper!!
@@ -1019,7 +1033,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.check_last_alive()
         # check if we have received an event relay message recently
         self.check_event_relay_last_alive()
-        self.make_server_status_html_file()
+        self.write_server_status_file()
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
         # the encp web page is updated when notice of an encp transfer is received, but
@@ -1296,6 +1310,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
+    def got_segv(self, the_signal, frame):
+	import pdb
+	pdb.set_trace()
+
     def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
@@ -1307,6 +1325,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.sent_stalled_mail = {}
 	self.servers_by_name = {}
 	self.override_mail_sent = {}
+
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
         # passed values because they might have been defaulted and we need to
@@ -1426,6 +1445,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # set up a signal handler to catch termination signals (SIGKILL) so we can
         # update our status before dying
         signal.signal(signal.SIGTERM, self.s_update_exit)
+	signal.signal(signal.SIGSEGV, self.got_segv)
 
         # set an interval timer to periodically update the web pages
         self.add_interval_func(self.periodic_tasks, self.update_interval)
@@ -1463,6 +1483,20 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         # update the encp page
         self.make_encp_html_file(time.time())
+
+	# start the thread that will do the file writing
+	# sometimes it takes a very long time to output the server status file
+	# especially if the library manager queue is very large.  so do this
+	# work in a thread.
+	self.serverfile_new = None
+	self.new_server_status = 0
+	self.server_status_file_event = threading.Event()
+	self.server_status_file_thread = threading.Thread(group=None,
+							  target=self.make_server_status_html_file,
+							  name="MAKE_SERVER_STATUS_FILE",
+							  args=())
+	self.server_status_file_thread.setDaemon(1)
+	self.server_status_file_thread.start()
 
 
 class InquisitorInterface(generic_server.GenericServerInterface):
