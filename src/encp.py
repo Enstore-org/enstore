@@ -19,7 +19,7 @@ except ImportError:
 
 ##############################################################################
 
-def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
+def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -179,8 +179,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
         if len(buf) == 0 : break
-	if crc != 0 :
-	    mycrc = binascii.crc_hqx(buf,mycrc)
+        if chk_crc != 0 :
+            mycrc = binascii.crc_hqx(buf,mycrc)
         badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
         if badsock != 0 :
@@ -219,8 +219,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
 
     if done_ticket["status"] == "ok" :
-	if done_ticket["complete_crc"] != mycrc :
-	    print "CRC error",complete_crc, mycrc
+        if chk_crc != 0 and done_ticket["complete_crc"] != mycrc :
+            print "CRC error",complete_crc, mycrc
         t1 = time.time()
         if list:
             print "Adding file to pnfs", "   cum=",time.time()-t0
@@ -262,7 +262,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
 ##############################################################################
 
-def read_from_hsm(pnfsfile, outfile, u, csc, list) :
+def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -403,10 +403,13 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     if list:
         print "Receiving data", "   cum=",time.time()-t0
     l = 0
+    mycrc = 0
     while 1:
         buf = data_path_socket.recv(65536*4)
         l = l + len(buf)
         if len(buf) == 0 : break
+        if chk_crc != 0 :
+            mycrc = binascii.crc_hqx(buf,mycrc)
         f.write(buf)
     data_path_socket.close()
     f.close()
@@ -424,6 +427,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     done_ticket = callback.read_tcp_socket(control_socket, "encp read_"+\
                                            "to_hsm, mover final dialog")
     control_socket.close()
+    if chk_crc != 0 and done_ticket["complete_crc"] != mycrc :
+        print "CRC error",complete_crc, mycrc
     tinfo["final_dialog"] = time.time()-t1
     if list:
         print "  dt:",tinfo["final_dialog"], "   cum=",time.time()-t0
@@ -464,9 +469,11 @@ if __name__  ==  "__main__" :
     config_port = "7500"
     config_list = 0
     list = 0
+    chk_crc = 1
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list", "list","help"]
+    options = ["config_host=","config_port=","config_list", \
+               "nocrc","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -475,6 +482,8 @@ if __name__  ==  "__main__" :
             config_port = value
         elif opt == "--config_list" :
             config_list = 1
+        elif opt == "--nocrc" :
+            chkcrc = 0
         elif opt == "--list" :
             list = 1
         elif opt == "--help" :
@@ -506,7 +515,7 @@ if __name__  ==  "__main__" :
 
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
-        write_to_hsm(args[0], args[1], u, csc, list)
+        write_to_hsm(args[0], args[1], u, csc, list, chk_crc)
         if list > 1 :
             p=pnfs.pnfs(args[1],1)
             p.dump()
@@ -516,7 +525,7 @@ if __name__  ==  "__main__" :
         if list > 1 :
             p=pnfs.pnfs(args[0],1)
             p.dump()
-        read_from_hsm(args[0], args[1], u, csc, list)
+        read_from_hsm(args[0], args[1], u, csc, list, chk_crc)
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
