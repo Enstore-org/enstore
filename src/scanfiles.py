@@ -27,7 +27,7 @@ ff = {}
 ONE_DAY = 24*60*60
 
 def usage():
-    print "usage: %s path [path2 [path3 [ ... ]]]"%(sys.argv[0])
+    print "usage: %s [path [path2 [path3 [ ... ]]]]"%(sys.argv[0])
     print "usage: %s --help"%(sys.argv[0])
     print "usage: %s --infile file"%(sys.argv[0])
 
@@ -270,7 +270,7 @@ def check_file(f):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) == 1 or sys.argv[1] == '--help':
+    if len(sys.argv) >= 2 and sys.argv[1] == '--help':
         usage()
         sys.exit(0)
 
@@ -278,6 +278,8 @@ if __name__ == '__main__':
         f = open(sys.argv[2])
         f_list = map(string.strip, f.readlines())
         f.close()
+    elif len(sys.argv) == 1:
+        f_list = map(string.strip, sys.stdin.readlines())
     else:
         f_list = sys.argv[1:]
 
