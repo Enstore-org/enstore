@@ -101,6 +101,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.bfid_db = None
         self.sgdb = None
         self.paused_lms = {}
+        self.ignored_sg_file = None
         return
 
     # check if volume is full
@@ -398,6 +399,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record['sum_wr_err'] = 0
             record['sum_rd_err'] = 0
             record['non_del_files'] = 0
+            # reseting volume family
+            sg = string.split(record['volume_family'], '.')[0]
+            record['volume_family'] = sg+'.none.none'
             self.dict[vol] = record
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
         else:
