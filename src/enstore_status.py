@@ -306,7 +306,7 @@ class EnStatus:
 	        pass
             string = string+spacing+"ID: "+mover['unique_id']
 	    string = string+"\n"
-            if work.has_key['reject_reason']:
+            if work.has_key('reject_reason'):
                 string = string+spacing+"REASON FOR PENDING: "+work['reject_reason'][0]
                 string = string+"\n"
 
