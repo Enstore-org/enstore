@@ -33,7 +33,7 @@ QUALIFIERS=cdfen
 FLAVOR=ANY
 QUALIFIERS=rip
         ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, rip6.fnal.gov)
+                envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
 		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/rip.conf)
                 exeActionRequired(COMMON_SETUP)
 
