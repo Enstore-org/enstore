@@ -94,7 +94,7 @@ if [ ! "$node_servers" ];then
     node_servers=`conf.sh $hh`
 fi
 for server in $node_servers;do
-    if t=`expr "$server" : '\(.*\):'`;then   #strip off port if it exists
+    if t=`expr "$server" : '\(.*\)[: ]'`;then   #strip off port if it exists
         server=$t
     fi
     case $server in
