@@ -440,10 +440,17 @@ def forked_read_from_hsm( self, ticket ):
 
 	    # close hsm file
             self.hsm_driver.close_file_read()
+        except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
+            logc.send( log_client.ERROR, 1, "Error writing to user"+str(ticket) )
+	    traceback.print_exc()
+	    self.net_driver.data_socket.close()
+	    send_user_done( self, ticket, e_errors.READ_ERROR )
+	    return_or_update_and_exit( self, origin_addr, e_errors.OK )
         except:
             logc.send( log_client.ERROR, 1, "Error reading "+str(ticket) )
 	    traceback.print_exc()
             media_error = 1 # I don't know what else to do right now
+	    # this is bogus right now
             wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
 
         # we've sent the hsm file to the user, shut down data transfer socket
@@ -472,9 +479,9 @@ def forked_read_from_hsm( self, ticket ):
         # add some info to user's ticket
         ticket['vc'] = self.vol_info
 	ticket['mover'] = self.config
-	ticket['mover']['callback_addr']        = self.callback_addr# this was the data callback
+	ticket['mover']['callback_addr'] = self.callback_addr# this was the data callback
 
-        logc.send(log_client.INFO,2,"READ"+str(ticket))
+        logc.send(log_client.INFO,2,"READ DONE"+str(ticket))
 
 	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, origin_addr, e_errors.OK )
