@@ -1282,7 +1282,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
         interface = hostaddr.interface_name(host)
         if interface:
             Trace.log(16,"bindtodev %s %s %s",host,address,interface)
-            status = socket_ext.bindtodev(data_socket.fileno(),interface)
+            if 0:
+                status = socket_ext.bindtodev(data_socket.fileno(),interface)
+            else:
+                status=0
             if status and status != errno.ENOSYS:
                 Trace.log(16,"bindtodev %s",os.strerror(status))
         listen_socket.close()
