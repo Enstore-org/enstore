@@ -463,11 +463,11 @@ class EnFile:
     def cleanup(self, keep, pts_dir):
         if not keep:
             # delete the data file
-            os.system("rm %s"%self.file_name)
+            os.remove(self.file_name)
         else:
             if pts_dir:
                 # move these files somewhere
-                os.system("mv %s %s"%(self.file_name, pts_dir))
+                os.rename(self.file_name, pts_dir)
 
 class EnStatusFile(EnFile):
 
@@ -630,8 +630,7 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 	if (self.max_ascii_size > 0) or (really == FORCE):
 	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
 	        self.close()
-	        os.system("mv "+self.file_name+" "+self.file_name+"."+\
-	                  get_ts())
+                os.rename(self.file_name, self.file_name+"."+get_ts())
 	        self.open()
 
     # set a new max_ascii_size value
@@ -1006,7 +1005,7 @@ class EnPatrolFile(EnFile):
     # we need to close the open file and move it to the real file name
     def close(self):
         EnFile.close(self)
-        os.system("mv "+self.file_name+" "+self.real_file_name)
+        os.rename(self.file_name, self.real_file_name)
 
     # write out the alarm
     def write(self, alarm):
@@ -1019,7 +1018,7 @@ class EnPatrolFile(EnFile):
     def remove(self):
         try:
             if self.real_file_name and os.path.exists(self.real_file_name):
-                os.system("rm "+self.real_file_name)
+                os.remove(self.real_file_name)
         except IOError:
             # file does not exist
             pass

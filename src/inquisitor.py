@@ -249,9 +249,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                        log_dirs, self.www_host)
                 self.loghtmlfile.close()
                 # now we must move the new file to it's real name
-                os.system('mv %s/%s%s %s/%s'%(self.logc.log_dir,
-                                              LOGHTMLFILE_NAME, SUFFIX,
-                                              self.html_dir, LOGHTMLFILE_NAME))
+                os.rename("%s/%s%s"%(self.logc.log_dir, LOGHTMLFILE_NAME,
+                                     SUFFIX),
+                          "%s/%s"%(self.html_dir, LOGHTMLFILE_NAME))
 
     # update the file that contains the configuration file information
     def make_config_html_file(self):
@@ -767,9 +767,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def move_file(self, flag, afile):
 	try:
 	    if flag:
-	        os.system("mv "+afile+SUFFIX+" "+afile)
+                os.rename(afile+SUFFIX, afile)
 	    else:
-	        os.system("rm "+afile+SUFFIX)
+                os.remove(afile+SUFFIX)
 	except:
 	    traceback.print_exc()
 	    format = timeofday.tod()+" "+\
