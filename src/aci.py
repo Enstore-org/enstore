@@ -16,19 +16,32 @@ from aci_shadow import *
 
 def aci_clientstatus(clientname):
     x = aci_shadow.aci_clientstatus(clientname)
-    return x[0], aci_shadow.aci_client_entry(x[1])
+    if type(x)==type([]):
+        return x[0], aci_shadow.aci_client_entry(x[1])
+    else:
+        return x, []
+        
 
 def aci_drivestatus(clientname):
     x = aci_shadow.aci_drivestatus(clientname)
-    return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+    else:
+        return x, []
 
 def aci_drivestatus2(clientname):
     x = aci_shadow.aci_drivestatus2(clientname)
-    return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+    else:
+        return x, []
 
 def aci_list(clientname):
     x = aci_shadow.aci_list(clientname)
-    return x[0], map(aci_shadow.aci_req_entry, x[1:])
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_req_entry, x[1:])
+    else:
+        return x, []
 
 def aci_view(clientname, type):
     stat, ptr = aci_shadow.aci_view(clientname, type)
