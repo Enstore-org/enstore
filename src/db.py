@@ -54,9 +54,9 @@ class DbTable:
     self.name=dbname
     self.logc=logc
     if len(self.jou):
-    	self.start_backup()
-	self.checkpoint()
-	self.stop_backup()
+        self.start_backup()
+        self.checkpoint()
+        self.stop_backup()
   def next(self):
     if cursor_open==0:
 	return self.cursor("open")
