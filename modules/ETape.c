@@ -1,10 +1,6 @@
 #include <Python.h>
 #include <ftt.h>
 
-typedef struct {
-  ftt_descriptor	ftt_desc;
-  char *filename; 
-} ET_struct;
 /*
   Module description
 */
@@ -19,17 +15,40 @@ static char ET_CopyToTape_Doc[] = "Copy data from an fd to tape";
 static PyObject*
 ET_CopyToTape(PyObject *self, PyObject *args)
 {
-  PyObject *ifob;
-  char *iname, *ipathname;
+  ftt_descriptor ftt_desc;
+  char *buff;
+  int length;
+  int sts;
 
-  PyObject *ofob;
-  char *oname, *opathname;
-  int sts = 0;
-
-  if (!PyArg_ParseTuple(args, "OO", 
-                              &PyFile_Type, &ifob))
+  if (!PyArg_ParseTuple(args, "ls#", (long int *)&ftt_desc, &buff, &length))
       return NULL;
+  sts=ftt_write(ftt_desc, buff, length);
   return Py_BuildValue("i",0);
+}
+
+static char ET_CloseTape_Doc[] = "Close a tape";
+
+static PyObject*
+ET_CloseTape(PyObject *self, PyObject *args)
+{
+  ftt_descriptor ftt_desc;
+  ftt_stat_buf   stbuff;
+  int sts;
+  PyObject *ErrDict;
+
+  if (!PyArg_ParseTuple(args, "l", (long int *)&ftt_desc))
+      return NULL;
+  stbuff = ftt_alloc_stat();
+  sts=ftt_get_stats(ftt_desc, stbuff);
+
+  ErrDict = Py_BuildValue ("{s:s,s:s,s:s}", 
+    "Remain", ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
+    "Nwrite", ftt_extract_stats(stbuff,FTT_N_WRITES),
+    "Werrors", ftt_extract_stats(stbuff,FTT_WRITE_ERRORS)
+    );
+  sts=ftt_free_stat(stbuff);
+  sts=ftt_close(ftt_desc);
+  return ErrDict;
 }
 
 static char ET_OpenRead_Doc[] = "Open a tape drive for reading";
@@ -55,12 +74,13 @@ static PyObject*
 ET_OpenWrite(PyObject *self, PyObject *args)
 {
   char *oname;
-
-  int sts;
+  ftt_descriptor ftt_desc;
 
   if (!PyArg_ParseTuple(args, "s", &oname))
       return NULL;
-  return Py_BuildValue("i",0);
+  ftt_desc = ftt_open(oname, FTT_RDWR);
+  return Py_BuildValue("l",(long int)ftt_desc);
+
 }
 
 /*
@@ -77,6 +97,7 @@ static PyMethodDef ETape_Methods[] = {
   { "OpenWrite", ET_OpenWrite, 1, ET_OpenWrite_Doc},
   { "OpenRead", ET_OpenRead, 1, ET_OpenRead_Doc},
   { "CopyToTape", ET_CopyToTape, 1, ET_CopyToTape_Doc},
+  { "CloseTape", ET_CloseTape, 1, ET_CloseTape_Doc},
   {0,     0}        /* Sentinel */
 };
 
@@ -100,7 +121,7 @@ static PyMethodDef ETape_Methods[] = {
 */
 void initETape()
 {
-  PyObject *m = Py_InitModule4("ETape", ETape_Methods, ETape_Doc, 
+  (void) Py_InitModule4("ETape", ETape_Methods, ETape_Doc, 
                                (PyObject*)NULL,PYTHON_API_VERSION);
 
 }

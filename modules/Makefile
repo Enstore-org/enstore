@@ -34,7 +34,7 @@ MODULE=ETape
 # Put the object files for your module here:
 OBS=ETape.o
 
-CFLAGS=-g  -I./ -I$(FTT_DIR)/include
+CFLAGS=-g  -I./ -I$(FTT_DIR)/include -Wall
 
 # Change this to the location of your libraries....
 OLIB=$(FTT_DIR)/lib
