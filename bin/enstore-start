@@ -257,11 +257,11 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-volume_clerk_pids
-	start_db_daemons
       fi
     fi
 
     check_server volume_clerk $PID_DIR/`uname -n`-volume_clerk_pids 
+    start_db_daemons
 
 fi
 
@@ -293,11 +293,11 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
             eval "$cmd &"
         fi
         echo $! >> $PID_DIR/`uname -n`-file_clerk_pids
-	start_db_daemons
       fi
     fi
 
     check_server file_clerk $PID_DIR/`uname -n`-file_clerk_pids
+    start_db_daemons
 
 fi
 
