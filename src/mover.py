@@ -2883,8 +2883,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         # XXX END DEBUG Block of code to get more info on why label is missing on some mounts
 
 
-        Trace.notify("loading %s %s" % (self.shortname, volume_label))        
-        Trace.log(e_errors.INFO, "mounting %s %s"%(volume_label, self.config['product_id']),
+        Trace.notify("loading %s %s" % (self.shortname, volume_label))
+        tm = time.localtime(time.time()) # get the local time
+        time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
+        Trace.log(e_errors.INFO, "mounting %s %s %s"%(volume_label, self.config['product_id'], time_msg),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
 
         self.current_location = 0L
@@ -2900,7 +2902,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if status and status[0] == e_errors.OK:
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             self.init_stat(self.device, self.logname)
-            Trace.log(e_errors.INFO, "mounted %s %s"%(volume_label,self.config['product_id']),
+            tm = time.localtime(time.time()) # get the local time
+            time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
+            Trace.log(e_errors.INFO, "mounted %s %s %s"%(volume_label,self.config['product_id'], time_msg),
                   msg_type=Trace.MSG_MC_LOAD_DONE)
 
             if self.mount_delay:
@@ -4248,6 +4252,7 @@ if __name__ == '__main__':
                 for l in full_tb:
                     Trace.log(e_errors.ERROR, l[:-1], {}, "TRACEBACK")
                 Trace.log(e_errors.INFO, "restarting after exception")
+                mover.start()
             except:
                 pass
 
