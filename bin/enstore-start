@@ -8,7 +8,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 me=`whoami`
 PID_DIR=/tmp/enstore/$me
 
-opts_wo_args='ping|nocheck'
+opts_wo_args='ping|nocheck|async'
 opts_w_args='xterm|just'
 USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 while opt=`expr "${1-}" : '--\(.*\)'`;do
@@ -85,18 +85,20 @@ check_server()
       xnode=$ENSTORE_CONFIG_HOST
       xport=$ENSTORE_CONFIG_PORT
     fi
-    #if [ -n "${2-}" ] ; then
-    #   echo Checking $1 on $xnode $xport $local_host
-    #fi  
+    if [ -n "${2-}" ] ; then
+       echo "`date` Checking $1 on $xnode $xport $local_host"
+    fi  
     alv=`udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries`
     if [ $? -ne 0 ] ; then
-        echo "   ...$1 on $xnode $xport $local_host NOT REACHABLE..."
+        echo "`date`   ...$1 on $xnode $xport $local_host NOT REACHABLE..."
         exit 1
     elif [ -n "${2-}" -a `echo $local_host | grep -ic $xnode` -ne 0 ]; then 
        # put the pid (maybe more than once, doesn't matter) into pid file
        echo $alv | sed -e 's/.*pid.: //' -e 's/,.*//'  >> $2
     fi
-    echo $1 = $alv
+    if [ -n "${2-}" ] ; then
+       echo "`date` $1 = $alv"
+    fi  
 }
 
 
@@ -151,6 +153,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" \) -a $enstore_st
       fi
     fi
 
+    # Don't check configuration startup in background - need it working before anything else can start
     echo "`date` Waiting for configuration server to start"
     check_server configuration $PID_DIR/`uname -n`-configuration_pids
     echo "`date` ...configuration server returned"
@@ -235,8 +238,14 @@ for server in $node_servers;do
 done
 
 ###################################################################################################################################
-# start the rest up in 2 passes - 1st pass - just start, 2nd pass - just check
-for pass in startem checkem; do
+# if user doesn't specify the --async option, then check servers as we start them up
+if   [ ! "${opt_async-}" ] ; then 
+    passes=startem
+# if user does specify --async , then start up in 2 passes - 1st pass - just start, 2nd pass - just check
+else
+    passes="startem checkem"
+fi
+for pass in $passes; do
 ###################################################################################################################################
 
 # the logger needs to be next
@@ -259,6 +268,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" \) -a $enstore_sta
         fi
         echo $! >> $PID_DIR/`uname -n`-log_server_pids
       fi
+      if [ ! "${opt_async-}" ]; then check_server log_server $PID_DIR/`uname -n`-log_server_pids; fi
     
     else
       check_server log_server $PID_DIR/`uname -n`-log_server_pids &
@@ -288,6 +298,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep alarm`" \) -a $enstore_s
         fi
         echo $! >> $PID_DIR/`uname -n`-alarm_server_pids
       fi
+      if [ ! "${opt_async-}" ]; then check_server alarm_server $PID_DIR/`uname -n`-alarm_server_pids; fi
 
     else
       check_server alarm_server $PID_DIR/`uname -n`-alarm_server_pids &
@@ -317,6 +328,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" \) -a $enstore_sta
         fi
         echo $! >> $PID_DIR/`uname -n`-volume_clerk_pids
       fi
+      if [ ! "${opt_async-}" ]; then check_server volume_clerk $PID_DIR/`uname -n`-volume_clerk_pids; fi
 
     else
       check_server volume_clerk $PID_DIR/`uname -n`-volume_clerk_pids  &
@@ -349,6 +361,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" \) -a $enstore_sta
         fi
         echo $! >> $PID_DIR/`uname -n`-file_clerk_pids
       fi
+     if [ ! "${opt_async-}" ]; then check_server file_clerk $PID_DIR/`uname -n`-file_clerk_pids; fi
 
     else
      check_server file_clerk $PID_DIR/`uname -n`-file_clerk_pids &
@@ -385,6 +398,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 fi
                 echo $! > $PID_DIR/`uname -n`-$i-library_manager_pid
             fi
+  	   if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-library_manager_pid; fi
 
 	else
   	   check_server $i $PID_DIR/`uname -n`-$i-library_manager_pid &
@@ -419,6 +433,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 fi
                 echo $! >> $PID_DIR/`uname -n`-$i-media_changer_pid
             fi
+  	    if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-media_changer_pid; fi
 
         else
   	  check_server $i $PID_DIR/`uname -n`-$i-media_changer_pid &
@@ -454,6 +469,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 fi
                 echo $! >> $PID_DIR/`uname -n`-$i-mover_pid
             fi
+   	    if [ ! "${opt_async-}" ]; then check_server $i $PID_DIR/`uname -n`-$i-mover_pid; fi
 
         else         
  	  check_server $i $PID_DIR/`uname -n`-$i-mover_pid &
@@ -485,6 +501,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" \) -a $enstore_sta
         fi
         echo $! >> $PID_DIR/`uname -n`-inquisitor_pids
       fi
+      if [ ! "${opt_async-}" ]; then check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids; fi
 
     else
       check_server inquisitor $PID_DIR/`uname -n`-inquisitor_pids &
