@@ -267,7 +267,7 @@ def main(reset_on_error=0):
                 continue
             noreset = 1
             err, reason = check(mover)
-            if err=0:
+            if err == 0:
                 strikes[mover]=0
             if err:
                 all_ok=0
