@@ -979,16 +979,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #request_dictionary must have 'retry' as an element.
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
 
-    #This is here to help track down a hard to track error.  Leave this hear
-    # until the error is fixed.
-    try:
-        infile = request_dictionary['infile']
-    except (AttributeError, KeyError), detail:
-        print "request_dictionary:", type(request_dictionary), detail
-        pprint.pprint(request_dictionary)
-
-    infile = request_dictionary['infile']
-    #request_dictionary.get('infile', '')
+    #These fields need to be retrieved in this fashion.  If the transfer
+    # failed before encp could determine which transfer failed (aka failed
+    # opening/reading the/from contol socket) then only the 'status' field
+    # of both the request_dictionary and error_dictionary are guarenteed to
+    # exist (although some situations will add others).
+    infile = request_dictionary.get('infile', '')
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
@@ -1015,7 +1011,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Try to delete the request.  In the event that the connection
             # didn't let us determine which request failed, don't worry.
             del request_list[request_list.index(request_dictionary)]
-        except KeyError:
+        except (KeyError, ValueError):
             pass
         
         result_dict = {'status':status, 'retry':retry,
@@ -1042,7 +1038,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #If we get here, then the error occured while waiting for any (valid)
         # mover to call back.  Since, there was no information then the
         # submitting operation failed and we should go back to the top and
-        # wait for the other transfers to commence.
+        # wait for the other transfers to commence.  The key error is
+        # generated trying to get request_dictionary['vc']['library']
         pass
     
     result_dict = {'status':(e_errors.RETRY, None),
@@ -2370,8 +2367,8 @@ class encp(interface.Interface):
         self.test_mode = 0
         
         interface.Interface.__init__(self)
+        
         # parse the options
-
         self.parse_options()
 
     ##########################################################################
