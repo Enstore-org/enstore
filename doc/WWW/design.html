@@ -1,10 +1,9 @@
 <body>
 <font size=7><b><i>
-B
 <center>Enstore Technical Design Document</center>
 </i></b></font>
 <p>
-<font size=+3><b>Table of Contents</b></font>
+<font size=+1><b>Table of Contents</b></font>
 <ul>
 <li><a href="#overview">1 Enstore Architecture</a>
 <li><a href="#scope">1.0.1 Scope and Overview</a>
@@ -16,9 +15,10 @@ B
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
 <li><a href="#pcmd">1.1.4 pcmd: Enstore related <em>pnfs</em> commands</a>
 <li><a href="#volmaps">1.1.5 <em>Pnfs</em> Volume Maps</a>
-<li><a href="#encp">1.2 ENCP</a>
-<li><a href="#encp_throttle">1.2.1 Throttling in <em>encp</em></a>
-<li><a href="#encp_list_from hsm">1.2.2 Specifying lists of files when reading from or writing to the HSM</a>
+<li><a href="#encp">1.2 <i>Encp</i></a></li>
+<li><a href="#encp_options">1.2.1 <i>Encp</i> command line options</a></li>
+<li><a href="#encp_throttle">1.2.2 Throttling in <i>encp</i></a></li>
+<li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
 <li><a href="#servers">1.3 Enstore servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
@@ -746,8 +746,80 @@ The syntax is:
 Currently there is no wildcarding allowed, but this is a straight forward
 extension to <em>encp</em>.
 
+<h3>
+<a NAME="encp_options"></a>1.2.1<i>Encp</i> command line options</h3>
+
+<table BORDER COLS=3 WIDTH="100%" NOSAVE >
+<tr VALIGN=CENTER NOSAVE>
+<td NOSAVE><b>OPTION</b></td>
+<td NOSAVE><b>SWITCH</b></td>
+<td NOSAVE><b>DEFAULTS</b></td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>print short help message abouting using encp</td>
+<td NOSAVE>--help</td>
+<td NOSAVE>continuous Ascii status file and html snapshot file</td>
+
+<tr NOSAVE>
+<td NOSAVE>perform CRC check on the local user machine</td>
+<td NOSAVE>--crc</td>
+<td NOSAVE>CRC checks is only performed on the mover computers</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>set the base priority = value</td>
+<td NOSAVE>--pri=value</td>
+<td NOSAVE>1</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>change the base priority by value after a period specified by the agetime switch</td>
+<td NOSAVE>--delpri=value</td>
+<td NOSAVE>0</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>specify the time period, in minutes, after which the base priority could change</td>
+<td NOSAVE>--agetime=value</td>
+<td NOSAVE>0 (no aging of priority)</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>turn on special status printing requested by D0</td>
+<td NOSAVE>--d0sam</td>
+<td NOSAVE>D0 printing is off</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>change the amount of information printed about the transfer</td>
+<td NOSAVE>--verbose=value</td>
+<td NOSAVE>0 (no printing)</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>list the active and pending transfers for the specified node</td>
+<td NOSAVE>encp --queue nodename</td>
+<td NOSAVE>None</td>
+
+<tr NOSAVE>
+<td NOSAVE>specifies the hostname where the configuration server is running</td>
+<td NOSAVE>--config_host</td>
+<td NOSAVE>environmental variable, ENSTORE_CONFIG_HOST, set by the UPS setup command</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>specifies the port number that theconfiguration server responds to</td>
+<td NOSAVE>--config_port</td>
+<td NOSAVE>environmental variable, ENSTORE_CONFIG_PORT, set by the UPS setup command</td>
+</tr>
+
+</tr>
+
+</table>
+
 <h3><a name="encp_throttle">
-1.2.1 Throttling in <em>encp</em>
+1.2.2 Throttling in <em>encp</em>
 </h3>
 
 It is important not to swamp any system.
@@ -763,7 +835,7 @@ for example, someone forking off 200 copy requests,
 since at most 15 will be active in the system at any time.
 
 <h3><a name="encp_list_from hsm">
-1.2.2 Specifying lists of files when reading from or writing to the HSM
+1.2.3 Specifying lists of files when reading from or writing to the HSM
 </h3>
 
 <em>Encp</em> duplicates unix cp's behaviour when one tries to read or write
