@@ -136,8 +136,8 @@ class FTTDriver(driver.Driver):
         return r
 
     def read(self, buf, offset, nbytes):
-        if self.mode != 0:
-            raise ValueError, "file not open for reading"
+##        if self.mode != 0:
+##            raise ValueError, "file not open for reading"
         if offset != 0:
             raise ValueError, "offset must be 0"
         t0 = time.time()
