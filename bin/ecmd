@@ -12,12 +12,12 @@ ecmd restart (no options/arguments)
 
 ecmd encp    [--verbose= --help ] inputfilename outputfilename
 
-ecmd config  [--config_file=  --dict --load --verbose= --alive --help ]
-ecmd fcc     [--bfids --bfid= --verbose= --alive --backup --help ]
-ecmd vcc     [--vols  --vol=  --verbose= --alive --backup --help ']
-ecmd lmc     [--getwork     --verbose= --alive --help '] library
-ecmd mcc     [--verbose= --alive --help ']  media_changer volume drive
-ecmd mov     [--verbose= --status --alive --help'] mover
+ecmd config  [--server_verbose= --config_file=  --dict --load --verbose= --alive --help ]
+ecmd fcc     [--server_verbose= --bfids --bfid= --verbose= --alive --backup --help ]
+ecmd vcc     [--server_verbose= --vols  --vol=  --verbose= --alive --backup --help ']
+ecmd lmc     [--server_verbose= --getwork --verbose= --alive --help '] library
+ecmd mcc     [--server_verbose= --verbose= --alive --help ']  media_changer volume drive
+ecmd mov     [--server_verbose= --verbose= --status --alive --help'] mover
 
 ecmd bfids   [--verbose= --help']
 
@@ -32,9 +32,9 @@ ecmd addvol  [--vols  --vol=  --verbose= --help'] library file_family
 ecmd delvol  [--vols  --vol=  --verbose= --help'] volume_name
 ecmd clrvol  [--vols  --vol=  --verbose= --help'] volume_name
 
-ecmd log    [--test --alive  --verbose= --logit --help]
+ecmd log    [--server_verbose= --test --alive  --verbose= --logit --help]
 
-ecmd inq    [--alive --update --timeout=timeout_secs --get_timeout --help]
+ecmd inq    [--server_verbose= --alive --update --timeout=timeout_secs --get_timeout --help]
 
 ecmd pnfs    [--test --status --file= --restore=file --verbose= --help]
 
