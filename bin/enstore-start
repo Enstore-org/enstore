@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# add getopts to check for host and port and file, yeah yeah
+
+config_host=localhost
+config_port=7500
+config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
+
+# the configuration server needs to be the 1st thing started
+python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
+sleep 1
+
+# now check to see if it is really running
+python $ENSTORE_DIR/src/configuration_client.py --config_host $config_host --config_port $config_port
+if [ $? -ne 0 ] ; then
+    echo "...configuration error. can not continue..."
+    exit 1
+fi
+
+# the other servers can start now
+python $ENSTORE_DIR/src/volume_clerk.py    --config_host $config_host --config_port $config_port &
+python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_port $config_port &
+python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
+python $ENSTORE_DIR/src/mover.py fd0.mover --config_host $config_host --config_port $config_port &
+
+# really need to add a check to make sure they are working
+sleep 1
+

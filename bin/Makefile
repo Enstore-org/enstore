@@ -1,6 +1,8 @@
 
 all:
-	for d in 1 2 3 4 5 6 7 8 9 data ; do mkdir $$d ; done
+	for d in 1 2 3 4 5 6 7 8 9 data ; do\
+		if [ ! -d $$d ] ; then mkdir $$d ; fi\
+	done
 
 	touch data/long0.dat
 	echo short > data/long1.dat
