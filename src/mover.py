@@ -3,7 +3,7 @@
 import sys
 from os import *
 from time import *
-from configuration_server_client import *
+from configuration_client import *
 from volume_clerk_client import VolumeClerkClient
 from file_clerk_client import FileClerkClient
 from udp_client import UDPClient
@@ -11,7 +11,7 @@ from callback import *
 from dict_to_a import *
 from driver import RawDiskDriver
 
-csc = configuration_server_client()
+csc = configuration_client()
 u = UDPClient()
 
 class Mover :
@@ -45,7 +45,7 @@ class Mover :
 		# this is useful when a "library" is really one robot 
 		# with multiple uses, or when we need to manually load balance
 		# movers attacke to virtual library.... 
-		csc = configuration_server_client()
+		csc = configuration_client()
 		mconfig = csc.get(self.name)
 		if not mconfig["status"] == "ok" :
 			raise "could not start mover up:" + mconfig["status"]
@@ -55,7 +55,7 @@ class Mover :
 		self.library = mconfig["library"]
 	
 		# now get info asssociated with our volume manager
-		csc = configuration_server_client()
+		csc = configuration_client()
 		lconfig = csc.get_uncached(self.library + ".library_manager")
 		self.library_manager_host = lconfig["host"]
 		self.library_manager_port = lconfig["port"]

@@ -6,8 +6,8 @@ import socket
 class GenericServer:
 
     # we need to know where the configuration server is - keep track of it
-    def set_csc(self, configuration_server_client) :
-        self.csc = configuration_server_client
+    def set_csc(self, configuration_client) :
+        self.csc = configuration_client
 
 
     # this overrides the server_bind in TCPServer for the hsm system

@@ -1,12 +1,12 @@
 import sys
 import os
-from configuration_server_client import *
+from configuration_client import *
 from udp_client import UDPClient
 
 class VolumeClerkClient :
 
-	def __init__(self, configuration_server_client) :
-		self.csc = configuration_server_client
+	def __init__(self, configuration_client) :
+		self.csc = configuration_client
 		self.u = UDPClient()
 
 	def send (self, ticket) :

@@ -3,7 +3,7 @@
 import os
 import string
 from callback import *
-from configuration_server_client import configuration_server_client
+from configuration_client import configuration_client
 from dict_to_a import *
 from udp_client import UDPClient
 import pnfs
@@ -212,7 +212,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
 if __name__  ==  "__main__" :
 
     # register as a udp client
-    csc = configuration_server_client()
+    csc = configuration_client()
     u = UDPClient()
 
     # usage:  encp input output [list-details]

@@ -1,6 +1,7 @@
 import socket
 import time
 import select
+import os
 from errno import *
 
 TRANSFER_MAX=1024
@@ -34,7 +35,8 @@ class UDPClient:
     def __init__(self):
         self.number = 0
         self.host, self.port, self.socket = get_client()
-        self.ident = "%s-%d-%d" % (self.host, self.port, long(time.time()) )
+        self.ident = "%s-%d-%f-%d" \
+                     % (self.host, self.port, time.time(), os.getpid() )
 
     # this (generally) is received/processed by dispatching worker
     def send(self, text, address) :
@@ -66,7 +68,10 @@ class UDPClient:
             if r :
                 reply , server = self.socket.recvfrom(TRANSFER_MAX)
                 exec ("number,  out  = "  + reply)
-
+                if number != self.number :
+                    print "stale",number, self.number, message
+            else :
+                print "resending", message
         return out
 
 

@@ -1,10 +1,3 @@
-
-
-"""
-There is 1 problems with this routine.
-1. The 'I already answered that' in the udp causes problems.
-"""
-
 from SocketServer import *
 
 dict = {}
@@ -74,4 +67,3 @@ class DispatchingWorker:
     def reply_with_list(self, list) :
         dict[self.current_id] = list
         self.socket.sendto(`list`, self.reply_address)
-

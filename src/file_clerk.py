@@ -4,7 +4,7 @@ import sys
 import os
 import time
 from SocketServer import *
-from configuration_server_client import *
+from configuration_client import *
 from volume_clerk_client import VolumeClerkClient
 from library_manager import LibraryManagerClient
 from dispatching_worker import DispatchingWorker
@@ -78,7 +78,7 @@ if __name__ == "__main__" :
  	#   get our port and host from the name server
 	#   exit if the host is not this machine
 	#
-	csc = configuration_server_client() 
+	csc = configuration_client() 
 	ticket = csc.get("file_clerk")
 	cs = FileClerk( (ticket["host"], ticket["port"]), 
 						FileClerkMethods)

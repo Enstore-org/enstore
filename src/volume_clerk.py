@@ -3,7 +3,7 @@
 import sys
 import os
 from SocketServer import *
-from configuration_server_client import *
+from configuration_client import *
 from callback import send_to_user_callback
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
@@ -111,7 +111,7 @@ if __name__ == "__main__" :
 	#
         # find our node name and port.
         #
-	csc = configuration_server_client()
+	csc = configuration_client()
 	keys = csc.get("volume_clerk")
 	vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
 	vs.set_csc(csc)

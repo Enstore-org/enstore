@@ -3,7 +3,7 @@
 import sys
 import os
 from SocketServer import *
-from configuration_server_client import *
+from configuration_client import *
 from volume_clerk_client import VolumeClerkClient
 from callback import send_to_user_callback
 from dispatching_worker import DispatchingWorker
@@ -216,9 +216,9 @@ class LibraryManagerMethods(DispatchingWorker) :
 class LibraryManager(LibraryManagerMethods, GenericServer, UDPServer) : pass
 
 class LibraryManagerClient :
-	def __init__(self, configuration_server_client) :
+	def __init__(self, configuration_client) :
 		self.u = UDPClient()
-		self.csc = configuration_server_client
+		self.csc = configuration_client
 
 	def write_to_hsm(self, ticket) :
 		return self.u.send(ticket)
@@ -231,7 +231,7 @@ if __name__ == "__main__" :
         # find the volume server
         # in order to find our node name and port.
         #
-	csc = configuration_server_client()
+	csc = configuration_client()
 	keys = csc.get(sys.argv[1] + ".library_manager")
 	#
 	#  set ourself up on that port and start serving
