@@ -359,6 +359,8 @@ class Interface:
             elif opt == "--data_access_layer":
                 # if data_access_layer has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 
+	    elif opt == "--use_IPC":
+		self.use_IPC = 1
             elif opt == "--logfile_dir":
                 self.logfile_dir = value
             elif opt == "--start_time":
