@@ -265,6 +265,7 @@ def forked_write_to_hsm( self, ticket ):
 	self.pid = os.fork()
 	self.state = 'busy'
 	self.mode = 'w'			# client mode, not driver mode
+	self.bytes_to_xfer = ticket['fc']['size']
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
@@ -408,6 +409,7 @@ def forked_read_from_hsm( self, ticket ):
 	self.pid = os.fork()
 	self.state = 'busy'
 	self.mode = 'r'			# client mode, not driver mode
+	self.bytes_to_xfer = ticket['fc']['size']
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
@@ -651,9 +653,19 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	out_ticket['no_xfers'] = self.client_obj_inst.hsm_driver.no_xfers
 	out_ticket['rd_bytes'] = self.client_obj_inst.hsm_driver.rd_bytes_get()
 	out_ticket['wr_bytes'] = self.client_obj_inst.hsm_driver.wr_bytes_get()
+	out_ticket['bytes_to_xfer'] = self.client_obj_inst.bytes_to_xfer
+	out_ticket['crc_func'] = str(self.client_obj_inst.crc_func)
 	self.reply_to_caller( out_ticket )
 	return
 
+    def crc_on( self, ticket ):
+	self.client_obj_inst.crc_func = ECRC.ECRC
+	return
+	
+    def crc_off( self, ticket ):
+	self.client_obj_inst.crc_func = None
+	return
+	
     def update_client_info( self, ticket ):
 	self.client_obj_inst.vol_info = ticket['vol_info']
 	self.client_obj_inst.hsm_driver.blocksize = \
