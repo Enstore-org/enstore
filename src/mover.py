@@ -201,7 +201,10 @@ def offline_drive( self, error_info ):	# call directly for READ_ERROR
 
 def fatal_enstore( self, error_info ):
     Trace.log( e_errors.ERROR, "FATAL ERROR - MOVER - "+str(error_info) )
-    rsp = udpc.send( {'work':"unilateral_unbind",'status':error_info}, self.lm_origin_addr )
+    ticket = {'work'          :"unilateral_unbind",
+	      'external_label':self.vol_info['external_label'],
+	      'status'        :error_info}
+    rsp = udpc.send( ticket, self.lm_origin_addr )
     # Enstore design issue... it has not yet been decided what to do; so for
     # now I just...
     while 1: time.sleep( 100 )	 # this does exactly what you think it does!
@@ -1219,7 +1222,11 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    # now check if next_req_to_lm=={} means we just started an xfer and
 	    # are waiting for completion.
 	    if self.client_obj_inst.state == 'idle':
-		next_req_to_lm = idle_mover_next( self.client_obj_inst )
+		if self.client_obj_inst.vol_info['external_label'] == '':
+		    next_req_to_lm = idle_mover_next( self.client_obj_inst )
+		else:
+		    next_req_to_lm = have_bound_volume_next( self.client_obj_inst )
+		    pass
 		address = self.summoned_while_busy[0]
 		del self.summoned_while_busy[0]
 		pass
