@@ -541,7 +541,7 @@ def bind_volume( object, external_label ):
             # Note:  Closing the device seems to write a
             #file mark (even though it was opened "r"!),
             # so we better close *before* rewinding.
-            driver_object.close()
+            driver_object.close(skip=0)
             driver_object = object.hsm_driver.open( mvr_config['device'], 'a+')
             r=driver_object.rewind()
             if debug_paranoia:
