@@ -521,6 +521,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
         else :
             Trace.trace( 11, "RT5 is %s"%(rt[5],))
             state = rt[5]
+        if not state and rt[2]:  # volumes not in the robot
+            state = rt[2]
         return (rt[0], rt[1], rt[2], state)
 	
     def cleanCycle(self, inTicket):
@@ -655,7 +657,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 if sts[1] != 0:
                    Trace.log(e_errors.ERROR, 'function %s error %s'%(repr(function),sts[2])) 
                 if (sts[1] == 54 or          #IPC error
-                    sts[1] == 68):           #IPC error (usually)
+                    sts[1] == 68 or          #IPC error (usually)
+                    sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
                     time.sleep(10)
                     count = count - 1
                     time.sleep(20)
@@ -695,6 +698,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             state=''
         else :
             state = rt[3]
+            if not state and rt[2]:  # volumes not in the robot
+                state = rt[2]
         return (rt[0], rt[1], rt[2], state)
 	
 
