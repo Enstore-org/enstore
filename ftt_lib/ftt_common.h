@@ -84,3 +84,23 @@ extern int      ftt_inquire(ftt_descriptor d);
 extern int      ftt_format_ait(ftt_descriptor d, int size);
 extern int      ftt_modesense(ftt_descriptor d);
 extern int      ftt_logsense(ftt_descriptor d);
+
+typedef struct { 
+	int n_parts; 
+	int max_parts; 
+	long int partsizes[64]
+} *ftt_partbuf;
+
+extern ftt_partbuf 	ftt_alloc_parts();
+extern void 		ftt_free_parts(ftt_partbuf);
+
+extern int 		ftt_extract_nparts(partbuf);
+extern int 		ftt_extract_maxparts(partbuf);
+extern long 		ftt_extract_part_size(partbuf,n);
+extern int 		ftt_set_nparts(partbuf,n);
+extern int 		ftt_set_part_size(partbuf,int,long);
+
+extern int		ftt_get_partitions(ftt_descriptor,partbuf);
+extern int		ftt_write_partitions(ftt_descriptor,partbuf);
+extern int		ftt_skip_part(ftt_descriptor,nparts);
+
