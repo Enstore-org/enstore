@@ -3372,11 +3372,19 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                        time.time()-tinfo['encp_start_time']))
 
 
-        #Stall starting the count until the first byte is ready for reading.
-        read_fd, write_fd, exc_fd = select.select([], [data_path_socket],
-                                                  [data_path_socket], 15 * 60)
+        #Stall starting the count until the first byte is ready for writing.
+        write_fd = select.select([], [data_path_socket], [], 15 * 60)[1]
 
-        if not write_fd:
+        #To achive more accurate rates on writes to enstore when a tape
+        # needs to be mounted, wait until the mover has sent a byte as
+        # a signal to encp that it is ready to read data from its socket.
+        # Otherwise, 64K bytes just sit in the movers recv queue and the clock
+        # ticks by making the write rate worse.  When the mover finally
+        # mounts and positions the tape, the damage to the rate is already
+        # done.
+        read_fd = select.select([data_path_socket], [], [], 15 * 60)[0]
+
+        if not write_fd or not read_fd:
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
             result_dict = handle_retries([work_ticket], work_ticket,
