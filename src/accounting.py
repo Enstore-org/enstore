@@ -160,7 +160,7 @@ class accDB:
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_error(self, date, node, pid, username, src, dst,
-		size, encp_id, version, type, error):
+		size, storage_group, encp_id, version, type, error):
 		if type(date) != type(""):
 			date = time2timestamp(date)
 
@@ -182,6 +182,8 @@ class accDB:
 			en_error['size'] = -1
 		if encp_id:
 			en_error['encp_id'] = encp_id
+		if storage_group:
+			en_error['storage_group'] = storage_group
 		
 
 		self.insert('encp_error', en_error)

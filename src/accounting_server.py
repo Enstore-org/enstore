@@ -270,7 +270,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
-			self.accDB.log_encp_xfer(
+			self.accDB.log_encp_error(
 				ticket['date'],
 				ticket['node'],
 				ticket['pid'],
@@ -278,6 +278,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				ticket['src'],
 				ticket['dst'],
 				ticket['size'],
+				ticket['storage_group'],
 				ticket['encp_id'],
 				ticket['version'],
 				ticket['type'],

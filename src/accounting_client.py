@@ -177,7 +177,7 @@ class accClient(generic_client.GenericClient):
 			'encp_version'	: encp_version}
 		self.send2(ticket)
 
-	def log_encp_error(self, src, dst, size, encp_id, version,
+	def log_encp_error(self, src, dst, size, storage_group, encp_id, version,
 		type, error, node=None, date=None):
 
 		if not self.server_address: return
@@ -197,6 +197,7 @@ class accClient(generic_client.GenericClient):
 			'src'		: src,
 			'dst'		: dst,
 			'size'		: size,
+			'storage_group'	: storage_group,
 			'encp_id'	: encp_id,
 			'version'	: version,
 			'type'		: type,
