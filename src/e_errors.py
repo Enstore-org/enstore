@@ -97,7 +97,7 @@ MOVER_CRASH     = 'MOVER_CRASH'
 if 0: print ENCP_GONE,TCP_HUNG,MOVER_CRASH #lint fix
 
 non_retriable_errors = (NOMOVERS, NOACCESS,
-                        WRONGPARAMETER, MOUNTFAILED,
+                        WRONGPARAMETER, MOUNTFAILED, DISMOUNTFAILED,
                         USERERROR, UNKNOWNMEDIA, NOVOLUME,
                         WRITE_NOTAPE, WRITE_NOBLANKS,
                         READ_NOTAPE, READ_BADMOUNT,
