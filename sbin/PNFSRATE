@@ -1,0 +1,5 @@
+#!/bin/sh
+
+python $ENSTORE_DIR/sbin/pnfsRate.py --mountpoint /pnfs/sam/mammoth --database 10 --sleeptime=5  --genhtml --all --lssizecmd="d0ensrv1 /diska/pnfs/db" > /fnal/ups/prd/www_pages/enstore/pnfsRate.html 2>/fnal/ups/prd/www_pages/enstore/pnfsRate.errors
+
+
