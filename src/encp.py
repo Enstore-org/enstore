@@ -2611,7 +2611,10 @@ def create_read_requests(callback_addr, tinfo, e):
             fc_reply['address'] = fcc.server_address
             vc_reply['address'] = vcc.server_address
         except EncpError, detail:
-            continue
+            print_data_access_layer_format(
+                inputlist[i], outputlist[i], file_size[i],
+                {'status':(detail.type, detail.strerror)})
+            quit()
 
         Trace.message(TICKET_LEVEL, "FILE CLERK:")
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
