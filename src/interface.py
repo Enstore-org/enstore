@@ -327,8 +327,6 @@ class Interface:
                 self.delayed_dismount = string.atoi(value)
             elif opt == "--dump":
                 self.dump = 1
-            elif opt == "--nosummon":
-                self.summon = 1
             elif opt == "--verbose" :
                 if value == "":
                     self.verbose = self.verbose | 1
