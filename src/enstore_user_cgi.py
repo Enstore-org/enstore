@@ -6,6 +6,10 @@ import cgi
 import string
 import os
 import tempfile
+import re
+
+ENSTORE_USER_NODES = "enstore_user_nodes.txt"
+FERMI_DOMAIN = ".fnal.gov$"
 
 def append_from_key(argv, value_text_key, form, alt_name=""):
     if not alt_name:
@@ -29,20 +33,53 @@ def print_keys(keys, form):
             print "%s = %s"%(key, form[key].value)
         except AttributeError:
             print "No value for %s"%key
+
+def in_domain(host, domain):
+    m = re.search(domain, host)
+    if m is None:
+        return 0
+    else:
+        return 1
+
+def no_access(host):
+    print "<FONT SIZE=+3>Sorry, your host (%s) is not allowed to query Enstore.</FONT>"%host
+    print "</BODY></HTML>"
         
 def go():
     # first print the two lines for the header
     print "Content-type: text/html"
     print
 
+    # now start the real html
+    print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
+
     # first determine if a request from this node is allowed to happen
     # the node had better be listed in a file called enstore_user_nodes.txt
     # which is located in the current directory
-
-    # now start the real html
-    print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
-    print os.environ["REMOTE_HOST"]
-    print os.environ["REMOTE_ADDR"]
+    try:
+        filestat = os.stat(ENSTORE_USER_NODES)
+        # read in the file
+        filedes = open(ENSTORE_USER_NODES)
+        # for each line in the file, see if the remote node is in the line
+        found_it = 0
+        host = os.environ["REMOTE_HOST"]
+        while 1:
+            line = filedes.readline()
+            if not line:
+                break
+            else:
+                if in_domain(host, line):
+                    found_it = 1
+                    break
+        filedes.close()
+        if not found_it:
+            no_access(host)
+            raise SystemExit
+    except OSError:
+        # the file did not exist, only allow addresses from *.fnal.gov
+        if not in_domain(os.environ["REMOTE_HOST"], FERMI_DOMAIN):
+            no_access(os.environ["REMOTE_HOST"])
+            raise SystemExit
     try:
         # get the data from the form
         form = cgi.FieldStorage()
