@@ -19,6 +19,7 @@ import generic_client
 import backup_client
 import udp_client
 import callback
+import hostaddr
 import Trace
 import e_errors
 
