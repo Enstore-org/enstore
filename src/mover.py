@@ -1163,7 +1163,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         return os.path.exists(self.lockfile_name())
         
     def start_draining(self, ticket):	    # put itself into draining state
-        self.state = DRAINING
+        if self.state is ACTIVE:
+            self.state = DRAINING
+        elif self.state is IDLE:
+            self.state = OFFLINE
+        elif self.state is HAVE_BOUND:
+            self.state = DRAINING # XXX CGW should dismount here. fix this
         self.create_lockfile()
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
