@@ -271,7 +271,7 @@ cat $files | while read file; do
        echo mkdir -p $bdir
             mkdir -p $bdir
     fi
-    (cd $bdir; enstore pnfs --file-family $family; bn_lib=`enstore pnfs --library`; if [ "$lib:-x} -ne "CDF-9940B" ]; then touch ${status:-/data1/status}/HALT; touch ${status:-/data/1/status}/$tape.stop; exit 1; )
+    (cd $bdir; enstore pnfs --file-family $family; bn_lib=`enstore pnfs --library`; if [ "${bn_lib:-x}" != "CDF-9940B" ]; then touch ${status:-/data1/status}/HALT; touch ${status:-/data1/status}/$tape.stop; exit 1; fi )
 ###    ENSTORE_SPECIAL_LIB=CDF-Migration
 ###    export ENSTORE_SPECIAL_LIB
     echo `date` $n encp --delayed-dismount=$delay $options $lfile $bfile
