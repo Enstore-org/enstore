@@ -41,16 +41,10 @@ co=1 # continuous dismount->mount->dismount flag
 
 defaults="DE01-CA2502:CA2513:CA2524:CA2503:CA2547:CA2557:CA2568:CA2579:CA2590:-aml2r1.media_changer-rip7.fnal.gov \
           DE02-CA2504:CA2515:CA2527:CA2505:CA2549:CA2559:CA2570:CA2581:CA2596:-aml2r1.media_changer-rip7.fnal.gov \
-          DC03-CA2252:CA2256:CA2257:CA2258:CA2259:CA2260:-aml2r1.media_changer-rip7.fnal.gov \
-          DC04-CA2269:CA2261:CA2272:CA2273:CA2290:CA2291:-aml2r1.media_changer-rip7.fnal.gov \
-          DC05-CA2250:CA2292:CA2293:CA2294:CA2295:CA2296:-aml2r1.media_changer-rip7.fnal.gov \
-          DC06-CA2268:CA2267:CA2297:CA2298:CA2299:-aml2r1.media_changer-rip7.fnal.gov \
-          DM07-CA2950:CA2951:CA2952:CA2953:CA2954:CA2955:CA2956:CA2957:-aml2r1.media_changer-rip7.fnal.gov \
-          DM08-CA2958:CA2959:CA2960:CA2961:CA2962:CA2963:CA2964:CA2965:-aml2r1.media_changer-rip7.fnal.gov \
-          DM09-CA2966:CA2967:CA2968:CA2969:CA2970:CA2971:CA2972:CA2973:-aml2r1.media_changer-rip7.fnal.gov \
-          DM10-CA2974:CA2975:CA2976:CA2977:CA2978:CA2979:CA2980:CA2981:-aml2r1.media_changer-rip7.fnal.gov \
-          DM11-CA2982:CA2983:CA2984:CA2985:CA2986:CA2987:CA2988:CA2989:-aml2r1.media_changer-rip7.fnal.gov \
-          DM12-CA2990:CA2991:CA2992:CA2993:CA2994:CA2995:CA2996:CA2997:-aml2r1.media_changer-rip7.fnal.gov \
+          DC03-CA2252:CA2256:CA2257:CA2258:CA2259:CA2260:-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DC04-CA2269:CA2261:CA2272:CA2273:CA2290:CA2291:-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DC05-CA2250:CA2292:CA2293:CA2294:CA2295:CA2296:-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DC06-CA2268:CA2267:CA2297:CA2298:CA2299:-aml2r1.media_changer-d0ensrv2.fnal.gov \
           DE13-CA2548-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DE14-CA2549-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DC15-CA2260-aml2r2.media_changer-d0ensrv2.fnal.gov \
@@ -68,14 +62,28 @@ defaults="DE01-CA2502:CA2513:CA2524:CA2503:CA2547:CA2557:CA2568:CA2579:CA2590:-a
           DC27-CA2270-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DC28-CA2271-aml2r2.media_changer-d0ensrv2.fnal.gov \
           DC29-CA2272-aml2r2.media_changer-d0ensrv2.fnal.gov \
-          DM30-000060:000061-aml2r1.media_changer-rip7.fnal.gov \
-          DM31-000062:000063-aml2r1.media_changer-rip7.fnal.gov \
-          DM32-000064:000065-aml2r1.media_changer-rip7.fnal.gov \
-          DM33-000066:000067-aml2r1.media_changer-rip7.fnal.gov \
           JDE01-CA2530:CA2531-amlj.media_changer-stkensrv2.fnal.gov \
           JDE02-CA2532:CA2533-amlj.media_changer-stkensrv2.fnal.gov \
           JDE03-CA2534:CA2535-amlj.media_changer-stkensrv2.fnal.gov \
           JDE04-CA2536:CA2537-amlj.media_changer-stkensrv2.fnal.gov \
+          DI36-PRG000-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI37-PRG001-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI38-PRG002-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI39-PRG003-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI40-PRG004-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI41-PRG005-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI42-PRG006-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI43-PRG007-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI44-PRG008-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI45-PRG009-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI46-PRG010-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI47-PRG011-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI48-PRG012-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI49-PRG013-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI50-PRG014-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI51-PRG015-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI52-PRG016-aml2r1.media_changer-d0ensrv2.fnal.gov \
+          DI53-PRG017-aml2r1.media_changer-d0ensrv2.fnal.gov \
           "
 
 media_changer="MISSING"
