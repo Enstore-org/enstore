@@ -81,7 +81,7 @@ class EnFile:
     def open(self, mode='w'):
         try:
             self.openfile = open(self.file_name, mode)
-            Trace.trace(10,"%s open "%(self.file_name,))
+            Trace.trace(enstore_constants.INQFILEDBG,"%s open "%(self.file_name,))
         except IOError:
             self.openfile = 0
             Trace.log(e_errors.WARNING,
@@ -93,15 +93,17 @@ class EnFile:
             self.openfile.write(str(data))
 
     def close(self):
-        Trace.trace(10,"enfile close %s"%(self.file_name,))
-        if self.openfile:
-            self.openfile.close()
-            self.openfile = 0
+	Trace.trace(enstore_constants.INQFILEDBG,"enfile close %s"%(self.file_name,))
+	if self.openfile:
+	    self.openfile.close()
+	    self.openfile = 0
 
     def install(self):
-        # move the file we created to the real file name
+	# move the file we created to the real file name
+        Trace.trace(enstore_constants.INQFILEDBG, 
+		    "Tmp file: %s, real file: %s"%(self.file_name, self.real_file_name))
         if (not self.real_file_name == self.file_name) and os.path.exists(self.file_name):
-            os.system("mv %s %s"%(self.file_name, self.real_file_name))
+	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
 
     def remove(self):
         if os.path.exists(self.file_name):
@@ -129,7 +131,7 @@ class EnStatusFile(EnFile):
 
     # open the file
     def open(self):
-        Trace.trace(12,"open %s"%(self.file_name,))
+        Trace.trace(enstore_constants.INQFILEDBG,"open %s"%(self.file_name,))
         # try to open status file for append
         EnFile.open(self, 'a')
         if not self.openfile:
@@ -328,11 +330,9 @@ class EnDataFile(EnFile):
 
     # read in the given file and return a list of lines that are between a
     # given start and end time
-    def timed_read(self, ticket):
+    def timed_read(self, start_time, stop_time):
         do_all = FALSE
-        start_time = ticket.get(START_TIME, "")
-        stop_time = ticket.get(STOP_TIME, "")
-        if not stop_time and not start_time:
+        if stop_time is None and start_time is None:
             do_all = TRUE
         # read it in.  only save the lines that match the desired time frame
         if self.openfile:

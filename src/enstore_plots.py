@@ -300,6 +300,45 @@ class MpdDataFile(EnPlot):
 	gnucmds.close()
 
 
+class MpdMonthDataFile(EnPlot):
+
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.MPD_MONTH_FILE)
+
+    def open(self):
+	if os.path.isfile(self.ptsfile):
+	    EnPlot.open(self, 'r')
+
+    def get_30_mounts(self):
+	mpdfile = MpdDataFile(self.dir)
+	mpdfile.open('r')
+	lines_l = mpdfile.openfile.readlines()
+	mpdfile.openfile.close()
+	mounts_l = []
+	for line in lines_l:
+	    sline= string.split(string.strip(line))
+	    mounts_l.append(sline)
+	else:
+	    mounts_l.sort()
+	return mounts_l[-30:]
+
+    # make the mounts per day plot file
+    def plot(self):
+	# we must plot the last 30 days of  data in the total mounts file
+	mounts_l = self.get_30_mounts()
+	self.openfile.close()
+	self.openfile = open(self.ptsfile, 'w')
+	for line in mounts_l:
+	    self.openfile.write(line)
+	# don't need to close the file as it is closed by the caller
+
+	# now create the gnuplot command file
+	gnucmds = MpdGnuFile(self.gnufile)
+	gnucmds.open('w')
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
+	gnucmds.close()
+
+
 class MlatGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile):

@@ -18,7 +18,6 @@ import threading
 import setpath
 import library_manager_client
 import mover_client
-import inquisitor_plots
 import monitored_server
 import event_relay_messages
 import event_relay_client
@@ -60,19 +59,18 @@ def get_file_list(dir, prefix):
     # pull out the files and get their sizes
     prefix_len = len(prefix)
     for file in files:
-        if file[0:prefix_len] == prefix and not file[-3:] == ".gz":
+        if file[0:prefix_len] == prefix and (not file[-3:] == ".gz"):
             logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
     return logfiles
 
 class EventRelay:
 
-    def __init__(self, interval):
+    def __init__(self):
         self.last_alive = enstore_constants.NEVER_ALIVE
-        self.interval = interval
-        self.sent_own_alive = 0
         self.state = enstore_constants.NEVER_ALIVE
         self.start = time.time()
         self.name = enstore_constants.EVENT_RELAY
+	self.heartbeat = enstore_constants.EVENT_RELAY_HEARTBEAT + 15
 
     def __repr__(self):
         import pprint
@@ -80,35 +78,38 @@ class EventRelay:
     
     def alive(self, now):
         self.last_alive = now
-        self.sent_own_alive = 0
         self.state = ALIVE
 
     def dead(self):
+	Trace.trace(enstore_constants.INQSERVERDBG, "setting event relay as dead")
         self.state = DEAD
 
+    def set_state(self, now):
+	Trace.trace(enstore_constants.INQSERVERTIMESDBG,
+		    "Now: %s, Last alive: %s, Heartbeat: %s"%(time.ctime(now), 
+							      time.ctime(self.last_alive),
+							      self.heartbeat))
+	if (now - self.last_alive) > self.heartbeat:
+	    self.dead()
+
     def is_alive(self):
+	self.set_state(time.time())
         if self.state == ALIVE:
             rtn = 1
         else:
             rtn = 0
         return rtn
 
-    # should the event relay process be contacted.  in other words, has it been awhile
-    # since it talked to us.
-    def doPing(self):
-        now = time.time()
-        if self.last_alive == enstore_constants.NEVER_ALIVE and \
-           now - self.start > self.interval:
-            rtn = 1
-        elif now - self.last_alive > self.interval:
-            rtn = 1
-        else:
-            rtn = 0
-        return rtn
+    def is_dead(self, now):
+	self.set_state(now)
+	if self.state == DEAD:
+	    rtn = 1
+	else:
+	    rtn = 0
+	return rtn
 
 
-class InquisitorMethods(inquisitor_plots.InquisitorPlots,
-                        dispatching_worker.DispatchingWorker):
+class InquisitorMethods(dispatching_worker.DispatchingWorker):
     
     # look for the hung_rcv_timeout value for the specified key in the inquisitor
     # config info.  if it does not exist, return the default
@@ -125,8 +126,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     def mark_server(self, state, server):
         if server.no_thread():
-            Trace.trace(enstore_constants.INQSERVERDBG, "mark server %s as %s"%(server.name,
-                                                                                state,))
+            Trace.trace(enstore_constants.INQSERVERDBG, "mark %s as %s"%(server.name,
+									 state,))
             self.serverfile.output_etimedout(server.host, server.port, state, 
                                              time.time(), server.name, 
                                              server.output_last_alive)
@@ -188,7 +189,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 # do not do the stop and start if the event relay is not alive or if this
                 # server is marked as known down.
                 known_down = self.is_server_known_down(server)
-                if self.event_relay.is_alive() and not known_down:
+                if self.event_relay.is_alive() and (not known_down):
                     if first_time:
                         Trace.log(e_errors.INFO,
                                   "%s: Attempting restart of %s"%(prefix, server.name))
@@ -204,7 +205,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 while j < server.hung_interval:
                     time.sleep(k)
                     j = j + k
-                if server.check_recent_alive() == monitored_server.NO_TIMEOUT:
+                if server.check_recent_alive(self.event_relay) == monitored_server.NO_TIMEOUT:
                     Trace.log(e_errors.INFO, "%s: Restarted %s"%(prefix, server.name))
                     break
                 else:
@@ -240,7 +241,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
             alarm_info = {'server' : server.name}
             # first see if the server is supposed to be restarted.
             if server.norestart:
-                if server.restart_failed and not server.did_restart_alarm:
+                if server.restart_failed and (not server.did_restart_alarm):
                     # do not restart, raise an alarm that the
                     # server is dead.
                     if not server.name == enstore_constants.ALARM_SERVER:
@@ -251,12 +252,13 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                     server.did_restart_alarm = 1
             else:
                 # do not attempt to do the restart if the event relay is not alive.
-                if not server.restart_failed and self.event_relay.is_alive():
+                if (not server.restart_failed) and self.event_relay.is_alive():
                     # we must keep track of the fact that we created a thread for this 
                     # client so the next time we find the server dead we do not create 
                     # another one.
                     Trace.trace(enstore_constants.INQRESTARTDBG,
-                              "Inquisitor creating thread to restart %s"%(server.name,))
+				"Inquisitor creating thread to restart %s, event_relay is %s"%(server.name,
+											  self.event_relay.state))
                     server.restart_thread = threading.Thread(group=None,
                                                              target=self.restart_function,
                                                              name="RESTART_%s"%(server.name,),
@@ -302,7 +304,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 self.logfile.copy()
                 self.logfile.remove()
 
-    def add_new_mv_lm_mc(self, key, config_d, event_relay_interval):
+    def add_new_mv_lm_mc(self, key, config_d):
         if enstore_functions.is_mover(key):     
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
@@ -323,7 +325,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         if self.ok_to_monitor(cdict):
             self.server_d[key].hung_interval = \
                                     self.inquisitor.get_hung_interval(self.server_d[key].name)
-            event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
         else:
             self.serverfile.dont_monitor(key, cdict.get("host", ""), cdict.get("port", ""))
 
@@ -353,8 +354,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 if self.ok_to_monitor(new_server_config):
                     server.update_config(new_server_config)
                     server.hung_interval = self.inquisitor.get_hung_interval(server.name)
-                    self.event_relay.interval = max(self.event_relay.interval,
-                                                    server.hung_interval)
                 else:
                     # we should no longer be monitoring this server
                     self.stop_monitoring(server, skey)
@@ -367,7 +366,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         # library managers and media changers for now.
         for skey in config.keys():
             if not self.server_d.has_key(skey):
-                self.add_new_mv_lm_mc(skey, config, self.event_relay.interval)
+                self.add_new_mv_lm_mc(skey, config)
 
         self.www_server = config.get(enstore_constants.WWW_SERVER, {})
         # only update the following values if they were not set on the command line
@@ -532,56 +531,26 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         self.encpfile.close()
         self.encpfile.install()
 
-    def all_servers_timed_out(self):
-        rtn = 1
-        for server in self.server_d.keys():
-            if self.server_d[server].state == monitored_server.NO_TIMEOUT and \
-               not self.server_d[server].name == enstore_constants.INQUISITOR:
-                    rtn = 0
-                    break
-        if rtn == 1:
-            Trace.trace(enstore_constants.INQSERVERDBG, "all servers have timed out")
-        return rtn
-
-    def ping_event_relay(self, servers_timed_out):
-        self.mark_event_relay(ALIVE)
-        if 0 and self.event_relay.sent_own_alive >= 2 or servers_timed_out: ##XXX cgw
-            # we have sent several alive messages to the event relay and have gotten
-            # nothing back.  mark it as dead
-            self.mark_event_relay(DEAD)
-            self.event_relay.dead()
-            if not self.sent_event_relay_alarm:
-                Trace.alarm(e_errors.ERROR, e_errors.TIMEDOUT, {'server' : self.event_relay.name,
-                                                                'host' : self.erc.host })
-                self.sent_event_relay_alarm = 1
-
-        # whoops have not seen anything for awhile, try to send ourselves our own 
-        # alive, if this does not work, then the event relay process is not running
-        self.erc.send(self.event_relay_msg)
-        self.event_relay.sent_own_alive = self.event_relay.sent_own_alive + 1
-        # try resubscribing too.
-        self.erc.subscribe()
-
-    # if we have not heard anything from the event relay for awhile.  maybe it is down or
-    # maybe nothing else is running
-    def check_event_message(self):
-        now = time.time()
-        mongo_time_out = self.all_servers_timed_out()
-        if self.event_relay.doPing() or mongo_time_out:
-            Trace.trace(enstore_constants.INQSERVERDBG, "pinging the event relay")
-            self.ping_event_relay(mongo_time_out)
-
     # examine each server we are monitoring to see if we have received an alive from
     # it recently (via the event relay)
     def check_last_alive(self):
         for skey in self.server_d.keys():
             server = self.server_d[skey]
-            status = server.check_recent_alive()
+            status = server.check_recent_alive(self.event_relay)
             if status == monitored_server.TIMEDOUT:
                 self.mark_timed_out(server)
             elif status == monitored_server.HUNG:
                 self.mark_hung(server)
                 self.attempt_restart(server)
+
+    def check_event_relay_last_alive(self):
+	if self.event_relay.is_dead(time.time()):
+	    self.mark_event_relay(DEAD)
+	    if not self.sent_event_relay_alarm:
+		Trace.alarm(e_errors.ERROR, 
+			    e_errors.TIMEDOUT, {'server' : self.event_relay.name,
+						'host' : self.erc.host })
+		self.sent_event_relay_alarm = 1
 
     def server_is_alive(self, name):
         now = time.time()
@@ -667,7 +636,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         # see if there are any servers in cardiac arrest (no heartbeat)
         self.check_last_alive()
         # check if we have received an event relay message recently
-        self.check_event_message()
+        self.check_event_relay_last_alive()
         self.make_server_status_html_file()
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
@@ -703,8 +672,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
             server = self.server_d[skey]
             print repr(server)
         print repr(self.event_relay)
-        if self.plot_thread and self.plot_thread.isAlive():
-            print "plot thread is alive"
         print ""
         import pprint
         pprint.pprint(self.serverfile.text)
@@ -777,6 +744,13 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
             new_val = aValue
         return new_val
 
+    # subscribe to the event relay
+    def subscribe(self, ticket):
+        Trace.trace(enstore_constants.INQWORKDBG, "event relay subscribe work from user")
+        ticket["status"] = (e_errors.OK, None)
+	self.erc.subscribe()
+        self.send_reply(ticket)
+
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
@@ -805,7 +779,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.inquisitor = monitored_server.MonitoredInquisitor(\
                                     config_d.get(enstore_constants.INQUISITOR, {}))
         self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
-        event_relay_interval = 0
 
         self.got_from_cmdline = {}
         # if no interval to do updates was entered on the command line, get it from the 
@@ -838,14 +811,11 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                      enstore_files.encp_html_file_name())
                 config_file = "%s/%s"%(self.html_dir,
                                        enstore_files.config_html_file_name())
-                plot_file = "%s/%s"%(self.html_dir,
-                                     enstore_files.plot_html_file_name())
             else:
                 self.html_dir = enstore_files.default_dir
                 html_file = enstore_files.default_status_html_file()
                 encp_file = enstore_files.default_encp_html_file()
                 config_file = enstore_files.default_config_html_file()
-                plot_file = enstore_files.default_plot_html_file()
 
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
@@ -867,8 +837,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                                  self.html_dir, self.system_tag)
         self.configfile = enstore_files.HTMLConfigFile(config_file, 
                                                        self.system_tag)
-        self.plotfile = enstore_files.HTMLPlotFile(plot_file, 
-                                                   self.system_tag)
 
         cdict = config_d.get(enstore_constants.ALARM_SERVER, {})
         self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
@@ -918,13 +886,12 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)
-            event_relay_interval = max(event_relay_interval, server.hung_interval)
 
         self.lib_man_d = {}
         self.mover_d = {}
         self.media_changer_d = {}
         for key in config_d.keys():
-            self.add_new_mv_lm_mc(key, config_d, event_relay_interval)
+            self.add_new_mv_lm_mc(key, config_d)
 
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.inquisitor.hostip,
@@ -933,9 +900,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # set up a signal handler to catch termination signals (SIGKILL) so we can
         # update our status before dying
         signal.signal(signal.SIGTERM, self.s_update_exit)
-
-        # set up the threads we will need
-        self.plot_thread = None
 
         # set an interval timer to periodically update the web pages
         self.add_interval_func(self.periodic_tasks, self.update_interval)
@@ -947,9 +911,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.event_relay_msg.encode(self.inquisitor.name)
 
         # setup the communications with the event relay task
+	self.resubscribe_rate = 300
         self.erc.start([event_relay_messages.ALIVE,
                         event_relay_messages.NEWCONFIGFILE,
-                        event_relay_messages.ENCPXFER])
+                        event_relay_messages.ENCPXFER], self.resubscribe_rate)
 
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.INQUISITOR, 
@@ -957,7 +922,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         # keep track of when we receive event relay messages.  maybe we can tell if
         # the event relay process goes down.
-        self.event_relay = EventRelay(event_relay_interval)
+        self.event_relay = EventRelay()
         self.sent_event_relay_alarm = 0
 
         # setup the initial system page

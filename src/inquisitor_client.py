@@ -60,29 +60,9 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to return the current html file refresh value
 	return self.send({"work"       : "get_refresh" } )
 
-    def plot (self, logfile_dir="", start_time="", stop_time="", mcs=None,
-              keep=0, pts_dir="", output_dir=""):
-        if mcs is None:
-            mcs = []
-	# tell the inquisitor to plot bytes per unit of time
-	t = {"work"        : "plot" }
-	if logfile_dir:
-	    t["logfile_dir"] = logfile_dir
-	if start_time:
-	    t["start_time"] = start_time
-	if stop_time:
-	    t["stop_time"] = stop_time
-        if keep:
-            t["keep"] = keep
-        if pts_dir:
-            t["keep_dir"] = pts_dir
-        if output_dir:
-            t["out_dir"] = output_dir
-        if mcs:
-            # the user  specified a device to plot the data for.
-            t['mcs'] = mcs
-	# wait a really long time as plotting takes awhile.
-	return self.send(t, 3000)
+    def subscribe (self):
+	# tell the inquisitor to subscribe to the event relay
+	return self.send({"work"     : "subscribe" })
 
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
@@ -98,7 +78,6 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.get_refresh = 0
 	self.max_encp_lines = 0
 	self.get_max_encp_lines = 0
-	self.plot = 0
 	self.logfile_dir = ""
 	self.start_time = ""
 	self.stop_time = ""
@@ -108,6 +87,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.output_dir = ""
         self.update_interval = -1
         self.get_update_interval = 0
+	self.subscribe = None
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
         
@@ -120,9 +100,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                 "update-interval=", "get-update-interval",
                 "update", "dump", "update-and-exit",
                 "refresh=", "get-refresh", "max-encp-lines=",
-                "get-max-encp-lines", "plot", "logfile-dir=",
-                "start-time=", "stop-time=", "media-changer=", "keep",
-                "keep-dir=", "output-dir="]
+                "get-max-encp-lines", "subscribe"]
 
 # this is where the work is actually done
 def do_work(intf):
@@ -164,10 +142,9 @@ def do_work(intf):
         ticket = iqc.get_max_encp_lines()
 	print repr(ticket['max_encp_lines'])
 
-    elif intf.plot:
-	ticket = iqc.plot(intf.logfile_dir, intf.start_time, intf.stop_time,
-                          intf.media_changer, intf.keep, intf.keep_dir,
-                          intf.output_dir)
+    elif intf.subscribe:
+	ticket = iqc.subscribe()
+
     else:
 	intf.print_help()
         sys.exit(0)
