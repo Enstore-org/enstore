@@ -204,7 +204,11 @@ class GenericClient:
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
         #Get the address information from config server.
-        t = self.csc.get(server, rcv_timeout, tries)
+        csc = self._get_csc()
+        try:
+            t = csc.get(server)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            return {'status' : (e_errors.TIMEDOUT, None)}
         
         #Check for errors.
         if t['status'] == (e_errors.TIMEDOUT, None):
@@ -227,8 +231,9 @@ class GenericClient:
 
 
     def trace_levels(self, server, work, levels):
+        csc = self._get_csc()
         try:
-            t = self.csc.get(server)
+            t = csc.get(server)
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT, None)}
         try:
