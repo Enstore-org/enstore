@@ -262,7 +262,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             eod_cookie=self.vol_info['eod_cookie']
             external_label=self.vol_info['external_label']
             ll = driver_object.format_eov1_header( external_label, eod_cookie)
-            if debug_paranoia: print "writing EOV1 label", ll
+            if debug_paranoia: print "unbind_volume: writing EOV1 label", ll
 	    driver_object.write( ll )
 	    driver_object.writefm()
             driver_object.seek(eod_cookie)
@@ -457,14 +457,16 @@ class Mover(  dispatching_worker.DispatchingWorker,
         #          then fc adds it's fc-info to encp ticket and sends it to lm
 
         self.hsm_driver.user_state_set( forked_state.index('bind') )
-
+        self.inhibit_eov=0
         if self.vol_info['external_label'] == '':
 
             # NEW VOLUME FOR ME - find out what volume clerk knows about it
             self.vol_info['err_external_label'] = external_label
             tmp_vol_info = self.vcc.inquire_vol( external_label )
             if tmp_vol_info['status'][0] != 'ok': return 'NOTAPE' # generic, not read or write specific
-
+            open_flag = "a+"
+            if tmp_vol_info['system_inhibit'] in [ 'readonly', 'full']:
+                open_flag = "r"
             # if there is a tape in the drive, eject it (then the robot can put it away and we can continue)
             # NOTE: can we detect "cleaning in progress" or "cleaning cartridge (as
             # opposed to data cartridge) in drive?"
@@ -548,6 +550,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 elif header_type == 'VOL1':
                     if header_label != external_label:
                         self.vcc.set_system_noaccess( external_label )
+                        self.inhibit_eov=1
                         errmsg="wrong VOL1 header: got %s, expected %s" % (
                                 header_label, external_label)
                         if debug_paranoia:
@@ -556,6 +559,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                         return 'VOL1_WRONG'
                 else:
                     self.vcc.set_system_noaccess( external_label )
+                    self.inhibit_eov = 1
                     errmsg="no VOL1 header present for volume %s: read label %s %s" %\
                             (external_label, fix_nul(header_type), fix_nul(header_label))
                     if debug_paranoia:
@@ -568,20 +572,22 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 #file mark (even though it was opened "r"!),
                 # so we better close *before* rewinding.
                 driver_object.close(skip=0)
-                driver_object = self.hsm_driver.open( self.mvr_config['device'], 'a+')
+                driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
                 r=driver_object.rewind()
                 if debug_paranoia:
                     print "post check-label rewind complete, returned",r
                 if debug_paranoia: print "tell", driver_object.tell()
             ##end of paranoid checks    
             else:
-                driver_object = self.hsm_driver.open( self.mvr_config['device'], 'a+')
+                driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
 
-            if (driver_object.is_bot(driver_object.tell()) and
+            if (self.mvr_config['driver']=='FTTDriver' and
+                driver_object.is_bot(driver_object.tell()) and
                 driver_object.is_bot(tmp_vol_info['eod_cookie'])):
+
                 # write an ANSI label and update the eod_cookie
                 ll = driver_object.format_vol1_header( external_label )
-                if debug_paranoia: print "writing VOL1 label", ll
+                if debug_paranoia: print "bind_volume: writing VOL1 label", ll
                 driver_object.write( ll )
                 driver_object.writefm()
                 eod_cookie = driver_object.tell()
@@ -594,10 +600,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%
                              (tmp_vol_info['eod_cookie'],
                               tmp_vol_info['remaining_bytes']) )
-                if eov1_paranoia and self.mvr_config['driver']=='FTTDriver':
+                if eov1_paranoia and self.mvr_config['driver']=='FTTDriver' and not self.inhibit_eov:
                     ll = driver_object.format_eov1_header  (
                         external_label, eod_cookie)
-                    if debug_paranoia: print "writing EOV1 label", ll
+                    if debug_paranoia: print "bind_volume: writing EOV1 label", ll
                     driver_object.write( ll )
                     driver_object.writefm()
                     driver_object.skip_fm(-1)
@@ -614,7 +620,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         return e_errors.OK  # bind_volume
 
-    
 
     def forked_write_to_hsm( self, ticket ):
         # have to fork early b/c of early user (tcp) check
@@ -622,6 +627,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         check_eov=0
         if eov1_paranoia and self.mode!='w' and self.mvr_config['driver']=='FTTDriver':
             check_eov=1
+
         if self.mvr_config['do_fork']: self.do_fork( ticket, 'w' )
 
         if self.mvr_config['do_fork'] and self.pid != 0:
@@ -639,6 +645,15 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.return_or_update_and_exit( self.lm_origin_addr, e_errors.ENCP_GONE )
                 pass
 
+                
+            ##Don't allow null movers to write to any pnfs path not containing /NULL/
+            if self.mvr_config['driver']=='NullDriver':
+                fname = ticket['wrapper'].get("pnfsFilename",'')
+                if "NULL" not in string.split(fname,'/'):
+                    self.send_user_done( ticket, e_errors.WRITE_ERROR )
+                    self.return_or_update_and_exit( self.lm_origin_addr,
+                                                e_errors.WRITE_ERROR )                
+                
             t0 = time.time()
             sts = self.bind_volume( ticket['fc']['external_label'] )
             ticket['times']['mount_time'] = time.time() - t0
@@ -822,10 +837,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         # if we're changing state from writing to reading, and the feature is enabled,
         # put an eov label on the tape before repositioning
-        write_eov=0
+        self.write_eov=0
         if eov1_paranoia and self.mode=='w' and self.mvr_config['driver']=='FTTDriver':
-            #cgw
-            write_eov=1
+            if not self.inhibit_eov:
+                self.write_eov=1
 
         # have to fork early b/c of early user (tcp) check
         # but how do I handle vol??? - prev_vol, this_vol???
@@ -869,13 +884,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
             #eov1 paranoia.
             #XXX need to check returns of open, write, and close
-            if write_eov:
+            if self.write_eov and not self.inhibit_eov:
                 eod_cookie = self.vol_info['eod_cookie']
                 external_label = self.vol_info['external_label']
                 driver_object=self.hsm_driver.open( self.mvr_config['device'], 'w' )
-                if debug_paranoia: print "writing EOV"
+                if debug_paranoia: print "forked_read: writing EOV"
                 ll = driver_object.format_eov1_header( external_label, eod_cookie)
-                if debug_paranoia: print "writing EOV1 label", ll
+                if debug_paranoia: print "forked_read writing EOV1 label", ll
                 driver_object.write( ll )
                 driver_object.writefm()
                 driver_object.close()
