@@ -487,18 +487,20 @@ def do_work(intf):
             print ticket
     elif intf.vols:
         ticket = lmc.get_active_volumes()
-        print "%-10s  %-17s %-17s %-17s %17s %10s %18s"%(
+        print "%-10s  %-17s %-17s %-17s %17s %10s %19s %6s"%(
             "label","mover","volume family",
-            "system_inhibit","user_inhibit","status","updated")
+            "system_inhibit","user_inhibit","status","tot.time", "updated")
         for mover in ticket['movers']:
-            print "%-10s  %-17s %-17s (%-08s %08s) (%-08s %08s) %-10s(%-05s) %-11s" %\
+            print "%-10s  %-17s %-17s (%-08s %08s) (%-08s %08s) %-10s(%-05s) %-08s %-011s" %\
             (mover['external_label'], mover['mover'],
              mover['volume_family'],
              mover['volume_status'][0][0], mover['volume_status'][0][1],
              mover['volume_status'][1][0], mover['volume_status'][1][1],
              mover['state'],
-              mover['time_in_state'],
-             time.ctime(mover['updated']),)
+             mover['time_in_state'],
+             int(mover['total_time']),
+             time.ctime(mover['updated']),
+             )
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
 	print "%-14s %-12s" % ('storage group', 'limit')
