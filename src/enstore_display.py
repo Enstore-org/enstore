@@ -140,11 +140,11 @@ class Mover:
         self.display.delete(self.timer_display)
         self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
 
-    def load_tape(self, volume):
+    def load_tape(self, volume, load_state):
         self.volume = volume
         x, y = self.volume_position(ejected=0)
         self.volume.x, self.volume.y = x, y
-        self.volume.draw()
+        self.volume.draw(load_state)
 
     def unload_tape(self, volume):
         if not self.volume:
@@ -276,15 +276,15 @@ class Mover:
 class Volume:
     width = 50
     height = 11
-    def __init__(self, name, display, x=None, y=None):
+    def __init__(self, name, display, x=None, y=None, loaded=0, ejected=0):
         self.name = name
         self.display = display
         self.outline = None
         self.label = None
-        self.loaded = 0
-        self.ejected = 0
+        self.loaded = loaded
+        self.ejected = ejected
         self.x, self.y = x, y
-        self.draw()
+        self.draw(loaded)
         
     def __setattr__(self, attr, value):
         if attr == 'loaded':
@@ -297,11 +297,11 @@ class Volume:
                 self.display.itemconfigure(self.label, fill=label_color)
         self.__dict__[attr] = value
         
-    def draw(self):
+    def draw(self, load_state):
         x, y = self.x, self.y
         if x is None or y is None:
             return
-        if self.loaded:
+        if load_state:
             tape_color, label_color = 'orange', 'white'
         else:
             tape_color, label_color = 'grey', 'black'
@@ -620,8 +620,8 @@ class Display(Canvas):
             if volume is None:
                 volume=Volume(what_volume,self)
             self.volumes[what_volume]=volume
-            volume.loaded = words[0]=='loaded'
-            mover.load_tape(volume)
+            load_state = words[0]=='loaded'
+            mover.load_tape(volume, load_state)
             return
         
         if words[0]=='unload':
