@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 # system import
 import os
 import sys
@@ -44,18 +50,24 @@ def capacity_str(x,mode="GB"):
 
 class infoClient(generic_client.GenericClient):
 	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
-		rcv_tries = RCV_TRIES):
+		     rcv_tries = RCV_TRIES, flags=0, logc=None, alarmc=None,
+		     server_address = None):
+
 		self.logname = logname
 		self.node = os.uname()[1]
 		self.pid = os.getpid()
-		generic_client.GenericClient.__init__(self, csc, MY_NAME)
+		generic_client.GenericClient.__init__(self, csc, MY_NAME,
+						      server_address,
+						      flags=flags, logc=logc,
+						      alarmc=alarmc,
+						      server_name = MY_SERVER)
 		try:
 			self.uid = pwd.getpwuid(os.getuid())[0]
 		except:
 			self.uid = "unknown"
 		self.rcv_timeout = rcv_timeout
 		self.rcv_tries = rcv_tries
-		self.server_address = self.get_server_address(MY_SERVER, self.rcv_timeout, self.rcv_tries)
+		#self.server_address = self.get_server_address(MY_SERVER, self.rcv_timeout, self.rcv_tries)
 
 	# send_no_wait
 	def send2(self, ticket):

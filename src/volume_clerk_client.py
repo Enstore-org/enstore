@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import sys
 import string
@@ -17,13 +21,13 @@ def eval(stuff):
     return _rexec.r_eval(stuff)
 
 # enstore imports
-import setpath
+#import setpath
 import callback
 import hostaddr
 import option
 import generic_client
 import backup_client
-import udp_client
+#import udp_client
 import Trace
 import e_errors
 import file_clerk_client
@@ -188,10 +192,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                                               flags=flags, logc=logc,
                                               alarmc=alarmc,
                                               rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries)
-        if self.server_address == None:
-            self.server_address = self.get_server_address(
-                MY_SERVER, rcv_timeout=rcv_timeout, tries=rcv_tries)
+                                              rcv_tries=rcv_tries,
+                                              server_name = MY_SERVER)
+
+        #if self.server_address == None:
+        #    self.server_address = self.get_server_address(
+        #        MY_SERVER, rcv_timeout=rcv_timeout, tries=rcv_tries)
 
     # add a volume to the stockpile
     def add(self,

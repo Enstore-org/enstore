@@ -1,5 +1,10 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
+#
+# $Id$
+#
+###############################################################################
 #
 #########################################################################
 #                                                                       #
@@ -14,18 +19,26 @@ import string
 import pprint
 
 #enstore imports
-import udp_client
+#import udp_client
 import option
 import generic_client
 import Trace
+
 R_TO = 30
 R_T = 3
+
 class MoverClient(generic_client.GenericClient):
-    def __init__(self, csc, name="", rcv_timeout = R_TO, rcv_tries = R_T):
+    def __init__(self, csc, name="", rcv_timeout = R_TO, rcv_tries = R_T,
+                 flags=0, logc=None, alarmc=None):
         self.mover=name
         self.log_name = "C_"+string.upper(name)
-        generic_client.GenericClient.__init__(self, csc, self.log_name)
-        self.server_address = self.get_server_address(self.mover, rcv_timeout, rcv_tries)
+        generic_client.GenericClient.__init__(self, csc, self.log_name,
+                                              flags = flags, logc = logc,
+                                              alarmc = alarmc,
+                                              rcv_timeout = rcv_timeout,
+                                              rcv_tries = rcv_tries,
+                                              server_name = name)
+        #self.server_address = self.get_server_address(self.mover, rcv_timeout, rcv_tries)
 
     def status(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "status"}, rcv_timeout, tries)

@@ -1,6 +1,10 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+################################################################################
 #########################################################################
 #                                                                       #
 # Media Changer client.                                                 #
@@ -16,7 +20,7 @@ import pprint
 import time
 
 #enstore imports
-import udp_client
+#import udp_client
 import option
 import generic_client
 import Trace
@@ -24,16 +28,26 @@ import volume_clerk_client
 import e_errors
 
 MY_NAME = ".MC"
+RCV_TIMEOUT = 0
+RCV_TRIES = 0
 
 class MediaChangerClient(generic_client.GenericClient):
-    def __init__(self, csc, name=""):
-        self.media_changer=name
+    #The paramater 'name' is expected to be something like
+    # '9940.media_changer'.
+    def __init__(self, csc, name="", flags=0, logc=None, alarmc=None,
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+        self.media_changer = name
         self.log_name = "C_"+string.upper(string.replace(name,
                                                          ".media_changer",
                                                          MY_NAME))
-        generic_client.GenericClient.__init__(self, csc, self.log_name)
-        if name:
-            self.server_address = self.get_server_address(name)
+        generic_client.GenericClient.__init__(self, csc, self.log_name,
+                                              flags = flags, logc = logc,
+                                              alarmc = alarmc,
+                                              rcv_timeout = rcv_timeout,
+                                              rcv_tries = rcv_tries,
+                                              server_name = name)
+        #if name:
+        #    self.server_address = self.get_server_address(name)
 
     ##These functions should really take a named parameter list rather than "vol_ticket".  It's
     ## not clear what keys need to be present in vol_ticket.  Looks like

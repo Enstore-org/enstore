@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
+#
+# $Id$
+#
+###############################################################################
 #
 #########################################################################
 #                                                                       #
@@ -27,8 +31,8 @@ import Trace
 import e_errors
 import option
 
-MY_NAME = "LOG_CLIENT"
-MY_SERVER = "log_server"
+MY_NAME = enstore_constants.LOG_CLIENT   #"LOG_CLIENT"
+MY_SERVER = enstore_constants.LOG_SERVER #"log_server"
 YESTERDAY = "yesterday"
 VALID_PERIODS = {"today":1, YESTERDAY:2, "week":7, "month":30, "all":-1}
 RCV_TIMEOUT = 3
@@ -296,29 +300,28 @@ def genMsgType(msg, ln, severity):
         
 class LoggerClient(generic_client.GenericClient):
 
-    def __init__(self,
-                 csc = 0,                    # get our own configuration client
-                 name = MY_NAME,             # Abbreviated client instance name
-                                             # try to make it capital letters
-                                             # not more than 8 characters long
-                 servername = MY_SERVER,     # log server name
-		 flags=0,
-                 rcv_timeout=RCV_TIMEOUT,
-                 rcv_tries=RCV_TRIES):
+    def __init__(self, csc, name = MY_NAME, server_name = MY_SERVER,
+                 server_address = None, flags = 0, alarmc = None,
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+
         # need the following definition so the generic client init does not
         # get another logger client
 	flags = flags | enstore_constants.NO_LOG
-        generic_client.GenericClient.__init__(self, csc, name, flags=flags,
+        generic_client.GenericClient.__init__(self, csc, name, server_address,
+                                              flags=flags, alarmc=alarmc,
                                               rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries)
+                                              rcv_tries=rcv_tries,
+                                              server_name = server_name)
+        
         self.log_name = name
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]
         except:
             self.uname = 'unknown'
         self.log_priority = 7
-	self.logger_address = self.get_server_address(servername, rcv_timeout, rcv_tries)
-        lticket = self.csc.get( servername, rcv_timeout, rcv_tries)
+	#self.logger_address = self.get_server_address(servername, rcv_timeout, rcv_tries)
+        self.logger_address = self.server_address
+        lticket = self.csc.get( server_name, rcv_timeout, rcv_tries)
         self.log_dir = lticket.get("log_file_path", "")
 	Trace.set_log_func( self.log_func )
 

@@ -1,6 +1,11 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import time
 import errno
@@ -18,23 +23,35 @@ import Trace
 import e_errors
 
 MY_NAME = ".LM"
+RCV_TIMEOUT = 20
+RCV_TRIES = 3
+
 
 class LibraryManagerClient(generic_client.GenericClient) :
+    #The paramater 'name' is expected to be something like
+    # '9940.library_manager'.
     def __init__(self, csc, name="", flags=0, logc=None, alarmc=None,
-                 rcv_timeout = 20, rcv_tries = 3):
-        self.name=name
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+        self.name = name  ###This gets clobbered in generic_client???
+        self.library_manager = name
         self.log_name = "C_"+string.upper(string.replace(name,
                                                          ".library_manager",
                                                          MY_NAME))
+        
         generic_client.GenericClient.__init__(self, csc, self.log_name,
                                               flags = flags, logc = logc,
-                                              alarmc = alarmc)
+                                              alarmc = alarmc,
+                                              rcv_timeout = rcv_timeout,
+                                              rcv_tries = rcv_tries,
+                                              server_name = name)
         self.send_to = rcv_timeout
         self.send_tries = rcv_tries
-        self.server_address = self.get_server_address(self.name, self.send_to, self.send_tries)
-        if not self.server_address:
-            sys.stderr.write("%s does not exist\n"%(self.name,))
-            sys.exit(1)
+        #self.server_address = self.get_server_address(name,
+        #                                              self.send_to,
+        #                                              self.send_tries)
+        #if not self.server_address:
+        #    sys.stderr.write("%s does not exist\n"%(name,))
+        #    sys.exit(1)
 
     def write_to_hsm(self, ticket) :
         return self.send(ticket)

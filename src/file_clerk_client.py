@@ -1,6 +1,11 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import string
 import errno
@@ -52,11 +57,12 @@ class FileClient(generic_client.GenericClient,
                                               flags=flags, logc=logc,
                                               alarmc=alarmc,
                                               rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries)
+                                              rcv_tries=rcv_tries,
+                                              server_name = MY_SERVER)
 	self.bfid = bfid
-	if self.server_address == None:
-            self.server_address = self.get_server_address(
-                MY_SERVER, rcv_timeout, rcv_tries)
+	#if self.server_address == None:
+        #    self.server_address = self.get_server_address(
+        #        MY_SERVER, rcv_timeout, rcv_tries)
 
     # create a bit file using complete metadata -- bypassing all
     def create_bit_file(self, file):

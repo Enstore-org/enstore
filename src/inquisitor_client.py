@@ -1,12 +1,19 @@
-# system imports
+#!/usr/bin/env python
+
+###############################################################################
 #
+# $Id$
+#
+###############################################################################
+
+# system imports
 import sys
 import types
 import time
 
 # enstore imports
 import generic_client
-import udp_client
+#import udp_client
 import enstore_constants
 import e_errors
 import option
@@ -15,12 +22,24 @@ import Trace
 MY_NAME = "INQ_CLIENT"
 MY_SERVER = "inquisitor"
 
+RCV_TIMEOUT = 0
+RCV_TRIES = 0
+
 class Inquisitor(generic_client.GenericClient):
 
-    def __init__(self, csc):
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
-	self.server_name = MY_SERVER
-        self.server_address = self.get_server_address(self.server_name)
+    def __init__(self, csc, server_address=None,
+		 flags=0, logc=None, alarmc=None,
+                 rcv_timeout=RCV_TIMEOUT,
+                 rcv_tries=RCV_TRIES):
+        generic_client.GenericClient.__init__(self, csc, MY_NAME,
+                                              server_address,
+                                              flags=flags, logc=logc,
+                                              alarmc=alarmc,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries,
+                                              server_name = MY_SERVER)
+	#self.server_name = MY_SERVER
+        #self.server_address = self.get_server_address(self.server_name)
 
     def update (self):
 	t = {"work"       : "update" }

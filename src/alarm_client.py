@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile $   $Revision $
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
-#
 import sys
 import os
 import pwd
@@ -18,8 +21,8 @@ import alarm
 import Trace
 import e_errors
 
-MY_NAME = "ALARM_CLIENT"
-MY_SERVER = "alarm_server"
+MY_NAME = enstore_constants.ALARM_CLIENT  #"ALARM_CLIENT"
+MY_SERVER = enstore_constants.ALARM_SERVER  #"alarm_server"
 
 RCV_TIMEOUT = 5
 RCV_TRIES = 2
@@ -37,29 +40,25 @@ class Lock:
 
 class AlarmClient(generic_client.GenericClient):
 
-    def __init__(self, csc,
-                 name = MY_NAME,           # Abbreviated client instance name
-                                           # try to make it capital letters
-                                           # not more than 8 characters long
-                 servername = MY_SERVER,   # log server name
-		 flags=0,                 
-                 rcv_timeout=RCV_TIMEOUT,
-                 rcv_tries=RCV_TRIES):
+    def __init__(self, csc, name = MY_NAME, server_name = None,
+                 server_address = None, flags = 0, logc = None,
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+
         # need the following definition so the generic client init does not
         # get another alarm client
 	flags = flags | enstore_constants.NO_ALARM
-
-        generic_client.GenericClient.__init__(self, csc, name, flags=flags,
+        generic_client.GenericClient.__init__(self, csc, name, server_address,
+                                              flags=flags, logc=logc,
                                               rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries)
+                                              rcv_tries=rcv_tries,
+                                              server_name = server_name)
 
         try:
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
             self.uid = "unknown"
-        self.server_address = self.get_server_address(servername, rcv_timeout,
-                                                      rcv_tries)
-
+        #self.server_address = self.get_server_address(servername, rcv_timeout,
+        #                                              rcv_tries)
         self.rcv_timeout = rcv_timeout
         self.rcv_tries = rcv_tries
         Trace.set_alarm_func( self.alarm_func )

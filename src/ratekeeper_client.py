@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 #system imports
 import sys
 
@@ -7,25 +15,29 @@ import generic_client
 import configuration_client
 #import udp_client
 import e_errors
+import enstore_constants
 
-MY_NAME = "RATEKEEPER_CLIENT"
-MY_SERVER = "ratekeeper"
+MY_NAME = enstore_constants.RATEKEEPER_CLIENT   #"RATEKEEPER_CLIENT"
+MY_SERVER = enstore_constants.RATEKEEPER        #"ratekeeper"
 
 class RatekeeperClient(generic_client.GenericClient):
 
-    def __init__(self, csc, server_address=None, rcv_timeout=0, rcv_tries=0):
+    def __init__(self, csc, server_address=None, rcv_timeout=0, rcv_tries=0,
+                 flags=0, logc=None, alarmc=None):
         generic_client.GenericClient.__init__(self,csc,MY_NAME, server_address,
                                               server_name=MY_SERVER,
                                               rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries)
+                                              rcv_tries=rcv_tries,
+                                              flags=flags, logc=logc,
+                                              alarmc=alarmc)
         self.timeout = rcv_timeout
         self.tries = rcv_tries
         #self.ratekeeper_addr = server_address
 
     # send Active Monitor probe request
-    def send_ticket (self, ticket):
-        x = self.u.send(ticket, self.server_address, self.timeout, self.tries)
-        return x
+    #def send_ticket (self, ticket):
+    #    x = self.u.send(ticket, self.server_address, self.timeout, self.tries)
+    #    return x
 
 class RatekeeperClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
