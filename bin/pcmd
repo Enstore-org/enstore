@@ -103,7 +103,7 @@ pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
               bfid=`pbfid $@`
               xref=`pxref $@`
               volume="`pinfo_helper 1`"
-              location_cooke="`pinfo_helper 2`"
+              location_cookie="`pinfo_helper 2`"
               size="`pinfo_helper 3`"
               file_family="`pinfo_helper 4`"
               orig_name="`pinfo_helper 5`"
@@ -117,7 +117,7 @@ pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
                    `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
               echo "bfid=\"$bfid\";
 volume=\"$volume\";
-location_cookie=\"$cookie\";
+location_cookie=\"$location_cookie\";
 size=\"$size\";
 file_family=\"$file_family\";
 filename=\"$filename\";
