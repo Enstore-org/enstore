@@ -3,7 +3,16 @@
 #include "acsapi.h"
 /* #include "cl_pub.h" */
 #include <Python.h>
-
+/*
+  	This is a python interface to the stk acsls system.
+        It requires -
+		1) STK product to compile and link - See Setup
+		2) stkssi and mini_el daemons be running.
+		   They are normally started with "$STKDIR/bin/stkssi start" 
+		   run at boot time.
+		3) The ACSAPI_PACKET_VERSION=2, ACSAPI_SSI_SOCKET=50015
+		   which are definded with setup stk
+*/
 /*
  *  Get the acknowledgement response
  */
@@ -147,14 +156,14 @@ STATUS STKdismount(SEQ_NO p_s,
 		p_drv_id,	/* Id of the drive where the tape cartridge is mounted */
 		TRUE))		/* Force Dismount */
 		 != STATUS_SUCCESS) 
-        return(STKerr("Mount", "transmit", status));
+        return(STKerr("Dismount", "transmit", status));
 
     if ((status = get_ack()) != STATUS_SUCCESS) 
-        return(STKerr("Mount", "get_ack", status));
+        return(STKerr("Dismount", "get_ack", status));
 
     size = sizeof(ACS_DISMOUNT_RESPONSE);
     if ((status = get_next(rbuf,size,&type)) != STATUS_SUCCESS) 
-        return(STKerr("Mount", "get_next", status));
+        return(STKerr("Dismount", "get_next", status));
 
     dp = (ACS_DISMOUNT_RESPONSE *)rbuf;
     if (dp->dismount_status != STATUS_SUCCESS) 
@@ -192,7 +201,11 @@ static PyObject* Mount(PyObject *self, PyObject *args)
   PyArg_ParseTuple(args, "ss", &vol, &drive);
   asc2STKdrv(drive, &stkdrv);
   stat = STKmount(0, vol, stkdrv, 0, NO_LOCK_ID);
-  return(Py_BuildValue("i",stat ));
+/*
+	cl_status is a short text description of the error - 
+	see $STK_DIR/src/common_lib/cl_status.c
+*/
+  return(Py_BuildValue("is",stat, cl_status(stat) ));
 }
 
 static PyObject* Dismount(PyObject *self, PyObject *args)
