@@ -1,0 +1,28 @@
+
+Each .c file in this modules directory must be a python module -
+see one of the existing modules.   
+
+The file name suffix, e.g. ETape, is the module name.   In python
+you say "import ETape".   ETape.c has one externalized entry point
+initETape which does module initialization for python.
+
+ETape.exp contains "initETape" - this is for the AIX loader.
+
+
+
+To use dbx with modules
+
+setenv CC "cc -c" and make
+
+window 1                      window 2
+
+python
+import ETape        
+                              dbx -p <pid of python process>
+                              use <source dir>
+                              file ETape.c
+                              stop in in ET_CopyToTape
+                              cont
+ETape.CopyToTape()
+                              process stops in dbx
+
