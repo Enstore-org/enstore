@@ -29,6 +29,7 @@ import udp_client
 import EXfer
 import interface
 import e_errors
+import access
 
 import library_manager_client
 
@@ -1819,9 +1820,7 @@ def inputfile_check(input):
         inputlist[i] = os.path.join(dir,basename)
 
         # input files must exist
-        command="if test -r "+inputlist[i]+"; then echo ok; else echo no; fi"
-        readable = os.popen(command,'r').readlines()
-        if "ok\012" != readable[0] :
+        if not access.access(inputlist[i],access.R_OK):
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCESS','No such file')})
             jraise('EACCES'," encp.inputfile_check: "
                    +inputlist[i]+", NO read access to file")
@@ -1926,12 +1925,10 @@ def outputfile_check(ninput,inputlist,output):
         # need to check that directory is writable
         # since all files go to one output directory, one check is enough
         if i==0:
-            command="if test -w "+odir+"; then echo ok; else echo no; fi"
-            writable = os.popen(command,'r').readlines()
-            if "ok\012" != writable[0] :
+            if not access.access(odir,access.W_OK):
                 print_data_access_layer_format("",odir,0,{'status':('EEXIST',None)})
                 jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "
-                       +" NO write access to directory"+odir)
+                       +" NO write access to directory "+odir)
 
     # we can not allow 2 output files to be the same
     # this will cause the 2nd to just overwrite the 1st
