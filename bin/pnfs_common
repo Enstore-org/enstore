@@ -141,7 +141,7 @@ pfile_family_width()
 
 penstore_state()  
             { if [ -z "${1-}" ] ; then p_error "enstore_state <pnfs_directory>"; fi
-              disabled="`dirname $1`/.(config)(flags)/disabled" 
+              disabled="$1/.(config)(flags)/disabled" 
               if [ -r "$disabled" ] ; then
 	        why=`cat "$disabled"`
 		echo "Enstore disabled: $why"

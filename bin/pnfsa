@@ -209,9 +209,9 @@ ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
 ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
               eval less `p_tag $@` ; }
 ppnfs_state() 
-            { if [ -z "${1-}" ] ; then p_error "pnfs_state <pnfs_mountpoint>"; fi
+            { if [ -z "${1-}" ] ; then p_error "pnfs_state <pnfs_directory>"; fi
               if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
-	      file="\"`dirname $1`/.(config)(flags)/.(id)(pnfs_state)\""
+	      file="\"$1/.(config)(flags)/.(id)(pnfs_state)\""
               state=`eval cat  $file`
 	      if [ "$state" != "down" -a -n "$state" ] ; then
                  state="working"; ec=0; 
