@@ -180,6 +180,11 @@ def write_to_hsm(input, output,
     # ask configuration server what port the file clerk is using
     Trace.trace(10,"write_to_hsm calling config server to find file clerk")
     fticket = csc.get("file_clerk")
+    if fticket['status'][0] != e_errors.OK:
+	print_d0sam_format('', '', 0, fticket)
+	jraise(vticket['status'][0], " encp.write_to_hsm: " \
+	       + ", ticket[\"status\"]="+repr(fticket["status"]))
+
     Trace.trace(10,"write_to_hsm file clerk at host="+\
                 repr(fticket["hostip"])+" port="+repr(fticket["port"]))
 
@@ -198,6 +203,11 @@ def write_to_hsm(input, output,
     Trace.trace(10,"write_to_hsm calling config server to find "+\
                 library[0]+".library_manager")
     vticket = csc.get(library[0]+".library_manager")
+    if vticket['status'][0] != e_errors.OK:
+	print_d0sam_format('', '', 0, vticket)
+	jraise(vticket['status'][0], " encp.write_to_hsm: " \
+	       + ", ticket[\"status\"]="+repr(vticket["status"]))
+	
     Trace.trace(10,"write_to_hsm."+ library[0]+".library_manager at host="+\
                 repr(vticket["hostip"])+" port="+repr(vticket["port"]))
 
@@ -274,7 +284,9 @@ def write_to_hsm(input, output,
             if verbose > 3:
                 print "ENCP: write_to_hsm LM returned"
                 pprint.pprint(ticket)
-            if ticket['status'][0] != "ok" :
+            if ticket['status'][0] != e_errors.OK :
+		print_d0sam_format(inputlist[i], outputlist[i], file_size[i],
+				   ticket)
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
                        +vticket['hostip']+"/"+repr(vticket['port'])\
@@ -325,7 +337,11 @@ def write_to_hsm(input, output,
                     control_socket.close()
 
             # ok, we've been called back with a matched id - how's the status?
-            if ticket["status"][0] != "ok" :
+            if ticket["status"][0] != e_errors.OK :
+		
+		print_d0sam_format(inputlist[i], outputlist[i], file_size[i],
+				   ticket)
+
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        +"1st (pre-file-send) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
@@ -409,7 +425,9 @@ def write_to_hsm(input, output,
         Trace.trace(10,"write_to_hsm final dialog recieved")
 
         # make sure mover thinks transfer went ok
-        if done_ticket["status"][0] != "ok" :
+        if done_ticket["status"][0] != e_errors.OK :
+	    print_d0sam_format(inputlist[i], outputlist[i], file_size[i],
+			       done_ticket)
             jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    +"2nd (post-file-send) mover callback on socket "\
                    +repr(address)+", failed to transfer: "\
@@ -418,6 +436,8 @@ def write_to_hsm(input, output,
         # Check the CRC
             if chk_crc != 0:
                 if done_ticket["fc"]["complete_crc"] != mycrc :
+		    print_d0sam_format(inputlist[i], outputlist[i], 
+				       file_size[i], done_ticket)
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
                            +repr(complete_crc)+" "+repr(mycrc))
@@ -447,7 +467,10 @@ def write_to_hsm(input, output,
         if verbose > 3:
             print "ENCP: write_to_hsm FC returned"
             pprint.pprint(done_ticket)
-        if done_ticket['status'][0] != "ok" :
+        if done_ticket['status'][0] != e_errors.OK :
+	    print_d0sam_format(inputlist[i], outputlist[i], 
+			       file_size[i], done_ticket)
+
             jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    "from u.send to FC at "\
                    +fticket['hostip']+"/"+repr(fticket['port'])\
@@ -678,8 +701,8 @@ def read_from_hsm(input, output,
                     repr(bfid[i]))
         binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['hostip'],fticket['port']))
-        if binfo['status'][0]!='ok':
-            pprint.pprint(binfo)
+        if binfo['status'][0]!=e_errors.OK:
+	    print_d0sam_format('', '', 0, binfo)
             jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
