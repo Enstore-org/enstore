@@ -8,6 +8,7 @@
 #
 #
 
+#Notes: Various functions return 0 for the server is not running an 1 if it is.
 
 # system imports
 #
@@ -18,17 +19,20 @@ import string
 import errno
 import socket
 import signal
-import generic_client
-import option
 import pwd
+import time
 
 # enstore imports
 import setpath
 import e_errors
+import enstore_constants
 import enstore_functions
 import enstore_functions2
 import udp_client
 import Trace
+#import enstore_start
+import generic_client
+import option
 
 import alarm_client
 import configuration_client
@@ -52,11 +56,11 @@ def get_csc():
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
-    rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
+    rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
 
     if e_errors.is_ok(rtn):
         return csc
-        
+    
     return None
 
 def this_host():
@@ -85,6 +89,56 @@ def get_temp_file(server_name):
 
 ############################################################################
 
+#Remove the pid file for the server servername.
+def remove_pid_file(servername):
+    try:
+        os.unlink(get_temp_file(servername))
+    except:
+        exc, msg, tb = sys.exc_info()
+        if hasattr(msg, "errno") and msg.errno == errno.ENOENT:
+            pass   #file already deleted
+        else:
+            print "Unlink:", str(msg)
+
+# type should be one of "mover", "library_manager", "media_changer".
+def find_servers_by_type(csc, type):
+
+    #Get the configuration dictionary.
+
+    #First try the configuration server.  If that failes and it is the
+    # ENSTORE_CONFIG_HOST node, get the configuration dictionary directly
+    # from file.
+    try:
+        if csc:
+            config_dict = csc.dump(timeout=3, retry=3)
+            if e_errors.is_ok(config_dict) and config_dict.has_key("dump"):
+                #The configuration dictionary is originaly in a sub-ticket.
+                # Change this, but remember the status.
+                status =  config_dict['status']
+                config_dict = config_dict['dump']
+                config_dict['status'] = status
+        else:
+            config_dict = {'status':(e_errors.TIMEDOUT, None)}
+    except errno.errorcode[errno.ETIMEDOUT]:
+        config_dict = {'status':(e_errors.TIMEDOUT, None)}
+    if not e_errors.is_ok(config_dict) and \
+       is_on_host(os.environ.get('ENSTORE_CONFIG_HOST', None)):
+        config_dict = enstore_functions.get_config_dict()
+        if config_dict:
+            config_dict = config_dict.configdict
+
+    #If we do not have a valid dictionary, skip it.
+    if config_dict.get('status', None) and not e_errors.is_ok(config_dict):
+        return []
+
+    #Pullout the requested info.
+    the_list = []
+    for item in config_dict.keys():
+        if item[-(len(type)):] == type:
+            the_list.append(item)
+
+    return the_list
+
 #Detects if a process is still running with a given id.  Returns 1 if the
 # process exists, zero if gone.
 def detect_process(pid):
@@ -103,6 +157,8 @@ def kill_process(pid):
         #If the process doesn't go away terminate it.
         try:
             os.kill(pid, signal.SIGTERM)
+
+            time.sleep(1) #If the SIGTERM succeded, give the kernel a moment...
         except OSError, msg:
             if hasattr(msg, "errno") and msg.errno != errno.EPERM:
                 return 1
@@ -123,23 +179,48 @@ def kill_process(pid):
     #The process is already gone.
     return 0
 
+def quit_process(gc):
+
+    if not is_on_host(gc.server_address[0]):
+        return None
+
+    u = udp_client.UDPClient()
+
+    #Get the information if possible.
+    try:
+        rtn = u.send({'work':"alive"}, gc.server_address, 3, 3)
+    except errno.errorcode[errno.ETIMEDOUT]:
+        rtn = {'status':(e_errors.TIMEDOUT, None)}
+    #Send the quit message.
+    try:
+        rtn2 = u.send({'work':"quit"}, gc.server_address, 3, 3)
+    except errno.errorcode[errno.ETIMEDOUT]:
+        rtn = {'status':(e_errors.TIMEDOUT, None)}
+
+    if e_errors.is_ok(rtn) and e_errors.is_ok(rtn2):
+        time.sleep(1)
+        return detect_process(rtn['pid'])
+    else:
+        return 1
+
 #Nicely, try to stop the server.  If that fails, kill it.
 def stop_server(gc, servername):
     #Stop the server.
     print "Stopping %s: %s:%s" % (servername, gc.server_address[0],
                                   gc.server_address[1])
 
-    #First try to be nice and let the server die on its own.
-    rtn = gc.quit(3, 3)
-    if e_errors.is_ok(rtn):
-        try:
-            os.unlink(get_temp_file(servername)) #file already deleted
-        except:
-            exc, msg, tb = sys.exc_info()
-            print "Unlink:", msg
-            pass
-        print "Stopped %s." %(servername,)
-        return
+    #Get this information for the pid.
+    rtn = gc.alive(servername, 3, 3)
+
+    #Try to kill the process nicely.
+    if not quit_process(gc):
+        #Success, the process is dead.
+        remove_pid_file(servername)
+        print "Stopped %s." % (servername,)
+        return 0
+
+    if not e_errors.is_ok(rtn):
+        return 1
 
     #If the process still remains, kill it.
     #Note: there is a possible race condition here.  If the gc.quit()
@@ -148,11 +229,11 @@ def stop_server(gc, servername):
     rtn2 = kill_process(rtn['pid'])
     if rtn2:
         print "Enstore server, %s, remains." % (servername,)
-        return
+        return 1
     else:
-        os.unlink(get_temp_file(servername))
+        remove_pid_file(servername)
         print "Stopped %s." % (servername,)
-        return
+        return 0
 
 def stop_server_from_pid_file(servername):
     #If there is no responce from the server, determine if it is hung.
@@ -164,39 +245,71 @@ def stop_server_from_pid_file(servername):
         print "Unable to read pid file for %s." % (servername,)
         return
 
+    #Make sure there is something in the file.
+    if not data:
+        remove_pid_file(servername)
+        return 0
+    
     #Determine if there is a process with the id.
     for item in data:
         item = int(item.strip())
         if detect_process(item):
-            print "A process not resonding to alive messages, is running" \
-                  " with the last know pid for %s." % (servername,)
-            break
-    else:
-        os.unlink(get_temp_file(servername))
-        print "No %s running." % (servername,)
-        return
+            if os.uname()[0] == "Linux":
+                #If we get here it is becuase the process is still there and
+                # we are on a linux node.  Proceed with checking the /proc
+                # filesystem for confirmation.
+                file = open("/proc/%s/cmdline" % item, "r")
+                data = file.readline()
+                file.close()
+                if(data.find(servername) > 0):
+                    #If we get here, then we know that the process is the
+                    # enstore server in question.
+                    print "The %s process is running with pid %s.  Killing." \
+                          % (servername, item)
+                    rtn2 = kill_process(int(item))
+                    if rtn2:
+                        print "Enstore server, %s, remains." % (servername,)
+                        return 1
+                    else:
+                        remove_pid_file(servername)
+                        print "Stopped %s." % (servername,)
+                        return 0
+                else:
+                    print "A process is running with the last know pid for " \
+                          "%s." % (servername,)
+                    return 1
+            else:
+                print "A process is running with the last know pid for %s." % \
+                      (servername,)
+                return 1
+        else:
+            remove_pid_file(servername)
+            print "No %s running." % (servername,)
+            return 0
+
+    #Cleanup.  Should never get here.
+    remove_pid_file(servername)
+    return 0
 
 ############################################################################
 
-def check_csc(csc):
-
-    if csc.server_address[0] not in this_host():
-        return
-
-    print "Checking configuration_server."
-
-    rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
-
-    if e_errors.is_ok(rtn):
-        stop_server(csc, configuration_client.MY_SERVER)
-    else:
-        stop_server_from_pid_file(configuration_client.MY_SERVER)
-
 def check_db(csc, name):
 
-    info = csc.get("volume_clerk", 5, 3)
-    if not info.get('host', None) in this_host() and \
-           not info.get('hostip', None) in this_host():
+    use_name = "volume_clerk" #Use this servers name for host/ip finding.
+
+    # Get the address and port of the server.
+    if csc != None:
+        info = csc.get(use_name, 3, 3)
+    if csc == None or not e_errors.is_ok(info):
+        info = enstore_functions.get_dict_from_config_file(use_name,None)
+
+    #If we still do not have the necessary info, skip it.
+    if info == None or not e_errors.is_ok(info):
+        return
+    # If the process is running on this host continue, if not running on
+    # this host return.
+    if not is_on_host(info.get('host', None)) and \
+       not is_on_host(info.get('hostip', None)):
         return
 
     print "Checking %s." % name
@@ -206,78 +319,111 @@ def check_db(csc, name):
     if rtn:
         pid = int(re.sub("\s+", " ", rtn[0]).split(" ")[3])
         print "Stopping %s: %d" % (name, pid)
-        os.kill(pid, signal.SIGTERM)
+        if(kill_process(pid)):
+            #If we get here the process remains.
+            print "Database server %s remains." % name
 
 #If the event relay responded to alive messages, this would not be necessary.
 def check_event_relay(csc):
 
-    info = csc.get("event_relay", 5, 3)
-    if not info.get('host', None) in this_host() and \
-           not info.get('hostip', None) in this_host():
+    name = "event_relay"
+
+    # Get the address and port of the server.
+    if csc != None:
+        info = csc.get(name, 3, 3)
+    if csc == None or not e_errors.is_ok(info):
+        info = enstore_functions.get_dict_from_config_file(name,None)
+
+    #If we still do not have the necessary info, skip it.
+    if info == None or not e_errors.is_ok(info):
+        return
+    # If the process is running on this host continue, if not running on
+    # this host return.
+    if not is_on_host(info.get('host', None)) and \
+       not is_on_host(info.get('hostip', None)):
         return
 
     erc = event_relay_client.EventRelayClient(event_relay_host=info['hostip'],
                                               event_relay_port=info['port'])
 
-    print "Checking event_relay."
+    print "Checking %s." % name
 
     rtn = erc.alive() #rtn = 0 implies alive, rtn = 1 implies dead.
 
     if not rtn:
-        print "Stopping %s." % ("event_relay",)
+        print "Stopping %s." % name
 
         #Tell the event relay to quit.
         erc.quit()
 
-        #Make sure that erc is not still alive.
-        rtn = erc.alive() #rtn = 0 implies alive, rtn = 1 implies dead.
+        #Make sure that event_relay is not still alive.  It sould not be
+        # this complicated, but there were situations were TIMEDOUT still
+        # occured when there was no good reason for it to occur.  Putting
+        # a loop here fixed it.
+        for i in (0, 1, 2):
+            try:
+                #rtn = 0 implies alive, rtn = 1 implies dead.
+                rtn = erc.alive()
+            except errno.errorcode[errno.ETIMEDOUT]:
+                rtn = {'status':(e_errors.TIMEDOUT,
+                                 errno.errorcode[errno.ETIMEDOUT])}
+            if rtn == 1:
+                break
+        
         if not rtn:
-            stop_server_from_pid_file("event_relay")
+            stop_server_from_pid_file(name)
         else:
             #If erc is successfully halted, remove the pid file for it.
             try:
-                os.unlink(get_temp_file("event_relay"))
+                os.unlink(get_temp_file(name))
             except OSError:
                 pass
     else:
-        stop_server_from_pid_file("event_relay")
+        stop_server_from_pid_file(name)
 
 def check_server(csc, name):
 
-
     # Get the address and port of the server.
-    info = csc.get(name, 5, 3)
+    if csc != None:
+        info = csc.get(name, 3, 3)
+    if csc == None or not e_errors.is_ok(info):
+        info = enstore_functions.get_dict_from_config_file(name,None)
+
+    ##HACK:
+    #Do a hack for the monitor server.  Since, it runs on all enstore
+    # machines we need to add this information before continuing.
+    if e_errors.is_ok(info) and name == enstore_constants.MONITOR_SERVER:
+        info['host'] = socket.gethostname()
+        info['hostip'] = socket.gethostbyname(info['host'])
+        info['port'] = enstore_constants.MONITOR_PORT
+    ##END HACK.
+
+    #If we still do not have the necessary info, skip it.
+    if info == None or not e_errors.is_ok(info):
+        return
     # If the process is running on this host continue, if not running on
     # this host return.
-    if not info.get('host', None) in this_host() and \
-           not info.get('hostip', None) in this_host():
+    if not is_on_host(info.get('host', None)) and \
+       not is_on_host(info.get('hostip', None)):
         return
-    
+
     gc = generic_client.GenericClient(csc, name,
+                 flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM,
                                       server_address=(info['hostip'],
                                                       info['port']))
 
     print "Checking %s." % name
 
-    try:
-        # Determine if the host is alive.
-        rtn = gc.alive(name, 3, 3)
-    except errno.errorcode[errno.ETIMEDOUT]:
-        rtn = {'status':(e_errors.TIMEDOUT, errno.errorcode[errno.ETIMEDOUT])}
-        
-    # If the host is alive, tell it to to quit.
-    if e_errors.is_ok(rtn):
-        #Stop the server.
-        stop_server(gc, name)
-    else:
-        stop_server_from_pid_file(name)
-    
+    #Stop the server.
+    if(stop_server(gc, name)):  #If returned true, there was an error.
+        stop_server_from_pid_file(name)  #If it still lives, kill it.
 
 class EnstoreStopInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         self.name = "STOP"
         self.just = None
+        self.all = 0 #False
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -302,14 +448,21 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
             if count == 1:
                 self.just = hold
 
-    def should_start(self, server_name):
+    def should_stop(self, server_name):
 
-        if self.just == server_name or self.just == None:
+        if self.all:
+            return 1
+        if self.just == server_name:
+            return 1
+        if self.just == None and server_name not in self.non_default_names:
             return 1
 
         return 0
 
+    non_default_names = ["accounting_server", "monitor_server"]
+
     complete_names = [
+        "accounting_server",
         "configuration_server",
         "event_relay",
         "log_server",
@@ -323,8 +476,8 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
         "library",
         "media",
         "mover",
+        "monitor_server",
         ]
-        
 
     start_options = {
         option.JUST:{option.HELP_STRING:"specify single server",
@@ -333,7 +486,13 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_LABEL:"server name",                     
 		     option.USER_LEVEL:option.ADMIN,
-                     }
+                     },
+        option.ALL:{option.HELP_STRING:"specify all servers",
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.DEFAULT_NAME:"all",
+                     option.DEFAULT_TYPE:option.INTEGER,
+		     option.USER_LEVEL:option.ADMIN,
+                     },
         }
 
 
@@ -341,62 +500,60 @@ def do_work(intf):
     Trace.init(MY_NAME)
 
     csc = get_csc()
-    if csc == None:
-        print "No configuration server running."
-        sys.exit(1)
 
     #If the log server is still running, send log messages there.
-    if e_errors.is_ok(csc.alive("log_server", 3, 3)):
-        logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
+    if csc and e_errors.is_ok(csc.alive(enstore_constants.LOG_SERVER, 2, 2)):
+        logc = log_client.LoggerClient(csc, MY_NAME,
+                                       enstore_constants.LOG_SERVER)
         Trace.set_log_func(logc.log_func)
-
-    #Get the library names.
-    libraries = csc.get_library_managers({}).keys()
-    libraries = map((lambda l: l + ".library_manager"), libraries)
 
     #Begin stopping enstore.
 
-    if intf.should_start("mover"):
-        for library in libraries:
-            for mover in csc.get_movers(library):
-                mover = mover['mover']
-                check_server(csc, mover)
-    elif intf.just[-6:] == ".mover":
-        check_server(csc, intf.just)
+    #Movers.
+    movers = find_servers_by_type(csc, enstore_constants.MOVER)
+    for mover in movers:
+        if intf.should_stop(enstore_constants.MOVER) or \
+           intf.should_stop(mover):
+            check_server(csc, mover)
 
-    if intf.should_start("media"):
-        for library in libraries:
-            media = csc.get_media_changer(library)
-            check_server(csc, media)
-    elif intf.just[-14:] == ".media_changer":
-        check_server(csc, intf.just)
+    #Media changers.
+    media_changers = find_servers_by_type(csc, enstore_constants.MEDIA_CHANGER)
+    for media_changer in media_changers:
+        if intf.should_stop(enstore_constants.MEDIA_CHANGER) or \
+           intf.should_stop(media_changer):
+            check_server(csc, media_changer)
 
-    if intf.should_start("library"):
-        for library in libraries:
-            check_server(csc, library)
-    elif intf.just[-16:] == ".library_manager":
-        check_server(csc, intf.just)
+    #Libraries.
+    libraries = find_servers_by_type(csc, enstore_constants.LIBRARY_MANAGER)
+    for library_manager in libraries:
+        if intf.should_stop(enstore_constants.LIBRARY_MANAGER) or \
+           intf.should_stop(library_manager):
+            check_server(csc, library_manager)
 
-    if intf.should_start("ratekeeper"):
-        check_server(csc, "ratekeeper")
-    if intf.should_start("inquisitor"):
-        check_server(csc, "inquisitor")
-    if intf.should_start("file_clerk"):
-        check_server(csc, "file_clerk")
-    if intf.should_start("volume_clerk"):
-        check_server(csc, "volume_clerk")
-    if intf.should_start("db_checkpoint"):
+    #Stop the servers.
+    for server in [ enstore_constants.LOG_SERVER,
+                    enstore_constants.ACCOUNTING_SERVER,
+                    enstore_constants.ALARM_SERVER,
+                    enstore_constants.FILE_CLERK,
+                    enstore_constants.VOLUME_CLERK,
+                    enstore_constants.INQUISITOR,
+                    enstore_constants.RATEKEEPER,
+                    enstore_constants.MONITOR_SERVER]:
+        if intf.should_stop(server):
+            check_server(csc, server)
+
+    #Stop the Berkley DB dameons.
+    if intf.should_stop("db_checkpoint"):
         check_db(csc, "db_checkpoint")
-    if intf.should_start("db_deadlock"):
+    if intf.should_stop("db_deadlock"):
         check_db(csc, "db_deadlock")
-    if intf.should_start("alarm_server"):
-        check_server(csc, "alarm_server")
-    if intf.should_start("log_server"):
-        check_server(csc, "log_server")
-    if intf.should_start("event_relay"):
+
+    #Stop the event relay.
+    if intf.should_stop(enstore_constants.EVENT_RELAY):
         check_event_relay(csc)
-    if intf.should_start("configuration_server"):
-        check_csc(csc)
+    #Stop the configuration server.
+    if intf.should_stop(enstore_constants.CONFIGURATION_SERVER):
+        check_server(csc, enstore_constants.CONFIGURATION_SERVER)
 
 if __name__ == '__main__':
 

@@ -30,6 +30,7 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         self.name = "START"
         self.just = None
+        self.all = 0 #False
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -56,12 +57,19 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
     def should_start(self, server_name):
 
-        if self.just == server_name or self.just == None:
+        if self.all:
+            return 1
+        if self.just == server_name:
+            return 1
+        if self.just == None and server_name not in self.non_default_names:
             return 1
 
         return 0
 
+    non_default_names = ["accounting_server", "monitor_server"]
+
     complete_names = [
+        "accounting_server",
         "configuration_server",
         "event_relay",
         "log_server",
@@ -75,6 +83,7 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         "library",
         "media",
         "mover",
+        "monitor_server",
         ]
         
 
@@ -84,6 +93,12 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_LABEL:"server name",                     
+		     option.USER_LEVEL:option.ADMIN,
+                     },
+        option.ALL:{option.HELP_STRING:"specify all servers",
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.DEFAULT_NAME:"all",
+                     option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN,
                      },
         }
@@ -97,7 +112,10 @@ def do_work(intf):
     start = "python %s/src/enstore_start.py" % (os.environ['ENSTORE_DIR'],)
     stop = "python %s/src/enstore_stop.py" % (os.environ['ENSTORE_DIR'],)
 
-    if intf.just:
+    if intf.all:
+        os.system("%s --all" % (stop,))
+        os.system("%s --nocheck --all" % (start,))
+    elif intf.just:
         os.system("%s --just %s" % (stop, intf.just))
         os.system("%s --nocheck --just %s" % (start, intf.just))
     else:
