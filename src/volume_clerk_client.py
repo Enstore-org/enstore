@@ -178,7 +178,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "key"           : key,
                   "in_state"      : state,
                   "not"           : not_cond,
-                  "unique_id"     : time.time() }
+                  "unique_id"     : str(time.time()) }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
@@ -252,7 +252,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         listen_socket.listen(4)
         ticket = {"work"         : "remove_deleted_vols",
                   "callback_addr" : (host, port),
-                  "unique_id"    : time.time() }
+                  "unique_id"    : str(time.time()) }
         if volume: ticket["external_label"] = volume
         # send the work ticket to the library manager
         ticket = self.send(ticket)

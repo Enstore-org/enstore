@@ -172,7 +172,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         listen_socket.listen(4)
         ticket = {"work"         : work,
                   "callback_addr" : (host, port),
-                  "unique_id"    : time.time() }
+                  "unique_id"    : str(time.time()) }
 
         # send the work ticket to the library manager
         ticket = self.send(ticket, self.send_to,self.send_tries)

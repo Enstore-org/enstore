@@ -52,8 +52,8 @@ class FileClient(generic_client.GenericClient,
         listen_socket.listen(4)
         ticket = {"work"         : "get_bfids",
                   "callback_addr": (host, port),
-                  "unique_id"    : time.time() }
-        # send the work ticket to the library manager
+                  "unique_id"    : str(time.time()) }
+        # send the work ticket to the file clerk
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"fcc.get_bfids: sending ticket %s"%(ticket,)
@@ -109,7 +109,7 @@ class FileClient(generic_client.GenericClient,
         ticket = {"work"          : "tape_list",
                   "callback_addr" : (host, port),
                   "external_label": external_label,
-                  "unique_id"     : time.time() }
+                  "unique_id"     : str(time.time()) }
         # send the work ticket to the file clerk
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
