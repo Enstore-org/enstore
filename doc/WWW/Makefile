@@ -71,7 +71,7 @@ pics: PS_pics GIF_pics
 www_new: pics
 	@- rm -rf $(WWW_NEW)
 	mkdir $(WWW_NEW)
-	cp ../operations/d0en/consoles.html ./d0en_consoles.html
+	@- cp ../operations/d0en/consoles.html ./d0en_consoles.html
 	../moveAndAddButton.pl $(WWW_NEW) `justfiles`
 
 PS_pics: $(PIC_PS_FILES)
