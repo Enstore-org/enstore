@@ -4,7 +4,7 @@ import tempfile
 import popen2
 import string
 
-def callGet(tapeLabel, files, pnfsDir, outputDir):
+def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     pnfsd_s = os.path.split(pnfsDir)
     if pnfsd_s[len(pnfsd_s)-1] != tapeLabel:
         pnfsDir = os.path.join(pnfsDir,tapeLabel)
@@ -65,11 +65,16 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
     
     
     while 1:
-        args = (path, "--verbose", "5", "--list", fname, tapeLabel,
+        if verbose:
+            vopt = "--verbose %s"%(verbose,)
+        else:
+            vopt = " "
+        args = (path, vopt, "--list", fname, tapeLabel,
                 pnfsDir, outputDir)
         #args = (path, "--list", fname, tapeLabel, pnfsDir, outputDir)
 
         print string.join(args)
+        #return 0
 
         #Fork off the "get" process and read in its output.
 

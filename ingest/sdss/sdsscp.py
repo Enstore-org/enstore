@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import getopt
 
 import callGet
 import string, sys
@@ -14,18 +15,26 @@ def main():
         print "must use python 1.6 or greater"
         sys.exit(127)
 
+    opts_permitted = ['verbose=']
+    options, args =getopt.getopt(sys.argv[1:], [], opts_permitted)
     #If the wrong number of arguments was supplied, print help and error out.
-    if len(sys.argv) != 6:
-        print sys.argv[0], \
-              " <tapelabel> <mjd> <TarTape|TapeLog> <pfnsdir> <outputdir>"
+    if len(args) != 5:
+        print "Usage:",sys.argv[0], \
+              " [--verbose n] <tapelabel> <mjd> <TarTape|TapeLog> <pfnsdir> <outputdir>"
         sys.exit(126)
 
+    verbose = None
+    if options:
+        for option in options:
+            if "--verbose" in option:
+                verbose = option[1]
+        
     #Create shortcuts for readability.
-    tapeLabel = sys.argv[1]
-    mjd = sys.argv[2]
-    tapeStyle = sys.argv[3]
-    pnfsDir = sys.argv[4]
-    outputDir = sys.argv[5]
+    tapeLabel = args[0]
+    mjd = args[1]
+    tapeStyle = args[2]
+    pnfsDir = args[3]
+    outputDir = args[4]
 
     #Detect tape type errors from the command line.
     if tapeStyle != "TarTape" and tapeStyle != "TapeLog":
@@ -47,7 +56,7 @@ def main():
     files = parseTapeLog.parseFile(localMetaFilePath)  #, tapeLabel)
 
     #Fork off "get" process to retrieve the data.
-    exit_status = callGet.callGet(tapeLabel, files, pnfsDir, outputDir)
+    exit_status = callGet.callGet(tapeLabel, files, pnfsDir, outputDir, verbose)
 
     #The copied catalog file is removed at this point.
     #os.remove(localMetaFilePath)
