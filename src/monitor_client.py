@@ -232,7 +232,6 @@ class Vetos:
 def do_real_work(summary, config_host, config_port, html_gen_host):
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get('active_monitor')
-    print config
     if config['status'] == (e_errors.OK, None):
         logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
