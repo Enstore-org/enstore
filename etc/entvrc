@@ -785,3 +785,16 @@ client_color d0cs397        #ff00ff
 client_color d0cs398        #ff00ff
 client_color d0cs399        #ff00ff
 client_color d0cs400        #ff00ff
+
+#CMS clients #########
+
+client_color chutney        #00ff00
+client_color ketchup        #00ff00
+client_color mayo           #00ff00
+client_color mustard        #00ff00
+client_color pesto          #00ff00
+client_color cmsstore01     #00ff00
+#client_color cmsstore02     #00ff00
+#client_color cmsstore03     #00ff00
+#client_color cmsstore04     #00ff00
+client_color cmsstore05     #00ff00
