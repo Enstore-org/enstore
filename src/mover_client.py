@@ -9,6 +9,7 @@
 #########################################################################
 
 # system imports
+import sys
 
 #enstore imports
 import configuration_client
@@ -84,7 +85,6 @@ class MoverClientInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("mover cli")
     Trace.trace(1,"movc called with args "+repr(sys.argv))
 
