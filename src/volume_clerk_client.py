@@ -978,7 +978,8 @@ def do_work(intf):
             ticket['declared'] = time.ctime(ticket['declared'])
             ticket['first_access'] = time.ctime(ticket['first_access'])
             ticket['last_access'] = time.ctime(ticket['last_access'])
-            ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
+            if ticket.has_key('si_time'):
+                ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
                                  time.ctime(ticket['si_time'][1]))
             pprint.pprint(ticket)
             ticket['status'] = status

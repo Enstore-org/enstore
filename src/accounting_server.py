@@ -67,6 +67,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_start_mount(self, node, volume, type, logname, start)
 	def log_start_mount(self, ticket):
+		Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_start_mount(
 				ticket['node'],
@@ -82,6 +83,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_finish_mount(self, node, volume, finish, state='M')
 	def log_finish_mount(self, ticket):
+		Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_finish_mount(
 				ticket['node'],
@@ -94,6 +96,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_start_dismount(self, node, volume, type, logname, start)
 	def log_start_dismount(self, ticket):
+		Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_start_dismount(
 				ticket['node'],
@@ -107,6 +110,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_finish_dismount(self, node, volume, finish, state='D')
 	def log_finish_dismount(self, ticket):
+		Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_finish_dismount(
 				ticket['node'],
@@ -128,6 +132,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# log_encp_xfer(....)
 	def log_encp_xfer(self, ticket):
+		Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_encp_xfer(
 				ticket['date'],

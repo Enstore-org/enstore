@@ -112,9 +112,6 @@ class accClient(generic_client.GenericClient):
 			'rw': rw}
 		self.send2(ticket)
 
-			
-
-
 if __name__ == '__main__':
 	intf = option.Interface()
 	ac = accClient((intf.config_host, intf.config_port))

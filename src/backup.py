@@ -17,17 +17,17 @@ import configuration_client	# to talk to configuration server
 import option		        # to get default host and port
 import e_errors                 # error information
 import log_client               # for getting info into the log
+import hostaddr
 
 
 journal_backup = 'JOURNALS'     # for journal file backup
-
-# get_size(dbFile) -- get the number of records and size of a dbFile
 
 def logthis(code, message):
     #Trace.log(code,message)
     log_client.logthis(code,message)
     print "Logging", code, message
 
+# get_size(dbFile) -- get the number of records and size of a dbFile
 def get_size(dbHome,dbFile):
     nkeys="Unknown"
     cmd = "db_stat -h " + dbHome + " -d " + dbFile
@@ -182,16 +182,14 @@ def archive_clean(ago,hst_local,hst_bck,bckHome):
                     ret=os.system(cmd)
                     if ret != 0 :
                         logthis(e_errors.INFO, "Command %s failed"%(cmd,))
-		
-if __name__=="__main__":
-    import hostaddr
-    Trace.init("BACKUP")
-    Trace.trace(6,"backup called with args %s"%(sys.argv,))
 
-    if len(sys.argv) > 1 :
-	ago=string.atoi(sys.argv[1])
-    else :
-	ago=100
+
+class backupInterface(option.Interface):
+	def __init__(self):
+		option.Interface.__init__(self)
+
+def do_work():
+    Trace.init("BACKUP")
 
     try:
 	dbInfo = configuration_client.ConfigurationClient(
@@ -245,8 +243,10 @@ if __name__=="__main__":
     logthis(e_errors.INFO, "Start moving to archive")
     archive_backup(hst_bck,hst_local,dir_bck)
     logthis(e_errors.INFO, "Stop moving to archive")
-    # logthis(e_errors.INFO, "Start cleanup archive")
-    # archive_clean(ago,hst_local,hst_back,bckHome)
-    # logthis(e_errors.INFO, "End  cleanup archive")
     Trace.trace(6,"backup exit ok")
-    sys.exit(0)
+    return 0
+
+
+
+if __name__=="__main__":
+    sys.exit(do_work())
