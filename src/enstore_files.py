@@ -560,7 +560,34 @@ class HtmlSaagFile(EnFile):
             doc.body(enstore_contents, network_contents, media_contents, 
                      alarm_contents, node_contents, outage, offline, media,
 		     status_file_name)
+	    # save the status of the enstore ball
+	    self.enstore_ball = enstore_contents[enstore_constants.ENSTORE]
 	    self.do_write(str(doc))
+
+    def install(self):
+	# if the enstore ball is red, then move the file just created to
+	# a different file name and move the page with the big red ball to the
+	# normal saag file name
+	if self.enstore_ball == enstore_constants.DOWN:
+	    dir = enstore_functions.get_dir(self.file_name)
+	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+				  "Tmp file: %s, real file: %s/%s"%(self.file_name,
+				          dir, enstore_constants.REALSAAGHTMLFILE))
+	    if os.path.exists(self.file_name):
+		os.system("mv %s %s/%s"%(self.file_name, dir,
+					 enstore_constants.REALSAAGHTMLFILE))
+		os.system("cp %s/%s %s"%(dir, enstore_constants.REDSAAGHTMLFILE,
+					 self.real_file_name))
+
+	else:
+	    # move the file we created to the real file name
+	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+		                   "Tmp file: %s, real file: %s"%(self.file_name, 
+							      self.real_file_name))
+	    if (not self.real_file_name == self.file_name) and \
+	       os.path.exists(self.file_name):
+		os.system("mv %s %s"%(self.file_name, self.real_file_name))
+
 
 class ScheduleFile(EnFile):
 
