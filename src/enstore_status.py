@@ -134,6 +134,11 @@ class EncpLine:
             try:
                 # split out the message type from the rest of the message text
                 [self.msg_type, self.text] = string.splitfields(self.text, None, 1)
+                # make sure the msg_type really is one, else this might be a line with
+                # the wrong format.
+                if string.find(self.msg_type, Trace.MSG_TYPE) == -1:
+                    # this is the wrong format
+                    return
                 [tmp1, tmp2] = string.splitfields(self.text, ": ", 1)
                 # get the file names (tmp_list[2] = "->" so ignore it)
                 tmp_list = string.splitfields(tmp1, None)
@@ -197,7 +202,7 @@ class EncpLine:
             except ValueError:
                 # we do not handle this formatting
                 self.valid = 0
-        else:
+        elif not self.status == e_errors.sevdict[e_errors.MISC]:
             # get rid of the MSG_TYPE=xxx information at the end of the line
             aList = string.splitfields(self.text, Trace.MSG_TYPE)
             # some of the lines  do not have MSG_TYPE in them (??? hmmm) so we cannot count on
