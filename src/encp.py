@@ -908,10 +908,10 @@ def query_lm_queue(node,
 		    print "%s %s %s %s P" % (host,user,pnfsfn,fn)
 		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s P" % (host,user,pnfsfn,fn)
 	    for i in range(0, len(at_list)):
-		host = pw_list[i]["wrapper"]["machine"][1]
-		user = pw_list[i]["wrapper"]["uname"]
-		pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
-		fn = pw_list[i]["wrapper"]["fullname"]
+		host = at_list[i]["wrapper"]["machine"][1]
+		user = at_list[i]["wrapper"]["uname"]
+		pnfsfn = at_list[i]["wrapper"]["pnfsFilename"]
+		fn = at_list[i]["wrapper"]["fullname"]
 		if host == node:
 		    print "%s %s %s %s M" % (host,user,pnfsfn,fn)
 		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s M" % (host,user,pnfsfn,fn)
@@ -1874,7 +1874,7 @@ if __name__  ==  "__main__" :
     try:
 	if e.command == "queue_list":
 	    query_lm_queue(e.args[0], e.config_host, e.config_port, e.verbose)
-    except:
+    except AttributeError:
 	#traceback.print_exc()
 	# have we been called "encp unixfile hsmfile" ?
 	if e.intype=="unixfile" and e.outtype=="hsmfile" :
