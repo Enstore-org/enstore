@@ -221,7 +221,53 @@ class VolumeClerkMethods(DispatchingWorker) :
             self.reply_to_caller(vol)
             return
 
-        # nothing was available
+        # nothing was available - see if we can assign a blank one.
+        vol = {}
+        for k in dict.keys() :
+            v = dict[k]
+            if v["library"] != library :
+                continue
+            if v["file_family"] != "none" :
+                continue
+            if v["user_inhibit"] != "none" :
+                continue
+            if v["system_inhibit"] != "none" :
+                continue
+            if v["remaining_bytes"] < min_remaining_bytes :
+                continue
+            vetoed = 0
+            extl = v["external_label"]
+            for veto in vol_veto_list :
+                if extl == veto :
+                    vetoed = 1
+                    break
+            if vetoed :
+                continue
+
+            # supposed to return first blank volume found?
+            if first_found:
+                v["file_family"] = file_family
+                print "Assigning blank volume",k,"to",library,file_family
+                dict[k] = v
+                v["status"] = "ok"
+                self.reply_to_caller(v)
+                return
+            # if not, is this an "earlier" volume that one we already found?
+            if len(vol) == 0 :
+                vol = v
+            elif v['declared'] < vol['declared'] :
+                vol = v
+
+        # return blank volume we found
+        if len(vol) != 0:
+            v["file_family"] = file_family
+            print "Assigning blank volume",k,"to",library,file_family
+            dict[k] = v
+            v["status"] = "ok"
+            self.reply_to_caller(v)
+            return
+
+        # nothing was available at all
         ticket["status"] = "Volume Clerk: no new volumes available"
         pprint.pprint(ticket)
         self.reply_to_caller(ticket)
