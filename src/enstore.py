@@ -99,11 +99,11 @@ class UserOptions(GenericUserOptions):
     server_intfs = {}
 
     # get a new server interface and store it to use later if needed
-    def get_server_intf(self, skey):
+    def get_server_intf(self, skey, flag):
         functions = server_functions.get(skey, None)
         if not functions is None:
             self.server_intfs[skey] = self.server_intfs.get(skey,
-                                                            functions[0]())
+                                                            functions[0](flag))
             return self.server_intfs[skey]
         else:
             return None
@@ -119,7 +119,7 @@ class UserOptions(GenericUserOptions):
         if self.user_mode:
             opts = self.get_options(skey)
         else:
-            intf = self.get_server_intf(skey)
+            intf = self.get_server_intf(skey, 1)
             if not intf is None:
                 opts = intf.options()
             else:
@@ -259,7 +259,7 @@ class EnstoreInterface(UserOptions):
         for server in servers:
             # print the usage line for each server
             print "%s %s "%(cmd, server),
-            intf = self.get_server_intf(server)
+            intf = self.get_server_intf(server, 0)
             if not intf == None:
                 self.print_usage_line(server, intf)
 
