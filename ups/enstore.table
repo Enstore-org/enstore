@@ -33,8 +33,8 @@ QUALIFIERS=rip
 FLAVOR=ANY
 QUALIFIERS=cahen
         ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
-                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/rip.conf)
+                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
+                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
                 exeActionRequired(COMMON_SETUP)
 
 
@@ -126,7 +126,7 @@ COMMON:
                 envSet(GADFLY_GRAMMAR,`${UPS_PROD_DIR}/ups/what_is gadfly`)
                 addAlias(pylint, 'python ${GADFLY_GRAMMAR}/kjpylint.py %s')
                 # ftt is Fermi tape tools
-                setupRequired("ftt v2_7")
+	        setupRequired("ftt v2_10")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
                 # drivestat_client is now a local module in enstore
