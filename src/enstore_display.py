@@ -353,7 +353,8 @@ class Mover:
         else:
             self.outline = self.display.create_rectangle(x, y, x+self.width,
                                                          y+self.height,
-                                                         fill=self.mover_color)
+                                                         fill=self.mover_color,
+                                                    outline=self.library_color)
         #Display the mover name label.
         if self.label:
             self.display.coords(self.label, x+self.label_offset.x,
@@ -452,18 +453,23 @@ class Mover:
                     self.y + self.volume_offset.y,
                     self.x + self.volume_offset.x + self.vol_width,
                     self.y + self.volume_offset.y + self.vol_height,
-                    fill = self.volume_bg_color)
+                    fill = self.volume_bg_color,)
+                    #outline = self.volume_bg_color)
             
         
             if self.volume_display:
                 self.display.coords(self.volume_display,
-                            x+self.volume_offset.x+(self.vol_width / 2.0) + 1,
-                            y+self.volume_offset.y+(self.vol_height / 2.0) + 1)
+                                    x + self.volume_label_offset.x,
+                                    y + self.volume_label_offset.y)
+                            #x+self.volume_offset.x+(self.vol_width / 2.0) + 1,
+                            #y+self.volume_offset.y+(self.vol_height / 2.0)+ 1)
             else:
                 self.volume_display = self.display.create_text(
                    self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
                    self.y + self.volume_offset.y + (self.vol_height / 2.0) + 1,
-                   text = self.volume, fill = self.volume_font_color,
+                   text = fit_string(self.volume_font,
+                                     self.volume, self.vol_width),
+                   fill = self.volume_font_color,
                    font = self.volume_font, width = self.vol_width,)
             
     def draw_progress(self, percent_done, alt_percent_done):
@@ -913,17 +919,37 @@ class Mover:
             sys.exit(-1)
 
     def resize(self, N):
+
+        #Set the mover size in the display.
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 40 or more movers.
         self.width = (self.display.number_of_movers / 20)
         self.width = (self.display.width/(self.width + 3))
+        #Font geometry.
+        self.font = get_font(self.height/2.5, 'arial',
+                             width_wanted=self.max_font_width(),
+                             fit_string="DISMOUNT_WAIT")
+        self.label_font = get_font(self.height/2.5, 'arial',
+                                   width_wanted=self.max_label_font_width(),
+                                   fit_string=self.name)
+
         #Size of the volume portion of mover display.
-        self.vol_width = (self.width)/2.5
         self.vol_height = (self.height)/2.5
-        self.state_width = self.width - ((self.width)/2.5) - 6
+        self.volume_font = get_font(self.vol_height, 'arial',
+                                    fit_string="MMMM99",
+                                    width_wanted=((self.width/2.5)))
+        self.vol_width = max(((self.width)/2.5),
+                             self.volume_font.measure("MMMM99"))
+
+        #Set state size of the display.
+        self.state_width = self.width - self.vol_width - 6
+        self.state_height = self.vol_height
 
         #These are the new offsets
         self.volume_offset         = XY(2, 2)
+        self.volume_label_offset   = XY(
+                    self.volume_offset.x+(self.vol_width / 2.0),
+                    self.volume_offset.y+(self.vol_height / 2.0))
         self.label_offset          = XY(self.width+5, self.height)
         self.img_offset            = XY(4 + self.vol_width, 0)
         self.state_offset          = XY(
@@ -945,20 +971,7 @@ class Mover:
                                      self.bar_height)#magenta
         #self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
         self.percent_disp_offset   = XY(self.bar_width + 6, self.height)#green
-        
-        #Font geometry.
-        self.font = get_font(self.height/2.5, 'arial',
-                             width_wanted=self.max_font_width(),
-                             fit_string="DISMOUNT_WAIT")
-        self.label_font = get_font(self.height/2.5, 'arial',
-                                   width_wanted=self.max_label_font_width(),
-                                   fit_string=self.name)
-        if self.volume:
-            self.volume_font = get_font(self.vol_height, 'arial',
-                                        fit_string=self.volume,
-                                        width_wanted=self.vol_width)
-        else:
-            self.volume_font = None
+
 
     def max_font_width(self):
         return (self.width - self.width/3.0) - 10
