@@ -228,6 +228,7 @@ def main():
             ticket['unique_id'] = generate_unique_id()
             ticket['callback_addr'] = callback_addr
             ticket['routing_callback_addr'] = routing_callback_addr
+	    ticket['route_selection'] = route_selection
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
             ticket['fc'] = {} #easier to do this than modify the mover.
@@ -241,7 +242,9 @@ def main():
 
     for vol in vol_list:
         if route_selection == 1:
-            open_routing_socket(udp_server, unique_id_list, 900)
+	    #There is no need to do this on a non-multihomed machine.
+            route_ticket, listen_socket = open_routing_socket(
+		udp_server, unique_id_list, 900)
         socket, addr, callback_ticket = open_control_socket(listen_socket, 900)
 
         #print "RESPONCE TICKET"
@@ -262,4 +265,8 @@ def main():
         socket.close()
         
 if __name__ == "__main__":
-    main()
+    try:
+	main()
+    except KeyboardInterrupt:
+        sys.stderr.write("KeyboardInterrupt\n")
+        sys.stderr.flush()
