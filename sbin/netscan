@@ -50,7 +50,7 @@ ALLOW_BASE="
        LISTEN,inetd,:klogin,TCP,x
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
-       LISTEN,python,:,,/home/enstore/enstore/bin/encp
+       LISTEN,python,:,TCP,/home/enstore/enstore/bin/encp|/home/enstore/enstore/bin/enstore system
        LISTEN,netserver,:,TCP,x
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py|/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
