@@ -9,8 +9,9 @@ import string
 import time
 import pprint
 import rexec
+_rexec = rexec.RExec()
 def eval(stuff):
-    return rexec.RExec().r_eval(stuff)
+    return _rexec.r_eval(stuff)
 
 mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
 config = eval(os.popen("enstore config --show",'r').read())
