@@ -514,7 +514,7 @@ class LibraryManagerMethods:
         return rc
             
     # remove all pending works
-    def flush_pending_jobs(self, status, external_label=None, jobtype=None):
+    def flush_pending_jobs(self, status, external_label=None):
         Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
         if not external_label: return
         w = self.pending_work.get(external_label)
@@ -2051,7 +2051,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # update volume status
         # get it directly from volume clerk as mover
         # in the idle state does not have it
-        if self.mover_type(mticket) is 'DiskMover':
+        if self.mover_type(mticket) == 'DiskMover':
             mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
         else:
             Trace.trace(29,"inquire_vol")
@@ -2086,7 +2086,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     self.volumes_at_movers.delete(mv)
             return
         state = mticket.get('state', None)
-        if state is 'IDLE':
+        if state == 'IDLE':
             # mover dismounted a volume on a request to mount another one
             self.volumes_at_movers.delete(mticket)
         else: self.volumes_at_movers.put(mticket)
@@ -2110,7 +2110,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # mover restarted with bound volume and it has not
             # all the volume info
             # so go get it
-            if self.mover_type(mticket) is 'DiskMover':
+            if self.mover_type(mticket) == 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
                 vol_info = self.vcc.inquire_vol(mticket['external_label'])
@@ -2202,7 +2202,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # update volume status
                 # get it directly from volume clerk as mover
                 # in the idle state does not have it
-                if self.mover_type(mticket) is 'DiskMover':
+                if self.mover_type(mticket) == 'DiskMover':
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
                     vol_info = self.vcc.inquire_vol(mticket['external_label'])
@@ -2602,7 +2602,7 @@ class LibraryManagerInterface(generic_server.GenericServerInterface):
         # bomb out if we don't have a library manager
         if len(self.args) < 1 :
             self.missing_parameter(self.parameters())
-            self.print_help(),
+            self.print_help()
             sys.exit(1)
         else:
             self.name = self.args[0]
