@@ -90,10 +90,6 @@ class cleanUDP :
 				self.logerror("recvfrom", n)
 		return data
 
-
-	def send(self, s, addr) : 
-		return self.socket.send(s, addr)
-
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
 	def sendto(self, data, address) : 
 		self.previous_sendto_address = self.this_sendto_address
