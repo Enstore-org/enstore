@@ -2186,8 +2186,9 @@ def create_read_requests(inputlist, outputlist, file_size,
         Trace.message(5, pprint.pformat(vc_reply))
 
         try:
-            if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
-                sys.stderr.write("Old file clerk format detected.\n")
+            # comment this out not to confuse the users
+            # if fc_reply.has_key("fc") or fc_reply.has_key("vc"):
+            #    sys.stderr.write("Old file clerk format detected.\n")
             del fc_reply['fc'] #Speed up debugging by removing these.
             del fc_reply['vc']
         except:
