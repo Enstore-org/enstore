@@ -23,6 +23,7 @@ static char rcsid[] = "@(#)$Id$";
 #include <scsi/sg.h>
 #include <string.h>
 #include "ftt_private.h"
+#include <assert.h>		/* assert */
 
 extern char ftt_acSensebuf[18];
 
@@ -101,7 +102,8 @@ ftt_scsi_command(
    int 		writeflag)		/* the pcRdWr buf should be added to cmd */
 {
 	int scsistat, res;
-	static int gotstatus, len;
+	int len;
+	static int gotstatus;
 
           /* sg_header is the first SCSI_OFF bytes of buffer */
 #	define SCSI_OFF		sizeof(struct sg_header)
@@ -115,11 +117,11 @@ ftt_scsi_command(
         DEBUG2(stderr,"sending scsi frame:\n");
         DEBUGDUMP2(pcCmd,nCmd);
 
-	/* the system only gets 19 bytes of RS data on Linux, so if
+	/* the system only gets 16 bytes of RS data on Linux, so if
 	 * the requester wanted *more* than that, we have to re-ask
 	 * anyhow.. 
 	 */
-	if (gotstatus && pcCmd[0] == 0x03 && nRdWr < 19) {
+	if (gotstatus && pcCmd[0] == 0x03 && nRdWr < 16) {
 		/* we already have log sense data, so fake it */
 		memcpy(  pcRdWr, sg_hd->sense_buffer, nRdWr );
 		gotstatus = 0;
@@ -143,6 +145,7 @@ ftt_scsi_command(
           /* if we have data for the command, stuff it after the command */
 	memcpy(buffer+SCSI_OFF, pcCmd, nCmd );
 	if (writeflag) {
+	    assert((SCSI_OFF+nCmd+nRdWr) <= sizeof(buffer));
 	    memcpy(buffer+SCSI_OFF+nCmd, pcRdWr, nRdWr);
 	    len += nRdWr;
 	}
@@ -153,12 +156,15 @@ ftt_scsi_command(
 	    scsistat = 255;
 	} else {
           /* and if it is successful, read the result */
+	        sg_hd->sense_buffer[0] = 0;
 		res = read(n, buffer, sizeof(buffer));
                 DEBUG2(stderr,"read() returned %d\n", res);
-		if (res < 0 || sg_hd->result) {
+		if (res < 0 || sg_hd->result || sg_hd->sense_buffer[0]) {
                     fprintf(stderr, "scsi passthru read result = 0x%x cmd=0x%x\n",
                              sg_hd->result, buffer[SCSI_OFF]);
-                    fprintf(stderr, "scsi passtru sense "
+		    if (sg_hd->result == 0x10)
+			fprintf( stderr, "sg_hd->result == 0x10 cmd=0x%x!!!\n", *pcCmd );
+                    fprintf(stderr, "scsi passthru sense "
                      "%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x \n",
                        sg_hd->sense_buffer[0], sg_hd->sense_buffer[1],
                        sg_hd->sense_buffer[2], sg_hd->sense_buffer[3],
@@ -169,10 +175,13 @@ ftt_scsi_command(
                        sg_hd->sense_buffer[12], sg_hd->sense_buffer[13],
                        sg_hd->sense_buffer[14], sg_hd->sense_buffer[15]);
 		    scsistat = 255;
+		    gotstatus = 1;
 		} else {
-                        res = res-SCSI_OFF;
-                        if (res > nRdWr) res = nRdWr;
-			memcpy(pcRdWr, buffer+SCSI_OFF, res);
+		        if (!writeflag)
+			{   res = res-SCSI_OFF;
+			    if (res > nRdWr) res = nRdWr;
+			    memcpy(pcRdWr, buffer+SCSI_OFF, res);
+			}
 
 			scsistat = sg_hd->result;
 		}
@@ -184,7 +193,6 @@ ftt_scsi_command(
 		DEBUGDUMP4(pcRdWr,res);
 	}
 
-	gotstatus = 1;
 	res = ftt_scsi_check(n,pcOp,scsistat,res);
 
 	return res;
