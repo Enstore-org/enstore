@@ -149,7 +149,7 @@ dccp_test() {
     do_transfer "dccp $test_file $w" $w $write_in_progress
  
     if [ -r $write_in_progress ]; then
-	raise_alarm "$dcache dcache write failed." $dcache_saag 6
+	raise_alarm "$dcache dcache dccp write failed." $dcache_saag 6
     fi
 
 # dccp readback
@@ -157,13 +157,13 @@ dccp_test() {
     do_transfer "dccp $w $read_back" $read_back $read_in_progress
 
     if [ -r $read_in_progress ]; then
-	raise_alarm "$dcache dcache read failed" $dcache_saag 4
+	raise_alarm "$dcache dcache dccp read failed" $dcache_saag 4
     fi
 
 # file comparison
     cmp $test_file $read_back
     if [ $? -ne 0 ]; then
-	raise_alarm "$dcache dcache cmp failed" $dcache_saag 3
+	raise_alarm "$dcache dcache dccp cmp failed" $dcache_saag 3
     fi
 }
 #######################################################################
