@@ -130,6 +130,9 @@ TICKET_1_LEVEL = 11
 
 #This is the global used by print_data_access_layer_format().  It uses it to
 # determine whether standard out or error is used.
+#  1 - Means always print this output; regardless of success or failure.
+#  0 - Means only print this output on fatal error.
+# -1 - Means never print this output.
 data_access_layer_requested = 0
 
 #Initial seed for generate_unique_id().
@@ -1663,6 +1666,10 @@ def check_library(library, e):
 ############################################################################
 
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
+
+    if data_access_layer_requested < 0:
+        return
+    
     # check if all fields in ticket present
 
     #Check the file and volume clerk sub-tickets.
@@ -7779,11 +7786,11 @@ class EncpInterface(option.Interface):
         # are_on/should_go_to.
         for i in range(1, len(self.args) - 1):
             if p[i] != p1:
-                msg = "Not all input_files are %s files"
+                msg = "Not all input files are %s files"
                 if p2:
-                    print_error(e_errors.USERERROR, msg % "/pnfs/...")
-                else:
                     print_error(e_errors.USERERROR, msg % "unix")
+                else:
+                    print_error(e_errors.USERERROR, msg % "/pnfs/...")
                 delete_at_exit.quit()
             elif self.args[i] in self.input:
                 msg = "Duplicate filenames is not allowed: %s"
@@ -7793,7 +7800,7 @@ class EncpInterface(option.Interface):
                 self.input.append(self.args[i]) #Do this way for a copy.
 
             if m[i][0] != m1[0]:
-                msg = "Not all input_files are on node %s."
+                msg = "Not all input files are on node %s."
                 print_error(e_errors.USERERROR, msg % m1[0])
                 delete_at_exit.quit()
 
@@ -8035,7 +8042,10 @@ def main(intf):
         global data_access_layer_requested
         data_access_layer_requested = intf.data_access_layer
         #data_access_layer_requested.set()
-
+    elif intf.verbose < 0:
+        #Turn off all output to stdout and stderr.
+        data_access_layer_requested = -1
+        intf.verbose = 0
 
     #Special handling for use with dcache.
     if intf.get_cache:
