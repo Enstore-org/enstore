@@ -9,7 +9,6 @@ import string
 import time
 import pprint
 
-
 mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
 
 config = eval(os.popen("enstore config --show",'r').read())
@@ -140,7 +139,8 @@ def sendmail(subject, reason):
     p=os.popen(mail_cmd, 'w')
     p.write('reason: %s\n' % (reason,))
     p.write('\n\n')
-    p.write("This message sent by %s running on %s\n\n" % (prog, host))
+    p.write("This message sent at %s by %s running on %s\n\n" %
+            (time.ctime(time.time()), prog, host))
     p.close()
     
 def start(mover, reason=None):
