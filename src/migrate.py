@@ -410,7 +410,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 
 	res = compare_metadata(p2, f2)
 	if res:
-		return "metadata %s %s are %s"%(bfid2, src, res)
+		return "metadata %s %s are %s"%(bfid2, dst, res)
 
 	# cross check
 	if f1['size'] != f2['size']:
@@ -437,7 +437,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	p1.complete_crc = p2.complete_crc
 	# should we?
 	# the best solution is to have encp ignore sanity check on file_family
-	p1.file_family = p2.file_family
+	# p1.file_family = p2.file_family
 	p1.update()
 	# p1.show()
 
@@ -453,7 +453,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	if debug:
-		log("migrating()")
+		log(MY_TASK, "migrating() starts")
 	job = copy_queue.get(True)
 	while job:
 		if debug:
@@ -609,7 +609,13 @@ def final_scan_volume(vol):
 			res = db.query(q).get_result()
 			if len(res):
 				if res[0][0] != 'y':
-					fcc.set_deleted('yes', bfid=src_bfid)
+					res = fcc.set_deleted('yes', bfid=src_bfid)
+					if res['status'][0] == e_errors.OK:
+						ok_log(MY_TASK, "set %s deleted"%(src_bfid))
+					else:
+						error_log(MY_TASK, "failed to set %s deleted"%(src_bfid))
+				else:
+					ok_log(MY_TASK, "%s has already been marked deleted"%(src_bfid))
 		else:
 			ok_log(MY_TASK, "checking", bfid, pnfs_path, "already done at", ct)
 			# make sure the original is marked deleted
