@@ -5,6 +5,10 @@ set -u  # force better programming and ability to use check for not set
 
 . $ENSTORE_DIR/etc/defaults
 
+cat $enstore_db/`uname -n`-db_*_pids|while read pid;do
+	kill $pid
+done
+rm $enstore_db/`uname -n`-db_*_pids
 for pid in $enstore_db/`uname -n`-*_pids; do
     if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
     pidkill $pid

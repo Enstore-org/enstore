@@ -42,7 +42,7 @@ ecmd callback       (no options/arguments)
 ecmd udp-test       [--msg= --host= --port= --verbose --help]
 ecmd random-file    [--size= --file= --verbose= --help']
 ecmd cpio    inputfilename outputarchive
-
+ecmd acc  [--config_list --dbname [volume/file] -v:f:l:m:w:u:s: --faccess= --laccess= --declared= --capacity= --rem_bytes= --alive --help]
 ecmd zero    (no options/arguments)
 "
 
@@ -57,7 +57,7 @@ stat=0
 
 case $cmd in
   start|enstore-start)
-    $ENSTORE_DIR/bin/enstore-start "$@"
+    $ENSTORE_DIR/bin/enstore-start "$@" 
     stat=$?
     ;;
   ping)
@@ -123,6 +123,11 @@ case $cmd in
 
   lmc)
     python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
+    stat=$?
+    ;;
+
+  acc)
+    python $ENSTORE_DIR/src/admin_clerk_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port $@
     stat=$?
     ;;
 
