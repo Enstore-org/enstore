@@ -627,9 +627,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 	    f = open(fname,'w')
 	    f.close()
 	    self.utime()
-	    print "1)", self.file_size
 	    self.pstatinfo()
-	    print "2)", self.file_size
 	    
 	    if self.file_size != size:
 		print "self.file_size", self.file_size, "size", size, self.file
