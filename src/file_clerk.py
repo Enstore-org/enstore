@@ -426,10 +426,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      key,value=dict.cursor("first")
      while key:
          if value['external_label'] == external_label:
-             if value['deleted']=="yes":
-                 deleted = "deleted"
+             if value.has_key('deleted'):
+                 if value['deleted']=="yes":
+                     deleted = "deleted"
+                 else:
+                     deleted = " active"
              else:
-                 deleted = " active"
+                 deleted = "unknown"
              msg=msg+ "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
