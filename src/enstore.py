@@ -266,7 +266,7 @@ class EnstoreInterface(UserOptions):
             print "\t%s"%(server,)
 
     def print_valid_options(self, server):
-        opts = self.get_valid_options()
+        opts = self.get_valid_options(server)
         print "\nERROR: Allowed options for %s are : "
         for opt in opts:
             print "\t%s"%(opt,)
