@@ -12,6 +12,7 @@ import errno
 import Trace
 import generic_cs
 import log_client
+import e_errors
 
 # used to force timestamping
 FORCE = 1
