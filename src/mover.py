@@ -637,6 +637,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.asc = None
         self.send_update_cnt = 0
         self.control_socket = None
+        self.lock_file_info = 0   # lock until file info is updated
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -2170,6 +2171,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.bytes_to_write = self.bytes_read
                         Trace.log(e_errors.WARNING, "updating file db entry for the tape ingest")
                         # create a bit file entry
+                        self.lock_file_info = 1
                         self.file_info['size'] = self.bytes_read
                         self.file_info['sanity_cookie'] = sanity_cookie
                         self.file_info['complete_crc'] = self.buffer.complete_crc
@@ -2194,6 +2196,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info.update(ret['fc'])
                         self.current_work_ticket['fc'].update(self.file_info)
                         self.current_work_ticket['bfid'] = self.file_info['bfid']
+                        self.lock_file_info = 0
                         Trace.trace(98, "updated file db %s"%(self.current_work_ticket['fc'],))
                         # update volume DB and volume info
                         self.vcc.update_counts(self.current_volume, wr_access=1)
@@ -3009,6 +3012,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tr_failed = 0   
         
     def transfer_completed(self):
+        # simple synchonizatin between tape and network threads.
+        # without this not updated file info is transferred to get
+        for i in range(3):
+            if self.lock_file_info:
+                time.sleep(1)
+            else:
+                break
+        else:
+            Trace.log(e_errors.ERROR,"did not get file info lock")
+        self.lock_file_info = 0
         self.consecutive_failures = 0
         self.timer('transfer_time')
         ticket = self.current_work_ticket
