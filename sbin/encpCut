@@ -288,7 +288,7 @@ for try in list doit; do
         2) echo "Step $Step:   bump encp version number to $REV in encp.py   `starting`"
            if [ "$try" = "doit" ] ; then
               encpnew=/tmp/$productCut.encpnew
-              sed -e "s+return \".*  CVS +return \"$REV  CVS +" $ENSTORE_DIR/src/encp.py > $encpnew
+              sed -e "s+version_string = \".*  CVS +version_string = \"$REV  CVS +" $ENSTORE_DIR/src/encp.py > $encpnew
               check_status $? "sed bump version to $REV"
               diff $ENSTORE_DIR/src/encp.py $encpnew
               cp $encpnew $ENSTORE_DIR/src/encp.py
