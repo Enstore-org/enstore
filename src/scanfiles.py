@@ -37,11 +37,62 @@ def error(s):
 def warning(s):
     print s, '... WARNING'
 
+def errors_and_warnings(fname, error, warning):
+
+    print fname +' ...',
+    # print warnings
+    for i in warning:
+        print i + ' ...',
+    # print errors
+    for i in error:
+        print i + ' ...',
+    if error:
+        print 'ERROR'
+    elif warning:
+        print 'WARNING'
+    else:
+        print 'OK'
+
+
 def layer_file(f, n):
     pn, fn = os.path.split(f)
     return os.path.join(pn, '.(use)(%d)(%s)'%(n, fn))
 
-def check(f):
+def check_link(l):
+
+    msg = []
+    warn = []
+    
+    if not os.path.exists(l):
+        warn.append("missing the original of link")
+
+    return msg, warn
+
+def check_dir(d):
+
+    msg = []
+    warn = []
+    
+    # skip volmap and .bad and .removed directory
+    lc = os.path.split(d)[1]
+    if lc == 'volmap' or lc[:3] == '.B_' or lc[:3] == '.A_' \
+           or lc[:8] == '.removed':
+        return msg, warn
+        
+    if os.access(d, os.R_OK | os.X_OK):
+        for entry in os.listdir(d):
+
+            #Skip blacklisted files.
+            if entry[:4] == '.bad' or entry[:8] == '.removed':
+                continue
+
+            check(os.path.join(d, entry))
+    else:
+        msg.append("can not access directory")
+
+    return msg, warn
+
+def check_file(f):
 
     msg = []
     warn = []
@@ -205,9 +256,22 @@ def check(f):
     except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no deleted field')
 
+    # parent id
+    try:
+        target = os.path.dirname(f)
+        target_name = os.path.join(os.path.dirname(target),
+                                   ".(id)(%s)" % os.path.basename(target))
+        target_file = open(target_name)
+        parent_dir_id = target_file.readline()[:-1]
+        target_file.close()
+    except:
+        parent_dir_id = ""
+    if pf.parent_id != parent_dir_id:
+        msg.append("parent_id(%s, %s)" % (pf.parent_id, parent_dir_id))
+
     return msg, warn
 
-def check_file(f):
+def check(f):
 
     #Do one stat() for each file instead of one for each os.path.isxxx() call.
     try:
@@ -232,41 +296,25 @@ def check_file(f):
         
         error(f + " ... " + os.strerror(msg.errno))
         return
-    
-    #if os.path.islink(f):    # skip links
-    if stat.S_ISLNK(f_stats[stat.ST_MODE]):    # skip links
-        if not os.path.exists(f):
-            warning(f+ ' ... missing the original of link')
+
+    if stat.S_ISLNK(f_stats[stat.ST_MODE]):
+        res, wrn = check_link(f)
+        errors_and_warnings(f, res, wrn)
+        
     # if f is a directory, recursively check its files
     elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
-        # skip symbolic link to a directory
-        if not stat.S_ISLNK(f_stats[stat.ST_MODE]):
-            # skip volmap and .bad and .removed directory
-            lc = os.path.split(f)[1]
-            if lc != 'volmap' and lc[:4] != '.bad' and lc[:8] != '.removed'\
-               and lc[:3] != '.B_' and lc[:3] != '.A_':
-                if os.access(f, os.R_OK | os.X_OK):
-                    for i in os.listdir(f):
-                        check_file(os.path.join(f,i))
-                else:
-                    error(f+' ... can not access directory')
+        res, wrn = check_dir(f)
+        if res or wrn:
+            errors_and_warnings(f, res, wrn)
+            
     elif stat.S_ISREG(f_stats[stat.ST_MODE]):
-        print f+' ...',
-        res, wrn = check(f)
-        # print warnings
-        for i in wrn:
-            print i+' ...',
-        # print errors
-        for i in res:
-            print i+' ...',
-        if res:
-            print 'ERROR'
-        elif wrn:
-            print 'WARNING'
-        else:
-            print 'OK'
+        res, wrn = check_file(f)
+        errors_and_warnings(f, res, wrn)
+        
     else:
         error(f+' ... unrecognized type')
+        return
+
 
 if __name__ == '__main__':
 
@@ -299,7 +347,7 @@ if __name__ == '__main__':
             line = line.strip()
             if line[:2] != '--':
                 try:
-                    check_file(line)
+                    check(line)
                 except (KeyboardInterrupt, SystemExit):
                     #If the user does Control-C don't traceback.
                     break
@@ -311,7 +359,7 @@ if __name__ == '__main__':
         while line:
             line = line.strip()
             try:
-                check_file(line)
+                check(line)
             except (KeyboardInterrupt, SystemExit):
                 #If the user does Control-C don't traceback.
                 break
