@@ -1,0 +1,2 @@
+encp() { $PYTHON_DIR/bin/python /usr/hppc_home/bakken/enstore/encp.py $@ ; }
+pnfs() { $PYTHON_DIR/bin/python /usr/hppc_home/bakken/enstore/pnfs.py $@ ; }
