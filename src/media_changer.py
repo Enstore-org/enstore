@@ -122,7 +122,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,  # volume external label
 	       media_type) :         # drive id 
         if 0: print media_type #lint fix
-	return (e_errors.OK, 0, None, None)
+        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
+	#return (e_errors.OK, 0, None, None)
 
     # prepare is overridden by dismount for mount; i.e. for tape drives we always dismount before mount
     def prepare(self,
