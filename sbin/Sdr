@@ -76,10 +76,11 @@ EOF
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
       data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
-      if [ "$alarm_sent" = "0" ]; then
-        `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i (check all values)"`
-	alarm_sent=1
-      fi
+#      remove the following comments if an alarm should be sent.
+#      if [ "$alarm_sent" = "0" ]; then
+#        `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i (check all values)"`
+#	alarm_sent=1
+#      fi
     else
       data_item="<td align=center>$val</td>"
     fi
