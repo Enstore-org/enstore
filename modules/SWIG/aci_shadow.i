@@ -122,7 +122,7 @@ int aci_robstat (char *, char *);
 int aci_cancel (int request_id);
 extern int aci_clientaccess (char *clientname, enum aci_command, char *volser_range,
 			     enum aci_media, char *drive_range); 
-extern int aci_clientstatus (char *clientname, struct aci_client_entry *);
+extern int aci_clientstatus (char *clientname, struct aci_client_entry *client);
 extern int aci_dismount (char *, enum aci_media);
 extern int aci_driveaccess (char *, char *, enum aci_drive_status);
 extern int aci_drivestatus (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES]);
@@ -140,7 +140,7 @@ extern int aci_carry( char *, char *, char *, int *);
 extern void aci_perror (char *);
 extern int aci_register (char *, char *, enum aci_command,bool_t,bool_t,bool_t);
 extern int aci_shutdown (char *);
-extern int aci_view (char *, enum aci_media, struct aci_vol_desc *);
+extern int aci_view (char *, enum aci_media, struct aci_vol_desc *desc);
 
 extern int aci_initialize( void );
 
