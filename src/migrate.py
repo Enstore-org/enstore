@@ -82,6 +82,8 @@ f_n = len(f_p)
 db = None
 csc = None
 
+io_lock = thread.allocate_lock()
+
 # job queue for coping files
 copy_queue = Queue.Queue(1024)
 scan_queue = Queue.Queue(1024)
@@ -182,26 +184,32 @@ def open_log(*args):
 
 # error_log(s) -- handling error message
 def error_log(*args):
+	io_lock.acquire()
 	open_log(*args)
 	print '... ERROR'
 	if log_f:
 		log_f.write('... ERROR\n')
 		log_f.flush()
+	io_lock.release()
 
 def ok_log(*args):
+	io_lock.acquire()
 	open_log(*args)
 	print '... OK'
 	if log_f:
 		log_f.write('... OK\n')
 		log_f.flush()
+	io_lock.release()
 
 # log(*args) -- log message
 def log(*args):
+	io_lock.acquire()
 	open_log(*args)
 	print
 	if log_f:
 		log_f.write('\n')
 		log_f.flush()
+	io_lock.release()
 
 # log_copied(bfid1, bfid2) -- log a successful copy
 def log_copied(bfid1, bfid2):
