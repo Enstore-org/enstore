@@ -147,16 +147,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
         ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
 
-        volumes = []
+        workmsg = ""
         while 1:
-          msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+\
+            msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+\
                                     "client get_vols, reading worklist")
-          if len(msg)==0:
-              break
-          volumes.append(msg)
+            if len(msg)==0:
+                break
+            workmsg = workmsg+msg
 
-        Trace.trace(12, string.join(volumes,''))
-        worklist = ticket
+        ticket['volumes'] = workmsg
+        Trace.trace(12, workmsg)
         data_path_socket.close()
 
 
@@ -173,8 +173,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-        worklist['volumes'] = volumes
-        return worklist
+
+        return ticket
 
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label):
@@ -439,7 +439,7 @@ if __name__ == "__main__":
         ticket = vcc.stop_backup()
     elif intf.vols:
         ticket = vcc.get_vols()
-        print repr(ticket['volumes'])
+        print ticket['volumes']
     elif intf.nextvol:
         ticket = vcc.next_write_volume(intf.args[0], #library
                                        string.atol(intf.args[1]), #min_remaining_byte
