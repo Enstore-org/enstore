@@ -13,6 +13,7 @@ import sys
 import string
 import types
 import pprint
+import time
 
 #enstore imports
 import udp_client
@@ -38,11 +39,11 @@ class MediaChangerClient(generic_client.GenericClient):
     ## not clear what keys need to be present in vol_ticket.  Looks like
     ## at least external_label and media_type are needed
     def loadvol(self, vol_ticket, mover, drive):
-	ticket = {'work'           : 'loadvol',
+        ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
-	rt = self.send(ticket, 300, 10)
+        rt = self.send(ticket, 300, 10)
         if rt['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "loadvol %s" % (rt['status'],))
         return rt
@@ -52,7 +53,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
-	rt = self.send(ticket,300,10)
+        rt = self.send(ticket,300,10)
         if rt['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "unloadvol %s" % (rt['status'],))
         return rt
@@ -62,41 +63,46 @@ class MediaChangerClient(generic_client.GenericClient):
                   'external_label' : volume,
                   'media_type' : m_type
                      }
-	rt = self.send(ticket)
+        rt = self.send(ticket)
+        return rt
+
+    def robotQuery(self):
+        ticket = {'work' : 'robotQuery', }
+        rt = self.send(ticket)
         return rt
 
     def doCleaningCycle(self, moverConfig):
         ticket = {'work'       : 'doCleaningCycle',
                   'moverConfig': moverConfig,
                   }
-	rt = self.send(ticket,300,10)
+        rt = self.send(ticket,300,10)
         return rt
 
     def insertvol(self, IOarea, inNewLib):
         ticket = {'work'         : 'insertvol',
-	          'IOarea_name'  : IOarea,
-		  'newlib'       : inNewLib
-		 }
+              'IOarea_name'  : IOarea,
+          'newlib'       : inNewLib
+         }
         if type(IOarea) != types.ListType:
             Trace.log(e_errors.ERROR, "ERROR:insertvol IOarea must be a list")
-	    rt = {'status':(e_errors.WRONGPARAMETER, 1, "IOarea must be a list")}
-	    return rt
-	zz = raw_input('Insert volumes into I/O area. Do not mix media types.\nWhen I/O door is closed hit return:')
-	if zz == "FakeOpenIODoor":
-	    ticket["FakeIOOpen"] = 'yes'
-	rt = self.send(ticket,300,10)
+            rt = {'status':(e_errors.WRONGPARAMETER, 1, "IOarea must be a list")}
+            return rt
+        zz = raw_input('Insert volumes into I/O area. Do not mix media types.\nWhen I/O door is closed hit return:')
+        if zz == "FakeOpenIODoor":
+            ticket["FakeIOOpen"] = 'yes'
+        rt = self.send(ticket,300,10)
         return rt
 
     def ejectvol(self, media_type, volumeList):
         ticket = {'work'         : 'ejectvol',
-	          'volList'      : volumeList,
-	          'media_type'   : media_type
+              'volList'      : volumeList,
+              'media_type'   : media_type
                   }
         if type(volumeList) != types.ListType:
             Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
-	    rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
-	    return rt
-	rt = self.send(ticket,300,10)
+            rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
+            return rt
+        rt = self.send(ticket,300,10)
         return rt
 
     def set_max_work(self, max_work):
@@ -120,21 +126,22 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.get_work=0
         self.max_work=-1
         self.volume = 0
-	self._import = 0
-	self._export = 0
+        self._import = 0
+        self._export = 0
         self.mount = 0
         self.dismount = 0
-	self.viewattrib = 0
+        self.viewattrib = 0
         self.drive = 0
+        self.show = 0
         generic_client.GenericClientInterface.__init__(self)
-        
+
     # define the command line options that are valid
     def options(self):
         if self.restricted_opts:
             return self.restricted_opts
         else:
             return self.client_options()+[
-                "max-work=","get-work","import",
+                "max-work=","get-work","import","show",
                 "export","mount","dismount"]
     #  define our specific help
     def parameters(self):
@@ -156,51 +163,53 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 #The string does not contain enough characters to end in
                 # ".media_changer".  So, it must be added.
                 name = self.args[0] + ".media_changer"
-            
-	if self._import:
+
+        if self._import:
             if len(self.args) < 2:
-	        self.missing_parameter("--import media_changer insertNewLib")
+                self.missing_parameter("--import media_changer insertNewLib")
                 self.print_help()
                 sys.exit(1)
             else:
                 self.media_changer = name  #self.args[0]
                 self.insertNewLib = self.args[1]
-		self.ioarea = []
-		if len(self.args) > 2:
-		    for pos in range(2,len(self.args)):
-		        self.ioarea.append(self.args[pos])
-	elif self._export:
+                self.ioarea = []
+                if len(self.args) > 2:
+                    for pos in range(2,len(self.args)):
+                        self.ioarea.append(self.args[pos])
+        elif self._export:
             if len(self.args) < 3:
-	        self.missing_parameter("--export media_changer media_type volumeList")
+                self.missing_parameter("--export media_changer media_type volumeList")
                 self.print_help()
                 sys.exit(1)
             else:
                 self.media_changer = name  #self.args[0]
                 self.media_type = self.args[1]
-		self.volumeList = []
-		for pos in range(2,len(self.args)):
-		    self.volumeList.append(self.args[pos])
-	elif self.mount:
+                self.volumeList = []
+                for pos in range(2,len(self.args)):
+                    self.volumeList.append(self.args[pos])
+        elif self.mount:
             if len(self.args) < 3:
-	        self.missing_parameter("--mount media_changer external_label drive")
+                self.missing_parameter("--mount media_changer external_label drive")
                 self.print_help()
                 sys.exit(1)
             else:
                 self.media_changer = name  #self.args[0]
                 self.volume=self.args[1]
                 self.drive = self.args[2]
-	elif self.dismount:
+        elif self.dismount:
             if len(self.args) < 3:
-	        self.missing_parameter("--dismount media_changer external_lable drive")
+                self.missing_parameter("--dismount media_changer external_lable drive")
                 self.print_help()
                 sys.exit(1)
             else:
                 self.media_changer = name  #self.args[0]
                 self.volume=self.args[1]
                 self.drive = self.args[2]
-	else:
+        elif self.show:
+            self.media_changer = name  #self.args[0]
+        else:
             if len(self.args) < 1 :
-	        self.missing_parameter("media_changer")
+                self.missing_parameter("media_changer")
                 self.print_help()
                 sys.exit(1)
             else:
@@ -213,16 +222,17 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         #print "        --get-work          List operations in progress"
         #print "        --import insertNewLib [IOarea]"
         #print "        --export media_type volume1 [volume2 ...]"
-        
+
 def do_work(intf):
     # get a media changer client
     mcc = MediaChangerClient((intf.config_host, intf.config_port),
                              intf.media_changer)
 
+
     Trace.init(mcc.get_name(mcc.log_name))
 
     ticket = mcc.handle_generic_commands(intf.media_changer, intf)
-    
+
     if ticket:
         pass
 
@@ -230,13 +240,13 @@ def do_work(intf):
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.loadvol(vol_ticket, intf.drive, intf.drive)
-	del vcc
+        del vcc
     elif intf.dismount:
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
     elif intf._import:
-	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
+        ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
     elif intf._export:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.max_work  >= 0:
@@ -244,20 +254,28 @@ def do_work(intf):
     elif intf.get_work:
         ticket=mcc.GetWork()
         pprint.pprint(ticket)
+    elif intf.show:
+        ticket = mcc.robotQuery()
+        tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
+        try:
+            stat = ticket['status']
+            delta_t = string.split(stat[2])[-1:][0]
+            print tod, delta_t, stat
+        except:
+            print tod, -999, ticket
     else:
         intf.print_help()
         sys.exit(0)
 
     del mcc.csc.u
-    del mcc.u		# del now, otherwise get name exception (just for python v1.5???)
+    del mcc.u       # del now, otherwise get name exception (just for python v1.5???)
 
     mcc.check_ticket(ticket)
 
 if __name__ == "__main__" :
     Trace.init("MEDCH CLI")
     Trace.trace(6,"mcc called with args "+repr(sys.argv))
-    
+
     # fill in the interface
     intf = MediaChangerClientInterface()
-
     do_work(intf)
