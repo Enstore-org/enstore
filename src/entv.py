@@ -123,7 +123,11 @@ def get_csc():
 
 def get_system_name():
     csc = get_csc()
-    hostinfo = socket.gethostbyaddr(csc.server_address[0])[0]
+    try:
+        hostinfo = socket.gethostbyaddr(csc.server_address[0])[0]
+    except socket.error, msg:
+        sys.stderr.write(str(msg) + "/n")
+        sys.exit(1)
     event_relay_host = hostinfo
     system_name = hostinfo
 
@@ -163,7 +167,7 @@ def get_mover_list():
                 movers = movers + [mover['mover']]
         except:
             exc, msg, tb = sys.exc_info()
-            print "here:", str(exc), str(msg), mover_list
+            Trace.trace(1, "No movers found: %s" % str(msg))
     movers.sort()
 
     return movers
@@ -261,7 +265,7 @@ def handle_periodic_actions(display):
 
 def handle_messages(display):
     global stop_now
-    
+
     # we will get all of the info from the event relay.
     erc = event_relay_client.EventRelayClient()
     erc.start([event_relay_messages.ALL,])
@@ -302,7 +306,7 @@ def handle_messages(display):
                 return
             else:
                 msg = enstore_functions.read_erc(erc)
-                if msg:
+                if msg and not getattr(msg, "status", None):
                     command="%s %s" % (msg.type, msg.extra_info)
                     Trace.trace(1, command)
                     display_lock.acquire()
@@ -314,6 +318,10 @@ def handle_messages(display):
                     except Tkinter.TclError:
                         pass
                     display_lock.release()
+                ##If read_erc is valid it is a EventRelayMessage instance. If
+                # it gets here it is a dictionary with a status field error.
+                elif getattr(msg, "status", None):
+                    Trace.trace(1, msg["status"])
         if now - start > TEN_MINUTES:
             # resubscribe
             erc.subscribe()

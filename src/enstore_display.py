@@ -123,9 +123,9 @@ color_dict = {
     'state_offline_color':  rgbtohex(0, 0, 0), # black
     'timer_color':          rgbtohex(255, 255, 255), # white
     #volume colors
-    'label_offline_color':  rgbtohex(0, 0, 0), # black (tape)
+    #'label_offline_color':  rgbtohex(0, 0, 0), # black (tape)
     'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
-    'tape_offline_color':   rgbtohex(169, 169, 169), # grey
+    #'tape_offline_color':   rgbtohex(169, 169, 169), # grey
     #'tape_stable_color':    rgbtohex(255, 165, 0), # orange
     'tape_stable_color':    rgbtohex(0, 165, 255), # (royal?) blue
 }
@@ -363,14 +363,14 @@ class Mover:
         if self.volume:
             if self.volume_display:
                 self.display.coords(self.volume_display,
-                                x+self.volume_offset.x+(self.vol_width / 2.0),
-                                y+self.volume_offset.y+(self.vol_height / 2.0))
+                            x+self.volume_offset.x+(self.vol_width / 2.0) + 1,
+                            y+self.volume_offset.y+(self.vol_height / 2.0) + 1)
             else:
                 self.volume_display = self.display.create_text(
-                    self.x + self.volume_offset.x + (self.vol_width / 2.0),
-                    self.y + self.volume_offset.y + (self.vol_height / 2.0),
-                    text = self.volume, fill = self.volume_font_color,
-                    font = self.volume_font, width = self.vol_width,)
+                   self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
+                   self.y + self.volume_offset.y + (self.vol_height / 2.0) + 1,
+                   text = self.volume, fill = self.volume_font_color,
+                   font = self.volume_font, width = self.vol_width,)
             
 
         #Display the connection.
@@ -553,8 +553,8 @@ class Mover:
             self.display.itemconfig(self.volume_display, text = self.volume)
         else:
             self.volume_display = self.display.create_text(
-                self.x + self.volume_offset.x + (self.vol_width / 2.0),
-                self.y + self.volume_offset.y + (self.vol_height / 2.0),
+                self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
+                self.y + self.volume_offset.y + (self.vol_height / 2.0) + 1,
                 text = self.volume, fill = self.volume_font_color,
                 font = self.volume_font, width = self.vol_width,)
             
@@ -752,22 +752,24 @@ class Client:
 
     def draw(self):
         x, y = self.x, self.y
-        
+
         if self.outline:
             self.display.coords(self.outline, x,y, x+self.width,y+self.height)
             #self.display.itenconfigure(self.outline, fill=self.color)
         else:
             self.outline = self.display.create_oval(x, y, x+self.width,
                                                y+self.height, fill=self.color)
+
         if self.label:
-            self.display.coords(self.outline, x+self.width/2, y+self.height/2)
-            self.display.itemconfigure(self.outline, font = self.font)
+            self.display.coords(self.label,
+                                x + (self.width/2), y + (self.height/2))
+            self.display.itemconfigure(self.label, font = self.font)
         else:
             self.label = self.display.create_text(x+self.width/2,
                                                   y+self.height/2,
                                                   text=self.name,
                                                   font=self.font)
-            
+
     def undraw(self):
         try:
             self.display.delete(self.outline)
@@ -856,8 +858,7 @@ class Connection:
             self.display.coords(self.line, tuple(path))
             self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
         else:
-            self.line = self.display.create_line(path,
-                                                 dash='...-',width=2,
+            self.line = self.display.create_line(path, dash='...-',width=2,
                                                  dashoffset = self.dashoffset,
                                                  smooth=1)
 
@@ -1122,7 +1123,6 @@ class Display(Tkinter.Canvas):
             if now - client.last_activity_time > 5: # grace period
                 Trace.trace(1, "It's been longer than 5 seconds, %s " \
                             " client must be deleted" % (client_name,))
-                print "Undawing client from timeout", now, client.last_activity_time
                 client.undraw()
                 del self.clients[client_name]
 
@@ -1255,8 +1255,8 @@ class Display(Tkinter.Canvas):
                 mover.draw()
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
                     msg="Need to disconnect because mover state changed to: %s"
-                    Trace.trace(1, msg % (what_state,))
                     if mover.connection: #no connection with mover object
+                        Trace.trace(1, msg % (what_state,))
                         mover.connection=None
                 return
         
@@ -1265,6 +1265,7 @@ class Display(Tkinter.Canvas):
                     Trace.trace(1,
                         "Cannot connect to mover that is %s." % (mover.state,))
                     return
+
                 client_name = normalize_name(words[2])
                 client = self.clients.get(client_name)
                 if not client: ## New client, we must add it
