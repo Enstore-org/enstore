@@ -155,6 +155,7 @@ DUPLICATE = "duplicate"                      #pnfs
 ECHO = "echo"                                #pnfs
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
+ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
 FILE_FAMILY = "file-family"                  #pnfs
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
@@ -281,7 +282,7 @@ valid_option_list = [
     DISMOUNT,
     DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
-    ECHO, ENCP, ENSTORE_STATE, EXPORT,
+    ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
     FORCE,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
