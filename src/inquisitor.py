@@ -37,6 +37,7 @@ import generic_server
 import Trace
 import e_errors
 import enstore_files
+import enstore_status
 import enstore_plots
 import enstore_html
 import udp_client
