@@ -496,8 +496,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                     print_data_access_layer_format(
                         inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
 		    jraise(errno.errorcode[errno.EPROTO],
-			   " encp.write_to_hsm: TILT "
-			   " file size has changed: was %s and now is %s" %
+			   " encp.write_to_hsm:  file size has changed: was %s and now is %s" %
                            (fsize,statinfo[stat.ST_SIZE]))
 		    pass
 		try:
@@ -535,7 +534,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                                                       'Network problem or mover crash')})
                             
 			    jraise(errno.errorcode[errno.EPROTO],
-				   " encp.write_to_hsm: network problem or mover crash  %s"%msg)
+				   " encp.write_to_hsm: network problem or mover crash  %s"%(msg,))
 			    pass
 
 			control_socket.close()
@@ -1202,8 +1201,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
       tinfo["send_ticket"+repr(rq_list[j]["index"])] = time.time() - t2 #------Lap-End
       if verbose :
 	  if len(Qd)==0:
-	      format = "  Q'd: %s %s bytes: %d on %s %s "\
-		       "dt: %f   cumt=%f"
+	      format = "  Q'd: %s %s bytes: %d on %s %s dt: %f   cumt=%f"
 	      Qd = format %\
 		   (rq_list[j]["work_ticket"]["wrapper"]["fullname"],
 		    rq_list[j]["bfid"],
@@ -1213,8 +1211,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 		    tinfo["send_ticket"+repr(rq_list[j]["index"])], 
 		    time.time()-tinfo['abs_start'])
 	  else:
-	      Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
-		   "dt: %f   cumt=%f" %\
+	      Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s dt: %f   cumt=%f" %\
 		   (Qd,
 		    rq_list[j]["work_ticket"]["wrapper"]["fullname"],
 		    rq_list[j]["bfid"],
@@ -1395,7 +1392,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                            {'status':("EPROTO",
                                                                       "Network problem or mover crash")})
                             jraise(errno.errorcode[errno.EPROTO],
-                                   " encp._read_from_hsm: network problem or mover crash %s"%msg)
+                                   "encp.read_from_hsm: network problem or mover crash %s"%(msg,))
 
                             pass
                         control_socket.close()
@@ -1518,7 +1515,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 try: os.remove(tempname)
                 except os.error:
                     print_error('EACCES',
-                                "cannot remove temporary file %s" %tempname,fatal=0)
+                                "cannot remove temporary file %s"%(tempname,),fatal=0)
 		if files_left > 0:
 		    files_left = files_left - 1
 
@@ -1697,7 +1694,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 # log the error to the logger, print it to the console and exit
 
 def jraise(errcode,errmsg,exit_code=1) :
-    format = "Fatal error:"+str(errcode)+" "+str(errmsg)+" Exit code:"+\
+    format = "Fatal error: "+str(errcode)+" "+str(errmsg)+" Exit code:"+\
 	     str(exit_code)
     x=sys.stdout;sys.stdout=sys.stderr
     print format
@@ -1733,7 +1730,7 @@ def clients(config_host,config_port,verbose):
                            repr(config_host)+" port="+repr(config_port))
     if stati['status'][0] != e_errors.OK:
         print_data_access_layer_format("","",0, stati)
-        jraise(stati['status']," NO response on alive to config",1)
+        jraise(stati['status'],"No response on alive to config",1)
     
     # get a udp client
     u = udp_client.UDPClient()
@@ -1773,7 +1770,7 @@ def system_enabled(p):                 # p is a  pnfs object
     running = p.check_pnfs_enabled()
     if running != pnfs.ENABLED :
         print_data_access_layer_format("","","",{'status':("EACCES", "Pnfs disabled")})
-        jraise(errno.errorcode[errno.EACCES]," encp.system_enabled: "
+        jraise(errno.errorcode[errno.EACCES],"encp.system_enabled: "
                "system disabled"+running)
     Trace.trace(10,"system_enabled running="+running)
 
@@ -1854,7 +1851,7 @@ def inputfile_check(input_files, bytecount=None):
         print_data_access_layer_format(inputlist[0],'',0,
                                        {'status':('EPROTO',"Cannot specify --bytes with multiple files")}
                                        )
-        jraise(errno.errocode[errno.EPROTO]," encp.inputfile_check: "
+        jraise(errno.errocode[errno.EPROTO],"encp.inputfile_check: "
                "Cannot specify --bytes with multiple files")
 
     # we need to know how big each input file is
@@ -1870,7 +1867,7 @@ def inputfile_check(input_files, bytecount=None):
         # input files must exist
         if not access.access(inputlist[i],access.R_OK):
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','No such file')})
-            jraise(errno.errorcode[errno.EACCES]," encp.inputfile_check: "+
+            jraise(errno.errorcode[errno.EACCES],"encp.inputfile_check: "+
                    inputlist[i]+", NO read access to file")
 
         # get the file size
@@ -1885,7 +1882,7 @@ def inputfile_check(input_files, bytecount=None):
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','Not a regular file')})
 
-            jraise(errno.errorcode[errno.EACCES]," encp.inputfile_check: "+
+            jraise(errno.errorcode[errno.EACCES],"encp.inputfile_check: "+
                    inputlist[i]+" is not a regular file")
 
 
@@ -1895,7 +1892,7 @@ def inputfile_check(input_files, bytecount=None):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
                 print_data_access_layer_format(inputlist[j],'',0,{'status':('EPROTO','Duplicate entry')})
-                jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "+
+                jraise(errno.errorcode[errno.EPROTO],"encp.inputfile_check: "+
                        inputlist[i]+" is the duplicated - not allowed")
 
     return (ninput, inputlist, file_size)
@@ -1911,8 +1908,8 @@ def outputfile_check(ninput,inputlist,output):
     # this is just the current policy - nothing fundamental about it
     if len(output)>1:
         print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Cannot have multiple output files')})  
-        jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
-               "can not handle multiple output files: %s"%output)
+        jraise(errno.errorcode[errno.EPROTO],
+               "encp.outputfile_check: cannot handle multiple output files: %s"%(output,))
 
 
     # if user specified multiple input files, then output must be a directory
@@ -1920,13 +1917,13 @@ def outputfile_check(ninput,inputlist,output):
     if ninput!=1:
         if not os.path.exists(output[0]):
             print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Cannot have multiple output files')})  
-            jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
-                   "multiple input files can not be copied to non-existent "
-                   "directory "+output[0])
+            jraise(errno.errorcode[errno.EPROTO],
+                   "encp.outputfile_check: multiple input files cannot be copied to non-existent directory %s"%
+                   (output[0],))
         if not os.path.isdir(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Not a directory')})  
-            jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "
-                   "multiple input files must be copied to a directory, not  %s"%output[0])
+            print_data_access_layer_format('',output[0],0,{'status':('ENOTDIR','Not a directory')})  
+            jraise(errno.errorcode[errno.ENOTDIR],
+                   "encp.outputfile_check: multiple input files must be copied to a directory, not  %s"%(output[0],))
 
 
     outputlist = []
@@ -1951,7 +1948,7 @@ def outputfile_check(ninput,inputlist,output):
                                                0,
                                                {'status':
                                                 ('EEXIST', "No such directory"+odir)})
-                jraise(errno.errorcode[errno.ENOENT]," encp.outputfile_check:"
+                jraise(errno.errorcode[errno.ENOENT],"encp.outputfile_check:"
                        " base directory doesn't exist for "+outputlist[i])
 
         # note: removed from itexist=1 try block to isolate errors
@@ -1972,14 +1969,14 @@ def outputfile_check(ninput,inputlist,output):
                     print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
                                                                           ('EEXIST', None)})
                     jraise(errno.errorcode[errno.EEXIST],
-                           " encp.outputfile_check: "+outputlist[i]+
+                           "encp.outputfile_check: "+outputlist[i]+
                            " already exists")
 
             # filename already exists - error
             else:
                 print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
                                                                       ('EEXIST', None)})
-                jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check: "+
+                jraise(errno.errorcode[errno.EEXIST],"encp.outputfile_check: "+
                        outputlist[i]+" already exists")
 
         # need to check that directory is writable
@@ -1987,7 +1984,7 @@ def outputfile_check(ninput,inputlist,output):
         if i==0 and outputlist[0]!='/dev/null':
             if not access.access(odir,access.W_OK):
                 print_data_access_layer_format("",odir,0,{'status':('EEXIST',None)})
-                jraise(errno.errorcode[errno.EACCES]," encp.write_to_hsm: "+
+                jraise(errno.errorcode[errno.EACCES],"encp.write_to_hsm: "+
                        " NO write access to directory "+odir)
 
     # we can not allow 2 output files to be the same
@@ -1999,7 +1996,7 @@ def outputfile_check(ninput,inputlist,output):
             if outputlist[i] == outputlist[j]:
                 print_data_access_layer_format('',outputlist[j],0,
                                                {'status':('EPROTO',"Duplicated entry")})
-                jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "+
+                jraise(errno.errorcode[errno.EPROTO],"encp.outputfile_check: "+
                        outputlist[i]+" is duplicated - not allowed")
 
     return outputlist
