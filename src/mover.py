@@ -2816,6 +2816,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.stop:
                     self.offline() # stop here for investigation
                     return
+                elif msg.find("FTT_EUNRECOVERED") != -1:
+                    Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
+                    self.offline() # stop here for investigation
+                    return
+                    
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
