@@ -398,7 +398,6 @@ class BpdDataFile(EnPlot):
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
 	    total = total + ndata[key]
-	    print "%s : %s (%s)"%(key, ndata[key], total)
 	    # there may not be any transfers on a certain date, so check the key
 	    # first.  above ndata has all dates initialized to 0 so no check is
 	    # necessary.
@@ -418,13 +417,18 @@ class BpdDataFile(EnPlot):
 	imon = string.atoi(sdate[5:7])
 	iday = string.atoi(sdate[8:10])
 	iyr = string.atoi(sdate[0:4])
+	is_leap = calendar.isleap(iyr)
 	emon = string.atoi(edate[5:7])
 	eday = string.atoi(edate[8:10])
 	while 1:
 	    if (imon == emon) and (iday == eday):
 	        break
 	    iday = iday + 1
-	    if iday <= calendar.mdays[imon]:
+	    if imon == 2:
+		mday = calendar.mdays[imon] + is_leap 
+	    else:
+		mday = calendar.mdays[imon]
+	    if iday <= mday:
 	        tmp = "%i-%02i-%02i" % (iyr, imon, iday)
 	        ndate[tmp] = 0.0
 	        continue
@@ -434,4 +438,5 @@ class BpdDataFile(EnPlot):
 	        if imon > 12:
 	            imon = 1
 	            iyr = iyr + 1
+		    is_leap = calendar.isleap(iyr)
 	return ndate
