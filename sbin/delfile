@@ -4,24 +4,35 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
-# specify where pnfs puts its trash
-if [ -z "${TRASH_CAN-}" ]; then
-  TRASH_CAN=/rip6a/pnfs/trash/4
-  export TRASH_CAN
-fi
-
-#check for ENSTORE_DIR being setup
+# check for ENSTORE_DIR being setup
 if [ -z "${ENSTORE_DIR-}" ]; then
   echo "ENSTORE is not setup - trying to setup...
   . /usr/local/etc/setups.sh
   setup enstore
 fi
 
-
 # if we are called with no arguments, then assume we need to search for deleted files
 if [ -z "${1-}" ] ; then
+
+  # specify where pnfs puts its trash
+  if [ -z "${TRASH_CAN-}" ]; then
+    TRASH_CAN=/rip6a/pnfs/trash/4
+    export TRASH_CAN
+  fi
+  ACTIVE=$TRASH_CAN/ACTIVE
+  
+  # see if any other delfiles are active - use the DESY technique of creating a directory as lock file
+  mkdir $ACTIVE 1>/dev/null 2>/dev/null
+  if [ $? -ne 0 ];then
+    echo "Can not make $ACTIVE - another delfile must be active"
+    exit 1
+  fi
+
+  # find all the deleted files from pnfs
   find $TRASH_CAN -type f -exec $ENSTORE_DIR/sbin/delfile {} \;
 
+  # finally get rid of all active lock
+  rmdir $ACTIVE   >/dev/null 2>&1
 
 
 # if we are called with an argument, then assume we are supposed to flag a file as deleted
