@@ -71,6 +71,8 @@ add*)
 
     /sbin/route add -host rip1 eth0
     /sbin/route add -host rip2 eth0
+    /sbin/route add -host rip3 eth0
+    /sbin/route add -host rip4 eth0
     /sbin/route add -host rip5 eth0
     /sbin/route add -host rip6 eth0
     /sbin/route add -host rip7 eth0
@@ -114,6 +116,8 @@ del*)
 
     /sbin/route del rip1
     /sbin/route del rip2
+    /sbin/route del rip3
+    /sbin/route del rip4
     /sbin/route del rip5
     /sbin/route del rip6
     /sbin/route del rip7
