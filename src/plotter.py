@@ -233,10 +233,10 @@ class PlotterInterface(generic_client.GenericClientInterface):
 
 
 if __name__ == "__main__":
-    Trace.trace(1, "plotter called with args %s"%(sys.argv,))
 
     # get interface
     intf = PlotterInterface(user_mode=0)
+    Trace.trace(1, "plotter called with args %s"%(sys.argv,))
 
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 

@@ -212,12 +212,14 @@ class InquisitorPlots:
 		if not data_d.has_key(fields[0]):
 		    data_d[fields[0]] = {}
 		if len(fields) > 2:
-		    # we have data , need date, total, ctr
+		    # we have data , need date, total, ctr, writes
 		    data_d[fields[0]][node] = {enstore_plots.TOTAL : float(fields[1]),
-					       enstore_plots.CTR : enstore_plots.get_ctr(fields)}
+					       enstore_plots.CTR : enstore_plots.get_ctr(fields),
+					       enstore_plots.WRITES : float(fields[3])}
 		else:
 		    data_d[fields[0]][node] = {enstore_plots.TOTAL : 0.0, 
-					       enstore_plots.CTR : 0L}
+					       enstore_plots.CTR : 0L,
+					       enstore_plots.WRITES : 0.0}
 
     def read_bpd_data(self, files_l):
 	data_d = {}

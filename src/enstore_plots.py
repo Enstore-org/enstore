@@ -1004,7 +1004,10 @@ class SgDataFile(EnPlot):
 
 class TotalBpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total, meansize, xfers, max_nodes, lw=20):
+    def write(self, outfile, ptsfile, total, meansize, xfers, max_nodes, total_written,
+	      lw=20):
+	psfilew = string.replace(outfile, enstore_constants.TOTAL_BPD_FILE,
+				 enstore_constants.TOTAL_BPD_FILE_W)
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color solid\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day By Enstore "+\
@@ -1035,7 +1038,26 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 										    color))
 		color = color + 2
 		column = column + 1
+	    # now plot the total bytes written
+	    self.openfile.write("\nset output '"+psfilew+"'\n"+ \
+				"set title 'Total Bytes Written Per Day By Enstore "+\
+				plot_time()+"'\n"+ \
+				"set key right top Right samplen 1 title \"Total Bytes : "+\
+				"%.2e"%(total_written,)+"\"\n")
+	    self.openfile.write("plot '%s' using 1:5 t '%s' w impulses lw %s 1 1"%(ptsfile,
+									    max_nodes[0],
+									    lw))
+	    color = 3
+	    column = 6
+	    for node in max_nodes[1:]:
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s %s 1"%(ptsfile, 
+										    column,
+										    node, lw,
+										    color))
+		color = color + 2
+		column = column + 1
 	    self.openfile.write("\n")
+
 
 class TotalBpdDataFile(EnPlot):
 
@@ -1044,12 +1066,13 @@ class TotalBpdDataFile(EnPlot):
 	self.lw = 20
 
     # make the file with the bytes per day format, first we must sum the data
-    # that we have based on the day
+    # that we have based on the day.  we will also make the plot of total writes/day
     def plot(self, data_d):
 	keys = data_d.keys()
 	keys.sort()
 	numxfers = 0
 	total = 0.0
+	total_writes = 0.0
 	max_nodes = []
 	# first
 	for key in keys:
@@ -1061,27 +1084,37 @@ class TotalBpdDataFile(EnPlot):
 	    if len(nodes) > len(max_nodes):
 		max_nodes = nodes
 	    total_l = []
+	    total_w_l = []
 	    i = 0
 	    total_so_far = 0.0
+	    total_writes_so_far = 0.0
 	    for node in nodes:
 		t = total_so_far + day[node][TOTAL]
+		t_w = total_writes_so_far + day[node][WRITES]
 		total_l.append(t)
+		total_w_l.append(t_w)
 		total_so_far = t
+		total_writes_so_far = t_w
 		i = i + 1
 	        numxfers = numxfers + day[node][CTR]
 	    else:
 		# keep a running total of everything
 		total = total + total_so_far
+		total_writes = total_writes + total_writes_so_far
 
 	    # write out the data
 	    if not total_so_far == 0.0:
 		line = "%s "%(key,)
-		# output the largest first as we will plot that columen first
+		# output the largest first as we will plot that column first
 		total_l.reverse()
 		for amt in total_l:
-		    line = "%s %s"%(line, amt,)
+		    line = "%s %s"%(line, amt)
 		else:
-		    self.openfile.write("%s\n"%(line,))
+		    total_w_l.reverse()
+		    for amt in total_w_l:
+			line = "%s %s"%(line, amt)
+		    else:
+			self.openfile.write("%s\n"%(line,))
 	    else:
 		# all data is 0
 	        self.openfile.write("%s\n"%(key,))
@@ -1093,5 +1126,15 @@ class TotalBpdDataFile(EnPlot):
 	# data file
 	max_nodes.reverse()
 	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, 
-		      numxfers, max_nodes, self.lw)
+		      numxfers, max_nodes, total_writes, self.lw)
 	gnucmds.close()
+
+    def install(self, dir):
+	EnPlot.install(self, dir)
+
+	filew = string.replace(self.name, enstore_constants.TOTAL_BPD_FILE,
+			       enstore_constants.TOTAL_BPD_FILE_W)
+	psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	os.system("cp %s %s"%(psfilew, dir))
+	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
+
