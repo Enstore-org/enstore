@@ -85,6 +85,9 @@ f_prefix = '/pnfs/fs/usr'
 f_p = string.split(f_prefix, '/')
 f_n = len(f_p)
 
+MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
+lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
+
 db = None
 csc = None
 
@@ -383,7 +386,7 @@ def copy_files(files):
 
 # migration_file_family(ff) -- making up a file family for migration
 def migration_file_family(ff):
-	return ff+'-MIGRATION'
+	return ff+MIGRATION_FILE_FAMILY_SUFFIX
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
@@ -616,6 +619,7 @@ def final_scan():
 # final_scan_volume(vol) -- final scan on a volume when it is closed to
 #				write
 def final_scan_volume(vol):
+	local_error = 0
 	# get its own fcc
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
@@ -627,25 +631,28 @@ def final_scan_volume(vol):
 			deleted = 'n' and dst_bfid = bfid;"%(vol)
 	query_res = db.query(q).get_result()
 	log(MY_TASK, "closing volume", vol)
-	# switch the file family back
+
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
 		error_log(MY_TASK, "failed to find volume", vol)
-		return
+		return 1
+
+	# make sure the volume is full
+	if v['system_inhibit'][1] != 'full':
+		error_log(MY_TASK, "volume %s is not 'full'"%(vol))
+		return 1
+
+	# make sure this is a migration volume
 	sg, ff, wp = string.split(v[volume_family], '.')
-	ff = normal_file_family(ff)
-	vf = string.join((sg, ff, wp), '.')
-	res = vcc.modify({'external_label':vol, 'volume_family':vf})
-	if res['status'][0] == e_errors.OK:
-		ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
-	else:
-		error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
-		return 
+	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
+		error_log(MY_TASK, "%s is not a migration volume")
+		return 1
 	for r in query_res:
 		bfid, pnfs_id, src_bfid = r
 		st = is_swapped(src_bfid, db)
 		if not st:
-			error_log(MY_TASK, "%s %s %s has not been swapped"%(src_bfid, bfid, pnfs_path))
+			error_log(MY_TASK, "%s %s has not been swapped"%(src_bfid, bfid))
+			local_error = local_error + 1
 			continue
 		ct = is_closed(bfid, db)
 		if not ct:
@@ -655,13 +662,18 @@ def final_scan_volume(vol):
 			pf = pnfs.File(pnfs_path)
 			if pf.volume != vol:
 				error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
+				local_error = local_error + 1
 				continue
+
 			res = run_encp([pnfs_path, '/dev/null'])
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
 				ok_log(MY_TASK, "closing", bfid, pnfs_path)
 			else:
 				error_log(MY_TASK, "closing", bfid, pnfs_path, "failed")
+				local_error = local_error + 1
+				continue
+
 			# mark the original deleted
 			q = "select deleted from file where bfid = '%s';"%(src_bfid)
 			res = db.query(q).get_result()
@@ -681,6 +693,17 @@ def final_scan_volume(vol):
 			res = db.query(q).get_result()
 			if not len(res) or res[0][0] != 'y':
 				error_log(MY_TASK, "%s was not marked deleted"%(src_bfid))
+	# restore file family only if there is no error
+	if not local_error:
+		ff = normal_file_family(ff)
+		vf = string.join((sg, ff, wp), '.')
+		res = vcc.modify({'external_label':vol, 'volume_family':vf})
+		if res['status'][0] == e_errors.OK:
+			ok_log(MY_TASK, "restore volume_family of", vol, "to", vol)
+		else:
+			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
+			local_error = local_error + 1
+	return local_error
 
 # migrate(file_list): -- migrate a list of files
 def migrate(files):
