@@ -9,7 +9,11 @@ if [ -z "${1-}" ] ; then
 
   # specify where pnfs puts its trash
   if [ -z "${TRASH_CAN-}" ]; then
+  if [ `uname -n | grep -c d0ensrv1` -ne 0 ]; then
+    TRASH_CAN=/diska/pnfs/trash/4
+  else
     TRASH_CAN=/rip6a/pnfs/trash/4
+fi
     export TRASH_CAN
   fi
   
