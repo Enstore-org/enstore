@@ -96,16 +96,17 @@ class Pnfs:
     def check_pnfs_enabled(self):
         if self.valid == VALID:
             try:
-                os.stat(self.dir+'/.(config)/disabled')
+                os.stat(self.dir+'/.(config)(flags)/disabled')
             except os.error, msg:
                 if msg.errno == errno.ENOENT:
                     return ENABLED
                 else:
                     raise os.error,msg
-                f = open(self.dir+'/.(config)(flags)/disabled')
-                why = f.readlines()
-                f.close()
-                return DISABLED+": "+why
+	    f = open(self.dir+'/.(config)(flags)/disabled','r')
+	    why = f.readlines()
+            reason = string.replace(why[0],'\012','')
+	    f.close()
+	    return DISABLED+": "+reason
         else:
             return INVALID
 
