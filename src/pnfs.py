@@ -214,9 +214,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, file) = os.path.split(filepath)
         else:
             (directory, file) = os.path.split(self.filepath)
-            
-        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
 
+        if file[:9] == ".(access)":
+            fname = os.path.join(directory, "%s(%s)" % (file, layer))
+        else:
+            fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
+        
         f = open(fname,'r')
         l = f.readlines()
         f.close()

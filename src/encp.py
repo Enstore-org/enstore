@@ -1226,6 +1226,23 @@ def get_einfo(e):
 
     return encp_el
 
+#Return the corrected full filenames of the inputfile and output file.
+def get_ninfo(inputfile, outputfile, e):
+    
+    # get fully qualified name
+    imachine, ifullname, idir, ibasename = fullpath(inputfile) #e.input[i])
+    omachine, ofullname, odir, obasename = fullpath(outputfile) #e.output[0])
+    # Add the name if necessary.
+    if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
+        pass
+    elif ifullname == "/dev/zero":
+        pass
+    if (len(e.input) > 1) or (len(e.input) == 1 and os.path.isdir(ofullname)):
+        ofullname = os.path.join(ofullname, ibasename)
+        omachine, ofullname, odir, obasename = fullpath(ofullname)
+
+    return ifullname, ofullname
+
 ############################################################################
 ############################################################################
 
@@ -2695,16 +2712,22 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(len(e.input)):
 
+        ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
+
+        #Fundamentally this belongs in veriry_read_request_consistancy(),
+        # but information needed about the input file requires this check.
+        inputfile_check(ifullname)
+
         # get fully qualified name
-        imachine, ifullname, idir, ibasename = fullpath(e.input[i])
-        omachine, ofullname, odir, obasename = fullpath(e.output[0])
+        #imachine, ifullname, idir, ibasename = fullpath(e.input[i])
+        #omachine, ofullname, odir, obasename = fullpath(e.output[0])
         # Add the name if necessary.
-        if len(e.input) > 1:
-            ofullname = os.path.join(ofullname, ibasename)
-            omachine, ofullname, odir, obasename = fullpath(ofullname)
-        elif len(e.input) == 1 and os.path.isdir(ofullname):
-            ofullname = os.path.join(ofullname, ibasename)
-            omachine, ofullname, odir, obasename = fullpath(ofullname)
+        #if len(e.input) > 1:
+        #    ofullname = os.path.join(ofullname, ibasename)
+        #    omachine, ofullname, odir, obasename = fullpath(ofullname)
+        #elif len(e.input) == 1 and os.path.isdir(ofullname):
+        #    ofullname = os.path.join(ofullname, ibasename)
+        #    omachine, ofullname, odir, obasename = fullpath(ofullname)
 
         #Fundamentally this belongs in veriry_write_request_consistancy(), but
         # information needed about the input file requires this check.
@@ -2714,7 +2737,8 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
         #Obtain the pnfs tag information.
         try:
-            t=pnfs.Tag(odir)
+            #t=pnfs.Tag(odir)
+            t=pnfs.Tag(os.path.dirname(ofullname))
 
             #There is no sense to get these values every time.  Only get them
             # on the first pass.
@@ -3492,6 +3516,21 @@ def get_clerks_info(vcc, fcc, bfid):
     fc_ticket['address'] = fcc.server_address
     vc_ticket['address'] = vcc.server_address
 
+    #Include this information in an easier to access location.
+    try:
+        vf = vc_ticket['volume_family']
+        vc_ticket['storage_group']=volume_family.extract_storage_group(vf)
+        vc_ticket['file_family'] = volume_family.extract_file_family(vf)
+        vc_ticket['wrapper'] = volume_family.extract_wrapper(vf)
+    except (ValueError, AttributeError, TypeError,
+            IndexError, KeyError), msg:
+        raise EncpError(None, str(msg), e_errors.KEYERROR)
+        #print_data_access_layer_format(
+        #    ifullname, ofullname, file_size,
+        #    {'status':(e_errors.EPROTO, str(msg))})
+        #quit()
+        
+    #Return the information.
     return vc_ticket, fc_ticket
 
 #######################################################################
@@ -3519,65 +3558,86 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(len(e.input)):
 
-        # get fully qualified name
-        imachine, ifullname, idir, ibasename = fullpath(e.input[i])
-        omachine, ofullname, odir, obasename = fullpath(e.output[0])
-        # Add the name if necessary.
-        if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
-            pass
-        elif len(e.input) > 1:
-            ofullname = os.path.join(ofullname, ibasename)
-            omachine, ofullname, odir, obasename = fullpath(ofullname)
-        elif len(e.input) == 1 and os.path.isdir(ofullname):
-            ofullname = os.path.join(ofullname, ibasename)
-            omachine, ofullname, odir, obasename = fullpath(ofullname)
+        if e.get_bfid:
+            #only do this the first time.
+            if not vcc or not fcc:
+                vcc, fcc = get_clerks(e.input[i])
+            
+            try:
+                #Get the system information from the clerks.  In this case
+                # e.input[i] doesn't contain the filename, but the bfid.
+                vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.input[i])
+            except EncpError, msg:
+                print_data_access_layer_format(
+                    e.input[i], e.output[i], 0,
+                    {'status':(msg.type, msg.strerror)})
+                quit()
 
-        #Fundamentally this belongs in veriry_read_request_consistancy(), but
-        # information needed about the input file requires this check.
-        inputfile_check(ifullname)
+            pnfsid = fc_reply.get("pnfsid", None)
+            if not pnfsid:
+                print_data_access_layer_format(
+                    e.input[i], e.output[i], 0,
+                    {'status':(e_errors.KEYERROR,
+                               "Unable to obtain pnfsid from file clerk.")})
+                quit()
 
-        file_size = get_file_size(ifullname)
+            ifullname = os.path.join(e.pnfs_mount_point,
+                                     ".(access)(%s)" % pnfsid)
+            omachine, ofullname, odir, obasename = fullpath(e.output[0])
 
-        try:
-            p = pnfs.Pnfs(ifullname)
-            bfid = p.get_bit_file_id()
-        except (OSError, IOError), msg:
-            print_data_access_layer_format(
-                ifullname, ofullname, file_size,
-                {'status':(errno.errorcode[getattr(msg, "errno", errno.EIO)],
-                           str(msg))})
-            quit()
+            file_size = get_file_size(ifullname)
 
-        #only do this the first time.
-        if not vcc or not fcc:
-            vcc, fcc = get_clerks(bfid)
+            bfid = e.input[i]
 
-        try:
-            #Get the system information from the clerks.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            p = pnfs.Pnfs(ifullname) #Needed later on.
 
-            vf = vc_reply['volume_family']
-            vc_reply['storage_group']=volume_family.extract_storage_group(vf)
-            vc_reply['file_family'] = volume_family.extract_file_family(vf)
-            vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
+        else:
+            ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
 
-            label = fc_reply['external_label'] #short cut for readablility
-        except EncpError, detail:
-            print_data_access_layer_format(
-                ifullname, ofullname, file_size,
-                {'status':(detail.type, detail.strerror)})
-            quit()
-        except (ValueError, AttributeError, TypeError,
-                IndexError, KeyError), msg:
-            print_data_access_layer_format(
-                ifullname, ofullname, file_size,
-                {'status':(e_errors.EPROTO, str(msg))})
-            quit()
+            #Fundamentally this belongs in veriry_read_request_consistancy(),
+            # but information needed about the input file requires this check.
+            inputfile_check(ifullname)
 
+            file_size = get_file_size(ifullname)
+
+            try:
+                p = pnfs.Pnfs(ifullname)
+                bfid = p.get_bit_file_id()
+            except (OSError, IOError), msg:
+                print_data_access_layer_format(
+                    ifullname, ofullname, file_size,
+                    {'status':(errno.errorcode[getattr(msg,"errno",errno.EIO)],
+                               str(msg))})
+                quit()
+
+            #only do this the first time.
+            if not vcc or not fcc:
+                vcc, fcc = get_clerks(e.input[i])
+
+            try:
+                #Get the system information from the clerks.
+                vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            except EncpError, detail:
+                print_data_access_layer_format(
+                    ifullname, ofullname, file_size,
+                    {'status':(detail.type, detail.strerror)})
+                quit()
+
+        #Print out the replies from the cerks.
         Trace.message(TICKET_LEVEL, "FILE CLERK:")
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
         Trace.message(TICKET_LEVEL, "VOLUME CLERK:")
         Trace.message(TICKET_LEVEL, pprint.pformat(vc_reply))
+
+        try:
+            label = fc_reply['external_label'] #short cut for readablility
+        except (KeyError, ValueError, TypeError, AttributeError, IndexError):
+            print_data_access_layer_format(
+                    ifullname, ofullname, file_size,
+                    {'status':(e_errors.KEYERROR,
+                               "File clerk resonce did not contain an " \
+                               "external label.")})
+            quit()
 
         try:
             # comment this out not to confuse the users
@@ -4103,6 +4163,7 @@ class encp(interface.Interface):
 
         self.dcache = 0 #Special options for operation with a disk cache layer.
         self.put_cache = self.get_cache = 0
+        self.get_bfid = None
         self.pnfs_mount_point = ""
 
         self.storage_info = None # Ditto
@@ -4119,7 +4180,7 @@ class encp(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options()+[
-            "verbose=","no-crc","priority=","delpri=","age-time=",
+            "get-bfid", "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
             "data-access-layer", "max-retry=", "max-resubmit=",
@@ -4161,6 +4222,21 @@ class encp(interface.Interface):
             self.print_help()
             sys.exit(1)
 
+        if self.get_bfid:
+            local_file = sys.argv[-1]
+            remote_file = sys.argv[-2]
+            if local_file[:6] == "/pnfs/":
+                print_data_access_layer_format(
+                    local_file, remote_file, 0,
+                    {'status':(e_errors.USERERROR,
+                               "Local file cannot begin with '/pnfs/'.")})
+                quit()
+            self.args[0:2] = [remote_file, local_file]
+            self.input = [self.args[0]]
+            self.output = [self.args[self.arglen-1]]
+            self.intype = "hsmfile"
+            self.outtype = "unixfile"
+            return #Don't continue.
         if self.get_cache:
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]

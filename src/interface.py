@@ -318,6 +318,8 @@ class Interface:
                 self.output_file_family=value
             elif opt == "--force":
                 self.force = 1
+            elif opt == "--get-bfid":
+                self.get_bfid = 1
             elif opt == "--get-cache":
                 self.get_cache = 1
             elif opt == "--get-crcs":
