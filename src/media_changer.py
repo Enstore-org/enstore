@@ -196,7 +196,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
 # EMASS robot loader server
 class EMASS_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=5,csc=0, verbose=0,\
+    def __init__(self, medch, maxwork=10,csc=0, verbose=0,\
                  host=interface.default_host(), \
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
@@ -208,7 +208,7 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=5,csc=0, verbose=0,\
+    def __init__(self, medch, maxwork=10,csc=0, verbose=0,\
                  host=interface.default_host(), \
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
@@ -230,7 +230,7 @@ class MediaLoaderInterface(interface.Interface):
         Trace.trace(10,'{mlsi.__init__')
         # fill in the defaults for possible options
 	self.verbose = 0
-        self.maxwork=5
+        self.maxwork=10
         interface.Interface.__init__(self)
 
         # now parse the options
