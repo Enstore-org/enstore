@@ -1239,7 +1239,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                     else:
                         if transfer_stuck:
-                            msg = "data transfer to client stuck. Breaking connection"
+                            msg = "data transfer to or from client stuck. Breaking connection"
                             self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                             return
                         
@@ -2611,7 +2611,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
         
-        if self.state == DRAINING:
+        if self.state == DRAINING or (self.state == FINISH_WRITE and self.draining):
             self.dismount_volume()
             self.offline()
         else:
