@@ -2823,15 +2823,6 @@ def open_control_socket(listen_socket, mover_timeout):
         # it is closed already...
         return control_socket, address, ticket
 
-    fds, unused, unused = select.select([control_socket], [], [], 5)
-    try:
-        if fds:
-            ticket = callback.read_tcp_obj(control_socket)
-    except e_errors.TCP_EXCEPTION:
-        raise EncpError(errno.ENOTCONN,
-                        "Control socket no longer usable after initalization.",
-                        e_errors.TCP_EXCEPTION, ticket)
-
     message = "Control socket %s is connected to %s for %s." % \
               (control_socket.getsockname(),
                control_socket.getpeername(),
@@ -2841,6 +2832,17 @@ def open_control_socket(listen_socket, mover_timeout):
 
     Trace.message(TIME_LEVEL, "Time to open control socket: %s sec." %
                   (time.time() - time_to_open_control_socket,))
+
+    #Perform one last test of the socket.  This should never fail, but
+    # on occasion does...
+    fds, unused, unused = select.select([control_socket], [], [], 1)
+    try:
+        if fds:
+            ticket = callback.read_tcp_obj(control_socket)
+    except e_errors.TCP_EXCEPTION:
+        raise EncpError(errno.ENOTCONN,
+                        "Control socket no longer usable after initalization.",
+                        e_errors.TCP_EXCEPTION, ticket)
 
     return control_socket, address, ticket
     
@@ -3829,7 +3831,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #Determine if the control socket has some error to report.
                 try:
                     read_fd, unused, unused = select.select([control_socket],
-                                                            [], [], 5)
+                                                            [], [], 1)
                     break  #No exception raised; success.
                 except select.error, msg:
                     if getattr(msg, "errno", None) == errno.EINTR:
