@@ -165,6 +165,9 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 	    if (chkdir(path, 1)
 		||write_db_s(path,"next_file","0000000")
 		) return -1;
+	    sprintf(path,"%s/volumes/%s/files", tape_db, volume_label);
+	    if (chkdir(path, 1))
+		return -1;
 	    return 0;
 	}
 	
@@ -173,7 +176,7 @@ verify_db_volume(int new) /* if new, verify that the dir does *not* yet exist*/
 		"Has this volume been initialized?\n");
 	return -1;
     } else { /* it exists */
-	if (!new) {
+	if (!new) { /* is it already full? */
 	    sprintf(path,"%s/volumes/%s/tape_full", tape_db, volume_label);
 	    if (stat(path, &sbuf)==0) { 
 		/*don't use db function because we don't want a warning if file not found*/

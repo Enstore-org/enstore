@@ -123,7 +123,11 @@ main(int argc, char **argv)
 	    } else {
 		verbage("Invalid label type\n");
 	    }
-	else verbage("Couldn't read tape label\n");
+	else {
+	    verbage("Couldn't read tape label\n");
+	    if (rewind_tape())
+		goto cleanup;
+	}
     }
     
     if (write_vol1_header()

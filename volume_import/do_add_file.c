@@ -79,7 +79,7 @@ do_add_file(char *destination, char *source)
     }
 
     /*use some verify function to do this? */
-    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
+    sprintf(dbpath,"%s/volumes/%s/files/%07d", tape_db, volume_label, file_number);
     
     if (mkdir(dbpath, 0775)){
 	fprintf(stderr, "%s: cannot create directory ", progname);
@@ -90,7 +90,7 @@ do_add_file(char *destination, char *source)
     /* Once we start writing into the database we need to make sure that if any 
      * error occurred, we completely undo the partial addition */
     
-    sprintf(dbpath,"%s/volumes/%s/%07d", tape_db, volume_label, file_number);
+    sprintf(dbpath,"%s/volumes/%s/files/%07d", tape_db, volume_label, file_number);
     if (write_db_u(dbpath,"checksum", checksum)
 	||write_db_i(dbpath,"blocksize",blocksize)
 	||write_db_i(dbpath,"size", size) 
