@@ -150,11 +150,11 @@ icmp0 = {}
 snmp0 = {}
 node0 = {}
 
-f = 0
+f = 0			# print requirement flag
 
 
 #########################################################################
-## This function 
+## This function prints the output if printing is required as the argu  # 
 #########################################################################
 
 def checkprint(flg, str):
@@ -739,12 +739,10 @@ def setNodeTab(tabName, head, htmlName, list):
 if __name__=="__main__":
     import sys
     
-    if len(sys.argv) > 1:   
+    if len(sys.argv) > 1:   	# check print requirement
        args = sys.argv
-       if args[1] == "--print":
-          f = 1
-                
-
+       if args[1] == "--print": # if print is required
+          f = 1			# set flag on
 
     mib = ".1.3.6.1.2.1"   #.iso.org.dod.internet.mgmt.mib-2
     
