@@ -69,6 +69,12 @@ import Queue
 
 debug = True	# debugging mode
 
+icheck = True	# instant readback check after swap
+		# this is turned by default for file based migration
+		# It is turned off by default for volume based migration
+
+errors = 0	# over all errors per migration run
+
 # This is the configuration part, which might come from configuration
 # server in the production version
 
@@ -113,7 +119,7 @@ def time2timestamp(t):
 
 # initialize csc, db, ... etc.
 def init():
-	global db, csc, log_f, dbhost, dbport, dbname
+	global db, csc, log_f, dbhost, dbport, dbname, errors
 	intf = option.Interface()
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 		intf.config_port))
@@ -122,6 +128,8 @@ def init():
 	dbhost = db_info['db_host']
 	dbport = db_info['db_port']
 	dbname = db_info['dbname']
+
+	errors = 0
 
 	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
 		dbname=db_info['dbname'])
@@ -192,6 +200,9 @@ def open_log(*args):
 
 # error_log(s) -- handling error message
 def error_log(*args):
+	global errors
+
+	errors = errors + 1
 	io_lock.acquire()
 	open_log(*args)
 	print '... ERROR'
@@ -542,16 +553,19 @@ def migrating():
 			if not res:
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
 				log_swapped(bfid, bfid2, db)
-				scan_queue.put((bfid, bfid2, src), True)
+				if icheck:
+					scan_queue.put((bfid, bfid2, src), True)
 			else:
 				error_log("SWAPPING_METADATA", "%s %s %s %s failed due to %s"%(bfid, src, bfid2, dst, res))
 		else:
 			ok_log("SWAPPING_METADATA", "%s %s %s %s have already been swapped"%(bfid, src, bfid2, dst))
-			scan_queue.put((bfid, bfid2, src), True)
+			if icheck:
+				scan_queue.put((bfid, bfid2, src), True)
 
 		job = copy_queue.get(True)
 
-	scan_queue.put(None, True)
+	if icheck:
+		scan_queue.put(None, True)
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
@@ -597,7 +611,7 @@ def final_scan_volume(vol):
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 	MY_TASK = "FINAL_SCAN_VOLUME"
-	q = "select bfid, pnfs_path, deleted, src_bfid  \
+	q = "select bfid, pnfs_path, src_bfid  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
@@ -619,7 +633,11 @@ def final_scan_volume(vol):
 		error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 		return 
 	for r in query_res:
-		bfid, pnfs_path, deleted, src_bfid = r
+		bfid, pnfs_path, src_bfid = r
+		st = is_swapped(src_bfid, db)
+		if not st:
+			error_log(MY_TASK, "%s %s %s has not been swapped"%(src_bfid, bfid, pnfs_path))
+			continue
 		ct = is_closed(bfid, db)
 		if not ct:
 			res = run_encp([pnfs_path, '/dev/null'])
@@ -650,15 +668,22 @@ def final_scan_volume(vol):
 
 # migrate(file_list): -- migrate a list of files
 def migrate(files):
+	global errors
+	# reset errors every time
+	errors = 0
 	# start a thread to copy files out to disk
 	c_id = thread.start_new_thread(copy_files, (files,))
 	# main thread finishes the rest
 	# (1) copy disk files to enstore
 	# (2) swap meta-data
-	m_id = thread.start_new_thread(migrating, ())
 	# (3) final check
-	ret = final_scan()
-	return ret
+	if icheck:
+		m_id = thread.start_new_thread(migrating, ())
+		final_scan()
+		return errors
+	else:
+		migrating()
+		return errors
 
 # migrate_volume(vol) -- migrate a volume
 def migrate_volume(vol):
@@ -768,6 +793,7 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	if sys.argv[1] == "--vol":
+		icheck = False
 		for i in sys.argv[2:]:
 			migrate_volume(i)
 	elif sys.argv[1] == "--bfids":
