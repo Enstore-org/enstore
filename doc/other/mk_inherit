@@ -31,7 +31,6 @@ echo 'rankdir=LR'                >> obj.dot
 echo 'dir=back'                  >> obj.dot
 echo '}'                         >> obj.dot
 
-dot -Tps obj.dot > obj.ps
 
-#rm [1-9].out
-rm obj.dot
+rm [1-9].out
+
