@@ -655,6 +655,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.config['do_cleaning'][0] in ('n','N'):
                 self.do_cleaning = 0
         
+        self.rem_stats = 1
+        if self.config.has_key('get_remainig_from_stats'):
+            if self.config['get_remainig_from_stats'][0] in ('n','N'):
+                self.rem_stats = 0
+
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.media_type = self.config.get('media_type', '8MM') #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
@@ -1795,7 +1800,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 eod = 1
                 self.target_location = eod
                 self.vol_info['eod_cookie'] = eod
-                if self.driver_type == 'FTTDriver':
+                if self.driver_type == 'FTTDriver' and self.rem_stats:
                     import ftt
                     stats = self.tape_driver.ftt.get_stats()
                     remaining = stats[ftt.REMAIN_TAPE]
@@ -1922,7 +1927,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if save_state == DRAINING:
             self.dismount_volume()
-            self.state = OFFLINE
+            #self.state = OFFLINE
+            self.offline()
         else:
             self.maybe_clean()
             self.idle()
@@ -1955,7 +1961,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if self.state == DRAINING:
             self.dismount_volume()
-            self.state = OFFLINE
+            #self.state = OFFLINE
+            self.offline()
         else:
             self.state = HAVE_BOUND
             if self.maybe_clean():
@@ -2002,7 +2009,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         r2 = r1                                #value reported from drive, if possible
         ## XXX OO: this should be a driver method
-        if self.driver_type == 'FTTDriver':
+        if self.driver_type == 'FTTDriver' and self.rem_stats:
             import ftt
             try:
                 stats = self.tape_driver.ftt.get_stats()
@@ -2261,11 +2268,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             ### Do not eject if specified
             Trace.log(e_errors.INFO, "Do not eject specified")
             self.state = HAVE_BOUND
+            if self.draining:
+                #self.state = OFFLINE
+                self.offline()
             return
-            self.current_volume = None
-            self.volume_family = None
-            if after_function:
-                after_function()
 
         self.state = DISMOUNT_WAIT
         ejected = self.tape_driver.eject()
@@ -2327,14 +2333,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
             self.current_volume = None
-            if after_function:
+            if self.draining:
+                #self.state = OFFLINE
+                self.offline()
+            elif after_function:
                 Trace.trace(20,"after function %s" % (after_function,))
                 after_function()
 
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
         elif status[-1] == "the drive did not contain an unloaded volume":
-            self.idle()
+            if self.draining:
+                #self.state = OFFLINE
+                self.offline()
+            else:
+                self.idle()
         else:
 ##            self.error(status[-1], status[0])
             
@@ -2576,10 +2589,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def warm_restart(self, ticket):
         self.start_draining(ticket)
-        if self.state == OFFLINE:
-            self.stop_draining(ticket)
-        else:
-            Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        self.reply_to_caller(out_ticket)
+        while 1:
+            if self.state == OFFLINE:
+                self.stop_draining(ticket)
+            elif self.state !=  ERROR:
+                time.sleep(2)
+                Trace.trace(11,"waiting in state %s for OFFLINE" % (self.state,))
+            else:
+                Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
         
     def clean_drive(self, ticket):
         save_state = self.state
