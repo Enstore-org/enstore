@@ -474,6 +474,10 @@ def do_work(intf):
                           (python_binary,))
 
     #Start the servers.
+    #
+    # db_checkpoint and db_deadlock should be started *after* any of
+    # of the volume_clerk or file_clerk starts
+    #
     for server in [ enstore_constants.LOG_SERVER,
                     enstore_constants.ACCOUNTING_SERVER,
                     enstore_constants.ALARM_SERVER,
@@ -487,10 +491,10 @@ def do_work(intf):
                          "%s $ENSTORE_DIR/src/%s.py" % (python_binary,server,))
 
     #Start the Berkley DB dameons.
-    if intf.should_start("db_checkpoint"):
+    if intf.should_start(enstore_constants.VOLUME_CLERK) or \
+       intf.should_start(enstore_constants.FILE_CLERK):
         check_db(csc, "db_checkpoint", intf,
                  "db_checkpoint -h %s  -p 5 &" % db_dir)
-    if intf.should_start("db_deadlock"):
         check_db(csc, "db_deadlock", intf,
                  "db_deadlock -h %s  -t 1 &" % db_dir)
 
