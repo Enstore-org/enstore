@@ -807,7 +807,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return 0
 
     def update_schedule_file(self, ticket, func):
-	Trace.log(e_errors.INFO, "User update of schedule file (ticket=%s)"%(ticket,))
 	ticket["status"] = (e_errors.OK, None)
 	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
