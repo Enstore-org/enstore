@@ -2097,7 +2097,8 @@ class File:
 		fname = self.size_file()+'('+size+')'
 		f = open(fname, "w")
 		f.close()
-		if real_size:
+		real_size = os.stat(self.path)[stat.ST_SIZE]
+		if real_size != self.size:
 			# oops, have to reset it again
 			f = open(fname, "w")
 			f.close()
