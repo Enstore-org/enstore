@@ -21,6 +21,8 @@ import hostaddr
 
 journal_backup = 'JOURNALS'     # for journal file backup
 
+pgdb = 0
+
 def logthis(code, message):
     #Trace.log(code,message)
     log_client.logthis(code,message)
@@ -72,6 +74,11 @@ def backup_dbase(dbHome):
         if len(name)>5 and name[-5:]=='.stat':
             os.unlink(name)
 
+def pgdb_backup(host, port, dbHome):
+    path = os.path.join(dbHome, 'enstoredb.dmp')
+    cmd = "pg_dump -h %s -p %d -f %s enstoredb"%(host, port, path)
+    os.system(cmd)
+
 
 def archive_backup(hst_bck,hst_local,dir_bck):
 
@@ -113,7 +120,15 @@ def archive_backup(hst_bck,hst_local,dir_bck):
             fjbk = 'file.tar.Z'
             vjbk = 'volume.tar.Z'
 
-	cmd="enrcp *.tar* " + hst_bck+":"+dir_bck
+        if pgdb:
+            pgbk = 'enstoredb.dmp.gz'
+            if os.system("gzip -f enstoredb.dmp"):
+                os.system("compress enstoredb.dmp")
+                pgbk = 'enstoredb.dmp.Z'
+        else:
+            pgbk = ''
+
+	cmd="enrcp *.tar* " + " %s "%(pgbk)+ hst_bck+":"+dir_bck
 	logthis(e_errors.INFO, cmd)
 	ret=os.system(cmd)
 	if ret !=0 :
@@ -233,6 +248,10 @@ def do_work(intf):
     logthis(e_errors.INFO, "Start database backup")
     backup_dbase(dbHome)
     logthis(e_errors.INFO, "End database backup")
+    if pgdb:
+        logthis(e_errors.INFO, "Start postgresql database backup")
+        pgdb_backup(dbInfo['db_host'], dbInfo['db_port'], dbHome)
+        logthis(e_errors.INFO, "End postgresql database backup")
     logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
     logthis(e_errors.INFO, "End  volume backup")
