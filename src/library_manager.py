@@ -1219,7 +1219,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if mv:
 		try:
 		    del(mv["work_ticket"])
-		except keyError:
+		except KeyError:
 		    pass
 
 
