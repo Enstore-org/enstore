@@ -92,7 +92,78 @@ class Cpio :
         self.write_driver = write_object
         self.crc_fun = crc_fun
         self.fast_write = fast_write
+	pass
 
+    def sw_mount( self, driver, info ):
+	return
+
+    # generate an enstore cpio archive: devices must be open and ready
+    def write_pre_data( self, driver, info ):
+        inode        = info['inode']
+        mode         = info['mode']
+        uid          = info['uid']
+        gid          = info['gid']
+        mtime        = info['mtime']
+        self.filesize= info['size_bytes']
+        major        = info['major']
+        minor        = info['minor']
+        rmajor       = info['rmajor']
+        rminor       = info['rminor']
+        filename     = info['pnfsFilename']
+        sanity_bytes = info['sanity_size']
+
+        # generate the headers for the archive and write out 1st one
+        format = "new"
+        nlink = 1
+        header,self.crc_header,self.trailer = headers( format, inode, mode,
+						       uid, gid, nlink, mtime,
+						       self.filesize, major,
+						       minor, rmajor, rminor,
+						       filename, 0 )
+	self.header_size = len( header )
+	driver.write( header )
+	return
+
+
+    def write_post_data( self, driver, crc ):
+
+	size = self.header_size + self.filesize
+
+        driver.write( trailers(size,self.crc_header,crc,self.trailer) )
+        return
+
+
+    def read_pre_data( self, driver, info ):
+	# The pre data is one cpio header (including the pad).
+
+	# 1st read the constant length part
+	header = driver.read( 110 )
+
+	# determine/save info
+	self.filename_size = string.atoi( header[94:102], 16 )
+	pad = (4-((110+self.filename_size)%4)) % 4
+	self.data_size   = string.atoi( header[62:70],  16 )
+	self.header_size = 110+self.filename_size+pad
+
+	# now just index to first part of real data
+	buffer = driver.read( self.filename_size+pad )
+	return
+
+
+    def read_post_data( self, driver, info ):
+	dat_crc = info['data_crc']
+	pad_data = (4-(self.data_size%4)) % 4
+	pad_crc  = (4-((110+self.filename_size+4+8)%4)) % 4
+	# read the rest (padd), (crc_trailer) and trailer
+	length = pad_data + (110+self.filename_size+3+8+pad_crc) + (110+0xb)
+	trailer = driver.read( length )
+	
+	recorded_crc = encrc( trailer[pad_data:] )
+        if recorded_crc != dat_crc :
+            raise IOError, "CRC Mismatch, read "+repr(dat_crc)+\
+                  " but was expecting "+repr(recorded_crc)
+	return
+	
 
     # generate an enstore cpio archive: devices must be open and ready
     def write( self, ticket ):
@@ -118,56 +189,27 @@ class Cpio :
                                                filename,0)
         size = len(header)
 
-        if self.fast_write==1:
-            # it is assumed that the data size will be greater than sanity_bytes
-            # the header is passed thru ETape
-            (dat_bytes,dat_crc,san_crc) = EXfer.to_HSM( self.read_driver, self.write_driver,
-                                                        self.crc_fun, sanity_bytes, header )
-            # sanity_bytes will be dat_bytes when dat_bytes is less than
-            # sanity_bytes.
-            if dat_bytes < sanity_bytes:
-                san_bytes = dat_bytes
-                san_crc = dat_crc
-            else:
-                san_bytes = sanity_bytes
-                pass
-            size = size + dat_bytes
+	# it is assumed that the data size will be greater than sanity_bytes
+	# the header is passed thru ETape
+	(dat_bytes,dat_crc,san_crc) = EXfer.to_HSM( self.read_driver, self.write_driver,
+						    self.crc_fun, sanity_bytes, header )
+	# sanity_bytes will be dat_bytes when dat_bytes is less than
+	# sanity_bytes.
+	if dat_bytes < sanity_bytes:
+	    san_bytes = dat_bytes
+	    san_crc = dat_crc
+	else:
+	    san_bytes = sanity_bytes
+	    pass
+	size = size + dat_bytes
 
-            # need to subtract off these bytes from remaining count if disk driver
-            # ftt driver has method that just returns since the byte count is
-            #        updated in hardware at end transfer
-            self.write_driver.xferred_bytes(size)
+	# need to subtract off these bytes from remaining count if disk driver
+	# ftt driver has method that just returns since the byte count is
+	#        updated in hardware at end transfer
+	self.write_driver.xferred_bytes(size)
 
-            # partial tape block will be in ETape buffer????
+	# partial tape block will be in ETape buffer????
 
-        else:
-            self.write_driver.write_block( header )
-
-            # now read input and write it out
-            san_crc = 0; san_bytes = 0  # "in progress" (shorter 3-character names) crc's,
-            dat_crc = 0; dat_bytes = 0  #          data bytes and sanity bytes read.
-            while 1:
-                b = self.read_driver.read_block()
-                length = len(b)
-                if length == 0 :
-                    break
-                size = size + length
-                dat_bytes = dat_bytes + length
-                # we need a complete crc of the data in the file
-                dat_crc = self.crc_fun(b,dat_crc)
-
-                # we also need a "sanity" crc of 1st sanity_bytes of data in file
-                # so, we crc the 1st portion of the data twice (should be ok)
-                if san_bytes < sanity_bytes :
-                    if san_bytes + length <= sanity_bytes :
-                        sanity_end = length
-                        san_bytes = san_bytes+length
-                    else:
-                        sanity_end = sanity_bytes - san_bytes
-                        san_bytes = sanity_bytes # finished
-                    san_crc = self.crc_fun(b[0:sanity_end],san_crc)
-
-                self.write_driver.write_block( b )
 
         # write out the trailers
         self.write_driver.write_block( trailers(size,crc_header,dat_crc,trailer) )
