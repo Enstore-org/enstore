@@ -390,7 +390,7 @@ if __name__ == '__main__':
 				te_count = 0
 				print "checking", v2, "...",
 				vol = vcc.inquire_vol(v2)
-				if vol['status'] != e_errors.OK:
+				if vol['status'][0] != e_errors.OK:
 					print 'does not exist ... ERROR'
 					continue
 				if vol['system_inhibit'][1] == 'migrated':
