@@ -32,8 +32,8 @@ ftt_do_scsi_command  34 ftt_lib/ftt_do_scsi.c ftt_do_scsi_command(
 ftt_format_ait   531 ftt_lib/ftt_do_scsi.c int ftt_format_ait(
 ftt_get_scsi_devname 207 ftt_lib/ftt_do_scsi.c ftt_get_scsi_devname(
 ftt_inquire      508 ftt_lib/ftt_do_scsi.c int ftt_inquire(
-ftt_logsense     664 ftt_lib/ftt_do_scsi.c int ftt_logsense(
-ftt_modesense    615 ftt_lib/ftt_do_scsi.c int ftt_modesense(
+ftt_logsense     668 ftt_lib/ftt_do_scsi.c int ftt_logsense(
+ftt_modesense    619 ftt_lib/ftt_do_scsi.c int ftt_modesense(
 ftt_open_scsi_dev  52 ftt_lib/ftt_do_scsi.c ftt_open_scsi_dev(
 ftt_scsi_check    97 ftt_lib/ftt_do_scsi.c ftt_scsi_check(
 ftt_scsi_locate  330 ftt_lib/ftt_do_scsi.c ftt_scsi_locate(
@@ -44,14 +44,14 @@ hex              407 ftt_lib/ftt_do_scsi.c #define hex(
 hprint           413 ftt_lib/ftt_do_scsi.c hprint(
 inqdata          405 ftt_lib/ftt_do_scsi.c } inqdata;
 printinq         454 ftt_lib/ftt_do_scsi.c printinq(
-ftt_WIN_error    295 ftt_lib/ftt_error.c ftt_WIN_error 
-ftt_describe_error 265 ftt_lib/ftt_error.c ftt_describe_error(
-ftt_describe_error_WIN 436 ftt_lib/ftt_error.c ftt_describe_error_WIN(
+ftt_WIN_error    300 ftt_lib/ftt_error.c ftt_WIN_error 
+ftt_describe_error 270 ftt_lib/ftt_error.c ftt_describe_error(
+ftt_describe_error_WIN 441 ftt_lib/ftt_error.c ftt_describe_error_WIN(
 ftt_eprintf       22 ftt_lib/ftt_error.c ftt_eprintf(
 ftt_get_error     32 ftt_lib/ftt_error.c ftt_get_error(
 ftt_translate_error 154 ftt_lib/ftt_error.c ftt_translate_error(
-ftt_translate_error_WIN 365 ftt_lib/ftt_error.c 	ftt_translate_error_WIN(
-main             465 ftt_lib/ftt_error.c main(
+ftt_translate_error_WIN 370 ftt_lib/ftt_error.c 	ftt_translate_error_WIN(
+main             470 ftt_lib/ftt_error.c main(
 ftt_find_last_part 155 ftt_lib/ftt_find.c ftt_find_last_part(
 ftt_findslot      51 ftt_lib/ftt_find.c ftt_findslot 
 ftt_get_driveid  186 ftt_lib/ftt_find.c ftt_get_driveid(
@@ -240,6 +240,31 @@ ulong              6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
 ftt_scsi_close    23 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_close(
 ftt_scsi_command  29 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_command(
 ftt_scsi_open     15 ftt_lib/WIN32/ftt_scsi.c ftt_scsi_open(
+cfree             40 ftt_lib/dmalloc/debugmalloc.h #define   cfree(
+free              38 ftt_lib/dmalloc/debugmalloc.h #define    free(
+malloc            37 ftt_lib/dmalloc/debugmalloc.h #define  malloc(
+realloc           39 ftt_lib/dmalloc/debugmalloc.h #define realloc(
+Tcl_DbCkalloc    616 ftt_lib/dmalloc/malloc.c Tcl_DbCkalloc(
+Tcl_DbCkfree     624 ftt_lib/dmalloc/malloc.c Tcl_DbCkfree(
+Tcl_DbCkrealloc  633 ftt_lib/dmalloc/malloc.c Tcl_DbCkrealloc(
+_mall_init        76 ftt_lib/dmalloc/malloc.c static _mall_init(
+_mall_sig         59 ftt_lib/dmalloc/malloc.c static _mall_sig(
+_mallchk         473 ftt_lib/dmalloc/malloc.c _mallchk(
+_malldmp         158 ftt_lib/dmalloc/malloc.c _malldmp(
+_malldptr        111 ftt_lib/dmalloc/malloc.c static _malldptr(
+_malldstr        144 ftt_lib/dmalloc/malloc.c static _malldstr(
+_mallerr         240 ftt_lib/dmalloc/malloc.c _mallerr(
+_mallgb           96 ftt_lib/dmalloc/malloc.c static struct _Dmi *_mallgb(
+calloc           587 ftt_lib/dmalloc/malloc.c char *calloc(
+cfree            606 ftt_lib/dmalloc/malloc.c cfree(
+free             417 ftt_lib/dmalloc/malloc.c free(
+free_debug       337 ftt_lib/dmalloc/malloc.c free_debug(
+m_round          255 ftt_lib/dmalloc/malloc.c m_round(
+malloc           329 ftt_lib/dmalloc/malloc.c char *malloc(
+malloc_debug     264 ftt_lib/dmalloc/malloc.c char *malloc_debug(
+realloc          461 ftt_lib/dmalloc/malloc.c char *realloc(
+realloc_debug    424 ftt_lib/dmalloc/malloc.c char *realloc_debug(
+main               3 ftt_lib/dmalloc/malloctest.c main(
 main              33 ftt_test/ftt_random.c void main(
 FTT_ERROR_REPORT  25 ftt_test/ftt_copy.c #define FTT_ERROR_REPORT(
 main              33 ftt_test/ftt_copy.c void main(
@@ -299,10 +324,10 @@ ftt_t_date        30 ftt_test/ftt_t_misc.c int	ftt_t_date
 ftt_t_debug_level  89 ftt_test/ftt_t_misc.c int	ftt_t_debug_level	
 ftt_t_echo        59 ftt_test/ftt_t_misc.c int	ftt_t_echo	
 ftt_t_format_ait 222 ftt_test/ftt_t_misc.c int	ftt_t_format_ait 
-ftt_t_inquire    306 ftt_test/ftt_t_misc.c int	ftt_t_inquire 
-ftt_t_logsense   278 ftt_test/ftt_t_misc.c int	ftt_t_logsense 
+ftt_t_inquire    309 ftt_test/ftt_t_misc.c int	ftt_t_inquire 
+ftt_t_logsense   281 ftt_test/ftt_t_misc.c int	ftt_t_logsense 
 ftt_t_max_errors 132 ftt_test/ftt_t_misc.c int	ftt_t_max_errors	
-ftt_t_modesense  250 ftt_test/ftt_t_misc.c int	ftt_t_modesense 
+ftt_t_modesense  253 ftt_test/ftt_t_misc.c int	ftt_t_modesense 
 ftt_t_avail_mode 169 ftt_test/ftt_t_name.c int	ftt_t_avail_mode(
 ftt_t_chall      103 ftt_test/ftt_t_name.c int	ftt_t_chall(
 ftt_t_describe_dev 348 ftt_test/ftt_t_name.c int	ftt_t_describe_dev(
@@ -350,12 +375,12 @@ ftt_t_write2fm    75 ftt_test/ftt_t_rdwr.c int	ftt_t_write2fm
 ftt_t_write_tblock 105 ftt_test/ftt_t_rdwr.c int	ftt_t_write_tblock 
 ftt_t_writefm     45 ftt_test/ftt_t_rdwr.c int	ftt_t_writefm 
 sleep             24 ftt_test/ftt_t_rdwr.c #define sleep(
-ftt_t_dump_stats 130 ftt_test/ftt_t_stats.c int	ftt_t_dump_stats 
+ftt_t_dump_stats 131 ftt_test/ftt_t_stats.c int	ftt_t_dump_stats 
 ftt_t_extract_stats  79 ftt_test/ftt_t_stats.c int	ftt_t_extract_stats 
-ftt_t_free_stat  195 ftt_test/ftt_t_stats.c int	ftt_t_free_stat 
+ftt_t_free_stat  196 ftt_test/ftt_t_stats.c int	ftt_t_free_stat 
 ftt_t_get_stats   32 ftt_test/ftt_t_stats.c int	ftt_t_get_stats 
-ftt_t_init_stats 228 ftt_test/ftt_t_stats.c int	ftt_t_init_stats 
-ftt_t_update_stats 260 ftt_test/ftt_t_stats.c int	ftt_t_update_stats 
+ftt_t_init_stats 229 ftt_test/ftt_t_stats.c int	ftt_t_init_stats 
+ftt_t_update_stats 261 ftt_test/ftt_t_stats.c int	ftt_t_update_stats 
 FTT_T_CHECK_ASYNC 112 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_ASYNC(
 FTT_T_CHECK_CALL  64 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL(
 FTT_T_CHECK_CALL_OPEN  88 ftt_test/ftt_t_wrap.c #define FTT_T_CHECK_CALL_OPEN(
