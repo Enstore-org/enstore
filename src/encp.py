@@ -110,6 +110,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # namespace with information about transfer.
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
+    pprint.pprint(done_ticket)
     if done_ticket["status"] == "ok" :
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
                           ,pprint.pformat(done_ticket))

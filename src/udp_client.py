@@ -85,7 +85,8 @@ class UDPClient:
                     print "UDPClient.send: stale_number=",number, "number=", \
                           self.number,"resending to ", address, message
             else :
-                print "UDPClient.send: resending to ", address, message
+                #print "UDPClient.send: resending to ", address, message
+		pass
         return out
 
 
