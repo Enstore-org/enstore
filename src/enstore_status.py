@@ -188,12 +188,16 @@ class EnStatus:
                     dict[enstore_constants.DEVICE] = fc['external_label']
 	    self.text[key][worktype].append(dict)
 
+    def format_host(self, host):
+	fhost = self.unquote(host)
+	return enstore_functions.strip_node(fhost)
+
     # output the passed alive status
     def output_alive(self, host, port, state, time, key):
 	if not self.text.has_key(key):
 	    self.text[key] = {}
 	self.text[key][enstore_constants.STATUS] = [state, 
-						    self.unquote(host), 
+						    self.format_host(host), 
 						    repr(port), 
 						    enstore_functions.format_time(time)]
 
@@ -205,27 +209,9 @@ class EnStatus:
 	    ltime = enstore_functions.format_time(last_time)
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	self.text[key][enstore_constants.STATUS] = [state, self.unquote(host),
+	self.text[key][enstore_constants.STATUS] = [state, self.format_host(host),
 						    repr(port), 
 						    enstore_functions.format_time(time), ltime]
-
-    # output timeout error when trying to get config dict from config server
-    def output_noconfigdict(self, state, time, key):
-	if not self.text.has_key(key):
-	    self.text[key] = {}
-	self.text[key][enstore_constants.STATUS] = [ state, 
-						     enstore_constants.NO_INFO,
-						     enstore_constants.NO_INFO,
-						     enstore_functions.format_time(time)]
-
-    # output a line stating that we do not support this server
-    def output_nofunc(self, key):
-	if not self.text.has_key(key):
-	    self.text[key] = {}
-	self.text[key][enstore_constants.STATUS] = ["NO SUPPORT IN INQ", 
-						    enstore_constants.NO_INFO,
-						    enstore_constants.NO_INFO, 
-						    enstore_constants.NO_INFO]
 
     # output the library manager suspect volume list
     def output_suspect_vols(self, ticket, key):
