@@ -5,7 +5,7 @@ import time
 import string
 import os
 import stat
-
+import types
 
 import rexec
 _rexec = rexec.RExec()
