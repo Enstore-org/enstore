@@ -695,6 +695,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	else:
 	    ticket["status"] = (e_errors.NOMOVERS, None)
 	    
+        # check if work is in the at mover list before inserting it
+	for wt in self.work_at_movers.list:
+            # 2 requests cannot have the same output file names
+            if wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]:
+                ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
+                break
+	    if wt["unique_id"] == ticket["unique_id"]:
+		break
+        else:
+            status = self.pending_work.insert_job(ticket)
+        if status:
+            if status == e_errors.INPROGRESS:
+              ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
+            else: ticket['status'] = (status, None)
+                
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
 	    Trace.trace(11,"write_to_hsm: No movers available")
@@ -708,12 +723,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					 ticket["wrapper"]["uname"]))
 	if not ticket.has_key('lm'):
 	    ticket['lm'] = {'address':self.server_address }
-
-        # check if work is in the at mover list before inserting it
-	for wt in self.work_at_movers.list:
-	    if wt["unique_id"] == ticket["unique_id"]:
-		break
-        else: self.pending_work.insert_job(ticket)
 
 	# find the next idle mover
 	if ticket["fc"].has_key("external_label"):

@@ -67,14 +67,20 @@ class LM_Queue:
    
     # Add work to the end of the set of jobs
     def insert_job(self,ticket):
+        if ticket['work'] == 'write_to_hsm':
+            output_file_name = ticket["wrapper"]["pnfsFilename"]
+        else: output_file_name = None
 	# see if there is a job with this id in the queueu
-	w = self.find_job(ticket["unique_id"])
+	w,status = self.find_job(ticket["unique_id"], output_file_name)
 	if not w:
 	    ticket['times']['job_queued'] = time.time()
 	    ticket['at_the_top'] = 0
 	    self.queue.append(ticket)
 	    self.dict[ticket["unique_id"]] = ticket
-   
+            ret = None
+        else: ret = status
+        return ret
+    
     # Remove a ticket 
     def delete_job(self,ticket):
 	for w in self.queue:
@@ -92,11 +98,14 @@ class LM_Queue:
 		    return
 
     # Find a job 
-    def find_job(self,id):
+    def find_job(self,id,output_file_name=None):
 	for w in self.queue:
 	    if w["unique_id"] == id:
-		return w
-	return None
+		return w,e_errors.OK
+            if (output_file_name and
+                output_file_name == w["wrapper"]['pnfsFilename']):
+                return w,e_errors.INPROGRESS
+	return None, None
 
     # change a job priority
     def change_pri(self,id, pri):
