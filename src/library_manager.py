@@ -335,7 +335,7 @@ class LibraryManagerMethods:
             return self.sg_limits['default']
         else:
             return self.sg_limits['limits'].get(storage_group, self.sg_limits['default'])
-        
+
     def del_udp_client(self, udp_client):
         if not udp_client: return
         # tell server we're done - this allows it to delete our unique id in
@@ -1241,6 +1241,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.restrictor = discipline.Restrictor(self.csc, self.name)
         self.set_udp_client()
 
+        self.volume_assert_list = []
 
     # check startup flag
     def is_starting(self):
@@ -1660,9 +1661,41 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, format%(wt,mticket))
         rq, status = self.schedule(mticket)
         Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+
         # no work means we're done
         if status[0] == e_errors.NOWORK:
-            self.reply_to_caller({'work': 'no_work'})
+            ##Before actually saying we are done, if any volume assert
+            # requests are pending, handle them.
+            if self.volume_assert_list:
+                for i in range(len(self.volume_assert_list)):
+                    external_label = \
+                         self.volume_assert_list[i]['vc'].get('external_label',
+                                                              None)
+                    if external_label:
+                        if not self.volumes_at_movers.is_vol_busy(
+                            external_label):
+                            #Add the volume and mover to the list of currently
+                            # busy volumes and movers.
+                            self.volume_assert_list[i]['mover'] = \
+                                                              mticket['mover']
+                            self.work_at_movers.append(
+                                self.volume_assert_list[i])
+                            self.volumes_at_movers.put(mticket)
+                            #Record this action in log file.
+                            Trace.log(e_errors.INFO,
+                                      "IDLE:sending %s to mover" %
+                                      (self.volume_assert_list[i],))
+                            #Tell the mover it has something to do.
+                            self.reply_to_caller(self.volume_assert_list[i])
+                            #Remove the job from the list of volumes to check.
+                            del self.volume_assert_list[i]
+                            break
+                        else:
+                            self.reply_to_caller({'work': 'no_work'})
+                    else:
+                        self.reply_to_caller({'work': 'no_work'})
+            else:
+                self.reply_to_caller({'work': 'no_work'})
             return
 
         if status[0] != e_errors.OK:
@@ -2150,6 +2183,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket['storage_groups'] = []
         ticket['storage_groups'] = self.sg_limits
         self.reply_to_caller(ticket)
+
+    # reply to the vol_assert client
+    def volume_assert(self, ticket):
+        self.volume_assert_list.append(ticket)
+        self.reply_to_caller(ticket) # reply now to avoid deadlock
 
     # remove volume from suspect volume list
     def remove_suspect_volume(self, ticket):

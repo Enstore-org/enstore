@@ -218,7 +218,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
             
     def storage_groups(self, timeout=0, tries=0):
         return self.send({"work":"storage_groups"}, timeout, tries)
-        
+
+    def volume_assert(self, ticket, timeout=0, tries=0):
+        ticket['work'] = "volume_assert"
+        return self.send(ticket, timeout, tries)
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, args=sys.argv, user_mode=1) :
