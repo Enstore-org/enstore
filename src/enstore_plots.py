@@ -43,9 +43,7 @@ class EnPlot(enstore_status.EnFile):
 
     def install(self, dir):
 	Trace.trace(10,"{install "+dir)
-	print self.gnufile
 	os.system("gnuplot "+self.gnufile+";cp "+self.psfile+" "+dir)
-	print "plotting done"
 	Trace.trace(10,"}install ")
 
 class MphDataFile(EnPlot):
@@ -228,10 +226,8 @@ class XferDataFile(EnPlot):
 
     def install(self, dir):
 	Trace.trace(10,"{install "+dir)
-	print self.gnufile
 	os.system("gnuplot "+self.gnufile+";cp "+self.psfile+" "+dir+\
 	          ";cp "+self.logfile+" "+dir)
-	print "plotting done"
 	Trace.trace(10,"}install ")
 
 class XferGnuFile(enstore_status.EnFile):

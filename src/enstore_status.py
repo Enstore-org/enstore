@@ -37,6 +37,11 @@ MSTART = 5
 MREQUEST = 0
 MMOUNT = 1
 
+TRUE = 1
+FALSE = 0
+START_TIME = "start_time"
+STOP_TIME = "stop_time"
+LOG_PREFIX = "LOG-"
 bg_color = "FFFFFF"
 tdata = "<TD NOSAVE>"
 trow = "<TR NOSAVE>\n"
@@ -85,20 +90,6 @@ def parse_encp_line(line):
 	    return [etime, enode, euser, estatus, erest]
     Trace.trace(12,"}parse_encp_line ")
     return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
-
-# parse the mount line
-def parse_mount_line(line):
-    Trace.trace(12,"{parse_mount_line "+repr(line))
-    [etime, enode, etmp, euser, estatus, dev, erest] = \
-                                                   string.split(line, None, 6)
-    if erest[0:10] == "Requesting":
-	# this is the request for the mount
-	start = MREQUEST
-        [etmp, estat] = string.splitfields(erest, "(")
-    else:
-	start = MMOUNT
-    Trace.trace(12,"}parse_mount_line ")
-    return [etime, enode, euser, estatus, dev, start]
 
 class EnStatus:
 
@@ -384,19 +375,21 @@ class EnFile:
     def __init__(self, file):
         Trace.trace(10,'{__init__ enfile '+file)
         self.file_name = file 
+	self.filedes = 0
         Trace.trace(10,'}__init__')
 
+    def open(self, mode='w'):
+	Trace.trace(10,"{enfile open "+self.file_name)
+	self.filedes = open(self.file_name, mode)
+	Trace.trace(10,"}enfile open ")
 
-class EnPlotFile(EnFile):
-
-    # open the file
-    def open(self, verbose=0):
-        Trace.trace(12,"{open "+self.file_name)
-	generic_cs.enprint("opening " + self.file_name, generic_cs.SERVER, \
-	                    verbose)
-        self.file = open(self.file_name, 'w')
-        generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
-        Trace.trace(12,"}open")
+    def close(self):
+	Trace.trace(10,"{enfile close "+self.file_name)
+	if not self.filedes == 0:
+	    self.filedes.close()
+	    self.filedes = 0
+	self.file_name = ""
+	Trace.trace(10,"}enfile close ")
 
 class EnStatusFile(EnFile):
 
@@ -478,9 +471,13 @@ class EncpFile:
 	if lines != []:
 	    str = self.format_encp(lines, key)
 	else:
-	    str = "encp            : NONE\n"
+	    str = self.format_no_encp()
 	self.text[key] = str+"\n"
 	Trace.trace(12,"}output_html_encp ")
+
+    # format the line saying there have been no encp requests
+    def format_no_encp(self):
+	return "\nencp            : NONE\n"
 
 class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
 
@@ -572,10 +569,13 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	self.file.write(self.header)
         Trace.trace(12,"}write_header ")
 
+    # format the line saying there have been no encp requests
+    def format_no_encp(self):
+	return "<br><pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
+
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
 	Trace.trace(13,"{format_encp ")
-	# include a </pre> here to finish the one started in the header
 	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
 	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
@@ -610,30 +610,140 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	Trace.trace(13,"}format_encp ")
 	return str
 
-class EncpDataFile(EnFile):
+class EnDataFile(EnFile):
 
-    def __init__(self, file, inFile):
-        Trace.trace(10,'{__init__ encpdatafile '+file)
-	EnFile.__init__(self, file)
+    # make the data file by grepping the inFile.  fproc is any further
+    # processing that must be done to the data before it is written to
+    # the ofile.
+    def __init__(self, inFile, oFile, text, indir="", fproc=""):
+        Trace.trace(10,'{__init__ endatafile '+oFile)
+	EnFile.__init__(self, oFile)
 	self.lines = []
+	self.data = []
+	if indir == "":
+	    cdcmd = " "
+	else:
+	    cdcmd = "cd "+indir+";"
 	try:
-	    os.system("fgrep ENCP "+inFile+"|sort -r> "+file)
+	    os.system(cdcmd+"fgrep '"+text+"' "+inFile+fproc+"> "+oFile)
+	    Trace.trace(10,'}__init__')
 	except:
 	    self.file_name = ""
-	Trace.trace(10,'}__init__')
+	    format = str(sys.argv)+" "+\
+	             str(sys.exc_info()[0])+" "+\
+	             str(sys.exc_info()[1])+" "+\
+	             "inquisitor plot system error"
+	    Trace.trace(5,"}__init__ "+format)
+
+    # strip off anything before the '/'
+    def strip_file_dir(self, str):
+        ind = string.rfind(str, "/")
+	if not ind == -1:
+	    str = str[(ind+1):]
 
     def read(self, max_lines):
-	# Now open this file and read in at most numitems lines
-	if not self.file_name == "":
-	    encpfile = open(self.file_name, 'r')
-	    i = 0
-	    while i < max_lines:
-	        l = encpfile.readline()
-	        if l:
-	            self.lines.append(l)
-	            i = i + 1
-	        else:
-	            break
-	    encpfile.close()
+	i = 0
+	while i < max_lines:
+	    l = self.filedes.readline()
+	    if l:
+	        self.lines.append(l)
+	        i = i + 1
+	    else:
+	        break
 	return self.lines
+
+    # read in the given file and return a list of lines that are between a
+    # given start and end time
+    def timed_read(self, ticket):
+	do_all = FALSE
+	if ticket.has_key(START_TIME):
+	    start_time = ticket[START_TIME]
+	else:
+	    start_time = ""
+	if ticket.has_key(STOP_TIME):
+	    stop_time = ticket[STOP_TIME]
+	else:
+	    stop_time = ""
+	    if start_time == "":
+	        do_all = TRUE
+	# open the file and read it in.  only save the lines that match the
+	# desired time frame
+	try:
+	    while TRUE:
+	        line = self.filedes.readline()
+	        if not line:
+	            break
+	        else:
+	            if do_all or self.check_line(line, start_time, stop_time):
+	                self.lines.append(line)
+	except:
+	    pass
+	return self.lines
+
+    # check the line to see if the date and timestamp on the beginning of it
+    # is between the given start and end values
+    def check_line(self, line, start_time, stop_time):
+	# split the line into the date/time and all the rest
+	[datetime, rest] = string.split(line, None, 1)
+	# remove the beginning LOG_PREFIX
+	l = regsub.gsub(LOG_PREFIX, "", datetime)
+	# now see if the date/time is between the start time and the end time
+	time_ok = TRUE
+	if not start_time == "":
+	    if l < start_time:
+	        time_ok = FALSE
+	if time_ok and (not stop_time == ""):
+	    if l > stop_time:
+	        time_ok = FALSE
+	return time_ok
+
+class EnMountDataFile(EnDataFile):
+
+    # parse the mount line
+    def parse_line(self, line):
+	Trace.trace(12,"{parse_line "+repr(line))
+	[etime, enode, etmp, euser, estatus, dev, erest] = \
+                                                   string.split(line, None, 6)
+	if erest[0:10] == "Requesting":
+	    # this is the request for the mount
+	    start = MREQUEST
+            [etmp, estat] = string.splitfields(erest, "(")
+	else:
+	    start = MMOUNT
+	# parse out the file directory , a remnant from the grep in the time 
+	# field
+	self.strip_file_dir(etime)
+
+	Trace.trace(12,"}parse_line ")
+	return [etime, enode, euser, estatus, dev, start]
+
+    # pull out the plottable data from each line
+    def parse_data(self):
+	for line in self.lines:
+	    minfo = self.parse_line(line)
+	    self.data.append([minfo[MDEV], string.replace(minfo[ETIME], \
+	                LOG_PREFIX, ""), minfo[MSTART]])
+
+class EnEncpDataFile(EnDataFile):
+
+    # parse the encp line
+    def parse_line(self, line):
+	einfo = parse_encp_line(line)
+	if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	    # the time info may contain the file directory which we must
+	    # strip off
+	    self.strip_file_dir(einfo[ETIME])
+	    return [einfo[ESTATUS], einfo[ETIME], einfo[EBYTES]]
+	else:
+	    return [einfo[ESTATUS]]
+
+    # pull out the plottable data from each line
+    def parse_data(self):
+	for line in self.lines:
+	    einfo = self.parse_line(line)
+	    if einfo[0] == log_client.sevdict[log_client.INFO]:
+	        self.data.append([string.replace(einfo[1], LOG_PREFIX, ""), \
+	                         einfo[2]])
+
+
 
