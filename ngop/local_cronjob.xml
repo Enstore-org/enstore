@@ -4,11 +4,11 @@
    <Ncs heartbeat="300" port="19997" host="ngop.fnal.gov"/>
    <System>
       <ID>Cronjob</ID>
-      <Cluster>local</Cluster>
+      <Cluster>localhost</Cluster>
       <Monitored-element>
          <ID>enstore</ID>
          <Type>Daeman</Type>
-         <Host>local</Host>
+         <Host>localhost</Host>
          <ConditionSet>
          <fn name="checkcron" arg="enstore" retVal="int:x"/>
          <Condition sevLevel="0" description="enstore cron job has been running for 3 times of regular">
