@@ -1146,9 +1146,15 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                             e_errors.NET_ERROR)
 
         #If route_server.process_request() fails it returns None.
-        if route_ticket == type({}) and \
-           route_ticket['unique_id'] not in unique_id_list:
+        if not route_ticket:
             continue
+        #If route_server.process_request() returns
+        elif route_ticket == type({}) and hasattr(route_ticket, 'unique_id') \
+           and route_ticket['unique_id'] not in unique_id_list:
+            continue
+        #It is what we were looking for.
+        else:
+            break
     else:
         raise EncpError(errno.ETIMEDOUT,
                         "Mover did not call back.", e_errors.TIMEDOUT)
@@ -1173,6 +1179,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                 raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
 
     route_server.reply_to_caller(route_ticket)
+    return route_ticket
 
 ##############################################################################
 
@@ -1299,7 +1306,8 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         try:
             #There is no need to do this on a non-multihomed machine.
             if host_config.get_config():
-                open_routing_socket(route_server, unique_id_list, encp_intf)
+                ticket = open_routing_socket(route_server, unique_id_list,
+                                             encp_intf)
         except (EncpError,), detail:
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:

@@ -104,16 +104,16 @@ class UDPServer:
         #   read from socket where crc is stripped and return address is valid
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
-        print "111111111111111", self.server_address
+
         request, addr = '',()
         r = [self.server_socket]
-        print "222222222222"
+
         rcv_timeout = self.rcv_timeout
         r, w, x, remaining_time = cleanUDP.Select(r, [], [], rcv_timeout)
-        print "333333333333333"
+
         if not r + w:
             return ('',()) #timeout
-        print "44444444444444"
+
         for fd in r:
             if fd == self.server_socket:
                 req,addr = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
