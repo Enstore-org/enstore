@@ -82,13 +82,13 @@ class cpio :
         elif format == "CRC"  :
             magic = "070702"
         else :
-            raise errno.errorcode[EINVAL],"Invalid format: "+ repr(format)+\
-                  " only \"new\" and \"CRC\" are valid formats"
+            raise errno.errorcode[errno.EINVAL],"Invalid format: "+ \
+		  repr(format)+" only \"new\" and \"CRC\" are valid formats"
 
         # files greater than 2  GB are just not allowed right now
         max = 2**30-1+2**30
         if filesize > max :
-            raise errno.errorcode[EOVERFLOW],"Files are limited to "\
+            raise errno.errorcode[errno.EOVERFLOW],"Files are limited to "\
                   +repr(max) + " bytes and your "+filename+" has "\
                   +repr(filesize)+" bytes"
 
@@ -172,8 +172,9 @@ class cpio :
         if magic == "070701" or  magic == "070702" :
             pass
         else :
-            raise errno.errorcode[EINVAL],"Invalid format: "+ repr(magic)+\
-                  " only \"070701\" and \"070702\" are valid formats"
+            raise errno.errorcode[errno.EINVAL],"Invalid format: "+ \
+		  repr(magic)+ " only \"070701\" and \"070702\" "+\
+		  "are valid formats"
 
         filename_size = string.atoi(buffer[94:102],16)
         data_offset = 110+filename_size
@@ -259,15 +260,15 @@ class cpio :
             buffer = apply(self.read_driver.read_block,())
             length = len(buffer)
             if length == 0 :
-                raise errno.errorcode[EINVAL],"Invalid format of cpio format"+\
-                      " Expecting "+ repr(data_size)+" bytes, but only read"+\
-                      repr(size)+" bytes"
+                raise errno.errorcode[errno.EINVAL],"Invalid format of cpio "+\
+		      "format  Expecting "+ repr(data_size)+" bytes, but "+\
+		      "only read"+repr(size)+" bytes"
 
             # decode the cpio header block
             if parse_header :
                 try:
                     data_offset, data_size, data_name = self.decode(buffer)
-                except errno.errorcode[EINVAL]:
+                except errno.errorcode[errno.EINVAL]:
                     # for now, just send the data back to the user, as read
                     bad = sys.exc_info()[1]
                     print bad
@@ -390,7 +391,7 @@ if __name__ == "__main__" :
 
     statb = os.fstat(fin.fileno())
     if not stat.S_ISREG(statb[stat.ST_MODE]) :
-        raise errno.errorcode[EINVAL],\
+        raise errno.errorcode[errno.EINVAL],\
               "Invalid input file: can only handle regular files"
 
     wrapper = cpio(fin,fout,binascii.crc_hqx)

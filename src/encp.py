@@ -37,7 +37,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     rminor = 0
     fsize = statinfo[stat.ST_SIZE]
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-        raise errno.errorcode[EPERM],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EPERM],"encp.write_to_hsm: "\
               +unixfile+" is not a regular file"
     tinfo["filecheck"] = time.time() - t1
     if list:
@@ -49,14 +49,14 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
-        raise errno.errorcode[EINVAL],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EINVAL],"encp.write_to_hsm: "\
               +pnfsfile+" is an invalid pnfs filename "\
               " or maybe NO read access to file"
     if p.exists == pnfs.exists :
-        raise errno.errorcode[EEXIST],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EEXIST],"encp.write_to_hsm: "\
               +pnfsfile+" already exists"
     if p.writable != pnfs.enabled :
-        raise errno.errorcode[EACCES],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EACCES],"encp.write_to_hsm: "\
               +pnfsfile+", NO write access to directory"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
@@ -122,8 +122,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if ticket['status'] != "ok" :
-        raise errno.errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
-              +p.library+" at "\
+        raise errno.errorcode[errno.EPROTO],"encp.write_to_hsm: from "+\
+	      "u.send to " +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     tinfo["send_ticket"] = time.time() - t1
@@ -158,7 +158,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
             control_socket.close()
     ticket = new_ticket
     if ticket["status"] != "ok" :
-        raise errno.errorcode[EPROTO],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
               +"1st (pre-file-send) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
@@ -249,7 +249,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
             #print done_formatted
 
     else :
-        raise errno.errorcode[EPROTO],"encp.write_to_hsm: "\
+        raise errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
@@ -267,7 +267,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Checking",pnfsfile
     p = pnfs.pnfs(pnfsfile)
     if p.exists != pnfs.exists :
-        raise errno.errorcode[ENOENT],"encp.read_from_hsm: "\
+        raise errno.errorcode[errno.ENOENT],"encp.read_from_hsm: "\
               +pnfsfile+" does not exist"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
@@ -284,7 +284,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
-        raise errno.errorcode[EACCES],"encp.read_from__hsm: "\
+        raise errno.errorcode[errno.EACCES],"encp.read_from__hsm: "\
               +outfile+", NO write access to directory"
     f = open(outfile,"w")
     tinfo["filecheck"] = time.time() - t1
@@ -345,8 +345,8 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         print "Sending ticket to file clerk"
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if ticket['status'] != "ok" :
-        raise errno.errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
-              +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
+        raise errno.errorcode[errno.EPROTO],"encp.read_from_hsm: from u.send"+\
+	      "to file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     tinfo["send_ticket"] = time.time() - t1
     if list :
@@ -381,7 +381,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
             control_socket.close()
     ticket = new_ticket
     if ticket["status"] != "ok" :
-        raise errno.errorcode[EPROTO],"encp.read_from_hsm: "\
+        raise errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
               +"1st (pre-file-read) mover callback on socket "\
               +repr(address)+", failed to setup transfer: "\
               +"ticket[\"status\"]="+ticket["status"]
@@ -440,7 +440,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list) :
         done_ticket["MB_per_S"] = 0.0
 
     if done_ticket["status"] != "ok" :
-        raise errno.errorcode[EPROTO],"encp.read_from_hsm: "\
+        raise errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
               +"2nd (post-file-read) mover callback on socket "\
               +repr(address)+", failed to transfer: "\
               +"ticket[\"status\"]="+ticket["status"]

@@ -58,7 +58,7 @@ class pnfs :
             self.set_bit_file_id("1234567890987654321",123)
             self.statinfo()
         else:
-            raise errno.errorcode[EINVAL],"pnfs.jon1: "\
+            raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
 
     # simple test configuration
@@ -70,7 +70,7 @@ class pnfs :
             self.set_file_family_width(2)
             self.statinfo()
         else:
-            raise errno.errorcode[EINVAL],"pnfs.jon1: "\
+            raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
 
     ##########################################################################

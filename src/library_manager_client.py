@@ -40,7 +40,7 @@ class LibraryManagerClient :
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok" :
-            raise errno.errorcode[EPROTO],"lmc.getwork: sending ticket"\
+            raise errno.errorcode[errno.EPROTO],"lmc.getwork: sending ticket"\
                   +repr(ticket)
         if list :
             print "Q'd: getwork from",self.name
@@ -71,7 +71,7 @@ class LibraryManagerClient :
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"] != "ok" :
-            raise errno.errorcode[EPROTO],"lmc.getwork: "\
+            raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
                   +"1st (pre-work-read) library manager callback on socket "\
                   +repr(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
@@ -100,7 +100,7 @@ class LibraryManagerClient :
                   "post-recv error:", errno.errorcode[badsock]
         control_socket.close()
         if done_ticket["status"] != "ok" :
-            raise errno.errorcode[EPROTO],"lmc.getwork: "\
+            raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
                   +"2nd (post-work-read) library manger callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]

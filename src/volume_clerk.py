@@ -5,6 +5,7 @@ from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from journal import JournalDict
 import pprint
+import string
 
 dict = JournalDict({},"volume_clerk.jou")
 
@@ -187,7 +188,12 @@ class VolumeClerkMethods(DispatchingWorker) :
                 # administrator reset the system_inhibit back to none in these
                 # special, and hopefully rare cases.
                 v["system_inhibit"] = "full"
-                print k,"is now full, bytes remaining = ",v["remaining_bytes"]
+                left = string.atoi(v["remaining_bytes"])
+                totb = string.atoi(v["capacity_bytes"])
+                if totb != 0 :
+                    waste = left/totb*100.
+                print k,"is now full, bytes remaining = ",left,\
+                      "wasted=",waste,"%"
                 dict[repr(k)] = v
                 continue
             vetoed = 0
@@ -421,7 +427,6 @@ class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
 if __name__ == "__main__" :
     import sys
     import getopt
-    import string
     # Import SOCKS module if it exists, else standard socket module socket
     try:
         import SOCKS; socket = SOCKS
