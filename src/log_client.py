@@ -72,7 +72,7 @@ class LoggerClient:
         self.uname = pwdb_entry[0]
         self.logger = servername
         self.debug = debug
-        self.log_priority = 10
+        self.log_priority = 2
 
 
     """ send the request to the Media Loader server and then send answer
@@ -84,6 +84,7 @@ class LoggerClient:
 		  1 implies always log, 2 imply normally go to logger,
                   4 more complete file tracing, 8,16,... detailed debugging.
                   the log_priority is set on a per server basis.
+                  note, a log_prioirty = 0 should turn off logging
        format - any string which can contain formatters
     Example:
         send (ticket = logc.send (ERROR, 1, 'Error: errno=%d, and its \
