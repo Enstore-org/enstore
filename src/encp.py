@@ -27,12 +27,16 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     tinfo["abs_start"] = t0
 
     # first check the unix file the user specified
-    # Note that the unix file remains open
     t1 = time.time()
     if list:
         print "Checking",unixfile
     (machine, fullname, dir, basename) = fullpath(unixfile)
-    in_file = open(unixfile, "r")
+    #in_file = open(unixfile, "r")<--------------------------------------------------moved later
+    command="if test -r "+unixfile+"; then echo ok; else echo no; fi"
+    readable = os.popen(command,'r').readlines()
+    if "ok\012" != readable[0] :
+        jraise(errno.errorcode[errno.EACCES],"encp.write_to__hsm: "\
+               +unixfile+", NO read access to file")
     statinfo = os.stat(unixfile)
     fsize = statinfo[stat.ST_SIZE]
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
@@ -188,6 +192,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
 
         t1 = time.time()
         mycrc = 0
+        in_file = open(unixfile, "r")
         if list:
             print "Sending data", "   cum=",time.time()-t0
 
@@ -354,7 +359,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
     if "ok\012" != writable[0] :
         jraise(errno.errorcode[errno.EACCES],"encp.read_from__hsm: "\
                +outfile+", NO write access to directory")
-    f = open(outfile,"w")
+    #f = open(outfile,"w")<-----------------------------------------------------moved later
     tinfo["filecheck"] = time.time() - t1
     if list:
         print "  dt:",tinfo["filecheck"], "   cum=",time.time()-t0
@@ -477,6 +482,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
         print "Receiving data", "   cum=",time.time()-t0
     l = 0
     mycrc = 0
+    f = open(outfile,"w")
     while 1:
         buf = data_path_socket.recv(65536*4)
         l = l + len(buf)
@@ -633,6 +639,14 @@ if __name__  ==  "__main__" :
 
     # get a logger
     logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)
+
+    # get fullpaths to the files
+    (machine0, fullname0, dir0, basename0) = fullpath(args[0])
+    (machine1, fullname1, dir1, basename1) = fullpath(args[1])
+    if basename1=='.':
+        basename1=basename0
+    args[0] = dir0+'/'+basename0
+    args[1] = dir1+'/'+basename1
 
     # all files on the hsm system have /pnfs/ as the 1st part of their name
     p1 = string.find(args[0],"/pnfs/")
