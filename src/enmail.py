@@ -1,11 +1,4 @@
-# enmail.py -- mail tools for enstore
-
-import os
-import string
-import StringIO
-import mimetools
-import MimeWriter
-import smtplib
+# enmail.py -- a collection of mail tools
 
 """
 enmail.py -- a collection of mail tools
@@ -33,10 +26,17 @@ mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
 	Initially, this is for sending M2 dump through e-mail.
 	Yet it is general enoguh to have its own existence
 
-mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
+mail(from_add, to_add, subject, msg) -- simple mail through SMTP
 
 	The same as mail_bin(), except it only sends plain message
 """
+
+import os
+import string
+import StringIO
+import mimetools
+import MimeWriter
+import smtplib
 
 # mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
 
@@ -130,12 +130,12 @@ def mail_bin(from_add, to_add, subject, file, msg):
 	server.quit()
 	return status
 
-# mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
+# mail(from_add, to_add, subject, msg) -- simple mail through SMTP
 
 def mail(from_add, to_add, subject, msg):
 
 	"""
-	mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
+	mail(from_add, to_add, subject, msg) -- simple mail through SMTP
 
 	to_add is either an e-mail address or a list of them
 
