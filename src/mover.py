@@ -393,7 +393,7 @@ class MoverClient:
 	    try:
 	        stat = driver_object.send_statistics()
 	        self.driveStatistics['mount'] = stat['mount']
-                Trace.log(e_errors.LOG,"Mount statistics length = "+repr(len(stat['mount'])) )
+                Trace.log(e_errors.INFO,"Mount statistics length = "+repr(len(stat['mount'])) )
 	    except KeyError:
                 Trace.log(e_errors.ERROR,"Mount statistics malformed.")
         return
@@ -405,7 +405,7 @@ class MoverClient:
 	    try:
 	        stat = driver_object.send_statistics()
 	        self.driveStatistics['dismount'] = stat['dismount']
-                Trace.log(e_errors.LOG,"Dismount statistics length = "+repr(len(stat['dismount'])) )
+                Trace.log(e_errors.INFO,"Dismount statistics length = "+repr(len(stat['dismount'])) )
 	    except KeyError:
                 Trace.log(e_errors.ERROR,"Dismount statistics malformed.")
         return
@@ -538,7 +538,9 @@ def bind_volume( object, external_label ):
 				      tmp_vol_info['eod_cookie'] )
             Trace.log(e_errors.INFO,'Software mount complete '+str(external_label)+' '+str(mvr_config['device']))
             object.store_mount_statistics(object.hsm_driver)
-	except: return 'BADMOUNT' # generic, not read or write specific
+	except:
+            e_errors.handle_error()
+            return 'BADMOUNT' # generic, not read or write specific
 
 	# at this point, we have the volume in our tape drive,
 	# so if anything goes wrong from this point on, we can let whoever
