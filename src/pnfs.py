@@ -328,8 +328,34 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             name = self.get_nameof(use_id) #get nameof parent id
             filepath = os.path.join(name, filepath) #join filepath together
         filepath = os.path.join("/", filepath)
+        #Truncate the begining false directories.
+        if filepath[:13] == "/root/fs/usr/":
+            filepath = filepath[13:]
+        else:
+            raise OSError(errno.ENOENT, "Not a valid pnfs id")
 
         ###Note: The filepath should be munged with the mountpoint.
+        search_path = os.path.join("/", self.dir.split("/")[0])
+        for d in self.dir.split("/")[1:]:
+            search_path = os.path.join(search_path, d)
+            if os.path.ismount(search_path):
+                break;
+        else:
+            raise OSError(errno.ENODEV, "No valid mountpoint found")
+
+        #Munge the mount point and the directories.  First check if the two
+        # paths can be munged without modification.
+        if os.access(os.path.join(search_path, filepath), os.F_OK):
+            filepath = os.path.join(search_path, filepath)
+        #Then check if removing the last compenent of the mount point path
+        # (search_path) will help when munged.
+        elif os.access(os.path.join(os.path.dirname(search_path), filepath),
+                       os.F_OK):
+            filepath = os.path.join(os.path.dirname(search_path), filepath)
+        #Lastly, remove the first entry in the file path before munging.
+        elif os.access(os.path.join(search_path, filepath.split("/", 1)[1]),
+                       os.F_OK):
+            filepath = os.path.join(search_path, filepath.split("/", 1)[1])
 
         if not id:
             self.path = filepath
@@ -602,6 +628,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.major = code_dict["Major"]
         self.minor = code_dict["Minor"]
 
+        #The following needs to go somewhere.  It was placed in the
+        # initialization code at one time, but got lost.  What they do,
+        # I do not know.
+        self.rmajor = 0
+        self.rminor = 0
+
     def log_err(self,func_name):
          exc,msg,tb=sys.exc_info()
          Trace.log(e_errors.INFO,"pnfs %s %s %s %s"%(
@@ -661,8 +693,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             data = self.readlayer(intf.named_layer)
             for datum in data:
                 print datum.strip()
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #For legacy perpouses.
     pcat = player
@@ -680,8 +714,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # based on the index, then just print them out.
             for i in range(len(names)):
                 print "%s: %s" % (names[i], data[i])
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
 
     #Prints out the bfid value for the specified file.
@@ -692,10 +728,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.get_bit_file_id()
             #data = self.readlayer(enstore_constants.BFID_LAYER)
             print self.bit_file_id
+            return 0
         except IndexError:
             print UNKNOWN
+            return 1
         except (IOError, OSError), detail:
             print str(detail)
+            return 1
 
     #Print out the filesize of the file from this layer.  It should only
     # be here as long as pnfs does not support NFS ver 3 and the filesize
@@ -705,8 +744,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.get_file_size()
             print self.file_size
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #If dupl is empty, then show the duplicate data for the file
     # (in self.file).  If dupl is there then set the duplicate for the file
@@ -770,14 +811,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def pecho(self, intf):
         try:
             self.writelayer(intf.named_layer, intf.text)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
         
     def prm(self, intf):
         try:
             self.writelayer(intf.named_layer, "")
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     def pcp(self, intf):
         try:
@@ -791,11 +836,19 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()
 
             self.writelayer(intf.named_layer, file_data_as_string)
+
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     def psize(self, intf):
-        self.set_file_size(intf.filesize)
+        try:
+            self.set_file_size(intf.filesize)
+            return 0
+        except (OSError, IOError), detail:
+            print str(detail)
+            return 1
     
     def pio(self, intf):
         print "Feature not yet implemented."
@@ -807,72 +860,103 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.get_id()
             print_results(self.id)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
         
     def pshowid(self, intf):
         try:
             self.get_showid()
             print_results(self.showid)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
+        except (AttributeError,), detail:
+            print "A valid pnfs id was not entered."
+            return 1
     
     def pconst(self, intf):
         try:
             self.get_const()
             print_results(self.const)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
         
     def pnameof(self, intf):
         try:
             self.get_nameof()
             print_results(self.nameof)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
+        except (AttributeError,), detail:
+            print "A valid pnfs id was not entered."
+            return 1
         
     def ppath(self, intf):
         try:
             self.get_path()
             print_results(self.path)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
+        except (AttributeError,), detail:
+            print "A valid pnfs id was not entered."
+            return 1
         
     def pparent(self, intf):
         try:
             self.get_parent()
             print_results(self.parent)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
+        except (AttributeError,), detail:
+            print "A valid pnfs id was not entered."
+            return 1
     
     def pcounters(self, intf):
         try:
             self.get_counters()
             print_results(self.counters)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
         
     def pcursor(self, intf):
         try:
             self.get_cursor()
             print_results(self.cursor)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
             
     def pposition(self, intf):
         try:
             self.get_position()
             print_results(self.position)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
         
     def pdatabase(self, intf):
         try:
             self.get_database()
             print_results(self.database)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
-            
+            return 1
 
 
     def pdown(self, intf):
@@ -1485,7 +1569,7 @@ class Tag:
             data = file.readlines()
         except IOError, detail:
             print detail
-            return
+            return 1
 
         #print the top portion of the output.  Note: the values placed into
         # line have a newline at the end of them, this is why line[:-1] is
@@ -1503,6 +1587,8 @@ class Tag:
             tag_file = os.path.join(intf.directory, line[:-1])
             os.system("ls -l \"" + tag_file + "\"")
 
+        return 0
+    
     def ptag(self, intf):
         try:
             if hasattr(intf, "directory") and intf.directory:
@@ -1510,11 +1596,17 @@ class Tag:
             else:
                 tag = self.readtag(intf.named_tag)
             print tag[0]
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     def ptagecho(self, intf):
-        self.writetag(intf.named_tag, intf.text)
+        try:
+            self.writetag(intf.named_tag, intf.text)
+        except (OSError, IOError), detail:
+            print str(detail)
+            return 1
         
     def ptagrm(self, intf):
         print "Feature not yet implemented."
@@ -1528,8 +1620,10 @@ class Tag:
                 print self.get_library()
             else:
                 self.set_library(intf.library)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #Print or edit the file family.
     def pfile_family(self, intf):
@@ -1538,8 +1632,10 @@ class Tag:
                 print self.get_file_family()
             else:
                 self.set_file_family(intf.file_family)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #Print or edit the file family wrapper.
     def pfile_family_wrapper(self, intf):
@@ -1548,8 +1644,10 @@ class Tag:
                 print self.get_file_family_wrapper()
             else:
                 self.set_file_family_wrapper(intf.file_family_wrapper)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #Print or edit the file family width.
     def pfile_family_width(self, intf):
@@ -1558,8 +1656,10 @@ class Tag:
                 print self.get_file_family_width()
             else:
                 self.set_file_family_width(intf.file_family_width)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
     #Print or edit the storage group.
     def pstorage_group(self, intf):
@@ -1568,8 +1668,10 @@ class Tag:
                 print self.get_storage_group()
             else:
                 self.set_storage_group(intf.storage_group)
+            return 0
         except (OSError, IOError), detail:
             print str(detail)
+            return 1
 
 
     ##########################################################################
@@ -1911,12 +2013,12 @@ def do_work(intf):
             arg = string.replace(arg, "-", "_")
             for instance in [t, p, n]:
                 if getattr(instance, "p"+arg, None):
-                    apply(getattr(instance, "p" + arg), (intf,))
+                    rtn = apply(getattr(instance, "p" + arg), (intf,))
                     break
             else:
                 print "p%s not found" % arg 
 
-    return
+    return rtn
 
 ##############################################################################
 if __name__ == "__main__":
