@@ -1232,11 +1232,18 @@ class Display(Tkinter.Canvas):
                 if not mover.connection:
                     Trace.trace(1, "Mover is not connected")
                     return
+                
                 Trace.trace(1, "mover %s is disconnecting" % (mover_name,))
+
+                #Remove all references to the connection.
+                del self.connections[mover.name]
                 mover.connection = None
+
+                #Remove the progress bar.
                 mover.t0 = time.time()
                 mover.b0 = 0
                 mover.show_progress(None)
+                
                 return
 
             # command requires 3 words
