@@ -1740,6 +1740,11 @@ class Display(Tkinter.Canvas):
         try:
             csc = configuration_client.ConfigurationClient((command_list[1],
                                                          int(command_list[2])))
+
+            #Before blindly setting the value.  Make sure that it is good.
+            rtn = csc.alive("configuration_server", 3, 3)
+            if e_errors.is_ok(rtn):
+                self.csc = csc
         except KeyboardInterrupt:
             exc, msg, tb = sys.exc_info()
             raise exc, msg, tb
@@ -1747,11 +1752,6 @@ class Display(Tkinter.Canvas):
             exc, msg, tb = sys.exc_info()
             print "Error processing %s: %s" % (str(command_list),
                                                (str(exc), str(msg)))
-
-        #Before blindly setting the value.  Make sure that it is good.
-        rtn = csc.alive("configuration_server", 3, 3)
-        if e_errors.is_ok(rtn):
-           self.csc = csc
 
         #This is rather harsh, but hopefully will fix all 'major' failures.
         #  Wait 1 minutes before starting over.
