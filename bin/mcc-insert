@@ -1,0 +1,18 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$   $Revision$
+
+# prompt user to insert volumes into I/O area, then
+# issue insert command
+
+echo Insert volumes into I/O area. When I/O door is closed hit return.
+echo -n 'mcc-insert>'
+read TERM
+
+python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --insertvol $@
+
+exit $?
+#
+
