@@ -171,8 +171,8 @@ done
 
 if [ $ping_only -eq 0 ] ; then
   if [ $enstore_start_admin -eq 1 ] ; then
-    echo "pause 2 seconds to make sure database files have been created"
-    sleep 2 # this is necessary to wait until all database share memory files are created
+    echo "pause 4 seconds to make sure database files have been created"
+    sleep 4 # this is necessary to wait until all database share memory files are created
     db_checkpoint -h $ENSTORE_DB  -p 5 &
     echo $! >> $enstore_db/`uname -n`-db_check_pids
     echo "Starting database checkpoint daemon  on `hostname`"
