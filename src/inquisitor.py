@@ -1139,6 +1139,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.sent_event_relay_alarm = 0  
         # ignore messages that originated with us
         if self.er_alive_event.isSet():
+            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+                                         ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             self.er_alive_event.clear()
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
@@ -1163,6 +1165,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         self.update_library_manager(server)
                         self.check_for_bad_writes(server)
         if self.er_config_event.isSet():
+            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+                                         ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
                                        "processing event relay message type NEW CONFIG")
@@ -1204,7 +1208,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - end")
         self.last_time_for_periodic_tasks = time.time()
-
+        self.reset_interval_timer(self.periodic_tasks)
 
     def encp_periodic_tasks(self, reason_called=TIMEOUT):
         # the encp web page is updated when notice of an encp transfer is received, but
@@ -1218,6 +1222,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				   "encp periodic timeout")
         now = time.time()
         if self.er_encp_event.isSet():
+            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+                                         ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
                                        "processing event relay message type ENCP XFER")
@@ -1239,12 +1245,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         #    now = time.time()
         #    if now - self.encp_xfer_but_no_update > ENCP_UPDATE_INTERVAL:
         #        self.make_encp_html_file(now)
+        self.reset_interval_timer(self.encp_periodic_tasks)
 
     def log_periodic_tasks(self, reason_called=TIMEOUT):
         # update the web page that lists all the current log files
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "log periodic timeout")
         self.make_log_html_file()
+        self.reset_interval_timer(self.log_periodic_tasks)
 	
     def time_for_override_mail(self, now, element):
 	if not self.override_mail_sent.has_key(element):
@@ -1279,6 +1287,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 										   now - elist[1])
 		    enstore_functions2.send_mail(MY_NAME, msg, subject)
 		    self.override_mail_sent[element] = now
+        self.reset_interval_timer(self.saag_periodic_tasks)
 
     # our client said to update the enstore system status information
     def update(self, ticket):
@@ -1371,6 +1380,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.er_subscribe_event.set()
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "event relay resubscribe work")
+        self.reset_interval_timer(self.resubscribe)
     
     # subscribe to the event relay
     def subscribe(self, ticket):
