@@ -22,6 +22,7 @@ case $node in
                  d0enmvr10a: d0enmvr10b: d0enmvr11a: d0enmvr11b: d0enmvr12a: d0enmvr12b: \
                  d0enmvr13a d0enmvr13b d0enmvr14a d0enmvr14b d0enmvr15a d0enmvr15b \
                  d0enmvr16a d0enmvr16b d0enmvr17a d0enmvr17b d0enmvr18a d0enmvr18b \
+                 d0enmvr19a d0enmvr19b d0enmvr20a d0enmvr20b \
                  rip8"
           ;;
        *) gang=UNKNOWN
@@ -36,9 +37,7 @@ add*)
 
     e=`/sbin/ifconfig eth1`
     eth1=eth1
-    # if there isn't a 2nd interface, default back to eth0
-    # HACK: the 2nd interface on stkensrv4 is the private network to fntt
-    if [ `echo $e | grep -c UP` -eq 0 -o $node = 'stkensrv4' ]; then
+    if [ `echo $e | grep -c UP` -eq 0 ]; then
       eth1=eth0
     fi
 
@@ -58,7 +57,7 @@ add*)
     /sbin/route add -host d0enmvr3a eth0
 
     x=4
-    while [ $x -le 18 ]; do
+    while [ $x -le 20 ]; do
       /sbin/route add -host d0enmvr${x}a  eth0
       /sbin/route add -host d0enmvr${x}b $eth1
       x=`expr $x + 1`
@@ -103,7 +102,7 @@ del*)
     /sbin/route del d0enmvr3a
 
     x=4
-    while [ $x -le 18 ]; do
+    while [ $x -le 20 ]; do
       /sbin/route del d0enmvr${x}a
       /sbin/route del d0enmvr${x}b
       x=`expr $x + 1`
