@@ -2551,7 +2551,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.vol_info['status'][0] != e_errors.OK:
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
-            Trace.log(e_errors.ERROR, "Volume clerk reply %s" % (msg,))
+            Trace.log(e_errors.ERROR, "Volume clerk reply %s %s" % (self.vol_info['status'][0], msg,))
             self.transfer_failed(msg[0], msg[1], error_source=TAPE, dismount_allowed=0)
             #self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             #self.state = self.save_state
@@ -3094,6 +3094,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         if self.gid: fc_ticket['gid'] = self.gid
         if self.uid: fc_ticket['uid'] = self.uid
+        Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                             'fc'  : fc_ticket
