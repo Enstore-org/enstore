@@ -1216,31 +1216,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         # get clients -- these will be (readonly) global object instances
         udpc =  udp_client.UDPClient()     # for server to send (client) request
 
-        # now get my library manager's config ---- COULD HAVE MULTIPLE???
-        # get info asssociated with our volume manager
-        libm_config_dict = {}
-        if type(mvr_config['library']) == types.ListType:
-            for lib in  mvr_config['library']:
-                libm_config_dict[lib] = {'startup_polled':'not_yet'}
-                libm_config_dict[lib].update( self.csc.get_uncached(lib) )
-                pass
-            pass
-        else:
-            lib = mvr_config['library']
-            mvr_config['library'] = [lib]	# make it a list
-            libm_config_dict[lib] = {'startup_polled':'not_yet'}
-            libm_config_dict[lib].update( self.csc.get_uncached(lib) )
-            pass        
-
 	self.client_obj_inst = MoverClient( self.csc )
 	self.client_obj_inst.log_name = self.log_name # duplicate for do_fork
 	self.summoned_while_busy = []
-        Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
-	for lm in mvr_config['library']:# should be libraries
-	    address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
-	    next_req_to_lm = idle_mover_next( self.client_obj_inst )
-	    do_next_req_to_lm( self, next_req_to_lm, address )
-	    pass
+
 	# now go on with *server* setup (i.e. respond to summon,status,etc.)
 	dispatching_worker.DispatchingWorker.__init__( self,(mvr_config['hostip'],
                                                              mvr_config['port']) )
@@ -1447,6 +1426,30 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
     pass
 
+def init2( self ):
+    # now get my library manager's config ---- COULD HAVE MULTIPLE???
+    # get info asssociated with our volume manager
+    libm_config_dict = {}
+    if type(mvr_config['library']) == types.ListType:
+	for lib in  mvr_config['library']:
+	    libm_config_dict[lib] = {'startup_polled':'not_yet'}
+	    libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+	    pass
+	pass
+    else:
+	lib = mvr_config['library']
+	mvr_config['library'] = [lib]	# make it a list
+	libm_config_dict[lib] = {'startup_polled':'not_yet'}
+	libm_config_dict[lib].update( self.csc.get_uncached(lib) )
+	pass        
+    Trace.log( e_errors.INFO, 'Mover starting - contacting libman')
+    for lm in mvr_config['library']:# should be libraries
+	address = (libm_config_dict[lm]['hostip'],libm_config_dict[lm]['port'])
+	next_req_to_lm = idle_mover_next( self.client_obj_inst )
+	do_next_req_to_lm( self, next_req_to_lm, address )
+	pass
+    return None
+
 def do_next_req_to_lm( self, next_req_to_lm, address ):
     while next_req_to_lm != {} and next_req_to_lm != None:
 	rsp_ticket = udpc.send(  next_req_to_lm, address )
@@ -1644,6 +1647,8 @@ intf = MoverInterface()
 
 mvr_srvr =  MoverServer( (intf.config_host, intf.config_port), intf.name )
 del intf
+
+init2( mvr_srvr )
 
 mvr_srvr.serve_forever()
 
