@@ -226,8 +226,8 @@ static PyObject* mount(PyObject *self, PyObject *args)
   /*
         Get the arguements
   */
-  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);                /* get args */ 
-  if (!stat) return (NULL);
+  if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
+  	return (NULL);
   asc2STKdrv(drive, &stkdrv);
   if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
@@ -247,8 +247,8 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   DRIVEID stkdrv;
   int stat;
 
-  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);		/* get args */
-  if (!stat) return (NULL);
+  if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
+  	return (NULL);
   asc2STKdrv(drive, &stkdrv);							/* cvt drive 0,0,9,1 to binary */
   if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;

@@ -110,8 +110,8 @@ static PyObject* mount(PyObject *self, PyObject *args)
   enum aci_media media_type;
   int stat;
 
-  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);                /* get args */ 
-  if (!stat) return (NULL);
+  if (!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
+  	return (NULL);
   if (!(media_type = stoi_mediatype(media_type_s)))				/* cvt media type to aci code */
       return(Py_BuildValue("iis",ENOVOLUME, MC_MEDIA, err_string[ENOVOLUME]));
   if  (stat = aci_mount(vol,media_type,drive))					/* call aci routine */
@@ -135,8 +135,8 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   /*
         Get the arguements
   */
-  stat=PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type);                /* get args */ 
-  if (!stat) return (NULL);
+  if (!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
+  	return (NULL);
   if (!(media_type = stoi_mediatype(media_type_s)))
       return(Py_BuildValue("iis",ENOVOLUME, err_string[ENOVOLUME], err_string[ENOVOLUME]));
   if  (stat = aci_dismount(vol,media_type))
