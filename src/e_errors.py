@@ -68,6 +68,7 @@ NOREAD="noread"
 NOWRITE="nowrite"
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
+ENCP_STUCK = "ENCP STUCK"               # mover dected no transfers on encp side
 POSITIONING_ERROR='POSITIONING_ERROR'
 
 #V3 additions:

@@ -507,6 +507,7 @@ class Buffer:
             do_crc = 1
         else:
             do_crc = 0
+        Trace.trace(8, "stream_write do_crc %s"%(do_crc,))
         if not self._writing_block:
             if self.empty():
                 Trace.trace(10, "stream_write: buffer empty")
@@ -868,7 +869,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_to_read = 0L
         self.bytes_to_write = 0L
         self.bytes_read = 0L
+        self.bytes_read_last = 0L
         self.bytes_written = 0L
+        self.bytes_written_last = 0L
         self.volume_family = None 
         self.files = ('','')
         self.transfers_completed = 0
@@ -1171,7 +1174,29 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
-                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE))):
+                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
+                if self.state == ACTIVE:
+                    self.too_long_in_state_sent = 0 # set this to avoid sending a false alarm
+                    transfer_stuck = 0 
+                    t_thread = getattr(self, 'tape_thread', None)
+                    n_thread = getattr(self, 'net_thread', None)
+                    Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
+                    if self.bytes_read_last == self.bytes_read:
+                        Trace.trace(8, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) 
+                        # see what thread is active
+                        if n_thread.isAlive() and not t_thread.isAlive():
+                            # we better do not drop a connection while
+                            # tape thread is alive
+                            # tape thread can it self detect that
+                            # transfer out is slow and error out
+                            # this is the case when tape thread read
+                            # the data into the buffer and finished
+                            # (buffer is bigger than file size)
+                            transfer_stuck = 1
+                            del(self.too_long_in_state_sent)
+                    else:
+                        return
+                            
                 if not hasattr(self,'too_long_in_state_sent'):
                     Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                 (state_name(self.state),self.current_volume))
@@ -1191,19 +1216,27 @@ class Mover(dispatching_worker.DispatchingWorker,
                     
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
+                Trace.trace(8, "in state cnt %s"%(self.in_state_to_cnt,))
                     
                 if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
                     (self.state != ERROR) and
                     (self.state != FINISH_WRITE)):
-                    # mover is stuck. There is nothing to do as to
-                    # offline it
-                    msg = "mover is stuck in %s" % (self.return_state(),)
-                    Trace.alarm(e_errors.ERROR, msg)
-                    Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
-                    self.vcc.set_system_noaccess(self.current_volume)
-                    self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE)
-                    return
-                                             
+                    if self.state != ACTIVE:
+                        # mover is stuck. There is nothing to do as to
+                        # offline it
+                        msg = "mover is stuck in %s" % (self.return_state(),)
+                        Trace.alarm(e_errors.ERROR, msg)
+                        Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
+                        self.vcc.set_system_noaccess(self.current_volume)
+                        self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE)
+                        return
+                        
+                    else:
+                        if transfer_stuck:
+                            msg = "data transfer to client stuck. Breaking connection"
+                            self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
+                            return
+                        
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
         for lib, addr in self.libraries:
             if state != self._last_state:
@@ -1345,6 +1378,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.udpc.send_no_wait(ticket, lm_address)
 
         
+    # read data from the network
     def read_client(self):
         Trace.trace(8, "read_client starting,  bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.net_driver
@@ -1362,7 +1396,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
                 break
-                
+            self.bytes_read_last = self.bytes_read    
             if self.buffer.full():
                 Trace.trace(9, "read_client: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -1417,7 +1451,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
-
+        self.bytes_read_last = self.bytes_read
         Trace.trace(8, "read_client exiting, read %s/%s bytes" %(self.bytes_read, self.bytes_to_read))
                         
     def write_tape(self):
@@ -1428,6 +1462,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
+        buffer_empty_t = 0   #time when buffer empty has been detected
+        buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
         if self.header_labels:
             t1 = time.time()
@@ -1468,7 +1504,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
+            self.bytes_written_last = self.bytes_written
             empty = self.buffer.empty()
+            # buffer is empty no data to write to tape
+            if empty and buffer_empty_t == 0:
+                # first time
+                buffer_empty_t = time.time() 
+                
             if (empty or
                 (defer_write and (self.bytes_read < self.bytes_to_read and self.buffer.low()))):
                 if empty:
@@ -1479,9 +1521,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                              defer_write))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
+                now = time.time()
+                if int(now - buffer_empty_t) > self.max_time_in_state:
+                    buffer_empty_cnt = buffer_empty_cnt + 1
+                    if not hasattr(self,'too_long_in_state_sent'):
+                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
+                                    (state_name(self.state),self.current_volume))
+                        self.too_long_in_state_sent = 0 # send alarm just once
+                    if buffer_empty_cnt >= self.max_in_state_cnt:
+                        msg = "data transfer to client stuck. Breaking connection"
+                        self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
+                        return
+                
                 if (defer_write and (self.bytes_read==self.bytes_to_read or not self.buffer.low())):
                     defer_write = 0
                 continue
+            else:
+               buffer_empty_t = 0
+               buffer_empty_cnt = 0
 
             count = (count + 1) % 20
             if count == 0:
@@ -1678,10 +1735,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.seek(save_location, 0) #XXX is eot_ok
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
+                self.bytes_written_last = self.bytes_written
                 self.transfer_completed()
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
+    # read data from the tape
     def read_tape(self):
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
@@ -1693,6 +1752,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         failed = 0
         self.media_transfer_time = 0.
+        buffer_full_t = 0   #time when buffer full has been detected
+        buffer_full_cnt = 0 # number of times buffer was cosequtively full
         nblocks = 0
         #Initialize thresholded transfer notify messages.
         bytes_notified = 0L
@@ -1706,13 +1767,33 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
+
+            self.bytes_read_last = self.bytes_read
             if self.buffer.full():
+                # buffer is full no place to read data in
+                if buffer_full_t == 0:
+                    # first time
+                    buffer_full_t = time.time()
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
                              self.bytes_read, self.bytes_to_read))
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
+                now = time.time()
+                if int(now - buffer_full_t) > self.max_time_in_state:
+                    buffer_full_cnt = buffer_full_cnt + 1
+                    if not hasattr(self,'too_long_in_state_sent'):
+                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
+                                    (state_name(self.state),self.current_volume))
+                        self.too_long_in_state_sent = 0 # send alarm just once
+                    if buffer_full_cnt >= self.max_in_state_cnt:
+                        msg = "data transfer to client stuck. Breaking connection"
+                        self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
+                        return
                 continue
+            else:
+                buffer_full_t = 0
+                buffer_full_cnt = 0
             
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
             self.buffer.bytes_for_crc = nbytes
@@ -1810,10 +1891,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                                  'external_label':self.current_work_ticket['vc']['external_label']})
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 return
-
+        self.bytes_read_last = self.bytes_read
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
                 
+    # write data out to the network
     def write_client(self):
         Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
         if not self.buffer.client_crc_on:
@@ -1846,7 +1928,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if self.tr_failed:
                 break
+            self.bytes_written_last = self.bytes_written
             if self.buffer.empty():
+                # there is no data to transfer to the client
                 Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
                             (self.bytes_written, self.bytes_to_write))
                 self.buffer.write_ok.clear()
@@ -1916,7 +2000,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                  'external_label':self.current_work_ticket['vc']['external_label']})
                     self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                     return
-                
+            self.bytes_written_last = self.bytes_written                
             self.transfer_completed()
 
         
@@ -2384,7 +2468,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tr_failed = 0
             return
 
-        if exc not in (e_errors.ENCP_GONE, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
+        if exc not in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
             if msg.find("FTT_EBUSY") != -1:
                 # tape thread stuck in D state - offline mover
                 after_dismount_function = self.offline
@@ -2427,18 +2511,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
             self.transfers_failed = self.transfers_failed + 1
-        encp_gone = exc == e_errors.ENCP_GONE
+        encp_gone = exc == e_errors.ENCP_GONE or e_errors.ENCP_STUCK
         self.net_driver.close()
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
             broken = exc
 
-        #self.need_lm_update = (1, ERROR, 1, error_source)
-        #if broken:
-            #self.broken(broken)
-            #self.tr_failed = 0
-            #return
-        
         save_state = self.state
         # get the current thread
         cur_thread = threading.currentThread()
@@ -2523,14 +2601,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
-        ######### AM 01/30/01
-        ### do not update lm as in a child thread
-        # self.update_lm(reset_timer=1)
-        ##########################
         
         if self.state == DRAINING:
             self.dismount_volume()
-            #self.state = OFFLINE
             self.offline()
         else:
             self.state = HAVE_BOUND
@@ -2538,14 +2611,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = IDLE
         self.log_state()
         self.need_lm_update = (1, None, 1, None)
-        ######### AM 01/30/01
-        ### do not update lm in child a thread
-        #if self.state == HAVE_BOUND:
-        #    self.update_lm(reset_timer=1)
-        ###############################
-        
-        #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
-        #self.update_lm()
             
     def maybe_clean(self):
         if self.force_clean:
@@ -3603,7 +3668,9 @@ class DiskMover(Mover):
         self.bytes_to_read = 0L
         self.bytes_to_write = 0L
         self.bytes_read = 0L
+        self.bytes_read_last = 0L
         self.bytes_written = 0L
+        self.bytes_written_last = 0L
         self.volume_family = None 
         self.files = ('','')
         self.transfers_completed = 0
