@@ -517,7 +517,7 @@ class Enstore:
             r_script = remote_scripts.get(arg1, None)
             #r_script contains a list of tuples.
             for command in r_script:
-                if self.verify_node(get_farmlet(""), command):
+                if self.verify_node(get_farmlet(command[0]), command):
                     #if command[-1] contains the string "prompt" then it
                     # prompts the user for confirmation under some cases.
                     # If no prompt is necessary returns "y".
