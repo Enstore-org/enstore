@@ -164,7 +164,14 @@ def alarm(severity, root_error, rest={}):
             pass
 
 def trace(severity, msg):
-    msg = trunc(msg)
+    ## there is no need to waste time on creating message
+    ## if it will not be sent
+    if (print_levels.has_key(severity) or
+        log_levels.has_key(severity) or
+        alarm_levels.has_key(severity)):
+        msg = trunc(msg)
+    else:
+        return
     if print_levels.has_key(severity):
         try:
             print severity, time.ctime(time.time()), msg
