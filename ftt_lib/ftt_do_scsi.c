@@ -326,3 +326,403 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
 
     return res;
 }
+
+/*
+ definitions and functions to do a scsi inquire and print the formatted results
+*/
+typedef struct
+{
+  unsigned char inqd[8];
+/*
+ bit fields in the inquire buffer  occupy the first 8 bytes, inq is a ptr to inqure buf
+*/
+#define BITFLD(offset,hibit,lobit) ((*(((char*)inq)+offset)) & ((2 << (hibit+1)) - 1)) >> lobit
+#define pqt BITFLD(0,7,5)
+#define pdt BITFLD(0,4,0)
+#define rmb BITFLD(1,7,7)
+#define dtq BITFLD(1,6,0)
+#define iso BITFLD(2,7,6)
+#define ecma BITFLD(2,5,3)
+#define ansi BITFLD(2,2,0)
+#define aenc BITFLD(3,7,7)
+#define trmiop BITFLD(3,6,6)
+#define res0 BITFLD(3,5,4)
+#define respfmt BITFLD(3,4,0)
+#define ailen BITFLD(4,7,0)
+#define reladr BITFLD(7,7,7)
+#define wide32 BITFLD(7,6,6)
+#define wide16 BITFLD(7,5,5)
+#define synch BITFLD(7,4,4)
+#define link BITFLD( 7,3,3)
+#define cmdq BITFLD( 7,1,1)
+#define softre BITFLD(7,0,0)
+
+  char  vid[8];        /* vendor ID */
+  char  pid[16];       /* product ID */
+  char  prl[4];        /* product revision level*/
+  char  vendsp[20];      /* vendor specific; typically firmware */
+  char  res4[40];        /* reserved for scsi 3, etc. */
+  char  vendsp2[159];    /* more vend spec (fill to 255 bytes) */
+} inqdata;
+
+#define hex(x) "0123456789ABCDEF" [ (x) & 0xF ]
+
+/* print an array in hex format, only looks OK if nperline a multiple of 4, 
+ * but that's OK.  value of space must be 0 <= space <= 3;
+ */
+void
+hprint(unsigned char *s, int n, int nperline, int space, int ascii)
+{
+        int   i, x, startl;
+
+        for(startl=i=0;i<n;i++)  {
+                x = s[i];
+                printf("%c%c", hex(x>>4), hex(x));
+                if(space)
+                        printf("%.*s", ((i%4)==3)+space, "    ");
+                if ( i%nperline == (nperline - 1) ) {
+                        if(ascii == 1) {
+                                putchar('\t');
+                                while(startl < i) {
+                                        if(isprint(s[startl]))
+                                                putchar(s[startl]);
+                                        else
+                                                putchar('.');
+                                        startl++;
+                                }
+                        }
+                        putchar('\n');
+                        if(ascii>1 && i<(n-1))  /* hack hack */
+                                printf("%.*s", ascii-1, "        ");
+                }
+        }
+        if(space && (i%nperline))
+                putchar('\n');
+}
+
+
+/* aenc, trmiop, reladr, wbus*, synch, linkq, softre are only valid if
+ * if respfmt has the value 2 (or possibly larger values for future
+ * versions of the SCSI standard). */
+
+static char pdt_types[][16] = {
+   "Disk", "Tape", "Printer", "Processor", "WORM", "CD-ROM",
+   "Scanner", "Optical", "Jukebox", "Comm", "Unknown"
+};
+#define NPDT (sizeof pdt_types / sizeof pdt_types[0])
+
+void
+printinq(inqdata *inq)
+{ 
+   unsigned char special;
+   int neednl = 1;
+   printf("%-10s", pdt_types[(pdt < NPDT) ? pdt : NPDT-1]);
+      printf("%12.8s", inq->vid);
+      printf("%.16s", inq->pid);
+      printf("%.4s", inq->prl);
+   printf("\n");
+      printf("ANSI vers %d, ISO ver: %d, ECMA ver: %d; ",
+              ansi, iso, ecma);
+      special = *(inq->vid-1 );
+      if(respfmt >= 2 || special) {
+         if(respfmt < 2)
+                 printf("\nResponse format type %d, but has "
+                   "SCSI-2 capability bits set\n", respfmt );
+
+         printf("supports: ");
+         if(aenc)
+                 printf(" AENC");
+         if(trmiop)
+                 printf(" termiop");
+         if(reladr)
+                 printf(" reladdr");
+         if(wide32)
+                 printf(" 32bit");
+         if(wide16)
+                 printf(" 16bit");
+         if(synch)
+                 printf(" synch");
+         if(synch)
+                 printf(" linkedcmds");
+         if(cmdq)
+                 printf(" cmdqueing");
+         if(softre)
+                 printf(" softreset");
+      }
+      if(respfmt < 2) {
+         if(special)
+                 printf(".  ");
+         printf("inquiry format is %s",
+                 respfmt ? "SCSI 1" : "CCS");
+      }
+      printf("\nvendor specific data:\n");
+      hprint(inq->vendsp, 20,  16, 1, 1);
+      neednl = 0;
+      printf("reserved (for SCSI 3) data:\n");
+      hprint(inq->res4, 40, 16, 1, 1) ;
+      printf("more vendor data\n");
+      hprint(inq->vendsp2, 159, 16, 1, 1);
+      if(neednl)
+         putchar('\n');
+}
+
+ftt_inquire(ftt_descriptor d) {
+
+    static unsigned char 
+	inquiry[6] = { 0x12, 0x00, 0x00, 0x00, 255, 0x00};
+    inqdata inqbuf ;
+    int res;
+
+    ENTERING("ftt_get_inquire");
+    CKNULL("ftt_descriptor", d);
+    DEBUG2(stderr, "Entering ftt_inquire\n");
+    DEBUG3(stderr, "Using SCSI inquire \n");
+    res = ftt_open_scsi_dev(d);   
+    if(res < 0) return res;
+    res = ftt_do_scsi_command(d, "inquire", inquiry, 6, (char *)&inqbuf, sizeof(inqdata), 5, 0);
+    if(res < 0) return res;
+
+    printinq(&inqbuf); 
+
+    return res;
+}
+/*
+ This is a guess at what we need to format an ait cartridge - does not work
+*/
+ftt_format_ait(ftt_descriptor d, int size) {
+
+# define MS31_LEN 22
+# define MS32_LEN 22
+# define MS11_LEN 24
+    static unsigned char 
+	mod_sen31[6] = { 0x1a, 0x00, 0x31, 0x00, MS31_LEN, 0x00},
+	mod_sel31[6] = { 0x15, 0x10, 0x00, 0x00, MS31_LEN, 0x00},
+
+	mod_sen32[6] = { 0x1a, 0x00, 0x32, 0x00, MS32_LEN, 0x00},
+	mod_sel32[6] = { 0x15, 0x10, 0x00, 0x00, MS32_LEN, 0x00},
+
+	mod_sen11[6] = { 0x1a, 0x00, 0x11, 0x00, MS11_LEN, 0x00},
+	mod_sel11[6] = { 0x15, 0x10, 0x00, 0x00, MS11_LEN, 0x00},
+
+        logsense31[10]={0x4d, 0x00, 0x31, 0x00, 0x00,0x00,0x00, 0x00, 255, 0x00},
+	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
+
+	devbuf [MS31_LEN],
+        ap_buf[MS32_LEN],
+        medbuf[MS11_LEN],
+        bigbuf[2047];
+    int res;
+    int i;
+    int parttotal;
+
+
+    ENTERING("ftt_ait_format");
+    CKNULL("ftt_descriptor", d);
+    DEBUG2(stderr, "Entering ftt_ait_format\n");
+    res = 0;
+    if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
+        res = ftt_open_scsi_dev(d);        
+        if(res < 0) return res;
+
+        /* Get the device configuration */
+        DEBUG2(stderr, "CALLING ----- mod_sen31\n");
+        res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, devbuf, MS31_LEN, 5, 0);
+        if(res < 0) return res;
+         printf("MOD SENSE 31 result\n");
+         hprint(devbuf,MS31_LEN,16,1,0);
+
+        /* Set AIT MIC mode on device*/
+        DEBUG2(stderr, "CALLING ----- mod_sel31 with\n");
+        devbuf[0] = 0;
+        devbuf[4+8+2] = devbuf[4+8+2] | 0xc0;    /*AIT native,create opt dev area*/
+         printf("MOD SEL 31 \n");
+         hprint(devbuf,MS31_LEN,16,1,0);
+        res = ftt_do_scsi_command(d,"Mode select", mod_sel31, 6, devbuf, MS31_LEN, 5, 1);
+        if(res < 0) return res;
+
+        /* Get the device configuration */
+        DEBUG2(stderr, "CALLING ----- mod_sen31\n");
+        res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, devbuf, MS31_LEN, 5, 0);
+         printf("MOD SENSE 31 result again \n");
+         hprint(devbuf,MS31_LEN,16,1,0);
+        if(res < 0) return res;
+
+        /* Get medium partions param page */
+        DEBUG2(stderr, "CALLING ----- mod_sen11\n");
+        res = ftt_do_scsi_command(d, "Mode sense", mod_sen11, 6, medbuf, MS11_LEN, 5, 0);
+         printf("MOD SENSE 11 result \n");
+         hprint(medbuf,MS11_LEN,16,1,0);
+        if(res < 0) return res;
+	parttotal=((medbuf[20]<<8) + medbuf[21]);
+/*
+        medbuf[0] = 0;
+        medbuf[12+8]=parttotal/2;
+        medbuf[12+9]=0;
+        medbuf[12+10]=parttotal/2;
+        medbuf[12+11]=0;
+         printf("MOD SEL 11  with \n");
+         hprint(medbuf,MS11_LEN,16,1,0);
+        res = ftt_do_scsi_command(d,"Mode select", mod_sel11, 6, medbuf, MS11_LEN, 5, 1);
+        if(res < 0) return res;
+*/
+        /* Get last partition number */
+        DEBUG2(stderr, "CALLING ----- logsense31 \n");
+        res = ftt_do_scsi_command(d, "Log sense", logsense31, 10, bigbuf, 128, 5, 0);
+         printf("LOG SENSE 31 result\n");
+         hprint(bigbuf,128,16,1,0);
+        if(res < 0) return res;
+
+        /* Get some thing in the data for modsel31 - I think there is no modesense32 */
+        DEBUG2(stderr, "CALLING ----- mod_sen31\n");
+        res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, ap_buf, MS32_LEN, 5, 0);
+        if(res < 0) return res;
+         printf("BUF from modesense31\n");
+         hprint(ap_buf,MS32_LEN,16,1,0);
+
+        ap_buf[0] =0x00;
+        bzero(&ap_buf[12],10);
+        ap_buf[12]=0x32;
+        ap_buf[13]=0x08;
+        ap_buf[16]=0x10;
+        /* ap_buf[18]=0x02; */
+        ap_buf[20]=0x10;	/* part size (in MB) 0x1000 = 4096 MB */
+        ap_buf[21]=0;		/* part size - byte 0*/
+
+        /* Add an additional parttion */
+        DEBUG2(stderr, "CALLING ----- mod_sel32\n");
+         printf("BUF BEFORE modesel32\n");
+         hprint(ap_buf,22,16,1,0);
+        res = ftt_do_scsi_command(d, "Mode Select", mod_sel32, 6, ap_buf, MS32_LEN, 5000, 1);
+        if(res < 0) return res;
+        res = ftt_close_scsi_dev(d);
+    } else {
+        ftt_close_dev(d);
+        ftt_close_scsi_dev(d);
+	switch(ftt_fork(d)){
+
+	static char s1[10];
+
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+		if (ftt_debug) {
+		 execlp("ftt_suid", "ftt_suid", "-x", "-C", s1, d->basename, 0);
+		} else {
+		 execlp("ftt_suid", "ftt_suid", "-C", s1, d->basename, 0);
+		}
+		ftt_eprintf("ftt_set_compression: exec of ftt_suid failed");
+		ftt_errno=FTT_ENOEXEC;
+		ftt_report(d);
+
+	default: /* parent */
+		res = ftt_wait(d);
+	}
+    }
+    return res;
+}
+/*
+  Use mode sense 0x3f to get all modesense pages and print them
+*/
+ftt_modesense(ftt_descriptor d) {
+
+    static unsigned char 
+	mod_sen3f[6] = { 0x1a, 0x00, 0x3f, 0x00, 255, 0x00},
+	msbuf [255], *mptr;
+    int res;
+    int dlen;
+
+    ENTERING("ftt_modesense");
+    CKNULL("ftt_descriptor", d);
+    DEBUG2(stderr, "Entering ftt_modesense\n");
+    DEBUG3(stderr, "Using SCSI Mode sense 0x3f page to get all mode sense\n");
+    res = ftt_open_scsi_dev(d);        
+    if(res < 0) return res;
+    res = ftt_do_scsi_command(d, "Mode sense", mod_sen3f, 6, msbuf, 255, 5, 0);
+    if(res < 0) return res;
+
+    dlen = msbuf[0];
+    if(dlen < 4)
+                return 1;
+    mptr = msbuf;
+
+    printf("Header:\n length %#x, med type %#x, dev spcfc %#x, blk desc len %#x\n", 
+           msbuf[0], msbuf[1], msbuf[2], msbuf[3]);
+    mptr += 4;
+    dlen -= 4;
+    if(msbuf[3])
+       printf("Block Descriptors:\n ");
+    while(msbuf[3] && dlen >= 8) {
+       hprint(mptr, 8, 8, 1, 0);
+       msbuf[3] -= 8;
+       dlen -= 8;
+       mptr += 8;
+    }
+    while(dlen >= 3) {
+       int len;
+       printf("Page %#x, length %#x:\n ", 0x3f & *mptr, mptr[1]);
+       len = dlen > (mptr[1]+2) ? mptr[1] : dlen - 2;
+       hprint(&mptr[2], mptr[1], 20, 1, 0);
+       mptr += len + 2;
+       dlen -= len + 2;
+    }
+
+    return res;
+}
+/*
+ use log sense 0x0 to get a list of log sense pages, then get each page in turn
+ and print it
+*/
+ftt_logsense(ftt_descriptor d) {
+
+    static unsigned char 
+	logsense0h[10]={0x4d, 0x00, 0x40, 0x00, 0x00,0x00,0x00, 0x10, 0x00, 0x00},
+        lslist[255],
+	lsbuf [0x1000], *lptr;
+    int res;
+    int dlen;
+    int pagelen, param_code, param_length, param_flags;
+    unsigned long param_val;
+    unsigned char *pageptr, *param_ptr;
+
+    ENTERING("ftt_get_logsense");
+    CKNULL("ftt_descriptor", d);
+    DEBUG2(stderr, "Entering ftt_get_logsense\n");
+    DEBUG3(stderr, "Using SCSI log sense 0x0 page to get get list of pages\n");
+    res = ftt_open_scsi_dev(d);        
+    if(res < 0) return res;
+    res = ftt_do_scsi_command(d, "log sense", logsense0h, 10, lslist, 255, 5, 0);
+    if(res < 0) return res;
+    dlen = (lslist[2] << 8) + lslist[3];
+    for(lptr=&lslist[4]; dlen-- > 0; lptr++) {
+       if (*lptr == 0) 
+          continue;
+       memset(lsbuf, 0, 8);
+       logsense0h[2]= 0x40 | *lptr;		/* cum values for page */
+       printf ("Retrieving LOG SENSE PAGE %x \n",*lptr);
+       res = ftt_do_scsi_command(d, "log sense", 
+                    logsense0h, 10, lsbuf, 0x1000, 5, 0);
+       if(res < 0) return res;
+       printf ("CODE FLAG LENGTH   VAL BASE 10     VAL HEX - got page %x\n", lsbuf[0]);
+       pagelen = (lsbuf[2]<<8) + lsbuf[3];
+       pageptr = lsbuf + 4;
+       while (pageptr < (lsbuf + pagelen)) {
+          param_code   = (*pageptr << 8) + *(pageptr+1);
+          param_length = *(pageptr+3);
+          param_flags  = *(pageptr+2);
+          for (param_ptr = pageptr+4, param_val=0; 
+                   param_ptr < pageptr+4+param_length; param_ptr++)
+              param_val = (param_val*256) + *param_ptr;
+          printf("%4x %4x %4x %16d ", param_code, param_flags, param_length, param_val);
+          for (param_ptr = pageptr+4; param_ptr < pageptr+4+param_length; param_ptr++)
+              printf("%3x", *param_ptr);
+          printf("\n");
+          pageptr = pageptr + param_length + 4;
+       }
+    }
+    return res;
+}
+

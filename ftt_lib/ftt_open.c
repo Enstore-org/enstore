@@ -22,6 +22,10 @@ int ftt_translate_error_WIN();
 #include <unistd.h>
 #endif
 
+#ifndef FNONBLOCK
+# define FNONBLOCK      O_NONBLOCK
+#endif
+
 ftt_descriptor
 ftt_open(const char *name, int rdonly) {
     static char alignname[512];

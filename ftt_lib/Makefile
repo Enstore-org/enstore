@@ -129,7 +129,7 @@ $(OBJ): $(HDR)
 
 $(LIB): $(OBJ)
 	rm -f $(LIB)
-	ar qv $(LIB) $(OBJ)
+	if [ `uname` = Linux ];then opts=qvs;else opts=qv;fi; ar $$opts $(LIB) $(OBJ)
 
 ftt_scsi.o: $(SCSISRC) 
 	$(CC) $(CFLAGS) -c local/ftt_scsi.c
