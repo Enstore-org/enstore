@@ -500,7 +500,8 @@ class Buffer:
                     #            (self.sanity_cookie, self.sanity_crc,self.sanity_bytes))
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
-                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" % (self.sanity_cookie[1],self.sanity_crc)) 
+                        Trace.log(e_errors.ERROR,
+                                  "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" % (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
                         raise "CRC_ERROR"
         else:
             bytes_written = bytes_to_write #discarding header stuff
