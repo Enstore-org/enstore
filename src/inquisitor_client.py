@@ -9,7 +9,6 @@ import generic_client
 import udp_client
 import enstore_constants
 import enstore_functions
-#import interface
 import option
 import Trace
 
@@ -160,55 +159,6 @@ class Inquisitor(generic_client.GenericClient):
 	    else:
 		print ""
 
-"""
-class InquisitorClientInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-        # fill in the defaults for the possible options
-        self.do_parse = flag
-        self.restricted_opts = opts
-	self.update = ""
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-	self.refresh = 0
-	self.get_refresh = 0
-	self.max_encp_lines = 0
-	self.get_max_encp_lines = 0
-	self.logfile_dir = ""
-	self.start_time = ""
-	self.stop_time = ""
-        self.media_changer = []
-        self.keep = 0
-        self.keep_dir = ""
-        self.output_dir = ""
-        self.update_interval = -1
-        self.get_update_interval = 0
-	self.subscribe = None
-	self.show = 0
-	self.up = ""
-	self.down = ""
-	self.time = ""
-	self.outage = ""
-	self.nooutage = ""
-	self.override = ""
-	self.nooverride = ""
-	self.saagstatus = ""
-	self.update_and_exit = 0
-        generic_client.GenericClientInterface.__init__(self)
-        
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options() +[
-                "update-interval=", "get-update-interval",
-                "update", "dump", "update-and-exit",
-                "refresh=", "get-refresh", "max-encp-lines=",
-                "get-max-encp-lines", "subscribe", "up=", "down=",
-		"outage=", "nooutage=", "override=", "nooverride=",
-		"saagstatus=", "show", "time="]
-"""
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
 
