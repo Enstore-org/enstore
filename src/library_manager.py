@@ -1058,10 +1058,10 @@ class LibraryManagerMethods:
         rq =self.pending_work.get_admin_request()
         while rq:
             # skip over tape read requests they are processed only in the idle state
-            method = rq.ticket.get("method", None)
-            if method and method == "read_tape_start":
-                rq = self.pending_work.get_admin_request(next=1) # get next request
-                continue
+            #method = rq.ticket.get("method", None)
+            #if method and method == "read_tape_start":
+            #    rq = self.pending_work.get_admin_request(next=1) # get next request
+            #    continue
 
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
@@ -1146,10 +1146,10 @@ class LibraryManagerMethods:
         loop = 1
         while rq:
             # skip over tape read requests they are processed only in the idle state
-            method = rq.ticket.get("method", None)
-            if method and method == "read_tape_start":
-                rq = self.pending_work.get_admin_request(next=1) # get next request
-                continue
+            #method = rq.ticket.get("method", None)
+            #if method and method == "read_tape_start":
+            #    rq = self.pending_work.get_admin_request(next=1) # get next request
+            #    continue
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
