@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 import time
 #import string
 import os
@@ -10,7 +18,7 @@ import socket
 
 import configuration_server
 import configuration_client
-import enstore_constants
+#import enstore_constants
 import enstore_functions2
 import Trace
 import e_errors
@@ -71,34 +79,6 @@ def get_config_server_info():
 def get_www_host():
     default = get_config_server_info()['host']
     return get_from_config_file("inquisitor", "www_host", default)
-
-# check if the status in the dictionary signals a time out
-def is_timedout(dict):
-    status = dict.get('status', None)
-    if status is None or type(status) != type(()):
-        return None
-    if status[0] == e_errors.TIMEDOUT:
-        return 1
-    else:
-        return None
-
-# check if the status in the dictionary signals everything is ok
-def is_ok(dict):
-    if type(dict) == type({}):
-        #If the entire dictionary is passed in, use just the status part.
-        status = dict.get('status', None)
-    elif type(dict) == type(()) and len(dict) == 2:
-        #The status tuple was passed in directly, adjust accordingly.
-        status = dict
-    else:
-        status = None
-        
-    if status is None or type(status) != type(()):
-        return None
-    if status[0] == e_errors.OK:
-        return 1
-    else:
-        return None
 
 def inqTrace(severity, msg):
     # add the pid to the front of the msg
