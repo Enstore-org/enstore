@@ -1125,8 +1125,15 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         request_dictionary['unique_id'] = generate_unique_id()
         #Keep retrying this file.
         try:
+            #Increase the retry count.
             request_dictionary['retry'] = retry + 1
-
+            
+            #Before resubmitting, there are some fields that the library
+            # manager and mover don't expect to receive from encp,
+            # these should be removed.
+            for item in ("mover", ):
+                del req[item]
+                
             #Since a retriable error occured, resubmit the ticket.
             submit_one_request(request_dictionary, verbose)
         except KeyError:
@@ -1152,7 +1159,15 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
         for req in request_list:
             try:
+                #Increase the resubmit count.
                 req['resubmits'] = req.get('resubmits', 0) + 1
+
+                #Before resubmitting, there are some fields that the library
+                # manager and mover don't expect to receive from encp,
+                # these should be removed.
+                for item in ("mover", ):
+                    del req[item]
+
                 #Since a retriable error occured, resubmit the ticket.
                 submit_one_request(req, verbose)
             except KeyError:
@@ -2314,23 +2329,13 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             sys.stderr.write("Error closeing file descriptor.")
             pass
 
-        #For simplicity combine everything together.
-        EXfer_ticket = combine_dict(EXfer_ticket, requests[j])
-
-        #Verify that everything is ok on the mover side of the transfer.
-        result_dict = handle_retries(requests, requests[j],
-                                     EXfer_ticket, None, e)
-        
-        if result_dict['status'][0] == e_errors.RETRY:
-            continue
-        elif result_dict['status'][0] in e_errors.non_retriable_errors:
-            #return EXfer_ticket
-            files_left = result_dict['queue_size']
-            failed_requests.append(request)
-            continue
+        print "EXFER_TICKET:"
+        pprint.pprint(EXfer_ticket)
+        print "DONE_TICKET:"
+        pprint.pprint(done_ticket)
 
         #For simplicity combine everything together.
-        done_ticket = combine_dict(done_ticket, result_dict, requests[j])
+        done_ticket = combine_dict(done_ticket, requests[j])
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries(requests, requests[j],
@@ -2346,6 +2351,21 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             failed_requests.append(request)
             continue
 
+        #For simplicity combine everything together.
+        EXfer_ticket = combine_dict(EXfer_ticket, result_dict, requests[j])
+
+        #Verify that everything is ok on the encp side of the transfer.
+        result_dict = handle_retries(requests, requests[j],
+                                     EXfer_ticket, None, e)
+        
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            #return EXfer_ticket
+            files_left = result_dict['queue_size']
+            failed_requests.append(request)
+            continue
+        
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
             print "File", requests[j]['infile'], "transfered.  elapsed=", t2
