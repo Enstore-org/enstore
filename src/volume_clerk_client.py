@@ -92,11 +92,16 @@ class VolumeClerkClient :
         return self.send(ticket)
 
     # this many bytes left
-    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie) :
+    def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
+                            wr_err,rd_err,wr_mnt,rd_mnt) :
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
-                  'eod_cookie'      : eod_cookie
+                  'eod_cookie'      : eod_cookie,
+                  'wr_err'          : wr_err,
+                  'rd_err'          : rd_err,
+                  'wr_mnt'          : wr_mnt,
+                  'rd_mnt'          : rd_mnt
                   }
         return self.send(ticket)
 

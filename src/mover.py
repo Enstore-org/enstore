@@ -181,6 +181,10 @@ class Mover :
                 file_cookie = self.driver.close_file_write()
                 eod_cookie = self.driver.get_eod_cookie()
                 remaining_bytes = self.driver.get_eod_remaining_bytes()
+                wr_err = 0
+                rd_err = 0
+                wr_mnt = 0
+                rd_mnt = 0
 
                 ss = VolumeClerkClient(self.csc)
 
@@ -191,7 +195,7 @@ class Mover :
                         self.vticket = ss.set_remaining_bytes(
                                 ticket["external_label"],
                                 remaining_bytes,
-                                eod_cookie)
+                                eod_cookie,wr_err,rd_err,wr_mnt,rd_mnt)
                         self.have_bound_volume_next()
                         self.send_user_last({"status" : "user_protocol_error"})
                         return
@@ -223,7 +227,8 @@ class Mover :
                 self.vticket = ss.set_remaining_bytes(
                                 ticket["external_label"],
                                 remaining_bytes,
-                                eod_cookie)
+                                eod_cookie,wr_err,rd_err,wr_mnt,rd_mnt)
+
 
                 # tell file clerk server
 

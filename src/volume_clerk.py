@@ -15,71 +15,80 @@ class VolumeClerkMethods(DispatchingWorker) :
     # add : some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
-        # mandatory keys
-        for key in  ['external_label', 'media_type', 'file_family',\
-                     'library', 'eod_cookie', 'remaining_bytes', \
-                     'capacity_bytes' ] :
-            try:
-                x = ticket[key]
-            except KeyError:
-                ticket["status"] = key+" is missing"
-                self.reply_to_caller(ticket)
-                return ticket
+        # create empty record and control what goes into database
+        # do not pass ticket, for example to the database!
+        record={}
+
+        try:
+            external_label = ticket["external_label"]
+        except KeyError:
+            ticket["status"] = key+" is missing"
+            self.reply_to_caller(ticket)
+            return ticket
 
         # can't have 2 with same label
-        external_label = ticket["external_label"]
         if dict.has_key(external_label) :
             ticket["status"] = "volume already exists"
             self.reply_to_caller(ticket)
             return ticket
 
+        # mandatory keys
+        for key in  ['external_label','media_type', 'file_family', 'library',\
+                     'eod_cookie', 'remaining_bytes', 'capacity_bytes' ] :
+            try:
+                record[key] = ticket[key]
+            except KeyError:
+                ticket["status"] = key+" is missing"
+                self.reply_to_caller(ticket)
+                return ticket
+
         # optional keys - use default values if not there
         try:
-            x = ticket['last_access']
+            record['last_access'] = ticket['last_access']
         except KeyError:
-            ticket["last_access"] = -1
+            record["last_access"] = -1
         try:
-            x = ticket['first_access']
+            record['first_access'] = ticket['first_access']
         except KeyError:
-            ticket["first_access"] = -1
+            record["first_access"] = -1
         try:
-            x = ticket['declared']
-            if x == -1 :
-                x = ticket['force_key_error_to_get_default']
+            record['declared'] = ticket['declared']
+            if record['declared'] == -1 :
+                x = ticket['force_key_error_to_get_except']
         except KeyError:
-            ticket["declared"] = time.time()
+            record["declared"] = time.time()
         try:
-            x = ticket['error_inhibit']
+            record['error_inhibit'] = ticket['error_inhibit']
         except KeyError:
-            ticket["error_inhibit"] = "none"
+            record["error_inhibit"] = "none"
         try:
-            x = ticket['user_inhibit']
+            record['user_inhibit'] = ticket['user_inhibit']
         except KeyError:
-            ticket["user_inhibit"] = "none"
+            record["user_inhibit"] = "none"
         try:
-            x = ticket['sum_wr_err']
+            record['sum_wr_err'] = ticket['sum_wr_err']
         except KeyError:
-            ticket["sum_wr_err"] = 0
+            record["sum_wr_err"] = 0
         try:
-            x = ticket['sum_rd_err']
+            record['sum_rd_err'] = ticket['sum_rd_err']
         except KeyError:
-            ticket["sum_rd_err"] = 0
+            record["sum_rd_err"] = 0
         try:
-            x = ticket['sum_wr_mnt']
+            record['sum_wr_mnt'] = ticket['sum_wr_mnt']
         except KeyError:
-            ticket["sum_wr_mnt"] = 0
+            record["sum_wr_mnt"] = 0
         try:
-            x = ticket['sum_rd_mnt']
+            record['sum_rd_mnt'] = ticket['sum_rd_mnt']
         except KeyError:
-            ticket["sum_rd_mnt"] = 0
+            record["sum_rd_mnt"] = 0
         try:
-            x = ticket['wrapper']
+            record['wrapper'] = ticket['wrapper']
         except KeyError:
-            ticket["wrapper"] = "cpio"
+            record["wrapper"] = "cpio"
         try:
-            x = ticket['blocksize']
-            if x == 0:
-                x = ticket['force_key_error_to_get_default']
+            record['blocksize'] = ticket['blocksize']
+            if record['blocksize'] == -1:
+                x = ticket['force_key_error_to_get_except']
         except KeyError:
             sizes = self.csc.get("blocksizes")
             try:
@@ -88,18 +97,18 @@ class VolumeClerkMethods(DispatchingWorker) :
                 ticket['status'] = "unknown media type = unknown blocksize"
                 self.reply_to_caller(ticket)
                 return ticket
-            ticket['blocksize'] = msize
+            record['blocksize'] = msize
 
         # write the ticket out to the database
-        dict[external_label] = ticket
+        dict[external_label] = record
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
 
 
     def delvol(self, ticket):
-        ticket["status"] = "ok"
         try:
             del dict[ticket["external_label"]]
+            ticket["status"] = "ok"
         except KeyError:
             ticket["status"] = "no such volume"
         self.reply_to_caller(ticket)
@@ -162,6 +171,8 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.reply_to_caller(ticket)
         return ticket
 
+
+    # update the database entry for this volume
     def set_remaining_bytes(self, ticket) :
         try:
             # get the current entry for the volume
@@ -173,12 +184,12 @@ class VolumeClerkMethods(DispatchingWorker) :
             record["eod_cookie"] = ticket["eod_cookie"]
             record["error_inhibit"] = "none"
             record["last_access"] = time.time()
-            if record["first_access"] == 1 :
-                record["first_access"] = record["first_access"]
-            record['sum_wr_err'] = record['sum_wr_err'] + ticket['sum_wr_err']
-            record['sum_rd_err'] = record['sum_rd_err'] + ticket['sum_rd_err']
-            record['sum_wr_mnt'] = record['sum_wr_mnt'] + ticket['sum_wr_mnt']
-            record['sum_rd_mnt'] = record['sum_rd_mnt'] + ticket['sum_rd_mnt']
+            if record["first_access"] == -1 :
+                record["first_access"] = record["last_access"]
+            record['sum_wr_err'] = record['sum_wr_err'] + ticket['wr_err']
+            record['sum_rd_err'] = record['sum_rd_err'] + ticket['rd_err']
+            record['sum_wr_mnt'] = record['sum_wr_mnt'] + ticket['wr_mnt']
+            record['sum_rd_mnt'] = record['sum_rd_mnt'] + ticket['rd_mnt']
 
             # record our changes
             dict[key] = record
@@ -259,5 +270,3 @@ if __name__ == "__main__" :
     vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
     vs.set_csc(csc)
     vs.serve_forever()
-
-
