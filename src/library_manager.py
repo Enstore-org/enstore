@@ -835,7 +835,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
 	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(self.name, self.alive_interval)
+	self.erc.start_heartbeat(self.name, self.alive_interval, 
+				 self.return_state)
 
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
@@ -1399,6 +1400,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             ticket["status"] = (e_errors.KEYERROR,None)
         self.reply_to_caller(ticket)
+
+    # this is used to include the state information in with the heartbeat
+    def return_state(self):
+	return self.lm_lock
 
     # get state of the library manager
     def get_lm_state(self, ticket):
