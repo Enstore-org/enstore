@@ -719,7 +719,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager active_volumes and output it
     def active_volumes(self, lib_man, time):
 	try:
-	    ticket = safe_dict.SafeDict(lib_man.client.get_active_volumes())
+	    ticket = safe_dict.SafeDict(lib_man.client.get_active_volumes(self.alive_rcv_timeout,
+									  self.alive_retries))
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
@@ -747,7 +748,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager state and output it
     def lm_state(self, lib_man, time):
 	try:
-	    state = safe_dict.SafeDict(lib_man.client.get_lm_state())
+	    state = safe_dict.SafeDict(lib_man.client.get_lm_state(self.alive_rcv_timeout,
+								   self.alive_retries))
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)

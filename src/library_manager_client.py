@@ -213,11 +213,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return worklist
 
     # get active volume known to LM
-    def get_active_volumes(self):
-        return self.send({"work":"get_active_volumes"})
+    def get_active_volumes(self, timeout=0, tries=0):
+        return self.send({"work":"get_active_volumes"}, timeout, tries)
             
-    def storage_groups(self):
-        return self.send({"work":"storage_groups"})
+    def storage_groups(self, timeout=0, tries=0):
+        return self.send({"work":"storage_groups"}, timeout, tries)
         
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
