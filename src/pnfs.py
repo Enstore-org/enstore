@@ -1732,7 +1732,7 @@ class Tag:
                 tag = string.split(line[7:], ")")[0]
                 tag_info = self.readtag(tag)
                 print line[:-1], "=",  tag_info[0]
-            except IOError, detail:
+            except (OSError, IOError, IndexError), detail:
                 print line[:-1], ":", detail
 
         #Print the bottom portion of the output.
@@ -1750,7 +1750,7 @@ class Tag:
                 tag = self.readtag(intf.named_tag)
             print tag[0]
             return 0
-        except (OSError, IOError), detail:
+        except (OSError, IOError, IndexError), detail:
             print str(detail)
             return 1
 
