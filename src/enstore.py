@@ -73,6 +73,7 @@ def get_argv3():
 
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
+    print '/usr/local/bin/rgang %s \"%s\"'%(farmlet, command)
     return os.system('/usr/local/bin/rgang %s \"%s\"'%(farmlet, command))
 
 # keep a list of the commands (specific and generic) accessible when in user
