@@ -157,6 +157,9 @@ if __name__ == '__main__':
 	outf.write(set_label)
 	outf.write(set_xtics)
 	outf.write("set tics out\n")
+	if os.uname()[1] == 'cdfensrv2.fnal.gov':
+		outf.write("set arrow from 11,2000 to 11,500\n")
+		outf.write("set label \"Bakken's Tape\" at 11,2250 center\n")
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
 	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
