@@ -76,6 +76,16 @@ class EncpLine:
 	self.line = line
 	[self.time, self.node, self.pid, self.user, self.status, self.server, 
 	 self.text] = string.split(line, None, 6)
+	self.bytes = "?"
+	self.direction = "?"
+	self.volume = "?"
+	self.user_rate = "?"
+	self.work = "?"
+	self.infile = "?"
+	self.outfile = "?"
+	self.msg_type = "?"
+	self.xfer_rate = "?"
+	self.mc = "?"
 	# parse all success messages and pull out the interesting information
 	if self.status == e_errors.sevdict[e_errors.INFO]:
 	    try:
