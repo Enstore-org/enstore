@@ -7,9 +7,13 @@ The Design of Enstore
 <font size=7><b><i>
 Enstore Data Storage System
 </i></b></font>
-<h2>
+<p>
+<img src="undercon.gif"> the author is still working very hard on this
+page.
+<p>
+<h1>
 1 Introduction
-</h2>
+</h1>
 The Enstore system provides a generic interface for end users to efficiently
 use mass storage systems as easily as if they were native file systems.
 Enstore is architected as a <em>simple</em>, <em>efficient</em>,
@@ -76,7 +80,8 @@ under extreme load conditions.
 By design, there is no preset limit on the number of concurrent user
 computers nor on the number of physical tape libraries or tape drives.
 The system is only limited by the availability of physical resources.
-We control all of the source code for the system.
+We control all of the source code for the system except for that of
+<em>pnfs</em>.
 <p>
 <font color=#ff0000><blink>Will be replaced by real picture</blink></font>
 <pre>
@@ -283,97 +288,8 @@ The volume clerk has a single table database.
 There is one record for each volume known to the system.
 The record is looked up by a key.
 The key is the volume's external label.
-The information tracked for each volume is described in the table below:
-
-<table>
-<td><b>Field</b>
-<td><b>Type</b>
-<td><b>Description</b>
-<tr>
-<td valign=top>file_family
-<td valign=top>String
-<td valign=top>File family used when writing volume
-<tr>
-<td valign=top>eod_cookie
-<td valign=top>String
-<td valign=top>Tells the driver how to space to the end of the volume.
-    It's meaning is driver specific, but this field is initialized
-    to "none" in newly introduced volumes.
-<tr>
-<td valign=top>capacity_bytes
-<td valign=top>64-bit int
-<td valign=top>Conservative estimate of the number of bytes that would fit on the
-    media
-<tr>
-<td valign=top>library
-<td valign=top>String
-<td valign=top>Tells the system which (virtual) library currently holds the volume
-<tr>
-<td valign=top>remaining_bytes
-<td valign=top>64-bit int
-<td valign=top>Conservative estimate of the number of bytes that will fit on
-    the volume, neglecting compression.
-    Only files of a size less than remaining_bytes shall be selected
-    for writing on this volume.
-<tr>
-<td valign=top>error_inhibit
-<td valign=top>enum 1<br>(below)
-<td valign=top>Enstore-generated limitations on the kind of access permitted to
-    this volume.  "writing" designates that this volume is either being
-    written to, or some catastrophe, like a system crash occurred,
-    and the eod_cookie is not to be trusted.
-<tr>
-<td valign=top>external_label
-<td valign=top>String
-<td valign=top>A repeat of the key
-<tr>
-<td valign=top>user_inhibit
-<td valign=top>enum 2<br>(below)
-<td valign=top>User specified access level for this volume.
-    Used if more restrictive than the enstore-generated "error_inhibit"
-    field above.
-<tr>
-<td valign=top>media_type
-<td valign=top>String
-<td valign=top>Just a string.
-</table>
-<p>
-Where<br>
-<em>Enum 1</em>: one of "none", "write", "all" or "writing"<br>
-<em>Enum 2</em>: one of "none", "write" or "all"
-<p>
-The volume clerk does short, atomic operations. Operations are:
-<table>
-<td><b>Operation</b>
-<td><b>Description</b>
-<tr>
-<td>addvol
-<td>Add a new volume
-<tr>
-<td>delvol
-<td>delete a volume
-<tr>
-<td>edit_vol
-<td>(Change a volume) Missing
-<tr>
-<td>inquire_vol
-<td>give volume record
-<tr>
-<td>set_writing
-<td>mark volume record as "writing"
-<tr>
-<td>set_remaining_bytes
-<td>set eod_cookie and remaining_bytes
-<tr>
-<td>next_write_volume
-<td>find another volume for this file family
-<tr>
-<td>set_system_readonly
-<td>(set error_inhibit to "read")missing
-<tr>
-<td>set_hung
-<td>(set error_inhibit to "none")missing
-</table>
+The details of volume clerk are discussed in the following
+<em>"Databases in Enstore"</em> section.
 
 <h3>
 3.3.2 File Clerk
@@ -382,44 +298,8 @@ The file clerk tracks files in the system. There is one record for each file
 in the system.
 The records are keyed.
 The key is the string version of the bitfile i.d.
-The fields tracked are as follows:
-<table>
-<td valign=top><b>Field</b>
-<td valign=top><b>Type</b>
-<td valign=top><b>Description</b>
-<tr>
-<td valign=top>complete_crc
-<td valign=top>Integer
-<td valign=top>crc of all the bits sent by the user.
-<tr>
-<td valign=top>bof_space_cookie
-<td valign=top>String
-<td valign=top>Driver specific string telling how to space to the file on tape
-<tr>
-<td valign=top>external_label
-<td valign=top>String
-<td valign=top>Key of volume in the volume clerk's database
-<tr>
-<td valign=top>sanity_crc
-<td valign=top>Integer
-<td valign=top>crc of the first 10,000 bytes of the file as layed down on the
-    media. (fewer bytes if the file is short, of course)
-</table>
-<p>
-The file clerk does short, atomic operations. Operations are:
-<table>
-<td><b>Operation</b>
-<td><b>Description</b>
-<tr>
-<td valign=top>read_from_hsm
-<td valign=top> originated by <em>encp</em>. Given a bit file i.d.
-    (and ancillary information), look up the file record,
-    call the volume clerk to determine which library is holding the
-    volume. Forward the request to the appropriate library manager.
-<tr>
-<td valign=top>new_bit_file
-<td valign=top>Make a new bit file record.
-</table>
+The details of file clerk are discussed in the following
+<em>"Databases in Enstore"</em> section.
 
 <h3>
 3.3.3 Library Manager
@@ -663,11 +543,381 @@ The configuration is dynamic in the sense that each mover reads a new
 configuration when it dismounts a tape.
 </ul>
 <h2>
-5 Communication Protocols
+5 Databases in Enstore
+</h2>
+
+Enstore requires databases that it will use to provide the following
+functionality
+<ul>
+<li>
+Support "python dictionary" interface.
+<li>
+Support journaling of the database to record all changes.
+<li>
+Support database check-pointing in order to enable full database recovery.
+<li>
+Support performing daily backups of the database, log, and journal files.
+<li>
+Support recovery of corrupted databases using the journal or log files.
+</ul>
+
+<h3>
+5.1 Database Layout
+</h3>
+
+Currently, the database consists of two tables: "Volume" and "File".
+These tables are accessed/modified via the volume and file clerks.
+Any column which does not have a named default,
+must be specified at volume creation time.
+The default values are shown in parentheses ().
+<p>
+<table>
+<td valign=top><b>Volume Table</b>
+<tr>
+<td valign=top><b>Column Name</b>
+<td valign=top><b>Type</b>
+<td valign=top><b>Comments</b>
+<tr>
+<td valign=top>external_label
+<td valign=top>string (primary_key)
+<td valign=top>Volume name specified by user on volume creation; is used to 
+display volume meta-data.
+<tr>
+<td valign=top>file_family
+<td valign=top>string ("none")
+<td valign=top>File family name, specified by user on volume creation; only
+files that belong to this family will be stored on this volume.
+<tr>
+<td valign=top>media_type
+<td valign=top>string
+<td valign=top>Specified at volume creation; defines the block-size; used for
+writing.
+<tr>
+<td valign=top>library
+<td valign=top>string 
+<td valign=top>Specified by user on volume creation; defines which (virtual)
+library currently holds the volume
+<tr>
+<td valign=top>first_access
+<td valign=top>int (-1)
+<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
+command to copy to the media.
+<tr>
+<td valign=top>last_access 
+<td valign=top>int (-1)
+<td valign=top>Set by volume clerk when user issues the first <em>encp</em>
+command to copy to the media.
+<tr>
+<td valign=top>declared
+<td valign=top>int
+<td valign=top>Set by volume clerk at time of volume creation.
+<tr>
+<td valign=top>capacity_bytes
+<td valign=top>64-bit int
+<td valign=top>Specified by user on volume creation; estimate of the number of
+bytes that would fit on the media.
+<tr>
+<td valign=top>blocksize
+<td valign=top>int
+<td valign=top>Set by the volume clerk; defined by the media type.
+<tr>
+<td valign=top>remaining_bytes
+<td valign=top>64-bit int
+<td valign=top>Specified by the user on volume creation; estimate of the number
+of bytes that would fit on the media; updated by the volume clerk every time
+data are written to the media.
+<tr>
+<td valign=top>eod_cookie
+<td valign=top>string ("none")
+<td valign=top>Tells the driver how to space to the end of the volume; it is
+driver specific; updated by the volume clerk when data are written on the
+media.
+<tr>
+<td valign=top>wrapper
+<td valign=top>string ("cpio")
+<td valign=top>Wrapper method; currently specifies the format of the files on
+the media.
+<tr>
+<td valign=top>sum_rd_err
+<td valign=top>int (0)
+<td valign=top>Read error count; volume clerk updates this field when the mover
+receives an error while reading from the media.
+<tr>
+<td valign=top>sum_rd_access
+<td valign=top>int (0)
+<td valign=top>Access error count; volume clerk updates this field when the
+mover receives an error while accessing the media for read.
+<tr>
+<td valign=top>sum_wr_err
+<td valign=top>int (0)
+<td valign=top>Write error count; volume clerk updates this field when the
+mover receives an error while writing to the media.
+<tr>
+<td valign=top>sum_wr_access
+<td valign=top>int (0)
+<td valign=top>Access error count; volume clerk updates this field when the
+mover receives an error while accessing the media for write.
+<tr>
+<td valign=top>user_inhibit
+<td valign=top>string ("none" or "readonly", "all")
+<td valign=top>Specified by user at volume creation; access level for this
+volume, updated by volume clerk.
+<tr>
+<td valign=top>system_inhibit
+<td valign=top>string ("none" or "writing", "readonly", "full") 
+<td valign=top>Enstore generated limitation on the kind of access permitted to
+this volume; update by volume clerk when data are written on the media, an
+error occurred while data were being written or the file size exceeded the
+remaining number of bytes on the media.
+<tr>
+<td valign=top><b>File Table</b>
+<tr>
+<td valign=top><b>Column Name</b>
+<td valign=top><b>Type</b>
+<td valign=top><b>Comments</b>
+<tr>
+<td valign=top>bfid
+<td valign=top>primary key
+<td valign=top>bit file id; uniquely identifies every file in the system.
+<tr>
+<td valign=top>external_label
+<td valign=top>string 
+<td valign=top>Volume name on which the file has been written; same as the
+external_label in the volume table.
+<tr>
+<td valign=top>bof_space_cookie
+<td valign=top>string
+<td valign=top>Driver specific string telling how to space to the file on the
+media.
+<tr>
+<td valign=top>complete_crc
+<td valign=top>int
+<td valign=top>crc of all the bits sent by the user.
+<tr>
+<td valign=top>sanity_cookie
+<td valign=top>string ("(0,0)")
+<td valign=top>Number of bytes used for a sanity crc and the sanity crc itself.
+</table>
+
+<h3>
+5.2 Volume clerk operations
+</h3>
+The volume clerk supports the following requests:
+<ul>
+<li>show the name of all the volumes
+<li>show volume information
+<li>add a volume
+<li>delete a volume
+<li>find the appropriate volume on which to write the file
+<li>change the number of remaining bytes on the volume
+<li>set the number of read/write errors
+<li>set the current status of the volume
+<li>set the volume as readonly
+<li>start/stop backup of volume journals
+</ul>
+
+<h3>
+5.3 File clerk operations
+</h3>
+The file clerk supports the following requests:
+<ul>
+<li>show bfid of all the files
+<li>show file information
+<li>start/stop backup of file journals
+</ul>
+
+<h3>
+5.4 Summary of MSS RUN II Requirements Impact on the Database
+</h3>
+
+<h4>
+5.4.1 Table Changes
+</h4>
+
+Based on MSS RUN II Requirements the following additional information should
+be stored in the database Volume table:
+
+<ul>
+<li>location indicator (internal/external/mark for ejection)
+<li>access indicator after tape ejection
+<li>user/group authorized to access this volume and change the access
+permissions
+</ul>
+
+And the following additional information should be stored in the File table:
+
+<ul>
+<li>name of the file
+<li>data of creation/change
+<li>location indicator (internal/external)
+</ul>
+
+<h4>
+5.4.2 Addition to Functionality
+</h4>
+
+The volume clerk should provide the following new operations:
+
+<ul>
+<li>user should be able to mark the volume as readonly
+<li>set the media as external/internal/mark for ejection to the library
+<li>set the access indicator for the media marked for ejection
+</ul>
+
+The file clerk should provide the following new operations:
+<ul>
+<li>change the access for files on the media that has been ejected from the
+library
+</ul>
+
+<h4>
+5.4.3 Administrative Tools
+</h4>
+
+Administrative tools should provide the following operations:
+<ul>
+<li>Display the volume for a specified media
+<li>List all the files and their location on a single or set of media
+<li>List file/files on the media by creation date
+<li>List all the media that belongs to a specified file family
+<li>List files that belongs to a specified file family
+<li>Display the date of the last mount for a specified volume
+<li>List all media belonging to a file family sorted by the most recent media
+mount date
+<li>List all media belonging to a file family where the last access date is
+before a specified date
+<li>Export meta-data of ejected media into a flat file
+<li>Import meta-data from a flat file when importing the media from outside the
+Enstore system
+<li>List all files/volumes that belong to user/group
+<li>Mark the volume as readonly if all of the files on the media are older
+than a specified date
+</ul>
+
+
+<h3>
+5.5 Current Underlying Database Implemented in Enstore
+</h3>
+
+The current Enstore implementation uses LIBTP (BSD DB v2.3) as the underlying
+database product.
+LIBTP is free for non-profit organizations like Fermilab, and has the
+following features:
+
+<ul>
+<li>
+one key dictionary-like database. It is designed to
+store/retrieve binary large objects (BLOBs) of arbitrary length, by text key.
+<li>
+ability to store data items of unlimited size
+<li>
+support for various data storage structures: hash table, binary tree,
+numbered records
+<li>
+allows duplicate keys
+<li>
+data scanning with cursors, multiple cursors may be opened at the same time
+<li>
+different levels of cursor stability
+<li>
+transactions
+<li>
+transaction logging
+<li>
+check-pointing
+<li>
+backup and recovery tools
+<li>
+custom locks
+<li>
+deadlock detection
+</ul>
+
+
+A LIBTP-Python shelve-like interface was developed. It provides access to:
+<ul>
+<li>All three data structures: hash table, binary tree, numbered records
+<li>Cursors
+<li>Transactions
+<li>Locks
+</ul>
+
+LIBTP was chosen based on the following considerations:
+
+<ul>
+<li>
+It is similar to dbm-like databases used for the initial Enstore design.
+This made it easy to develop a Python interface for it and any necessary
+changes to the Enstore code were localized and relatively easy to make.
+<li>
+It is free
+<li>
+Database maintenance is relatively inexpensive. It requires only two
+processes to run. One for checkpointing and the other for deadlock detection.
+<li>
+It is simple and fast enough.
+<li>
+It provides tools for database transaction logging, database backup and
+recovery.
+</ul>
+
+<h4>
+5.5.1 Disadvantages and Options for the Future
+</h4>
+
+LIBTP interprets stored data items as unstructured BLOBs, which does not
+allow any other way to select data items other then by primary key. Probably, 
+this is the most critical limitation for the Enstore
+project. Although, it may not be necessary for Enstore's internal needs,
+implementation of maintenance functionality is not realistically possible
+without having some way to select data by
+data attributes instead of the primary database key. There are two possible
+ways to solve this problem.
+<dl>
+<dt>
+<b>Implementation of additional indices</b>
+<dd>
+A database "table" may be accompanied by one or more "index" tables, each of
+which would store binary trees of values of particular attributes and refer 
+to keys of data stored in the main table.
+Implementation of this idea does not seem to be difficult, but it may require
+some re-design of the database clients to make them use this feature.
+<dt>
+<b>Using a relational database product</b>
+<dd>
+Conceptually, a relational database provides the same level of data access
+with respect to any combination  of columns (data attributes) used as the
+search key. Data lookup may be further optimized
+by creation of additional indices. Such additional optimization can be done
+at any time and does not require any modification of the clients provided
+the client is designed to use the relational database.
+</dl>
+<p>
+For the Enstore project, switching to a relational database product will
+require substantial redesign or even re-engineering from scratch of 
+database servers, clients, client-server communication protocol and server 
+journal file module because all of these components are designed
+based on the assumption that the database interface is compatible with a
+Python dictionary interface.
+<br><font color=#ff0000>
+(The above paraghaph is not quite right. A RDBMS may be hidden behind a
+python API nicely. IMHO, the decision is on whether we need the extra
+benefit [and complexity] from using a RDBMS, such as writing queries in
+relational algebra {multiple select, joints, ... etc.}, and at what
+cost we want to pay for it.
+If what we want is just a big table with multiple indices,
+a RDBMS can be used as such and it would not be difficult to encopreate
+that to enstore.
+Then, the question is, why do we have to pay for the [much] extra cost?<br>
+-- Chih-Hao)
+</font>
+
+<h2>
+6 Communication Protocols
 </h2>
 <font color=#ff8800>Protocol and the figures go here</font>
 <h2>
-6 Error Control
+7 Error Control
 </h2>
 
 Error control in Enstore is simple, because much of the system state
@@ -980,7 +1230,7 @@ Case 3) Mover is idle.
 This is O.K. The system degrades as specified.
 </table>
 <h2>
-7 Concluding Remarks
+8 Concluding Remarks
 </h2>
 <p>
 <font color=#ff0000><blink>Not done yet below this line</blink></font>
