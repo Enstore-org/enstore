@@ -1038,7 +1038,7 @@ def readtape_from_hsm(e, tinfo):
 
     Trace.message(10, "LM SUBMISSION TICKET:")
     Trace.message(10, pprint.pformat(request))
-    submitted, reply_ticket = encp.submit_read_requests([request], tinfo, e)
+    submitted, reply_ticket = encp.submit_read_requests([request], e)
     Trace.message(10, "LM RESPONCE TICKET:")
     Trace.message(10, pprint.pformat(reply_ticket))
     Trace.message(4, "Read tape submission sent to LM.")
@@ -1442,6 +1442,7 @@ if __name__ == '__main__':
 
     intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
     intf_of_encp.volume = sys.argv[-3] #Hackish
+    intf_of_encp.argv = sys.argv[:] #Hackish
 
     if not encp.is_volume(sys.argv[-3]):
         sys.stderr.write("First argument is not a volume name.\n")
