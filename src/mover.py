@@ -516,7 +516,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             inhibit = 1
         
         if reset_timer:
-            self.reset_interval_timer()
+            self.reset_interval_timer(self.update)
 
         if not inhibit:
             ticket = self.format_lm_ticket(state=state, error_source=error_source)
