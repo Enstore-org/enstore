@@ -1,4 +1,3 @@
-
 #server_name              geometry(WxH+X+Y)    background
 
 #Halloween colors.
@@ -80,12 +79,12 @@ client_color cdfensrv3     #444444
 client_color d0ensrv3      #444444
 
 #cdf 9940A to 9940B migration
-client_color stkendm1a     #ff9900
-client_color stkendm2a     #ff9900
-client_color stkendm3a     #ff9900
-client_color stkendm4a     #ff9900
-client_color d0enout2a     #ff9900
-client_color fcdfcaf324    #ff9900
+client_color stkendm1a     #ff0099
+client_color stkendm2a     #ff0099
+client_color stkendm3a     #ff0099
+client_color stkendm4a     #ff0099
+#client_color d0enout2a     #ff9900
+#client_color fcdfcaf324    #ff9900
 
 #miniboone online data taking
 client_color hal9004       #dd0000
@@ -789,17 +788,16 @@ client_color d0cs400        #ff00ff
 
 #CMS clients #########
 
-client_color chutney        #ff8800
-client_color ketchup        #ff8800
-client_color cmsstor01      #ff8800
-client_color cmsstor12      #ff8800
+client_color chutney        #ff9900
+client_color ketchup        #ff9900
+client_color cmsstor01      #ff9900
+client_color cmsstor12      #ff9900
+
 client_color mayo           #0000dd
 client_color mustard        #0000dd
 client_color pesto          #0000dd
 client_color cmsstor05      #0000dd
 client_color cmsstor07      #0000dd
-client_color cmsstor13      #0000dd
-client_color cmsstor14      #0000dd
 
 #entv generated information
 
