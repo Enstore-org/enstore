@@ -1232,6 +1232,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    def quit(self, ticket):
+	self.dict.close()
+	dispatching_worker.DispatchingWorker.quit(self, ticket)
+
+
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def __init__(self, csc):

@@ -2040,6 +2040,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         ticket['status'] = (e_errors.OK, self.ignored_sg)
         self.reply_to_caller(ticket)
 
+    def quit(self, ticket):
+	self.dict.close()
+	dispatching_worker.DispatchingWorker.quit(self, ticket)
+
 class VolumeClerk(VolumeClerkMethods):
     def __init__(self, csc):
         VolumeClerkMethods.__init__(self, csc)
