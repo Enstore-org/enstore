@@ -306,9 +306,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
         x = self.send(ticket)
         return x
 
+    # mark volume as not allowed 
+    def set_system_notallowed(self, external_label):
+        ticket= { 'work'           : 'set_system_notallowed',
+                  'external_label' : external_label }
+        x = self.send(ticket)
+        return x
+
     # mark volume as noaccess
     def set_system_noaccess(self, external_label):
-        ticket= { 'work'           : 'set_system_notallowed',
+        ticket= { 'work'           : 'set_system_noaccess',
                   'external_label' : external_label }
         x = self.send(ticket)
         return x
@@ -626,7 +633,7 @@ def do_work(intf):
     elif intf.read_only:
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
     elif intf.no_access:
-        ticket = vcc.set_system_noaccess(intf.no_access)  # name of this volume
+        ticket = vcc.set_system_set_system_notallowed(intf.no_access)  # name of this volume
     # D0_TEPM
     elif intf.atmover:
 	ticket = vcc.add_at_mover (intf.args[0])
