@@ -850,6 +850,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.return_work_to_lm(ticket)
             self.unlock_state()
             return 0
+        self.state = ACTIVE
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
