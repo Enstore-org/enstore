@@ -113,7 +113,7 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
         try:
 	    # build up message
             if not msg_type == MSG_DEFAULT:
-                new_msg = "%s %s" % (msg, msg_type)
+                new_msg = "%s %s" % (msg_type, msg)
             else:
                 new_msg = msg
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
