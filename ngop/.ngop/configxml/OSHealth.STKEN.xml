@@ -3,6 +3,9 @@
 <NGOPConfig>
    <SystemView ID="OSHealth.STK">
       <System ID="OSHealth" Cluster="stkensrv0"/>
+      <System ID="OSHealth" Cluster="stkensrv1"/>
+      <System ID="OSHealth" Cluster="stkensrv2"/>
+      <System ID="OSHealth" Cluster="stkensrv3"/>
       <System ID="OSHealth" Cluster="stkensrv4"/>
       <System ID="OSHealth" Cluster="stkenmvr1a"/>
       <System ID="OSHealth" Cluster="stkenmvr2a"/>

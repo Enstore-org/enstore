@@ -108,6 +108,9 @@
       <Cluster>STKEN</Cluster>
       <Group name="stkNodes">
          <Host>stkensrv0</Host>
+         <Host>stkensrv1</Host>
+         <Host>stkensrv2</Host>
+         <Host>stkensrv3</Host>
          <Host>stkensrv4</Host>
          <Host>stkenmvr1a</Host>
          <Host>stkenmvr2a</Host>

@@ -7,6 +7,24 @@
      <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv0"/>
      <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv0"/>
   </System>
+  <System ID="Hardware" Cluster="stkensrv1">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv1"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv1"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv2">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv2"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv2"/>
+  </System>
+  <System ID="Hardware" Cluster="stkensrv3">
+     <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="fanSpeed"      Type="Hardware" Host="stkensrv3"/>
+     <MonitoredElement ID="timeSync"      Type="Hardware" Host="stkensrv3"/>
+  </System>
   <System ID="Hardware" Cluster="stkensrv4"> 
      <MonitoredElement ID="numProcessors" Type="Hardware" Host="stkensrv4"/> 
      <MonitoredElement ID="baseTemp"      Type="Hardware" Host="stkensrv4"/> 

@@ -10,6 +10,33 @@
      <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv0"/>
      <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv0"/>
   </System>
+  <System ID="OSHealth" Cluster="stkensrv1">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv1"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv1"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv1"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv1"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv1"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv2">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv2"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv2"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv2"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv2"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv2"/>
+  </System>
+  <System ID="OSHealth" Cluster="stkensrv3">
+     <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="syslogd" Type="Daemon"     Host="stkensrv3"/>
+     <MonitoredElement ID="/home"   Type="FileSystem" Host="stkensrv3"/>
+     <MonitoredElement ID="cpuLoad" Type="sysUsage"   Host="stkensrv3"/>
+     <MonitoredElement ID="Memory"  Type="sysUsage"   Host="stkensrv3"/>
+     <MonitoredElement ID="Swap"    Type="sysUsage"   Host="stkensrv3"/>
+  </System>
   <System ID="OSHealth" Cluster="stkensrv4">
      <MonitoredElement ID="inetd"   Type="Daemon"     Host="stkensrv4"/> 
      <MonitoredElement ID="crond"   Type="Daemon"     Host="stkensrv4"/>
