@@ -32,7 +32,7 @@ class EnstoreStatus:
         Trace.trace(10,'{__init__ essfile '+file+"  "+repr(fileType))
         self.file_name = file 
 	self.file_type = fileType
-	self.refresh = 10
+	self.refresh = 8
 	self.max_ascii_size = max_ascii_size
 	self.set_header()
 	self.text = {}

@@ -36,6 +36,9 @@ import Trace
 import e_errors
 import enstore_status
 
+def default_refresh():
+    return 8
+
 def default_timeout():
     return 5
 
@@ -727,7 +730,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port(), timeout=-1, ascii_file="", \
                  html_file="", alive_rcv_to=-1, alive_retries=-1, \
-	         max_ascii_size=-1, max_encp_lines=-1):
+	         max_ascii_size=-1, max_encp_lines=-1, refresh=-1):
 	Trace.trace(10, '{__init__')
 	self.print_id = "INQS"
 	self.verbose = verbose
@@ -840,15 +843,27 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	    self.parsed_file = "$ENSTORE_DB/inq.txt"
 
 	# get an html system status file
-	if html_file != "":
-	    # add a suffix to it because we will write to this file and 
-	    # maintain another copy of the file (with the user entered name) to
-	    # be displayed
-	    self.htmlfile = enstore_status.EnstoreStatus(\
+	if html_file == "":
+	    html_file = "$ENSTORE_DB/inq.html"
+
+	# add a suffix to it because we will write to this file and 
+	# maintain another copy of the file (with the user entered name) to
+	# be displayed
+	self.htmlfile = enstore_status.EnstoreStatus(\
 	                                            html_file+self.suffix,\
 	                                            enstore_status.html_file,\
 	                                            html_file, -1, verbose)
-	    self.htmlfile_orig = html_file
+	self.htmlfile_orig = html_file
+
+        # if no html refresh was entered on the command line, get it from
+        # the configuration file.
+        if refresh == -1:
+            try:
+	        self.htmlfile.set_refresh(keys['refresh'])
+            except:
+	        self.htmlfile.set_refresh(default_refresh())
+        else:
+            self.htmlfile.set_refresh(refresh)
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}
@@ -882,6 +897,7 @@ class InquisitorInterface(interface.Interface):
 	self.verbose = 0
 	self.max_ascii_size = -1
 	self.max_encp_lines = -1
+	self.refresh = -1
 	interface.Interface.__init__(self)
 
 	# now parse the options
@@ -893,7 +909,7 @@ class InquisitorInterface(interface.Interface):
 	Trace.trace(16, "{}options")
 	return self.config_options()+\
 	       ["verbose=", "ascii_file=","html_file=","timeout="] +\
-	       ["max_ascii_size=", "max_encp_lines="] +\
+	       ["max_ascii_size=", "max_encp_lines=", "refresh="] +\
 	       self.alive_rcv_options()+self.help_options()
 
 if __name__ == "__main__":
@@ -907,7 +923,7 @@ if __name__ == "__main__":
     inq = Inquisitor(0, intf.verbose, intf.config_host, intf.config_port, \
                      intf.timeout, intf.ascii_file, intf.html_file,\
                      intf.alive_rcv_timeout, intf.alive_retries,\
-	             intf.max_ascii_size, intf.max_encp_lines)
+	             intf.max_ascii_size, intf.max_encp_lines,intf.refresh)
 
     while 1:
         try:
