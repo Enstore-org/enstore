@@ -71,7 +71,6 @@ for des in \
         "Baseboard -5V" \
         "Baseboard 1.5V" \
         "Baseboard 2.5V" \
-        "3 Volt Standby" \
         "Baseboard 3.3V" \
         "Baseboard 5V" \
         "Baseboard 12V" \
