@@ -142,17 +142,19 @@ class LogFileAlarm(GenericAlarm):
 	GenericAlarm.__init__(self)
 
 	# get rid of the MSG_TYPE part of the alarm
-	the_split_text = string.split(text, Trace.MSG_TYPE)
-	text1 = the_split_text[0]
 	[t, self.host, self.pid, self.uid, dummy, self.source,
-	 text_dict] = string.split(text1, " ", 6)
+	 text] = string.split(text, " ", 6)
+
+        # we need to get rid of the MSG_TYPE text.  it may be at the
+        # beginning or the end.
+        text = string.replace(text, Trace.MSG_ALARM, "")
 
 	# assemble the real timedate
 	self.timedate = time.strptime("%s %s"%(date, t), "%Y-%m-%d %H:%M:%S")
 	self.id = str(self.timedate)
 
 	# split up the dictionary into components
-	dict = eval(string.strip(text_dict))
+	dict = eval(string.strip(text))
 	if dict.has_key(ROOT_ERROR):
 	    self.root_error = dict[ROOT_ERROR]
 	    del dict[ROOT_ERROR]
