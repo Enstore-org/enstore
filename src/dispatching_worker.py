@@ -89,6 +89,7 @@ class DispatchingWorker:
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
+	ticket['address'] = self.server_address
         ticket['status'] = "ok"
         self.reply_to_caller(ticket)
 
