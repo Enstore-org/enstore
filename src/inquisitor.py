@@ -323,7 +323,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	# library managers and media changers for now.
 	for skey in config.keys():
 	    if not self.server_d.has_key(skey):
-		self.add_new_mv_lm_mc(skey, config)
+		self.add_new_mv_lm_mc(skey, config, self.event_relay.interval)
 
 	self.www_server = config.get(enstore_constants.WWW_SERVER, {})
 	# only update the following values if they were not set on the command line
