@@ -195,7 +195,11 @@ class SortedList:
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
             return None
-        if self.current_index == self.start_index: return None  # came back to where it started
+        try:
+            if self.current_index == self.start_index: return None  # came back to where it started
+        except AttributeError: # how this happens
+            self.start_index = self.current_index
+            return None
         return self.sorted_list[self.current_index]
     
     # remove a request fro m the list (no updates)
