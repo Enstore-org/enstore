@@ -4,24 +4,25 @@
 Encp changes:
 =============
 
-New error, handle CRC_DCACHE_MISMATCH, occurs when the crc the dcache
-puts into layer 2 does not match the CRC calculated while attempting
-to write the file into Enstore.  This is a serious error.
+A number of old metadata 'formats' were discovered that encp was not
+able to handle.  They are now accepted.  One format, was that all bfid 
+brands by convention should be 4 bytes but some were found to be 3 
+bytes long.  The other was that some bfids have an "L" appended to them.
+
+Transfer failures are now sent to the accounting database along with
+the successes.
+
+New error, handle CRC_DCACHE_MISMATCH, occurs when the crc the dCache
+puts into layer 2 does not match the CRC calculated while attempting to
+write the file into Enstore.  This is a serious error.  This error is 
+known to occur when a user keeps rewriting over-and-over again the same 
+file into dCache.
 
 New error, UNCAUGHT_EXCEPTION, occurs when previous versions of encp
 would have given a traceback to stdout.  Now when such an error occurs 
 the traceback dump is instead sent to the log server, zero length files
 are cleaned up and the accounting server is notified of the failure.
 NOTE: This does not work for "kill -9". 
-
-Transfer failures are now sent to the accounting database along with
-the successes.
-
-A number of old metadata 'formats' were discovered that encp was not
-able to handle.  They are now accepted.
-One, was that all bfid brands by convention should be 4 bytes but some
-were found to be 3 bytes long.  The other was that, some bfids have an
-"L" appended to them.
 
 Misc.:
 ======
