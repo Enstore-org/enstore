@@ -40,21 +40,13 @@ def capacity_str(x):
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
-    def __init__( self, csc, server_addr=None ):
+    def __init__( self, csc, server_address=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
-        ticket = self.csc.get( MY_SERVER )
-	if server_addr != None:
-            self.server_addr = server_addr
+	if server_address != None:
+            self.server_address = server_address
 	else:
-            self.server_addr = (ticket['hostip'],ticket['port'])
-
-
-    # send the request to the volume clerk server and then send answer to user
-    def send (self, ticket,  rcv_timeout=0, tries=0):
-        Trace.trace( 16, 'send to volume clerk '+str(self.server_addr) )
-        x = self.u.send( ticket, self.server_addr, rcv_timeout, tries )
-        return x
+            self.server_address = self.get_server_address(MY_SERVER)
 
     # add a volume to the stockpile
     def add(self,

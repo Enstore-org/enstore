@@ -25,6 +25,7 @@ class MoverClient(generic_client.GenericClient):
         self.log_name = "C_"+string.upper(name)
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
+        self.server_address = self.get_server_address(self.mover)
 
     def status(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "status"}, rcv_timeout, tries)
@@ -38,10 +39,6 @@ class MoverClient(generic_client.GenericClient):
     def stop_draining(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
-    def send (self, ticket, rcv_timeout=0, tries=0) :
-        vticket = self.csc.get(self.mover)
-        return self.u.send(ticket, (vticket['hostip'], vticket['port']),
-                           rcv_timeout, tries)
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
@@ -57,7 +54,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.start_draining = 0
         self.stop_draining = 0
         generic_client.GenericClientInterface.__init__(self)
-
+        
     # define the command line options that are valid
     def options(self):
         if self.restricted_opts:
