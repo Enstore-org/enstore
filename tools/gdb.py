@@ -10,13 +10,16 @@ import time
 from fcntl import fcntl
 from FCNTL import F_SETFL,O_NONBLOCK
 
+def nonblock(f):
+    fcntl(f.fileno(),F_SETFL,O_NONBLOCK)
+    
 class Gdb:
     def __init__(self, args):
         cmd = "gdb "
         for arg in args:
             cmd = cmd + " " + arg
         gdbio = popen2.popen3(cmd, 0)
-        map(lambda f:fcntl(f.fileno(),F_SETFL,O_NONBLOCK), gdbio)
+        map(nonblock, gdbio)
         self.gdb_out, self.gdb_in, self.gdb_err = gdbio
         self.allow_default_repeat = 0
         self.gdb_prompt = "(gdb) "
@@ -74,13 +77,14 @@ class Gdb:
         
 
 if __name__ == "__main__":
+
+    gdb = Gdb(sys.argv[1:])
+    prompt = "(gdb) "
+    
     def print_response(response):
         for r in response:
             if r != gdb.gdb_prompt:
                 print r
-
-    gdb = Gdb(sys.argv[1:])
-    prompt = "(gdb) "
 
     welcome = gdb.get_response()
     print_response(welcome)
