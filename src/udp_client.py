@@ -51,17 +51,6 @@ def get_client() :
                     repr((port1, port2)))
         time.sleep(10) # tried all ports, try later.
 
-def check_len( message ):
-    #print message
-    if len(message) > TRANSFER_MAX:
-	Trace.trace(0,"send:message "+\
-		    "too big. Size = "+repr(len(message))+" Max = "+\
-		    repr(TRANSFER_MAX)+" "+repr(message))
-	raise errno.errorcode[errno.EMSGSIZE],"udp_client.check_len:message "+\
-	      "too big. Size = "+repr(len(message))+" Max = "+\
-	      repr(TRANSFER_MAX)+" "+repr(message)
-    return
-
 def empty_socket( sock ):
     try:
 	f = sock.fileno()
@@ -148,6 +137,32 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     return reply, server
 
+def protocolize( self, text ):
+    # make a new message number - response needs to match this number
+    # We use to increment by one, but that does not work with forking
+    # lcl_number = self.number + 1
+    # note: do str here; elsewhere causes problems (precision is 1ms -
+    # this should be OK)
+    lcl_number = str(time.time())
+
+    # CRC text
+    body = `(self.ident, lcl_number, text)`
+    crc = binascii.crc_hqx(body, 0)
+
+    # stringify message and check if it is too long
+    message = `(body, crc)`
+
+    if len(message) > TRANSFER_MAX:
+	Trace.trace(0,"send:message "+\
+		    "too big. Size = "+repr(len(message))+" Max = "+\
+		    repr(TRANSFER_MAX)+" "+repr(message))
+	raise errno.errorcode[errno.EMSGSIZE],"udp_client.check_len:message "+\
+	      "too big. Size = "+repr(len(message))+" Max = "+\
+	      repr(TRANSFER_MAX)+" "+repr(message)
+
+    return message, lcl_number
+
+
 
 class UDPClient:
 
@@ -184,7 +199,7 @@ class UDPClient:
     # this (generally) is received/processed by dispatching worker
     def send( self, text, address, rcv_timeout=0, tries=0 ):
         Trace.trace( 20, 'send add='+repr(address)+' text='+repr(text) )
-	if self.pp and text['work']!='idle_moverx':
+	if self.pp and text['work']!='idle_mover':
 	    x=sys.stdout;sys.stdout=sys.stderr
 	    print "\nreq/cmd to address:",address," from:",self.ident; pprint.pprint(text)
 	    sys.stdout=x
@@ -195,19 +210,10 @@ class UDPClient:
 	else:
 	    rcv_timeout = 10   # default timeout - also no adjusting of tries
 
-        # make a new message number - response needs to match this number
-        self.number = self.number + 1
+	message, self.number = protocolize( self, text )
 
         # keep track of where we are sending things so we can clean up later
         self.where_sent[address] = (self.ident,text)
-
-        # CRC text
-        body = `(self.ident, self.number, text)`
-        crc = binascii.crc_hqx(body, 0)
-
-        # stringify message and check if it is too long
-        message = `(body, crc)`
-	check_len( message )
 
         # make sure the socket is empty before we start
 	empty_socket( self.socket )
@@ -242,10 +248,11 @@ class UDPClient:
 
 		# now (after receive), check...
 		if number != self.number :
+		    msg="UDPClient.send: stale_number=%.10f number=%.10f" %\
+			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+\
 				repr(self.number))
-		    print "UDPClient.send: stale_number=",number, "number=", \
-			  self.number,"resending to ", address, message
+		    print msg,"resending to ", address, message
 
 	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
                 Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
@@ -253,7 +260,7 @@ class UDPClient:
             else:
                 Trace.trace(0,"send no reply after tries="+repr(ntries))
 
-	if self.pp and (not 'work' in out.keys() or out['work']!='noworkx'):
+	if self.pp and (not 'work' in out.keys() or out['work']!='nowork'):
 	    x=sys.stdout;sys.stdout=sys.stderr
 	    print "\nrsp - sent to:",self.ident; pprint.pprint(out)
 	    sys.stdout=x
@@ -268,15 +275,7 @@ class UDPClient:
 	    print "\nmsg/cmd to address:",address," from:",self.ident; pprint.pprint(text)
 	    sys.stdout=x
 
-        # make a new message number - response needs to match this number
-        self.number = self.number + 1
-
-        # CRC text
-        body = `(self.ident, self.number, text)`
-        crc = binascii.crc_hqx(body, 0)
-        # stringify message and check if it is too long
-        message = `(body, crc)`
-	check_len( message )
+	message, self.number = protocolize( self, text )
 
         # send the udp message
 	send_socket( self.socket, message, address )
