@@ -79,7 +79,10 @@ class JournalDict:
 
 	def __delitem__(self, key):
 		Trace.trace(20,'{__delitem')
-		j = "del self.dict['%s']\n" % key
+		# log the value of deleted item so that it may be
+		# recovered later on
+		v = self.dict[key]
+		j = "del self.dict['%s'] # %s\n" % (key, v)
 		self.jfile.write(j)
 		self.jfile.flush()
 		Trace.trace(20,'}__delitem')
