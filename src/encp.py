@@ -83,6 +83,8 @@ import accounting_client
 # forward declaration. It is assigned in get_clerks()
 acc = None
 __csc = None
+__fcc = None
+__vcc = None
 
 #Constants for the max file size.  Currently this assumes the max for the
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
@@ -694,7 +696,31 @@ def e_access(path, mode):
 
 def _get_csc_from_volume(volume): #Should only be called from get_csc().
     global __csc
-    
+    global __vcc
+
+    #First check that the cached version knows about the volume.
+    if __vcc != None:
+        volume_info = __vcc.inquire_vol(volume, 5, 20)
+        if e_errors.is_ok(volume_info):
+            return __csc
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume clerk (%s) knows nothing about %s.\n"
+                      % (__vcc.server_address, volume))
+
+    #Check the default vcc for performance reasons.
+    if __csc != None:
+        test_vcc = volume_clerk_client.VolumeClerkClient(
+            __csc, rcv_timeout = 5, rcv_tries = 20)
+        volume_info = test_vcc.inquire_vol(volume, 5, 20)
+        if e_errors.is_ok(volume_info):
+            __vcc = test_vcc
+            return __csc
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume clerk (%s) knows nothing about %s.\n"
+                      % (test_vcc.server_address, volume))
+            
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
@@ -704,18 +730,6 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     #Before checking other systems, check the current system.
     if e_errors.is_ok(vcc.inquire_vol(volume)):
         return csc
-    
-    #Check the last used non-default brand for performance reasons.
-    if __csc != None:
-        test_vcc = volume_clerk_client.VolumeClerkClient(
-            __csc, rcv_timeout = 5, rcv_tries = 20)
-        volume_info = test_vcc.inquire_vol(volume, 5, 20)
-        if e_errors.is_ok(volume_info):
-            return __csc
-        else:
-            Trace.log(e_errors.WARNING,
-                      "Volume clerk (%s) knows nothing about %s.\n"
-                      % (test_vcc.server_address, volume))
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -724,14 +738,14 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     else:
         return csc
 
-    #Loop through systems for the brand that matches the one we're looking for.
+    #Loop through systems for the tape that matches the one we're looking for.
     for server in config_servers.keys():
         try:
             #Get the next configuration client.
             csc_test = configuration_client.ConfigurationClient(
                 config_servers[server])
 
-            #Get the next file clerk client and its brand.
+            #Get the next volume clerk client and volume inquiry.
             vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
                                                     rcv_timeout=5, rcv_tries=2)
 
@@ -749,47 +763,63 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
     return csc
+
 #The string brand could be either a bfid or brand.  This is because a brand
 # can be of arbitrary length making it impossible to know how much of it is
 # the numerical part (which can change size as time grows) or the brand part.
 def _get_csc_from_brand(brand): #Should only be called from get_csc().
     global __csc
-
-    # get a configuration server
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,config_port))
-    fcc = file_clerk_client.FileClient(csc)
+    global __fcc
 
     #There is no brand, since the file is too old.
     if not brand:
-	return csc
-    #Before checking other systems, check the current system.
-    fcc_brand = fcc.get_brand()
-    if not is_brand(fcc_brand):
-        Trace.log(e_errors.WARNING,
-                  "File clerk (%s) returned invalid brand: %s\n"
-                  % (fcc.server_address, fcc_brand))
-    elif brand[:len(fcc_brand)] == fcc_brand:
-        return csc
+        #If not already known, return 
+        if __csc == None:
+            # Get the configuration server.
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+            __csc = csc
 
-    #Check the last used non-default brand for performance reasons.
+        #Regardless, return the csc.
+        return __csc
+
+    #Check the default fcc for performance reasons.
     if __csc != None:
-        test_fcc = file_clerk_client.FileClient(__csc)
+        test_fcc = file_clerk_client.FileClient(__csc, rcv_timeout = 5,
+                                                rcv_tries = 20)
         test_brand = test_fcc.get_brand()
         if not is_brand(test_brand):
             Trace.log(e_errors.WARNING,
                       "File clerk (%s) returned invalid brand: %s\n"
                       % (test_fcc.server_address, test_brand))
         if brand[:len(test_brand)] == test_brand:
+            __fcc = test_fcc
             return __csc
+
+    #Before checking other systems, check the current system.
+    # Get a configuration server.
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
+    fcc = file_clerk_client.FileClient(csc, rcv_timeout = 5, rcv_tries = 20)
+    fcc_brand = fcc.get_brand()
+    if not is_brand(fcc_brand):
+        Trace.log(e_errors.WARNING,
+                  "File clerk (%s) returned invalid brand: %s\n"
+                  % (fcc.server_address, fcc_brand))
+    elif brand[:len(fcc_brand)] == fcc_brand:
+        __csc = csc
+        return __csc
     
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if e_errors.is_ok(config_servers['status']):
         del config_servers['status']
     else:
-        return csc
+        __csc = csc
+        return __csc
 
     #Loop through systems for the brand that matches the one we're looking for.
     for server in config_servers.keys():
@@ -814,6 +844,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                     Trace.log(e_errors.INFO, msg)
 
                 __csc = csc_test  #Set global for performance reasons.
+                __fcc = fcc_test
                 return __csc
         except KeyboardInterrupt:
             raise sys.exc_info()
@@ -821,7 +852,8 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
-    return csc
+    __csc = csc
+    return __csc
 
 #Return the correct configuration server client based on the 'brand' (if
 # present) of the bfid or the volume name.
@@ -860,18 +892,19 @@ def get_csc(parameter=None):
     bfid = None
     volume = None
     
-    # get a configuration server
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,config_port))
-    #fcc = file_clerk_client.FileClient(csc)
-    
     #Due to branding we need to figure out which system is the correct one.
     # Should only matter for reads.  On a success, the variable 'brand' should
     # contain the brand of the bfid to be used in the rest of the function.
     # On error return the default configuration server client (csc).
     if not parameter:
-        return csc
+        if __csc != None:
+            return __csc
+        else:
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            __csc = configuration_client.ConfigurationClient((config_host,
+                                                              config_port))
+        return __csc
     
     elif type(parameter) == types.DictType: #If passed a ticket with bfid.
         bfid = parameter.get('fc', {}).get("bfid", "")
@@ -891,7 +924,217 @@ def get_csc(parameter=None):
     elif volume:  #If passed a volume.
         return _get_csc_from_volume(volume)
 
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
     return csc  #Nothing valid, just return the default csc.
+
+# parameter: can be a dictionary containg a 'bfid' item or a bfid string
+def get_fcc(parameter = None):
+    global __fcc
+    global __csc
+
+    if not parameter and __fcc != None: #No bfid, but have cached fcc.
+        return __fcc
+
+    elif not parameter and __fcc == None: #No bfid and no cached fcc.
+        #Get the csc to use.
+        if __csc != None:
+            csc = __csc
+        else:
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+            
+        #Now that we have the csc, we can get the fcc.
+        __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+        return __fcc
+    
+    elif type(parameter) == types.DictType: #If passed a ticket with bfid.
+        bfid = parameter.get('fc', {}).get("bfid", "")
+
+    elif is_bfid(parameter):  #If passed a bfid.
+        bfid = parameter
+        
+    else:
+        #Set default value.
+        bfid = None
+
+    #First check that the cached version matches the bfid brand.
+    if __fcc != None:
+        file_info = __fcc.bfid_info(bfid)
+        if e_errors.is_ok(file_info):
+            return __fcc
+        #__fcc_brand = __fcc.get_brand()
+        #if bfid[:len(__fcc_brand)] == __fcc_brand:
+        #    return __fcc
+
+    #Next check the fcc associated with the cached csc.
+    if __csc != None:
+        fcc = file_clerk_client.FileClient(__csc, rcv_timeout=5, rcv_tries=2)
+        file_info = fcc.bfid_info(bfid)
+        if e_errors.is_ok(file_info):
+            __fcc = fcc
+            return __fcc
+        #fcc_brand = fcc.get_brand()
+        #if bfid[:len(fcc_brand)] == fcc_brand:
+        #    return __fcc
+
+    #Before checking other systems, check the default system.
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
+    fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+    fcc_brand = fcc.get_brand()
+    if bfid[:len(fcc_brand)] == fcc_brand:
+        __fcc = fcc
+        return __fcc
+
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if e_errors.is_ok(config_servers['status']):
+        del config_servers['status']
+    else:
+        __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+        return __fcc
+
+    #Loop through systems for the brand that matches the one we're looking for.
+    for server in config_servers.keys():
+        try:
+            #Get the next configuration client.
+            csc_test = configuration_client.ConfigurationClient(
+                config_servers[server])
+
+            #Get the next file clerk client and its brand.
+            fcc_test = file_clerk_client.FileClient(csc_test,
+                                                    rcv_timeout=5, rcv_tries=2)
+
+            system_brand = fcc_test.get_brand()
+            if not is_brand(system_brand):
+                Trace.log(e_errors.WARNING,
+                          "File clerk (%s) returned invalid brand: %s\n"
+                          % (fcc_test.server_address, system_brand))
+            #If things match then use this system.
+            if bfid[:len(system_brand)] == system_brand:
+                if fcc.get_brand() != system_brand:
+                    brand = extract_brand(bfid)
+                    msg = "Using %s based on brand %s." % (system_brand, brand)
+                    Trace.log(e_errors.INFO, msg)
+
+                __csc = csc_test  #Set global for performance reasons.
+                __fcc = fcc_test
+                return __fcc
+        except KeyboardInterrupt:
+            raise sys.exc_info()
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
+
+    __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+    return __fcc
+    
+def get_vcc(parameter = None):
+    global __vcc
+    global __csc
+
+    if not parameter and __vcc != None: #No bfid, but have cached fcc.
+        return __vcc
+
+    elif not parameter and __vcc == None: #No bfid and no cached fcc.
+        #Get the csc to use.
+        if __csc != None:
+            csc = __csc
+        else:
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+            
+        #Now that we have the csc, we can get the vcc.
+        __vcc = volume_clerk_client.VolumeClerkClient(csc, rcv_timeout=5,
+                                                      rcv_tries=2)
+        return __vcc
+    
+    elif type(parameter) == types.DictType: #If passed a ticket with volume.
+        volume = parameter.get('volume', "")
+
+    elif is_volume(parameter):  #If passed a volume.
+        volume = parameter
+
+    else:
+        #Set default value.
+        volume = None
+
+    #First check that the cached version knows about the volume.
+    if __vcc != None:
+        volume_info = __vcc.inquire_vol(volume, 5, 20)
+        if e_errors.is_ok(volume_info):
+            return __vcc
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume clerk (%s) knows nothing about %s.\n"
+                      % (__vcc.server_address, volume))
+
+    #Next check the vcc associated with the cached csc.
+    if __csc != None:
+        test_vcc = volume_clerk_client.VolumeClerkClient(
+            __csc, rcv_timeout = 5, rcv_tries = 20)
+        volume_info = test_vcc.inquire_vol(volume, 5, 20)
+        if e_errors.is_ok(volume_info):
+            __vcc = test_vcc
+            return __vcc
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume clerk (%s) knows nothing about %s.\n"
+                      % (__vcc.server_address, volume))
+
+
+    # get a configuration server
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,config_port))
+    vcc = volume_clerk_client.VolumeClerkClient(csc)
+
+    #Before checking other systems, check the default system.
+    if e_errors.is_ok(vcc.inquire_vol(volume)):
+        return vcc
+
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if e_errors.is_ok(config_servers['status']):
+        del config_servers['status']
+    else:
+        __vcc = vcc
+        return __vcc
+
+    #Loop through systems for the tape that matches the one we're looking for.
+    for server in config_servers.keys():
+        try:
+            #Get the next configuration client.
+            csc_test = configuration_client.ConfigurationClient(
+                config_servers[server])
+
+            #Get the next volume clerk client and volume inquiry.
+            vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
+                                                    rcv_timeout=5, rcv_tries=2)
+
+            if e_errors.is_ok(vcc_test.inquire_vol(volume, 5, 2)):
+                msg = "Using %s based on volume %s." % \
+                      (vcc_test.server_address, volume)
+                Trace.log(e_errors.INFO, msg)
+
+                __csc = csc_test  #Set global for performance reasons.
+                __vcc = vcc_test
+                return __vcc
+        except KeyboardInterrupt:
+            raise sys.exc_info()
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
+
+    __vcc = vcc
+    return __vcc
 
 ############################################################################
             
@@ -1155,6 +1398,10 @@ def access_check(path, mode):
 
     # if pnfs is not auto mounted, simply call os.access
     if not pnfs_is_automounted:
+        #use the effective ids and not the reals used by os.access().
+        return e_access(path, mode)
+    # if the file is not a pnfs file, don't bother with automounting
+    if not pnfs.is_pnfs_path(path, check_name_only = 1):
         #use the effective ids and not the reals used by os.access().
         return e_access(path, mode)
 
@@ -1455,9 +1702,14 @@ def outputfile_check(inputlist, outputlist, e):
                 # for directory entries without valid inodes.
                 directory_listing = os.listdir(os.path.dirname(outputlist[i]))
                 if os.path.basename(outputlist[i]) in directory_listing:
-                    raise EncpError(
-                        getattr(errno, 'EFSCORRUPTED', getattr(errno, "EIO")),
-                                    "Filesystem is corrupt.", e_errors.OSERROR)
+                    #If the platform supports EFSCORRUPTED use it.
+                    # Otherwise use the generic EIO.
+                    if hasattr(errno, 'EFSCORRUPTED'):
+                        error = errno['EFSCORRUPTED'] #Not widely supported.
+                    else:
+                        error = errno['EIO']
+                    raise EncpError(error, "Filesystem is corrupt.",
+                                    e_errors.OSERROR)
                 else:
                     raise EncpError(errno.ENOENT, outputlist[i],
                                     e_errors.USERERROR)
@@ -1471,9 +1723,12 @@ def outputfile_check(inputlist, outputlist, e):
                 # doesn't work with dcache, since the dcache sets the filesize.
                 p = pnfs.Pnfs(outputlist[i])
                 try:
+                    #These to test read access.  They also allow us to
+                    # determine if there is already a file written to enstore
+                    # with this same filename.
                     layer1 = p.readlayer(1)
                     layer4 = p.readlayer(4)
-
+                    
                     #Test if the layers are empty.
                     if layer1 != [] or layer4 != []:
                         #The layers are not empty.
@@ -1483,6 +1738,13 @@ def outputfile_check(inputlist, outputlist, e):
                     else:
                         #The layers are empty.
                         outputlist.append(outputlist[i])
+
+                    #Try to write an empty string to layer 1.  This will most
+                    # likely fail becuase of a lack of permission access to
+                    # the file (EACCES), the database is read-only
+                    # (EPERM) or user root is modifying something outside
+                    # of the /pnfs/fs/usr/xyz/ filesystem (EPERM).
+                    p.writelayer(1, "")
 
                     #Get the outfile size.
                     try:
@@ -1514,7 +1776,12 @@ def outputfile_check(inputlist, outputlist, e):
                                         e_errors.FILE_MODIFIED)
                 except (OSError, IOError), msg:
                     #Some other non-foreseen error has occured.
-                    raise EncpError(msg.errno, str(msg), e_errors.PNFS_ERROR)
+                    error = getattr(msg, "errno", None)
+                    if error == errno.EPERM or error == errno.EACCES:
+                        enstore_error = e_errors.USERERROR
+                    else:
+                        enstore_error = e_errors.PNFS_ERROR
+                    raise EncpError(error, msg.filename, enstore_error)
                 except EncpError, msg:
                     raise msg
 
@@ -1633,18 +1900,22 @@ def get_clerks(bfid_or_volume=None):
     #Don't pass a volume to the file clerk client.
     if is_volume(bfid_or_volume):
         bfid = None
+        volume = bfid_or_volume
     else:
         bfid = bfid_or_volume
+        volume = None
 
     #Get the file clerk information.
-    fcc = file_clerk_client.FileClient(csc, bfid)
+    #fcc = file_clerk_client.FileClient(csc, bfid)
+    fcc = get_fcc(bfid)
     if not fcc:
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
                         e_errors.NET_ERROR)
-        
+    
     #Get the volume clerk information.
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
+    #vcc = volume_clerk_client.VolumeClerkClient(csc)
+    vcc = get_vcc(volume)
     if not vcc:
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
@@ -1799,7 +2070,10 @@ def get_ninfo(inputfile, outputfile, e):
 
 def open_routing_socket(route_server, unique_id_list, encp_intf):
 
-    Trace.message(e_errors.INFO, "Waiting for routing callback.")
+    Trace.message(INFO_LEVEL, "Waiting for routing callback at address: %s" %
+                  str(route_server.server_socket.getsockname()))
+    Trace.log(e_errors.INFO, "Waiting for routing callback at address: %s" %
+                  str(route_server.server_socket.getsockname()))
 
     route_ticket = None
 
@@ -1810,6 +2084,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
 
     while(time.time() - start_time < encp_intf.mover_timeout):
         try:
+            #Get the route.
             route_ticket = route_server.process_request()
         except socket.error, msg:
             Trace.log(e_errors.ERROR, str(msg))
@@ -1829,7 +2104,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
             break
     else:
         raise EncpError(errno.ETIMEDOUT,
-                        "Mover did not call back.", e_errors.TIMEDOUT)
+                        "Mover did not call routing back.", e_errors.TIMEDOUT)
 
     #If requested print a message.
     Trace.message(INFO_LEVEL, "Setting up routing table.")
@@ -1894,7 +2169,12 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
 
 def open_control_socket(listen_socket, mover_timeout):
 
-    Trace.message(INFO_LEVEL, "Waiting for mover to connect control socket")
+    Trace.message(INFO_LEVEL,
+                  "Waiting for mover to connect control socket at address: %s"
+                  % str(listen_socket.getsockname()))
+    Trace.log(e_errors.INFO,
+              "Waiting for mover to connect control socket at address: %s"
+              % str(listen_socket.getsockname()))
 
     read_fds, unused, unused = select.select([listen_socket], [], [],
                                              mover_timeout)
@@ -1902,13 +2182,13 @@ def open_control_socket(listen_socket, mover_timeout):
     #If there are no successful connected sockets, then select timedout.
     if not read_fds:
         raise EncpError(errno.ETIMEDOUT,
-                        "Mover did not call back.", e_errors.TIMEDOUT)
+                        "Mover did not call control back.", e_errors.TIMEDOUT)
     
     control_socket, address = listen_socket.accept()
 
     if not hostaddr.allow(address):
         control_socket.close()
-        raise EncpError(errno.EPERM, "host %s not allowed" % address[0],
+        raise EncpError(errno.EPERM, "Host %s not allowed." % address[0],
                         e_errors.NOT_ALWD_EXCEPTION)
 
     try:
@@ -1931,14 +2211,24 @@ def open_control_socket(listen_socket, mover_timeout):
                         "Control socket no longer usable after initalization.",
                         e_errors.TCP_EXCEPTION, ticket)
 
+    Trace.log(e_errors.INFO,
+              "Control socket %s is connected to %s for %s." %
+              (control_socket.getsockname(),
+               control_socket.getpeername(),
+               ticket.get('unique_id', "Unknown")))
+
     return control_socket, address, ticket
     
 ##############################################################################
 
 def open_data_socket(mover_addr, interface_ip):
     
-    Trace.message(INFO_LEVEL, "Connecting data socket.")
-
+    Trace.message(INFO_LEVEL,
+                  "Connecting data socket to mover (%s) with interface %s."
+                  % (mover_addr, interface_ip))
+    Trace.log(e_errors.INFO,
+              "Connecting data socket to mover (%s) with interface %s."
+              % (mover_addr, interface_ip))
     try:
         #Create the socket.
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1996,6 +2286,13 @@ def open_data_socket(mover_addr, interface_ip):
 
     #Restore flag values to blocking mode.
     fcntl.fcntl(data_path_socket.fileno(), fcntl.F_SETFL, flags)
+
+    sockname = data_path_socket.getsockname() #This might raise socket.error.
+    peername = data_path_socket.getpeername()
+    Trace.message(INFO_LEVEL,
+                  "Data socket %s is connected to %s. " % (sockname, peername))
+    Trace.log(e_errors.INFO,
+              "Data socket %s is connected to %s. " % (sockname, peername))
 
     return data_path_socket
 
@@ -2082,11 +2379,15 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 					open_control_socket(
 					    use_listen_socket, 15)
 			break
-		    except (socket.error, EncpError), msg:
+		    except (socket.error, select.error, EncpError), msg:
+                        #If a select (or other call) was interupted,
+                        # this is not an error, but should continue.
+                        if getattr(msg, "errno", None) == errno.EINTR:
+                            continue
 			#If the error was timeout, resend the reply
 			# Since, there was an exception, "ticket" is still
 			# the ticket returned from the routing call.
-			if getattr(msg, "errno", None) == errno.ETIMEDOUT:
+			elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
 			    route_server.reply_to_caller_using_interface_ip(
 				ticket, use_listen_socket.getsockname()[0])
 			else:
@@ -2098,9 +2399,13 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 	    else:
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, encp_intf.mover_timeout)
-        except (socket.error, EncpError):
+        except (socket.error, select.error, EncpError):
             exc, msg = sys.exc_info()[:2]
-            if getattr(msg, "errno", None) == errno.ETIMEDOUT:
+            if getattr(msg, "errno", None) == errno.EINTR:
+                #If a select (or other call) was interupted,
+                # this is not an error, but should continue.
+                continue
+            elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
                 # Setting the error to RESUBMITTING is important.  If this is
                 # not done, then it would be returned as ETIMEDOUT.
                 # ETIMEDOUT is a retriable error; meaning it would retry
@@ -2138,14 +2443,14 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
         Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL)")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-        Trace.log(e_errors.INFO,
+        #Recored the receiving of the first control socket message.
+        Trace.message(INFO_LEVEL,
                   "Received callback ticket from mover %s for transfer %s." % \
                   (ticket.get('mover', {}).get('name', "Unknown"),
                    ticket.get('unique_id', "Unknown")))
         Trace.log(e_errors.INFO,
-                  "Control socket %s is connected to %s for %s. " %
-                  (control_socket.getsockname(),
-                   control_socket.getpeername(),
+                  "Received callback ticket from mover %s for transfer %s." % \
+                  (ticket.get('mover', {}).get('name', "Unknown"),
                    ticket.get('unique_id', "Unknown")))
 
         #verify that the id is one that we are excpeting and not one that got
@@ -2206,12 +2511,6 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             close_descriptors(control_socket)
             #Since an error occured, just return it.
             return None, None, ticket
-
-        Trace.log(e_errors.INFO,
-                  "Data socket %s is connected to %s for %s. " %
-                  (data_path_socket.getsockname(),
-                   data_path_socket.getpeername(),
-                   ticket.get('unique_id', "Unknown")))
 
         #We need to specifiy which interface was used on the encp side.
         ticket['encp_ip'] =  use_listen_socket.getsockname()[0]
@@ -2752,10 +3051,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # was checked last.  This should only apply to reads.
     if request_dictionary.get('fc', {}).has_key('external_label'):
         # get a configuration server
-        csc = get_csc(request_dictionary)
-
+        #csc = get_csc(request_dictionary)
         # get the volume clerk responce.
-        vcc = volume_clerk_client.VolumeClerkClient(csc)
+        #vcc = volume_clerk_client.VolumeClerkClient(csc)
+        vcc = get_vcc(request_dictionary)
         vc_reply = vcc.inquire_vol(request_dictionary['fc']['external_label'])
         vc_status = vc_reply['status']
     else:
@@ -2772,9 +3071,22 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             socket_dict = {'status':socket_status}
             request_dictionary = combine_dict(socket_dict, request_dictionary)
         else:
-            #Determine if the control socket has some errror to report.
-            read_fd, unused, unused = select.select([control_socket],
-                                                    [], [], 15)
+            #This loop handles select being interupted by a signal.
+            while 1:
+                #Determine if the control socket has some error to report.
+                try:
+                    read_fd, unused, unused = select.select([control_socket],
+                                                            [], [], 5)
+                    break  #No exception raised; success.
+                except select.error, msg:
+                    if getattr(msg, "errno", None) == errno.EINTR:
+                        #If the call was interupted, continue.
+                        continue
+                    else:
+                        #If an error occured, deal with it.
+                        read_fd = []
+                        break
+                        
             #check control socket for error.
             if read_fd:
                 socket_dict = receive_final_dialog(control_socket)
@@ -2821,14 +3133,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             pass
 
     #If the mover doesn't call back after max_submits number of times, give up.
-    if max_submits != None and resubmits >= max_submits:
+    # If the error is already non-retriable, skip this step.
+    if max_submits != None and resubmits >= max_submits \
+       and e_errors.is_retriable(status):
         Trace.message(ERROR_LEVEL,
                       "To many resubmissions for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RESUBMITS, status)
 
     #If the transfer has failed to many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
-    if max_retries != None and retry >= max_retries:
+    # If the error is already non-retriable, skip this step.
+    if max_retries != None and retry >= max_retries \
+       and e_errors.is_retriable(status):
         Trace.message(ERROR_LEVEL,
                       "To many retries for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RETRIES, status)
@@ -2894,8 +3210,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # are some cases (most notably when internal_handle_retries()
         # is used) that there isn't a socket passed in to change.
         if request_list[0].get('route_selection', None) and route_server:
-            routing_addr, route_sever = get_routing_callback_addr(
-                encp_intf, route_server)
+            routing_addr = get_routing_callback_addr(
+                encp_intf, route_server)[0] #Ignore the returned socket ref.
         else:
             routing_addr = None
 
@@ -3056,8 +3372,8 @@ def calculate_rate(done_ticket, tinfo):
     Trace.message(TICKET_1_LEVEL, pprint.pformat(tinfo))
     
     #calculate MB relatated stats
-    bytes_per_MB = 1024 * 1024
-    MB_transfered = float(done_ticket['file_size']) / float(bytes_per_MB)
+    bytes_per_MB = float(1024 * 1024)
+    MB_transfered = float(done_ticket['file_size']) / bytes_per_MB
 
     #For readablilty...
     u_id = done_ticket['unique_id']
@@ -3281,8 +3597,8 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     tinfo['total'] = now - tinfo['encp_start_time']
 
     #calculate MB relatated stats
-    #bytes_per_MB = 1024 * 1024
-    #MB_transfered = float(bytes) / float(bytes_per_MB)
+    #bytes_per_MB = float(1024 * 1024)
+    #MB_transfered = float(bytes) / bytes_per_MB
 
     #get all the overall rates from the dictionary.
     overall_rate  = 0L
@@ -3436,6 +3752,16 @@ def set_pnfs_settings(ticket, intf_encp):
     Trace.message(INFO_LEVEL,
             "Updating %s file metadata." % ticket['wrapper']['pnfsFilename'])
 
+    #Make sure the file is still there.  This check is done with
+    # access_check() because it will loop incase pnfs is automounted.
+    # If the return is zero, then it wasn't found.
+    if access_check(ticket['wrapper']['pnfsFilename'], os.F_OK) == 0:
+        ticket['status'] = (e_errors.USERERROR,
+          "PNFS file %s has been removed." % ticket['wrapper']['pnfsFilename'])
+        Trace.log(e_errors.INFO,
+                  "Trouble with pnfs: %s %s." % ticket['status'])
+        return
+
     layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
     #The first piece of metadata to set is the bit file id which is placed
@@ -3452,10 +3778,18 @@ def set_pnfs_settings(ticket, intf_encp):
     except KeyboardInterrupt:
         raise sys.exc_info()
     except:
-        exc, msg = sys.exc_info()[:2]
-        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s."
-                  % (str(exc), str(msg)))
-        ticket['status'] = (str(exc), str(msg))
+        #Get the exception.
+        msg = sys.exc_info()[1]
+        #If it is a user access/permitted problem handle accordingly.
+        if hasattr(msg, "errno") and \
+           (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+            ticket['status'] = (e_errors.USERERROR, str(msg))
+        #Handle all other errors.
+        else:
+            ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+        #Log the problem.
+        Trace.log(e_errors.INFO,
+                  "Trouble with pnfs: %s %s." % ticket['status'])
         return
 
     Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
@@ -3495,6 +3829,19 @@ def set_pnfs_settings(ticket, intf_encp):
     except KeyboardInterrupt:
         raise sys.exc_info()
     except:
+        #Get the exception.
+        msg = sys.exc_info()[1]
+        #If it is a user access/permitted problem handle accordingly.
+        if hasattr(msg, "errno") and \
+           (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+            ticket['status'] = (e_errors.USERERROR, str(msg))
+        #Handle all other errors.
+        else:
+            ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+        #Log the problem.
+        Trace.log(e_errors.INFO,
+                  "Trouble with pnfs: %s %s." % ticket['status'])
+        
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
                   % (str(exc), str(msg)))
@@ -3518,9 +3865,10 @@ def set_pnfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
         fc_ticket["fc"]["drive"] = drive
 
-        volume_label = ticket.get('volume', None)
-        csc = get_csc(volume_label) #Get the correct system (if necessary).
-        fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
+        #volume_label = ticket.get('volume', None)
+        #csc = get_csc(volume_label) #Get the correct system (if necessary).
+        #fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
+        fcc = get_fcc(ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
         if not e_errors.is_ok(fc_reply['status'][0]):
@@ -3858,8 +4206,22 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
 
         #Stall starting the count until the first byte is ready for writing.
-        write_fd = select.select([], [data_path_socket], [], 15 * 60)[1]
-
+        duration = e.mover_timeout
+        while 1:
+            start_time = time.time()
+            try:
+                write_fd = select.select([], [data_path_socket], [],
+                                         duration)[1]
+                break
+            except select.error, msg:
+                if getattr(msg, "errno", None) == errno.EINTR:
+                    #If the select was interupted by a signal, keep going.
+                    duration = duration - (time.time() - start_time)
+                    continue
+                else:
+                    write_fd = []
+                    break
+        
         #To achive more accurate rates on writes to enstore when a tape
         # needs to be mounted, wait until the mover has sent a byte as
         # a signal to encp that it is ready to read data from its socket.
@@ -3867,8 +4229,22 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         # ticks by making the write rate worse.  When the mover finally
         # mounts and positions the tape, the damage to the rate is already
         # done.
-        read_fd = select.select([data_path_socket], [], [], 15 * 60)[0]
-
+        duration = e.mover_timeout
+        while 1:
+            start_time = time.time()
+            try:
+                read_fd = select.select([data_path_socket], [], [],
+                                         duration)[0]
+                break
+            except select.error, msg:
+                if getattr(msg, "errno", None) == errno.EINTR:
+                    #If the select was interupted by a signal, keep going.
+                    duration = duration - (time.time() - start_time)
+                    continue
+                else:
+                    read_fd = []
+                    break
+                
         if not write_fd or not read_fd:
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
@@ -4257,6 +4633,10 @@ def verify_read_request_consistancy(requests_per_vol):
             #If no layer 4 is present, then report the error, raise an alarm,
             # but continue with the transfer.
             try:
+                #In case pnfs is automounted, first try this access_check()
+                # call to wait for the filesystem to mount.
+                access_check(request['wrapper']['pnfsFilename'], os.F_OK)
+                
                 p = pnfs.Pnfs(request['wrapper']['pnfsFilename'])
                 p.get_xreference()
             except (OSError, IOError), msg:
@@ -4534,6 +4914,15 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #bfids_dict = fcc.get_bfids(e.input[0])
             bfids_dict = fcc.get_bfids(e.volume)
             bfids_list = bfids_dict['bfids']
+
+            #This reverse is a hack.  Observation has shone that the order
+            # of the bfids in the list is in reverse order of the file
+            # on tape.  Instead of messing around with funny mapping
+            # math later on, this is a much simpler fix.  Should the
+            # order get_bfids() returns them in be 'corrected' then
+            # removing this call will be necessary to avoid delays
+            # positioning tape.
+            bfids_list.reverse()
         except (ValueError, KeyError, TypeError, AttributeError), msg:
             print_data_access_layer_format(
                 e.input, e.output, 0,
@@ -4580,6 +4969,16 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             else:
                 quit(1)
 
+        #Obtain the complete listing of the volume.  It is best to do
+        # this now as opposed to each iteration in the large while
+        # loop below.
+        tape_ticket = fcc.tape_list(e.volume)
+        
+        #First check for errors.
+        if not e_errors.is_ok(tape_ticket):
+            raise EncpError(None, "Error obtaining tape listing.",
+                            e_errors.BROKEN)
+
         #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
@@ -4594,15 +4993,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status' : ("Unable to read list file", str(msg))})
                 quit(1)
 
-            #Obtain the complete listing of the volume.  It is best to do
-            # this now as opposed to each iteration in the large while
-            # loop below.
-            tape_ticket = fcc.tape_list(e.volume)
-            
-            #First check for errors.
-            if not e_errors.is_ok(tape_ticket):
-                raise EncpError(None, "Error obtaining tape listing.",
-                                e_errors.BROKEN)
 
         else:        
             number_of_files = len(bfids_dict['bfids'])
@@ -4842,6 +5232,9 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #If the user specified a volume to read.
         elif e.volume:
 
+            Trace.message(TRANSFER_LEVEL,
+                          "Preparing file number %s for transfer." % (i,))
+
             # get_clerks() can determine which it is and return the
             # volume_clerk and file clerk that it corresponds to.
             try:
@@ -4853,131 +5246,76 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                     {'status':(msg.type, msg.strerror), 'volume':e.volume})
                 quit(1)
 
-            #Contact the file clerk and get current bfid that is on the list.
+            fc_reply = tape_ticket.get("tape_list", {}).get(bfids_list[i])
+            #Include the server address in the returned info.
+            # Normally, get_file_clerk_info() would do this for us,
+            # but since we are using tape_ticket instead (for
+            # performance reasons) we need to set the address
+            # explicitly.
+            fc_reply['address'] = fcc.server_address
+
             try:
-                vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfids_list[i])
+                lc = fc_reply['location_cookie']
+            except KeyError:
+                raise EncpError(None, 'No location cookie found.',
+                                e_errors.CONFLICT)
 
-                #Handle any errors.
-                if vc_reply['status'][0] == e_errors.KEYERROR:
-                    raise EncpError(None, vc_reply['status'][1],
-                                    e_errors.NOVOLUME)
-                if not e_errors.is_ok(vc_reply):
-                    raise EncpError(None, vc_reply['status'][1],
-                                    vc_reply['status'][0])
-                if not e_errors.is_ok(fc_reply):
-                    raise EncpError(None, fc_reply['status'][1],
-                                    fc_reply['status'][0])
-            except EncpError, msg:
-                if msg.type == e_errors.DELETED:
-                    continue
+            #Attempt to get the pnfs ID.  If an encp failed in the
+            # right way it is possible for this entry to not exist.
+            try:
+                pnfsid = fc_reply['pnfsid']
+            except KeyError:
+                #If we get here, then a file does not have all
+                # the information in the file database, but does
+                # have the deleted field set to 'no'.
+                pnfsid = None
+                sys.stdout.write("Location %s is active, but the "
+                                 "pnfs id is unknown.\n" % lc)
+                #continue
+
+            try:
+                #Using the original directory, try and determine
+                # the new file name.
+                orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
+                #Try to obtain the file name and path that the
+                # file currently has.
+                p = pnfs.Pnfs(pnfsid, orignal_directory)
+                ifullname = p.get_path() #pnfsid, orignal_directory)
+                if e.output[0] == "/dev/null":
+                    ofullname = e.output[0]
                 else:
-                    print_data_access_layer_format(
-                        e.volume, e.output[0], 0,
-                        {'status':(msg.type, msg.strerror), 'volume':e.volume})
-                    quit(1)
+                    ofullname = os.path.join(e.output[0],
+                                             os.path.basename(ifullname))
+
+                file_size = get_file_size(ifullname)
+
+            except (OSError, KeyError, AttributeError):
+                #If we get here then there was a problem determining
+                # the name and path of the file.  Most likely, there
+                # is an entry in pnfs but the metadata is not complete.
+                ifullname = os.path.join(e.input[0], lc)
+
+                p = pnfs.Pnfs(ifullname)
+
+                if e.output[0] == "/dev/null":
+                    ofullname = e.output[0]
+                else:
+                    ofullname = os.path.join(e.output[0], lc)
+
+                file_size = None #Not known.
+
+                sys.stdout.write("Location %s is active, but the "
+                                 "file has been deleted.\n" % lc)
+                #continue
+
+            try:
+                bfid = bfids_list[i] #Set this alias...
             except IndexError:
-                #This exception is raised if the bfids_list[] is empty, but
-                # number_of_files was set to one anyway to force a tape
-                # to be ingested.
-                vc_reply = vcc.inquire_vol(e.volume, 5, 2)
+                #If we get here then there is no metadata for the volume
+                # for a tape read.  Set dummy values.
+                bfid = None
 
-                #Make sure that the volume exists.
-                if vc_reply['status'][0] == e_errors.KEYERROR:
-                    print_data_access_layer_format(
-                        e.volume, e.output[0], 0,
-                        {'status':(e_errors.NOVOLUME,
-                                   vc_reply['status'][1]),
-                         'volume':e.volume})
-                    quit(1)
-                    
-                vc_reply['address'] = vcc.server_address
-                fc_reply = {'address' : fcc.server_address,
-                            'bfid' : None,
-                            'complete_crc' : None,
-                            'deleted' : None,
-                            'drive' : None,
-                            'external_label' : e.volume,
-                            'location_cookie': '0000_000000000_0000001',
-                            'pnfs_mapname': None,
-                            'pnfs_name0': None,
-                            'pnfsid': None,
-                            'pnfsvid': None,
-                            'sanity_cookie': None,
-                            'size': None,
-                            'status' : (e_errors.OK, None)
-                            }
-
-            if not e_errors.is_ok(vc_reply):
-                print_data_access_layer_format(
-                        e.volume, e.output[0], 0,
-                        {'status':vc_reply['status'], 'volume':e.volume})
-                quit(1)
-                            
-            if e_errors.is_ok(fc_reply): # and fc_reply['deleted'] != "yes":
-                #Attempt to get the location cookie.  This should NEVER
-                # fail.
-                try:
-                    lc = fc_reply['location_cookie']
-                except KeyError:
-                    raise EncpError(None, 'No location cookie found.',
-                                    e_errors.CONFLICT)
-
-                #Attempt to get the pnfs ID.  If an encp failed in the
-                # right way it is possible for this entry to not exist.
-                try:
-                    pnfsid = fc_reply['pnfsid']
-                except KeyError:
-                    #If we get here, then a file does not have all
-                    # the information in the file database, but does
-                    # have the deleted field set to 'no'.
-                    pnfsid = None
-                    sys.stdout.write("Location %s is active, but the "
-                                     "pnfs id is unknown.\n" % lc)
-                    #continue
-
-                try:
-                    #Using the original directory, try and determine
-                    # the new file name.
-                    orignal_directory = os.path.dirname(fc_reply['pnfs_name0'])
-                    #Try to obtain the file name and path that the
-                    # file currently has.
-                    p = pnfs.Pnfs(pnfsid, orignal_directory)
-                    ifullname = p.get_path() #pnfsid, orignal_directory)
-                    if e.output[0] == "/dev/null":
-                        ofullname = e.output[0]
-                    else:
-                        ofullname = os.path.join(e.output[0],
-                                                 os.path.basename(ifullname))
-
-                    file_size = get_file_size(ifullname)
-                    
-                except (OSError, KeyError, AttributeError):
-                    #If we get here then there was a problem determining
-                    # the name and path of the file.  Most likely, there
-                    # is an entry in pnfs but the metadata is not complete.
-                    ifullname = os.path.join(e.input[0], lc)
-
-                    p = pnfs.Pnfs(ifullname)
-                    
-                    if e.output[0] == "/dev/null":
-                        ofullname = e.output[0]
-                    else:
-                        ofullname = os.path.join(e.output[0], lc)
-                    
-                    file_size = None #Not known.
-
-                    sys.stdout.write("Location %s is active, but the "
-                                     "file has been deleted.\n" % lc)
-                    #continue
-                    
-                try:
-                    bfid = bfids_list[i] #Set this alias...
-                except IndexError:
-                    #If we get here then there is no metadata for the volume
-                    # for a tape read.  Set dummy values.
-                    bfid = None
-                    
-                read_work = 'read_from_hsm' #'read_tape'
+            read_work = 'read_from_hsm' #'read_tape'
 
         #### BFID #######################################################
         #If the user specified a bfid for the file to read.
@@ -5097,6 +5435,10 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #Fundamentally this belongs in veriry_read_request_consistancy(),
             # but information needed about the input file requires this check.
             inputfile_check(ifullname, e)
+
+            #Fundamentally this belongs in veriry_read_request_consistancy(),
+            # but information needed about the input file requires this check.
+            outputfile_check(ifullname, ofullname, e)
             
             file_size = get_file_size(ifullname)
 
@@ -5370,8 +5712,19 @@ def read_hsm_files(listen_socket, route_server, submitted,
                    time.time() - tinfo['encp_start_time']))
 
         #Stall starting the count until the first byte is ready for reading.
-        unused, unused, unused = select.select([data_path_socket], [],
-                                               [data_path_socket], 15 * 60)
+        duration = e.mover_timeout
+        while 1:
+            start_time = time.time()
+            try:
+                select.select([data_path_socket], [], [], duration)
+                break
+            except select.error, msg:
+                if getattr(msg, "errno", None) == errno.EINTR:
+                    #If the select was interupted by a signal, keep going.
+                    duration = duration - (time.time() - start_time)
+                    continue
+                else:
+                    break
 
         Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
