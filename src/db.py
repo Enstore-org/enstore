@@ -83,6 +83,7 @@ class DbTable:
     if action=="next":
       return self.c.next()
 
+    # The implementation of "len" is wrong!
     # this should really be replaced by the db_stat command
     if action=="len":
       pos,value=self.c.get()
@@ -136,18 +137,28 @@ class DbTable:
   def keys(self):
     return self.db.keys()
 
+  def status(self):
+    try:	# to be backward compatible
+      return self.db.status()
+    except:	# in case self.db.status() was not implement
+      Trace.log(e_errors.INFO, "self.db.status() was not implemented")
+      return None
+
   def __len__(self):
-    t=self.db.txn()
-    c=self.db.cursor(t)
-    last,val=c.last()
-    key,val=c.first()
-    len=0
-    while key!=last:
-	key,val=c.next()
-	len=len+1
-    c.close()
-    t.commit()
-    return len+1
+    try:	# to be backward compatible
+      return self.db.__len__()
+    except:	# in case self.db.__len__() was not implemented
+      t=self.db.txn()
+      c=self.db.cursor(t)
+      last,val=c.last()
+      key,val=c.first()
+      len=0
+      while key!=last:
+  	key,val=c.next()
+  	len=len+1
+      c.close()
+      t.commit()
+      return len+1
 
   def has_key(self,key):
      return self.db.has_key(key)
