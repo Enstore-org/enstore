@@ -240,8 +240,20 @@ class PostponedRequests:
         return (time.time() - self.start_time > self.keep_time)
         
     def put(self, rq):
+        replace = 0
         sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
-        self.rq_list[sg] = rq
+        if self.rq_list.has_key(sg):
+            if rq.adminpri > -1:
+                if rq.adminpri > self.rq_list[sg].adminpri:
+                    replace = 1
+            else:
+                if rq.basepri > self.rq_list[sg].basepri:
+                    replace = 1
+        else:
+            replace = 1
+        if replace:
+            Trace.trace(16,"postponed_put %s" % (rq,))
+            self.rq_list[sg] = rq
         if not self.sg_list.has_key(sg):
             self.sg_list[sg] = 0L
 
