@@ -32,8 +32,8 @@ EDEV = 6
 EURATE = 7
 
 # different MOUNT line pieces from log file
-MDEV = 3
-MSTART = 4
+MDEV = 4
+MSTART = 5
 
 # message is either a mount request or an actual mount
 MREQUEST = 0
@@ -90,16 +90,16 @@ def parse_encp_line(line):
 # parse the mount line
 def parse_mount_line(line):
     Trace.trace(12,"{parse_mount_line "+repr(line))
-    [etime, enode, etmp, euser, estatus, etmp2, erest] = \
+    [etime, enode, etmp, euser, estatus, dev, erest] = \
                                                    string.split(line, None, 6)
-    [wd1, wd2, wd3, dev, file] = string.splitfields(erest, " ")
-    if wd1 == "Requesting":
+    if erest[0:10] == "Requesting":
 	# this is the request for the mount
 	start = MREQUEST
+        [etmp, estat] = string.splitfields(erest, "(")
     else:
 	start = MMOUNT
     Trace.trace(12,"}parse_mount_line ")
-    return [etime, enode, euser, dev, start]
+    return [etime, enode, euser, estatus, dev, start]
 
 class EnStatus:
 

@@ -902,7 +902,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ofn = lfd+"/mounts."+enstore_status.get_ts()
 
 	# parse out the mount information from the log files
-	self.search_logfiles("oftware mount", lfd, ofn)
+	self.search_logfiles("edia changer load", lfd, ofn)
 
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
