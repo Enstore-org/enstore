@@ -1754,11 +1754,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         c = self.dict.newCursor()
         k, v = c.first()
         while k:
-            try:
-                sg = string.split(v['volume_family'], '.')[0]
-                self.sgdb.inc_sg_counter(v['library'], sg)
-            except:
-                pass
+            if k[-8:] != '.deleted':
+                try:
+                    sg = string.split(v['volume_family'], '.')[0]
+                    self.sgdb.inc_sg_counter(v['library'], sg)
+                except:
+                    pass
             k, v = c.next()
         c.close()
 
