@@ -10,6 +10,60 @@ import generic_client
 
 TMP = ".tmp"
 
+ENGLISH_TITLES = { 
+		   "ADICDrvBusy" : "(e)Get ADIC Drive Info",
+		   "aml2logs" : "(e)Get AML2 Logs",
+		   "aml2mirror" : "(e)Mirror AML2 Disk",
+		   "backup" : "(e)Backup Enstore Db",
+		   "backupsystem2Tape" : "(e)Backup tarit Output To Tape",
+		   "backup2Tape" : "(e)Back up Metadata To Tape Daily",
+		   "checkPNFS" : "(r)Check PNFS for Errors",
+		   "checkdb" : "(e)Scan Db keys",
+		   "chkcrons" : "(r)Make CRON plots",
+		   "cleaning_report" : "(e)Get # Cleanings/Tapes",
+		   "copy_ran_file" : "(e)Read 3 Random Files",
+		   "delfile" : "(r)PNFS delete",
+		   "dailyblanks" : "(e)STK Tape/Blank Rpt",
+		   "d0-aml2-drives" : "(e)Check D0 AML/2 Drive Status",
+		   "enstoreNetwork" : "(e)Measure Network Encp Speeds",
+		   "enstoreSystem" : "(e)Make SAAG Page",
+		   "enstore_overall_status" : "(r)Make Operator SAAG Page",
+		   "failedX" : "(e)Get Failed Transfers",
+		   "fix_url" : "(e)Fix CGI URL's",
+		   "getcons" : "(r)Get Console Logs",
+		   "getnodeinfo" : "(r)Get Node Info",
+		   "inqPlotUpdate" : "(e)Make Inq Plots",
+		   "log-stash" : "(e)Save Logs to history",
+		   "make_cron_plot_page" : "(r)Make CRON Plot Page",
+		   "make_overall_plot" : "(r)Make Total BPD Plot",
+		   "makeplot" : "(e)Make Rate Plots",
+		   "noaccess" : "(e)Make VOLUME/NOACCESS Page",
+		   "offline_inventory" : "(e)Get Tape Inv Info",
+		   "PNFSRATE" : "(e)Get PNFS Rate Info",
+		   "plog" : "(r)Rollover PNFS Log",
+		   "pnfsExports" : "(r)Make PNFS Exports Page",
+		   "pnfsFastBackup" : "(r)Backup PNFS Files",
+		   "quickcheck" : "(r)Get Netperf Rates",
+		   "quickquota" : "(e)Get Volume Quotas",
+		   "raidcheck" : "(r)Check Raid Disk",
+		   "readDcache" : "(e)Read From Disk Cache",
+		   "rdist-log" : "(e)Backup Enstore Logs to srv3",
+		   "robot_inventory" : "(e)Get AML Volume Status",
+		   "STKDrvBusy" : "(r,e)Get STK Drive Info",
+		   "STKlog" : "(e)Get STK Logs",
+		   "STKquery" : "(e)Measure STK Response Time",
+		   "STKrobot_inventory" : "(e)Get STK Volume Info",
+		   "Sdr" : "(r)Get Node Temps/Fan",
+		   "Sel" : "(r)Get System Event Log",
+		   "selbit" : "(r)Clear System Event Log",
+		   "sgPlotUpdate" : "(e)Make Storage Group Plot",
+		   "silocheck" : "(e)Find Non-Standard Tapes",
+		   "stk_response_time" : "(e)STK Response Time",
+		   "syncit" : "(r)Rsync Mover Nodes",
+                   "tarit" : "(r)Backup Host Files",
+		   "udpclog" : "(r)Get UDP Clog Info",
+		   "volmap" : "(r)Chmod volmap Dirs" }
+
 # find all the files under the current directory that are jpg files.
 # (*.jpg). then create a smaller version of each file (if it does not 
 # exist) with the name *_stamp.jpg, to serve as a stamp file on 
@@ -58,7 +112,9 @@ class CronPlotPage(enstore_html.EnPlotPage):
     def find_label(self, text):
         l = len(self.url)
         # get rid of the .jpg ending and the url at the beginning and _stamp
-        return text[l:-10]
+	text_lcl = text[l:-10]
+	# translate this text to more understandable english
+	return ENGLISH_TITLES.get(text_lcl, text_lcl)
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
