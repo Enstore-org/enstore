@@ -37,14 +37,17 @@ class OpSGDB:
             db.inc_sg_counter(entry[0], entry[1], sgs[entry])
         
     # generate a dictionary in the configuration file format
-    def make_dict(self):
+    def make_dict(self, sg_dict=None):
         quotas = {}
         sgs = self.create_sg_dict()
         db = sg_db.SGDb(self.dbHome)
         for entry in sgs.keys():
             if not quotas.has_key(entry[0]):
                 quotas[entry[0]] = {}
-            count = db.get_sg_counter(entry[0], entry[1])
+            if sg_dict:
+                count = sg_dict[entry]
+            else:
+                count = db.get_sg_counter(entry[0], entry[1])
             quotas[entry[0]][entry[1]] = count
         return quotas
 
@@ -53,9 +56,10 @@ def test():
     print "GET ALL VOLUMES"
     print opdb.volumes
     print "classify by library-storage group"
-    print opdb.create_sg_dict()
+    sg_dict = opdb.create_sg_dict()
+    print sg_dict
     print "make dictionary"
-    print opdb.make_dict()
+    print opdb.make_dict(sg_dict)
 
 
 if __name__=='__main__':
