@@ -7,6 +7,7 @@ import string
 import regsub
 import pprint
 import copy
+import types
 
 # enstore imports
 import dispatching_worker
@@ -233,9 +234,16 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		if string.find (key, ".mover") != -1:
 		    item = self.configdict[key]
 		    if item.has_key('library'):
-			if item['library'] == ticket['library']:
-			    ret['mover'] = key
-			    ret['address'] = (item['hostip'], item['port'])
+			if type(item['library']) == types.ListType:
+			    for i in item['library']:
+				if i == ticket['library']:
+				    ret['mover'] = key
+				    ret['address'] = (item['hostip'], \
+						      item['port'])
+			else:
+			    if item['library'] == ticket['library']:
+				ret['mover'] = key
+				ret['address'] = (item['hostip'], item['port'])
 	self.reply_to_caller(ret)
 	Trace.trace(6,"}get_movers"+repr(ret))
 
