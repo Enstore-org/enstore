@@ -56,7 +56,6 @@ MY_NAME = "inquisitor"
 LOGHTMLFILE_NAME = "enstore_logs.html"
 TIMED_OUT_SP = "    "
 DEFAULT_REFRESH = "60"
-DEAD = "dead"
 ALIVE = "alive"
 NO_INFO_YET = "no info yet"
 
@@ -67,7 +66,7 @@ NOVALUE = -1
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
 
-MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', DEAD]
+MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', enstore_constants.DEAD]
 VOLUME_STATES = ['full', 'readonly']
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -130,7 +129,7 @@ class EventRelay:
     def dead(self):
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "setting event relay as dead")
-        self.state = DEAD
+        self.state = enstore_constants.DEAD
 
     def set_state(self, now):
         enstore_functions.inqTrace(enstore_constants.INQSERVERTIMESDBG,
@@ -150,7 +149,7 @@ class EventRelay:
 
     def is_dead(self, now):
         self.set_state(now)
-        if self.state == DEAD:
+        if self.state == enstore_constants.DEAD:
             rtn = 1
         else:
             rtn = 0
@@ -198,13 +197,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # mark a server as having timed out, this happens if no alive message is
     # received from the event_relay for this server
     def mark_timed_out(self, server):
-        self.mark_server("timed out", server)
+        self.mark_server(enstore_constants.TIMED_OUT, server)
 
     # mark a server as having possible hung, this happens if no alive message is
     # received from the event_relay for this server after server.hung_interval time
     def mark_dead(self, server):
-        self.mark_server(DEAD, server)
-	server.server_status = DEAD
+        self.mark_server(enstore_constants.DEAD, server)
+	server.server_status = enstore_constants.DEAD
 
     # called by the signal handling routines
     def s_update_exit(self, the_signal, frame):
@@ -795,7 +794,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def check_event_relay_last_alive(self):
         if self.event_relay.is_dead(time.time()):
-            self.mark_event_relay(DEAD)
+            self.mark_event_relay(enstore_constants.DEAD)
             if not self.sent_event_relay_alarm:
                 Trace.alarm(e_errors.ERROR, 
                             e_errors.TIMEDOUT, {'server' : self.event_relay.name,

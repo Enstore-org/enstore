@@ -52,6 +52,8 @@ DEFAULT_FILE_LIST_ROWS = 300
 DEFAULT_THRESHOLDS = [DEFAULT_LM_ROWS, DEFAULT_FULL_LM_ROWS, DEFAULT_LM_ROWS]
 DEFAULT_ALL_ROWS = 0
 
+NO_INFO_STATES = [enstore_constants.TIMED_OUT, enstore_constants.DEAD]
+
 LM_COLS = 5
 
 TAG = 'tag'
@@ -1464,7 +1466,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# if we are updating the web page faster that receiving the new
 	# info, then we already have a correct status
 	if string.find(lm_d[enstore_constants.STATUS][0], NBSP) == -1:
-	    if lm_d.has_key(enstore_constants.LMSTATE):
+	    if lm_d.has_key(enstore_constants.LMSTATE) and \
+	       lm_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		# append the lm state to the status information
 		lm_d[enstore_constants.STATUS][0] = \
 			 "%s%s:%s%s"%(lm_d[enstore_constants.STATUS][0], NBSP, NBSP, 
@@ -1524,7 +1527,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    # append the movers state to its status information
 		    # if we are updating the web page faster that receiving the new
 		    # info, then we already have a correct status
-		    if string.find(mover_d[enstore_constants.STATUS][0], NBSP) == -1:
+		    if string.find(mover_d[enstore_constants.STATUS][0], NBSP) == -1 and \
+		       mover_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 			mover_d[enstore_constants.STATUS][0] = \
 				      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0], 
 						   NBSP, NBSP, 
