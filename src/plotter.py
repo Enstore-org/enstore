@@ -95,7 +95,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    self.plotfile_l.append([plotfile2, dir])
 	    links_to_add.append(("%s/%s"%(BURN_RATE, 
 					  enstore_files.plot_html_file_name()),
-				 "Total Tapes Used per Storage Group Plots"))
+				 "Bytes Written per Storage Group Plots"))
 	# the first plotfile needs to have a link to the second one on it, if 
 	# the second one exists
 	if not links_to_add:
