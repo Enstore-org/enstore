@@ -534,18 +534,21 @@ int     ftt_t_locate (int argc, char **argv)
 {
 int             status;                 /* status */
 static int      blockno;                /* block number */
+static int 	npart;
 ftt_t_argt      argt[] = {
         {"<blockno>",   FTT_T_ARGV_INT,         NULL,           &blockno},
+ 	{"-partition",	FTT_T_ARGV_INT,		NULL,		&npart},
         {NULL,          FTT_T_ARGV_END,         NULL,           NULL}};
 
 /* parse command line
    ------------------ */
  
 blockno = -1;
+npart = 0;
 status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);
 
-status = ftt_scsi_locate(ftt_t_fd,blockno);
+status = ftt_scsi_locate(ftt_t_fd,blockno,npart);
 
 FTT_T_CHECK_CALL(status,0);
  

@@ -55,7 +55,7 @@ extern int 		ftt_retry(ftt_descriptor,
 				  char *buf, 
 				  int len);
 extern int		ftt_rewind(ftt_descriptor);
-extern int		ftt_scsi_locate(ftt_descriptor, int);
+extern int		ftt_scsi_locate(ftt_descriptor, int, int);
 extern int		ftt_set_data_direction(ftt_descriptor, int);
 extern char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );
 extern int 		ftt_set_mode_dev(ftt_descriptor, const char *, int );
@@ -88,7 +88,7 @@ extern int      ftt_logsense(ftt_descriptor d);
 typedef struct { 
 	int n_parts; 
 	int max_parts; 
-	long int partsizes[64]
+	int partsizes[64];
 } *ftt_partbuf;
 
 extern ftt_partbuf 	ftt_alloc_parts();

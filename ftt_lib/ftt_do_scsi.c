@@ -321,7 +321,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 }
 
 int
-ftt_scsi_locate( ftt_descriptor d, int blockno) {
+ftt_scsi_locate( ftt_descriptor d, int blockno, int partno) {
 
     int res = 0;
     static unsigned char 
@@ -331,6 +331,7 @@ ftt_scsi_locate( ftt_descriptor d, int blockno) {
     locate_cmd[4] = (blockno >> 16) & 0xff;
     locate_cmd[5] = (blockno >> 8)  & 0xff; 
     locate_cmd[6] = blockno & 0xff;
+    locate_cmd[8] = partno;
     res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,60,0);
     res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
 
