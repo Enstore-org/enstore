@@ -134,7 +134,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 deleted = "no"
                 decr_count = -1
             # the foolowing fixes a problem with lost 'deleted' entry'
+            fix_deleted = 0
             if not record.has_key('deleted'):
+                fix_deleted = 1
                 record["deleted"] = deleted
                 
             if record["deleted"] == deleted:
@@ -148,6 +150,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.USER_ERROR, 
                 "%s = %s deleted flag already set to %s - no change." % (bfid, fname, record["deleted"]))
                 Trace.trace(12,'set_deleted_priv %s'%(status,))
+                if fix_deleted:
+                    self.dict[bfid] = record
+                    Trace.log(e_errors.INFO, 'added missing "deleted" key for bfid %s' % (bfid,))
                 return status, None, None
 
             if deleted == "no":
