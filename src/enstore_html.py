@@ -495,15 +495,13 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    # never alive during this incarnation of the inquisitor.  if the last
 	    # time alive is ------ , then it was never alive.
 	    if len(moverd[enstore_status.STATUS]) == 4 or \
-	       len(moverd[enstore_status.STATUS]) == 5 and \
-	       not moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO:
+	       (len(moverd[enstore_status.STATUS]) == 5 and \
+	       not (moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO or
+		    moverd[enstore_status.STATUS][0] == 'timed out')):
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Completed Transfers",
 							color=BRICKRED)))
-		try:
-		    tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
-					 align="LEFT"))
-		except KeyError:
-		    print moverd
+		tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
+				     align="LEFT"))
 		mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
 					     align="LEFT", bgcolor=YELLOW)
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current State",
