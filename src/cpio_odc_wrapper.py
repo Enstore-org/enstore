@@ -36,7 +36,7 @@ Offet Field Name   Length in Bytes Notes
 
 To make cpio archives on unix:
        echo "pnfs_enstore_airedale_o1
-             pnfs_enstore_airedale_o1.encrc" |cpio -ov -H newc > archive
+             pnfs_enstore_airedale_o1.encrc" |cpio -ov -H odc > archive
 
 To list them: cpio -tv < archive
 To extract:   cpio -idmv < archive
