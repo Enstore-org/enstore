@@ -14,6 +14,6 @@ case $node in
           ;;
 esac
 
-/usr/local/bin/rgang $gang "echo 'DATE \`date\`'>>/SEL; /usr/local/bin/selread>>/SEL; /usr/local/bin/selclear"
+rgang $gang "echo 'DATE \`date\`'>>/SEL; /usr/local/bin/selread>>/SEL; /usr/local/bin/selclear"
 
-/usr/local/bin/rgang $gang "echo 'DATE \`date\`'>>/BITERROR; /opt/biterror/biterror_reset>>/BITERROR"
+rgang $gang "echo 'DATE \`date\`'>>/BITERROR; /opt/biterror/biterror_reset>>/BITERROR"
