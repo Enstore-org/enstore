@@ -147,6 +147,18 @@ class EnStatusFile(EnFile):
     def get_refresh(self):
 	return self.refresh
 
+class HTMLLMQFile(EnStatusFile, enstore_status.EnStatus):
+
+
+    def __init__(self, file, refresh, system_tag=""):
+	EnStatusFile.__init__(self, file, system_tag)
+	self.file_name = "%s.new"%(file,)
+	self.refresh = refresh
+
+    def write(self, doc):
+	if self.openfile:
+	    self.openfile.write(str(doc))
+
 class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 
     def __init__(self, file, refresh, system_tag=""):
@@ -186,12 +198,6 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 		    extra_file.install()
 					     
 
-class HTMLLMQFile(HTMLStatusFile, enstore_status.EnStatus):
-
-    def write(self, doc):
-	if self.openfile:
-	    self.openfile.write(str(doc))
-
 class HTMLEncpStatusFile(EnStatusFile):
 
     def __init__(self, file, refresh, system_tag=""):
@@ -230,6 +236,11 @@ class HTMLEncpStatusFile(EnStatusFile):
 
 class HTMLLogFile(EnFile):
 
+    def __init__(self, dir, file, cp_dir, system_tag=""):
+	filedir = "%s/%s.new"%(dir, file)
+	EnFile.__init__(self, filedir, system_tag)
+	self.real_file_name = "%s/%s"%(cp_dir, file)
+
     # format the log files and write them to the file, include a link to the
     # page to search the log files
     def write(self, http_path, logfiles, user_logs, host):
@@ -237,6 +248,13 @@ class HTMLLogFile(EnFile):
 	    doc = enstore_html.EnLogPage(system_tag=self.system_tag)
 	    doc.body(http_path, logfiles, user_logs, host)
             self.openfile.write(str(doc))
+
+    def copy(self):
+	# copy the file we created to the real file name in the new dir.
+	# this will work across disks
+	if (not self.real_file_name == self.file_name) and \
+	   os.path.exists(self.file_name):
+	    os.system("cp %s %s"%(self.file_name, self.real_file_name))
 
 class HTMLConfigFile(EnFile):
 
