@@ -234,7 +234,7 @@ def bind_volume( self, ticket ):
 	    # SHULD I RETRY????????
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
-	sts = self.hsm_driver.load( self.vol_info['eod_cookie'] )# SOFTWARE "MOUNT"
+	sts = self.hsm_driver.load()# SOFTWARE "MOUNT"
 	if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:

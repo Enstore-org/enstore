@@ -36,7 +36,7 @@ class GenericDriver:
 	self.set_eod( eod_cookie )
 	pass
 
-    def load( self, eod_cookie ):
+    def load( self ):
 	# this
 	return
     def unload(self): return
@@ -81,7 +81,7 @@ class  FTTDriver(GenericDriver) :
         #ETape.ET_Rewind("", self.device)
         self.set_position()
 
-    def load( self, eod_cookie ):
+    def load( self ):
 	os.system("mt -t " + self.device + " rewind")
 	return
 
@@ -159,9 +159,8 @@ class  RawDiskDriver(GenericDriver) :
 	#self.df.close()
 	pass
 	
-    def load( self, eod_cookie ):
+    def load( self ):
 	#self.df = open(self.device, "a+")
-	self.set_eod( eod_cookie )
         return
 	
     def unload( self ):
@@ -247,9 +246,9 @@ class  DelayDriver(RawDiskDriver) :
     crude delays modeled on no particular tape drive.
 
     """
-    def load( self, eod_cookie ):
+    def load( self ):
         time.sleep( 10 )                   # load time 10 seconds
-	RawDiskDriver.load( self, eod_cookie )
+	RawDiskDriver.load( self )
 
     def unload(self):
 	time.sleep(self.firstbyte/20E6)   # rewind time @ 20MB/sec
