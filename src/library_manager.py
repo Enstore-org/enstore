@@ -384,17 +384,22 @@ class LibraryManagerMethods:
             # volume clerk returned error
             Trace.trace(11,"process_write_request: next write volume returned %s" % (v,))
             if v["status"][0] != e_errors.OK:
+                rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
                 if v["status"][0] == e_errors.NOVOLUME or v["status"][0] == e_errors.QUOTAEXCEEDED:
                     if not self.process_for_bound_vol:
                         #if wr_en > rq.ticket["vc"]["file_family_width"]:
-                        # remove this request and send regret to the client
-                        rq.ticket['status'] = v['status']
-                        self.send_regret(rq.ticket)
-                        self.pending_work.delete(rq)
+                        
+                        # if volume veto list is not empty then work can be done later after
+                        # the tape is available again
+                        if not vol_veto_list or v["status"][0] == e_errors.QUOTAEXCEEDED:
+                            # remove this request and send regret to the client
+                            rq.ticket['status'] = v['status']
+                            self.send_regret(rq.ticket)
+                            self.pending_work.delete(rq)
                         rq = None
                 else:
                     rq.ticket["status"] = v["status"]
-                    rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
+                    #rq.ticket["reject_reason"] = (v["status"][0],v["status"][1])
                 self.continue_scan = 1
                 return rq, None
             else:
@@ -947,7 +952,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
         if self.lm_lock in ('locked', 'ignore', 'pause', 'noread'):
-            if self.lm_lock in ('locked', noread):
+            if self.lm_lock in ('locked', 'noread'):
                 ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
