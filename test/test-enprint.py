@@ -1,6 +1,7 @@
 # system imports
 #
 import string
+import time
 
 # enstore imports
 import generic_client
@@ -20,6 +21,12 @@ class Spam(generic_client.GenericClient):
 	if get_logger != 0:
 	    # get a logger
             self.logc = log_client.LoggerClient(0, self.print_id)
+
+    def serve_forever(self):
+	while 1:
+	    self.enprint(msg)
+	    time.sleep(3)
+	
 
 class SpamInterface(interface.Interface):
 
@@ -48,7 +55,7 @@ if __name__ == "__main__" :
     spam = Spam(string.atoi(intf.logmsg))
 
     # now print the message
-    spam.enprint(msg)
+    spam.serve_forever()
 
     try:
         del spam.logc.csc.u
