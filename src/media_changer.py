@@ -104,7 +104,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
-    def prepare(seelf):
+    def prepare(self,
+               external_label,  # volume external label
+               drive,
+               media_type) :         # drive id
         pass
 
     def DoWork(self, function, ticket):
@@ -121,30 +124,35 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # otherwise, we can do this
         else:
             # if this a duplicate request, drop it
+            self.enprint( "DOWORK"+repr(ticket))
             ticket["ra"] = (self.reply_address,self.client_number,self.current_id)
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
                     return
-            # if not duplicatei, fork the work
+            # if not duplicate, fork the work
             pipe = os.pipe()
             # if in child process
             if not os.fork() :
                 Trace.trace(10, '>forked')
+                self.enprint( "FORKED"+repr(ticket))
                 os.close(pipe[0])
                 # do the work, if this is a mount, dismount first
                 if ticket['function'] == "mount":
                     Trace.trace(10, '>dismount for mount')
+                    self.enprint( "PREPARE"+repr(ticket))
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
 
                 Trace.trace(10, '>>> '+ticket['function'])
+                self.enprint( "MOUNT"+repr(ticket))
                 sts = function(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe to dispatching_worker
+                self.enprint( "STS"+repr(ticket))
                 Trace.trace(10, '<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"
                 ticket["status"]=sts
