@@ -109,6 +109,7 @@ create table quota (
 	requested	int default 0,
 	authorized	int default 0,
 	quota		int default 0,
+	significance	character(1) default 'y',
 	primary key	(library, storage_group)
 );
 
