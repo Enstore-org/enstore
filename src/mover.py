@@ -881,6 +881,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
+        self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         if self.driver_type == 'NullDriver':
             self.check_written_file_period = 0 # no file check for null mover
             self.device = None
@@ -1081,7 +1082,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             state = self.state
         
         Trace.trace(20,"update_lm: %s %s" % (state_name(state), self.unique_id))
-        inhibit = 0
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -1093,54 +1093,56 @@ class Mover(dispatching_worker.DispatchingWorker,
             self._last_state = None
 
         now = time.time()
-        #if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time-now < 5:
-        #Don't tease the library manager!
-        #    inhibit = 1
 
         if reset_timer:
             self.reset_interval_timer(self.update_lm)
 
-        if not inhibit:
+        # check time in state
+        if (thread_name is 'MainThread'):
+            time_in_state = now - self.state_change_time
+            if ((self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING)) and
+                (time_in_state > self.max_time_in_state)):
+                Trace.alarm(e_errors.WARNING, "Too long in state %s" % (state_name(self.state),))
+            
+        ticket = self.format_lm_ticket(state=state, error_source=error_source)
+        for lib, addr in self.libraries:
+            if state != self._last_state:
+                Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
+            self._last_state = self.state
             # only main thread is allowed to send messages to LM
-            ticket = self.format_lm_ticket(state=state, error_source=error_source)
-            for lib, addr in self.libraries:
-                if state != self._last_state:
-                    Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
-                self._last_state = self.state
-                # only main thread is allowed to send messages to LM
-                # exception is a mover_busy and mover_error works
-                if ((thread_name is 'MainThread') and
-                    (ticket['work'] is not 'mover_busy')
-                    and (ticket['work'] is not 'mover_error')):
-                    Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
-                    ## XXX Sasha - this is an experiment - not sure this is a good idea!
+            # exception is a mover_busy and mover_error works
+            if ((thread_name is 'MainThread') and
+                (ticket['work'] is not 'mover_busy')
+                and (ticket['work'] is not 'mover_error')):
+                Trace.trace(20,"update_lm: send with wait %s"%(ticket['work'],))
+                ## XXX Sasha - this is an experiment - not sure this is a good idea!
+                try:
+                    request_from_lm = self.udpc.send(ticket, addr)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    if exc == errno.errorcode[errno.ETIMEDOUT]:
+                        x = {'status' : (e_errors.TIMEDOUT, msg)}
+                    else:
+                        x = {'status' : (str(exc), str(msg))}
+                    Trace.trace(10, "update_lm: got %s" %(x,))
+                    continue
+                work = request_from_lm.get('work')
+                if not work or work=='nowork':
+                    continue
+                method = getattr(self, work, None)
+                if method:
                     try:
-                        request_from_lm = self.udpc.send(ticket, addr)
+                        method(request_from_lm)
                     except:
-                        exc, msg, tb = sys.exc_info()
-                        if exc == errno.errorcode[errno.ETIMEDOUT]:
-                            x = {'status' : (e_errors.TIMEDOUT, msg)}
-                        else:
-                            x = {'status' : (str(exc), str(msg))}
-                        Trace.trace(10, "update_lm: got %s" %(x,))
-                        continue
-                    work = request_from_lm.get('work')
-                    if not work or work=='nowork':
-                        continue
-                    method = getattr(self, work, None)
-                    if method:
-                        try:
-                            method(request_from_lm)
-                        except:
-                            exc, detail, tb = sys.exc_info()
-                            Trace.handle_error(exc, detail, tb)
-                            Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
-                                      (method,request_from_lm)) 
-                # if work is mover_busy of mover_error
-                # send no_wait message
-                if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
-                    Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
-                    self.udpc.send_no_wait(ticket, addr)
+                        exc, detail, tb = sys.exc_info()
+                        Trace.handle_error(exc, detail, tb)
+                        Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
+                                  (method,request_from_lm)) 
+            # if work is mover_busy of mover_error
+            # send no_wait message
+            if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
+                Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
+                self.udpc.send_no_wait(ticket, addr)
                         
         self.check_dismount_timer()
 
@@ -3295,6 +3297,7 @@ class DiskMover(Mover):
 
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
+        self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
 
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
