@@ -731,7 +731,6 @@ def eof_labels(file_checksum, sanity_cookie=0, sanity_cookie_size=0):
 # the cern wrapper does not supply headers
 def headers(dummy):
     global efile
-    print efile.file_size, long(efile.file_size)
     pad = long(efile.file_size) % 512
     if pad:
         pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
