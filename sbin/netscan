@@ -37,21 +37,30 @@ LSOF="/usr/local/bin/lsof"
 EGREP="/bin/egrep"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
+DATE="/bin/date"
 RPM="/bin/rpm"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
 
+LOG=/tmp/netscan.log
+
+logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
+          if [ "$2"x = "psx" ]; then
+	    $PS >> $LOG 2>&1
+          fi
+          $ECHO "$1"
+        }
 
 right_file() { if ! $CMP $1 $2 2>/dev/null; then
                   msg1="BAD CONFIGURATION: $1 $2  do not match"
-                  $ECHO $msg1
+                  logit "$msg1"
                   if [ $ALARM -eq 1 ]; then
                     enstore alarm --raise --severity "A" --root-error "$msg1"
                   fi
                else
                   if [ $QUIET -ne 1 ]; then
-                    $ECHO Matching version of $1
+                    logit  "Matching version of $1"
                   fi
                fi
              }
@@ -68,11 +77,11 @@ right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 #rpm -Va | $EGREP bin | | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
 
 if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
-    $ECHO NO TIME SYNC
-    $XNTPDC -p
+    x=`$XNTPDC -p`
+    logit "NO TIME SYNC"
+    logit "$x"
+    enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
 fi
-
-N=`$LSOF -i TCP -i UDP`
 
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
@@ -97,6 +106,7 @@ ALLOW_BASE="
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        TCP,netserver,TCP,:netperf,x
 "
+#       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
 
 ALLOW_SRV5="$ALLOW_BASE
@@ -169,8 +179,8 @@ allow() { tt=$1
                  if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
                     msg2=`$PS -p $pid|$EGREP -v PPID`
-                    $ECHO $msg1
-                    $ECHO $msg2
+                    logit "$msg1"
+                    logit "$msg2" "ps"
                     if [ $ALARM -eq 1 ]; then
                       enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
                     fi
@@ -180,15 +190,15 @@ allow() { tt=$1
                 p=""
               fi
               if [ $QUIET -ne 1 ]; then
-                $ECHO Allowing $node $c $tt $a $b $p
+                logit"Allowing $node $c $tt $a $b $p"
               fi
               return 0
             fi
           done
           msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
           msg2=`$PS -p $pid|$EGREP -v PPID`
-          $ECHO $msg1
-          $ECHO $msg2
+          logit "$msg1"
+          logit "$msg2" "ps"
           if [ $ALARM -eq 1 ]; then
             enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
          fi
@@ -196,6 +206,7 @@ allow() { tt=$1
          }
 
 PSfirst=`$PS`
+N=`$LSOF -i TCP -i UDP`
 
 $ECHO "$N" | while read command pid rest; do
     if [ $pid = "PID" ] ; then continue; fi
@@ -203,11 +214,11 @@ $ECHO "$N" | while read command pid rest; do
       allow LISTEN
     elif [ `$ECHO $rest | $EGREP -c "UDP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         $ECHO Ignoring open UDP connections $command $pid $rest ...
+         logit "Ignoring open UDP connections $command $pid $rest ..."
       fi
     elif [ `$ECHO $rest | $EGREP -c "TCP"` -ne 0 ]; then
       if [ $QUIET -ne 1 ]; then
-         $ECHO Ignoring open TCP connections $command $pid $rest ...
+         logit "Ignoring open TCP connections $command $pid $rest ..."
       fi
     fi
 done
