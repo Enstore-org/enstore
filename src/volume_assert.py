@@ -173,6 +173,7 @@ def create_assert_list(vol_list, intf):
             ticket['encp']['agetime'] = 0
             ticket['infile'] = ""
             ticket['outfile'] = ""
+            ticket['volume'] = vol
             ticket['wrapper'] = encp.get_uinfo()
             ticket['wrapper']['size_bytes'] = 0
             ticket['wrapper']['machine'] = os.uname()
@@ -231,8 +232,14 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
 	        #There is no need to do this on a non-multihomed machine.
                 route_ticket, listen_socket = encp.open_routing_socket(
                     udp_server, unique_id_list, intf)
-            socket, addr, callback_ticket = \
+            #If everything is okay, open the control socket.
+            if e_errors.is_ok(route_ticket):
+                socket, addr, callback_ticket = \
                     encp.open_control_socket(listen_socket, intf.mover_timeout)
+            else:
+                raise encp.EncpError(None, "Routing socket error.",
+                         route_ticket.get('status', (e_errors.UNKNOWN, None)),
+                                          route_ticket)
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
@@ -252,7 +259,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             submit_assert_requests(uncompleted_list)
             continue
 
-        Trace.trace(10, "RESPONCE TICKET")
+        Trace.trace(10, "CONTROL SOCKET CALLBACK TICKET")
         Trace.trace(10, pprint.pformat(callback_ticket))
 
         Trace.trace(1, "Asserting volume %s." % \
@@ -281,19 +288,22 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             error_id_list.append(callback_ticket['unique_id'])
             continue
         
-        Trace.trace(5, "DONE TICKET")
-        Trace.trace(5, pprint.pformat(done_ticket))
+        Trace.trace(10, "DONE TICKET")
+        Trace.trace(10, pprint.pformat(done_ticket))
 
         #Print message if requested.  If an error occured print that to stderr.
         message = "Volume %s status is %s" % (
-            done_ticket['vc']['external_label'],
-            done_ticket['status'],)
+            done_ticket.get('volume', e_errors.UNKNOWN),
+            done_ticket.get('status', (e_errors.UNKNOWN, None)))
         if e_errors.is_ok(done_ticket['status']):
             Trace.trace(1, message)
         else:
             sys.stderr.write(message + "\n")
 
-        completed_id_list.append(done_ticket['unique_id'])
+        if done_ticket.get('unique_id', None) != None:
+            completed_id_list.append(done_ticket['unique_id'])
+        else:
+            error_id_list.append(1) #Remember filler for counts.
 
         #Close the socket or risk crashing with to many open files.
         try:
@@ -306,6 +316,13 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
         listen_socket.close()
     except socket.error:
         pass
+
+    #There were errrors.
+    if len(error_id_list) > 0:
+        return 1
+
+    #Everything went fine.
+    return 0
 
 ############################################################################
 ############################################################################
@@ -374,8 +391,10 @@ def main(intf):
     unique_id_list = submit_assert_requests(assert_list)
 
     #Wait for mover to call back with the volume assert status.
-    handle_assert_requests(unique_id_list, assert_list,
-                           listen_socket, udp_server, intf)
+    exit_status = handle_assert_requests(unique_id_list, assert_list,
+                                         listen_socket, udp_server, intf)
+
+    sys.exit(exit_status)
     
 ############################################################################
 ############################################################################
