@@ -28,6 +28,8 @@ import monitored_server
 import file_clerk_client
 import inquisitor_client
 import cPickle
+import event_relay_client
+import event_relay_messages
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -1981,7 +1983,13 @@ class VolumeClerk(VolumeClerkMethods):
             f.close()
         except:
             self.ignored_sg = []
-	# start our heartbeat to the event relay process
+
+        # setup the communications with the event relay task
+        self.resubscribe_rate = 300
+        self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+
+        # start our heartbeat to the event relay process
+
 	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
 				 self.alive_interval)
 
