@@ -45,9 +45,11 @@ echo_cat(char *fname){
 	if (write(1, buf, nbytes) != nbytes){
 	    fprintf(stderr,"%s: ", progname);
 	    perror("write");
+	    close(fd);
 	    return -1;
 	}
     }
+    close(fd);
     return 0;
 }
 
@@ -131,14 +133,18 @@ dump_db_main(int argc, char **argv){
 				vol->d_name, file->d_name, item->d_name);;
 			echo_cat(path);
 		    }
+		    closedir(itemd);
 		}
+		closedir(filed);
 	    } else { /*per-volume data*/
 		sprintf(path, "volumes/%s/%s", vol->d_name,
 			sub->d_name);
 		echo_cat(path);
 	    }
-	} 
+	}
+	closedir(subd);
     }
+    closedir(vold);
     return 0;
 }
 
