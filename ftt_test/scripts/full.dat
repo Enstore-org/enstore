@@ -1,0 +1,16 @@
+#
+# @(#) $Id$
+#===============================================================================
+# This will write to end of tape
+#===============================================================================
+ 
+ftt_open
+ftt_rewind
+
+ftt_max_error 2
+ftt_write_tblock -nblock 1000000 -bsize 65534 
+ftt_max_error 5
+ftt_test_status -FTT_AEOT
+ftt_close
+quit
+
