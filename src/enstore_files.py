@@ -96,6 +96,11 @@ class EnFile:
             Trace.log(e_errors.WARNING,
                       "%s not openable for %s"%(self.file_name, mode))
 
+    # write it to the file
+    def write(self, data):
+        if self.filedes:
+            self.filedes.write(str(data))
+
     def close(self):
 	Trace.trace(10,"enfile close %s"%(self.file_name,))
 	if self.filedes:
