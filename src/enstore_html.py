@@ -194,7 +194,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	#              servers in general
 	#              each library manager
 	#              media changers
-	#              orphan movers (not listed with any library manager
+	#              orphan movers (not listed with any library manager)
 	#              blocksizes
 	self.servers = self.data_dict.keys()
 	self.servers.sort()
@@ -321,6 +321,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def lm_queue_rows(self, lm, queue, intro):
 	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
 				  align="LEFT", bgcolor=YELLOW, width="100%")
+	qelems = self.data_dict[lm][queue]
+	qelems.sort()
 	for qelem in self.data_dict[lm][queue]:
 	    text = self.get_intro_text(qelem[enstore_status.WORK], intro)
 	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(text, color=BRICKRED, html_escape='OFF')))
@@ -439,22 +441,27 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def lm_rows(self, lm, table):
 	cols = 5
 	# first the alive information
-	table.append(self.alive_row(HTMLgen.Name(lm, lm), 
-				    self.data_dict[lm][enstore_status.STATUS]))
-	# the rest of the lm information is in a separate table, it starts
-	# with the suspect volume info
-	lm_table = HTMLgen.TableLite(self.lm_state_row(lm), cellpadding=0, 
-				     cellspacing=0, align="LEFT", 
-				     bgcolor=YELLOW, width="100%")
-	lm_table.append(self.suspect_volume_row(lm))
-	lm_table.append(self.null_row(cols))
-	self.known_mover_rows(lm_table, lm)
-	lm_table.append(self.empty_row(cols))
-	lm_table.append(self.work_at_movers_row(lm, cols))
-	lm_table.append(self.pending_work_row(lm, cols))
-	tr = HTMLgen.TR(self.empty_data())
-	tr.append(HTMLgen.TD(lm_table, colspan=5))
-	table.append(tr)
+	lm_status = self.data_dict[lm][enstore_status.STATUS]
+	table.append(self.alive_row(HTMLgen.Name(lm, lm), lm_status))
+	# we do not have any of this info if the library manager has timed out and was
+	# never alive during this incarnation of the inquisitor.  if the last
+	# time alive is ------ , then it was never alive.
+	if len(lm_status) == 4 or \
+	   (len(lm_status) == 5 and not lm_status[4] == enstore_status.NO_INFO):
+	    # the rest of the lm information is in a separate table, it starts
+	    # with the suspect volume info
+	    lm_table = HTMLgen.TableLite(self.lm_state_row(lm), cellpadding=0, 
+					 cellspacing=0, align="LEFT", 
+					 bgcolor=YELLOW, width="100%")
+	    lm_table.append(self.suspect_volume_row(lm))
+	    lm_table.append(self.null_row(cols))
+	    self.known_mover_rows(lm_table, lm)
+	    lm_table.append(self.empty_row(cols))
+	    lm_table.append(self.work_at_movers_row(lm, cols))
+	    lm_table.append(self.pending_work_row(lm, cols))
+	    tr = HTMLgen.TR(self.empty_data())
+	    tr.append(HTMLgen.TD(lm_table, colspan=5))
+	    table.append(tr)
 
     # add the volume information if it exists
     def add_bytes_volume_info(self, moverd, tr, mvkey):
@@ -498,64 +505,71 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # add the mover information for this library manager
     def mv_rows(self, lm, table):
-	movers = self.data_dict[lm][enstore_status.MOVERS]
-	movers.sort()
-	for mover in movers:
-	    moverd = self.data_dict[mover]
-	    # mark this mover as not being an orphan, so we can easily find the
-	    # orphans later
-	    moverd[enstore_status.FOUND_LM] = 1
-	    # check if this mover has been ipdated yet, we may not have gotten to it
-	    # yet, as we are really processing the library manager info.  if there is
-	    # no STATUs key, then we have no info on this mover yet.
-	    table.append(self.alive_row(mover, moverd[enstore_status.STATUS]))
+	# we do not have any of this info if the library manager has timed out and was
+	# never alive during this incarnation of the inquisitor.  if the last
+	# time alive is ------ , then it was never alive.
+	lm_status = self.data_dict[lm][enstore_status.STATUS]
+	if len(lm_status) == 4 or \
+	   (len(lm_status) == 5 and not lm_status[4] == enstore_status.NO_INFO):
+	    movers = self.data_dict[lm][enstore_status.MOVERS]
+	    movers.sort()
+	    for mover in movers:
+		moverd = self.data_dict[mover]
+		# mark this mover as not being an orphan, so we can easily find the
+		# orphans later
+		moverd[enstore_status.FOUND_LM] = 1
+		# check if this mover has been ipdated yet, we may not have gotten to it
+		# yet, as we are really processing the library manager info.  if there is
+		# no STATUs key, then we have no info on this mover yet.
+		table.append(self.alive_row(mover, moverd[enstore_status.STATUS]))
 
-	    # we do not have any of this info if the mover has timed out and was
-	    # never alive during this incarnation of the inquisitor.  if the last
-	    # time alive is ------ , then it was never alive.
-	    if len(moverd[enstore_status.STATUS]) == 4 or \
-	       (len(moverd[enstore_status.STATUS]) == 5 and \
-	       not (moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO or
-		    moverd[enstore_status.STATUS][0] == 'timed out')):
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
-							color=BRICKRED, html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
-				     align="LEFT"))
-		mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
-					     align="LEFT", bgcolor=YELLOW)
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sState"%(NBSP,),
-							color=BRICKRED, html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_status.STATE], colspan=3, 
-				     align="LEFT"))
-		mv_table.append(tr)
-		mv_table.append(self.empty_row(4))
-		if moverd.has_key(enstore_status.LAST_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sRead%s(bytes)"%(NBSP, NBSP),
-							    color=BRICKRED, html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_volume_info(moverd, tr, 
-					       enstore_status.LAST_READ)
+		# we do not have any of this info if the mover has timed out and was
+		# never alive during this incarnation of the inquisitor.  if the last
+		# time alive is ------ , then it was never alive.  if moverd only has 4
+		# elements, then it is currently alive, if it has 5, then the last is a last
+		# time alive and moverd has 5.
+		if len(moverd[enstore_status.STATUS]) == 4 or \
+		   (len(moverd[enstore_status.STATUS]) == 5 and \
+		   not moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO):
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Requested%sTransfers"%(NBSP,),
+							    color=BRICKRED, html_escape='OFF')))
+		    tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
+					 align="LEFT"))
+		    mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
+						 align="LEFT", bgcolor=YELLOW)
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sState"%(NBSP,),
+							    color=BRICKRED, html_escape='OFF')))
+		    tr.append(HTMLgen.TD(moverd[enstore_status.STATE], colspan=3, 
+					 align="LEFT"))
 		    mv_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sWrite%s(bytes)"%(NBSP, NBSP),
-						      color=BRICKRED, html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_eod_info(moverd, tr, enstore_status.LAST_WRITE)
-		    mv_table.append(tr)
-		    self.add_files(moverd, mv_table)
-		elif moverd.has_key(enstore_status.CUR_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sRead%s(bytes)"%(NBSP, NBSP),
-							    color=BRICKRED, html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_volume_info(moverd, tr, enstore_status.CUR_READ)
-		    mv_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sWrite%s(bytes)"%(NBSP, NBSP),
-						      color=BRICKRED, html_escape='OFF'),
-					 align="CENTER"))
-		    self.add_bytes_eod_info(moverd, tr, enstore_status.CUR_WRITE)
-		    mv_table.append(tr)
-		    self.add_files(moverd, mv_table)
-		tr = HTMLgen.TR(self.empty_data())
-		tr.append(HTMLgen.TD(mv_table, colspan=5))
+		    mv_table.append(self.empty_row(4))
+		    if moverd.has_key(enstore_status.LAST_READ):
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sRead%s(bytes)"%(NBSP, NBSP),
+								color=BRICKRED, html_escape='OFF'),
+						   align="CENTER"))
+			self.add_bytes_volume_info(moverd, tr, 
+						   enstore_status.LAST_READ)
+			mv_table.append(tr)
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sWrite%s(bytes)"%(NBSP, NBSP),
+							  color=BRICKRED, html_escape='OFF'),
+						   align="CENTER"))
+			self.add_bytes_eod_info(moverd, tr, enstore_status.LAST_WRITE)
+			mv_table.append(tr)
+			self.add_files(moverd, mv_table)
+		    elif moverd.has_key(enstore_status.CUR_READ):
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sRead%s(bytes)"%(NBSP, NBSP),
+								color=BRICKRED, html_escape='OFF'),
+						   align="CENTER"))
+			self.add_bytes_volume_info(moverd, tr, enstore_status.CUR_READ)
+			mv_table.append(tr)
+			tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sWrite%s(bytes)"%(NBSP, NBSP),
+							  color=BRICKRED, html_escape='OFF'),
+					     align="CENTER"))
+			self.add_bytes_eod_info(moverd, tr, enstore_status.CUR_WRITE)
+			mv_table.append(tr)
+			self.add_files(moverd, mv_table)
+		    tr = HTMLgen.TR(self.empty_data())
+		    tr.append(HTMLgen.TD(mv_table, colspan=5))
 		table.append(tr)
 
     # output all of the library manager rows and their associated movers
@@ -566,14 +580,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    if is_library_manager(server):
 		# this is a library manager. output all of its info and then
 		# info for each of its movers
-		# only output other things if the library manager ia alive
-		if self.data_dict[server][enstore_status.STATUS][0] == "alive":
-		    self.lm_rows(server, table)
-		    self.mv_rows(server, table)
-		else:
-		    # only need timedout status
-		    table.append(self.alive_row(server, 
-				 self.data_dict[server][enstore_status.STATUS]))
+		self.lm_rows(server, table)
+		self.mv_rows(server, table)
 
     # output all of the media changer rows 
     def media_changer_rows(self, table):

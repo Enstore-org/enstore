@@ -165,8 +165,6 @@ class EnStatus:
     # parse the library manager queues returned from "getwork". pull out the
     # information we want and put it in a dictionary
     def parse_lm_queues(self, work, key, worktype):
-	if not self.text.has_key(key):
-	    self.text[key] = {}
 	self.text[key][worktype] = []
 	for mover in work:
 	    # 'mover' not found in pending work
@@ -227,7 +225,8 @@ class EnStatus:
 
     # output the passed alive status
     def output_alive(self, host, port, state, time, key):
-	self.text[key] = {}
+	if not self.text.has_key(key):
+	    self.text[key] = {}
 	self.text[key][STATUS] = [state, self.unquote(host), repr(port), 
 				  format_time(time)]
 
@@ -237,7 +236,8 @@ class EnStatus:
 	    ltime = NO_INFO
 	else:
 	    ltime = format_time(last_time)
-	self.text[key] = {}
+	if not self.text.has_key(key):
+	    self.text[key] = {}
 	self.text[key][STATUS] = [state, self.unquote(host), repr(port), 
 				  format_time(time), ltime]
 
@@ -296,7 +296,7 @@ class EnStatus:
 	else:
 	    self.text[key][PENDING] = NO_PENDING
 
-    # output the library manager queues
+    # output the mover status
     def output_moverstatus(self, ticket, key):
 	self.text[key][COMPLETED] = repr(ticket["no_xfers"])
        	if ticket["state"] == "busy":
