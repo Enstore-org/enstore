@@ -16,10 +16,20 @@ except ImportError:
 import pdb
 
 def default_host():
-    return("localhost")
+    try:
+	return os.environ['ENSTORE_CONFIG_HOST']
+    except:
+	print "can not get default host - reverting to localhost:",\
+	      sys.exc_info()[0],sys.exc_info()[1]
+	return("localhost")
 
 def default_port():
-    return("7500")
+    try:
+	return os.environ['ENSTORE_CONFIG_PORT']
+    except:
+	print "can not get default port - reverting to 7500:",\
+	      sys.exc_info()[0],sys.exc_info()[1]
+	return("7500")
 
 class Interface:
 
