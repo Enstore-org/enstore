@@ -218,12 +218,12 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep rate`" ];then
     turnoff "$PID_DIR/`uname -n`-ratekeeper*pids"      "ratekeeper"
 fi
 
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mon`" ];then
-    if [ $config_running -eq 1 ] ; then
-      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep mon |sed -e 's/.*://'` $timeout --work quit >/dev/null
-    fi
-    turnoff "$PID_DIR/`uname -n`-monitor*pids"         "monitor"
-fi
+#if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mon`" ];then
+#    if [ $config_running -eq 1 ] ; then
+#      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep mon |sed -e 's/.*://'` $timeout --work quit >/dev/null
+#    fi
+#    turnoff "$PID_DIR/`uname -n`-monitor*pids"         "monitor"
+#fi
 
 #   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
 
