@@ -379,7 +379,12 @@ def copy_files(files):
 			log(MY_TASK, `f`)
 		log(MY_TASK, "copying %s %s %s"%(bfid, f['label'], f['location_cookie']))
 		tmp = temp_file(f['label'], f['location_cookie'])
-		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
+		try:
+			src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
+			continue
 		if debug:
 			log(MY_TASK, "src:", src)
 			log(MY_TASK, "tmp:", tmp)
