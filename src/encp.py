@@ -1132,7 +1132,7 @@ def open_data_socket(mover_addr, mode):
                 flags | FCNTL.O_NONBLOCK)
 
     #set up any special network load-balancing voodoo
-    interface=host_config.check_load_balance(mode=mode, dest=mover_addr[0])
+    interface=host_config.check_load_balance(mode=mode)
     #load balencing...
     if interface:
         ip = interface.get('ip')
@@ -1404,8 +1404,13 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     try:
-	#Cleanup the tcp static routes.
-	# (udp is handled in the udp_client module)
+	#Cleanup the tcp static routes to the mover nodes.
+        # (udp is handled in the udp_client module)
+        #The addition and deletion of routes can be done without fear of
+        # deleting the routes used by other encps... with some care.
+        # All tcp traffic goes to dedicated mover nodes, with
+        # one ip per media device (tape drive/disk/cdrom), a static route is
+        # not shared with any other encp.
 	host_config.unset_route(request['mover']['callback_addr'][0])
     except (OSError, IOError, KeyError), msg:
 	Trace.log(e_errors.WARNING,

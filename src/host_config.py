@@ -11,6 +11,8 @@ import sys
 import string
 import random
 import socket
+import pprint
+import re
 
 import Trace
 import e_errors
@@ -22,8 +24,8 @@ import pdb
 #UDP_fixed_route = 0
 
 #Hack so mylint doesn't complain.
-def get_default_interface_ip():
-    pass
+#def get_default_interface_ip():
+#    pass
 
 ##############################################################################
 # The following three functions read in the enstore.conf file.
@@ -97,6 +99,22 @@ def get_config():
     return _cached_config
 
 ##############################################################################
+# The following function determines the default ip.
+##############################################################################
+
+#Return the hostip, as a string, that appears on the 'hostip=' line in
+# the enstore.conf file.
+def get_default_interface_ip():
+    config = get_config()
+    if not config:
+        return socket.gethostbyname(socket.gethostname())
+    hostip = config.get('hostip', None)
+    if hostip:
+        return hostip
+    else:
+        return socket.gethostbyname(socket.gethostname())
+
+##############################################################################
 # The following two functions parse the config dictionary.
 ##############################################################################
 
@@ -138,6 +156,67 @@ def get_interface_info_by_ip(interface_ip):
         if interface_dict[interface]['ip'] == interface_ip:
             return interface_dict[interface]
     return {'ip':interface_ip}
+
+##############################################################################
+# The following functions return information about the routing table.
+##############################################################################
+
+#The return value is a list of dictionaries.  One element in the list is
+# one line in the routing table.  The keys for each dictionary are the titles
+# for each column in the routing table.  WARNING: The titles are very system
+# dependent.
+def get_netstat_r():
+
+    #Obtain the netstat information needed (netstat -r).
+    netstat_cmd = multiple_interface._find_command("netstat")
+    p = os.popen(netstat_cmd + " -r", 'r')
+
+    data = p.readlines()
+    status = p.close()
+
+    if status:
+        return None
+
+    #regular expresion to 
+    simplify = re.compile( ' +')
+
+    #Determine the number of columns in the output.
+    for line in data:
+        line = line.strip()
+        titles = simplify.sub( ' ', line).split(" ")
+        #On all of the observed platforms there is a title line that contains
+        # as the first non-whitespace characters "Destination".
+        if titles[0] == "Destination":
+            columns = len(titles)
+            break
+    else:
+        return None
+
+    output = []
+    #Strip out the valid lines of the table.
+    for line in data:
+        line = line.strip()
+        info = simplify.sub( ' ', line).split(" ")
+        #Look for lines that have the same number of columns as the title line.
+        if len(info) == columns and info != titles:
+            tmp = {}
+            for i in range(len(titles)):
+                tmp[titles[i]] = info[i]
+            output.append(tmp)
+
+    return output
+
+#Rerturns true if the destination is already in the routing table.  False,
+# otherwise.
+def is_route_in_table(dest):
+    route_table = get_netstat_r()
+    for route in route_table:
+        #Most platforms attempt to give names instead of FQDN, convert the
+        # names to ip addresses.
+        if socket.gethostbyname(route['Destination']) == dest:
+            return 1
+
+    return 0
 
 ##############################################################################
 # The following function selects which CPU to run the process on.
@@ -202,22 +281,13 @@ def unset_route(dest):
 # The following three functions select an interface based on various criteria.
 ##############################################################################
 
-#Return the hostip, as a string, that appears on the 'hostip=' line in
-# the enstore.conf file.
-def get_default_interface_ip():
-    config = get_config()
-    if not config:
-        return socket.gethostbyname(socket.gethostname())
-    hostip = config.get('hostip', None)
-    if hostip:
-        return hostip
-    else:
-        return socket.gethostbyname(socket.gethostname())
+def get_default_interface():
+    return get_interface_info_by_ip(get_default_interface_ip())
 
-def choose_interface(dest=None):
+def choose_interface():
     interfaces = get_interfaces()
     if not interfaces:
-        return get_interface_info_by_ip(get_default_interface_ip())
+        return get_default_interface()
     
     choose = []
     for interface in interfaces:
@@ -227,17 +297,17 @@ def choose_interface(dest=None):
     junk, junk, interface = choose[0]
     return get_interface_info(interface)
 
-def check_load_balance(mode = None, dest = None):
+def check_load_balance(mode = None):
     #mode should be 0 or 1 for "read" or "write"
     config = get_config()
     if not config:
-        return get_interface_info_by_ip(get_default_interface_ip())
+        return get_default_interface()
     interface_dict = config.get('interface')
     if not interface_dict:
-        return get_interface_info_by_ip(get_default_interface_ip())
+        return get_default_interface()
     interfaces = interface_dict.keys()
     if not interfaces:
-        return get_interface_info_by_ip(get_default_interface_ip())
+        return get_default_interface()
     
     #Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
@@ -265,19 +335,24 @@ def check_load_balance(mode = None, dest = None):
 ##############################################################################
 
 def setup_interface(dest, interface_ip):
-    #Some architecures (like IRIX) attach a network card to a processor.
-    # make sure the process runs on the correct cpu for the interface selected.
     config = get_config()
     if not config:
         return
     interface_dict = config.get('interface')
     if not interface_dict:
         return
-    for interface in interface_dict.keys():
-	if interface_dict[interface]['ip'] == interface_ip:
-	    #pass in the interface (ie. eg0, eth0)
-	    runon_cpu(interface)
 
-    unset_route(dest)
+    #Some architecures (like IRIX) attach a network card to a processor.
+    # make sure the process runs on the correct cpu for the interface selected.
+    for interface in interface_dict.keys():
+        if interface_dict[interface]['ip'] == interface_ip:
+            #pass in the interface (ie. eg0, eth0)
+            runon_cpu(interface)
+
+    #If the route is already in the table, remove it.  If it is not present,
+    # then there is no need to try and delete it.
+    if is_route_in_table(dest):
+        unset_route(dest)
+    #Set the static route.
     set_route(dest, interface_ip)
 
