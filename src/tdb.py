@@ -5,34 +5,53 @@ import string
 import sys
 import tdb
 import linecache
-import __main__
+import pdb
 
 Quit = "tdb.Quit"
 Help = "tdb.Help"
 
+
+
+WHICH_OFF = 0
+WHICH_TRACE_CALL = 1
+WHICH_TRACE_ALL  = 2
+WHICH_PDB        = 3
+
+
+class Hackpdb(pdb.Pdb) :
+    def __init__(self):
+        pdb.Pdb.__init__(self)
+
+    def do_quit(self, arg):
+        self.quitting = 1
+        install()
+        tdb.mode = WHICH_TRACE_ALL
+        
 def saver(frame, type, u) :
     if 0:
-        print ("attention, in saver",  frame, type, u, __main__.on,
+        print ("attention, in saver",  frame, type, u, tdn.mode,
                linecache.getline(frame.f_code.co_filename, frame.f_lineno))
 
-    if not __main__.on :
+    if tdb.mode is WHICH_TRACE_ALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
         return saver
-    __main__.simple = { 't'     : threading.currentThread(),
-                               'frame' : frame
-                              }
-
-    # tdb.td[trhaed] = frame
-    return saver
-
+    elif tdb.mode is WHICH_TRACE_CALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }        
+        return None
+    elif tdb.mode is WHICH_PDB :
+        import pdb
+        pdb.Pdb().set_trace()
+        return saver
+    else :
+       print "impossible which"
 
 def install():
     sys.settrace(saver)
     
-__main__.on = 0
+tdb.mode = WHICH_TRACE_ALL
 
-def onoff(which):
-    __main__.on = which
-
+def onoff(which, infile=sys.stdin, outfile=sys.stdout):
+    tdb.mode = which
 
 class Tdb(threading.Thread) :
     inFile = sys.stdin
@@ -80,10 +99,10 @@ class Tdb(threading.Thread) :
 
     def cmd_main(self, args) :
         if args : raise Help
-        self.writeln (__main__.simple['t'])
+        self.writeln (tdb.simple['t'])
         self.writeln("_____________________")
-        #self.writeln (__main__.simple['frame'].__members__)
-        f = __main__.simple['frame']
+        #self.writeln (tdb.simple['frame'].__members__)
+        f = tdb.simple['frame']
         while f :
             #self.writeln (f.__members__)
             source_desc = " %19s %4s:%50s" % (
@@ -96,9 +115,9 @@ class Tdb(threading.Thread) :
         
     def cmd_mainwhoall(self, args) :
         if args : raise Help
-        self.writeln (__main__.simple['t'])
-        #self.writeln (__main__.simple['frame'].__members__)
-        f = __main__.simple['frame']
+        self.writeln (tdb.simple['t'])
+        #self.writeln (tdb.simple['frame'].__members__)
+        f = tdb.simple['frame']
         while f :
             self.writeln("_____________________")
             #self.writeln (f.__members__)
@@ -164,8 +183,19 @@ class Tdb(threading.Thread) :
             me.exit()
         else :
             self.writeln("No yet working")
-    
 
+    def cmd_pdb(self, args):
+        self.writeln("***** Quitting the debugger crashes the program** ")
+        self.writeln("***** This is as far as I am ** ")
+        tdb.onoff(WHICH_PDB, self.inFile, self.outFile)
+        sys.stdin = self.inFile
+        saved_stdout = sys.stdout
+        import os  #hack -- dup "works" clobbering sys.stdin did not
+        os.dup2(self.outFile.fileno(), sys.stdout.fileno())
+        pdb.set_trace()
+        while 1:
+            time.sleep(1000)
+        
     def cmd_help(self, args=()) :
         if len(args) is not 0 : raise Help
         self.writeln("help")
@@ -178,6 +208,7 @@ class Tdb(threading.Thread) :
         self.writeln("modules                  -- print known modules")
         self.writeln("mainwhoall               -- look at the main stack/vars")
         self.writeln("main                     -- look at the main stack")
+        self.writeln("pdb                      -- pdb debugger (buggy still)")
         self.writeln("teardown                 -- teardown the whole app")
         self.writeln("quit")
     
@@ -229,7 +260,7 @@ if __name__ == "__main__":
 
     tdb.TdbListener().start()
     install()
-    onoff(1)
+    onoff(WHICH_TRACE_ALL)
     I_()
     
         
