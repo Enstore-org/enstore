@@ -463,14 +463,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.bytes_read == 0 and self.header: #splice in cpio headers, as if they came from client
             nbytes = self.buffer.header_size
             bytes_read = self.buffer.stream_read(nbytes,self.header)
-            Trace.trace(30, "read %s bytes of header" % bytes_read)
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
-            ##ZZZ try
-            bytes_read = self.buffer.stream_read(nbytes, driver)
-####            Trace.trace(30, "read %s from client"%( bytes_read,))
-            if not bytes_read:  #  The client went away!
+            bytes_read = 0
+            try:
+                bytes_read = self.buffer.stream_read(nbytes, driver)
+            except Exceptions.exception, detail:
+                self.transfer_failed(str(detail))
+                return
+            if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
                 self.transfer_failed(None)
                 return
@@ -503,11 +505,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         optimal_buf = min(optimal_buf, self.max_buffer)
                         optimal_buf = max(optimal_buf, 2*self.buffer.blocksize)
                         Trace.trace(15,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
-                        Trace.trace(15,"Changing buffer size from %s to %s"%(self.buffer.min_bytes, optimal_buf))
-                        self.buffer.set_min_bytes(optimal_buf)
+                        if oself.buffer.min_bytes != optimal_buf:
+                            Trace.trace(15,"Changing buffer size from %s to %s"%(self.buffer.min_bytes, optimal_buf))
+                            self.buffer.set_min_bytes(optimal_buf)
 
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
-####            Trace.trace(30, "write tape %s"%( nbytes,))
             if (nbytes > self.buffer.nbytes()
                 or  self.bytes_read < self.bytes_to_read and self.buffer.low()):
                 Trace.trace(10,"only have %s"%( self.buffer.nbytes(),))
@@ -515,10 +517,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 time.sleep(1)
                 continue
 
-            #ZZZ TRY
-            bytes_written = self.buffer.block_write(nbytes, driver)
-
-####            Trace.trace(30, "wrote %s to tape" % (nbytes,))
+            bytes_written = 0
+            try:
+                bytes_written = self.buffer.block_write(nbytes, driver)
+            except exceptions.Exception, detail:
+                self.transfer_failed(e_errors.WRITE_ERROR)
+                break
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR)
                 break
@@ -544,17 +548,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
                 nbytes = self.buffer.blocksize
 
-            ##ZZZ TRY
-            bytes_read = self.buffer.block_read(nbytes, driver)
-####            Trace.trace(30, "read %s from tape"%(bytes_read,))
-            
+            bytes_read = 0
+            try:
+                bytes_read = self.buffer.block_read(nbytes, driver)
+            except exceptions.Exception, detail:
+                self.transfer_failed(e_errors.READ_ERROR)
+                break
+            if bytes_read <= 0:
+                self.transfer_failed(e_errors.READ_ERROR)
+                break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     header_size = self.wrapper.header_size(b0)
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
-####            Trace.trace(30,"read %s from tape"%(bytes_read,))
             self.bytes_read = self.bytes_read + bytes_read
             if self.bytes_read > self.bytes_to_read: #this is OK, we read a cpio trailer or something
                 self.bytes_read = self.bytes_to_read
@@ -571,14 +579,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             ###keep pumping data out to the client
             nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
 
-            ##ZZZ TRY
-            bytes_written = self.buffer.stream_write(nbytes, driver) 
-####            Trace.trace(30, "wrote %s to client"%(bytes_written,))
-            
+            bytes_written = 0
+            try:
+                bytes_written = self.buffer.stream_write(nbytes, driver)
+            except exceptions.Exception, detail:
+                self.transfer_failed(detail)
+                break
+            if bytes_written < 0:
+                self.transfer_failed(e_errors.EPROTO) #???
+                break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
-            if bytes_written == -1: #this on the other hand is an error
-                self.transfer_failed()
             self.bytes_written = self.bytes_written + bytes_written
 
         Trace.trace(10, "write_client: state=%s, wrote %s/%s bytes" %
@@ -747,6 +758,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, msg=None):
         Trace.log(e_errors.ERROR, "transfer failed %s" %( msg,))
+
+        if self.state == ERROR:
+            Trace.log(e_errors.ERROR, "Mover already in ERROR state %s" % (msg,))
+            return
+
         ###XXX network errors should not count toward rd_err, wr_err
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
@@ -1061,7 +1077,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 		 'time_stamp'   : now,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
-            tick['will dismount'] = 'in %.1f seconds'%(now - self.dismount_time)
+            tick['will dismount'] = 'in %.1f seconds'%(self.dismount_time - now)
             
 	self.reply_to_caller( tick )
 	return
@@ -1130,7 +1146,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             ret = self.mcc.doCleaningCycle(self.config)
             self.state = save_state
         self.reply_to_caller(ret)
-        
         
 class MoverInterface(generic_server.GenericServerInterface):
 
