@@ -46,6 +46,18 @@ static PyObject *PtraceStrFunc;
 
 static PyObject *PtraceErrObject;
 
+static char *
+PyString_AsString_Safe(PyObject *s){
+    if (!s){
+	return "NULL";
+    } else {
+	return PyString_AsString(s);
+    }
+}
+
+
+
+
 static PyObject *
 raise_exception(  char		*method_name )
 {							/* @-Public-@ */
@@ -289,16 +301,6 @@ code_args_as_string(PyFrameObject *frame,
  ******************************************************************************/
 
 
-static char *
-PyString_AsString_Safe(PyObject *s){
-    if (!s){
-	return "NULL";
-    } else {
-	return PyString_AsString(s);
-    }
-}
-
-
 int
 get_msg(  PyObject	*args
 	  , char		*msg)
@@ -350,7 +352,7 @@ get_msg(  PyObject	*args
     case 'c':
 	nargs = code_args_as_string(frame, code, buf, 200);
 	sprintf(  msg, " call %s.%s(%s) from %s:%d", /*XXX kludge alert!*/
-                  module_name,function_name, nargs, buf, from_source_file, from_line_no);
+                  module_name,function_name, buf, from_source_file, from_line_no);
 	break;
     case 'r':
 	sprintf(  msg, "ret  %s.%s %s", module_name, function_name, 
