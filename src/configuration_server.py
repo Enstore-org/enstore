@@ -254,11 +254,10 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, csc)
-
-        # now (and not before,please) load the config file user requested
+        self.request_dict_ttl = 10 # Config server is stateless, duplicate requests don't hurt us
+        # load the config file user requested
         self.load_config(configfile)
-
-	self.running = 1
+        self.running = 1
 
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
