@@ -2438,14 +2438,6 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    txt = HTMLgen.Href(dict[enstore_constants.URL], txt)
 	tr.append(self.get_element(dict, val, outage_d, offline_d, txt))
 
-    def add_network_to_row(self, tr, outage_d, offline_d):
-	tr.append(empty_data())
-	txt = HTMLgen.Font(enstore_constants.NETWORK, size="+2")
-	txt = HTMLgen.Href(enstore_constants.SAAGNETWORKHTMLFILE, txt)
-	# we are calling this to get the outage and offline info
-	tr.append(self.get_element({}, enstore_constants.NETWORK, outage_d, 
-				   offline_d, txt))
-
     def make_overall_table(self, enstat_d, medstat_d, alarms_d, outage_d, 
 			   offline_d):
 	entable = HTMLgen.TableLite(cellspacing=1, cellpadding=1, border=0, 
@@ -2460,8 +2452,6 @@ class EnSaagPage(EnBaseHtmlDoc):
 	self.add_to_row(tr, enstore_constants.ENSTORE, enstat_d, outage_d, offline_d)
 	self.add_to_row(tr, med_keys[0], med_l[0], outage_d, offline_d)
 	del med_l[0]
-	# network is only a link to the network page
-	self.add_network_to_row(tr, outage_d, offline_d)
 	self.add_to_row(tr, enstore_constants.ANYALARMS, alarms_d, outage_d, offline_d)
 	entable.append(tr)
 	# get any more media rows if needed
