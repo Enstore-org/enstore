@@ -157,6 +157,7 @@ FILE_FAMILY = "file-family"                  #pnfs
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
 FILES = "files"                              #pnfs
+FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
@@ -273,7 +274,8 @@ valid_option_list = [
     DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
     ECHO, ENCP, ENSTORE_STATE,
-    FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FORCE,
+    FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
+    FORCE,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,

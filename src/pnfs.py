@@ -587,33 +587,67 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     ##########################################################################
 
-    def set_file_size(self,size):
+    def get_file_size(self):
         if self.valid != VALID or self.exists != EXISTS:
             return
-        if self.file_size != 0:
-            try:
-                fname="%s/.(fset)(%s)(size)"%(self.dir,self.file)
-                os.remove(fname)
-                #self.utime()
-                self.pstatinfo()
-            except os.error, msg:
-                Trace.log(e_errors.INFO, "enoent path taken again!")
-                if msg.errno == errno.ENOENT:
-                    # maybe this works??
-                    fname = "%s/.(fset)(%s)(size)(%s)"%(self.dir,self.file,size)
-                    f = open(fname,'w')
-                    f.close()
-                    self.utime()
-                    self.pstatinfo()
-                else:
-                    raise os.error, msg
-            if self.file_size != 0:
-                Trace.log(e_errors.INFO, "can not set file size to 0 - oh well!")
-        fname = "%s/.(fset)(%s)(size)(%s)"%(self.dir,self.file,size)
-        f = open(fname,'w')
-        f.close()
-        self.utime()
-        self.pstatinfo()
+
+	try:
+	    filesize = self.readlayer(enstore_constants.FILESIZE_LAYER)
+	    filesize = long(string.replace(filesize[0], "\n", ""))
+	except KeyboardInterrupt:
+	    exc, msg, tb = sys.exc_info()
+	    raise exc, msg, tb
+	except:
+	    filesize = self.file_size
+	
+	self.file_size = filesize
+	
+
+    def set_file_size(self,filesize):
+        if self.valid != VALID or self.exists != EXISTS:
+            return
+
+	#As of 10/18/2001 pnfs (v3.1.7) only supports file sizes less than
+        # 2GB.  This is becuase pnfs supports NFS ver. 2.  When pnfs supports
+        # NFS ver. 3 this will not be a problem.  To get around this we will
+	# set the size to 1 and store the real size in pnfs layer 2.
+	if filesize > 2147483647: #2GB
+	    size = 1 
+	    self.writelayer(enstore_constants.FILESIZE_LAYER, filesize)
+	else:
+	    size = filesize
+
+	try:
+	    #fname="%s/.(fset)(%s)(size)"%(self.dir,self.file)
+	    #os.remove(fname)
+	    #self.utime()
+	    #self.pstatinfo()
+
+	    fname = "%s/.(fset)(%s)(size)(%s)"%(self.dir,self.file,size)
+	    f = open(fname,'w')
+	    f.close()
+	    self.utime()
+	    print "1)", self.file_size
+	    self.pstatinfo()
+	    print "2)", self.file_size
+	    
+	    if self.file_size != size:
+		print "self.file_size", self.file_size, "size", size, self.file
+		raise os.error, e_errors.WRONG_PNFS_FILE_SIZE
+	except KeyboardInterrupt:
+	    exc, msg, tb = sys.exc_info()
+	    raise exc, msg, tb
+	except (os.error, IOError), msg:
+	    exc, msg, tb = sys.exc_info()
+	    if str(msg) == e_errors.WRONG_PNFS_FILE_SIZE:
+		msg = str(msg) + " " + self.file_size + " " + self.pnfsFilename
+	    else:
+		msg = str(msg) + " " + self.pnfsFilename
+	    Trace.log(e_errors.INFO, msg)
+
+	    raise exc, msg, tb
+
+
 
     ##########################################################################
 
@@ -862,7 +896,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the uid from the stat member
     def pstat_decode(self):
-        self.uid = ERROR
+	self.uid = ERROR
         self.uname = UNKNOWN
         self.gid = ERROR
         self.gname = UNKNOWN
@@ -1217,6 +1251,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             bfid = UNKNOWN
         print bfid
 
+    #Print out the filesize of the file from this layer.  It should only
+    # be here as long as pnfs does not support NFS ver 3 and the filesize
+    # is longer than 2GB.
+    #***LAYER 2***
+    #Prints out the bfid value for the specified file.
+    #***LAYER 1***
+    def pfilesize(self, intf):
+        data = self.readlayer(enstore_constants.FILESIZE_LAYER)
+        try:
+            filesize = data[0]
+        except IndexError:
+            filesize = self.file_size
+        print filesize
+
     #If dupl is empty, then show the duplicate data for the file
     # (in self.file).  If dupl is there then set the duplicate for the file
     # in self.file to that in dupl.
@@ -1531,6 +1579,12 @@ class PnfsInterface(option.Interface):
                  option.VALUE_USAGE:option.REQUIRED,
                  option.FORCE_SET_DEFAULT:option.FORCE,
                    },
+	option.FILESIZE:{option.HELP_STRING:"print out real filesize",
+			 option.VALUE_NAME:"file",
+			 option.VALUE_TYPE:option.STRING,
+			 option.VALUE_LABEL:"file",
+			 option.VALUE_USAGE:option.REQUIRED,
+			 },
         option.LAYER:{option.HELP_STRING:"lists the layer of the file",
                       option.DEFAULT_VALUE:option.DEFAULT,
                       option.DEFAULT_NAME:"layer",

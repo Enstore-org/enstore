@@ -399,13 +399,19 @@ def inputfile_check(input_files, bytecount=None):
             quit()
 
         # input files can't be larger than 2G
-        if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
-            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
-            quit()
+        #if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
+        #    print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+        #        'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
+        #    quit()
 
         # get the file size
-        file_size.append(int32(statinfo[stat.ST_SIZE]))
+	p = pnfs.Pnfs(inputlist[i])
+	p.get_file_size()
+	file_size.append(p.file_size)
+	#This would work if pnfs supported NFS version 3.  Untill it does and
+	# all the files have their pnfs layer 2s cleared out, this can not
+	# be used.
+        #file_size.append(long(statinfo[stat.ST_SIZE]))
 
         #if bytecount != None:
         #    file_size.append(bytecount)
@@ -1586,25 +1592,12 @@ def set_pnfs_settings(ticket, client, verbose):
     try:
         # set the file size
         p.set_file_size(ticket['file_size'])
-
-        ###Why was this put here?  If setting it failed the first time, why
-        ### try a second time???
-        if p.file_size != ticket['file_size']:
-            # try to set a file size one more time
-            p.set_file_size(ticket['file_size'])
-            if p.file_size != ticket['file_size']:
-                msg = "Cannot set file size %s %s %s"%(p.pnfsFilename,p.file_size,ticket['file_size'])
-                Trace.alarm(e_errors.ERROR,msg)
-                ticket['status'] = (e_errors.WRONG_PNFS_FILE_SIZE, msg)
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
     except:
         exc, msg, tb = sys.exc_info()
-        Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s."
-                  % (str(exc), str(msg)))
-        ticket['status'] = (str(exc), str(msg))
-        return
+	ticket['status'] = (str(exc), str(msg))
         
 ############################################################################
 #Functions for writes.
