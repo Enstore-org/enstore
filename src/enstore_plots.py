@@ -345,6 +345,7 @@ class MpdDataFile(EnPlot):
     def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_FILE)
 	self.mount_label = mount_label
+	self.lw = 10
 
     def get_all_mounts(self, new_mounts_d):
 	mounts_l = []
@@ -394,7 +395,8 @@ class MpdDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label,
+		      self.lw)
 	gnucmds.close()
 
 
@@ -403,7 +405,6 @@ class MpdMonthDataFile(EnPlot):
     def __init__(self, dir, mount_label=None):
 	EnPlot.__init__(self, dir, enstore_constants.MPD_MONTH_FILE)
 	self.mount_label = mount_label
-	self.lw = 10
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
@@ -444,8 +445,7 @@ class MpdMonthDataFile(EnPlot):
 	# now create the gnuplot command file
 	gnucmds = MpdGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label,
-                      self.lw)
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts), self.mount_label)
 	gnucmds.close()
 
 
