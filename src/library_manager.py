@@ -1301,6 +1301,9 @@ class LibraryManagerMethods:
     # allowed number of movers and, if yes, set volume 
     # as having no access and send a regret: noaccess.
     def bad_volume(self, suspect_volume, ticket):
+        # do nothing. All that is being done here must be and is
+        # done in mover_error
+        return
         ret_val = 0
         if ticket['fc'].has_key('external_label'):
             label = ticket['fc']['external_label']
