@@ -889,15 +889,12 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
 
     return csc
 
-#The string brand could be either a bfid or brand.  This is because a brand
-# can be of arbitrary length making it impossible to know how much of it is
-# the numerical part (which can change size as time grows) or the brand part.
-def _get_csc_from_brand(brand): #Should only be called from get_csc().
+def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
     global __csc
     global __fcc
 
     #There is no brand, since the file is too old.
-    if not brand:
+    if not bfid:
         #If not already cached, get the default. 
         if __csc == None:
             # Get the configuration server.
@@ -918,12 +915,8 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
         if test_fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
-            test_brand = test_fcc.get_brand(5, 3)
-            if not is_brand(test_brand):
-                Trace.log(e_errors.WARNING,
-                          "File clerk (%s) returned invalid brand: %s\n"
-                          % (test_fcc.server_address, test_brand))
-            if brand[:len(test_brand)] == test_brand:
+            file_info = test_fcc.bfid_info(bfid, 5, 3)
+            if e_errors.is_ok(file_info):
                 __fcc = test_fcc
                 return __csc
 
@@ -937,15 +930,11 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
-        fcc_brand = fcc.get_brand(5, 3)
-        if not is_brand(fcc_brand):
-            Trace.log(e_errors.WARNING,
-                      "File clerk (%s) returned invalid brand: %s\n"
-                      % (fcc.server_address, fcc_brand))
-        elif brand[:len(fcc_brand)] == fcc_brand:
-            __csc = csc
+        file_info = fcc.bfid_info(bfid, 5, 3)
+        if e_errors.is_ok(file_info):
+            __fcc = fcc
             return __csc
-    
+        
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if e_errors.is_ok(config_servers['status']):
@@ -967,22 +956,11 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                 rcv_timeout=5, rcv_tries=2)
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
-
-		system_brand = fcc_test.get_brand(5, 2)
-		if not is_brand(system_brand):
-		    Trace.log(e_errors.WARNING,
-			      "File clerk (%s) returned invalid brand: %s\n"
-			      % (fcc_test.server_address, system_brand))
-		#If things match then use this system.
-		if brand[:len(system_brand)] == system_brand:
-		    if fcc.get_brand(5, 2) != system_brand:
-			msg = "Using %s based on brand %s." % \
-			      (system_brand, brand)
-			Trace.log(e_errors.INFO, msg)
-
-		    __csc = csc_test  #Set global for performance reasons.
-		    __fcc = fcc_test
-		    return __csc
+                file_info = fcc.bfid_info(bfid, 5, 3)
+                if e_errors.is_ok(file_info):
+                    __csc = csc_test  #Set global for performance reasons.
+                    __fcc = fcc_test
+                    return __csc
 
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -1023,7 +1001,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
 #
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string,
 #  or a volume name string.
-def get_csc(parameter=None):
+def __get_csc(parameter=None):
     global __csc  #For remembering.
     global __acc
 
@@ -1048,12 +1026,12 @@ def get_csc(parameter=None):
         volume = parameter
 
     #Remember this for comparisons later.
-    old_csc = __csc
+    #old_csc = __csc
 
     #Call the correct version of the underlying get_csc functions.    
     if bfid:  #If passed a bfid.
-        brand = extract_brand(bfid)
-        csc = _get_csc_from_brand(brand)
+        #brand = extract_brand(bfid)
+        csc = _get_csc_from_bfid(bfid)
     
     elif volume:  #If passed a volume.
         csc = _get_csc_from_volume(volume)
@@ -1070,7 +1048,7 @@ def get_csc(parameter=None):
 
     #These are some things that only should be done if this is a new
     # conifguration client.
-    if csc != old_csc:
+    if __csc != csc:
         #Snag the entire configuration.
         config = csc.dump_and_save(10, 10)
 
@@ -1088,16 +1066,28 @@ def get_csc(parameter=None):
         # the dump-and-saved configuration.  Once, the
         # enable_caching() function is called the csc get()
         # function is okay to use.
-        er_info = config.get(enstore_constants.EVENT_RELAY)
-        er_addr = (er_info['hostip'], er_info['port'])
-        csc.new_config_obj.enable_caching(er_addr)
+        #er_info = config.get(enstore_constants.EVENT_RELAY)
+        #er_addr = (er_info['hostip'], er_info['port'])
+        csc.new_config_obj.enable_caching()   #er_addr)
 
-    if __csc != csc:
         __csc = csc
-        __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                            logc = __logc, alarmc = __alarmc)
-            
-    return csc  #Nothing valid, just return the default csc.
+        if __acc != None:
+            get_acc()
+            #__acc = accounting_client.accClient(__csc, logname = 'ENCP',
+            #                                    logc = __logc,
+            #                                    alarmc = __alarmc)
+    else:
+        __csc.dump_and_save(10, 10)
+
+    if __csc.have_complete_config:
+        #Nothing valid, just return the default csc.
+        return __csc, __csc.saved_dict
+    else:
+        return __csc, None
+
+def get_csc(parameter=None):
+
+    return __get_csc(parameter)[0]
 
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string
 def __get_fcc(parameter = None):
@@ -1174,8 +1164,10 @@ def __get_fcc(parameter = None):
         if e_errors.is_ok(file_info):
             __csc = csc
             __fcc = fcc
-            __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                            logc = __logc, alarmc = __alarmc)
+            if __acc != None:
+                __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                                    logc = __logc,
+                                                    alarmc = __alarmc)
             return __fcc, file_info
 
     #Get the list of all config servers and remove the 'status' element.
@@ -1210,9 +1202,10 @@ def __get_fcc(parameter = None):
                 if e_errors.is_ok(file_info):
                     __csc = csc_test
                     __fcc = fcc
-                    __acc = accounting_client.accClient(
-                        __csc, logname = 'ENCP',
-                        logc = __logc, alarmc = __alarmc)
+                    if __acc != None:
+                        __acc = accounting_client.accClient(
+                            __csc, logname = 'ENCP',
+                            logc = __logc, alarmc = __alarmc)
                     return __fcc, file_info
         
         except (KeyboardInterrupt, SystemExit):
@@ -1320,8 +1313,10 @@ def __get_vcc(parameter = None):
         if e_errors.is_ok(volume_info):
             __csc = csc
             __vcc = vcc
-            __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                            logc = __logc, alarmc = __alarmc)
+            if __acc != None:
+                __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                                    logc = __logc,
+                                                    alarmc = __alarmc)
             return __vcc, volume_info
 
     #Get the list of all config servers and remove the 'status' element.
@@ -1362,8 +1357,11 @@ def __get_vcc(parameter = None):
 
                 __csc = csc_test  #Set global for performance reasons.
                 __vcc = vcc_test
-                __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                            logc = __logc, alarmc = __alarmc)
+                if __acc != None:
+                    __acc = accounting_client.accClient(__csc,
+                                                        logname = 'ENCP',
+                                                        logc = __logc,
+                                                        alarmc = __alarmc)
                 return __vcc, volume_info
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -1396,24 +1394,36 @@ def get_acc():
                                             logc = __logc, alarmc = __alarmc)
         return __acc
     else:
-        config_host = enstore_functions2.default_host()
-        config_port = enstore_functions2.default_port()
-        __csc = configuration_client.ConfigurationClient((config_host,
-                                                          config_port))
-        __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                            logc = __logc, alarmc = __alarmc)
+        csc, config = __get_csc()
+
+        acc_addr = None  #Default.
+        if config:
+            #Find the accounting server information.
+            acc_info = config.get("accounting_server", {})
+            if acc_info:
+                acc_addr = (acc_info.get('hostip', None),
+                            acc_info.get('port', None))
+
+        __acc = accounting_client.accClient(csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc,
+                                            server_address = acc_addr)
         return __acc
 
 ############################################################################
             
-def max_attempts(library, encp_intf):
+def max_attempts(csc, library, encp_intf):
+
+    resend = {}
+    resend['retry'] = 0
+    resend['resubmit'] = 0
+
     #Determine how many times a transfer can be retried from failures.
     #Also, determine how many times encp resends the request to the lm
     # and the mover fails to call back.
 
-    if encp_intf.use_max_retry and encp_intf.use_max_resubmit:
-        #The user overrode both values, no need to continue.
-        return
+    #if encp_intf.use_max_retry and encp_intf.use_max_resubmit:
+    #    #The user overrode both values, no need to continue.
+    #    return
 
     #If the shortname was supplied, make it the longname.
     if library[-16:] == ".library_manager":
@@ -1422,7 +1432,7 @@ def max_attempts(library, encp_intf):
         lib = library + ".library_manager"
 
     # get a configuration server
-    csc = get_csc()
+    #csc = get_csc()
     lm = csc.get(lib, 5, 5)
 
     #Due to the possibility of branding, check other systems.
@@ -1451,20 +1461,26 @@ def max_attempts(library, encp_intf):
     # was not found in config file(s)... very unlikely) then go with
     # the defaults.
 
-    if not encp_intf.use_max_retry:
-        encp_intf.max_retry = lm.get('max_encp_retries',
-                                 enstore_constants.DEFAULT_ENCP_RETRIES)
-        try:
-            encp_intf.max_retry = int(encp_intf.max_retry) #make integer.
-        except TypeError:
-            encp_intf.max_retry = None
-    if not encp_intf.use_max_resubmit:
-        encp_intf.max_resubmit = lm.get('max_encp_resubmits',
+    if encp_intf.use_max_retry:
+        resend['max_retry'] = encp_intf.max_retry
+    else:
+        resend['max_retry'] = lm.get('max_encp_retries',
+                                     enstore_constants.DEFAULT_ENCP_RETRIES)
+    #    try:
+    #        encp_intf.max_retry = int(encp_intf.max_retry) #make integer.
+    #    except TypeError:
+    #        encp_intf.max_retry = None
+    if encp_intf.use_max_resubmit:
+        resend['max_resubmits'] = encp_intf.max_resubmits
+    else:
+        resend['max_resubmits'] = lm.get('max_encp_resubmits',
                                  enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
-        try:
-            encp_intf.max_resubmit = int(encp_intf.max_resubmit) #make integer.
-        except TypeError:
-            encp_intf.max_resubmit = None
+    #    try:
+    #        encp_intf.max_resubmit = int(encp_intf.max_resubmit) #make integer.
+    #    except TypeError:
+    #        encp_intf.max_resubmit = None
+
+    return resend
 
 def check_library(library, e):
     #Check if the library is accepting requests.
@@ -1532,6 +1548,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     seek_time = time_ticket.get('seek_time', 0)
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
+    unique_id = ticket.get('unique_id', "")
     now = time.time()
     total = now - time_ticket.get('encp_start_time', now)
     sts =  ticket.get('status', ('Unknown', None))
@@ -1624,6 +1641,11 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         sys.stderr.write("cannot log error message %s\n" % (errmsg,))
         sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
+    #acc = get_acc()
+    #acc.log_encp_error(inputfile, outputfile, filesize,
+    #                   unique_id, encp_client_version(),
+    #                   status, msg)
+
 #######################################################################
 
 def check_server(csc, server_name):
@@ -1660,7 +1682,7 @@ def clients(intf):
 
     # get a configuration server client
     try:
-        csc = get_csc()
+        csc, config = __get_csc()
     except EncpError, msg:
         return {'status' : (msg.type, str(msg))}
 
@@ -1673,6 +1695,30 @@ def clients(intf):
     if intf.check:
         log_client.LoggerClient.log_func = check_log_func
         alarm_client.AlarmClient.alarm_func = check_alarm_func
+
+    #For performance reasons attempt to obtain the log server address
+    # and alarm server address without contacting the configuration
+    # server again.
+    if type(config) == types.DictType:
+        log_server_config = config.get('log_server', {})
+        alarm_server_config = config.get('alarm_server', {})
+
+        log_server_ip = log_server_config.get('hostip', None)
+        log_server_port = log_server_config.get('port', None)
+        alarm_server_ip = alarm_server_config.get('hostip', None)
+        alarm_server_port = alarm_server_config.get('port', None)
+        
+        if log_server_ip and log_server_port:
+            log_server_address = (log_server_ip, log_server_port)
+        else:
+            log_server_address = None
+        if alarm_server_ip and alarm_server_port:
+            alarm_server_address = (alarm_server_ip, alarm_server_port)
+        else:
+            alarm_server_address = None
+    else:
+        log_server_address = None
+        alarm_server_address = None
     
     #Get a logger client, this will set the global log client Trace module
     # variable.  If this is not done here, it would get done while
@@ -1681,39 +1727,16 @@ def clients(intf):
     # command line).  The same applies for the alarm client.
     try:
         __logc = log_client.LoggerClient(
-            csc, 'ENCP', flags = enstore_constants.NO_ALARM)
+            csc, 'ENCP', flags = enstore_constants.NO_ALARM,
+            server_address = log_server_address)
     except SystemExit:
         pass
     try:
         __alarmc = alarm_client.AlarmClient(
-            csc, 'ENCP', flags = enstore_constants.NO_LOG)
+            csc, 'ENCP', flags = enstore_constants.NO_LOG,
+            server_address = alarm_server_address)
     except SystemExit:
         pass
-    
-    #This group of servers must be running to allow the transfer to
-    # succeed.  The library manager is not checked (now anyway) because we
-    # don't know which one it is.
-    for server in [configuration_client.MY_SERVER,
-                   volume_clerk_client.MY_SERVER,
-                   file_clerk_client.MY_SERVER]:
-        Trace.message(CONFIG_LEVEL, "Contacting %s." % server)
-
-        ticket = check_server(csc, server)
-
-        #Handle the fatal error.
-        if not e_errors.is_ok(ticket['status']):
-            Trace.alarm(e_errors.ERROR, ticket['status'][0], ticket)
-            return ticket
-            #print_data_access_layer_format("", "", 0, ticket)
-            #delete_at_exit.quit()
-
-        Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
-                      (server, ticket.get('address', "Unknown")))
-
-    #global client #should not do this
-    #client = {}
-    #client['csc']=csc
-    #client['logc']=logc
     
     #return client
     return {'status' : (e_errors.OK, None)}
@@ -2452,10 +2475,11 @@ def get_clerks(bfid_or_volume=None):
     # file clerk where the file was stored.  This is determined based on
     # the bfid's brand.  By this time the csc is set correctly, thus
     # don't pass it any parameters and we will get the cached csc.
-    csc = get_csc()   #(bfid_or_volume)
+    __acc = get_acc()
+    #csc = get_csc()   #(bfid_or_volume)
     # we only have the correct crc now (reads)
-    __acc = accounting_client.accClient(csc, logname = 'ENCP',
-                                        logc = __logc, alarmc = __alarmc)
+    #__acc = accounting_client.accClient(csc, logname = 'ENCP',
+    #                                    logc = __logc, alarmc = __alarmc)
 
     return vcc, fcc
 
@@ -3100,10 +3124,12 @@ def submit_one_request(ticket):
     ##start of resubmit block
 
     #On a retry or resubmit, print the number of the retry.
-    if ticket.get('retry', None):
-        Trace.message(TO_GO_LEVEL, "RETRY COUNT:" + str(ticket['retry']))
-    if ticket.get('resubmits', None):
-        Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(ticket['resubmits']))
+    retries = ticket.get('resend', {}).get('retry', 0)
+    if retries:
+        Trace.message(TO_GO_LEVEL, "RETRY COUNT:" + str(retries))
+    resubmits = ticket.get('resend', {}).get('resubmits', 0)
+    if resubmits:
+        Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(resubmits))
 
     #Put in the log file a message connecting filenames to unique_ids.
     msg = "Sending request to LM: uninque_id: %s inputfile: %s outputfile: %s"\
@@ -3115,13 +3141,16 @@ def submit_one_request(ticket):
     Trace.message(TICKET_LEVEL, "SUBMITTING TICKET: ")
     Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
-    #Send work ticket to LM
-    #Get the library manager info information.
-    csc = get_csc(ticket)
+    #Send work ticket to LM.  As long as a single encp process is restricted
+    # to working with one enstore system, not passing get_csc() the ticket
+    # as parameter will not cause a problem.
+    csc = get_csc()   #ticket)
+    #Get the library manager info information.  This also forces an update
+    # if the cached configuration information is old.
+    library = ticket['vc']['library'] + ".library_manager"
     try:
         lmc = library_manager_client.LibraryManagerClient(
-            csc, ticket['vc']['library'] + ".library_manager",
-            logc = __logc, alarmc = __alarmc,
+            csc, library, logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 20)
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
@@ -3767,8 +3796,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     infile = request_dictionary.get('infile', '')
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
-    retry = request_dictionary.get('retry', 0)
-    resubmits = request_dictionary.get('resubmits', 0)
+    retry = request_dictionary.get('resend', {}).get('retry', 0)
+    resubmits = request_dictionary.get('resend', {}).get('resubmits', 0)
 
     #Get volume info from the volume clerk.
     #Need to check if the volume has been marked NOACCESS since it
@@ -3982,19 +4011,19 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # for a mover are both 15 minutes.  If the later were to become
         # greater than the former, a potential time window of missed messages
         # could exist.
-        try:
-            csc = get_csc()
-            if csc.new_config_obj.is_caching_enabled():
-                csc.new_config_obj.erc.subscribe()
-        except EncpError:
-            pass
+        #try:
+        #    csc = get_csc()
+        #    if csc.new_config_obj.is_caching_enabled():
+        #        csc.new_config_obj.erc.subscribe()
+        #except EncpError:
+        #    pass
         
         ###Is the work done here duplicated in the next commented code line???
         # 1-21-2004 MWZ: By testing for a non-empty request_list this code
         # should never get called.  This was duplicating the resubmit
         # increase later on.
         if not request_list:
-            request_dictionary['resubmits'] = resubmits + 1
+            request_dictionary['resend']['resubmits'] = resubmits + 1
 
         #Update the tickets callback fields.  The actual sockets
         # are updated becuase they are passed in by reference.  There
@@ -4009,7 +4038,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         for req in request_list:
             try:
                 #Increase the resubmit count.
-                req['resubmits'] = req.get('resubmits', 0) + 1
+                req['resend']['resubmits'] = req.get('resubmits', 0) + 1
 
                 #Before resubmitting, there are some fields that the library
                 # manager and mover don't expect to receive from encp,
@@ -4086,12 +4115,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # for a mover are both 15 minutes.  If the later were to become
         # greater than the former, a potential time window of missed messages
         # could exist.
-        try:
-            csc = get_csc()
-            if csc.new_config_obj.is_caching_enabled():
-                csc.new_config_obj.erc.subscribe()
-        except EncpError:
-            pass
+        #try:
+        #    csc = get_csc()
+        #    if csc.new_config_obj.is_caching_enabled():
+        #        csc.new_config_obj.erc.subscribe()
+        #except EncpError:
+        #    pass
         
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
@@ -4103,7 +4132,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #Keep retrying this file.
         try:
             #Increase the retry count.
-            request_dictionary['retry'] = retry + 1
+            request_dictionary['resend']['retry'] = retry + 1
             
             #Before resending, there are some fields that the library
             # manager and mover don't expect to receive from encp,
@@ -4138,8 +4167,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if e_errors.is_non_retriable(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
                            'retry':request_dictionary.get('retry', 0),
-                           'resubmits':request_dictionary.get('resubmits',
-                                                              0),
+                           'resubmits':request_dictionary.get('resubmits', 0),
                            'queue_size':len(request_list) - 1}
             Trace.log(e_errors.ERROR, str(result_dict))
         elif not e_errors.is_ok(internal_result_dict['status'][0]):
@@ -4729,10 +4757,9 @@ def set_pnfs_settings(ticket, intf_encp):
         fc_ticket["fc"]['uid'] = ticket['wrapper']['uid']
         fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
 
-        #volume_label = ticket.get('volume', None)
-        #csc = get_csc(volume_label) #Get the correct system (if necessary).
-        #fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
-        fcc = get_fcc()   #ticket["fc"]["bfid"])
+        #As long as encp is restricted to working with one enstore system
+        # at a time, passing get_fcc() the bfid info is not necessary.
+        fcc = get_fcc()   #ticket["fc"]["bfid"]
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
         if not e_errors.is_ok(fc_reply['status'][0]):
@@ -4798,7 +4825,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     request_list = []
 
     #Initialize these, so that they can be set only once.
-    vcc = fcc = None
+    csc = vcc = fcc = None
     file_family = file_family_width = file_family_wrapper = None
     library = storage_group = None
 
@@ -4952,6 +4979,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         #only do this the first time.
         if not vcc or not fcc:
             #try:
+            csc = get_csc() #Get csc once for max_attempts().
             vcc, fcc = get_clerks()
             #except EncpError, detail:
             #    print_data_access_layer_format(
@@ -4981,6 +5009,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         #else:
         #    route_selection = 0
 
+        #Determine the max resend values for this transfer.
+        resend = max_attempts(csc, volume_clerk['library'], e)
+
         work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
@@ -4993,7 +5024,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['local_inode'] = file_inode
         work_ticket['outfile'] = ofullname
         work_ticket['override_ro_mount'] = e.override_ro_mount
-        work_ticket['retry'] = 0 #retry,
+        work_ticket['resend'] = resend
+        work_ticket['retry'] = None, #LM legacy requirement.
         if udp_callback_addr: #For "get" only.
             work_ticket['routing_callback_addr'] = udp_callback_addr
             work_ticket['route_selection'] = 1
@@ -5019,7 +5051,7 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 
     # send the work ticket to the library manager
     while encp_intf.max_retry == None or \
-              work_ticket['retry'] <= encp_intf.max_retry:
+              work_ticket['resend']['retry'] <= encp_intf.max_retry:
         ##start of resubmit block
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
@@ -5052,7 +5084,8 @@ def submit_write_request(work_ticket, tinfo, encp_intf):
 def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
     #Loop around in case the file transfer needs to be retried.
-    while e.max_retry == None or work_ticket.get('retry', 0) <= e.max_retry:
+    while e.max_retry == None or \
+              work_ticket['resend'].get('retry', 0) <= e.max_retry:
         
         #Trace.message(TRANSFER_LEVEL,
         #              "Waiting for mover to call back.   elapsed=%s" % \
@@ -5166,11 +5199,14 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         if not write_fd or not read_fd:
             status_ticket = {'status':(e_errors.UNKNOWN,
                                        "No data written to mover.")}
+            external_label = work_ticket.get('fc',{}).get('external_label',
+                                                          None)
             result_dict = handle_retries([work_ticket], work_ticket,
                                          status_ticket, e,
                                          listen_socket = listen_socket,
                                          udp_server = route_server,
-                                         control_socket = control_socket)
+                                         control_socket = control_socket,
+                                         external_label = external_label)
             
             close_descriptors(control_socket, data_path_socket, in_fd)
             
@@ -5206,12 +5242,10 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         close_descriptors(control_socket, data_path_socket, in_fd)
 
         #Verify that everything is ok on the mover side of the transfer.
-        external_label = work_ticket.get('fc',{}).get('external_label',None)
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
                                      listen_socket = listen_socket,
-                                     udp_server = route_server,
-                                     external_label = external_label)
+                                     udp_server = route_server)
 
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
@@ -5379,10 +5413,10 @@ def write_to_hsm(e, tinfo):
     check_lib = request_list[0]['vc']['library'] + ".library_manager"
 
     #Set the max attempts that can be made on a transfer.
-    try:
-        max_attempts(check_lib, e)
-    except EncpError, msg:
-        return {'status' : (msg.type, str(msg))}
+    #try:
+    #    max_attempts(check_lib, e)
+    #except EncpError, msg:
+    #    return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
@@ -6077,6 +6111,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
     nfiles = 0
     requests_per_vol = {}
+    csc = None
 
     #vcc = fcc = None #Initialize these, so that they can be set only once.
     #print time.ctime(time.time())
@@ -6277,12 +6312,12 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 filename = os.path.basename(filename)
             
                 Trace.message(TRANSFER_LEVEL,
-                              "Preparing file number %s (%s) for transfer." %
-                              (number, filename))
+                              "Preparing file number %s (%s) for transfer."
+                              % (number, filename))
 
                 #If everything is okay, search the listing for the location
                 # of the file requested.  tape_ticket is used for performance
-                # reasons over fcc.get_bfid().
+                # reasons over fcc.bfid_info().
                 tape_list = tape_ticket.get("tape_list", [])
                 for i in range(len(tape_list)):
                     #For each file number on the tape, compare it with
@@ -6411,24 +6446,16 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                                      "file has been deleted.\n" % lc)
 
                     #Determine the inupt filename.
-                    ifullname = pnfs_name0  #os.path.join(e.input[0], filename)
+                    ifullname = pnfs_name0 #os.path.join(e.input[0], filename)
 
                     #Get the pnfs interface class instance.
                     p = pnfs.Pnfs(ifullname)
-                    
-            if ifullname == None and pnfs_name0 == None:
-                #Determine the inupt filename.
-                ifullname = os.path.join(e.input[0], lc)
+
+            #If ifullname is still None, then the file does not exist
+            # anywhere.  Use the correct name.
+            if ifullname == None:
+                ifullname = os.path.join(e.input[0], filename)
                 
-                #Get the pnfs interface class instance.
-                p = pnfs.Pnfs(ifullname)
-            else:
-                #Determine the inupt filename.
-                ifullname = pnfs_name0
-
-                #Get the pnfs interface class instance.
-                p = pnfs.Pnfs(ifullname)
-
             #This is an attempt to deal with data that is incomplete
             # from a failed previous transfer.
             if fc_reply.get('pnfs_name0', None) == None:
@@ -6720,6 +6747,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         if lm != None:
             vc_reply['library'] = lm
 
+        if not csc:
+            csc = get_csc() #Get csc once for max_attempts().
+        #Determine the max resend values for this transfer.
+        resend = max_attempts(csc, vc_reply['library'], e)
+
         request = {}
         request['bfid'] = bfid
         request['callback_addr'] = callback_addr
@@ -6732,7 +6764,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         request['outfile'] = ofullname
         #request['override_noaccess'] = e.override_noaccess #no to this
         request['override_ro_mount'] = e.override_ro_mount
-        request['retry'] = 0
+        request['resend'] = resend
+        #request['retry'] = 0
         if udp_callback_addr: #For "get" only.
             request['routing_callback_addr'] = udp_callback_addr
             request['route_selection'] = 1
@@ -6918,7 +6951,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
         while 1:
             start_time = time.time()
             try:
-                select.select([data_path_socket], [], [], duration)
+                read_fd = select.select([data_path_socket], [], [], duration)
                 break
             except select.error, msg:
                 if getattr(msg, "errno", None) == errno.EINTR:
@@ -6926,7 +6959,28 @@ def read_hsm_files(listen_socket, route_server, submitted,
                     duration = duration - (time.time() - start_time)
                     continue
                 else:
+                    read_fd = []
                     break
+
+        if not read_fd:
+            status_ticket = {'status':(e_errors.UNKNOWN,
+                                       "No data read from mover.")}
+            external_label = request_ticket.get('fc',{}).get('external_label',
+                                                             None)
+            result_dict = handle_retries([request_ticket], request_ticket,
+                                         status_ticket, e,
+                                         listen_socket = listen_socket,
+                                         udp_server = route_server,
+                                         control_socket = control_socket,
+                                         external_label = external_label)
+            
+            close_descriptors(control_socket, data_path_socket, out_fd)
+            
+            if e_errors.is_retriable(result_dict['status'][0]):
+                continue
+            elif e_errors.is_non_retriable(result_dict['status'][0]):
+                return combine_dict(result_dict, request_ticket)
+
 
         #Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
         #          (time.time() - tinfo['encp_start_time'],))
@@ -6947,12 +7001,10 @@ def read_hsm_files(listen_socket, route_server, submitted,
                        time.time() - tinfo['encp_start_time']))
 
         #Verify that everything went ok with the transfer.
-        external_label = request_ticket.get('fc',{}).get('external_label',None)
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, e,
                                      listen_socket = listen_socket,
-                                     udp_server = route_server,
-                                     external_label = external_label)
+                                     udp_server = route_server)
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket, out_fd)
@@ -7182,10 +7234,10 @@ def read_from_hsm(e, tinfo):
                 ".library_manager"
 
     #Set the max attempts that can be made on a transfer.
-    try:
-        max_attempts(check_lib, e)
-    except EncpError, msg:
-        return {'status' : (msg.type, str(msg))}
+    #try:
+    #    max_attempts(check_lib, e)
+    #except EncpError, msg:
+    #    return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
