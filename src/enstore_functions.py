@@ -6,7 +6,6 @@ import socket
 import tempfile
 import types
 import pwd
-import types
 
 import configuration_server
 import enstore_constants
