@@ -17,7 +17,7 @@ CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-if [ "$gang" != "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1;fi
+if [ "$gang" = "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1;fi
 
 if $FIX; then
     $UPDATE  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/
