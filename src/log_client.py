@@ -34,22 +34,8 @@ sevdict = { ERROR      : 'E', \
             MISC       : 'M'
             }
 
-log_priority = 1
-
-def set_logpriority(priority):
-    global log_priority
-    log_priority = priority
-
-def get_logpriority():
-    global log_priority
-    return log_priority
-
 # send a message to the logger
-def logit(message="HELLO", logname="LOGIT",priority=10,config_host="", config_port=7510):
-    global log_priority
-
-    if priority < log_priority :
-        return
+def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 
     try:
         if config_host == "" :
@@ -61,7 +47,7 @@ def logit(message="HELLO", logname="LOGIT",priority=10,config_host="", config_po
         logc = LoggerClient(csc,logname,  'logserver', 0)
 
         # send the message
-        return logc.send(INFO, message)
+        return logc.send(INFO, 1, message)
 
     except:
         return  str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])
@@ -86,18 +72,27 @@ class LoggerClient:
         self.uname = pwdb_entry[0]
         self.logger = servername
         self.debug = debug
+        self.log_priority = 10
+
 
     """ send the request to the Media Loader server and then send answer
     to user.
     This function takes arbitrary number of arguments. The mandatory arguments
     are:
        severity - see severity codes above
+       priority - an integer which is compared to a bit mask(log_priority) 
+		  1 implies always log, 2 imply normally go to logger,
+                  4 more complete file tracing, 8,16,... detailed debugging.
+                  the log_priority is set on a per server basis.
        format - any string which can contain formatters
     Example:
-        send (ticket = logc.send (ERROR, 'Error: errno=%d, and its \
+        send (ticket = logc.send (ERROR, 1, 'Error: errno=%d, and its \
         interpretation is: %s', err, os.strerror(err))
     """
-    def send (self, severity, format, *args) :
+    def send (self, severity, priority, format, *args) :
+        if priority & self.log_priority :
+           return
+
         if severity in range(ERROR, MISC) :
             msg = '%.6d %.8s' % (self.uid, self.uname)
             msg = msg + ' ' + sevdict[severity] + ' ' + self.i_am + ' '
@@ -112,6 +107,21 @@ class LoggerClient:
             return {"status" : "ok"}
         else :
             return {"status" : "wrong_severity_level"}
+#
+# priorty allows turning logging on and off in a server.
+#  Coventions - setting log_priority to 0 should turn off all logging.
+#             - default priority on send is 1 so the default is to log a message
+#             - the default log_priority to test against is 10 so a priority
+#                     send with priorty < 10 will normally be logged
+#             - a brief trace message (1 per file per server should be priority 10
+#             - file/server trace messages should 10> <20
+#             - debugging should be > 20
+    def set_logpriority(priority):
+        log_priority = priority
+    
+    def get_logpriority():
+        return log_priority
+    
 
     # check on alive status
     def alive(self):
@@ -183,8 +193,8 @@ if __name__ == "__main__" :
         ticket = logc.alive()
 
     elif test:
-        ticket = logc.send(ERROR, "This is a test message %s %d", 'TEST', 3456)
-        #ticket = logc.send(INFO, "this is an INFO message")
+        ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
+        #ticket = logc.send(INFO, 21, "this is an INFO message")
 
     elif logit:
         ticket = logit(logmsg)

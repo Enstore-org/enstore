@@ -683,7 +683,7 @@ if __name__ == "__main__" :
     dict = dBTable("volume",logc)
     while 1:
         try:
-            logc.send(log_client.INFO, "Volume Clerk (re)starting")
+            logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
             traceback.print_exc()
@@ -693,5 +693,5 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[1])+" "+\
                      "volume clerk serve_forever continuing"
             print format
-            logc.send(log_client.INFO,format)
+            logc.send(log_client.ERROR, 1, format)
             continue

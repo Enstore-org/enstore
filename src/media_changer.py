@@ -52,12 +52,10 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, drive) :
-        print 'I am load function and my type is IBM3494'
         self.reply_to_caller({'status' : 'ok'})
 
     # unload volume from the drive
     def unload(self, external_label, drive) :
-        print 'I am unload function and my type is IBM3494'
         self.reply_to_caller({'status' : 'ok'})
 
 # FTT tape drives with no robot
@@ -84,22 +82,25 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
-        print 'mount command is:',stk_mount_command
-
         # call mount command
+        logc.send(log_client.INFO, 4, "Mnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : "mount_failed"}
 
-        # analize the retrun message
+        # analyze the return message
         for line in returned_message:
-            if list: print line
+            if list: logc.send(log_client.INFO, 4, "Mnt trc:"+stk_mount_command)
             if string.find(line, "mounted") != -1 :
                 out_ticket = {"status" : "ok"}
                 break
+        # log the work
+        logc.send(log_client.INFO, 2, "Mnt :"+stk_mount_command)
+        if out_ticket["status"] != "ok" :
+            logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
+            for line in returned_message:
+                logc.send(log_client.ERROR, 1, "Mnt sts:"+line)
         # send reply to caller
-        print out_ticket
         self.reply_to_caller(out_ticket)
-        print "mount status " + out_ticket["status"]
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
@@ -111,18 +112,23 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
 
         # call dismount command
-        print 'dismount command is:',stk_mount_command
+        logc.send(log_client.INFO, 4, "UMnt cmd:"+stk_mount_command)
         returned_message = os.popen(stk_mount_command, "r").readlines()
         out_ticket = {"status" : "dismount_failed"}
 
-        # analize the retrun message
+        # analyze the return message
         for line in returned_message:
-            if list: print line
+            if list: logc.send(log_client.INFO, 8, "UMnt trc:"+stk_mount_command)
             if string.find(line, "dismount") != -1 :
                 out_ticket = {"status" : "ok"}
                 break
+        # log the work
+        logc.send(log_client.INFO, 4, "UMnt ok:"+stk_mount_command)
+        if out_ticket["status"] != "ok" :
+            logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command,1)
+            for line in returned_message:
+                logc.send(log_client.ERROR, 1, "UMnt sts:"+line)
         self.reply_to_caller(out_ticket)
-        print "dism status " + out_ticket["status"]
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods,
@@ -169,6 +175,8 @@ if __name__ == "__main__" :
             config_list = 1
         elif opt == "--list" :
             list = 1
+        elif opt == "--log" :
+            list = value
         elif opt == "--help" :
             print "python ",sys.argv[0], options, "media changer"
             print "   do not forget the '--' in front of each option"
@@ -215,7 +223,7 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
+            logc.send(log_client.INFO, 1, "Media Changer"+args[0]+"(re) starting")
             mc.serve_forever()
         except:
             traceback.print_exc()
@@ -225,5 +233,5 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[1])+" "+\
                      "media changer serve_forever continuing"
             print format
-            logc.send(log_client.INFO,format)
+            logc.send(log_client.ERROR, 1, format)
             continue

@@ -6,7 +6,6 @@
 #                                                                       #
 #########################################################################
 
-
 from configuration_client import configuration_client
 from udp_client import UDPClient
 

@@ -190,15 +190,14 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
         print "Sending data", "   cum=",time.time()-t0
     while 1:
         buf = in_file.read(min(fsize, 65536*4))
-        l = len(buf)
         if len(buf) == 0 : break
         if chk_crc != 0 :
             mycrc = binascii.crc_hqx(buf,mycrc)
-        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-        if badsock != 0 :
-            print "encp write_to_hsm, sending data, pre-send error:", \
-                  errno.errorcode[badsock]
+#        badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
+#                                              socket.SO_ERROR)
+#        if badsock != 0 :
+#            print "encp write_to_hsm, sending data, pre-send error:", \
+#                  errno.errorcode[badsock]
         data_path_socket.send(buf)
         badsock = data_path_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
@@ -270,7 +269,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
 
         format = "%s -> %s : %d bytes copied to %s in  %f seconds "+\
                  "at %f MB/S requestor:%s   cum= %f seconds"
-        logticket = logc.send(log_client.INFO, format, uinfo["fullname"],
+        logticket = logc.send(log_client.INFO, 2, format, uinfo["fullname"],
                               p.pnfsFilename, p.file_size,
                               done_ticket["external_label"], tinfo["total"],
                               done_ticket["MB_per_S"], uinfo["uname"],
@@ -519,7 +518,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
         format = "%s -> %s : %d bytes copied from %s in  %f seconds at "+\
                      "%s MB/S  requestor:%s     cum= %f"
-        logticket = logc.send(log_client.INFO, format, p.pnfsFilename,
+        logticket = logc.send(log_client.INFO, format, 2, p.pnfsFilename,
                               uinfo["fullname"], fsize,
                               done_ticket["external_label"], tinfo["total"],
                               done_ticket["MB_per_S"], uinfo["uname"],
@@ -536,8 +535,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
 def jraise(errcode,errmsg,exit_code=1) :
     format = "Fatal error:"+str(errcode)+str(errmsg)
-    logticket = logc.send(log_client.ERROR, format)
-    print format
+    logticket = logc.send(log_client.ERROR, 1, format)
     sys.exit(exit_code)
 
 ##############################################################################

@@ -289,7 +289,7 @@ if __name__ == "__main__" :
     dict = dBTable("file",logc)
     while 1:
         try:
-            logc.send(log_client.INFO, "File Clerk (re)starting")
+            logc.send(log_client.INFO, 1, "File Clerk (re)starting")
             fc.serve_forever()
         except:
             traceback.print_exc()
@@ -299,5 +299,5 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[1])+" "+\
                      "file clerk serve_forever continuing"
             print format
-            logc.send(log_client.INFO,format)
+            logc.send(log_client.ERROR, 1, format)
             continue

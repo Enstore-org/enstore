@@ -167,7 +167,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         ticket["status"] = "ok"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         format = "write Q'd %s -> %s : library=%s family=%s requestor:%s"
-        logticket = self.logc.send(log_client.INFO, format,
+        logticket = self.logc.send(log_client.INFO, 2, format,
                                    repr(ticket["user_info"]["fullname"]),
                                    ticket["pnfs_info"]["pnfsFilename"],
                                    ticket["library"],ticket["file_family"],
@@ -179,7 +179,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         ticket["status"] = "ok"
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         format = "read Q'd %s -> %s : vol=%s bfid=%s requestor:%s"
-        logticket = self.logc.send(log_client.INFO, format,
+        logticket = self.logc.send(log_client.INFO, 2, format,
                                    ticket["pnfs_info"]["pnfsFilename"],
                                    repr(ticket["user_info"]["fullname"]),
                                    ticket["external_label"],ticket["bfid"],
@@ -200,7 +200,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         elif w["status"] == "ok" :
             # reply now to avoid deadlocks
             format = "bind vol=%s work=%s mover=%s requestor:%s"
-            logticket = self.logc.send(log_client.INFO, format,
+            logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["external_label"],
                                        w["work"],
                                        mticket["mover"],
@@ -231,7 +231,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         w = get_awaiting_work(mticket["external_label"])
         if w :
             format = "%s awaiting work on vol=%s mover=%s requestor:%s"
-            logticket = self.logc.send(log_client.INFO, format,
+            logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
                                        w["external_label"],
                                        mticket["mover"],
@@ -246,7 +246,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         w = next_work_this_volume(mticket)
         if w["status"] == "ok" :
             format = "%s next work on vol=%s mover=%s requestor:%s"
-            logticket = self.logc.send(log_client.INFO, format,
+            logticket = self.logc.send(log_client.INFO, 2, format,
                                        w["work"],
                                        w["external_label"],
                                        mticket["mover"],
@@ -260,7 +260,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         # if the pending work queue is empty, then we're done
         elif  w["status"] == "nowork" :
             format = "unbind vol %s mover=%s"
-            logticket = self.logc.send(log_client.INFO, format,
+            logticket = self.logc.send(log_client.INFO, 2, format,
                                        mticket["external_label"],
                                        mticket["mover"])
             self.reply_to_caller({"work" : "unbind_volume"})
@@ -406,7 +406,7 @@ if __name__ == "__main__" :
 
     while 1:
         try:
-            logc.send(log_client.INFO,"Library Manager"+args[0]+"(re)starting")
+            logc.send(log_client.INFO, 1, "Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
             traceback.print_exc()
@@ -415,6 +415,5 @@ if __name__ == "__main__" :
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\
                      "library manager serve_forever continuing"
-            print format
-            logc.send(log_client.INFO,format)
+            logc.send(log_client.ERROR, 1, format)
             continue

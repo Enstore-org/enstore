@@ -96,14 +96,12 @@ class  FTTDriver(GenericDriver) :
 
     def close_file_write(self):
         stats = ETape.ET_CloseWrite(self.ETdesc)
-            # stats[0] is KBytes - mover wants bytes-1MB  , drop the L
         self.eod = self.eod + 1
         self.position = self.eod
         if stats[0] != "Invalid" :
-          #self.remaining_bytes = repr(1024L * (eval(stats[0])-1024) )[:-1]
            self.remaining_bytes = 1024L*(string.atoi(stats[0])-1024)
         else :
-          self.remaining_bytes = self.remaining_bytes - stats[3] - 1024L*1024L
+          self.remaining_bytes = self.remaining_bytes - stats[3] - 1048576L
         self.wr_access = string.atoi(stats[1])
         if stats[2] != "Invalid" :
           self.wr_err = string.atoi(stats[2])
