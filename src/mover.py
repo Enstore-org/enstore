@@ -444,8 +444,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         
 	# how often to send an alive heartbeat to the event relay
 	##self.alive_interval = monitored_server.get_alive_interval(self.csc,
-								  name,
-								  self.config)
+##								  name,
+##								  self.config)
 
         self.address = (self.config['hostip'], self.config['port'])
 
