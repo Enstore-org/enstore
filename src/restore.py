@@ -435,34 +435,20 @@ class DbTable(db.DbTable):
 
 		return error
 
-import option
+import interface
 
-class Interface(option.Interface):
+class Interface(interface.Interface):
 
 	def __init__(self):
 		self.dbHome = None
 		self.jouHome = None
-		option.Interface.__init__(self)
+		interface.Interface.__init__(self)
 
-	def valid_dictionaries(self):
-	    return (self.config_options, self.restore_options)
+	def options(self):
+		return self.config_options()+['dbHome=', 'jouHome=']
 
-	restore_options = {
-	    option.DBHOME:{option.HELP_STRING:"CHIH needs to fill this in",
-			   option.VALUE_TYPE:option.STRING
-			   option.VALUE_USAGE:option.REQUIRED
-			   option.VALUE_LABEL:"directory"
-			   option.USER_LEVEL:option.ADMIN,
-			   },
-	    option.JOUHOME:{option.HELP_STRING:"CHIH needs to fill this in",
-			    option.VALUE_TYPE:option.STRING
-			    option.VALUE_USAGE:option.REQUIRED
-			    option.VALUE_LABEL:"directory"
-			    option.USER_LEVEL:option.ADMIN,
-			    }
-	    }
-
-	parameters = '[mon day hh[:mm[:ss]] [year]]'
+	def parameters(self):
+		return '[mon day hh[:mm[:ss]] [year]]'
 
 # parse_time(args) -- get the time
 
