@@ -347,11 +347,13 @@ static PyObject* query_volume(PyObject *self, PyObject *args)
 
   if(!PyArg_ParseTuple(args, "ss", &vol, &media_type))                         /* get args */ 
   	return (NULL);
+  /* printf("calling STK.query_volume, vol=%s\n",vol); */
   if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
     stat = STATUS_VOLUME_NOT_IN_LIBRARY;
   else
     stat = STKquery_volume(3, vol);
   sc = status_class(stat, drive_errs, media_errs );
+  /* printf("STK.query_volume returned %s\n",volStatus); *
   /* try to put this into same format as aml/2 state */
   if (strcmp("STATUS_VOLUME_IN_DRIVE",volStatus)==0) {
       strcpy(volStatus,"M"); /* mounted */
