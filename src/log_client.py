@@ -95,6 +95,7 @@ class LoggerClient(generic_client.GenericClient):
             msg = '%.6d %.8s' % (self.uid, self.uname)
             msg = msg + ' ' + sevdict[severity] + ' ' + self.i_am + ' '
             str = format % args
+	    Trace.trace( severity, str )
             msg = msg + ' ' + str
             if self.debug:
                 print msg
