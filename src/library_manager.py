@@ -14,6 +14,7 @@ import log_client
 import configuration_client
 import volume_clerk_client
 import callback
+import interface
 import dispatching_worker
 import generic_server
 import Trace
@@ -330,7 +331,8 @@ def send_regret(ticket):
 	Trace.trace(3,"}send_regret ")
 	os._exit(0)
     else:
-	print "CHILD ID=", ret
+	if debug:
+	    print "CHILD ID=", ret
 
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
@@ -340,6 +342,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     max_summon_attempts = 3
     summon_queue_index = 0
     suspect_volumes = [] # list of suspected volumes
+
+    def __init__(self, libman, csc=0, list=0, host=interface.default_host(), \
+                port=interface.default_port()):
+        Trace.trace(10, '{__init__')
+        # get the config server
+        configuration_client.set_csc(self, csc, host, port, list)
+        #   pretend that we are the test system
+        #   remember, in a system, there is only one bfs
+        #   get our port and host from the name server
+        #   exit if the host is not this machine
+        keys = self.csc.get(libman)
+        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+                                                      keys['port']))
+        # get a logger
+        self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
+                                            'logserver', 0)
+	self.set_udp_client()
+        Trace.trace(10, '}__init__')
 
     def set_udp_client(self):
 	Trace.trace(3,"{set_udp_client")
@@ -817,91 +837,68 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     
     #pass
 
+class LibraryManagerInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{lmsi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+	self.list = 0
+	self.summon = 1
+	self.debug = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}lmsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+\
+               ["config_list","list","debug", "nosummon"] +\
+               self.help_options()
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" library_manager"
+
+    # parse the options like normal but make sure we have a library manager
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # bomb out if we don't have a library manager
+        if len(self.args) < 1 :
+            self.print_help(),
+            sys.exit(1)
+        else:
+            self.name = self.args[0]
+
+
 if __name__ == "__main__":
     import sys
-    import getopt
     import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
     Trace.init("libman")
     Trace.trace(1,"libman called with args "+repr(sys.argv))
 
-    # defaults
-    #config_host = "localhost"
-    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_host = ci[0]
-    config_port = "7500"
-    config_list = 0
-    list = 0
-    summon = 1
-    debug = 0
+    # get an interface
+    intf = LibraryManagerInterface()
+    debug = intf.debug
+    list = intf.list
+    summon = intf.summon
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list","list","debug","nosummon","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist:
-        if opt == "--config_host":
-            config_host = value
-        elif opt == "--config_port":
-            config_port = value
-        elif opt == "--config_list":
-            config_list = 1
-        elif opt == "--list":
-            list = 1
-        elif opt == "--debug":
-            debug = 1
-        elif opt == "--nosummon":
-            summon = 0
-        elif opt == "--help":
-            print "python ",sys.argv[0], options, "library"
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    # get a library manager
+    lm = LibraryManager(intf.name, 0, intf.config_list, intf.config_host, \
+	                intf.config_port)
 
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    # bomb out if we don't have a library
-    if len(args) < 1:
-        print "python",sys.argv[0], options, "library"
-        print "   do not forget the '--' in front of each option"
-        sys.exit(1)
-
-    csc = configuration_client.ConfigurationClient(config_host,config_port,\
-                                                    config_list)
-
-    keys = csc.get(args[0])
-
-
-    #  set ourself up on that port and start serving
-    #methods =  LibraryManagerMethods()
-    #lm =  LibraryManager( (keys['hostip'], keys['port']))
-    lm =  LibraryManager( (keys['hostip'], keys['port']))
-    lm.set_csc(csc)
-    
     """ get initial list of movers potentially belonging to this
     library manager from the configuration server
     """
-    get_movers(lm.csc, args[0])
-
-    # get a logger
-    logc = log_client.LoggerClient(csc, keys["logname"],  'logserver', 0)
-    lm.set_logc(logc)
-    lm.set_udp_client()
+    get_movers(lm.csc, intf.name)
 
     while 1:
         try:
-            Trace.init(args[0][0:5]+'.libm')
-            logc.send(log_client.INFO, 1, "Library Manager"+args[0]+"(re)starting")
+            Trace.init(intf.name[0:5]+'.libm')
+            lm.logc.send(log_client.INFO, 1, "Library Manager"+intf.name+"(re)starting")
             lm.serve_forever()
         except:
 	    if SystemExit:
@@ -913,7 +910,7 @@ if __name__ == "__main__":
 			 str(sys.exc_info()[0])+" "+\
 			 str(sys.exc_info()[1])+" "+\
 			 "library manager serve_forever continuing"
-		logc.send(log_client.ERROR, 1, format)
+		lm.logc.send(log_client.ERROR, 1, format)
 		Trace.trace(0,format)
 		continue
-    Trace.trace(1,"Library Manager finished (impossible)")
+    Trace.trace(1,"Library Manager finished (impossible)"
