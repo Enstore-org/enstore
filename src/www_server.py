@@ -14,6 +14,8 @@ SYSTEM_TAG_DEFAULT = ""
 MEDIA_TAG = "media"
 MEDIA_TAG_DEFAULT = "aml/2 robot (TBD)"
 
+import errno
+
 def get_system_tag(csc, timeout=0, retries=0):
     # get the keys that are associated with the web information
     try:
