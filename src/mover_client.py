@@ -32,6 +32,12 @@ class MoverClient(generic_client.GenericClient):
 	return self.send({"work" : "local_mover",
                           "enable" : enable}, rcv_timeout, tries)
 
+    def start_draining(self, rcv_timeout=0, tries=0):
+	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
+
+    def stop_draining(self, rcv_timeout=0, tries=0):
+	return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
+
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.mover)
         return self.u.send(ticket, (vticket['hostip'], vticket['port']), \
@@ -47,6 +53,8 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.local_mover = 0
         self.enable = 0
 	self.status = 0
+        self.start_draining = 0
+        self.stop_draining = 0
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -54,7 +62,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover="]
+            return self.client_options()+["status", "local_mover=", "start_dringing", "stop_drining"]
 
     #  define our specific help
     def parameters(self):
@@ -89,6 +97,12 @@ def do_work(intf):
     elif intf.local_mover:
         ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
                                   intf.alive_retries)
+    elif intf.start_draining:
+        ticket = movc.start_draining(intf.mover, intf.alive_rcv_timeout,
+                                     intf.alive_retries)
+    elif intf.stop_draining:
+        ticket = movc.stop_draining(intf.mover, intf.alive_rcv_timeout,
+                                     intf.alive_retries)
     else:
 	intf.print_help()
         sys.exit(0)
