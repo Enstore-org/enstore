@@ -29,95 +29,19 @@ MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
 VALID_PERIODS = {"today":1, "week":7, "month":30, "all":-1}
 
-# stand alone function to send a log message
-def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
-    import configuration_client
-    # get config port and host
-    port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
-    host = os.environ.get('ENSTORE_CONFIG_HOST', '')
-    # convert port to integer
-    if port: port = string.atoi(port)
-    if port and host:
-        # if port and host defined create config client
-        csc = configuration_client.ConfigurationClient((host,port))
-        # create log client
-        logc = LoggerClient(csc, logname, MY_SERVER)
-    Trace.log(sev_level, message)
-    
-# send a message to the logger
-def logit(logc, message="HELLO", logname="LOGIT"):
-    # reset our log name
-    logc.log_name = logname
 
-    # send the message
-    Trace.log(e_errors.INFO, message)
 
-    return {"status" : (e_errors.OK, None)}
+class LoggerLock:
+    def __init__(self):
+	self.locked = 0
+    def unlock(self):
+	self.locked = 0
+    def test_and_set(self):
+	s = self.locked
+	self.locked=1
+	return s
 
-#################################################################################
-# NAME        : FERMI LABS - RICHARD KENNA
-# DATE        : JUNE 24, 1999
-# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
-#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
-#             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
-#             : MSG, MSG_DICT AND MSG_TYPE
-#             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
-#             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
-#             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
-#################################################################################
-def parse(lineIn):
 
-    tmpLine = string.split(lineIn)
-    time = tmpLine[0]
-    host = tmpLine[1]
-    pid = tmpLine[2]
-    user = tmpLine[3]
-    severity = tmpLine[4]
-    server = tmpLine[5]
-
-    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
-                 'user' : user, 'severity' : severity,
-                 'server' : server }
-
-    mNum = string.find(lineIn, server) + len(server) + 1
-    dNum = string.find(lineIn, "MSG_DICT:")
-    tNum = string.find(lineIn, "MSG_TYPE=")
-
-    if tNum < 0:
-        tNum = len(lineIn)
-    else:
-        msg_type = []
-        num = tNum
-        while num < len(lineIn):
-            msg_type.append(lineIn[num])
-            num = num + 1
-        msg_type = string.joinfields(msg_type, "")
-        msg_type = string.split(msg_type, "=")
-        msg_type = msg_type[1]
-        lineDict['msg_type'] = msg_type
-    if dNum < 0:
-        dNum = tNum;
-    else:
-        msg_dict = []
-        num = dNum
-        while num < tNum:
-            msg_dict.append(lineIn[num])
-            num = num + 1
-        msg_dict = string.joinfields(msg_dict, "")
-        msg_dict = string.split(msg_dict, ":")
-        msg_dict = msg_dict[1]
-        msg_dict = cPickle.loads(base64.decodestring(msg_dict))
-        lineDict['msg_dict'] = msg_dict
-    if mNum < dNum:
-        msg = []
-        num = mNum
-        while num < dNum:
-            msg.append(lineIn[num])
-            num = num + 1
-        msg = string.joinfields(msg, "")
-        lineDict['msg'] = msg
-
-    return lineDict
 
 #############################################################################################
 # AUTHOR        : FERMI-LABS
@@ -377,17 +301,7 @@ def genMsgType(msg, ln, severity):
         sevMsg = "_" + sevMsg
         
     return  "MSG_TYPE=%s%s%s" % (functMsg, sevMsg, clientMsg)
-
-class LoggerLock:
-    def __init__(self):
-	self.locked = 0
-    def unlock(self):
-	self.locked = 0
-    def test_and_set(self):
-	s = self.locked
-	self.locked=1
-	return s
-
+        
 class LoggerClient(generic_client.GenericClient):
 
     def __init__(self,
@@ -443,6 +357,97 @@ class LoggerClient(generic_client.GenericClient):
 	if args != (): format = format%args
 	Trace.log( severity, format )
 	return {"status" : (e_errors.OK, None)}
+
+
+# stand alone function to send a log message
+def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
+    import configuration_client
+    # get config port and host
+    port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
+    host = os.environ.get('ENSTORE_CONFIG_HOST', '')
+    # convert port to integer
+    if port: port = string.atoi(port)
+    if port and host:
+        # if port and host defined create config client
+        csc = configuration_client.ConfigurationClient((host,port))
+        # create log client
+        logc = LoggerClient(csc, logname, MY_SERVER)
+    Trace.log(sev_level, message)
+    
+# send a message to the logger
+def logit(logc, message="HELLO", logname="LOGIT"):
+    # reset our log name
+    logc.log_name = logname
+
+    # send the message
+    Trace.log(e_errors.INFO, message)
+
+    return {"status" : (e_errors.OK, None)}
+
+#################################################################################
+# NAME        : FERMI LABS - RICHARD KENNA
+# DATE        : JUNE 24, 1999
+# DESCRIPTION : THIS FUNCTION TAKES A LINE INPUT AND RETURNS A USABLE DICTIONARY
+#             : WITH THE FOLLOWING VALUES. THE COMMANDS ARE:
+#             : TIME, SYS_NAME, PID, USR_NAME, SEVERITY, DEV_NAME,
+#             : MSG, MSG_DICT AND MSG_TYPE
+#             : TO USE: a = log.parse(lineIn)  - IT WILL RETURN THE DICTIONARY
+#             : THEN TO SEE DIFFERENT VALUES, TYPE: a['time']
+#             : IT WILL RESPOND WITH: '12:02:12' - OR THE TIME IN THE MESSAGE
+#################################################################################
+def parse(lineIn):
+
+    tmpLine = string.split(lineIn)
+    time = tmpLine[0]
+    host = tmpLine[1]
+    pid = tmpLine[2]
+    user = tmpLine[3]
+    severity = tmpLine[4]
+    server = tmpLine[5]
+
+    lineDict = { 'time' : time, 'host' : host, 'pid' : pid,
+                 'user' : user, 'severity' : severity,
+                 'server' : server }
+
+    mNum = string.find(lineIn, server) + len(server) + 1
+    dNum = string.find(lineIn, "MSG_DICT:")
+    tNum = string.find(lineIn, "MSG_TYPE=")
+
+    if tNum < 0:
+        tNum = len(lineIn)
+    else:
+        msg_type = []
+        num = tNum
+        while num < len(lineIn):
+            msg_type.append(lineIn[num])
+            num = num + 1
+        msg_type = string.joinfields(msg_type, "")
+        msg_type = string.split(msg_type, "=")
+        msg_type = msg_type[1]
+        lineDict['msg_type'] = msg_type
+    if dNum < 0:
+        dNum = tNum;
+    else:
+        msg_dict = []
+        num = dNum
+        while num < tNum:
+            msg_dict.append(lineIn[num])
+            num = num + 1
+        msg_dict = string.joinfields(msg_dict, "")
+        msg_dict = string.split(msg_dict, ":")
+        msg_dict = msg_dict[1]
+        msg_dict = cPickle.loads(base64.decodestring(msg_dict))
+        lineDict['msg_dict'] = msg_dict
+    if mNum < dNum:
+        msg = []
+        num = mNum
+        while num < dNum:
+            msg.append(lineIn[num])
+            num = num + 1
+        msg = string.joinfields(msg, "")
+        lineDict['msg'] = msg
+
+    return lineDict
 
 #
 # priorty allows turning logging on and off in a server.
