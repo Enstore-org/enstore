@@ -270,6 +270,8 @@ class Interface:
                 self.delvol = 1
             elif opt == "--restorevol" :
                 self.restorevol = 1
+            elif opt == "--all" :
+                self.all = 1
             elif opt == "--force" :
                 self.force = 1
             elif opt == "--clrvol" :

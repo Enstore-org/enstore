@@ -101,9 +101,12 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # delete a volume from the stockpile
-    def restorevol(self, external_label):
+    def restorevol(self, external_label, restore=0):
+	if restore: restore_vm = "yes"
+	else: restore_vm = "no"
         ticket= { 'work'           : 'restorevol',
-                  'external_label' : external_label }
+                  'external_label' : external_label,
+		  "restore"         : restore_vm}
         x = self.send(ticket)
         return x
 
@@ -348,6 +351,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.addvol = 0
         self.delvol = 0
         self.restorevol = 0
+        self.all = 0
         self.force  = 0
         self.newlib = 0
         self.rdovol = 0
@@ -360,7 +364,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
     def options(self):
         return self.client_options()+\
                ["clrvol", "backup", "vols","nextvol","vol=","chkvol=","addvol","statvol=",
-	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force","restorevol"]
+	        "delvol","newlib","rdovol","noavol","atmover","decr_file_count=","force","restorevol", "all"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -501,7 +505,7 @@ if __name__ == "__main__":
     elif intf.delvol:
         ticket = vcc.delvol(intf.args[0],intf.force)   # name of this volume
     elif intf.restorevol:
-        ticket = vcc.restorevol(intf.args[0])   # name of this volume
+        ticket = vcc.restorevol(intf.args[0], intf.all)   # name of this volume
     elif intf.clrvol:
         ticket = vcc.clr_system_inhibit(intf.args[0])  # name of this volume
     elif intf.statvol != "":

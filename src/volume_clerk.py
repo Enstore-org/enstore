@@ -27,7 +27,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     # rename deleted volume
-    def rename_volume(self, old_label, new_label):
+    def rename_volume(self, old_label, new_label, restore="no"):
      try:
 	 cur_rec = dict[old_label]
 	 # should not happen
@@ -39,7 +39,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     set_deleted = "eys"
 	 else:
 	     cur_rec["system_inhibit"] = "none"
-	     set_deleted = "no"
+	     if restore == "yes":
+		 set_deleted = "no"
+	     else:
+		 set_deleted = "yes"
+
 	     
 	 import file_clerk_client
 	 fcc = file_clerk_client.FileClient(self.csc)
@@ -53,7 +57,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 os.rename(old_vm_dir, new_vm_dir)
 	 # replace file clerk database entries
 	 for bfid in cur_rec['bfids']:
-	     ret = fcc.rename_volume(bfid, new_label, set_deleted)
+	     ret = fcc.rename_volume(bfid, new_label, set_deleted, restore)
 	 # create new record in the database
 	 dict[new_label] = cur_rec
 	 # remove current record from the database
@@ -274,10 +278,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # restore a volume
     def restorevol(self, ticket):
      try:
-        # everything is based on external label - make sure we have this
-        key="external_label"
         try:
+	    # everything is based on external label - make sure we have this
+	    key="external_label"
             external_label = ticket[key]
+	    key="restore"
+	    restore_vm = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "Volume Clerk: "+key+" key is missing")
@@ -299,12 +305,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"restorevol "+repr(ticket["status"]))
             return
 
-	status = self.rename_volume(cl, external_label)
+	status = self.rename_volume(cl, external_label, restore_vm)
 	ticket["status"] = status
 	if status[0] == e_errors.OK:
 	    record = dict[external_label]
 	    record["system_inhibit"] = "none"
-	    record["non_del_files"] = len(record["bfids"])
+	    if restore_vm == "yes":
+		record["non_del_files"] = len(record["bfids"])
 	    dict[external_label] = record
 
 	    Trace.log(e_errors.INFO,"Volume %s is restored"%external_label)

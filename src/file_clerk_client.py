@@ -182,11 +182,12 @@ class FileClient(generic_client.GenericClient, \
         return r
 
     # rename volume and volume map
-    def rename_volume(self, bfid, external_label, set_deleted):
+    def rename_volume(self, bfid, external_label, set_deleted, restore_vm):
         r = self.send({"work"           : "rename_volume",\
                        "bfid"           : bfid,
 		       "external_label" : external_label,
-		       "set_deleted"    : set_deleted} )
+		       "set_deleted"    : set_deleted,
+		       "restore"        : restore_vm} )
 	return r
     # get volume map name for given bfid
     def get_volmap_name(self):

@@ -256,6 +256,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
            callback.write_tcp_buf(self.data_socket,msg,
                                   "file_clerk get bfids, datasocket")
            msg=""
+	print "KEY", key
+	print "VALUE", value
         key,value=dict.cursor("next")
      dict.cursor("close")
      msg=msg[:-1]
@@ -430,6 +432,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    label = ticket[key]
 	    key = "set_deleted"
 	    set_deleted = ticket[key]
+	    key = "restore"
+	    restore_volmap = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
                                 "File Clerk: "+key+" key is missing")
@@ -446,7 +450,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	ticket["pnfs_mapname"] = record["pnfs_mapname"]
 	record["external_label"] = label
 	record["deleted"] = set_deleted
-	if record["deleted"] == "no":
+	if record["deleted"] == "no" and restore_volmap == "yes":
 	    # restore pnfs entry
 	    import pnfs
 	    map = pnfs.Pnfs(record["pnfs_mapname"])
