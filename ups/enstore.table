@@ -125,6 +125,9 @@ COMMON:
                 setupOptional("ximagetools")
                 setupOptional("imagemagick")
 
+		# get access to selread for cron jobs etc.
+		setupOptional("ipmi")
+
 		# used to generate the plots of mounts etc.
                 setupOptional("gnuplot v3_6")
 
