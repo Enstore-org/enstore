@@ -18,13 +18,22 @@ remaining = {}
 
 for line in os.popen('enstore vol --vols','r').readlines():
     if string.find(line, "CleanTape")>0:
-        vol, count = string.split(line)[:2]
+        try:
+            vol,count = string.split(line)[0:2]
+        except:
+            print line
+            continue
         info = os.popen('enstore vol --vol %s'%(vol,),'r').readlines()
+        library='unknown'
         for iline in info:
-            if string.find(iline,'remaining_bytes')>0:
+            if string.find(iline,'library')>0:
+                l=string.split(iline,":")[1]
+                library =string.split(l,"'")[1]
+            elif string.find(iline,'remaining_bytes')>0:
                 n=string.split(iline,":")[1]
                 count=int(string.split(n,"L")[0])
-                remaining[vol]=count
+                remaining[vol+'/'+library]=count
+                break
 
 vols = remaining.keys()
 vols.sort()
@@ -51,10 +60,15 @@ else:
     print '  ', '<no tapes>'
 print
 
-total = 0
+total = {}
 for vol in good:
-    total = total + remaining[vol]
+    v,library = string.split(vol,'/')
+    if total.has_key(library):
+        total[library] = total[library] + remaining[vol]
+    else:
+        total[library] = remaining[vol]
 
-print "There are %s cleaning tapes left, with a total capacity of %s cleanings" % (
-    len(good), total)
+for lib in total.keys():
+    print "There are %s %s cleaning tapes left, with a total capacity of %s cleanings" % (
+    len(good), lib, total[lib])
 
