@@ -804,6 +804,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("RETRIES:                %s\n"%(stats[ftt.TRACK_RETRY],))
                 fd.write("WRITEPROT:               %s\n"%(stats[ftt.WRITE_PROT],))
                 fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
+                
             if self.send_stats:
                 self.dsc.log_stat(stats[ftt.SERIAL_NUM],
                                   stats[ftt.VENDOR_ID],
@@ -813,17 +814,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   "ABSOLUTE",
                                   time.time(),
                                   self.current_volume,
-                                  stats[ftt.POWER_HOURS],
-                                  stats[ftt.MOTION_HOURS],
+                                  long(stats[ftt.POWER_HOURS]),
+                                  long(stats[ftt.MOTION_HOURS]),
                                   stats[ftt.CLEANING_BIT],
                                   long(stats[ftt.USER_READ])/1024.,
                                   long(stats[ftt.USER_WRITE])/1024.,
                                   long(stats[ftt.READ_COUNT])/1024.,
                                   long(stats[ftt.WRITE_COUNT])/1024.,
-                                  stats[ftt.READ_ERRORS],
-                                  stats[ftt.WRITE_ERRORS],
-                                  stats[ftt.TRACK_RETRY],
-                                  stats[ftt.UNDERRUN],
+                                  long(stats[ftt.READ_ERRORS]),
+                                  long(stats[ftt.WRITE_ERRORS]),
+                                  long(stats[ftt.TRACK_RETRY]),
+                                  long(stats[ftt.UNDERRUN]),
                                   0,
                                   int(stats[ftt.WRITE_PROT]))
                 
