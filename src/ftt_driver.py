@@ -247,7 +247,9 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
-            return self.ftt.unload()
+            self.ftt.rewind() #XXX clears previous errors and makes unload succeed...
+            self.ftt.unload()
+            return 0
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "eject %s %s" % ( detail, detail.value))
             return -1
