@@ -1515,7 +1515,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     #Determine if reading or writing.  This only has importance on
     # mulithomed machines were an interface needs to be choosen based
     # on reading and writing usages/rates of the interfaces.
-    if encp_intf.output == "hsmfile":
+    if getattr(encp_intf, "output", "") == "hsmfile":
         mode = 1 #write
     else:
         mode = 0 #read

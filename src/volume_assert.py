@@ -228,7 +228,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             if udp_server:
 	        #There is no need to do this on a non-multihomed machine.
                 route_ticket, listen_socket = encp.open_routing_socket(
-                    udp_server, unique_id_list, intf.mover_timeout)
+                    udp_server, unique_id_list, intf)
             socket, addr, callback_ticket = \
                     encp.open_control_socket(listen_socket, intf.mover_timeout)
         except KeyboardInterrupt:
