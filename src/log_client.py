@@ -300,7 +300,7 @@ def genMsgType(msg, ln, severity):
     if functFlg == TRUE:
         sevMsg = "_" + sevMsg
         
-    return  "MSG_TYPE=%s%s%s" % (functMsg, sevMsg, clientMsg)
+    return  "%s%s%s%s" % (Trace.MSG_TYPE, functMsg, sevMsg, clientMsg)
         
 class LoggerClient(generic_client.GenericClient):
 
@@ -340,11 +340,11 @@ class LoggerClient(generic_client.GenericClient):
             ln = name
 	if severity > e_errors.MISC: severity = e_errors.MISC
 
-        if string.find(msg, "MSG_TYPE") < 0:
+        if string.find(msg, Trace.MSG_TYPE) < 0:
 	    try:
 		msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
 	    except NameError:
-		msg_type = "MSG_TYPE=NAME_ERROR"
+		msg_type = "%sNAME_ERROR"%(Trace.MSG_TYPE,)
             msg = "%s %s" % (msg, msg_type)
 
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
@@ -444,7 +444,7 @@ def parse(lineIn):
 
     mNum = string.find(lineIn, server) + len(server) + 1
     dNum = string.find(lineIn, "MSG_DICT:")
-    tNum = string.find(lineIn, "MSG_TYPE=")
+    tNum = string.find(lineIn, Trace.MSG_TYPE)
 
     if tNum < 0:
         tNum = len(lineIn)
