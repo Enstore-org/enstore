@@ -511,9 +511,13 @@ class EnDataFile(EnFile):
     # is between the given start and end values
     def check_line(self, line, start_time, stop_time, prefix):
         # split the line into the date/time and all the rest
-        datetime, rest = string.split(line, None, 1)
-        # remove the beginning file prefix
-        l = string.replace(datetime, prefix,"")
+	fields = string.split(line, None, 1)
+	datetime = string.strip(fields[0])
+        # remove the beginning file prefix if there is one
+	if prefix:
+	    l = string.replace(datetime, prefix,"")
+	else:
+	    l = datetime
         # now see if the date/time is between the start time and the end time
         time_ok = TRUE
         if start_time:
@@ -897,3 +901,16 @@ class EnstoreStatusFile(EnFile):
 				    override_d.get(enstore_constants.ENSTORE, 
 						   enstore_constants.NONE),
 				    enstore_functions.get_www_host()],))
+
+class EnstoreBpdFile(EnDataFile):
+
+    def __init__(self, file):
+	EnFile.__init__(self, file)
+	self.lines = []
+
+    def timed_read(self, start_time, stop_time):
+	if start_time is None and stop_time is None:
+	    # no start time or stop time  was entered, do last 30 days
+	    start_time = enstore_functions.get_days_ago(time.time(), 30)
+	    start_time = enstore_functions.format_plot_time(start_time)
+	EnDataFile.timed_read(self, start_time, stop_time, "")

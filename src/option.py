@@ -235,6 +235,8 @@ PNFS_STATE = "pnfs-state"                    #pnfs
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library
+PTS_DIR = "pts_dir"                          #plotter
+PTS_NODES = "pts_nodes"                      #plotter
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
 RECYCLE = "recycle"                          #volume
@@ -273,6 +275,7 @@ TAGS = "tags"                                #pnfs
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
 TITLE = "title"                              #enstore_make_log_plot
+TOTAL_BYTES = "total_bytes"                  #plotter
 TOUCH = "touch"                              #volume
 UP = "up"                                    #pnfs, inquisitor, mover
 UPDATE = "update"                            #inquisitor
@@ -321,7 +324,7 @@ valid_option_list = [
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NOTIFY,
     NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
-    PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY,
+    PARENT, PATH, PNFS_STATE, POSITION, PREFIX, PRIORITY, PTS_DIR, PTS_NODES,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RETRIES,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
@@ -329,7 +332,7 @@ valid_option_list = [
     SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
-    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE, TOUCH,
+    TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE, TOTAL_BYTES, TOUCH,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,

@@ -23,25 +23,6 @@ def setup_for_files():
     sys.path.append(DESTDIR)
     os.environ['PYTHONPATH'] = string.join(sys.path, ':')
 
-def get_remote_file(node, file, newfile):
-    # we have to make sure that the rcp does not hang in case the remote node is goofy
-    pid = os.fork()
-    if pid == 0:
-	# this is the child
-	rtn = os.system("enrcp %s:%s %s/%s.py"%(node, file, DESTDIR, newfile))
-	os._exit(rtn)
-    else:
-	# this is the parent, allow a total of 30 seconds for the child
-	for i in [0, 1, 2, 3, 4, 5]:
-	    rtn = os.waitpid(pid, os.WNOHANG)
-	    if rtn[0] == pid:
-		return rtn[1] >> 8   # pick out the top 8 bits as the return code
-	    time.sleep(5)
-	else:
-	    # the child has not finished, be brutal. it may be hung
-	    os.kill(pid, signal.SIGKILL)
-	    return 1
-
 def do_work():
     # where are we running, don't have to rcp to there
     thisNode = enstore_functions.strip_node(os.uname()[1])
@@ -58,10 +39,11 @@ def do_work():
 	node = enstore_functions.strip_node(node)
 	# this must match with the import below
 	NEWFILE = "enstore_status_only_%s"%(node,)
+	new_file = "%s/%s.py"%(DESTDIR, NEWFILE)
 	if node == thisNode:
-	    rtn = os.system("cp %s %s/%s.py"%(file, DESTDIR, NEWFILE))
+	    rtn = os.system("cp %s %s"%(file, new_file))
 	else:
-	    rtn = get_remote_file(node, file, NEWFILE)
+	    rtn = enstore_functions.get_remote_file(node, file, new_file)
 	if rtn == 0:
 	    exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
 	else:

@@ -5,6 +5,7 @@
 # system import
 import threading
 import string
+import os
 
 # enstore imports
 import Trace
@@ -180,8 +181,73 @@ class InquisitorPlots:
             # plotting needs the bpd data file
             sgplot.cleanup(self.keep, self.keep_dir)
 
+    def get_bpd_files(self):
+	nodes_l = string.split(self.pts_nodes, ",")
+	files_l = []
+	this_node = enstore_functions.strip_node(os.uname()[1])
+	pts_file_only = "%s%s"%(enstore_constants.BPD_FILE, enstore_plots.PTS)
+	pts_file = "%s/%s"%(self.pts_dir, pts_file_only)
+	for node in nodes_l:
+	    node = enstore_functions.strip_node(node)
+	    new_file = "/tmp/%s.%s"%(pts_file_only, node)
+	    if node == this_node:
+		rtn = os.system("cp %s %s"%(pts_file, new_file))
+	    else:
+		rtn = enstore_functions.get_remote_file(node, pts_file, new_file)
+	    if rtn == 0:
+		# the copy was a success
+		files_l.append((new_file, node))
+	    else:
+		# record the error
+		Trace.log(e_errors.WARNING,
+			  "could not copy %s from %s for total bytes plot"%(pts_file,
+									    node))
+	return files_l
+
+    def fill_in_bpd_d(self, bpdfile, data_d, node):
+	if bpdfile.lines:
+	    for line in bpdfile.lines:
+		fields = string.split(string.strip(line))
+		# this is the date
+		if not data_d.has_key(fields[0]):
+		    data_d[fields[0]] = {}
+		if len(fields) > 2:
+		    # we have data , need date, total, ctr
+		    data_d[fields[0]][node] = {enstore_plots.TOTAL : float(fields[1]),
+					       enstore_plots.CTR : enstore_plots.get_ctr(fields)}
+		else:
+		    data_d[fields[0]][node] = {enstore_plots.TOTAL : 0.0, 
+					       enstore_plots.CTR : 0L}
+
+    def read_bpd_data(self, files_l):
+	data_d = {}
+	for filename, node in files_l:
+	    bpdfile = enstore_files.EnstoreBpdFile(filename)
+	    bpdfile.open('r')
+	    # only extract the info that is within the requested time frame
+	    bpdfile.timed_read(self.start_time, self.stop_time)
+	    bpdfile.close()
+	    # now fill in the data dictionary with the data
+	    self.fill_in_bpd_d(bpdfile, data_d, node)
+	return data_d
+
+    def total_bytes_plot(self):
+	# we need to copy the enplot_bpd.pts files from all the nodes that are not
+	# our own.
+	files_l = self.get_bpd_files()
+	# for each file we have, open it and read the requested data
+	data_d = self.read_bpd_data(files_l)
+	# now write out the data and plot it
+	if data_d:
+	    tbpdfile = enstore_plots.TotalBpdDataFile(self.output_dir)
+	    tbpdfile.open()
+	    tbpdfile.plot(data_d)
+	    tbpdfile.close()
+	    tbpdfile.install(self.html_dir)
+	    tbpdfile.cleanup(self.keep, self.keep_dir)
+
     #  make all the plots
-    def plot(self, encp, mount, sg):
+    def plot(self, encp, mount, sg, total_bytes):
 	ld = {}
 	# find out where the log files are located
 	if self.logfile_dir is None:
@@ -209,6 +275,10 @@ class InquisitorPlots:
 	    Trace.trace(1, "Creating inq storage group plots")
 	    alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
 	    self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if total_bytes:
+	    Trace.trace(1, "Creating inq total bytes summary plot")
+	    self.total_bytes_plot()
+
 	# update the inquisitor plots web page
 	Trace.trace(1, "Creating the inq plot web page")
 	self.make_plot_html_page()

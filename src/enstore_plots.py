@@ -38,6 +38,9 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
+def get_ctr(fields):
+    return long(float(fields[1])/float(fields[6]))
+
 # init the following hash from the first date given to the last date
 def init_date_hash(sdate, edate):
     ndate = {}
@@ -758,7 +761,7 @@ class BpdDataFile(EnPlot):
 						  WRITES : float(fields[3]),
 						  SMALLEST : float(fields[4]),
 						  LARGEST : float(fields[5]),
-						  CTR : long(float(fields[1])/float(fields[6])) }
+						  CTR : get_ctr(fields) }
 		    else:
 			self.ndata[fields[0]] = {TOTAL : 0,
 						 READS : 0,
@@ -962,3 +965,96 @@ class SgDataFile(EnPlot):
 	    gnucmds.open('w')
 	    gnucmds.write(self.psfile, self.ptsfiles)
 	    gnucmds.close()
+
+
+class TotalBpdGnuFile(enstore_files.EnFile):
+
+    def write(self, outfile, ptsfile, total, meansize, xfers, max_nodes):
+	self.openfile.write("set output '"+outfile+"'\n"+ \
+	                   "set terminal postscript color solid\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day By Enstore "+\
+			    plot_time()+"'\n"+ \
+	                   "set xlabel 'Date'\n"+ \
+	                   "set timefmt \"%Y-%m-%d\"\n"+ \
+	                   "set xdata time\n"+ \
+	                   "set xrange [ : ]\n"+ \
+	                   "set ylabel 'Bytes'\n"+ \
+	                   "set grid\n"+ \
+	                   "set yrange [0: ]\n"+ \
+	                   "set format x \"%m-%d\"\n"+ \
+			   "set key right top Right samplen 1 title \"Total Bytes : "+\
+			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
+			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
+			      repr(xfers)+"\"\n")
+	len_max_nodes = len(max_nodes)
+	if len_max_nodes > 0:
+	    self.openfile.write("plot '%s' using 1:2 t '%s' w impulses lw 20 1 1"%(ptsfile,
+									    max_nodes[0],))
+	    color = 3
+	    column = 3
+	    for node in max_nodes[1:]:
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw 20 %s 1"%(ptsfile, 
+										    column,
+										    node,
+										    color))
+		color = color + 2
+		column = column + 1
+	    self.openfile.write("\n")
+
+class TotalBpdDataFile(EnPlot):
+
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.TOTAL_BPD_FILE)
+
+    # make the file with the bytes per day format, first we must sum the data
+    # that we have based on the day
+    def plot(self, data_d):
+	keys = data_d.keys()
+	keys.sort()
+	numxfers = 0
+	total = 0.0
+	max_nodes = []
+	# first
+	for key in keys:
+	    day = data_d[key]
+	    nodes = day.keys()
+	    # keep track of the max  nodes we will be plotting. each node 
+	    # corresponds to a column in the gnuplot file
+	    nodes.sort()
+	    if len(nodes) > len(max_nodes):
+		max_nodes = nodes
+	    total_l = []
+	    i = 0
+	    total_so_far = 0.0
+	    for node in nodes:
+		t = total_so_far + day[node][TOTAL]
+		total_l.append(t)
+		total_so_far = t
+		i = i + 1
+	        numxfers = numxfers + day[node][CTR]
+	    else:
+		# keep a running total of everything
+		total = total + total_so_far
+
+	    # write out the data
+	    if not total_so_far == 0.0:
+		line = "%s "%(key,)
+		# output the largest first as we will plot that columen first
+		total_l.reverse()
+		for amt in total_l:
+		    line = "%s %s"%(line, amt,)
+		else:
+		    self.openfile.write("%s\n"%(line,))
+	    else:
+		# all data is 0
+	        self.openfile.write("%s\n"%(key,))
+	    
+	# we must create our gnu plot command file too
+	gnucmds = TotalBpdGnuFile(self.gnufile)
+	gnucmds.open('w')
+	# reverse the order of the nodes as we did the columns we wrote to the
+	# data file
+	max_nodes.reverse()
+	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, 
+		      numxfers, max_nodes)
+	gnucmds.close()

@@ -6,6 +6,7 @@ import socket
 import tempfile
 import types
 import pwd
+import signal
 
 import configuration_server
 import enstore_constants
@@ -137,12 +138,40 @@ def override_to_status(override):
     index = enstore_constants.SAAG_STATUS.index(override)
     return enstore_constants.REAL_STATUS[index]
 
+def get_days_ago(date, days_ago):
+    # return the date that is days_ago before date
+    seconds_ago = float(days_ago*86400)
+    return date - seconds_ago
+
+def get_remote_file(node, file, newfile):
+    # we have to make sure that the rcp does not hang in case the remote node is goofy
+    pid = os.fork()
+    if pid == 0:
+	# this is the child
+	rtn = os.system("enrcp %s:%s %s"%(node, file, newfile))
+	os._exit(rtn)
+    else:
+	# this is the parent, allow a total of 30 seconds for the child
+	for i in [0, 1, 2, 3, 4, 5]:
+	    rtn = os.waitpid(pid, os.WNOHANG)
+	    if rtn[0] == pid:
+		return rtn[1] >> 8   # pick out the top 8 bits as the return code
+	    time.sleep(5)
+	else:
+	    # the child has not finished, be brutal. it may be hung
+	    os.kill(pid, signal.SIGKILL)
+	    return 1
+
 # translate time.time output to a person readable format.
 # strip off the day and reorganize things a little
 YEARFMT = "%Y-%b-%d"
 TIMEFMT = "%H:%M:%S"
 def format_time(theTime, sep=" "):
     return time.strftime("%s%s%s"%(YEARFMT, sep, TIMEFMT), time.localtime(theTime))
+
+PLOTYEARFMT = "%Y-%m-%d"
+def format_plot_time(theTime, sep=" "):
+    return time.strftime("%s"%(PLOTYEARFMT,), time.localtime(theTime))
 
 def unformat_time(strTime, sep=" "):
     time_t = time.strptime(strTime,"%s%s%s"%(YEARFMT, sep, TIMEFMT))
