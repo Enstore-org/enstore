@@ -204,7 +204,7 @@ if __name__ == "__main__":
 
     elif intf.dict:
         csc.list(intf.alive_rcv_timeout,intf.alive_retries)
-	generic_cs.enprint(csc.config_list["list"], generic_cs.PRETTY_PRINT)
+	generic_cs.enprint(csc.config_list["list"])
         stati = csc.config_list
 	msg_id = generic_cs.CLIENT
 
