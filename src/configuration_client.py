@@ -145,14 +145,16 @@ if __name__ == "__main__" :
         stati = csc.alive()
         if csc.dolist:
             pprint.pprint(stati)
+    
     elif csc.dict:
         csc.list()
         if csc.dolist:
-            pprint.pprint(csc.config_list)
+            print csc.config_list["list"]
+            #pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
 
     elif csc.doload:
-        stati= csc.load(config_file)
+        stati= csc.load(csc.config_file)
         if csc.dolist:
             pprint.pprint(stati)
         stat=stati['status']

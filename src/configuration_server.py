@@ -118,7 +118,33 @@ class ConfigurationDict(DispatchingWorker) :
     def list(self, ticket) :
      try:
         self.config_exists()
-        out_ticket = {"status" : "ok", "list" : self.configdict}
+        sortedkey = self.configdict.keys()
+        sortedkey.sort()
+        formatted= "configdict = {}\n"
+        for key in sortedkey:
+           formatted= formatted + "\nconfigdict['" + key + "'] = {"
+           len2 = len(key)
+           count4 = 0
+           for key2 in self.configdict[key].keys():
+              count4 = count4+1
+           count3 = 0
+           sortedkeyinside = self.configdict[key].keys()
+           sortedkeyinside.sort()
+           for key2 in sortedkeyinside:
+              count3 = count3 + 1
+              if count3 != 1:
+                 formatted= formatted + "\n"
+                 for ks in range(len2):
+                    formatted= formatted + " " 
+                 formatted= formatted + "                   '" + key2 + "'  : " + repr(self.configdict[key][key2])
+              else:
+                 formatted= formatted + " '"  + key2 + "'  : " + repr(self.configdict[key][key2])
+              if count3 != count4:
+                 formatted= formatted + ", \\"
+              else:
+                 formatted= formatted + " }\n"
+        #print formatted
+        out_ticket = {"status" : "ok", "list" : formatted}
         self.reply_to_caller(out_ticket)
         return
 
