@@ -71,10 +71,6 @@ import string
 import pprint
 import getopt
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import termios, TERMIOS
-else: #FCNTL is depricated in python 2.2 and later.
-    import termios
 import types
 
 #enstore imports
