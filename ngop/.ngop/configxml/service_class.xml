@@ -3,6 +3,8 @@
 <NGOPConfig>
 <Default_File/>
 <ServiceClass>
+   <ServiceType Name="0x0">
+   </ServiceType>
    <ServiceType Name="9x5">
          <apply>
             <and/>
