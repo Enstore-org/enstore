@@ -21,16 +21,16 @@ rip2=131.225.164.2
 
 drive=`echo $1 | tr '[A-Z]' '[a-z]'`
 case $drive in
-  dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo $?'" ;;
-  dm06) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo $?'" ;;
-  dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo $?'" ;;
-  dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo $?'" ;;
-  dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5 $command 2>&1; echo $?'" ;;
-  dc12) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d6 $command 2>&1; echo $?'" ;;
-  de13) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo $?'" ;;
-  de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo $?'" ;;
-  de15) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo $?'" ;;
-  de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo $?'" ;;
+  dm05) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo \$?'" ;;
+  dm06) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo \$?'" ;;
+  dm07) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo \$?'" ;;
+  dm08) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo \$?'" ;;
+  dc11) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d5 $command 2>&1; echo \$?'" ;;
+  dc12) cmd="rsh $rip2 'mt -f /dev/rmt/tps2d6 $command 2>&1; echo \$?'" ;;
+  de13) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d1 $command 2>&1; echo \$?'" ;;
+  de14) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d2 $command 2>&1; echo \$?'" ;;
+  de15) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d3 $command 2>&1; echo \$?'" ;;
+  de16) cmd="rsh $rip1 'mt -f /dev/rmt/tps2d4 $command 2>&1; echo \$?'" ;;
 esac
 cmd2="x=\"\`$cmd\`\""
 echo $cmd
