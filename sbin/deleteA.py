@@ -162,7 +162,7 @@ def check(bfid, vol):
 
 	print 'checking', bfid, f, '...',
 
-	if f == 'unknown' or f['deleted'] == 'yes':
+	if f == 'unknown' or file['deleted'] == 'yes':
 		print 'OK'
 		return
 
