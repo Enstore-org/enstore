@@ -140,7 +140,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.current_volume = None #external label of current mounted volume
         self.next_volume = None # external label of pending (MC) volume
         self.volume_family = None 
-        self.volume_status = (["none", "none"], ["none", "none"])
+        self.volume_status = ([None, None], [None, None])
         self.files = ('','')
         self.hsm_drive_sn = ''
         self.no_transfers = 0
@@ -233,6 +233,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.dismount_volume()
             self.dismount_time = None
             self.state = IDLE
+            self.clear_volume_status()
             self.mode = None
             
         ticket = self.format_lm_ticket()
@@ -411,7 +412,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         vc = ticket['vc']
         if verbose: print "vc=", vc
         self.volume_family=vc['volume_family']
-        self.volume_status = vc.get('volume_status', self.volume_status)
+
         self.bytes_to_transfer = long(fc['size'])
         self.blocksize = 65536 #XXX
         delay = 0
@@ -506,7 +507,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                           0,0,0,0, #XXX
                                           bfid )
             if verbose: print "set remaining returns", reply
-            self.query_volume_clerk(self.current_volume)
+            vol_info = self.query_volume_clerk(self.current_volume)
+            self.vol_info = vol_info
+            self.update_volume_status(vol_info)
             
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         self.reset()
@@ -534,18 +537,27 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     def query_volume_clerk(self, label):
         if verbose: print "doing inquire_volume"
-        vol_info = self.vcc.inquire_vol(volume_label)
-        self.vol_status = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+        vol_info = self.vcc.inquire_vol(label)
+        return vol_info
+
+    def update_volume_status(self, vol_info):
+        self.volume_status = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                            vol_info.get('user_inhibit',['Unknown', 'Unknown']))
-        self.vol_info = vol_info
-        return  vol_info['status'][0] == 'ok'
-    
+
+    def clear_volume_status(self):
+        self.volume_status = ([None, None], [None, None])
+        self.vol_info = None
+        
     def prepare_volume(self, volume_label, iomode, location=None):
         if iomode is READ and location is None:
             return 0 #coding error
-
-        if not self.query_volume_clerk(volume_label):
+        
+        vol_info = self.query_volume_clerk(volume_label)
+        if vol_info['status'][0] != 'ok': ###XXX I hate this kind of check
             return 0 #NOTAPE
+
+        self.vol_info = vol_info
+        self.update_volume_status(vol_info)
         
         if iomode is WRITE:
             eod = vol_info['eod_cookie']
@@ -554,7 +566,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
         if self.current_volume != volume_label:
             self.mount_volume(volume_label)
-        self.vol_info = vol_info
         self.seek_to_position(location)
         return 1
     
