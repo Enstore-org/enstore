@@ -43,7 +43,7 @@ QUALIFIERS = ""
 
         # set the libtp and libtppy products up after python
         setupRequired("libtppy")
-        setupRequired("libtp")
+        # setupRequired("libtp")
 
         # now set the python module search path
         envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src:${UPS_PROD_DIR}/modules:$LIBTPPY_DIR/lib")
@@ -58,5 +58,7 @@ QUALIFIERS = ""
         execute("whoami", NO_UPS_ENV, meme)
         execute("mkdir -p /tmp/enstore/$meme", NO_UPS_ENV)
 	execute("chmod 777 /tmp/enstore",NO_UPS_ENV)
-        envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$(hostname)")
+	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, hostname)
+        envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$hostname")
+        envUnset(hostname)
         envUnset(meme)
