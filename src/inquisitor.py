@@ -1209,10 +1209,11 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO, "Inquisitor (re)starting")
             inq.serve_forever()
 	except SystemExit, exit_code:
-	    # we need to update the inquisitore page to show that the inquisitor 
+	    # we need to update the inquisitor page to show that the inquisitor 
 	    # is not running, then exit fer sure.
 	    inq.update_exit(exit_code)
         except:
+	    e_errors.handle_error()
 	    inq.serve_forever_error(inq.log_name)
             continue
     Trace.trace(6,"Inquisitor finished (impossible)")
