@@ -484,7 +484,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
 	try:
-	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getworks_sorted())
+	    self.lm_queues[lib_man.name] = safe_dict.SafeDict(lib_man.client.getwork())
 	except (e_errors.TCP_EXCEPTION, socket.error), detail:
 	    msg = "Error while getting work queue from %s (%s)"%(lib_man.name, detail)
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
