@@ -1546,6 +1546,14 @@ def set_pnfs_settings(ticket, client, verbose):
     try:
         # set the file size
         p.set_file_size(ticket['file_size'])
+        if p.file_size != ticket['file_size']:
+            # try to set a file size one more time
+            p.set_file_size(ticket['file_size'])
+            if p.file_size != ticket['file_size']:
+                msg = "Cannot set file size %s %s %s"%(p.pnfsFilename,p.file_size,ticket['file_size'])
+                Trace.alarm(e_errors.ERROR,msg)
+                ticket['status'] = (e_errors.WRONG_PNFS_FILE_SIZE, msg)
+        
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb

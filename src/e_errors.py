@@ -49,7 +49,7 @@ ENSTOREBALLRED = "ENSTORE BALL IS RED"
 MALFORMED = "MALFORMED REQUEST"
 RESUBMITTING = "RESUBMITTING"
 VERSION_MISMATCH="VERSION MISMATCH"
-
+WRONG_PNFS_FILE_SIZE="CANNOT SET PNFS FILE SIZE"
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -162,6 +162,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          TOO_MANY_RESUBMITS, #attempts without trying
                          MALFORMED,
                          VERSION_MISMATCH, #ENCP to old
+                         WRONG_PNFS_FILE_SIZE,
                          )
 
 raise_alarm_errors = ( CRC_ERROR,
