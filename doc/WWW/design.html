@@ -1855,19 +1855,22 @@ The File Clerk supports the following requests:
 </h3>
 The Library Manager is a server which queues up and dispatches work for
 a virtual library. There is one Library Manager for each virtual library.
-It has two types of clients and can be also accessed from a command line interface
+It has two types of clients: 
 <ol>
-<li><em>Users</em> -- seeking to have their files read or written files.
+<li><em>Users</em> -- requesting to have their files read or written.
 <li><em>Movers</em> -- seeking to actually read or write files.
 </ol>
-System does not restrict a number of Library Managers in the system and the
-relation between Library Managers and Movers is many to many, that is one
+<p>
+It can be also accessed from a command line interface
+<p>
+Enstore does not limit the number of Library Managers and the
+relation between Library Managers and Movers is many to many.  That is, one
 Library Manger may have many Movers associated with it and, one Mover may have
-more than one Library Managers associated with it.
+many Library Managers associated with it.
 
 Information about Library Managers is contained in the Enstore configuration
-dictionary and is available to client via requests to the Configuration Server.
-Each Library Manager is presented in the configuration dictionary as follows:
+dictionary and is available to clients via the Configuration Server.
+Each Library Manager is specified in the configuration dictionary as follows:
 <pre>
 configdict['rip6.library_manager']   = { 'host':'rip5',
                                          'port':7506,
@@ -1887,12 +1890,14 @@ configdict['red50.library_manager'] = { 'host':'rip5',
 configdict['red20.library_manager'] = { 'host':'rip5',
                                          'port':7511,
                                          'logname':'RD2LBM' }
-</pre>
-where <b>*.library_manager</b> is a name of the Library Manager<br>
-<b>host</b> is a host name where the Library Manager runs<br>
-<b>port</b> is the Library Manager's command communication port<br>
-<b>logname</b> is a name identifying the Library Manger in the log file.<br>
+where:
 
+<b>*.library_manager</b> is the name of the Library Manager.
+<b>host</b> is the host name where the Library Manager runs.
+<b>port</b> is the Library Manager's command communication port.
+<b>logname</b> is a name identifying the Library Manger in the log file.
+</pre>
+<p>
 When the Library Manager starts it requests from Configuration Server a list
 of Movers associated with it and stores them into internal Mover List. Each
 Mover has an entry in the configuration dictionary describing the Library
@@ -1910,16 +1915,15 @@ configdict['DE14DLT.mover'] = { 'host':'rip1',
 </pre>
 
 <p>
-The Mover List is used to select Movers to do the work and evenly distribute
-works between all Movers associated with particular Library Manager.
+The Mover List is used to select Movers to do work and evenly distribute
+work between all Movers associated with a Library Manager.
 
 <p>
-When the Mover starts it sends command("idle_mover") to all Library Managers
-associated with it to declare itself as an active. If the Library Manager
-did not have this Mover in its Mover List, it will be added to the list upon
+When the Mover starts it sends the command("idle_mover") to all Library Managers
+associated with it to declare itself active and available. If the Library Manager
+does not have this Mover in its Mover List, it will be added to the list upon
 receipt of this command. This Mover - Library Manager initial communication
-allows to dynamically change the configuration of Movers without restarting
-the Library Manager.
+allows to the dynamic configuration of Movers.
 
 <h3><a name="user_request">
 1.3.3.1 Users' Requests
@@ -2086,18 +2090,23 @@ that volume. If the physical library has more than one drive, the system
 should be able to continue servicing requests.
 <p>
 <h3><a name="lm_commands">
-1.3.3.3 Library Manager Commands
+1.3.3.3 Library Manager Query Commands
 </h3>
-It is possible to query the Library Manager and get information about its
-internal queues thereby knowing where work is.
-Some of these commands are general to all servers and are described in the other section. Here we will consider only Library Manager specific commands. They are:
+The Library Manager supports queries that provide information about its
+internal queues.
+Some of these commands are general to all servers and are described else where. Library Manager specific commands are:
 <ul>
-<li><b>getwork</b> - get lists of all work requests currently in the Library Manager
-queues. The first list is a list of pending work requests, and the second is a list works at Movers.
-<li><b>getmoverlist</b> - get list of the Movers currently known to this Library Manager and their status
-<li><b>get_suspect_vols</b> - get list of suspected volumes. A description and a purpose of this list has been already discussed above. This list contains volumes requests for which had failed but are retryable.
+<li><b>getwork</b> - returns all work requests currently in the Library Manager
+queues in two lists. 
+The first is a list of pending work requests and the second is a list works at Movers.
+<li><b>getmoverlist</b> - returns a list of the Movers currently known to this Library Manager and their status.
+<li><b>get_suspect_vols</b> - returns a list of suspect volumes. 
+A description and the purpose of this list has been discussed above. 
+This list contains volumes requests which have failed but are retryable.
 </ul>
-     Below are example outputs of these commands.<br>
+The format of these lists are python dictionaries.  Other programs retieve these lists and format them
+for presentation.
+     Sample output from these commands:<br><br>
 <b>getwork</b>
 <pre>
 [enter command] ecmd lmc --getwork sphinxdisk.library_manager
