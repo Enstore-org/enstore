@@ -32,20 +32,16 @@ check:
 	$(ENSTORE_DIR)/tools/check_pct.py -w ./*.py
 
 sdsscp:
-        #Force recompile of get.
 	(cd $(ENSTORE_DIR)/src; make get)
 
-        #Remove any old versions.
 	- rm -rf SDSSCP_TEMP
 	mkdir SDSSCP_TEMP
 	- rm -rf SDSSCP_BIN
 	mkdir SDSSCP_BIN
 
-        #Freeze the product.
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SDSSCP_TEMP sdsscp.py
 	(cd SDSSCP_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 
-        #Copy the important items and cleanup.
 	cp SDSSCP_TEMP/sdsscp SDSSCP_BIN
 	cp $(ENSTORE_DIR)/src/GET_BIN/get SDSSCP_BIN
 	cp $(ENSTORE_DIR)/src/GET_BIN/enroute2 SDSSCP_BIN
