@@ -52,6 +52,14 @@ def write_layer(fullname, layer, value):
 def change_file_name(file):
     # replace pnfs with pnfs/fs/usr
     orig = string.split(file, "/")
+    if 'sam' in orig:
+        sam_ind = orig.index('sam')
+        next = orig[sam_ind+1]
+        
+        if next in ('mammoth', 'm2', 'lto'):
+            orig.remove(next)
+            orig[sam_ind] = 'sam-%s'%(next,)
+            
     new=['/pnfs','fs','usr'] # this is not always true, depends on the name of the mount point
     for i in range(2,len(orig)):
         new.append(orig[i])
