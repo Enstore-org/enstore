@@ -174,6 +174,7 @@ class SG_FF:
             self.sg[sg].append((mover,volume))
         if not ((mover, volume) in self.vf[vf]):
             self.vf[vf].append((mover,volume))
+        Trace.log(e_errors.INFO, "%s"%(self,))
     def __repr__(self):
         return "<storage groups %s volume_families %s >" % (self.sg, self.vf)
         
