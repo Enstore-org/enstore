@@ -21,6 +21,9 @@ LOG_PREFIX = "LOG-"
 ALIVE = 1
 DEAD = 0
 
+
+
+
 # used by the inquisitor plot command
 MPH_FILE = "%s%s"%(FILE_PREFIX, MPH)
 MPD_FILE = "%s%s"%(FILE_PREFIX, MPD)
@@ -126,6 +129,7 @@ ENSTORE = "enstore"
 NETWORK = "network"
 TIME = "time"
 UNKNOWN = "UNKNOWN TIME"
+UNKNOWN_S = "UNKNOWN"
 
 ACTION = 'action'
 NODES = "nodes"
@@ -140,6 +144,7 @@ REAL_STATUS = [DOWN, WARNING, UP, SEEN_DOWN]
 # dictionary keys for the system status information
 STATUS = "status"
 SUSPECT_VOLS = "suspect"
+SUSPECT_VOLUMES = "suspect_volumes"
 REJECT_REASON = "reject_reason"
 TOTALPXFERS = "total_pend_xfers"
 READPXFERS = "read_pend_xfers"
@@ -151,6 +156,7 @@ PENDING = "pending"
 WAM = "work at movers"
 WORK = "work"
 MOVERS = "movers"
+ATMOVERS = "at movers"
 MOVER_INTERFACE = 'mover_interface'
 STORAGE_GROUP = 'storage_group'
 ID = "id"
@@ -179,6 +185,16 @@ FAILED = "failed"
 CUR_READ = "cur_read"
 CUR_WRITE = "cur_write"
 STATE = "state"
+TRANSFERS_COMPLETED = "transfers_completed"
+TRANSFERS_FAILED = "transfers_failed"
+BYTES_READ = "bytes_read"
+BYTES_WRITTEN = "bytes_written"
+MODE = "mode"
+BYTES_TO_TRANSFER = "bytes_to_transfer"
+CURRENT_VOLUME = "current_volume"
+CURRENT_LOCATION = "current_location"
+LAST_VOLUME = "last_volume"
+LAST_LOCATION = "last_location"
 FILES = "files"
 VOLUME = "volume"
 LAST_READ = "last_read"

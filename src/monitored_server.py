@@ -24,6 +24,7 @@ FINISHED = 1
 ACTIVE = 2
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+DASH = "-"
 
 def hack_restart_function(name, host):
     Trace.log(e_errors.WARNING, "running dbhang for %s on %s"%(name, host))
@@ -77,6 +78,7 @@ class MonitoredServer:
         self.state = NO_TIMEOUT
 	self.server_status = None
 	self.update_alive_interval()
+	self.status_keys = []
 
     def __getattr__(self, attr):
 	if attr[:2]=='__':
@@ -89,6 +91,12 @@ class MonitoredServer:
 	    self.__dict__[CONFIG][attr] = value
 	else:
 	    self.__dict__[attr] = value
+
+    def check_status_ticket(self, status):
+	# make sure this ticket has all of the fields we need
+	for key in self.status_keys:
+	    if not status.has_key(key):
+		status[key] = STATUS_FIELDS[key]
 
     def check_recent_alive(self, event_relay):
 	if self.alive_interval == NO_HEARTBEAT:
@@ -230,7 +238,7 @@ class MonitoredRatekeeper(MonitoredServer):
 
 class MonitoredMover(MonitoredServer):
 
-    STATUS_FIELDS = {enstore_constants.STATE : "",
+    STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
 		     enstore_constants.TRANSFERS_COMPLETED : DASH,
 		     enstore_constants.TRANSFERS_FAILED : DASH,
 		     enstore_constants.BYTES_READ : "-1",
@@ -250,17 +258,14 @@ class MonitoredMover(MonitoredServer):
 	self.client = mover_client.MoverClient(self.csc, self.name)
 	self.status_keys = self.STATUS_FIELDS.keys()
 
-    def check_status_ticket(self, status):
-	# make sure this ticket has all of the fields we need
-	for key in self.status_keys:
-	    if not status.has_key(key):
-		status[key] = STATUS_FIELDS[key]
 
 class MonitoredMediaChanger(MonitoredServer):
 
     pass
 
 class MonitoredLibraryManager(MonitoredServer):
+
+    STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
 
     def __init__(self, config, name, csc):
 	MonitoredServer.__init__(self, config, name)
@@ -269,6 +274,7 @@ class MonitoredLibraryManager(MonitoredServer):
 	self.ff_stalled = {}
 	self.stalled_time = 1800
 	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
+	self.status_keys = self.STATUS_FIELDS.keys()
 
     def get_stalled_key(self, node, ff):
 	return "%s,%s"%(node, ff)
