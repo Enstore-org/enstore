@@ -667,7 +667,7 @@ def read_from_hsm(input, output,
 #    (csc,u,uinfo) = clients(config_host,config_port,verbose)
     (client['csc'],client['u'],client['uinfo']) = clients(config_host, \
 							  config_port,verbose)
-
+    """
     wrapper = {}
     for key in client['uinfo'].keys():
         wrapper[key] = client['uinfo'][key]
@@ -679,7 +679,7 @@ def read_from_hsm(input, output,
     encp["delpri"] = delpri
     encp["agetime"] = agetime
     encp["delayed_dismount"] = delayed_dismount
-
+    """
 
     tinfo["clients"] = time.time() - t1 #-----------------------------------End
     if verbose>2:
@@ -760,6 +760,8 @@ def read_from_hsm(input, output,
         print "Calling file clerk for file info", "   cumt=",time.time()-t0
     t1 = time.time() # ---------------------------------------------------Start
 
+    wrapper = []
+    encp = []
     # call file clerk and get file info about each bfid
     for i in range(0,ninput):
         t2 = time.time() # -------------------------------------------Lap-Start
@@ -779,6 +781,20 @@ def read_from_hsm(input, output,
         label = binfo['fc']['external_label']
         volume.append(label)
 	retry.append(0)
+	wr = {}
+	for key in client['uinfo'].keys():
+	    wr[key] = client['uinfo'][key]
+
+	# make the part of the ticket that encp knows about (there's more later)
+	encp_el = {}
+	encp_el["basepri"] = pri
+	encp_el["adminpri"] = -1
+	encp_el["delpri"] = delpri
+	encp_el["agetime"] = agetime
+	encp_el["delayed_dismount"] = delayed_dismount
+	wrapper.append(wr)
+	encp.append(encp_el)
+
         try:
             vols_needed[label] = vols_needed[label]+1
         except KeyError:
@@ -946,23 +962,24 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
 		     % (thishost, time.time(), pid)
 
 		unique_id.append(id)  # note that this is down to mS
-            wrapper["fullname"] = outputlist[i]
-            wrapper["sanity_size"] = 65535
-            wrapper["size_bytes"] = file_size[i]
+	    
+            wrapper[i]["fullname"] = outputlist[i]
+            wrapper[i]["sanity_size"] = 65535
+            wrapper[i]["size_bytes"] = file_size[i]
 
             # store the pnfs information info into the wrapper
             for key in pinfo[i].keys():
                 if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
-                    wrapper[key] = pinfo[i][key]
+                    wrapper[i][key] = pinfo[i][key]
 
 	    if verbose > 1: print "RETRY_CNT=", retry[i]
             # generate the work ticket
             work_ticket = {"work"              : "read_from_hsm",
-                           "wrapper"           : wrapper,
+                           "wrapper"           : wrapper[i],
                            "callback_addr"     : client['callback_addr'],
                            "fc"                : finfo[i],
                            "vc"                : vinfo[i],
-                           "encp"              : encp,
+                           "encp"              : encp[i],
 			   "retry_cnt"         : retry[i],
                            "times"             : times,
                            "unique_id"         : unique_id[i]
@@ -988,7 +1005,9 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
     #print "BEFORE SORTING"
     #for j in range(0, len(rq_list)):
 	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
+
     rq_list.sort(compare_location)
+
     #print "AFTER SORTING"
     #for j in range(0, len(rq_list)):
 	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
