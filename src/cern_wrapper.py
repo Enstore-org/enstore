@@ -2,7 +2,7 @@ import time
 import string
 
 # ticket keys used in this module
-BLOCKLEN = 'blockLen'
+BLOCKLEN = 'blocksize'
 CHECKSUM = 'checksum'
 COMPRESSION = 'compression'
 DRIVEMFG = 'vendor_id'
@@ -12,9 +12,9 @@ ENCPVERSION = 'version'
 EXPERIMENT = 'storage_group'
 GID = 'gid'
 MODE = 'mode'
-MOVERNODE = 'moverNode'
+MOVERNODE = 'host'
 PNFSFILENAME = 'pnfsFilename'
-SIZEBYTES = 'sizeBytes'
+SIZEBYTES = 'size_bytes'
 UID = 'uid'
 USERNAME = 'username'
 
@@ -156,7 +156,7 @@ class Label2(Label):
 		  "record format not one of %s"%(RECORDFORMAT,)
 
 	self.record_format = record_format
-	if string.atol(block_length) <= BLOCK_LEN_LIMIT:
+	if long(block_length) <= BLOCK_LEN_LIMIT:
 	    self.block_length = block_length
 	else:
 	    self.block_length = BLOCK_LENGTH_L*ZERO
@@ -644,8 +644,16 @@ def eof_labels(file_checksum):
     efile.file_checksum = file_checksum
     return efile.eof_labels()
 
-# the cern wrapper does not supply headers or trailers
+# the cern wrapper does not supply headers
 def headers(dummy):
+    global efile
+    print efile.file_size, long(efile.file_size)
+    pad = long(efile.file_size) % 512
+    if pad:
+        pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
+        trailer = '\0'*pad
+    return "", trailer
+    
     return "", ""
 
 # return the size of the headers
