@@ -1,3 +1,5 @@
+# Build a dynamically loadable, sharable object
+
 .SUFFIXES:
 .SUFFIXES: .c .so
 
@@ -7,5 +9,5 @@ LDOPTS = -shared
 
 .c.so :
 	$(CC) $(CCOPTS) -I$(PYTHONINC) $< -o $*.o
-	ld $(LDOPTS)                 $*.o -o  $*.so
+	$(LD) $(LDOPTS)                 $*.o -o  $*.so
 	rm $*.o

@@ -1,3 +1,5 @@
+# Build a dynamically loadable, sharable object
+
 CCOPTS = -qlanglvl=ansi -c -I$(PYTHONINC)
 LDOPTS = -bM:SRE -T512 -H512  -bI:$(PYTHONMOD)/python.exp
 
@@ -6,5 +8,5 @@ LDOPTS = -bM:SRE -T512 -H512  -bI:$(PYTHONMOD)/python.exp
 
 .c.so :
 	$(CC) $(CCOPTS) $< -o $*.o
-	ld $(LDOPTS) -bE:$*.exp -einit$* $*.o -o $*.so
+	$(LD) $(LDOPTS) -bE:$*.exp -einit$* $*.o -o $*.so
 	rm $*.o
