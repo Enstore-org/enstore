@@ -3,7 +3,7 @@
 */
 
 /* Functions in this module:
-   cpio_start(filename, buf, bufsize)
+   cpio_start(filename, header_name)
    cpio_next_block(buf, blocksize)
 */
 
@@ -45,9 +45,12 @@ char *progname;
 
 /* Return  0 on success, -1 on error */
 int
-cpio_start(char *filename){
+cpio_start(char *filename, char *alt_name){
     struct stat sbuf;
+    char *header_filename;
     
+    header_filename = alt_name?alt_name:filename;
+
     if (stat(filename,&sbuf)){
 	fprintf(stderr, "%s: ", progname);
 	perror(filename);
@@ -76,9 +79,9 @@ cpio_start(char *filename){
 	    (unsigned int)sbuf.st_nlink & 0xFFFF,
 	    (unsigned int)sbuf.st_rdev & 0xFFFF,
 	    (unsigned int)sbuf.st_mtime,
-	    strlen(cpio_filename)+1,
+	    strlen(header_filename)+1,
 	    (unsigned int)sbuf.st_size,
-	    cpio_filename);
+	    header_filename);
 
 #ifdef DEBUG
     printf("%s\n",cpio_header);
@@ -211,7 +214,7 @@ main(int argc, char **argv){
     progname=argv[0];
     cpio_buffer_len=atoi(argv[1]);
     cpio_buffer = (char*)malloc(cpio_buffer_len);
-    cpio_start(argv[2]);
+    cpio_start(argv[2],NULL);
     while ((n=cpio_next_block(cpio_buffer,cpio_buffer_len))>0){
 	write(1,cpio_buffer,n);
     }

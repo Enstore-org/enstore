@@ -80,7 +80,7 @@ do_add_file(char *destination, char *source)
     size = sbuf.st_size;
     early_checksum_size=min(size, EARLY_CHECKSUM_SIZE);
 
-    if (cpio_start(source))
+    if (cpio_start(source,destination))
 	return -1;
    /* terminate when nbytes=0, i.e. we've handled the last block */
     while ( (nbytes=cpio_next_block(read_buffer, blocksize)) ){
