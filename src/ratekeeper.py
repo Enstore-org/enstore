@@ -15,7 +15,7 @@ import generic_server
 import configuration_client
 import timeofday
 import udp_client
-import enstore_functions
+import enstore_functions2
 import enstore_constants
 import monitored_server
 
@@ -277,7 +277,7 @@ if __name__ == "__main__":
                     filename_base = ratekeeper_nodes[short_name][1]
                     break
     else:
-        filename_base = enstore_functions.strip_node(event_relay_host)
+        filename_base = enstore_functions2.strip_node(event_relay_host)
     
 
     print "Connecting to host %s on port %s." % \

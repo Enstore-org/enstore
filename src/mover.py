@@ -28,6 +28,7 @@ import event_relay_client
 import monitored_server
 import inquisitor_client
 import enstore_functions
+import enstore_functions2
 import enstore_constants
 import option
 import dispatching_worker
@@ -690,7 +691,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 	if not enstore_functions.is_ok(ticket):
 	    Trace.log(e_errors.ERROR, 
 		      "error setting %s as known down in outage file : %s"%(self.name,
-						 enstore_functions.get_status(ticket)))
+						 enstore_functions2.get_status(ticket)))
 
     # get the initial statistics
     def init_stat(self, drive, drive_name):

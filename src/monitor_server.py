@@ -28,7 +28,6 @@ import enstore_files
 import configuration_client
 import timeofday
 import enstore_constants
-import enstore_functions
 import udp_client
 
 """

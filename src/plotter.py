@@ -5,6 +5,7 @@ import inquisitor_plots
 import enstore_files
 import enstore_constants
 import enstore_functions
+import enstore_functions2
 import udp_client
 import generic_client
 import option
@@ -66,7 +67,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    pfile = enstore_files.plot_html_file_name()
 	    plot_file = "%s/%s"%(self.html_dir, pfile)
 
-	bpd_dir = enstore_functions.get_bpd_subdir(self.html_dir)
+	bpd_dir = enstore_functions2.get_bpd_subdir(self.html_dir)
 
         self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
                                               www_server.SYSTEM_TAG_DEFAULT)
