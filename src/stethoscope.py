@@ -59,7 +59,7 @@ class StethoscopeInterface(generic_client.GenericClientInterface):
                                                        user_mode=user_mode)
 
     stethoscope_options = {}
-    parameters = ["server[,server]"]
+    parameters = ["server[ server]"]
 
     def parse_options(self):
         generic_client.GenericClientInterface.parse_options(self)
@@ -69,7 +69,7 @@ class StethoscopeInterface(generic_client.GenericClientInterface):
         elif len(self.args) < 1:
             self.print_usage("Expected server list parameter")
         else:
-            self.servers = string.split(self.args[0], ",")
+            self.servers = string.split(self.args[0], " ")
 
     def valid_dictionaries(self):
 	return (self.help_options, self.stethoscope_options)
