@@ -186,7 +186,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          exc, val, tb = Trace.handle_error()
          return str(exc), str(val)
      
-    # rename a volume
+    # __rename_volume(old, new): rename a volume from old to new
+    #
+    # renaming a volume involves:
+    # [1] renaming the records of the files in it, done by file clerk
+    #     [a] in each file record, 'external_label' and 'pnfs_mapname'
+    #         are changed according
+    # [2] physically renaming the volmap path in /pnfs, done by file clerk
+    # [3] renaming volume record by changing its 'external_label'
+    #
+    # after renaming, the original volume does not exist any more
 
     def __rename_volume(self, old, new):
          try:
@@ -235,6 +244,16 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # __erase_volume(vol) -- erase vol forever
     # This one is very dangerous
+    #
+    # erasing a volume wipe out the meta information about it as if
+    # it never exists.
+    #
+    # * only deleted volume can be erased.
+    #
+    # erasing a volume involves:
+    # [1] erasing all file records associated with this volume -- done
+    #     by file clerk
+    # [2] erasing volume record
 
     def __erase_volume(self, vol):
 
@@ -248,6 +267,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # erase file record
         status = fcc.erase_volume(vol)
+        del fcc
         if status[0] != e_errors.OK:
             return status
         # erase volume record
@@ -282,8 +302,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         return 0
 
     # __delete_volume(vol) -- delete a volume
+    #
+    # * only a volume that contains no active files can be deleted
+    #
+    # deleting a volume, vol, is simply renaming it to vol.deleted
+    #
+    # if recycle flag is set, vol will be redeclared as a new volume
 
-    def __delete_volume(self, vol):
+    def __delete_volume(self, vol, recycle = 0):
         # check existence of the volume
         try:
             record = self.dict[vol]
@@ -315,7 +341,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         if self.dict.has_key(vol+'.deleted'):
             # erase it
-            self.__erase_volume(vol+'.deleted')
+            status = self.__erase_volume(vol+'.deleted')
+            if status[0] != e_errors.OK:
+                return status
 
         # check if it is never written, if so, erase it
         if record['sum_wr_access']:
@@ -332,19 +360,35 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.bfid_db.delete_all_bfids(vol)
             stutus = e_errors.OK, None
 
-        # get storage group and take care of quota
+        # recycling it?
 
-        library = record['library']
-        sg = volume_family.extract_storage_group(record['volume_family'])
-        if self.quota_enabled(library, sg):
-            vol_count = self.sgdb.get_sg_counter(library, sg) - 1
-            Trace.trace(21, "delvol: volume_counter %s" % (vol_count))
-            if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
-            if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
+        if recycle:
+            record['external_label'] = vol
+            record['remaining_bytes'] = record['capacity_bytes']
+            record['eod_cookie'] = '0000_000000000_0000001'
+            record['last_access'] = -1
+            record['first_access'] = -1
+            record['system_inhibit'] = ["none", "none"]
+            record['user_inhibit'] = ["none", "none"]
+            record['sum_wr_err'] = 0
+            record['sum_rd_err'] = 0
+            record['non_del_files'] = 0
+            self.dict[vol] = record
+        else:
+
+            # get storage group and take care of quota
+
+            library = record['library']
+            sg = volume_family.extract_storage_group(record['volume_family'])
+            if self.quota_enabled(library, sg):
+                vol_count = self.sgdb.get_sg_counter(library, sg) - 1
+                Trace.trace(21, "delvol: volume_counter %s" % (vol_count))
+                if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
+                if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
 
         return status
 
-    # delete_volume(vol) -- server version of __erase_volume()
+    # delete_volume(vol) -- server version of __delete_volume()
 
     def delete_volume(self, ticket):
         try:
@@ -360,7 +404,38 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # recycle_volume(vol) -- server version of __delete_volume(vol, 1)
+
+    def delete_volume(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = self.__delete_volume(vol, 1)
+        self.reply_to_caller(ticket)
+        return
+
     # __restore_volume(vol) -- restore a deleted volume
+    #
+    # Only a deleted volume can be restored, i.e., vol must be of the
+    # form <vol>.deleted
+    #
+    # if <vol> exists:
+    #     if <vol> has not been written:
+    #         erase <vol>
+    #     if <vol> has benn written:
+    #         signal this as an error
+    #
+    # a volume is restored to the state when it was deleted, i.e.,
+    # containing only deleted files.
+    #
+    # restoring a volume is, if all critera are satisfied, simply
+    # renaming a volume from <vol>.deleted to <vol>
 
     def __restore_volume(self, vol):
 
