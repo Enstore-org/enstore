@@ -100,10 +100,24 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	   
 
 def sigterm( sig, stack ):
-    del mvr_srvr.client_obj_inst.hsm_driver
+    print 'ronDBG -------', mvr_srvr.client_obj_inst.pid
+    if mvr_srvr.client_obj_inst.pid:
+	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
+	time.sleep(3)
+	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
+	pass
+    # kill just shm to avoid "AttributeError: hsm_driver" which causes
+    # forked process to become server via dispatching working exception handling
+    try: del mvr_srvr.client_obj_inst.hsm_driver.shm
+    except: pass			# wacky things can happen with forking
+    try: del mvr_srvr.client_obj_inst.hsm_driver.sem
+    except: pass			# wacky things can happen with forking
+    try: del mvr_srvr.client_obj_inst.hsm_driver.msg
+    except: pass			# wacky things can happen with forking
     sys.exit( 0x80 | sig )
     return None
 def sigint( sig, stack ):
+    print 'ronDBG -------'
     del mvr_srvr.client_obj_inst.hsm_driver
     print 'Traceback (innermost last):'
     traceback.print_stack( stack )
