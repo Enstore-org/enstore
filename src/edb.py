@@ -24,6 +24,8 @@ import time
 import string
 import types
 import pg
+import journal
+import os
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
@@ -80,19 +82,22 @@ def str_value(v):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, database, retrieve_query=None, import_format=None, export_format=None, table=None, pkey=None):
+	def __init__(self, host, database, table, pkey, jouHome ='.', auto_journal=0):
 		self.host = host
 		self.database = database
-		if retrieve_query:
-			self.retrieve_query = retrieve_query
-		if import_format:
-			self.import_format = import_format
-		if export_format:
-			self.export_format = export_format
-		if table:
-			self.table = table
-		if pkey:
-			self.pkey = pkey
+		self.table = table
+		self.pkey = pkey
+		self.auto_journal = auto_journal
+
+		if self.auto_journal:
+			self.jou = journal.JournalDict({}, os.path.join(jouHome, self.table+'.jou'))
+			self.count = 0
+
+		self.retrieve_query = "select * from "+self.table+" where "+self.pkey+" = '%s';"
+		self.insert_query = "insert into "+self.table+" (%s) values (%s);"
+		self.update_query = "update "+self.table+" set %s where "+self.pkey+" = '%s';"
+		self.delete_query = "delete from "+self.table+" where "+self.pkey+" = '%s';"
+
 		self.db = pg.DB(host=self.host, dbname=self.database)
 
 	# translate database output to external format
@@ -152,6 +157,7 @@ class DbTable:
 
 class FileDB(DbTable):
 	def __init__(self, host='localhost', database='enstore'):
+		DbTable.__init__(self, host, database, table='file', pkey='bfid')
 		self.retrieve_query = "\
         		select \
                 		bfid, crc, deleted, drive, \
@@ -170,7 +176,6 @@ class FileDB(DbTable):
 		self.delete_query = "\
 			delete from file where bfid = '%s';"
 
-		DbTable.__init__(self, host, database, table='file', pkey='bfid')
 
 
 	def export_format(self, s):
@@ -204,6 +209,7 @@ class FileDB(DbTable):
 
 class VolumeDB(DbTable):
 	def __init__(self, host='localhost', database='enstore'):
+		DbTable.__init__(self, host, database, table='volume', pkey='label')
 		self.retrieve_query = "\
         		select \
 				label, block_size, capacity_bytes, \
@@ -236,7 +242,6 @@ class VolumeDB(DbTable):
 		self.delete_query = "\
 			delete from volume where label = '%s';"
 
-		DbTable.__init__(self, host, database, table='volume', pkey='label')
 
 	def import_format(self, s):
 		sts = string.split(s['volume_family'], '.')
