@@ -55,11 +55,11 @@ while /bin/true; do
 	  #cmd="ecmd encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
 	  cmd="encp --pri $priority --delpri $delpri --agetime $agetime --delayed_dismount=$delayed_dismount $crc $f $output"
         fi
-	echo $cmd
+	echo `date` $cmd
 	eval $cmd
 	ec=$?
         if [ $ec -ne 0 ] ; then
-            echo encp error code $ec
+            echo `date` encp error code $ec
             exit $ec
         fi
 	if [ $sleep_time -lt 0 ] ; then
@@ -71,7 +71,7 @@ while /bin/true; do
     done
     ec=$?
     if [ $ec -ne 0 ] ; then
-       echo "FINISHED $base"
+       echo "`date` FINISHED $base"
        exit $ec
     fi
 done
