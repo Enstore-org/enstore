@@ -6,6 +6,16 @@ static char rcsid[] = "#(@)$Id$";
 #include <sys/stat.h>
 #include "ftt_private.h"
 
+extern int errno;
+
+int 
+ftt_get_data_direction(ftt_descriptor d) {
+    ENTERING("ftt_get_data_direction");
+    PCKNULL("ftt_descriptor", d);
+
+    return d->data_direction;
+}
+
 char *
 ftt_get_basename(ftt_descriptor d) {
     
@@ -97,10 +107,17 @@ ftt_chall(ftt_descriptor d, int uid, int gid, int mode) {
 
     rres = 0;
     pp = ftt_list_all(d);
-    for( i = 0; pp[i] != 0; i++) {
+    /* 
+     * Do the stat on each device file if file doesn't exist
+     * skip it but rport other errors 
+     */
+    for( i = 0; pp[i] != 0; i++){
         res = stat(pp[i],&sbuf);
-	if ( res == ENOENT )
-	    continue;
+	if ( res< 0) {
+	  if ( errno == ENOENT ) continue ; 
+	  rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"stat",1);
+	  continue;
+	}
 	res = chmod(pp[i],mode);
 	if( res < 0 )
             rres = ftt_translate_error(d,FTT_OPN_CHALL,"ftt_chall",res,"chmod",1);
