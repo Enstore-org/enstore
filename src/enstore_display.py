@@ -19,7 +19,7 @@ ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
 TCLTK_DIR=None
 if ENSTORE_DIR:
     TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
-if TCLTK_DIR is None or not os.path.exists(TCLTK_DIR)
+if TCLTK_DIR is None or not os.path.exists(TCLTK_DIR):
     TCLTK_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
 os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
 os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
