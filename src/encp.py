@@ -1077,11 +1077,15 @@ def inputfile_check(input_files):
                 #We don't want to fail immediatly.  On reads it is ok for
                 # encp to check all three paths to the experiment's file:
                 # /pnfs/xyz, /pnfs/fs/usr/xyz and /pnfs/fnal.gov/xyz.
-                if access_check(get_enstore_pnfs_path(inputlist[i]),
-                                    os.F_OK):
+
+                if not pnfs.is_pnfs_path(inputlist[i]): #Excludes writes first.
+                    raise EncpError(errno.ENOENT, inputlist[i],
+                                    e_errors.USERERROR)
+                elif access_check(get_enstore_pnfs_path(inputlist[i]),
+                                  os.F_OK):
                     inputlist[i] = get_enstore_pnfs_path(inputlist[i])
                 elif access_check(get_enstore_fs_path(inputlist[i]),
-                                      os.F_OK):
+                                  os.F_OK):
                     inputlist[i] = get_enstore_fs_path(inputlist[i])
                 elif access_check(get_enstore_canonical_path(inputlist[i]),
                                   os.F_OK):
