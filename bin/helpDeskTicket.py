@@ -14,7 +14,6 @@ while 1:
     line = f.readline()
     if not line: break
     if not start:
-        print line[:6]
         if line[:6] != "{\\rtf1":
             continue
         else:
