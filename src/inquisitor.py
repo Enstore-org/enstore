@@ -70,7 +70,7 @@ class EventRelay:
         self.state = enstore_constants.NEVER_ALIVE
         self.start = time.time()
         self.name = enstore_constants.EVENT_RELAY
-	self.heartbeat = enstore_constants.EVENT_RELAY_HEARTBEAT + 15
+        self.heartbeat = enstore_constants.EVENT_RELAY_HEARTBEAT + 15
 
     def __repr__(self):
         import pprint
@@ -78,22 +78,23 @@ class EventRelay:
     
     def alive(self, now):
         self.last_alive = now
+        Trace.trace(enstore_constants.INQSERVERDBG, "setting event relay as alive")
         self.state = ALIVE
 
     def dead(self):
-	Trace.trace(enstore_constants.INQSERVERDBG, "setting event relay as dead")
+        Trace.trace(enstore_constants.INQSERVERDBG, "setting event relay as dead")
         self.state = DEAD
 
     def set_state(self, now):
-	Trace.trace(enstore_constants.INQSERVERTIMESDBG,
-		    "Now: %s, Last alive: %s, Heartbeat: %s"%(time.ctime(now), 
-							      time.ctime(self.last_alive),
-							      self.heartbeat))
-	if (now - self.last_alive) > self.heartbeat:
-	    self.dead()
+        Trace.trace(enstore_constants.INQSERVERTIMESDBG,
+                    "Now: %s, Last alive: %s, Heartbeat: %s"%(time.ctime(now), 
+                                                              time.ctime(self.last_alive),
+                                                              self.heartbeat))
+        if (now - self.last_alive) > self.heartbeat:
+            self.dead()
 
     def is_alive(self):
-	self.set_state(time.time())
+        self.set_state(time.time())
         if self.state == ALIVE:
             rtn = 1
         else:
@@ -101,12 +102,12 @@ class EventRelay:
         return rtn
 
     def is_dead(self, now):
-	self.set_state(now)
-	if self.state == DEAD:
-	    rtn = 1
-	else:
-	    rtn = 0
-	return rtn
+        self.set_state(now)
+        if self.state == DEAD:
+            rtn = 1
+        else:
+            rtn = 0
+        return rtn
 
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
@@ -127,7 +128,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def mark_server(self, state, server):
         if server.no_thread():
             Trace.trace(enstore_constants.INQSERVERDBG, "mark %s as %s"%(server.name,
-									 state,))
+                                                                         state,))
             self.serverfile.output_etimedout(server.host, server.port, state, 
                                              time.time(), server.name, 
                                              server.output_last_alive)
@@ -257,8 +258,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # client so the next time we find the server dead we do not create 
                     # another one.
                     Trace.trace(enstore_constants.INQRESTARTDBG,
-				"Inquisitor creating thread to restart %s, event_relay is %s"%(server.name,
-											  self.event_relay.state))
+                                "Inquisitor creating thread to restart %s, event_relay is %s"%(server.name,
+                                                                                          self.event_relay.state))
                     server.restart_thread = threading.Thread(group=None,
                                                              target=self.restart_function,
                                                              name="RESTART_%s"%(server.name,),
@@ -422,7 +423,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def update_lm_function(self, lib_man):
         # get a client and then check if the server is alive
-        lmc = library_manager_client.LibraryManagerClient(self.csc, lib_man.name)
+        lmc = self.lmc.get[lib_man.name]
+        if lmc is None:
+            lmc = library_manager_client.LibraryManagerClient(
+                self.csc, lib_man.name)
+            self.lmc[lib_man.name] = lmc
         host = lib_man.host
         port = lib_man.port
         now = time.time()
@@ -459,7 +464,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the movers
     def update_mover(self, mover):
-        movc = mover_client.MoverClient(self.csc, mover.name)
+        movc = self.movc.get(mover.name)
+        if movc is None:
+            movc = mover_client.MoverClient(self.csc, mover.name)
+            self.movc[mover.name] = movc
         self.mover_status(movc, (mover.host, mover.port), mover.name, time.time())
         self.new_server_status = 1
 
@@ -544,13 +552,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.attempt_restart(server)
 
     def check_event_relay_last_alive(self):
-	if self.event_relay.is_dead(time.time()):
-	    self.mark_event_relay(DEAD)
-	    if not self.sent_event_relay_alarm:
-		Trace.alarm(e_errors.ERROR, 
-			    e_errors.TIMEDOUT, {'server' : self.event_relay.name,
-						'host' : self.erc.host })
-		self.sent_event_relay_alarm = 1
+        if self.event_relay.is_dead(time.time()):
+            self.mark_event_relay(DEAD)
+            if not self.sent_event_relay_alarm:
+                Trace.alarm(e_errors.ERROR, 
+                            e_errors.TIMEDOUT, {'server' : self.event_relay.name,
+                                                'host' : self.erc.host })
+                self.sent_event_relay_alarm = 1
 
     def server_is_alive(self, name):
         now = time.time()
@@ -660,8 +668,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # our client said to update the enstore system status information
     def update(self, ticket):
-	Trace.trace(enstore_constants.INQWORKDBG, "update work from user")
-	self.periodic_tasks(USER)
+        Trace.trace(enstore_constants.INQWORKDBG, "update work from user")
+        self.periodic_tasks(USER)
         ticket["status"] = (e_errors.OK, None)
         self.send_reply(ticket)
 
@@ -748,7 +756,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def subscribe(self, ticket):
         Trace.trace(enstore_constants.INQWORKDBG, "event relay subscribe work from user")
         ticket["status"] = (e_errors.OK, None)
-	self.erc.subscribe()
+        self.erc.subscribe()
         self.send_reply(ticket)
 
 
@@ -761,6 +769,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         Trace.init(self.log_name)
         self.name = MY_NAME
         self.startup_state = e_errors.OK
+
+        self.lmc = {} 
+        self.movc = {}
+        
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
         # passed values because they might have been defaulted and we need to
@@ -911,7 +923,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.event_relay_msg.encode(self.inquisitor.name)
 
         # setup the communications with the event relay task
-	self.resubscribe_rate = 300
+        self.resubscribe_rate = 300
         self.erc.start([event_relay_messages.ALIVE,
                         event_relay_messages.NEWCONFIGFILE,
                         event_relay_messages.ENCPXFER], self.resubscribe_rate)
