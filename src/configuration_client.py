@@ -100,7 +100,10 @@ class ConfigurationClient(generic_client.GenericClient):
             listen_socket.close()
             control_socket.close()
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        d = callback.read_tcp_obj(control_socket)
+        try:
+            d = callback.read_tcp_obj(control_socket)
+        except e_errors.TCP_EXCEPTION:
+            d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
         listen_socket.close()
         return d
         
@@ -210,11 +213,14 @@ def do_work(intf):
         pass
     elif intf.show:
         result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        if intf.element:
+        
+        if e_errors.is_ok(result) and intf.element:
             pprint.pprint(result["dump"].get(intf.element, {}))
-        else:
+        elif e_errors.is_ok(result):
             pprint.pprint(result["dump"])
-
+        else:
+            pprint.pprint(result)
+            
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
