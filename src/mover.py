@@ -293,6 +293,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         logname = self.config.get('logname', name)
         Trace.init(logname)
+        Trace.log(e_errors.INFO, "mover %s started" % (self.name,))
         
         self.address = (self.config['hostip'], self.config['port'])
 
@@ -1266,7 +1267,7 @@ if __name__ == '__main__':
         try:
             mover.serve_forever()
         except SystemExit:
-            Trace.log(e_errors.INFO, "goodbye")
+            Trace.log(e_errors.INFO, "mover %s exiting." % (self.name,))
             os._exit(0)
             break
         except:
