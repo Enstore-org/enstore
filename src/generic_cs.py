@@ -48,7 +48,7 @@ def add_id(id, msg):
     return nmsg
 
 # keep a logger
-def add_logger(self, logger, log_severity=ENNONE):
+def add_logger(logger, log_severity=ENNONE):
     global global_logger
     global global_severity
 
@@ -141,3 +141,8 @@ class GenericCS:
 
 	enprint(msg, msg_bit, verbosity, l_logger, log_severity)
 	Trace.trace(3,"}self.enprint ")
+
+    def add_logger(self, logger, log_severity=ENNONE):
+	Trace.trace(3,"{self.add_logger ")
+	add_logger(logger, log_severity)
+	Trace.trace(3,"}self.add_logger ")
