@@ -6,4 +6,4 @@ QUALIFIERS=""
         ACTION=setup
                 setupEnv()
                 proddir()
-		pathPrepend(PATH, $IPMI_DIR)
+		pathPrepend(PATH, ${IPMI_DIR})
