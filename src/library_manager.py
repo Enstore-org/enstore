@@ -148,6 +148,7 @@ def busy_vols_in_family (self, vc, family_name):
     for mv in movers:
 	if mv["file_family"] == family_name:
 	    vol_info = vc.inquire_vol(mv["external_label"])
+            Trace.trace(11,"busy_vols_in_family vol %s"%repr(vol_info))
 	    if vol_info["status"][0] != e_errors.OK: continue
 	    if vol_info['at_mover'][0] != 'unmounted':
 		# volume is potentially available if not unmounted
@@ -165,6 +166,8 @@ def busy_vols_in_family (self, vc, family_name):
 	    if (vol_info['at_mover'][0] == 'mounted' and 
 		mv['state'] == 'idle_mover'):
 		work_movers.append(mv)
+    Trace.trace(11,"busy_vols_in_family. vols %s. movers %s"%\
+                (repr(vols), repr(work_movers)))
     return vols, work_movers
 
 # check if a particular volume with given label is busy
@@ -238,6 +241,7 @@ def get_work_at_movers(self, external_label):
 ##############################################################
 # is there any work for any volume?
 def next_work_any_volume(self):
+    Trace.trace(11, "next_work_any_volume")
     # look in pending work queue for reading or writing work
     w=self.pending_work.get_init()
     while w:
@@ -263,7 +267,8 @@ def next_work_any_volume(self):
         # apropriate family which are currently at movers.
         elif w["work"] == "write_to_hsm":
             vol_veto_list, work_movers = busy_vols_in_family(self, self.vcc, 
-							    w["vc"]["file_family"])
+							    w["vc"]["file_family"]+\
+                                                             "."+w["vc"]["wrapper"])
             # only so many volumes can be written to at one time
             if len(vol_veto_list) >= w["vc"]["file_family_width"]:
                 w=self.pending_work.get_next()
@@ -836,6 +841,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is idle - see what we can do
     def idle_mover(self, mticket):
 	global mover_cnt
+        Trace.trace(11,"IDLE RQ %s"%repr(mticket))
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, mticket['work'])
 	self.last_idle = mv
@@ -949,7 +955,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
-	Trace.trace(12, "have_bound_volume: request: %s"%mticket)
+	Trace.trace(11, "have_bound_volume: request: %s"%mticket)
 	# update mover list. If mover is in the list - update its state
 	if mticket['state'] == 'idle':
 	    state = 'idle_mover'  # to make names consistent
@@ -1077,6 +1083,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     def unilateral_unbind(self, ticket):
+        Trace.trace(11,"UNILATERAL UNBIND RQ %s"%repr(ticket))
         # get the work ticket for the volume
         w = get_work_at_movers(self, ticket["external_label"])
 
