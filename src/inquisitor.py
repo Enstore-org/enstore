@@ -958,6 +958,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	bpd_file = lfd+"/bytes.pts"
 	if not len(data) == 0:
 	    self.make_xfer_plot_file(pts_file, data)
+	    # we really created 2 files in the above so need to cp both
+	    pts_file = pts_file+"*"
 	    self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
 	    self.make_bytes_per_day_plot_file(bpd_file, data)
 	    self.gnuplot(lfd, lfd+"/bytes.gnuplot", bpd_file, self.html_dir)
