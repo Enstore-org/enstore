@@ -73,8 +73,8 @@ POSITIONING_ERROR='POSITIONING_ERROR'
 DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
 FILE_MODIFIED = "FILE WAS MODIFIED"     #Encp knows local file changed.
 NO_FILES = "NO_FILES"                   #Internal encp error.
-CRC_DCACHE_ERROR='CRC DCACHE MISMATCH'  #CRC error if caught by encp.
-
+CRC_DCACHE_ERROR = "CRC DCACHE MISMATCH"  #CRC error if caught by encp.
+UNCAUGHT_EXCEPTION = "UNCAUGHT EXCEPTION" #An exception was not caught in encp.
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
