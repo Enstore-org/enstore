@@ -452,7 +452,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    if mover_cnt == 0:
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
-				send_regret(mv["work_ticket"])
+				send_regret(mv["work_ticket"], self.verbose)
 				return
 				
 			    # try another mover
@@ -465,7 +465,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     " next mover "+\
 					     repr(next_mover), \
 					     generic_cs.DEBUG, 
-					     verbose)
+					     self.verbose)
 				if (next_mover != None) and \
 				   (next_mover['mover'] != mv['mover']):
 				    next_mover_found = 1
@@ -476,13 +476,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					     "will summon mover "+ \
 					     repr(next_mover), 
 					     generic_cs.DEBUG, 
-					     verbose)
+					     self.verbose)
 				summon_mover(self, next_mover, mv["work_ticket"])
 				break
 			    else:
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
-				send_regret(mv["work_ticket"])
+				send_regret(mv["work_ticket"], self.verbose)
 			    
 				
 
