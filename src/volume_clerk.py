@@ -12,7 +12,6 @@ import copy
 import errno
 
 # enstore imports
-import timeofday
 import callback
 import log_client
 import traceback
@@ -209,7 +208,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             Trace.trace(0,"}next_write_volume "+repr(ticket["status"]))
             return
-        exec ("vol_veto_list = " + vol_veto)
+        #exec ("vol_veto_list = " + vol_veto)
+        vol_veto_list = eval(vol_veto)
 
         # get the criteria for the volume from the user's ticket
         try:
@@ -1055,7 +1055,6 @@ class VolumeClerkInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     import sys
-    import string
     Trace.init("Vol Clerk")
     Trace.trace(1,"Volume clerk called with args "+repr(sys.argv))
 
