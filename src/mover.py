@@ -1267,7 +1267,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.reset((self.buffer.sanity_bytes, self.buffer.sanity_crc), client_crc_on=1)
                 self.buffer.set_wrapper(saved_wrapper)
                 Trace.trace(22, "starting check after write, bytes_to_read=%s" % (bytes_to_read,))
-                Trace.log(e_errors.INFO, "selective CRC check after writing file")
                 driver = self.tape_driver
                 first_block = 1
                 while bytes_read < bytes_to_read:
@@ -2033,6 +2032,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
+                try:
+                    Trace.log(e_errors.ERROR, "REMAIN_TAPE: type %s value %s"%
+                              (type(stats[ftt.REMAIN_TAPE]), stats[ftt.REMAIN_TAPE]))
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.handle_error(exc, detail, tb)
 
         capacity = self.vol_info['capacity_bytes']
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
