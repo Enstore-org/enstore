@@ -282,6 +282,10 @@ echo_output $output_ftp
 check_exit_code $exit_code_ftp
 echo_output $output_gridftp
 check_exit_code $exit_code_gridftp
+echo_output ${output_gridftp}_1
+check_exit_code ${exit_code_gridftp}_1
+echo_output ${output_gridftp}_3
+check_exit_code ${exit_code_gridftp}_3
 echo_output $output_srm
 check_exit_code $exit_code_srm
 
