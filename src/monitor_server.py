@@ -62,7 +62,7 @@ There are three connections opened for this test.
  |____| --- 3 TCP data socket -----> |____|
 
 This mimics the connections where in a real encp:
-1) encp to library manager
+1) ecnp to library manager
 2) library manager to encp
 3) encp to mover
 
@@ -84,7 +84,7 @@ class MonitorError(Exception):
         return self.error_message
 
     def __repr__(self):
-        return "MonitorError: %s"%(self.error_message,)
+        return "MonitorError"
 
 #SERVER_CONNECTION_ERROR = "Server connection error"
 #CLIENT_CONNECTION_ERROR = "Client connection error"
@@ -92,7 +92,7 @@ class MonitorError(Exception):
 class MonitorServer(dispatching_worker.DispatchingWorker,
                     generic_server.GenericServer):
 
-    def __init__(self, csc, port=enstore_constants.MONITOR_PORT):
+    def __init__(self, csc):
         self.timeout = 10
 	self.running = 0
 	self.print_id = MY_NAME
@@ -101,7 +101,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self,
-                                         ('', port))
+                                         ('', enstore_constants.MONITOR_PORT))
 
 	self.running = 1
 
@@ -199,7 +199,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 except socket.error, detail:
                     data_sock.close()
                     #raise CLIENT_CONNECTION_ERROR, detail[1]
-                    raise MonitorError("socket error: %s"%(detail[1],))
+                    raise MonitorError(detail[1])
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
@@ -222,7 +222,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
-            raise MonitorError("open_cntl_socket: %s"%(detail[1],))
+            raise MonitorError(detail[1])
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -241,8 +241,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             #A real or fatal error has occured.  Handle accordingly.
             else:
                 #raise CLIENT_CONNECTION_ERROR, detail[1]
-                #raise MonitorError(detail[1])
-                raise MonitorError(detail)
+                raise MonitorError(detail[1])
 
         #Check if the socket is open for reading and/or writing.
         r, w, unused = select.select([sock], [sock], [], self.timeout)
@@ -405,14 +404,9 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     Trace.init(MY_NAME)
 
-    if len(sys.argv) == 2:
-        port = int(sys.argv[1])
-    else:
-        port = enstore_constants.MONITOR_PORT
-
     intf = MonitorServerInterface()
 
-    ms = MonitorServer((intf.config_host, intf.config_port), port)
+    ms = MonitorServer((intf.config_host, intf.config_port))
 
     #This is a server and therfore must handle things like --alive requests.
     ms.handle_generic_commands(intf)
