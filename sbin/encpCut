@@ -217,7 +217,8 @@ if [ -z "${INSTALLDIR-}" ] ; then
       rip8*)     INSTALLDIR=/fnal/ups/prd/$product/${REV}/Linux+2
                  setrev=0;;
       d0ola*)    INSTALLDIR=/home/bakken/enstore/$product #this stinks! but I don't know what else to do
-	          puntUPS=1;;
+		 FLAVOR="OSF1+V4"
+	         puntUPS=1;;
       *)         check_status 1 "Don't know where to install ups product $product on `uname -n`";;
    esac
    echo "Install directory not specified - Defaulting to install directory of $INSTALLDIR"
