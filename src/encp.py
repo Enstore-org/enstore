@@ -370,7 +370,7 @@ def inputfile_check(input_files, bytecount=None):
 
     # we need to know how big each input file is
     file_size = []
-
+    
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(inputlist)):
 
@@ -408,13 +408,15 @@ def inputfile_check(input_files, bytecount=None):
         #    quit()
 
         # get the file size
-	p = pnfs.Pnfs(inputlist[i])
-	p.get_file_size()
-	file_size.append(p.file_size)
+        if "/pnfs/" == inputlist[i][:6]:
+            p = pnfs.Pnfs(inputlist[i])
+            p.get_file_size()
+            file_size.append(p.file_size)
 	#This would work if pnfs supported NFS version 3.  Untill it does and
 	# all the files have their pnfs layer 2s cleared out, this can not
-	# be used.
-        #file_size.append(long(statinfo[stat.ST_SIZE]))
+	# be used in conjuction with large file support.
+        else:
+            file_size.append(long(statinfo[stat.ST_SIZE]))
 
         #if bytecount != None:
         #    file_size.append(bytecount)
@@ -521,19 +523,19 @@ def outputfile_check(inputlist, output, dcache):
                 #get the maximum filesize the local filesystem allows.
                 bits = os.pathconf(os.path.split(outputlist[i])[0],
                                    os.pathconf_names['PC_FILESIZEBITS'])
-                bytes = 2L**(bits - 1) - 1
+                filesystem_max = 2L**(bits - 1) - 1
 
                 #Compare the max sizes.
-                if pin.file_size > bytes:
+                if pin.file_size > filesystem_max:
                     raise e_errors.USERERROR, \
                           "Filesize (%s) larger than filesystem allows (%s)." \
-                          % (pin.file_size, bytes)
+                          % (pin.file_size, filesystem_max)
 
             else: #WRITES
                 #get the maximum filesize the remote filesystem allows.
                 bits = os.pathconf(os.path.split(outputlist[i])[0],
                                    os.pathconf_names['PC_FILESIZEBITS'])
-                bytes = 2L**(bits - 1) - 1
+                filesystem_max = 2L**(bits - 1) - 1
 
                 #Get the local filesize.
                 statinfo = os.stat(inputlist[i])
@@ -546,15 +548,25 @@ def outputfile_check(inputlist, output, dcache):
                 wrapper_max = wrappersizes.get(pout.file_family_wrapper,
                                                MAX_FILE_SIZE)
 
-                #Compare the max sizes.
-                if size > bytes:
-                    raise e_errors.USERERROR, \
-                          "Filesize (%s) larger than filesystem allows (%s)." \
-                          % (size, bytes)
-                elif size > wrapper_max:
+                #Determine the max allowable size for the given library.
+                pout.get_library()
+                library = csc.get(pout.library + ".library_manager", {})
+                library_max = library.get('max_file_size', 0)
+
+                #Compare the max sizes allowed for these various conditions.
+                if size > wrapper_max:
                     raise e_errors.USERERROR, \
                           "Filesize (%s) larger than wrapper (%s) allows " \
-                          "(%s)." % (size, pout.file_family_wrapper, bytes)
+                          "(%s)." % (size, pout.file_family_wrapper,
+                                     wrapper_max)
+                if size > library_max:
+                    raise e_errors.USERERROR, \
+                          "Filesize (%s) larger than library (%s) allows " \
+                          "(%s)." % (size, pout.library, library_max)
+                if size > filesystem_max:
+                    raise e_errors.USERERROR, \
+                          "Filesize (%s) larger than filesystem allows (%s)." \
+                          % (size, filesystem_max)
                 
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
