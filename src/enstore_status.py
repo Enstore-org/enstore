@@ -49,10 +49,6 @@ trow = "<TR NOSAVE>\n"
 tdata_end = "</TD>\n"
 TMP = ".tmp"
 
-# set to unknown. we need to keep track of the type of the last mover transfer
-# because when the mover status goes to "u", we lose knowledge of what it was.
-last_xfer = "u"
-
 html_header1 = "<title>Enstore Status</title>\n"+\
                "<meta http-equiv=\"Refresh\" content=\""
 html_header2 = "\">\n"+\
@@ -353,11 +349,10 @@ class EnStatus:
     
     # format the mover status information
     def format_moverstatus(self, ticket):
-        global last_xfer
         if 0: print self     # lint fix
 	spacing = "\n    "
         got_vol = 0
-	string = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
+	aString = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
             got_vol = 1
 	    p = "Current Transfer : "
@@ -366,15 +361,11 @@ class EnStatus:
                     " bytes from Enstore"
                 f_in = 1
                 f_out = 0
-                # need to keep this because when idle, the movers' mode will
-                # be set to "u" and we will not know what the last xfer was.
-                last_xfer = "r"
 	    elif ticket["mode"] == "w":
 	        m = " writing "+repr(ticket["bytes_to_xfer"])+\
                     " bytes to Enstore"
                 f_in = 0
                 f_out = 1
-                last_xfer = "w"
             elif ticket["mode"] == "u":
                 got_vol = 0
                 m = " busy dismounting volume %s"%ticket['tape']
@@ -383,10 +374,11 @@ class EnStatus:
 	    m = " "
             if ticket['no_xfers'] > 0:
                 got_vol = 1
-                if last_xfer == "r":
+                work = ticket['work_ticket'].get('work', "")
+                if string.find(work, "read") != -1:
                     f_in = 1
                     f_out = 0
-                elif last_xfer == "w":
+                elif string.find(work, "write") != -1:
                     f_in = 0
                     f_out = 1
                 else:
@@ -401,11 +393,11 @@ class EnStatus:
             v = ""
             mfile = ""
 
-	string = string+",  Current State : "+ticket["state"]+m
-	string = string+spacing+p+" Read "+\
+	aString = aString+",  Current State : "+ticket["state"]+m
+	aString = aString+spacing+p+" Read "+\
 	             repr(ticket["rd_bytes"])+" bytes,  Wrote "+\
 	             repr(ticket["wr_bytes"])+" bytes"+v
-        return string+mfile+"\n\n"
+        return aString+mfile+"\n\n"
 
 class EnFile:
 
@@ -427,6 +419,10 @@ class EnFile:
 	if self.filedes:
 	    self.filedes.close()
 	    self.filedes = 0
+
+    # remove the file
+    def cleanup(self):
+	os.system("rm %s"%self.file_name)
 
 class EnStatusFile(EnFile):
 
