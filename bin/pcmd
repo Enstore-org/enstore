@@ -14,9 +14,9 @@ Commonly used commands are:
 
    pcmd tags   directory    lists the tags in the directory
 
-   pcmd library [value]          sets library tag to value (must have correct cwd)
-   pcmd file_family [value]      sets library tag to value (must have correct cwd)
-   pcmd fie_family_width [value] sets library tag to value (must have correct cwd)
+   pcmd library [value]           sets library tag to value (must have correct cwd)
+   pcmd file_family [value]       sets library tag to value (must have correct cwd)
+   pcmd file_family_width [value] sets library tag to value (must have correct cwd)
 
    pcmd files volmap-tape   lists all the files on specified tape in volmap
    pcmd volume volumename   lists the volmap-tape for the specifed volumename
@@ -31,6 +31,8 @@ Commonly used commands are:
    pcmd {cat|more|less}          file layer     lists the layer of the file
    pcmd {tagcat|tagmore|tagless} tag  directory lists the tag in the directory
 
+   pcmd enstore_state          lists whether enstore is still accepting transfers
+   pcmd pnfs_state mount-point lists whether pnfs mountpoint is up
 
 Don't use these unless you know what you are doing:
 
@@ -260,7 +262,7 @@ pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
                 /bin/echo "The I/O mode of level 0 is ENABLED "
               fi ; }
 
-pio()       { if [ -z "${1-}" ] ; then perror "io filename"; fi
+pio()       { if [ -z "${1-}" ] ; then p_error "io filename"; fi
               eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
 
 
@@ -268,17 +270,17 @@ pio()       { if [ -z "${1-}" ] ; then perror "io filename"; fi
 p_tag()     { if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
               echo "\"$dir/.(tag)($1)\"" ; }
 
-ptagcat()   { if [ -z "${1-}" ] ; then perror "tagcat tag"; fi
+ptagcat()   { if [ -z "${1-}" ] ; then p_error "tagcat tag"; fi
               eval cat  `p_tag $@` ; }
-ptagmore()  { if [ -z "${1-}" ] ; then perror "tagmore tag"; fi
+ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
               eval more `p_tag $@` ; }
-ptagless()  { if [ -z "${1-}" ] ; then perror "tagless tag"; fi
+ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
               eval less `p_tag $@` ; }
 
 ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; }
 
-ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then perror "tagecho text tagname"; fi
+ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "tagecho text tagname"; fi
               pt="$1"
               shift 1
               eval echo -n "$pt" \>\| `p_tag $@` ; }
@@ -306,6 +308,25 @@ pfile_family_width()
                 ptagecho "$1" file_family_width
               fi; }
 
+
+penstore_state()  
+            {  disabled="`p_pnfs`/.(config)(flags)/disabled" 
+               if [ -r "$disabled" ] ; then
+	         why=`cat "$disabled"`
+		 echo "Enstore disabled: $why"
+                 exit 1
+               else
+	         echo "Enstore enabled"
+		 exit 0
+               fi; }
+
+ppnfs_state() 
+            { if [ -z "${1-}" ] ; then p_error "pnfs-state"; fi
+              if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
+              /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
+                    read ans ; echo "$ans"' ;}
+
+        
 #debugging routine - space in arguments are being eaten by eval
 pdog()      { echo $#
               echo $1
