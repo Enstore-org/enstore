@@ -1132,7 +1132,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             # manager and mover don't expect to receive from encp,
             # these should be removed.
             for item in ("mover", ):
-                del req[item]
+                del request_dictionary[item]
                 
             #Since a retriable error occured, resubmit the ticket.
             submit_one_request(request_dictionary, verbose)
