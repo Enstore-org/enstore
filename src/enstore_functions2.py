@@ -9,10 +9,10 @@
 import time
 import string
 import os
-import exceptions
+#import exceptions
 import tempfile
 import types
-import pwd
+#import pwd
 import signal
 import stat
 import re
@@ -218,21 +218,21 @@ def symbolic_to_bits(symbolic_mode, st_mode=0):
 ###########################################################################
 
 # return both the user associated with the uid and the euid.
-def get_user():
-    uid = os.getuid()
-    euid = os.geteuid()
-    username = pwd.getpwuid(uid)[0]
-    eusername = pwd.getpwuid(euid)[0]
+#def get_user():
+#    uid = os.getuid()
+#    euid = os.geteuid()
+#    username = pwd.getpwuid(uid)[0]
+#    eusername = pwd.getpwuid(euid)[0]
 
 # return a string version of a list
 def print_list(aList, sep=" "):
-    str = ""
+    the_str = ""
     for item in aList:
-	str = "%s%s%s"%(str, item, sep)
+	the_str = "%s%s%s"%(the_str, item, sep)
     else:
 	# remove the last separator
-	str = str[0:-1]
-    return str
+	the_str = the_str[0:-1]
+    return the_str
 
 # format the mail
 def format_mail(goal, question, metric): 
@@ -268,7 +268,7 @@ def ping(node):
     # ping the node to see if it is up.
     times_to_ping = 4
     # the timeout parameter does not work on d0ensrv2.
-    timeout = 5
+    #timeout = 5
     #cmd = "ping -c %s -w %s %s"%(times_to_ping, timeout, node)
     cmd = "ping -c %s %s"%(times_to_ping, node)
     p = os.popen(cmd, 'r').readlines()
@@ -286,6 +286,8 @@ def ping(node):
         return enstore_constants.IS_DEAD
 
 def get_remote_file(node, file, newfile):
+    __pychecker__ = "unusednames=i"
+    
     # we have to make sure that the rcp does not hang in case the remote node is goofy
     pid = os.fork()
     if pid == 0:
