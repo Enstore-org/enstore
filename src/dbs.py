@@ -51,7 +51,7 @@ if intf.status:
 			t0 = time.time()
 			l = len(d)
 			t = time.time() - t0
-			print "%d records in %d seconds : %f records/second" % (
+			print "%d records in %f seconds : %f records/second" % (
 				l, t, l/t)
 			print "Checking "+i+" against journal ..."
 			err = d.cross_check()
