@@ -25,7 +25,6 @@ echo $?
 if [ $? -eq 0 ] ; then
     override_ro="--override-ro-mount"
 fi
-exit
 # Get the volumes that are defined in the inventory
 if [ $USE_WGET -eq 1 ] ; then
    echo `date` wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED
