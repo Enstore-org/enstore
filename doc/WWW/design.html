@@ -309,12 +309,12 @@ library currently holds the volume
 <tr>
 <td valign=top>first_access
 <td valign=top>int (-1)
-<td valign=top>Unix time when user issues the first write command to copy data to the media.
+<td valign=top>Unix time when user issues the first write command to copy data to the volume.
 Set by the volume clerk.
 <tr>
 <td valign=top>last_access
 <td valign=top>int (-1)
-<td valign=top>Unix time when  user last accessed the media. Set by the volume clerk.
+<td valign=top>Unix time when  user last accessed the volume. Set by the volume clerk.
 <tr>
 <td valign=top>declared
 <td valign=top>int
@@ -323,7 +323,7 @@ Set by the volume clerk.
 <td valign=top>capacity_bytes
 <td valign=top>64-bit int
 <td valign=top>Specified by user on volume creation; estimate of the number of
-bytes that would fit on the media.
+bytes that would fit on the volume.
 <tr>
 <td valign=top>blocksize
 <td valign=top>int
@@ -332,7 +332,7 @@ bytes that would fit on the media.
 <td valign=top>remaining_bytes
 <td valign=top>64-bit int
 <td valign=top>Specified by the user on volume creation; estimate of the number
-of bytes that would fit on the media; updated by the volume clerk every time
+of bytes that would fit on the volume; updated by the volume clerk every time
 data are written to the media.
 <tr>
 <td valign=top>eod_cookie
@@ -344,12 +344,12 @@ media.
 <td valign=top>wrapper
 <td valign=top>string ("cpio")
 <td valign=top>Wrapper method; currently specifies the format of the files on
-the media.
+the volume.
 <tr>
 <td valign=top>sum_rd_err
 <td valign=top>int (0)
 <td valign=top>Read error count; volume clerk increments this field when the mover
-receives an error while reading from the media.
+receives an error while reading from the volume.
 <tr>
 <td valign=top>sum_rd_access
 <td valign=top>int (0)
@@ -359,12 +359,12 @@ every time a file is read.
 <td valign=top>sum_wr_err
 <td valign=top>int (0)
 <td valign=top>Write error count; volume clerk increments this field when the
-mover receives an error while writing to the media.
+mover receives an error while writing to the volume.
 <tr>
 <td valign=top>sum_wr_access
 <td valign=top>int (0)
-<td valign=top>Write access count; volume clerk incrementsthis field every time
-a file is written.
+<td valign=top>Write access count; volume clerk increments this field every
+time a file is written.
 <tr>
 <td valign=top>user_inhibit
 <td valign=top>string (d:"none" or "readonly", "all")
@@ -374,9 +374,9 @@ volume, updated by volume clerk.
 <td valign=top>system_inhibit
 <td valign=top>string (d:"none" or "writing", "readonly", "full")
 <td valign=top>Administrator generated limitation on the kind of access permitted to
-this volume; update by volume clerk when data are written on the media, an
+this volume; update by volume clerk when data are written on the volume, an
 error occurred while data were being written or the file size exceeded the
-remaining number of bytes on the media.
+remaining number of bytes on the volume.
 </table>
 <p>
 The volume clerk does the following operations:
