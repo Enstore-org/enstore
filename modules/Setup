@@ -76,4 +76,4 @@ derrno derrno_wrap.c -I$(ACI_DIR)/inc
 
 Ptrace Ptrace.c trace.a -lc
 
-adler32 adler32_wrap.c adler32.o
+checksum checksum_wrap.c adler32.o

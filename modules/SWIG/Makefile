@@ -3,7 +3,7 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../adler32_wrap.c
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap.c
 SWIG_GENERATED_PY_FILES=../aci_shadow.py
 
 all: $(SWIG_GENERATED_C_FILES)   
@@ -29,9 +29,9 @@ clean:
 	mv derrno_wrap.c .. ; \
 	fi
 
-../adler32_wrap.c: adler32.i
-	swig -python adler32.i ; \
-	mv adler32_wrap.c ..
+../checksum_wrap.c: checksum.i
+	swig -python checksum.i ; \
+	mv checksum_wrap.c ..
 
 
 
