@@ -2088,10 +2088,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                  "attempt to label write protected tape",
                                                  error_source=TAPE)
                             return 0
+                    Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     vol1_label = self.wrapper.vol_labels(volume_label, self.current_work_ticket)
                     #vol1_label = 'VOL1'+ volume_label[0:6]
                     #vol1_label = vol1_label+ (79-len(vol1_label))*' ' + '0'
-                    Trace.log(e_errors.INFO, "labeling new tape %s" % (volume_label,))
                     self.tape_driver.write(vol1_label, 0, 80)
                     self.tape_driver.writefm()
 	            # WAYNE FOO
