@@ -174,6 +174,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					      "Attempting restart of %s (%s)"%(key, pid))
 				    # we need just the node name part of the host name
 				    node = string.split(host, ".", 1)
+				    alarm_info['node'] = node
 				    while i < 3:
 					Trace.trace(7, "Server restart: try %s"%(i,))
 					os.system('enstore Erestart %s "--just %s"'%(node[0], key))
