@@ -149,7 +149,8 @@ if __name__ == "__main__" :
                             
 
     if intf.alive:
-        ticket = mcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = mcc.alive(intf.media_changer, intf.alive_rcv_timeout,
+                           intf.alive_retries)
     elif intf.view:
         # get a volume clerk client
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)

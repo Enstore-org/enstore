@@ -71,9 +71,11 @@ class GenericClient:
         return name
 
     # check on alive status
-    def alive(self, rcv_timeout=0, tries=0):
+    def alive(self, server, rcv_timeout=0, tries=0):
+        t = self.csc.get(server)
 	try:
-            x = self.send({'work':'alive'},rcv_timeout,tries)
+            x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
+                            rcv_timeout, tries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    Trace.trace(14,"alive - ERROR, alive timed out")
 	    x = {'status' : (e_errors.TIMEDOUT, None)}

@@ -183,7 +183,8 @@ if __name__ == "__main__" :
     Trace.init(lmc.get_name(lmc.log_name))
 
     if intf.alive:
-        ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = lmc.alive(intf.name, intf.alive_rcv_timeout,
+                           intf.alive_retries)
     elif  intf.getwork:
         ticket = lmc.getwork()
 	print ticket['pending_work']

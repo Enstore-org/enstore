@@ -18,6 +18,7 @@ import Trace
 import e_errors
 
 MY_NAME = "VOLUME_C_CLIENT"
+MY_SERVER = "volume_clerk"
 
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
@@ -25,7 +26,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
     def __init__( self, csc, servr_addr=None ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
-        ticket = self.csc.get( "volume_clerk" )
+        ticket = self.csc.get( MY_SERVER )
 	if servr_addr != None: self.servr_addr = servr_addr
 	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
         Trace.trace(10,'__init__ u='+str(self.u))
@@ -443,7 +444,8 @@ if __name__ == "__main__":
     Trace.init(vcc.get_name(MY_NAME))
 	
     if intf.alive:
-        ticket = vcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = vcc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                           intf.alive_retries)
     elif intf.backup:
         ticket = vcc.start_backup()
         db.do_backup("volume")

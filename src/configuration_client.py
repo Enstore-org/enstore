@@ -12,7 +12,7 @@ import generic_client
 import interface
 import udp_client
 import Trace
-#import e_errors
+import e_errors
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -26,6 +26,7 @@ except ImportError:
     import socket
 
 MY_NAME = "CONFIG_CLIENT"
+MY_SERVER = "configuration_server"
 
 class ConfigurationClient(generic_client.GenericClient):
 
@@ -113,10 +114,14 @@ class ConfigurationClient(generic_client.GenericClient):
 	        self.output_socket_error("load retrying")
 
     # check on alive status
-    def alive(self, rcv_timeout=0, tries=0):
+    def alive(self, server, rcv_timeout=0, tries=0):
         Trace.trace(10,'alive config_address='+repr(self.config_address))
-        x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,\
-	                tries)
+        try:
+            x = self.u.send({'work':'alive'},self.config_address, rcv_timeout,
+                          tries)
+        except errno.errorcode[errno.ETIMEDOUT]:
+	    Trace.trace(14,"alive - ERROR, alive timed out")
+	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
 
     # get list of the Library manager movers
@@ -186,7 +191,7 @@ if __name__ == "__main__":
     csc = ConfigurationClient((intf.config_host, intf.config_port))
 
     if intf.alive:
-        stati = csc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        stati = csc.alive(MY_SERVER, intf.alive_rcv_timeout,intf.alive_retries)
 
     elif intf.dict:
         csc.dump(intf.alive_rcv_timeout,intf.alive_retries)

@@ -13,6 +13,7 @@ import Trace
 import e_errors
 
 MY_NAME = "ALARM_CLIENT"
+MY_SERVER = "alarm_server"
 
 class Lock:
     def __init__(self):
@@ -36,7 +37,7 @@ class AlarmClient(generic_client.GenericClient):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.uid = pwd.getpwuid(os.getuid())[0]
         self.u = udp_client.UDPClient()
-        ticket = self.csc.get("alarm_server")
+        ticket = self.csc.get(MY_SERVER)
         self.server_address = (ticket['hostip'], ticket['port'])
 	Trace.set_alarm_func( self.alarm_func )
 	self.alarm_func_lock = Lock() 
@@ -114,8 +115,8 @@ if __name__ == "__main__" :
     Trace.init(alc.get_name(MY_NAME))
 
     if intf.alive:
-        ticket = alc.alive(intf.alive_rcv_timeout, intf.alive_retries)
-        #print repr(ticket)
+        ticket = alc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                           intf.alive_retries)
 
     elif intf.resolve:
         ticket = alc.resolve(intf.resolve)

@@ -24,6 +24,7 @@ import Trace
 import e_errors
 
 MY_NAME = "LOG_CLIENT"
+MY_SERVER = "log_server"
 
 # send a message to the logger
 def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
@@ -37,7 +38,7 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 	csc.connect()
 
         # get a logger
-        logc = LoggerClient((config_host, config_port), logname,  'log_server')
+        logc = LoggerClient((config_host, config_port), logname,  MY_SERVER)
 
         # send the message
         return Trace.log(e_errors.INFO, message)
@@ -62,7 +63,7 @@ class LoggerClient(generic_client.GenericClient):
                  i_am_a = MY_NAME,           # Abbreviated client instance name
                                              # try to make it capital letters
                                              # not more than 8 characters long
-                 servername = "log_server"): # log server name
+                 servername = MY_SERVER):    # log server name
         # need the following definition so the generic client init does not
         # get another logger client
         self.is_logger = 1
@@ -108,17 +109,6 @@ class LoggerClient(generic_client.GenericClient):
 
     def get_logpriority(self):
         return self.log_priority
-
-
-    # check on alive status
-    def alive(self, rcv_timeout=0, tries=0):
-        try:
-            x = self.u.send( {'work':'alive'}, self.logger_address,
-                             rcv_timeout, tries )
-        except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(14,"alive - ERROR, alive timed out")
-            x = {'status' : (e_errors.TIMEDOUT, None)}
-        return x
 
     # get the current log file name
     def get_logfile_name(self, rcv_timeout=0, tries=0):
@@ -171,10 +161,11 @@ if __name__ == "__main__" :
 
     # get a log client
     logc = LoggerClient((intf.config_host, intf.config_port), MY_NAME,
-                        "log_server")
+                        MY_SERVER)
 
     if intf.alive:
-        ticket = logc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = logc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                            intf.alive_retries)
 
     elif intf.get_last_logfile_name:
         ticket = logc.get_last_logfile_name(intf.alive_rcv_timeout,\

@@ -16,6 +16,7 @@ import Trace
 import e_errors
 
 MY_NAME = "FILE_C_CLIENT"
+MY_SERVER = "file_clerk"
 
 class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
@@ -24,7 +25,7 @@ class FileClient(generic_client.GenericClient, \
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
 	self.bfid = bfid
-        ticket = self.csc.get( "file_clerk" )
+        ticket = self.csc.get( MY_SERVER )
 	if servr_addr != None: self.servr_addr = servr_addr
 	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
 
@@ -211,7 +212,8 @@ if __name__ == "__main__" :
     Trace.init(fcc.get_name(MY_NAME))
 
     if intf.alive:
-        ticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                           intf.alive_retries)
 
     elif intf.backup:
         ticket = fcc.start_backup()
@@ -229,7 +231,8 @@ if __name__ == "__main__" :
     elif intf.tape_list:
         ticket = fcc.tape_list(intf.tape_list)
         print ticket['tape_list']
-        aticket = fcc.alive(intf.alive_rcv_timeout,intf.alive_retries) #clear out any zombies from the forked file clerk
+        aticket = fcc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                            intf.alive_retries) #clear out any zombies from the forked file clerk
 
     elif intf.bfid:
         ticket = fcc.bfid_info()

@@ -82,7 +82,8 @@ if __name__ == "__main__" :
     msg_id = None
 
     if intf.alive:
-        ticket = movc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = movc.alive(intf.mover, intf.alive_rcv_timeout,
+                            intf.alive_retries)
     elif intf.status:
         ticket = movc.status(intf.alive_rcv_timeout,intf.alive_retries)
 	print repr(ticket)

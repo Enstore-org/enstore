@@ -8,6 +8,7 @@ import interface
 import Trace
 
 MY_NAME = "INQUISITOR"
+MY_SERVER = "inquisitor"
 
 class Inquisitor(generic_client.GenericClient):
 
@@ -15,7 +16,7 @@ class Inquisitor(generic_client.GenericClient):
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
         # we always need to be talking to our configuration server
         self.u = udp_client.UDPClient()
-	self.server_name = "inquisitor"
+	self.server_name = MY_SERVER
 
     def send (self, ticket, rcv_timeout=0, tries=0):
         # who's our inquisitor server that we should send the ticket to?
@@ -179,7 +180,8 @@ if __name__ == "__main__" :
     Trace.init(iqc.get_name(MY_NAME))
 
     if intf.alive:
-        ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
+        ticket = iqc.alive(MY_SERVER, intf.alive_rcv_timeout,
+                           intf.alive_retries)
 
     elif intf.dump:
         ticket = iqc.dump(intf.alive_rcv_timeout, intf.alive_retries)

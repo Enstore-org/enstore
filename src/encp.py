@@ -1684,7 +1684,8 @@ def clients(config_host,config_port,verbose):
     rcv_timeout = 20
     alive_retries = 10
     try:
-        stati = csc.alive(rcv_timeout,alive_retries)
+        stati = csc.alive(configuration_client.MY_SERVER, rcv_timeout,
+                          alive_retries)
     except:
         stati={}
         stati["status"] = ("CONFIGDEAD","Config at "+repr(config_host)+" port="+repr(config_port))
