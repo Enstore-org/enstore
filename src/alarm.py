@@ -142,7 +142,8 @@ class LogFileAlarm(GenericAlarm):
 	GenericAlarm.__init__(self)
 
 	# get rid of the MSG_TYPE part of the alarm
-	[text1, msg_type] = string.split(text, Trace.MSG_TYPE)
+	the_split_text = string.split(text, Trace.MSG_TYPE)
+	text1 = the_split_text[0]
 	[t, self.host, self.pid, self.uid, dummy, self.source,
 	 text_dict] = string.split(text1, " ", 6)
 
