@@ -383,9 +383,14 @@ if __name__ == '__main__':
 					print 'set', v2, 'to migrated ...',
 					res = vcc.set_system_migrated(v2)
 					if res['status'][0] == e_errors.OK:
-						print 'OK'
+						res = vcc.set_system_notallowed(v2)
+						if res['status'][0] == e_errors.OK:
+							print 'OK'
+						else:
+							print '(sn) FAILED'
 					else:
-						print 'FAILED'
+						print '(sm) FAILED'
+
 			else:
 				print result['status'][1]
 	else:
