@@ -1493,7 +1493,7 @@ def read_hsm_files(listen_socket, submitted, requests,
         #set up any special network load-balancing voodoo
         interface=check_load_balance(mode=0, dest=mover_addr[0])
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print "interface=", interface, "data socket=", data_path_socket #REMOVE XXX CGW
+
         if interface:
             ip = interface.get('ip')
             if ip:
@@ -1513,7 +1513,7 @@ def read_hsm_files(listen_socket, submitted, requests,
         data_path_socket_closed = 0
         try:
             if localname == '/dev/null':
-                out_fd = os.open(localname,"w")
+                out_fd = os.open(localname, os.O_RDWR)
                 out_fd_closed = 0
             else:
                 out_fd = os.open(localname, os.O_CREAT|os.O_RDWR, 0)
