@@ -3,9 +3,28 @@
 . /usr/local/etc/setups.sh
 setup enstore
 
-sun=fntt
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
-cmd1="/usr/bin/rsh $sun -l acsss 'echo eject 0,0,0 "
+case node in 
+    stk*) icap="0,0,0"
+          ocap="0,0,0"
+	  sun=fntt
+          ;;
+    d0*)  icap="1,1,0"
+          ocap="1,0,0"
+	  sun=fntt
+          ;;
+    cdf*) icap="0,1,0"
+          ocap="0,0,0"
+	  sun=fntt2
+          ;;
+       *) echo `date` DO NOT know CAP
+          icap="0,0,0"
+	  ocap="0,0,0"
+	  sun=fntt
+esac
+
+cmd1="/usr/bin/rsh $sun -l acsss 'echo eject $ocap "
 cmd2=" |/export/home/ACSSS/bin/cmd_proc 2>/dev/null'"
 
 flip_list=/tmp/flip.list

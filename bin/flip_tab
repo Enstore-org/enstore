@@ -1,8 +1,29 @@
 #!/bin/sh
 
-output=/tmp/write_tab.output
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
-sun=fntt
+case node in 
+    stk*) icap="0,0,0"
+          ocap="0,0,0"
+	  sun=fntt
+          ;;
+    d0*)  icap="1,1,0"
+          ocap="1,0,0"
+	  sun=fntt
+          /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+          ;;
+    cdf*) icap="0,1,0"
+          ocap="0,0,0"
+	  sun=fntt2
+          /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+          ;;
+       *) echo `date` DO NOT know CAP
+          icap="0,0,0"
+	  ocap="0,0,0"
+	  sun=fntt
+esac
+
+output=/tmp/write_tab.output
 
 work=/diska/write_protect_work
 if [ ! -d $work ]; then
@@ -15,21 +36,25 @@ for i in $work/*; do
   . $i |tee $output 2>&1
   echo 
   echo
-  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic 0,0,0 |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
-  echo 
-  echo 
-  /bin/echo -n "Push Enter when all tapes have been loaded with tab in write-protect mode "
-  read ans
-  while /bin/true; do 
-    cap=`/usr/bin/rsh $sun -l acsss "echo q cap 0,0,0 |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
-    capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
-    if [ "$capstate" = "available" ]; then break; fi
-    echo `date` waiting for cap to be unloaded.
-    sleep 5
-  done
-  /usr/bin/rsh $sun -l acsss "echo set cap mode manual 0,0,0 |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
-  echo 
-  echo
+  case node in 
+    stk*)
+      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+      echo 
+      echo 
+      /bin/echo -n "Push Enter when all tapes have been loaded with tab in write-protect mode "
+      read ans
+      while /bin/true; do 
+        cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
+        capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+        if [ "$capstate" = "available" ]; then break; fi
+        echo `date` waiting for cap to be unloaded.
+        sleep 5
+      done
+      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+      echo 
+      echo
+      ;;
+  esac
   t1=`date  +'%s'`
   delta=`expr $t1 - $t0`
   deltam=`expr $delta / 60`
@@ -55,3 +80,9 @@ for i in $work/*; do
      break
   fi
 done
+
+case node in 
+    d0*|cdf*)
+      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+      ;;
+esac
