@@ -525,31 +525,29 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.state is IDLE:
                 have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
 
+                stats = self.tape_driver.ftt.get_stats()
+                self.config['product_id'] = stats[ftt.PRODUCT_ID]
+                self.config['serial_num'] = stats[ftt.SERIAL_NUM]
+                self.config['vendor_id'] = stats[ftt.VENDOR_ID]
 
-            stats = self.tape_driver.ftt.get_stats()
-            self.config['product_id'] = stats[ftt.PRODUCT_ID]
-            self.config['serial_num'] = stats[ftt.SERIAL_NUM]
-            self.config['vendor_id'] = stats[ftt.VENDOR_ID]
-
-            if self.state is IDLE:
                 if self.maybe_clean():
                     have_tape = 0
-            
-            if have_tape == 1:
-                status = self.tape_driver.verify_label(None)
-                if status[0]==e_errors.OK:
-                    self.current_volume = status[1]
-                    self.state = HAVE_BOUND
-                    Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
-                    self.dismount_time = time.time() + self.default_dismount_delay
-                else:
-                    have_tape=0
-            self.tape_driver.close()
-            if self.state is IDLE and not have_tape:
-                Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
-                vol_ticket = { "external_label": "Unknown",
-                               "media_type":self.media_type}
-                mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+
+                if have_tape == 1:
+                    status = self.tape_driver.verify_label(None)
+                    if status[0]==e_errors.OK:
+                        self.current_volume = status[1]
+                        self.state = HAVE_BOUND
+                        Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
+                        self.dismount_time = time.time() + self.default_dismount_delay
+                    else:
+                        have_tape=0
+                self.tape_driver.close()
+                if not have_tape:
+                    Trace.log(e_errors.INFO, "performing precautionary dismount at startup")
+                    vol_ticket = { "external_label": "Unknown",
+                                   "media_type":self.media_type}
+                    mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
 
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
