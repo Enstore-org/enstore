@@ -1,13 +1,17 @@
 import errno
-from SocketServer import *
+from SocketServer import UDPServer, TCPServer
+
+# Import SOCKS module if it exists, else standard socket module socket
+try:
+    import SOCKS; socket = SOCKS
+except ImportError:
+    import socket
 
 dict = {}
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
 # Note that the UDPServer.get_request actually read the data from the socket
-
-import socket
 
 class DispatchingWorker:
 
