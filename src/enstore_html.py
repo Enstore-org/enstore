@@ -985,7 +985,7 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	akeys.sort()
 	for akey in akeys:
 	    alarm = alarms[akey].list_alarm()
-	    tr = HTMLgen.TR((HTMLgen.TD(enstore_status.format_time(time.mktime(alarm[0])))))
+	    tr = HTMLgen.TR((HTMLgen.TD(enstore_status.format_time(time.mktime(eval(alarm[0]))))))
 	    for item in alarm[1:]:
 		tr.append(HTMLgen.TD(item))
 	    table.append(tr)
