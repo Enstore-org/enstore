@@ -152,7 +152,7 @@ text('yellow',640,348,'Helvetica-BoldOblique',3,18,1,0,0,1,98,23,384,0,18,5,0,0,
 text('black',744,348,'Times-Italic',2,18,1,0,0,1,186,22,386,0,17,5,0,0,0,0,0,2,0,0,0,0,"",0,0,0,[
 	"(python interface to pnfs)"]).
 text('black',384,1084,'Times-Roman',0,34,1,0,0,1,515,39,402,0,30,9,0,0,0,0,0,2,0,0,0,0,"",0,0,0,[
-	"Total SLOCS: 17030, includes C code "]).
+	"Total SLOCS: 17030, Python and C code "]).
 text('black',32,1256,'Times-Roman',0,24,1,0,0,1,303,28,427,0,22,6,0,0,0,0,0,2,0,0,0,0,"",0,0,0,[
 	"SLOCS calculated Jan 4, 1999"]).
 text('red',428,900,'Helvetica-BoldOblique',3,18,1,0,0,1,118,23,430,0,18,5,0,0,0,0,0,2,0,0,0,0,"",0,0,0,[
