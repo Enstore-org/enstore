@@ -214,7 +214,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE System Status"
 	self.script_title_gif = "ess.gif"
-	self.description = "%s%sCurrent status of the running Enstore system as listed in the %s. This page is created by the Inquisitor and periodically updated."%(NBSP, NBSP, 										     HTMLgen.Href("config_enstore_system.html",
+	self.description = "%s%sCurrent status of the running Enstore system as listed in the %s. This page is created by the Inquisitor."%(NBSP, NBSP, 										     HTMLgen.Href("config_enstore_system.html",
 							               "Configuration file"))
 
     # output the list of shortcuts on the top of the page
@@ -691,7 +691,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Encp History"
 	self.script_title_gif = "encph.gif"
-	self.description = "%s%sHistory of the most recent Encp commands. This page is created by the Inquisitor and periodically updated."%(NBSP, NBSP)
+	self.description = "%s%sHistory of the most recent Encp commands. This page is created by the Inquisitor."%(NBSP, NBSP)
 
     # create the body of the page. the data is a list of lists.  each outer list element
     # is a list of the encp data i.e. - 
@@ -747,7 +747,7 @@ class EnConfigurationPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Configuration"
 	self.script_title_gif = "en_cfg.gif"
-	self.description = "%s%sCurrent Enstore Configuration. This page is created by the Inquisitor and periodically updated."%(NBSP, NBSP)
+	self.description = "%s%sCurrent Enstore Configuration. This page is created by the Inquisitor."%(NBSP, NBSP)
 
     # create the body of the page. the incoming data is a python dictionary
     def body(self, data_dict):
@@ -804,7 +804,7 @@ class EnMiscPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Miscellany"
 	self.script_title_gif = "en_misc.gif"
-	self.description = "%s%sMiscellaneous Enstore information specified by the user (in the configuration file) for inclusion here. This page is created by the Inquisitor and periodically updated."%(NBSP, NBSP)
+	self.description = "%s%sMiscellaneous Enstore information specified by the user (in the configuration file) for inclusion here. This page is created by the Inquisitor."%(NBSP, NBSP)
 
     # create the body of the page, the incoming data is a list of strings
     def body(self, (data_list, html_dir)):
@@ -852,7 +852,7 @@ class EnLogPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Log Files"
 	self.script_title_gif = "en_log.gif"
-	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor and periodically updated. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
+	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
 
     def logfile_date(self, logfile):
 	(prefix, year, month, day) = string.split(logfile, '-')
