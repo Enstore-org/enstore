@@ -151,6 +151,14 @@ while [ $done -gt 0 ]; do
     echo Last   file = $filel
     echo 
     for f in $thefiles; do
+      #List the number of active volumes.  This will give more meaningful
+      # output for the administrators.
+      library=`enstore vol --vol $tape | grep library | cut -d' ' -f3`
+      library=`echo $library | tr ",'" "  " | sed "s/ //"`
+      cmd="enstore lib --vols $library"
+      echo $cmd
+      eval $cmd
+
       cmd="encp --verbose=3  --max-resubmit=7 --delayed-dismount=1 $f /dev/null"
       echo $cmd
       eval $cmd
