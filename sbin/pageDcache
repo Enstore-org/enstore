@@ -8,6 +8,7 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 N=`date +"%j"` #day of year
 N1=`expr $N - 1`
+
 case $gang in
   stken) w=/pnfs/eagle/dcache-tests/$N.dcache_page_$$
          l=/pnfs/eagle/dcache-tests/$N1
@@ -22,16 +23,21 @@ case $gang in
          dcache=d0endca3a
           ;;
        *) namespace="UNKNOWN"
+          echo `date` UNKNOWN gang
+	  exit 1
           ;;
 esac
 
-read_back=/tmp/dcache_page_read_back
+read_back=/tmp/dcache_page_read_back_$$
 rm -f $read_back
 
-test_file=/tmp/dcache_page_file
+test_file=/tmp/dcache_page_file_$$
 rm -f $test_file
 cp /var/log/messages $test_file
-if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 1; fi
+if [ $? != 0 ]; then echo `date` ERROR: can not cp /var/log/messages; exit 2; fi
+
+write_in_progress=/tmp/dcache_page_write_in_progress_$$
+read_in_progress=/tmp/dcache_page_read_in_progress_$$
 
 if [ -z "${DCAP_DIR:-}" ]; then
   source /usr/local/etc/setups.sh
@@ -62,42 +68,88 @@ ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
 # ${krbdir}/klist -fea
 fi
 
-# dccp write
-echo `date` dccp write  dccp $test_file $w
-                        dccp $test_file $w
-stat6=$?
+#############################################################################################################################
 
-if [ $stat6 -ne 0 ]; then
-   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed."
+# dccp write
+
+try=0
+maxtry=5
+delay=30
+stat=1
+rm -f $write_in_progress
+touch $write_in_progress
+if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $write_in_progress; exit 7; fi
+
+while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+  try=`expr $try + 1`
+  rm -f $w
+  echo `date` Try $try of $maxtry: dccp write dccp $test_file $w
+                                   dccp $test_file $w
+  stat=$?
+  if [ $stat -eq 0 ]; then 
+    rm -f $write_in_progress
+  else
+    echo `date` sleep $delay
+                sleep $delay
+  fi
+done
+ 
+if [ -r $write_in_progress ]; then
+   ##enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed."
    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache write failed." | Mail bakken@fnal.gov
-   exit $stat6
+   exit 6
 fi
 
 
-# dccp readback
-echo `date` dccp readback dccp $w $read_back
-                          dccp $w $read_back
-stat7=$?
+#############################################################################################################################
 
-if [ $stat7 -ne 0 ]; then
-   enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed"
+# dccp readback
+
+try=0
+maxtry=5
+delay=30
+stat=1
+rm -f $read_in_progress
+touch $read_in_progress
+if [ $? -ne 0 ]; then echo `date` ERROR: Can not touch $read_in_progress; exit 5; fi
+
+while [ $stat -ne 0 -a $try -lt $maxtry ]; do
+  try=`expr $try + 1`
+  rm -f $read_back
+  echo `date` Try $try of $maxtry: dccp readback dccp readback dccp $w $read_back
+                                                               dccp $w $read_back
+  stat=$?
+  if [ $stat -eq 0 ]; then 
+    rm -f $read_in_progress
+  else
+    echo `date` sleep $delay
+                sleep $delay
+  fi
+done
+
+if [ -r $read_in_progress ]; then
+   ##enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed"
    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache read failed" | Mail bakken@fnal.gov
-   exit $stat7
-else
-   cmp $test_file $read_back
-   stat7c=$?
-   if [ $stat7c -ne 0 ]; then
-      enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed"
-      echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed" | Mail bakken@fnal.gov
-      exit $stat7c
-   fi
+   exit 4
+fi
+
+#############################################################################################################################
+
+# file comparison
+
+cmp $test_file $read_back
+if [ $? -ne 0 ]; then
+    ##enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed"
+    echo enstore alarm --raise --severity "A" --root-error "Ball Red: $dcache dcache cmp failed" | Mail bakken@fnal.gov
+    exit $3
 fi
 
 
 #clean up of old junk
-echo cleanup rm -f ${l}*
-             rm -f ${l}*
-
+echo cleanup: rm -f ${l}*
+              rm -f ${l}*
+echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
+              rm -f $test_file $read_back $write_in_progress $read_in_progress
 
 echo `date` Finished.
 exit 0
