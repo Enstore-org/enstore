@@ -159,6 +159,7 @@ DONT_ASK = "dont-ask"                        # super_remove
 DONT_ALARM = "dont-alarm"
 DONT_LOG = "dont-log"
 DONT_PRINT = "dont-print"
+DONT_SHOW = "dont-show"                      #entv
 DOWN = "down"                                #pnfs, inqusitor, mover
 DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"                      #pnfs
@@ -316,6 +317,7 @@ valid_option_list = [
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESCRIPTION, DESTROY,
     DISMOUNT,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
+    DONT_SHOW,
     DOWN, DUMP, DUPLICATE,
     ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
