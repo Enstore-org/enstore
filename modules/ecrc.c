@@ -1,4 +1,4 @@
-/*  $Id$
+/*  $Id$ */
 
 /* Macros for Large File Summit (LFS) conformance. */
 #define _FILE_OFFSET_BITS 64
@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define BUF_SIZE 1048576L
 
