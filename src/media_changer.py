@@ -62,6 +62,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     work_cleaning_list = []
 
     def __init__(self, medch, max_work, csc):
+	self.logdetail = 1
         self.name = medch
         self.name_ext = "MC"
         generic_server.GenericServer.__init__(self, csc, medch)
@@ -398,8 +399,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self, medch, max_work, csc)
 
-	self.logdetail = 1
-	
         # robot choices are 'R1', 'R2' or 'Both'
         if self.mc_config.has_key('RobotArm'):   # error if robot not in config
             self.robotArm = string.strip(self.mc_config['RobotArm'])
