@@ -91,7 +91,7 @@ class Quota:
 		q = "select sg_count.library, sum(requested) as requested, \
 			sum(authorized) as authorized, \
 			sum(quota) as quota, \
-			sum(count) as allocated \
+			sum(count) as allocated from sg_count \
 			left outer join quota on \
 			sg_count.library = quota.library and \
 			sg_count.storage_group = quota.storage_group \
