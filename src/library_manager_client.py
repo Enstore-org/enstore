@@ -24,6 +24,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
                                                          ".library_manager",
                                                          MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
+        self.send_to = 20
+        self.send_tries = 2
         self.u = udp_client.UDPClient()
 
     def send (self, ticket, rcv_timeout=0, tries=0) :
@@ -105,7 +107,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                   "unique_id"    : time.time() }
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, self.send_to,self.send_tries)
         if ticket['status'][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc."+work+": sending ticket"\
                   +repr(ticket)
