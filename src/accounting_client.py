@@ -32,13 +32,16 @@ class accClient(generic_client.GenericClient):
 		self.rcv_timeout = rcv_timeout
 		self.rcv_tries = rcv_tries
 
+	# send_no_wait
 	def send2(self, ticket):
 		self.u.send_no_wait(ticket, self.server_address)
 
+	# generic test
 	def hello(self):
 		ticket = {'work': 'hello'}
 		return self.send(ticket, 30, 1)
 
+	# generic test for send_no_wait
 	def hello2(self):
 		ticket = {'work': 'hello'}
 		return self.send2(ticket)
@@ -53,7 +56,7 @@ class accClient(generic_client.GenericClient):
 			'start': start}
 		self.send2(ticket)
 
-	def log_finish_mount(self, volume, finish, state='M'):
+	def log_finish_mount(self, volume, finish=time.time(), state='M'):
 		ticket = {
 			'work': 'log_finish_mount',
 			'node': self.node,
@@ -62,7 +65,10 @@ class accClient(generic_client.GenericClient):
 			'state': state}
 		self.send2(ticket)
 
-	def log_start_dismount(self, volume, type, start):
+	def log_finish_mount_err(self, volume, finish=time.time(), state='E'):
+		self.log_finish_mount(volume, finish, state)
+
+	def log_start_dismount(self, volume, type, start=time.time()):
 		ticket = {
 			'work': 'log_start_dismount',
 			'node': self.node,
@@ -72,7 +78,7 @@ class accClient(generic_client.GenericClient):
 			'start': start}
 		self.send2(ticket)
 
-	def log_finish_dismount(self, volume, finish, state='D'):
+	def log_finish_dismount(self, volume, finish=time.time(), state='D'):
 		ticket = {
 			'work': 'log_finish_dismount',
 			'node': self.node,
@@ -81,10 +87,16 @@ class accClient(generic_client.GenericClient):
 			'state': state}
 		self.send2(ticket)
 
+	def log_finish_dismount_err(self, volume, finish=time.time(), state='F'):
+		self.log_finish_dismount(volume, finish, state)
+
 	def log_encp_xfer(self, date, src, dst, size, volume, rate,
 		net_rate, drive_rate, mover, drive_id, drive_sn,
 		elapsed, media_changer, mover_interface, driver,
 		storage_group, encp_ip, encp_id, rw):
+
+		if not date:
+			date = time.time()
 
 		ticket = {
 			'work'		: 'log_encp_xfer',
