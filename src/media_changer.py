@@ -359,10 +359,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
 	    # ok, this is a test only - see if we can mount readonly for 9840 and 9940 tapes
 	    media_type = ticket['vol_ticket']['media_type']
-	    if ticket['vol_ticket']['media_type'] in ('9840','9940') and ticket['function'] == 'mount':
+	    if ticket['vol_ticket']['media_type'] in ('9840','9940','9940B') and ticket['function'] == 'mount':
 		    if ticket['vol_ticket']['system_inhibit'][1] in ('full','readonly','migrated') or ticket['vol_ticket']['user_inhibit'][1] in ('full','readonly'):
 			    media_type=media_type+"READONLY"
 	    #print ticket['function'],ticket['vol_ticket']['external_label'],ticket['vol_ticket']['system_inhibit'][1], ticket['vol_ticket']['user_inhibit'][1],media_type
+            Trace.trace(11, 'mcDoWork> child doing %s. Media type %s'%(msg, media_type))
             sts = function(
                 ticket['vol_ticket']['external_label'],
                 ticket['drive_id'],
