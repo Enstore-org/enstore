@@ -53,7 +53,7 @@ def do_work(intf):
 	netstat = monitor_client.do_real_work(summary, intf.config_host, intf.config_port,
 					      intf.html_gen_host)
     else:
-	netstat = {}
+	netstat = {enstore_constants.NETWORK : enstore_constants.WARNING}
     # no media status yet.
     medstat = {}
 
