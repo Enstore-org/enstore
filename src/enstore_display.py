@@ -550,36 +550,48 @@ class Mover:
             self.undraw_progress()
             return
         elif self.progress_bar_bg:
+            new_location = self.get_bar_position(100)
             self.display.coords(self.progress_bar_bg,
-                                self.get_bar_position(100))
+                                new_location[0], new_location[1],
+                                new_location[2], new_location[3])
         else:
+            new_location = self.get_bar_position(100)
             #If both are not to be drawn, then this will draw the correct one.
             self.progress_bar_bg = self.display.create_rectangle(
-                self.get_bar_position(100),
+                new_location[0], new_location[1],
+                new_location[2], new_location[3],
                 fill=progress_bg_color, outline="")
 
         # Redraw the old progress gauge.
         if self.percent_done == None:
             pass
         elif self.progress_bar:
+            new_location = self.get_bar_position(percent_done)
             self.display.coords(self.progress_bar,
-                                self.get_bar_position(percent_done))
+                                new_location[0], new_location[1],
+                                new_location[2], new_location[3])
         else:
+            new_location = self.get_bar_position(percent_done)
             #If both are not to be drawn, then this will draw the correct one.
             self.progress_bar = self.display.create_rectangle(
-                self.get_bar_position(percent_done),
+                new_location[0], new_location[1],
+                new_location[2], new_location[3],
                 fill=progress_bar_color, outline="")
 
         # Redraw the old alternate progress gauge.
         if self.alt_percent_done == None:
             pass
         elif self.progress_alt_bar:
+            new_location = self.get_bar_position(alt_percent_done)
             self.display.coords(self.progress_alt_bar,
-                                self.get_bar_position(alt_percent_done))
+                                new_location[0], new_location[1],
+                                new_location[2], new_location[3])
         else:
+            new_location = self.get_bar_position(alt_percent_done)
             #If both are not to be drawn, then this will draw the correct one.
             self.progress_alt_bar = self.display.create_rectangle(
-                self.get_bar_position(alt_percent_done),
+                new_location[0], new_location[1],
+                new_location[2], new_location[3],
                 fill=progress_alt_bar_color, outline="")
 
         if self.rate > 0:  #write transfer, make media bar on top.
@@ -615,7 +627,6 @@ class Mover:
                self.y + self.progress_bar_offset1.y,
                self.x + self.progress_bar_offset2.x + offset,
                self.y + self.progress_bar_offset2.y)
-        
         return bar
     
     def draw_buffer(self, buffer_size):
@@ -1733,6 +1744,11 @@ class Display(Tkinter.Canvas):
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
     def get_mover_color(self, library):
+        #In the event that that mover belongs to mulitple libraries,
+        # pick the first one.
+        if type(library) == types.ListType:
+            library = library[0]
+
         #If this is the first mover from this library.
         if not getattr(self, "library_colors", None):
             self.library_colors = {}
