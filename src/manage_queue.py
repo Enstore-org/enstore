@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # manage the pending Library Managerwork queue
-__rcsid__="$Id"
+__rcsid__="$Id$"
 import string
 import mpq  # binary search / put
 import time
