@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # start enstore processes on the current node
 
 
-opts_wo_args='ping|nocheck'
+opts_wo_args='ping|nocheck|new'
 opts_w_args='xterm|just'
 USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 while opt=`expr "${1-}" : '--\(.*\)'`;do
@@ -307,7 +307,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 echo "$i Mover already started"
             else
                 echo "Starting $i Mover"
-                cmd="python $ENSTORE_DIR/src/mover.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
+                cmd="python $ENSTORE_DIR/src/mover${opt_new+.new}.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
