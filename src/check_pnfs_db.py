@@ -9,7 +9,16 @@ OK = 0
 FAIL = 1
 
 #tdir="/home/aik/tape_inventory_010723/"
-tdir="/diska/tape_inventory/"
+tdir="/diska/tape-inventory/"
+
+
+def Print(msg,output):
+    output.write(msg)
+    print msg[:-1]
+
+def CleanJunk(msg):
+    table='                                 !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~                                                                                                                                 '
+    return string.strip(string.translate(msg,table," \"'{}"))
 
 def generate_volume_list(volume_file):
     f=open(volume_file, 'r')
@@ -38,8 +47,8 @@ def readlayer(fullname,layer,ferr):
         return (l,OK)
     except :
         exc, msg, tb = sys.exc_info()
-        ferr.write ( "Error ERL: Can't read file '%s', errors : exc='%s' msg='%s'\n" %
-                     (fname,str(exc),str(msg)) )
+        Print( "Error ERL: Can't read file '%s', errors : exc='%s' msg='%s'\n" %
+                     (fname,str(exc),str(msg)),ferr )
         l = []
         return (l,FAIL)
   
@@ -50,19 +59,20 @@ def file_stat(kind,fname,comment,ferr):
         stat_info_vmap=os.stat(fname)
         return 0
     except OSError,detail:
-        ferr.write ( "%s: Stat failed for the file '%s' (%s), detail :%s\n" %
-                     (kind,fname,comment,detail) )
+        Print ( "%s: Stat failed for the file '%s' (%s), detail :%s\n" %
+                     (kind,fname,comment,detail),ferr )
     except :
         exc, msg, tb = sys.exc_info()
-        ferr.write ( "%s: Stat failed for the file '%s' (%s), errors : exc='%s' msg='%s'\n" %
-                     (kind,fname,comment,str(exc),str(msg)) )
-        ferr.write ( "DEBUG: stat failed ... exc= '%s' msg= '%s'\n" % (exc, msg) )
+        Print  ( "%s: Stat failed for the file '%s' (%s), errors : exc='%s' msg='%s'\n" %
+                     (kind,fname,comment,str(exc),str(msg)), ferr )
+        Print ( "DEBUG: stat failed ... exc= '%s' msg= '%s'\n" % (exc, msg),ferr )
     return -1
 
-def check_volume(label):
+def check_volume(label,selected_library=""):
     err    = 0
     warn   = 0
     fcount = 0
+    vinfo={}
     ferrname = label+".err" 
     
     f=open(tdir+label,'r')
@@ -72,11 +82,27 @@ def check_volume(label):
     l = lines[0].split()[1]
     
     if l != label:
-        ferr.write ("Error ELBL: Labels do not match, %s -> %s\n" %(label,l))
+        Print ("Error ELBL: Labels do not match, %s -> %s\n" %(label,l),ferr)
         err = err +1
         ferr.close()       
-        return (-1,err,warn,fcount)
+        return (-1,err,warn,fcount,vinfo)
     
+    jsize = len(lines)
+    started=0
+    line=jsize-1
+    while line >=0:
+        if len(lines[line])>1:
+            aline=lines[line].split(':')
+            vinfo[CleanJunk(aline[0])] = CleanJunk(aline[1])
+            started = 1
+        elif started:
+            break
+        line = line-1
+        
+    if len(selected_library)>0:
+        if vinfo['library']!=selected_library:
+            return (-2,err,warn,fcount,vinfo)
+        
     del(lines[0])
     last_acc = lines[0].split()[3]
     
@@ -84,10 +110,11 @@ def check_volume(label):
         #print "DEBUG: OK, never accessed"
         ferr.close()
         os.unlink(ferrname)
-        return (0,err,warn,fcount)
+        return (0,err,warn,fcount,vinfo)
     
     for i in range(0,6):
         del( lines[0])    
+
 
     # make list
     list  = []
@@ -103,7 +130,7 @@ def check_volume(label):
         elif len(field) == 0:
             break
         else :
-            ferr.write( "Error EFL: File record field length is not 6 (%d), record '%s'\n" %(len(field)),field )
+            Print( "Error EFL: File record field length is not 6 (%d), record '%s'\n" %(len(field),field),ferr)
             break
         
     # Process list
@@ -148,8 +175,8 @@ def check_volume(label):
 
         if (len(layer1) != 1) :
             err = err +1
-            ferr.write("Error L1: wrong L1 layer length= %d, layer=%s " % (len(layer1),layer1) )
-            ferr.write("invt bf_id %s  file '%s'\n" % (entry["bf_id"],entry["fname"]) )
+            Print ("Error L1: wrong L1 layer length= %d, layer=%s " % (len(layer1),layer1),ferr )
+            Print ("invt bf_id %s  file '%s'\n" % (entry["bf_id"],entry["fname"]),ferr )
             continue
         
         # Check BF_ID
@@ -165,7 +192,7 @@ def check_volume(label):
             if( OK_rdL4 and len(layer)>8 and ( bfid_l1 == layer[8][:-1] ) ) :
                 same = " (same as in L4)"
             msg = "Wrong BF_ID pnfs: %s -> inv: %s file '%s' del='%s'%s." % (bfid_l1, bfid_inv, entry["fname"], entry["del_flag"], same)
-            ferr.write ( "%s: %s\n" % (err_kind, msg) )
+            Print ( "%s: %s\n" % (err_kind, msg),ferr )
 
         if( not OK_rdL4 ) :
             # Can not check current entry anymore, skip to the next file
@@ -173,8 +200,8 @@ def check_volume(label):
 
         if (len(layer) != 9) and (len(layer) != 10) :
             err = err +1
-            ferr.write("Error L4: wrong L4 layer length= %d, layer=%s " % (len(layer),layer) )
-            ferr.write("invt bf_id %s  file '%s'\n" % (entry["bf_id"],entry["fname"]) )
+            Print ("Error L4: wrong L4 layer length= %d, layer=%s " % (len(layer),layer),ferr )
+            Print ("invt bf_id %s  file '%s'\n" % (entry["bf_id"],entry["fname"]),ferr )
             continue
 
         #   for level 4
@@ -190,7 +217,7 @@ def check_volume(label):
                 err_kind = "Warn. L4"
                 msg = msg + (" Actual pnfs volume %s referenced as %s (inv), loc %s" %
                              (layer[0][:-1], label, layer[1][:-1]))
-            ferr.write ( "%s: %s\n" % (err_kind, msg) )
+            Print ( "%s: %s\n" % (err_kind, msg),ferr )
             vol_map_name = layer[5][:-1]
 
             if file_stat( "Warn. L4",vol_map_name,"Vol_Map",ferr ) :
@@ -206,18 +233,20 @@ def check_volume(label):
     if( err == 0 and warn == 0 ):
         os.unlink(ferrname)
 
-    return (0, err, warn,fcount)
+    return (0, err, warn,fcount,vinfo)
 
 #--------------------------------------------------
 # Main()
 t1 = time.time()
 flog = open("AUDIT.log","w")
 
-volume_list=generate_volume_list(tdir+"VOLUMES_DEFINED")
-#volume_list= ["VO0185",]
 #volume_list= ["VO1059","VO1060","VO1061","VO1062","VO1063","VO1064",]
 #volume_list= ["VO1002",]
-#volume_list= ["VO0242",]
+
+if len(sys.argv)==1 or sys.argv[1] == "VOLUMES_DEFINED":
+    volume_list=generate_volume_list(tdir+"VOLUMES_DEFINED")
+else:
+    volume_list = sys.argv[1:]
 
 nvols = len(volume_list)
 
@@ -228,12 +257,14 @@ vcount = 0
 
 for volume in volume_list:
     print "Volume %4d of %4d, %s" % (vcount+1, nvols, volume)
-    (ret,err,warn,fcount) = check_volume(volume)
+    (ret,err,warn,fcount,vinfo) = check_volume(volume,'samm2')
     flag = "OK "
     if (ret != 0 or err !=0 or warn !=0 ):
         flag = "BAD"
+    if ret==-2:
+        flag="????"
         
-    flog.write( "%s %s  \tfiles=%6d rc=%3d  err=%5d  warn=%5d\n" % (flag,volume,fcount,ret,err,warn))
+    Print( "%s %s %s \tfiles=%6d rc=%3d  err=%5d  warn=%5d\n" % (flag,volume,vinfo['volume_family'],fcount,ret,err,warn),flog)
     vcount = vcount+1
     if( vcount == VMAX ) :
         break
