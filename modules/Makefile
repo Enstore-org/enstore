@@ -37,6 +37,9 @@ adler32.a: adler32.c
 tape_copy: tape_copy.c
 	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_copy tape_copy.c \
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
+tape_write: tape_write.c
+	$(CC) -I. -I$(FTT_DIR)/ftt_lib -o tape_write tape_write.c \
+	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
 
 m2probe: m2probe.c
 	$(CC) -I. -I$(FTT_DIR)/include -o m2probe m2probe.c -L$(FTT_DIR)/lib -lftt $(LIBDS)
@@ -55,7 +58,7 @@ installpyc:
 
 clean:
 	-rm Makefile.modules
-	-rm -f *.a *.o *.so *~ *# so_locations sedscript enroute2 m2probe
+	-rm -f *.o *.so *~ *# so_locations sedscript enroute2 m2probe
 	-rm -rf mksetup
 	-rm -rf tape_copy
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
