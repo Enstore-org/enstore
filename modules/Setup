@@ -82,3 +82,6 @@ socket_ext socket_ext_wrap.c
 strbuffer  strbuffer_wrap_thread.c -D`uname`
 
 ftt_low ftt_low_wrap_thread.c  -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
+
+runon runon_wrap.c runon.c
+enroute enroute_wrap.c enroute.c
