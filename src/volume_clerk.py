@@ -359,7 +359,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             del self.dict[vol]
             # take care of bfid_db
             self.bfid_db.delete_all_bfids(vol)
-            stutus = e_errors.OK, None
+            status = e_errors.OK, None
 
         # recycling it?
 
