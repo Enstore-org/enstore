@@ -81,26 +81,20 @@ pinfo_helper()  { choice=$1
                   c=0
                   echo "$xref" | while read x; do
                     c=`expr $c + 1`
-                    if   [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    elif [ $c -eq $choice ] ; then echo $x; break
-                    echo "parse-error"; break
-                    fi
+                    if [ $c -gt 8 ] ; then echo "parse-error"; break; fi
+                    if [ $c -eq $choice ] ; then echo $x; break; fi
                   done ; }
 
 pinfo()     { bfid=`pbfid $@`
               xref=`pxref $@`
               volume="`pinfo_helper 1`"
-              cookie="`pinfo_helper 2`"
-              file_family="`pinfo_helper 3`"
-              orig_name="`pinfo_helper 4`"
-              map_file="`pinfo_helper 5`"
-              pnfsid_file="`pinfo_helper 6`"
-              pnfsid_map="`pinfo_helper 7`"
+              location_cooke="`pinfo_helper 2`"
+              size="`pinfo_helper 3`"
+              file_family="`pinfo_helper 4`"
+              orig_name="`pinfo_helper 5`"
+              map_file="`pinfo_helper 6`"
+              pnfsid_file="`pinfo_helper 7`"
+              pnfsid_map="`pinfo_helper 8`"
               filename=`ppath $pnfsid_file`
               if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
                    `echo $SHELL | grep -c /sh`   -ne 0 -o \
@@ -108,7 +102,8 @@ pinfo()     { bfid=`pbfid $@`
                    `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
               echo "bfid=\"$bfid\";
 volume=\"$volume\";
-cookie=\"$cookie\";
+location_cookie=\"$cookie\";
+size=\"$size\";
 file_family=\"$file_family\";
 filename=\"$filename\";
 orig_name=\"$orig_name\";
@@ -117,14 +112,15 @@ pnfsid_file=\"$pnfsid_file\";
 pnfsid_map=\"$pnfsid_map\";"
               else
               echo "set bfid=\"$bfid\";
-set volume=\"$volume\";
-set cookie=\"$cookie\";
-set file_family=\"$file_family\";
-set filename=\"$filename\";
-set orig_name=\"$orig_name\";
-set map_file=\"$map_file\";
-set pnfsid_file=\"$pnfsid_file\";
-set pnfsid_map=\"$pnfsid_map\";"
+set volume \"$volume\";
+set location_cookie \"$cookie\";
+set size \"$size\";
+set file_family \"$file_family\";
+set filename \"$filename\";
+set orig_name \"$orig_name\";
+set map_file \"$map_file\";
+set pnfsid_file \"$pnfsid_file\";
+set pnfsid_map \"$pnfsid_map\";"
                fi; }
 
 pls()       { eval ls -alsF `p_use $@` ; }
@@ -168,10 +164,12 @@ pshowid()   { u_n="Usage: pshowid id"
 
 pnameof()   { u_n="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_n; return; fi
+              echo cat  "\"`p_pnfs`.(nameof)($1)\"" 1>&2
               eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
 
 pparent()   { u_p="Usage: pnameof id"
               if [ -z "${1-}" ] ; then echo $u_p; return; fi
+              echo cat  "\"`p_pnfs`.(parent)($1)\"" 1>&2
               eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
 
 ppath()     { u_p="Usage: ppath id"
@@ -179,8 +177,16 @@ ppath()     { u_p="Usage: ppath id"
               filename=""
               id=$1
               while /bin/true;  do
-                filename=`pnameof $id 2>/dev/null`/$filename
+	        #echo id=$id
+		echo `pnameof $id` 1>/dev/null
+		f2=`pnameof $id 2>/dev/null`
                 if [ $? -ne 0 ] ; then break; fi
+		filename=$f2/$filename
+		#echo filename=$filename
+                #echo filename=`pnameof $id 2>/dev/null`/$filename
+                #filename=`pnameof $id 2>/dev/null`/$filename
+                if [ $? -ne 0 ] ; then break; fi
+                #echo id=`pparent $id`
                 id=`pparent $id`
               done
               filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
