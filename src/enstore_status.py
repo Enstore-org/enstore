@@ -479,7 +479,7 @@ class EncpFile:
     def output_encp(self, lines, key):
 	Trace.trace(12,"{output_html_encp ")
 	if lines != []:
-	    str = self.format_encp(lines)
+	    str = self.format_encp(lines, key)
 	else:
 	    str = self.format_no_encp()
 	self.text[key] = str+"\n"
@@ -590,7 +590,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	return "<br><pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
 
     # format the encp info taken from the log file
-    def format_encp(self, lines):
+    def format_encp(self, lines, key):
 	Trace.trace(13,"{format_encp ")
 	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
