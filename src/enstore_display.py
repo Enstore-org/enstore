@@ -4,7 +4,6 @@ import cmath
 import exceptions
 import math
 import os
-import pathplan
 import select
 import socket
 import string
@@ -58,8 +57,13 @@ def my_atof(s):
         s = s[:-1] #chop off any trailing "L"
     return string.atof(s)
 
-def get_font(height_wanted, family='Arial'):
+_font_cache = {}
 
+def get_font(height_wanted, family='Arial'):
+    print "get_font"
+    f = _font_cache.get((height_wanted, family))
+    if f:
+        return f
     size = height_wanted * 2 #We know this will be too big
     while size > 0:
         f = tkFont.Font(size=size, family=family)
@@ -69,10 +73,11 @@ def get_font(height_wanted, family='Arial'):
             break
         else:
             size = size - 1 #Try a little bit smaller...
-
+    _font_cache[(height_wanted, family)] = f
     return f
 
 def calc_font(ht_of_object, family):
+    print "calc_font"
     ##XXXXXXXXXXXXXXXX  Not quite right yet....
     size = ht_of_object-4
     f = tkFont.Font(size=size, family=family)
@@ -209,7 +214,8 @@ class Mover:
         self.name       = name
         self.N          =N
         self.width      = 170
-        self.x, self.y  = 0, 0 # Not placed yet             
+        self.x, self.y  = 0, 0 # Not placed yet
+        self.column = 0 #Movers may be laid out in multiple columns
         self.x, self.y  = self.position(N)     
         self.font = calc_font(12, 'Arial')
         #These 3 pieces make up the progress gauge display
@@ -464,11 +470,13 @@ class Mover:
             x = self.display.width - ((self.display.width/3)+len_text)
         else:
             if k < half:
-                y = (k*2)*((self.display.height-40)  / N)+ 2*half
                 x = self.display.width - ((self.display.width/1.5)+len_text)
+                y = (k*2)*((self.display.height-40)  / N)+ 2*half
             else:
-                y = (((k-half)*2)*(self.display.height-40))  / N 
+                self.column = 1
                 x = self.display.width -  ((self.display.width/3.5)+len_text)
+                y = (((k-half)*2)*(self.display.height-40))  / N 
+        self.display.mover_columns[self.column] = int(x)
         return int(x), int(y)
     
     def position(self, N):
@@ -638,14 +646,14 @@ class Client:
         client_active_color = colors('client_active_color')
         
         x, y = self.x, self.y
-        self.cli_width = self.display.width/12
-        self.cli_height =  self.display.height/28
+        self.width = self.display.width/12
+        self.height =  self.display.height/28
         if self.waiting:
             color = client_wait_color
         else:
             color    = client_active_color
-        self.outline = self.display.create_oval(x, y, x+self.cli_width, y+self.cli_height, fill=color)
-        self.label   = self.display.create_text(x+self.cli_width/2, y+self.cli_height/2, text=self.name, font=self.font)
+        self.outline = self.display.create_oval(x, y, x+self.width, y+self.height, fill=color)
+        self.label   = self.display.create_text(x+self.width/2, y+self.height/2, text=self.name, font=self.font)
         
     def undraw(self):
         self.display.delete(self.outline)
@@ -688,16 +696,25 @@ class Connection:
         self.line= None
         
     def draw(self):
-        print "add_connection start"
-        mover_names = display.movers.keys()
-        mover_names.sort()
-        print "calling obspath"
-        path = pathplan.obspath(self.display.config, (self.mover.x, self.mover.y+self.mover.height/2), self.mover.index, (self.client.x + self.client.cli_width, self.client.y + self.client.cli_height/2.0), pathplan.POLYID_NONE )
-        print "path=", path
-        print "calling routespline"
-        spline = pathplan.routespline(self.display.barriers, path, (0,0), (0,0))
-        print "spline=", spline
-        self.line = self.display.create_line(spline, smooth='spline', dash='...-', width = 2)
+        #print self.mover.name, " connecting to ", self.client.name
+
+        path = []
+        mx,my = self.mover.x, self.mover.y + self.mover.height/2.0 # middle of left side of mover
+        path.extend([mx,my])
+                   
+        if self.mover.column == 1:
+            mx = self.display.mover_columns[0]
+            path.extend([mx,my])
+            
+        cx, cy = (self.client.x + self.client.width,
+                      self.client.y + self.client.height/2.0) #middle of right side of client
+        x_distance = mx - cx
+        path.extend([mx-x_distance/3., my, cx+x_distance/3., cy, cx, cy])
+        self.line = self.display.create_line(path,
+                                             dash='...-',width=2,
+                                             dashoffset = self.dashoffset,
+                                             smooth=1)
+
    
     def undraw(self):
         self.display.delete(self.line)
@@ -797,13 +814,11 @@ class Display(Tkinter.Canvas):
         self.stopped = 0
         self.width =  int(self['width'])
         self.height = int(self['height'])
-
-        self.tk.eval("package require Tkspline")
         self.pack()
         
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
-        self.config= None
+        self.mover_columns = {} #x-coordinates for columns of movers
         self.clients          = {} ## dictionary, key = client name, value is instance of class Client
         self.client_positions = {} #key is position index (0,1,-1,2,-2) and value is Client
         self.volumes          = {}
@@ -829,7 +844,6 @@ class Display(Tkinter.Canvas):
         for k in range(N):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
-        self.make_config()
 
     def reposition_movers(self):
         items = self.movers.items()
@@ -841,27 +855,6 @@ class Display(Tkinter.Canvas):
         for client_name, client in self.clients.items():
             client.reposition()
 
-    def make_config(self):
-        if self.config:
-            print "obsclose"
-            pathplan.obsclose(self.config) #free memory
-        obs = [] #a list of the coordinates of each obstacle/object (a tuple of 4 coord)
-
-        mover_names = self.movers.keys() #boxes will be a list of items in the list...ex:different mov
-        mover_names.sort()
-        margin=10        
-        for name in mover_names: #Enlarge box slightly
-            mover = self.movers[name]
-            mx0, my0, mx1, my1= mover.x, mover.y, mover.x+mover.width, mover.y+mover.height
-            mx0 = mx0 - margin
-            mx1 = mx1 + margin
-            my0 = my0 - margin
-            my1 = my1 + margin
-            obs.append(((mx0,my0),(mx0,my1),(mx1,my1),(mx1,my0)))
-        self.config = pathplan.obsopen(obs) #for obspath
-        print "make_config: config=", self.config
-        self.barriers = pathplan.polybarriers(obs) #for routespline
-            
     def handle_command(self, command):
         ## Accept commands of the form:
         # 1 word:
@@ -915,6 +908,9 @@ class Display(Tkinter.Canvas):
             
             # command does not require a mover name, will only put clients in a queue
             if words[0]=='client':
+                ## For now, don't draw waiting clients (there are just too many of them)
+                return
+            
                 client_name = normalize_name(words[1])
                 client = self.clients.get(client_name) 
                 if client is None: #it's a new client
