@@ -127,6 +127,7 @@ static PyObject* ET_CloseRead(PyObject *self, PyObject *args)
   ftt_stat_buf   stbuff;
   int sts;
   PyObject *ErrDict;
+  char *c1,*c2,*c3;
 /*
 	Get the arguements
 */
@@ -138,12 +139,13 @@ static PyObject* ET_CloseRead(PyObject *self, PyObject *args)
   sts=ftt_get_stats(ET_desc->ftt_desc, stbuff);
   if (sts <0)
     return raise_ftt_exception("ET_CloseRead_stats", ET_desc);
-  ErrDict = Py_BuildValue ("(s,s,s,i)", 
-     ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
-     ftt_extract_stats(stbuff,FTT_N_READS),
-     ftt_extract_stats(stbuff,FTT_READ_ERRORS),
-     ET_desc->filesize
-    );
+  c1= ftt_extract_stats(stbuff,FTT_REMAIN_TAPE);
+  if (c1 == NULL) c1 = "Invalid";
+  c2= ftt_extract_stats(stbuff,FTT_N_READS);
+  if (c2 == NULL) c2 = "Invalid";
+  c3= ftt_extract_stats(stbuff,FTT_READ_ERRORS);
+  if (c3 == NULL) c3 = "Invalid";
+  ErrDict = Py_BuildValue ("[s,s,s,i]", c1,c2,c3, ET_desc->filesize);
   sts=ftt_free_stat(stbuff);
 /*
 	Close the ftt file
@@ -181,7 +183,7 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
   ET_desc->bufptr =  ET_desc->buffer;
   ET_desc->filesize =0;
 /*
-	Open the ftt file
+	open the ftt file
 */
   ET_desc->ftt_desc = ftt_open(fname, FTT_RDWR);
   sts = ftt_open_dev(ET_desc->ftt_desc);
@@ -244,6 +246,7 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
   int sts;
   PyObject *ErrDict;
   int partlen;
+  char *c1,*c2,*c3;
 /*
         Parse the arguments
 */
@@ -272,13 +275,14 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
   sts=ftt_get_stats(ET_desc->ftt_desc, stbuff);
   if (sts < 0)
     return raise_ftt_exception("ET_ClosePartial", ET_desc);
+  c1 = ftt_extract_stats(stbuff,FTT_REMAIN_TAPE);
+  if (c1 == NULL) c1 = "Invalid";
+  c2 = ftt_extract_stats(stbuff,FTT_N_WRITES);
+  if (c2 == NULL) c2 = "Invalid";
+  c3 = ftt_extract_stats(stbuff,FTT_WRITE_ERRORS);
+  if (c3 == NULL) c3 = "Invalid";
 
-  ErrDict = Py_BuildValue ("(s,s,s,i)", 
-    ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
-    ftt_extract_stats(stbuff,FTT_N_WRITES),
-    ftt_extract_stats(stbuff,FTT_WRITE_ERRORS),
-    ET_desc->filesize
-    );
+  ErrDict = Py_BuildValue ("[s,s,s,i]", c1,c2,c3, ET_desc->filesize);
 /*
 	Close the drive
 */
@@ -293,6 +297,44 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
 
   return ErrDict;
 }
+
+/* = = = = = = = = = = = = = = -  ET_Rewind  = = = = = = = = = = = = = = - */
+
+static char ET_Rewind_Doc[] = "Rewind a drive";
+
+static PyObject* ET_Rewind(PyObject *self, PyObject *args)
+{
+  char *cartid;
+  char *fname;
+  ET_descriptor *ET_desc;
+
+  int sts;
+  ftt_descriptor ftt_desc;
+  
+
+  PyArg_ParseTuple(args, "ss", &cartid, &fname);
+/*
+        Allocate an ETApe desciptor block
+*/
+  CKALLOC( ET_desc = (ET_descriptor*)malloc (sizeof(ET_descriptor) ) );
+  ET_desc->ftt_desc = ftt_open(fname, FTT_RDONLY);
+  sts = ftt_rewind(ET_desc->ftt_desc);
+  if (sts < 0)
+    return raise_ftt_exception("ET_Rewind", ET_desc, "%s", fname);
+
+/*
+        Close the drive
+*/
+  sts=ftt_close(ET_desc->ftt_desc);
+  if (sts < 0)
+    return raise_ftt_exception("ET_RewindEnd", ET_desc);
+/*
+        Free the memory
+*/
+  free(ET_desc);
+  return Py_BuildValue("i",0);
+}
+
 /* = = = = = = = = = = = = = = -  Python Module Definitions = = = = = = = = = = = = = = - */
 
 /*
@@ -312,6 +354,7 @@ static PyMethodDef ETape_Methods[] = {
   { "ET_ReadBlock",  ET_ReadBlock,  1, ET_ReadBlock_Doc},
   { "ET_CloseRead",  ET_CloseRead,  1, ET_CloseRead_Doc},
   { "ET_CloseWrite", ET_CloseWrite, 1, ET_CloseWrite_Doc},
+  { "ET_Rewind", ET_Rewind, 1, ET_Rewind_Doc},
   { 0, 0}        /* Sentinel */
 };
 
