@@ -166,7 +166,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, \
-                                                          t['host'], \
+                                                          t['hostip'], \
 	                                                  t['port'])
 	ret = self.alive_status(lmc, (t['host'], t['port']), \
 	                        key+self.trailer, time, key)
