@@ -285,7 +285,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         fcc = file_clerk_client.FileClient(self.csc)
 
         # erase file record
-        status = fcc.erase_volume(vol)
+        status = fcc.erase_volume(vol)['status']
         del fcc
         if status[0] != e_errors.OK:
             Trace.log(e_errors.ERROR, 'erasing volume "%s" failed'%(vol))
