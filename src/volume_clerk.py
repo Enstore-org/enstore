@@ -330,8 +330,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         record = self.dict[external_label]
         
-        for key in  ['external_label','media_type', 'file_family', 'library',
-                     'eod_cookie', 'remaining_bytes', 'capacity_bytes' ]:
+        for key in record.keys():
             if ticket.has_key(key):
                 record[key]=ticket[key]
 
@@ -345,7 +344,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
         record['blocksize'] = msize
-
+        if record['media_type']=='null':
+            record['file_family_wrapper']='null'
         # write the ticket out to the database
         self.dict[external_label] = record
         ticket["status"] = (e_errors.OK, None)
