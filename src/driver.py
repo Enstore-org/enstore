@@ -13,6 +13,19 @@ import IPC
 import time				# sleep used in FTT sw_mount
 import generic_cs			# enprint
 
+SEEK_SET =       0   
+SEEK_CUR =       1   
+SEEK_END =       2
+#lseek(fd,offset,whence)
+
+def mode_string_to_int(s, d={'r':os.O_RDONLY, 'r+':os.O_RDWR,
+                             'w':os.O_WRONLY|os.O_CREAT,
+                             'w+':os.O_RDWR|os.O_CREAT,
+                             'a':os.O_WRONLY|os.O_CREAT|os.O_APPEND,
+                             'a+':os.O_RDWR|os.O_CREAT|os.O_APPEND}):
+    return d[s]
+
+
 
 class GenericDriver:
 
@@ -51,7 +64,7 @@ class GenericDriver:
         self.rd_access = 0		# counts
 
 	# special
-	self.fo = None			# used by RawDisk.fd_xfer
+	self.fd = None			# used by RawDisk.fd_xfer
 	self.vol_label = ''		# used by RawDisk.open -- *could* also
 	# -- use to check for success binds of same vol - could be -
         # used for validate location info???
@@ -88,18 +101,19 @@ class GenericDriver:
 	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
-	self.fo.flush()			# Important - sync fp and fd
+
 	try:
 	    if self.mode == 'r':		# relative to this driver = "from hsm"
-		crc = EXfer.fd_xfer( self.fo.fileno(), fd, siz_bytes, 
+		crc = EXfer.fd_xfer( self.fd, fd, siz_bytes, 
 				     self.blocksize, crc_fun, crc, self.shm )
 	    else:
-		crc = EXfer.fd_xfer( fd, self.fo.fileno(), siz_bytes,
+                
+		crc = EXfer.fd_xfer( fd, self.fd, siz_bytes,
 				     self.blocksize, crc_fun, crc, self.shm )
 		self.remaining_bytes = self.remaining_bytes - siz_bytes
-		pass
-	    pass
-	finally:
+                pass
+            pass
+        finally:
 	    del self.sem,self.msg		# sys.exit??? forking???
 	    pass
 	return crc
@@ -140,8 +154,9 @@ class GenericDriver:
         self.wr_access = 0		# counts
         self.rd_access = 0		# counts
 	self.mode = mode[0]		# used in fd_xfer
-	self.fo = open( device+'.'+self.vol_label, mode )	# used in fd_xfer
-	self.cur_loc_cookie = self.LOC_SPEC % self.fo.tell()
+	self.fd = os.open( device+'.'+self.vol_label,
+                         mode_string_to_int(mode )) # used in fd_xfer
+	self.cur_loc_cookie = self.LOC_SPEC % os.lseek(self.fd,0,SEEK_CUR)
 	return self			# for .read, write, seek, tell, close
 
     def seek( self, loc_cookie ):	# for write, eod_cookie
@@ -156,26 +171,26 @@ class GenericDriver:
             loc = string.atoi( loc_cookie )
         elif type(loc_cookie)==type(0):
             loc=loc_cookie
-	if self.mode == 'a': self.fo.truncate( loc )
-	self.fo.seek( loc )
-	return None
-
+	if self.mode == 'a': os.ftruncate(self.fd, loc)
+	os.lseek(self.fd, loc, SEEK_SET)
+        return None
+    
     def tell( self ):
-	return self.LOC_SPEC % self.fo.tell()
+	return self.LOC_SPEC % os.lseek(self.fd,0,SEEK_CUR)
 
     def read( self, size_bytes ):
-	return self.fo.read( size_bytes )
+	return os.read( self.fd, size_bytes )
 
     def write( self, buffer ):
-	self.fo.write( buffer )
+	os.write(self.fd, buffer)
 	self.remaining_bytes = self.remaining_bytes - len( buffer )
 	return None
 
     def close( self ):
-	return self.fo.close()
+        return os.close(self.fd)
 
-    def flush( self ):
-	return self.fo.flush()
+    def flush(self):
+        raise "NotImplemetedError"
 
     #-----------------
     pass
@@ -473,9 +488,9 @@ if __name__ == "__main__" :
 		print '     write buf', buf, "pos b4 write is",do.tell()
 		do.write( buf_str[buf])
 
-		fo = open( opt['in'], 'r' )
-		crc = do.fd_xfer( fo.fileno(), fsize, ECRC.ECRC )
-		fo.close()
+		fd = os.open( opt['in'], os.O_RDONLY )
+		crc = do.fd_xfer( fd, fsize, ECRC.ECRC )
+		os.close(fd)
 		print '     the crc is',crc
 		print "     stats - %s"%do.get_stats()
 	    
@@ -506,9 +521,9 @@ if __name__ == "__main__" :
 		    pass
 
 		statinfo = os.stat( opt['in'] )
-		fo = open( opt['in']+str(buf), 'w' )
-		crc = do.fd_xfer( fo.fileno(), fsize, ECRC.ECRC )
-		fo.close()
+		fd = os.open( opt['in']+str(buf), os.O_WRONLY )
+		crc = do.fd_xfer( fd, fsize, ECRC.ECRC )
+		os.close(fd)
 		print '     the crc is',crc
 	    
 		pass
