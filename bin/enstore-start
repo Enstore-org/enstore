@@ -225,6 +225,13 @@ fi
 ###################################################################################################################################
 
 # library manager
+
+if [ "${opt_new-}" != "" ]; then
+    summon=' '
+else
+    summon=' --nosummon '
+fi
+
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
     for i in $enstore_libraries; do
         if [ ! "${opt_ping-}" ];then
@@ -235,7 +242,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
             else
                 echo "Starting $i Library Manager"
                 cmd="python $ENSTORE_DIR/src/library_manager.py \
-                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                    ${summon} --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|lib' >/dev/null; then
                     title="Enstore Library Manager $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
