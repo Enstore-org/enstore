@@ -408,10 +408,16 @@ class Interface:
 		self.caption_title = value
 	    elif opt == "--title":
 		self.title = value
+	    elif opt == "--title_gif":
+		self.title_gif = value
 	    elif opt == "--output":
 		self.output = value
 	    elif opt == "--description":
 		self.description = value
+	    elif opt == "--html_file":
+		self.html_file = value
+	    elif opt == "--input_dir":
+		self.input_dir = value
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)
