@@ -5,7 +5,7 @@ create table rfile (
 	drive			varchar(47),
 	external_label		varchar(48),
 	location_cookie		varchar(24),
-	pnfs_name0		varchar(255),
+	pnfs_name0		varchar,
 	pnfsid			varchar(24),
 	sanity_cookie_0		bigint,
 	sanity_cookie_1		bigint,

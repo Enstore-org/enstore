@@ -44,7 +44,7 @@ create table file (
 	drive		varchar(47),
 	volume	 	int references volume (id),
 	location_cookie	varchar(24),
-	pnfs_path	varchar(255),
+	pnfs_path	varchar,
 	pnfs_id		varchar(24),
 	sanity_cookie_0 bigint default -1,
 	sanity_cookie_1 bigint default -1,
