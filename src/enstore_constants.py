@@ -86,6 +86,7 @@ ENCP_IP = "encp_ip"
 
 # server names used in enstore_up_down
 ACCS = "Accounting Server"
+DRVS = "Drivestat Server"
 LOGS = "Logger"
 ALARMS = "Alarm Server"
 CONFIGS = "Configuration Server"
@@ -100,6 +101,7 @@ RATE = "Ratekeeper"
 ###Note: enstore start/stop assumes that the spelling here matches that of
 ### the .py file of the matching server (save www_server).
 ACCOUNTING_SERVER = "accounting_server"
+DRIVESTAT_SERVER = "drivestat_server"
 LOG_SERVER = "log_server"
 ALARM_SERVER = "alarm_server"
 EVENT_RELAY = "event_relay"
@@ -113,6 +115,7 @@ RATEKEEPER = "ratekeeper"
 MONITOR_SERVER = "monitor_server"
 
 SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
+                DRVS: DRIVESTAT_SERVER,
                 LOGS : LOG_SERVER,
 		ALARMS : ALARM_SERVER,
 		FILEC : FILE_CLERK,
