@@ -1737,9 +1737,11 @@ def submit_one_request(ticket):
 
 #mode should only contain two values, "read", "write".
 def open_local_file(filename, e):
-    if e.mmap_io:
+    if e.mmap_io or e.ecrc:
         #If the file descriptor will be memory mapped, we need both read and
         # write permissions on the descriptor.
+        #If (for reads only) the file is to have the crc rechecked, we
+        # need both read and write permissions.
         flags = os.O_RDWR
     else:
         if e.outtype == "hsmfile": #writes
@@ -1949,20 +1951,49 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
 ############################################################################
 
-def check_crc(done_ticket, chk_crc):
-    # Check the CRC
-    if chk_crc:
-        mover_crc = done_ticket['fc'].get('complete_crc', None)
-        encp_crc = done_ticket['exfer'].get('encp_crc', 0)
-        
-        if mover_crc == None:
-            msg =   "warning: mover did not return CRC; skipping CRC check\n"
-            sys.stderr.write(msg)
-            #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+def check_crc(done_ticket, encp_intf, fd=None):
 
-        elif mover_crc != encp_crc:
+    #Make these more accessable.
+    mover_crc = done_ticket['fc'].get('complete_crc', None)
+    encp_crc = done_ticket['exfer'].get('encp_crc', None)
+    #Check this just to be safe.
+    if mover_crc == None:
+        msg =   "warning: mover did not return CRC; skipping CRC check\n"
+        sys.stderr.write(msg)
+        #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        return
+    if encp_intf.chk_crc and encp_crc == None:
+        msg =   "warning: encp failed to calculate CRC; skipping CRC check\n"
+        sys.stderr.write(msg)
+        #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        return
+    
+    # Check the CRC
+    if encp_intf.chk_crc:
+        if mover_crc != encp_crc:
             msg = "CRC mismatch: %d != %d" % (mover_crc, encp_crc)
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+            return
+
+    #If the user wants a parinoid crc check of the new output file (reads
+    # only) calculate it and compare.
+    if encp_intf.ecrc:
+        #If passed a file descriptor, make sure it is to a regular file.
+        if fd and (type(fd) == types.IntType) and \
+           stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
+            try:
+                parinoid_crc = EXfer.ecrc(fd)
+            except EXfer.error, msg:
+                done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, str(msg))
+                return
+
+            #If we have a valid crc value returned, compare it.
+            if parinoid_crc != mover_crc:
+                msg = "Parinoid CRC mismatch: %d != %d" % (mover_crc,
+                                                           parinoid_crc)
+                done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+                return
+                
 
 ############################################################################
             
@@ -3090,7 +3121,7 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
 
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
-        check_crc(done_ticket, e.chk_crc) #Check the CRC.
+        check_crc(done_ticket, e) #Check the CRC.
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
@@ -3963,18 +3994,18 @@ def read_hsm_files(listen_socket, route_server, submitted,
                       (request_ticket['infile'],
                        time.time() - tinfo['encp_start_time']))
 
-        close_descriptors(control_socket, data_path_socket, out_fd)
-
         #Verify that everything went ok with the transfer.
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
 
         #For simplicity combine everything together.
@@ -3996,28 +4027,35 @@ def read_hsm_files(listen_socket, route_server, submitted,
                                      route_server, None, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
 
         #Update the running bytes transfered count.
         bytes = bytes + done_ticket['file_size']
         bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
         
-        check_crc(done_ticket, e.chk_crc) #Check the CRC.
+        check_crc(done_ticket, e, out_fd) #Check the CRC.
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(request_list, request_ticket,
                                      done_ticket, listen_socket,
                                      route_server, None, e)
         if e_errors.is_retriable(result_dict['status'][0]):
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             files_left = result_dict['queue_size']
             failed_requests.append(request_ticket)
+            close_descriptors(control_socket, data_path_socket, out_fd)
             continue
+
+        #If no error occured, this is safe to close now.
+        close_descriptors(control_socket, data_path_socket, out_fd)
 
         #Update the last access and modification times respecively.
         update_times(done_ticket['infile'], done_ticket['outfile'])
@@ -4232,6 +4270,7 @@ class encp(interface.Interface):
     
     def __init__(self):
         global pnfs_is_automounted
+        self.ecrc = 0;
         self.chk_crc = 1           # we will check the crc unless told not to
         self.priority = 1          # lowest priority
         self.delpri = 0            # priority doesn't change
@@ -4279,7 +4318,7 @@ class encp(interface.Interface):
             "get-bfid", "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
-            "shortcut",
+            "shortcut", "ecrc",
             "data-access-layer", "max-retry=", "max-resubmit=",
             "pnfs-is-automounted", "threaded", "direct-io", "mmap-io",
             "buffer-size=", "array-size=", "mmap-size="] + \

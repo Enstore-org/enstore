@@ -307,6 +307,8 @@ class Interface:
                 self.down = value
             elif opt == "--dump":
                 self.dump = 1
+            elif opt == "--ecrc":
+                self.ecrc = 1
             elif opt == "--ephemeral":
                 self.output_file_family="ephemeral"
             elif opt == "--export":
