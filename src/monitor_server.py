@@ -84,7 +84,7 @@ class MonitorError(Exception):
         return self.error_message
 
     def __repr__(self):
-        return "MonitorError"
+        return "MonitorError: %s"%(self.error_message,)
 
 #SERVER_CONNECTION_ERROR = "Server connection error"
 #CLIENT_CONNECTION_ERROR = "Client connection error"
@@ -199,7 +199,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 except socket.error, detail:
                     data_sock.close()
                     #raise CLIENT_CONNECTION_ERROR, detail[1]
-                    raise MonitorError(detail[1])
+                    raise MonitorError("socket error: %s"%(detail[1],))
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
@@ -222,7 +222,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
-            raise MonitorError(detail[1])
+            raise MonitorError("open_cntl_socket: %s"%(detail[1],))
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -241,7 +241,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             #A real or fatal error has occured.  Handle accordingly.
             else:
                 #raise CLIENT_CONNECTION_ERROR, detail[1]
-                raise MonitorError(detail[1])
+                #raise MonitorError(detail[1])
+                raise MonitorError(detail)
 
         #Check if the socket is open for reading and/or writing.
         r, w, unused = select.select([sock], [sock], [], self.timeout)
