@@ -22,9 +22,9 @@ create table status (
 );
 
 create index status_drive_sn_idx on status(drive_sn);
-create index status_host_idx on status(id);
+create index status_host_idx on status(host);
 create index status_logical_drive_name on status(logical_drive_name);
 create index status_product_type_idx on status(product_type);
-create index status_stat_type_idx on status(status_stat_type);
+create index status_stat_type_idx on status(stat_type);
 create index status_tape_volser_idx on status(tape_volser);
 create index status_time_idx on status(time);
