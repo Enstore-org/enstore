@@ -64,16 +64,23 @@ To accept multiple values: option.py --opt <filename> [filename2]
 """
 ############################################################################
 
+#system imports
 import os
 import sys
 import string
 import pprint
 import getopt
 import fcntl
-import TERMIOS
+if sys.version_info < (2, 2, 0):
+    import termios, TERMIOS
+else: #FCNTL is depricated in python 2.2 and later.
+    import termios
 import types
 
+#enstore imports
 import hostaddr
+
+############################################################################
 
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = '7500'
