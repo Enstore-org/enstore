@@ -101,8 +101,7 @@ class Mover :
 
         # the blocksize is controlled by the volume
         blocksize = self.vticket["blocksize"]
-        iomax = blocksize*16      # how do I control this here?
-        self.driver.set_sizes(blocksize,iomax)
+        self.driver.set_blocksize(blocksize)
 
         # need a media changer to control (mount/load...) the volume
         self.mlc = MediaLoaderClient(self.csc, self.media_changer)
@@ -204,7 +203,7 @@ class Mover :
 
         # read the file from the user and write it out
         while 1:
-            buff = self.data_socket.recv(self.driver.get_iomax())
+            buff = self.data_socket.recv(self.driver.get_blocksize())
             l = len(buff)
             if l == 0 :
                 break
@@ -299,10 +298,12 @@ class Mover :
         ticket["mover"] = minfo
         dinfo = {}
         for k in ['blocksize', 'device', 'eod', 'first_write_block',\
-                  'iomax', 'rd_err', 'rd_mnt', 'remaining_bytes',\
+                  'rd_err', 'rd_mnt', 'remaining_bytes',\
                   'state', 'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
+        ticket["complete_crc"] = complete_crc
+        ticket["sanity_cookie"] = sanity_cookie
 
         # finish up and tell user about the transfer
         self.send_user_last(ticket)
@@ -337,6 +338,8 @@ class Mover :
         user_recieve_error = 0
         bytes_sent = 0
         self.driver.rd_mnt = self.driver.rd_mnt+1
+        sanity_cookie = 0
+        complete_crc = 0
 
         # open the hsm file for writing
         self.driver.open_file_read(ticket["bof_space_cookie"])
@@ -390,11 +393,13 @@ class Mover :
         ticket["mover"] = minfo
         dinfo = {}
         for k in ['blocksize', 'device', 'eod', 'firstbyte',\
-                  'iomax',  'left_to_read', 'pastbyte', \
+                  'left_to_read', 'pastbyte', \
                   'rd_err', 'rd_mnt', 'remaining_bytes',\
                   'state', 'wr_err', 'wr_mnt'] :
             exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
+        ticket["complete_crc"] = complete_crc
+        ticket["sanity_cookie"] = sanity_cookie
 
         # tell user
         self.send_user_last(ticket)

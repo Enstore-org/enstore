@@ -9,12 +9,12 @@ fi
 export PYTHONPATH
 
 ver=`/bin/ls -d $PYTHON_DIR/lib/python*`
-PVER=`/bin/basename $ver`
+PVER=`basename $ver`
 PYTHONINC=$PYTHON_DIR/include/$PVER
 export PYTHONINC
 PYTHONLIB=$PYTHON_DIR/lib/$PVER
 export PYTHONLIB
 
 ver=`/bin/ls -d $PYTHON_DIR/Python*`
-PVER=`/bin/basename $ver`
+PVER=`basename $ver`
 PYTHONMOD=$PYTHON_DIR/$PVER/Modules;     export PYTHONMOD

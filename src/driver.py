@@ -34,15 +34,15 @@ class GenericDriver:
     def unload(self):
         self.state = STATE_UNLOAD
 
-    # blocksize is volume dependent, iomax is computer dependent
-    def set_sizes(self,blocksize,iomax):
-        self.blocksize = blocksize
-        self.iomax = iomax
-
-    # callers are to try to send buffers of iomax,
+    # callers are to try to send buffers of blocksize
     #    except for  the last buffer, which may be exact.
-    def get_iomax(self) :
-        return self.iomax
+    # blocksize is volume dependent
+
+    def set_blocksize(self,blocksize):
+        self.blocksize = blocksize
+
+    def get_blocksize(self) :
+        return self.blocksize
 
     def get_errors(self) :
         return (self.wr_err, self.rd_err,\
@@ -67,7 +67,6 @@ class  RawDiskDriver(GenericDriver) :
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         self.set_eod(eod_cookie)
         self.blocksize = 4096
-        self.iomax = self.blocksize * 16
 
     def set_eod(self, eod_cookie) :
         # When a volume is ceated, the system sets EOD cookie to "none"
@@ -90,7 +89,7 @@ class  RawDiskDriver(GenericDriver) :
     def read_block(self):
         # no file marks on a disk, so use the information
         # in the cookie to bound the file.
-        n_to_read = min(self.iomax, self.left_to_read)
+        n_to_read = min(self.blocksize, self.left_to_read)
         if n_to_read == 0 : return ""
         buf = self.df.read(n_to_read)
         self.left_to_read = self.left_to_read - len(buf)
@@ -258,7 +257,7 @@ if __name__ == "__main__" :
         rdd.open_file_read(cookie[k])
         readback = rdd.read_block()
         rlen = len(readback)
-        if rlen != 10**k and rlen != rdd.iomax :
+        if rlen != 10**k and rlen != rdd.blocksize :
             print "Read error on cookie",k, cookie[k],"- not enough bytes. "\
                   +"Read=",rlen ," should have read= ",10**k
             status = status|1

@@ -24,6 +24,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # Note that the unix file remains open
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
+    major = 0
+    minor = 0
+    rmajor = 0
+    rminor = 0
     fsize = statinfo[stat.ST_SIZE]
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
         raise errorcode[EPERM],"encp.write_to_hsm: "\
@@ -45,9 +49,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
               "library"            : p.library,
-              "filename"           : unixfile,
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,
+              "filename"           : unixfile,
+              "inode"              : statinfo[stat.ST_INO],
               "uid"                : p.uid,
               "uname"              : p.uname,
               "gid"                : p.gid,
@@ -55,6 +60,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               "protection"         : p.mode,
               "mtime"              : int(time.time()),
               "size_bytes"         : fsize,
+              "major"              : major,
+              "minor"              : minor,
+              "rmajor"             : rmajor,
+              "rminor"             : rminor,
               "user_callback_port" : port,
               "user_callback_host" : host,
               "unique_id"          : time.time()

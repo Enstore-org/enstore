@@ -1,6 +1,6 @@
 import os
 import stat
-import errno
+from errno import *
 import binascii
 import string
 
@@ -81,7 +81,7 @@ def cpio_hdrs(format,            # either "new" or "CRC"
 
     # create the header for the data file and a header for a crc file
     heads = []
-    for h in [(filename,filesize),(filename+".encrc",8)] :
+    for h in [(filename,filesize), (filename+".encrc",8)] :
         head = \
              "070701" +\
              "%08x" % inode +\
@@ -98,7 +98,8 @@ def cpio_hdrs(format,            # either "new" or "CRC"
              "%08x" % int(len(h[0])+1) +\
              "%08x" % crc +\
              "%s\0" % h[0]
-        heads.append(head + "\0"*(4-(len(head)%4))%4)
+        pad = (4-(len(head)%4)) %4
+        heads.append(head + "\0"*pad)
 
     # create the trailer as well
     heads.append("070701"   +\
@@ -119,16 +120,19 @@ def cpio_hdrs(format,            # either "new" or "CRC"
 
     return heads
 
+
 # generate the cpio "trailers"
 def cpio_trls(siz, head_crc, file_crc, trailer) :
     size = siz
 
     # first need to pad data
     padd = (4-(size%4)) %4
+    size = size + padd
 
     # next is header for crc file, 8 bytes of crc info, and padding
     size = size + len(head_crc) + 8
     padc = (4-(size%4)) %4
+    size = size+padc
 
     # finally we have the trailer and the overall cpio padding
     size = size + len(trailer)
@@ -140,14 +144,30 @@ def cpio_trls(siz, head_crc, file_crc, trailer) :
            trailer + "\0"*padt )
 
 
-# given a buffer, return the offset to real data, its size and the filename
+# given a buffer pointing to beginning of header, return:
+#    offset to real data, data size, filename,
 def cpio_decode(buffer):
-    filename_size = string.atoi(buffer[94:101])
+    # only 2 cpio formats allowed
+    magic = buffer[0:6]
+    if magic == "070701" or  magic == "070702" :
+        pass
+    else :
+        raise errorcode[EINVAL],"Invalid format: "+ repr(magic)+\
+              " only \"070701\" and \"070702\" are valid formats"
+
+    filename_size = string.atoi(buffer[94:102],16)
     data_offset = 110+filename_size
     data_offset =data_offset + (4-(data_offset%4))%4
-    data_size = string.atoi(buffer[54:61])
-    filename = buffer[110:110+filename_size]
-    return (data_offset,data_size,filename)
+    data_size = string.atoi(buffer[54:62],16)
+    filename = buffer[110:110+filename_size-1]
+    return (data_offset, data_size, filename)
+
+
+# given a buffer pointing to beginning of header, return crc
+def cpio_encrc(buffer):
+    offset,size,name = cpio_decode(buffer)
+    return string.atoi(buffer[offset:offset+8],16)
+
 
 # generate a cpio archive, given the input and output file names
 def cpio_write(input,output) :
@@ -161,7 +181,6 @@ def cpio_write(input,output) :
     if not stat.S_ISREG(statb[stat.ST_MODE]) :
         raise errorcode[EINVAL],\
               "Invalid input file: can only handle regular files"
-
 
     format = "new"
     nlink = 1
@@ -197,8 +216,63 @@ def cpio_write(input,output) :
     fin.close()
     fout.close()
 
-if __name__ == "__main__" :
+def cpio_read(input) :
 
+    # open the file - we crash if they can't be opened
+    fin  = open(input,"r")
+
+    # setup counters/flags
+    file_crc = 0
+    size = 0
+    parse_header = 1
+    data_size = 1
+
+    # now read input file and write it out
+    while size < data_size:
+        offset = 0
+        buffer = fin.read()
+        length = len(buffer)
+        if length == 0 :
+            raise "busted"
+        # decode the cpio header block
+        if parse_header :
+            data_offset, data_size, data_name = cpio_decode(buffer)
+            parse_header = 0
+            fout = open(data_name+".copy",'w')
+            offset = data_offset
+        if size + length - offset <= data_size :
+            size = size + length - offset
+            data_end = length
+        else :
+            data_end = data_size - size + offset
+            size = data_size
+            next = data_offset + size
+            padd =  (4-(next%4)) %4
+            trailer = buffer[data_end+padd:]
+        file_crc = binascii.crc_hqx(buffer[offset:data_end],file_crc)
+        fout.write(buffer[offset:data_end])
+
+    # now read the crc file - just read to end of data and then decode
+    while 1  :
+        buffer = fin.read()
+        length = len(buffer)
+        if length == 0 :
+            break
+        trailer =  trailer + buffer
+
+    recorded_crc = cpio_encrc(trailer)
+    print recorded_crc, file_crc
+
+    # close em - it works better than letting python decide when to do it
+    fin.close()
+    fout.close()
+
+
+if __name__ == "__main__" :
         import sys
+
         cpio_write(sys.argv[1],sys.argv[2])
+        cpio_read(sys.argv[2])
+
+
 

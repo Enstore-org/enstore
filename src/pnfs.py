@@ -1,7 +1,7 @@
 import sys
 import os
 import regex
-import errno
+from errno import *
 import stat
 import pwd
 import grp
@@ -74,7 +74,7 @@ class pnfs :
             try :
                 os.stat(self.dir+'/.(config)(flags)/disabled')
             except os.error :
-                if sys.exc_info()[1][0] == errno.ENOENT :
+                if sys.exc_info()[1][0] == ENOENT :
                     return enabled
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
@@ -104,7 +104,7 @@ class pnfs :
             try :
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
-                if sys.exc_info()[1][0] == errno.ENOENT :
+                if sys.exc_info()[1][0] == ENOENT :
                     f = open(self.pnfsFilename,'w')
                     f.close()
                 else :
@@ -305,7 +305,7 @@ class pnfs :
                 self.exists = exists
                 #print "stat-file: ",self.pnfsFilename,": ",self.stat
             except os.error :
-                if sys.exc_info()[1][0] == errno.ENOENT :
+                if sys.exc_info()[1][0] == ENOENT :
                     try :
                         self.stat = os.stat(self.dir)
                         self.exists = direxists
@@ -337,7 +337,7 @@ class pnfs :
                     self.statinfo()
                 except os.error :
                     print "enoent path taken again!"
-                    if sys.exc_info()[1][0] == errno.ENOENT :
+                    if sys.exc_info()[1][0] == ENOENT :
                         self.statinfo()
                         # maybe this works??
                         f = open(self.dir+'/.(fset)('\
