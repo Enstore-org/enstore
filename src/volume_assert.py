@@ -309,7 +309,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
 ############################################################################
 
 
-class VolumeAssertInterface(option.Interface):
+class VolumeAssertInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
