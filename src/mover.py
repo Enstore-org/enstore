@@ -1465,7 +1465,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             if listen_socket in read_fds:
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
-
+                if not hostaddr.allow(address):
+                    client_socket.close()
+                    listen_socket.close()
+                    return None, None
                 if data_ip:
                     interface=hostaddr.interface_name(data_ip)
                     if interface:

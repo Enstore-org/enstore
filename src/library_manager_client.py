@@ -10,6 +10,7 @@ import socket
 
 #enstore imports
 import callback
+import hostaddr
 import interface
 import generic_client
 import udp_client
@@ -180,6 +181,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
         while 1 :
             control_socket, address = listen_socket.accept()
+            if not hostaddr.allow(address):
+                control_socket.close()
+                listen_socket.close()
+                return []
             new_ticket = callback.read_tcp_obj_new(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()

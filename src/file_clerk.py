@@ -24,7 +24,7 @@ import db
 import Trace
 import e_errors
 import configuration_client
-
+import hostaddr
 
 MY_NAME = "file_clerk"
 
@@ -323,9 +323,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.control_socket.connect(ticket['callback_addr'])
         callback.write_tcp_obj(self.control_socket, ticket)
         data_socket, address = listen_socket.accept()
+        if not hostaddr.allow(address):
+            data_socket.close()
+            listen_socket.close()
+            return 0
         self.data_socket = data_socket
         listen_socket.close()
-
+        return 1
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
@@ -339,7 +343,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             Trace.trace(10,"get_bfids %s"%(ticket["status"],))
             return
-        self.get_user_sockets(ticket)
+        if not self.get_user_sockets(ticket):
+            return
         ticket["status"] = (e_errors.OK, None)
         callback.write_tcp_obj(self.data_socket,ticket)
         self.dict.cursor("open")
@@ -539,7 +544,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      if self.fork() != 0:
          return
      # get a user callback
-     self.get_user_sockets(ticket)
+     if not self.get_user_sockets(ticket):
+         return
      callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
      callback.write_tcp_raw(self.data_socket, msg)

@@ -13,7 +13,7 @@ import socket
 
 # enstore imports
 import setpath
-
+import hostaddr
 import callback
 import dispatching_worker
 import generic_server
@@ -201,7 +201,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         vols = []
         try:
-            self.get_user_sockets(ticket)
+            if not self.get_user_sockets(ticket):
+                return
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
             if not ticket.has_key("external_label"):
@@ -729,7 +730,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
             
         vol_veto = ticket["vol_veto_list"]
-        vol_veto_list = eval(vol_veto)
+        vol_veto_list = self.r_eval(vol_veto)
 
         # get the criteria for the volume from the user's ticket
         min_remaining_bytes = ticket["min_remaining_bytes"]
@@ -1284,7 +1285,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return
         try:
             import cPickle
-            self.get_user_sockets(ticket)
+            if not self.get_user_sockets(ticket):
+                return
             ticket["status"] = (e_errors.OK, None)
             callback.write_tcp_obj(self.data_socket, ticket)
             self.dict.cursor("open")
@@ -1348,20 +1350,28 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # tell the user I'm your volume clerk and here's your ticket
     def get_user_sockets(self, ticket):
         try:
+            addr = ticket['callback_addr']
+            if not hostaddr.allow(addr):
+                return 0
             volume_clerk_host, volume_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
             ticket["volume_clerk_callback_addr"] = (volume_clerk_host, volume_clerk_port)
             self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.control_socket.connect(ticket['callback_addr'])
+            self.control_socket.connect(addr)
             callback.write_tcp_obj(self.control_socket, ticket)
             data_socket, address = listen_socket.accept()
+            if not hostaddr.allow(address):
+                data_socket.close()
+                listen_socket.close()
+                return 0
             self.data_socket = data_socket
             listen_socket.close()
         # catch any error and keep going. server needs to be robust
         except:
             exc, msg, tb = sys.exc_info()
             e_errors.handle_error(exc,msg,tb)
-
+        return 1
+    
     def start_backup(self,ticket):
         try:
             self.dict.start_backup()
