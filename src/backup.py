@@ -192,7 +192,7 @@ if __name__=="__main__":
     except:
 	hst_bck=hst_local
     logthis(e_errors.INFO, "Start database backup")
-    backup_dbase()
+    backup_dbase(dbHome)
     logthis(e_errors.INFO, "End database backup")
     logthis(e_errors.INFO, "Start volume backup")
     os.system("enstore volume --backup")
@@ -201,7 +201,7 @@ if __name__=="__main__":
     os.system("enstore file --backup")
     logthis(e_errors.INFO, "End file backup")
     logthis(e_errors.INFO, "Start moving to archive")
-    archive_backup()
+    archive_backup(hst_bck,hst_local)
     logthis(e_errors.INFO, "Stop moving to archive")
     # logthis(e_errors.INFO, "Start cleanup archive")
     # archive_clean(ago)
