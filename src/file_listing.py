@@ -59,22 +59,23 @@ def bfid2time(bfid):
 
 def getinfo(v):
 	fc = string.split(v, '\012')
-	if fc[2] == 'p2':
-		size = fc[3][1:]
-	else:
-		size = 'unknown'
-
+	size = 'unknown'
 	volume = 'unknown'
 	deleted = 'U'
 	crc = 'unknown'
 	pnfs_name0 = 'unknown'
 	location_cookie = 'unknown'
 	for i in range(len(fc)):
+		if fc[i] == "sS'size'" or \
+		   fc[i][1:] == "sS'size'":
+			i = i + 2
+			size = fc[i][1:]
 		if fc[i] == "sS'external_label'" or \
 		   fc[i][1:] == "sS'external_label'":
 			i = i + 2
 			volume = fc[i][2:-1]
-		if fc[i] == "sS'deleted'":
+		if fc[i] == "sS'deleted'" or \
+		   fc[i][1:] == "sS'deleted'":
 			i = i + 2
 			if fc[i] == "S'yes'":
 				deleted = 'D'
@@ -82,17 +83,20 @@ def getinfo(v):
 				deleted = 'A'
 			else:
 				deleted = 'U'
-		if fc[i] == "sS'pnfs_name0'":
+		if fc[i] == "sS'pnfs_name0'" or \
+		   fc[i][1:] == "sS'pnfs_name0'":
 			i = i + 2
 			pnfs_name0 = fc[i][2:-1]
-		if fc[i] == "sS'complete_crc'":
+		if fc[i] == "sS'complete_crc'" or \
+		   fc[i][1:] == "sS'complete_crc'":
 			i = i + 2
 			crc = fc[i][1:]
-		if fc[i] == "sS'pnfs_name0'":
+		if fc[i] == "sS'pnfs_name0'" or \
+		   fc[i][1:] == "sS'pnfs_name0'":
 			i = i + 2
 			pnfs_name0 = fc[i]
 		if fc[i] == "sS'location_cookie'" or \
-			fc[i] == "tsS'location_cookie'":
+		   fc[i][1:] == "sS'location_cookie'":
 			i = i + 2
 			location_cookie = fc[i][2:-1]
 	# fix for crc = None
