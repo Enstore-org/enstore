@@ -1,11 +1,20 @@
 #!/usr/bin/env python
-
 # $Id$
+import os,sys
+
+ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
+if ENSTORE_DIR:
+    TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
+else:
+    TCLTK_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','TclTk'))
+os.environ["TCL_LIBRARY"]=os.path.join(TCLTK_DIR, 'tcl8.3')
+os.environ["TK_LIBRARY"]=os.path.join(TCLTK_DIR, 'tk8.3')
+sys.path.insert(0, os.path.join(TCLTK_DIR, sys.platform))
+
 
 from Tkinter import *
 import tkFont
 
-import os
 import sys
 import socket
 import select

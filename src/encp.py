@@ -24,7 +24,7 @@ import random
 import setpath 
 import Trace
 import pnfs
-import pnfs_hack #TEMPORARY
+#import pnfs_hack #TEMPORARY
 import callback
 import log_client
 import configuration_client
