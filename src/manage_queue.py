@@ -41,7 +41,8 @@ class Queue:
       for w in self.queue:
          if w["unique_id"] == ticket["unique_id"]:
 	    ticket['times']['in_queue'] = time.time() - \
-					  ticket['times']['job_queued'] 
+					  ticket['times']['job_queued']
+	    del(ticket['times']['job_queued'])
             self.queue.remove(w)
             return
 

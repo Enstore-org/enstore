@@ -531,7 +531,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        w["fc"]["external_label"],
                                        mticket["mover"],
                                        w["wrapper"]["uname"])
-	    w['times']['lm_dequeued'] = time.time()
 	    pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
 	    if list:
