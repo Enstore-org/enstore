@@ -109,11 +109,11 @@ EXto_HSM(  PyObject	*self
 #	define		To_	1	/* EXto_HSM Arg2 */
 #	define		Crc	2	/* EXto_HSM Arg3 */
 	PyObject	*obj_pa[3];
+	PyObject	*attrObj1_p, *attrObj2_p;
 	int		sanity_byts;	/* EXto_HSM Arg 4*/
 	int		san_crc=0, dat_crc=0, dat_byts=0;
 	long		filesize[3];		/* default locations */
 	long		*filesize_p[3];
-	PyObject	*attrObj_p;
 	char		*str;
 	int		fd_a[2]={0,0};
 	FILE		*fp_a[2]={NULL,NULL};
@@ -143,13 +143,16 @@ EXto_HSM(  PyObject	*self
 
     for (idx=0; idx<2; idx++)
     {
-	attrObj_p = PyObject_GetAttrString( obj_pa[idx], "__class__" );
-	attrObj_p = PyObject_GetAttrString( attrObj_p, "__name__" );
-	str       = PyString_AsString( attrObj_p );
+	attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "__class__" );
+	attrObj2_p = PyObject_GetAttrString( attrObj1_p, "__name__" );
+	Py_DECREF( attrObj1_p );
+	str       = PyString_AsString( attrObj2_p );
+	Py_DECREF( attrObj2_p );
 	if      (strcmp(str,"Mover") == 0)
-	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "data_socket" );
-	    attrObj_p = PyObject_CallMethod( attrObj_p, "fileno", "" );
-	    fd_a[idx] = PyInt_AsLong(attrObj_p);
+	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "data_socket" );
+	    attrObj2_p = PyObject_CallMethod( attrObj1_p, "fileno", "" );
+	    Py_DECREF( attrObj1_p );
+	    fd_a[idx] = PyInt_AsLong(attrObj2_p);
 	    if (idx == Frm)
 		frmFunc_p[idx] = read;
 	    else
@@ -158,9 +161,10 @@ EXto_HSM(  PyObject	*self
 	    /*printf( "EXfer p%d class is Mover, fd=%d\n", idx+1, fd_a[idx] );*/
 	}
 	else if (strcmp(str,"FTTDriver") == 0)
-	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "ETdesc" );
+	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "ETdesc" );
 	    /* struct s_ETdesc is kept at int member */
-	    fd_a[idx] = PyInt_AsLong(attrObj_p);
+	    fd_a[idx] = PyInt_AsLong(attrObj1_p);
+	    Py_DECREF( attrObj1_p );
 	    if (idx == Frm)
 		frmFunc_p[idx] = ftt_read;
 	    else
@@ -173,8 +177,9 @@ EXto_HSM(  PyObject	*self
 	    filesize_p[idx] = &((struct s_ETdesc *)fd_a[idx])->filesize;
 	}
 	else if (strcmp(str,"RawDiskDriver") == 0)
-	{   attrObj_p = PyObject_GetAttrString( obj_pa[idx], "df" );
-	    fp_a[idx] = PyFile_AsFile( attrObj_p );
+	{   attrObj1_p = PyObject_GetAttrString( obj_pa[idx], "df" );
+	    fp_a[idx] = PyFile_AsFile( attrObj1_p );
+	    Py_DECREF( attrObj1_p );
 	    if (idx == Frm)
 		frmFunc_p[idx] = (void(*))fread;
 	    else
@@ -263,17 +268,17 @@ EXto_HSM(  PyObject	*self
 	    /* do crc here -- snd answer as last msg */
 	    /* ref. python.../Modules/binascii.c:binascii_crc_hqx */
 #          ifndef NO_CRC
-	    attrObj_p = PyObject_CallFunction( obj_pa[Crc], "s#i", crc_p, dat_byts, dat_crc );
-	    dat_crc = PyInt_AsLong( attrObj_p );
+	    attrObj1_p = PyObject_CallFunction( obj_pa[Crc], "s#i", crc_p, dat_byts, dat_crc );
+	    dat_crc = PyInt_AsLong( attrObj1_p );
 	    if (run_san_byts < sanity_byts)
 	    {   run_san_byts += dat_byts;
 		/* ADD CASE FOR EOF!!! i.e. short file */
 		if (run_san_byts >= sanity_byts)
 		{   /* OK we may hav more than we need -- we are done */
-		    attrObj_p = PyObject_CallFunction(  obj_pa[Crc], "s#i", crc_p
+		    attrObj1_p = PyObject_CallFunction(  obj_pa[Crc], "s#i", crc_p
 						      , dat_byts-(run_san_byts-sanity_byts)
 						      , san_crc );
-		    san_crc = PyInt_AsLong( attrObj_p );
+		    san_crc = PyInt_AsLong( attrObj1_p );
 		    msgbuf_s.mtype = SanCrc;
 		    msgbuf_s.data = san_crc;
 		    if (msgsnd(msgqid,(struct msgbuf *)&msgbuf_s,sizeof(msgbuf_s.data),0) == -1) /* normal blocking send */
@@ -282,10 +287,10 @@ EXto_HSM(  PyObject	*self
 		}
 		else
 		{   /* just continue to sanity crc */
-		    attrObj_p = PyObject_CallFunction(  obj_pa[Crc], "s#i", crc_p
+		    attrObj1_p = PyObject_CallFunction(  obj_pa[Crc], "s#i", crc_p
 						      , dat_byts
 						      , san_crc );
-		    san_crc = PyInt_AsLong( attrObj_p );
+		    san_crc = PyInt_AsLong( attrObj1_p );
 		}
 	    }    
 #          endif
@@ -353,7 +358,7 @@ EXto_HSM(  PyObject	*self
     (void)shmdt( shmaddr );
     (void)shmctl( shmid, IPC_RMID, 0 );
     (void)msgctl( msgqid, IPC_RMID, 0 );
-  
+
     return (Py_BuildValue("(iii)",dat_byts,dat_crc,san_crc));
 }   /* EXto_HSM */
 
@@ -417,6 +422,7 @@ EXusrTo_(  PyObject	*self
     {
 	attrObj_p = PyObject_CallMethod( obj_pa[idx], "fileno", "" );
 	fd_a[idx] = PyInt_AsLong(attrObj_p);
+	/*Py_DECREF( attrObj_p );*/
 	frmFunc_p[idx] = read;
 	to_Func_p[idx] = write;
 	filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
@@ -564,7 +570,7 @@ EXusrTo_(  PyObject	*self
     (void)shmdt( shmaddr );
     (void)shmctl( shmid, IPC_RMID, 0 );
     (void)msgctl( msgqid, IPC_RMID, 0 );
-  
+
     return (Py_BuildValue("i",dat_crc));
 }   /* EXusrTo_ */
 
