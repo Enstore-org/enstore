@@ -48,21 +48,30 @@ for i in res:
     k, v = string.split(i, ':')
     if k == " 'last_access'":
         last_access = float(v[:-2])
+        if last_access < 0:
+            la_time = '(never)'
+        else:
+            la_time = time.ctime(last_access)
     if k == " 'capacity_bytes'":
         capacity = long(v[:-2])
     if k == " 'remaining_bytes'":
         remaining_bytes = long(v[:-2])
     if k == " 'system_inhibit'":
-        system_inhibit = string.replace(string.replace(v[2:-3], "'", ""), ', ', '+')
+        si = string.split(string.replace(string.replace(v[2:-3], "'", ""), ",", ""))
+        for i in [0, 1]:
+            if si[i] != 'none':
+                si[i] = '<font color=#ff0000>'+si[i]+'</font>'
+        system_inhibit = si[0]+'+'+si[1]
+        # system_inhibit = string.replace(string.replace(v[2:-3], "'", ""), ', ', '+')
 
-print "<font size=5 color=#0000aa>"
+print "<font size=5 color=#0000aa><b>"
 print "<pre>"
 print "          Volume:", volume
-print "Last accessed on:", time.ctime(last_access)
+print "Last accessed on:", la_time
 print "      Bytes free:", show_size(remaining_bytes)
 print "   Bytes written:", show_size(capacity - remaining_bytes)
 print "        Inhibits:", system_inhibit
-print '<hr></pre>'
+print '</b><hr></pre>'
 print "</font><pre>"
 
 for i in res:
@@ -72,7 +81,7 @@ print '<hr>'
 res = os.popen('enstore file --list '+volume).readlines()
 res = res[2:]	# get rid of header
 
-header = "  volume         bfid              size      location cookie     status           original path"
+header = " volume         bfid             size      location cookie     status           original path"
 
 print '<font color=#aa0000>'+header+'</font>'
 print '<p>'
