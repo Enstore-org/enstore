@@ -922,9 +922,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # get list of suspected volumes 
     def get_suspect_volumes(self,ticket):
+	Trace.trace(3,"{get_suspect_volumes ")
         self.enprint("get_suspect_volumes "+ repr(ticket), generic_cs.SERVER, \
 	             verbose)
-	Trace.trace(3,"{get_suspect_volumes ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
         # this could tie things up for awhile - fork and let child
