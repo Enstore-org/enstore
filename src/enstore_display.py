@@ -180,7 +180,7 @@ class Mover:
         self.index                = index
         self.name                 = name
         self.N                    =N
-        self.width                = 125
+        self.width                = 165
         self.x, self.y            = 0, 0 # Not placed yet             
         self.x, self.y            = self.position(N)     
         
@@ -218,7 +218,7 @@ class Mover:
         progress_bar_offset        = XY(6, 22)
         progress_bar_bg_offset1    = XY(5, 17)
         progress_bar_bg_offset2    = XY(6, 26)
-        state_offset               = XY(90, 8)
+        state_offset               = XY(110, 8)
         timer_offset               = XY(100, 22)
 
         # create color names
@@ -250,7 +250,7 @@ class Mover:
 
     def update_state(self, state, time_in_state=0):
         img_offset            =XY(90, 2)
-        state_disp_offset=XY(90, 8)
+        state_disp_offset=XY(110, 8)
 
         #different mover colors
         mover_error_color = colors('mover_error_color')
@@ -420,7 +420,7 @@ class Mover:
     
     def reposition(self, N, state=None):
         img_offset=XY(90, 2)
-        state_disp_offset=XY(90, 8)
+        state_disp_offset=XY(110, 8)
 
         ### color
         mover_error_color = colors('mover_error_color')
