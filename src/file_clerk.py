@@ -1211,8 +1211,8 @@ if __name__ == "__main__":
                 (intf.config_host, intf.config_port)).get('file_clerk')['brand']
         Trace.log(e_errors.INFO,"The brand is %s"%(brand))
     except:
-        Trace.log(e_errors.INFO,"No brand is found")
-        brand = ""
+        brand = string.upper(string.split(os.uname()[1], ".")[0][:2])+'MS'
+        Trace.log(e_errors.INFO,"No brand is found, using '%s'"%(brand))
 
     fc.set_brand(brand)
 
