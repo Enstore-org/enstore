@@ -54,8 +54,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.accDB = accounting.accDB(att['dbhost'],
 						att['dbname'])
 		# setup the communications with the event relay task
-		self.resubscribe_rate = 300
-		self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+		# self.resubscribe_rate = 300
+		# self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
 
 		# start our heartbeat to the event relay process
 		self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
