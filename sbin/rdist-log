@@ -1,0 +1,28 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile$  $Revision$
+
+# script to backup enstore log files to the backup node
+
+#function to list command, execute it and list status
+doit() { echo "$1"
+         eval "nice -n 20 $1"
+         status=$?
+	 echo "Status= $status"
+	 if [ $status -ne 0 ]; then exit $status; fi
+         echo "" 
+       }
+
+if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+
+ cmd="rdist -c /diska/enstore-log/ enstore@d0ensrv3.fnal.gov:/diska/enstore-log-backup"
+ doit "$cmd"
+
+else
+  echo "Do not know about node `uname -n`... fix $ENSTORE/sbin/rdist-log script"
+  exit 1
+fi
+
+exit 0

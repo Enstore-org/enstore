@@ -1,0 +1,1 @@
+15,45 * * * * $ENSTORE_SBIN/ecron -p rdist-log rdist-log  > /dev/null 2> /dev/null
