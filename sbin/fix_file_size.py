@@ -43,15 +43,16 @@ class mypnfs(pnfs.Pnfs):
 	
 
 
-print sys.argv[1]
-p=mypnfs(sys.argv[1])
-xref_fs=p.get_file_size()
-print "xref FS %s os FS %s"%(xref_fs, p.os_filesize)
-if (xref_fs != p.os_filesize) and p.os_filesize == 0:
-    print "will fix"
-    p.set_file_size(xref_fs)
+if __name__ == "__main__":
+    print sys.argv[1]
+    p=mypnfs(sys.argv[1])
     xref_fs=p.get_file_size()
-    print "sizes after fix:xref FS %s os FS %s"%(xref_fs, p.os_filesize) 
+    print "xref FS %s os FS %s"%(xref_fs, p.os_filesize)
+    if (xref_fs != p.os_filesize) and p.os_filesize == 0:
+        print "will fix"
+        p.set_file_size(xref_fs)
+        xref_fs=p.get_file_size()
+        print "sizes after fix:xref FS %s os FS %s"%(xref_fs, p.os_filesize) 
     
     
 
