@@ -880,14 +880,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         if status == e_errors.OK:
             if not rq:
-                format = "write rq. is already in the queue %s -> %s : library=%s family=%s requester:%s"
+                format = "write rq. is already in the queue %s -> %s : library=%s family=%s requester:%s volume_family:%s"
             else:
-                format = "write Q'd %s -> %s : library=%s family=%s requester:%s"
+                format = "write Q'd %s -> %s : library=%s family=%s requester:%s volume_family:%s"
             Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                              ticket["wrapper"]["pnfsFilename"],
                                              ticket["vc"]["library"],
                                              ticket["vc"]["file_family"],
-                                             ticket["wrapper"]["uname"]))
+                                             ticket["wrapper"]["uname"],
+                                             ticket['vc']["volume_family"]))
 
     def read_from_hsm(self, ticket):
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
