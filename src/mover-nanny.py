@@ -245,7 +245,7 @@ def main(reset_on_error=0):
         for mover in movers:
             if mover in known_down:
                 print "%-30s"%(mover,),
-                print \t "known down"
+                print  "\tknown down"
                 continue
             noreset = 1
             err, reason = check(mover)
