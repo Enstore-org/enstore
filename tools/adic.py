@@ -36,10 +36,21 @@ while 1:
 
 09-28-00 12:44:01 pm 0 0827     Command 0827: MONT of Volser ..........PRF022 to D22.......<01030>
 
-2000-10-18 17:06:35     0687 <01030> RQM requests command: KEEP from Drive D25........
-2000-10-18 17:06:35     0687 <01056> KEEP [D25.......] received, will be processed soon.
-2000-10-18 17:06:35     0687 <01094> The requested drive DC25010101 is empty (Archive catalog).
-2000-10-18 17:06:35     0687 <01041> Negative answer: KEEP 0687  RC: 1094.
+2000-10-18 17:23:33     6789 <01296> DAS4060 Mount request from client d0ensrv4 - volser PRF025, drive DC22.
+2000-10-18 17:23:33     0796 <01030> RQM requests command: MONT of Volser ..........PRF025 to D22........
+2000-10-18 17:23:33   000000 <01150> <**** RQMA010796QCARY2T102300101DC22010101YD...........PRF025 
+2000-10-18 17:23:42   000000 <01077> ****> RQMA010796S0000..........PRF025 
+2000-10-18 17:23:42     0796 <01041> Positive answer: MONT 0796    .
+2000-10-18 17:23:42     6789 <01296> DAS4061 Mount request from client d0ensrv4 completed successfully.
+
+2000-10-18 17:28:11     6810 <01296> DAS4070 Keep request from client d0ensrv4 - volser , drive DC20.
+2000-10-18 17:28:11     0817 <01030> RQM requests command: KEEP from Drive D20........
+2000-10-18 17:28:11     0817 <01056> KEEP [D20.......] received, will be processed soon.
+2000-10-18 17:28:11   000000 <01150> <**** RQMA010817QCARY2DC20010101T103090507ND...........PRF126 
+2000-10-18 17:28:22   000000 <01077> ****> RQMA010817S0000................ 
+2000-10-18 17:28:22     0817 <01041> Positive answer: KEEP 0817    .
+2000-10-18 17:28:22     6810 <01296> DAS4071 Keep request from client d0ensrv4 completed successfully.
+
 
 """
 
