@@ -265,12 +265,15 @@ class FTTDriver(driver.Driver):
 
         return r
 
-    def verify_label(self, volume_label, mode):
+    def verify_label(self, volume_label=None, mode=0):
+        
         buf=80*' '
         try:
+
             Trace.log(25, "rewinding tape to check volume label")
+            
             self.rewind()
-            self._open_dev()
+
             if self.fd is None:
                 return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
             nbytes=self.read(buf, 0, 80)
@@ -281,12 +284,14 @@ class FTTDriver(driver.Driver):
             s = string.split(buf[4:])
             if not s:
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
+            if volume_label is None:
+                return e_errors.OK, s[0]
             if s[0] != volume_label:
                 return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
 
             return e_errors.OK, None
         except exceptions.Exception, detail:
-            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], detail
+            return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail)
         
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""

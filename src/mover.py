@@ -356,6 +356,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
+            ##XXX this should use the new "verify_label" method in the driver
             Trace.trace(10, "checking for loaded tape, open returns %s" % (have_tape,))
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
@@ -775,15 +776,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if volume_label == self.current_volume: #no mount needed
             self.timer('mount_time')
-            self.position_media()
+            self.position_media(verify_label=0)
         else:
             self.run_in_thread('media_thread', self.mount_volume, args=(volume_label,),
                                after_function=self.position_media)
             
 
-
-    def position_media(self):
+    def position_media(self, verify_label=1):
         #At this point the correct volume is loaded; now position it
+        label_tape = 0
         Trace.trace(10, "position media")
         have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
         self.tape_driver.set_mode(compression = 0, blocksize = 0)
@@ -795,11 +796,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         self.state = SEEK
 
+        eod = self.vol_info['eod_cookie']
         volume_label = self.current_volume
+
+        if self.mode is WRITE and eod in (None, "none"):
+            verify_label = 0
+            label_tape = 1
         
         if self.mode is WRITE:
-            eod = self.vol_info['eod_cookie']
-            if eod in (None, "none"):
+            if self.target_location is None:
+                self.target_location = eod
+            if self.target_location != eod:
+                Trace.log(e_errors.ERROR, "requested write at location %s, eod=%s" %
+                          (self.target_location, eod))
+                return 0 # Can only write at end of tape
+
+            if label_tape:
                 ## new tape, label it
                 ## XXX need to safeguard against relabeling here
                 self.tape_driver.rewind()
@@ -821,13 +833,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               self.vol_info['remaining_bytes'],
                                               self.vol_info['eod_cookie'])
 
-            if self.target_location is None:
-                self.target_location = eod
-            if self.target_location != eod:
-                Trace.log(e_errors.ERROR, "requested write at location %s, eod=%s" %
-                          (self.target_location, eod))
-                return 0 # Can only write at end of tape
-
+        if verify_label:
+            status = self.tape_driver.verify_label(volume_label, self.mode)
+            if status[0] != e_errors.OK:
+                self.transfer_failed(str(status[0]),str(status[1]))
+                return 0
         location = cookie_to_long(self.target_location)
         self.run_in_thread('seek_thread', self.seek_to_location,
                            args = (location, self.mode==WRITE),
@@ -957,7 +967,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['status'] = (status, error_info)
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
-        except Exceptions.exception, detail:
+        except exceptions.Exception, detail:
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
         self.control_socket.close()
         self.control_socket = None
@@ -1060,7 +1070,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
         return 0
     
-    def dismount_volume(self, after_function=None, error_function=None):
+    def dismount_volume(self, after_function=None):
         self.dismount_time = None
         prev_state = self.state
         self.state = DISMOUNT_WAIT
@@ -1091,11 +1101,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             Trace.log(e_errors.ERROR, "dismount volume: %s: state=ERROR" % (status,))
             self.state = ERROR
-            if error_function:
-                error_function(self)
+
                 
 
-    def mount_volume(self, volume_label, after_function=None, error_function=None):
+    def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
@@ -1111,26 +1120,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(25, "waiting %s seconds after mount"%self.mount_delay)
             time.sleep(self.mount_delay)
 
-        if self.mode is WRITE and self.vol_info['eod_cookie'] in (None, "none"):
-            pass
-        else:
-            if status and status[0] == e_errors.OK:
-                status = self.tape_driver.verify_label(volume_label, self.mode)
-            
         if status and status[0] == e_errors.OK:
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
-        else:
+        else: #Mount failure
             self.last_error = status
-            Trace.log(e_errors.ERROR, "mount volume: %s" % (status,))
-            #XXX robot error, deal with it
-            if error_function:
-                error_function()
-            else:
-                self.idle()
+            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
+            self.transfer_failed(e_errors.ERROR, 'mount failure %s' % (status,))
+            mcc_reply = self.mcc.unloadvol(self.vol_info, self.name, self.mc_device)
+            status = mcc_reply.get('status')
+            if status and status[0]==e_errors.OK:
                 self.current_volume = None
-            return
+                self.idle()
+            else:
+                Trace.log(e_errors.ERROR, "dismount %s: failure %s" % (volume_label, status))
+                self.state = ERROR
     
     def seek_to_location(self, location, eot_ok=0, after_function=None):
         Trace.trace(10, "seeking to %s, after_function=%s"%(location,after_function))
@@ -1296,7 +1301,7 @@ if __name__ == '__main__':
         try:
             mover.serve_forever()
         except SystemExit:
-            Trace.log(e_errors.INFO, "mover %s exiting." % (self.name,))
+            Trace.log(e_errors.INFO, "mover %s exiting." % (mover.name,))
             os._exit(0)
             break
         except:
