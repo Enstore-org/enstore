@@ -50,6 +50,7 @@ import errno
 import os				# os.environ, os.system, and possible os.error (from posix.waitpid)
 import posix				# waitpid
 import pprint
+import signal				# signal - to del shm on sigterm, etc
 import sys				# exit
 import time				# .sleep
 import traceback			# print_exc == stack dump
@@ -67,6 +68,8 @@ import ECRC				# for crc
 import cpio
 import Trace
 import driver
+import FTT				# needed for FTT.error
+import EXfer				# needed for EXfer.error
 import e_errors
 
 # for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
@@ -95,6 +98,19 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
 	  e_errors.TCP_HUNG,
 	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
 	   
+
+def sigterm( sig, stack ):
+    del mvr_srvr.client_obj_inst.hsm_driver
+    sys.exit( 0x80 | sig )
+    return None
+def sigint( sig, stack ):
+    del mvr_srvr.client_obj_inst.hsm_driver
+    print 'Traceback (innermost last):'
+    traceback.print_stack( stack )
+    print 'KeyboardInterrupt'
+    sys.exit( 1 )
+    return None
+    
 
 def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
@@ -175,6 +191,8 @@ class MoverClient:
 	    pass
 
 	self.hsm_driver = eval( 'driver.'+config['driver']+'()' )
+	signal.signal( signal.SIGTERM, sigterm )# to allow cleanup of shm
+	signal.signal( signal.SIGINT, sigint )# to allow cleanup of shm
 	return None
 
     def nowork( self, ticket ):
@@ -284,8 +302,9 @@ def forked_write_to_hsm( self, ticket ):
     if mvr_config['do_fork']:
 	self.pid = os.fork()
 	self.state = 'busy'
-	self.mode = 'w'			# client mode, not driver mode
+	self.hsm_driver._bytes_clear()
 	self.bytes_to_xfer = ticket['fc']['size']
+	self.mode = 'w'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
@@ -375,6 +394,21 @@ def forked_write_to_hsm( self, ticket ):
 	    do.close()			# b/c of fm above, this is purely sw.
 
         #except EWHATEVER_NET_ERROR:
+	except (FTT.error, EXfer.error), err_msg:
+	    traceback.print_exc()
+	    # err_msg is <type 'instance'>
+	    if str(err_msg) == "(0, 'fd_xfer - read EOF unexpected - Success')":
+		# assume encp dissappeared
+		return_or_update_and_exit( self, origin_addr, e_errors.ENCP_GONE )
+		pass
+	    else:
+		wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
+		vcc.update_counts( self.vol_info['external_label'],
+				   wr_err, rd_err, wr_access, rd_access )
+		self.usr_driver.close()
+		send_user_done( self, ticket, e_errors.WRITE_ERROR )
+		return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
+		pass
         except:
 	    traceback.print_exc()
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
@@ -430,8 +464,9 @@ def forked_read_from_hsm( self, ticket ):
     if mvr_config['do_fork']:
 	self.pid = os.fork()
 	self.state = 'busy'
-	self.mode = 'r'			# client mode, not driver mode
+	self.hsm_driver._bytes_clear()
 	self.bytes_to_xfer = ticket['fc']['size']
+	self.mode = 'r'			# client mode, not driver mode
     if mvr_config['do_fork'] and self.pid != 0:
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
