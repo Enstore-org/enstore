@@ -127,8 +127,6 @@ BFIDS = "bfids"                              #file
 CHECK = "check"                              #volume
 CLEAN_DRIVE = "clean_drive"                  #mover
 CLEAR = "clear"                              #volume
-CLEAR_ALL_IGNORED_STORAGE_GROUPS = "clear-all-ignored-storage-groups"   #volume
-CLEAR_IGNORED_STORAGE_GROUP = "clear-ignored-storage-group"   #volume
 CONFIG_FILE = "config-file"                  #configuration(c&s)
 CONST = "const"                              #pnfs
 COUNTERS = "counters"                        #pnfs
@@ -163,6 +161,8 @@ FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
 FILES = "files"                              #pnfs
 FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
+FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups"   #volume
+FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
 GET_LOGFILE_NAME = "get-logfile-name"        #log
@@ -187,7 +187,6 @@ IO = "io"                                    #pnfs
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
-LIST_IGNORED_STORAGE_GROUPS = "list-ignored-storage-groups"   #volume
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 KEEP = "keep"                                #plotter
@@ -236,6 +235,7 @@ SET_CRCS = "set-crcs"                        #file
 SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHOW = "show"                                #configuration, inquisitor, media
+SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
 START_DRAINING = "start-draining"            #library
@@ -275,7 +275,6 @@ valid_option_list = [
     ADD, ALIVE, ALL,
     BACKUP, BFID, BFIDS,
     CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
-    CLEAR_ALL_IGNORED_STORAGE_GROUPS, CLEAR_IGNORED_STORAGE_GROUP,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESTROY,
@@ -285,6 +284,7 @@ valid_option_list = [
     ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
     FORCE,
+    FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
@@ -292,7 +292,6 @@ valid_option_list = [
     ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
     KEEP, KEEP_DIR,
     LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    LIST_IGNORED_STORAGE_GROUPS,
     MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
@@ -300,6 +299,7 @@ valid_option_list = [
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
     RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
+    SHOW_IGNORED_STORAGE_GROUPS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT,

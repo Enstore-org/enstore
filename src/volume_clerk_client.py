@@ -545,9 +545,9 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.export = None
         self._import = None
         self.ignore_storage_group = None
-        self.clear_ignored_storage_group = None
-        self.clear_all_ignored_storage_groups = 0
-        self.list_ignored_storage_groups = 0
+        self.forget_ignored_storage_group = None
+        self.forget_all_ignored_storage_groups = 0
+        self.show_ignored_storage_groups = 0
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -637,9 +637,9 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.export = None
         self._import = None
         self.ignore_storage_group = None
-        self.clear_ignored_storage_group = None
-        self.clear_all_ignored_storage_groups = 0
-        self.list_ignored_storage_groups = 0
+        self.forget_ignored_storage_group = None
+        self.forget_all_ignored_storage_groups = 0
+        self.show_ignored_storage_groups = 0
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -693,13 +693,13 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
-        option.CLEAR_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
+        option.FORGET_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
                       "clear a ignored storage group",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"storage_group",
                       option.USER_LEVEL:option.ADMIN},
-        option.CLEAR_ALL_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+        option.FORGET_ALL_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
                       "clear all ignored storage groups",
                       option.VALUE_TYPE:option.INTEGER,
                       option.DEFAULT_VALUE:option.DEFAULT,
@@ -748,8 +748,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
-        option.LIST_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
-                      "list all ignored storage group",
+        option.SHOW_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+                      "show all ignored storage group",
                       option.VALUE_TYPE:option.INTEGER,
                       option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.ADMIN},
@@ -1036,15 +1036,15 @@ def do_work(intf):
         ticket = vcc.set_ignored_sg(intf.ignore_storage_group)
         if ticket['status'][0] == e_errors.OK:
             pprint.pprint(ticket['status'][1])
-    elif intf.clear_ignored_storage_group:
-        ticket = vcc.clear_ignored_sg(intf.clear_ignored_storage_group)
+    elif intf.forget_ignored_storage_group:
+        ticket = vcc.clear_ignored_sg(intf.forget_ignored_storage_group)
         if ticket['status'][0] == e_errors.OK:
             pprint.pprint(ticket['status'][1])
-    elif intf.clear_all_ignored_storage_groups:
+    elif intf.forget_all_ignored_storage_groups:
         ticket = vcc.clear_all_ignored_sg()
         if ticket['status'][0] == e_errors.OK:
             pprint.pprint(ticket['status'][1])
-    elif intf.list_ignored_storage_groups:
+    elif intf.show_ignored_storage_groups:
         ticket = vcc.list_ignored_sg()
         if ticket['status'][0] == e_errors.OK:
             pprint.pprint(ticket['status'][1])
