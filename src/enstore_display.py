@@ -105,6 +105,8 @@ layout = LINEAR
 ANIMATE = 1
 STILL = 0
 
+MMPC = 20.0     # Max Movers Per Column
+
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
     a window of size w, h"""
@@ -982,11 +984,12 @@ class Mover:
     def position_linear(self, N):
         #N = number of movers
 
-        #k = number of this movers
-        k = self.index
+        
+        k = self.index  # k = number of this movers
+        mmpc = float(MMPC) #Maximum movers per column
 
         #total number of columns 
-        num_cols = (N / 20) + 1
+        num_cols = int(N / mmpc) + 1
         #total number of rows in the largest column
         num_cols_f = float(num_cols)
         rows_per_column_f = float(N) / num_cols_f
@@ -996,10 +999,11 @@ class Mover:
         row = (k % num_rows)
 
         #vertical distance seperating the bottom of one mover with the top
-        # of the next.  Use 20.0 instead of 19.0 for the (self.height * 20.0)
-        # term to offset the second collumn's "lowerness" on the screen.
-        space = ((self.display.height - (self.height * 20.0)) / 19.0)
-        space = (self.height - space) * ((19.0 - num_rows) / 19.0) + space
+        # of the next.  Use MMPC instead of (MMPC - 1) for the
+        # (self.height * MMPC) term to offset the second collumn's
+        # "lowerness" on the screen.
+        space = ((self.display.height - (self.height * mmpc)) / (mmpc - 1.0))
+        space = (self.height - space) * (((mmpc - 1.0) - num_rows) / (mmpc - 1.0)) + space
 
         #The following offsets the y values for a second column.
         y_offset = ((self.height + space) / 2.0) * (column % 2)
@@ -1046,7 +1050,7 @@ class Mover:
         #Set the mover size in the display.
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 40 or more movers.
-        self.width = (self.display.number_of_movers / 20)
+        self.width = (self.display.number_of_movers / int(MMPC))
         self.width = (self.display.width/(self.width + 3))
         #Font geometry. (state, label, timer)
         self.font = get_font(self.height/3.5, 'arial',
@@ -1100,7 +1104,7 @@ class Mover:
 
     def max_label_font_width(self):
         #total number of columns 
-        num_cols = (self.N / 20) + 1
+        num_cols = (self.N / int(MMPC)) + 1
         #size of column
         column_width = (self.display.width / float(num_cols + 1))
         #difference of column width and mover rectangle with fudge factor.
@@ -1318,38 +1322,98 @@ class Connection:
 
     #########################################################################
 
+    #Don't be tempted to have position call other functions to set set.path.
+    # This for unknown reasons causes tkinter to render the path in unexpected
+    # ways.
     def position(self):
         self.path = [] #remove old path
 
+        #Column positions start counting at 0.  Thus, a three column display
+        # has mover columns 0, 1 and 2.
+        column = self.mover.column
+
         # middle of left side of mover
-        mx,my = self.mover.x, self.mover.y + self.mover.height/2.0
+        mx = self.mover.x
+        my = self.mover.y + self.mover.height/2.0
         self.path.extend([mx,my])
 
-        # if multiple columns are used, go in between.
-        if self.mover.column == 2:
-            mx = self.display.mover_columns[1]
-            my = self.mover.y + self.mover.height/2.0
-            self.path.extend([mx,my])
-            
-            mx = (self.display.mover_columns[0] + self.mover.width)
-            mx = (mx + self.display.mover_columns[1]) / 2.0
+        #First column left of the mover (not including leftmost column 0).
+        if self.mover.column > 0:
+            mx = self.display.mover_columns[column - 1] + self.mover.width
             my = self.mover.y + self.mover.height/2.0
             self.path.extend([mx,my])
 
-            mx = (self.display.mover_columns[0] + self.mover.width)
-            mx = (mx + self.display.mover_columns[1]) / 2.0
+            mx = self.display.mover_columns[column - 1]
+            my = self.mover.y + self.mover.height/2.0
+            self.path.extend([mx,my])
+        if self.mover.column > 1:
+            mx = (self.display.mover_columns[column - 2] + self.mover.width)
+            mx = (mx + self.display.mover_columns[column - 1]) / 2.0
+            my = self.mover.y + self.mover.height/2.0
+            self.path.extend([mx,my])
+            
+            mx = (self.display.mover_columns[column - 2] + self.mover.width)
+            mx = (mx + self.display.mover_columns[column - 1]) / 2.0
             my = self.mover.y - 2
             self.path.extend([mx,my])
 
-            mx = (self.display.mover_columns[0] + self.mover.width)
-            my = self.mover.y - 2
+        #Loop though any middle columns.
+        values = range(1, column - 1)
+        values.reverse()
+        for i in values:
+            mx = self.display.mover_columns[i] + self.mover.width
+            if i % 2 == 1:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + 2
+            self.path.extend([mx,my])
+
+            mx = self.display.mover_columns[i]
+            if i % 2 == 1:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + 2
+            self.path.extend([mx,my])
+
+            mx = (self.display.mover_columns[i - 1] + self.mover.width)
+            mx = (mx + self.display.mover_columns[i]) / 2.0
+            if self.mover.column % 2 == 1:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + 2
             self.path.extend([mx,my])
             
-            mx = self.display.mover_columns[0]
-            my = self.mover.y - 2
+            mx = (self.display.mover_columns[i] + self.mover.width)
+            mx = (mx + self.display.mover_columns[i - 1]) / 2.0
+            if self.mover.column % 2 == 1:
+                my = self.mover.y + 2
+            else:
+                my = self.mover.y - 2
             self.path.extend([mx,my])
-        if self.mover.column == 1:
+            
+        #For columns greater than the first two (0 and 1) draw the line
+        # passed the 0 column correctly.
+        if self.mover.column > 1:
+            mx = (self.display.mover_columns[0] + self.mover.width)
+            mx = (mx + self.display.mover_columns[1]) / 2.0
+            if self.mover.column == 2:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + (self.mover.height / 2.0) - 2
+            self.path.extend([mx,my])
+            
+            mx = self.display.mover_columns[0] + self.mover.width
+            if self.mover.column == 2:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + (self.mover.height / 2.0) - 2
+            self.path.extend([mx,my])
+
             mx = self.display.mover_columns[0]
+            if self.mover.column == 2:
+                my = self.mover.y - 2
+            else:
+                my = self.mover.y + (self.mover.height / 2.0) - 2
             self.path.extend([mx,my])
 
         #middle of right side of client
@@ -1559,8 +1623,11 @@ class Display(Tkinter.Canvas):
         self.bind('<Button-2>', self.print_canvas)
 
         #Clear the window for drawing to the screen.
-        master.deiconify()
         self.update()
+
+        #When the program is in an iconic state, the visibility() callback
+        # method will not be called.  Thus, this needs to be specified here.
+        self.framed_geometry = self.winfo_toplevel().geometry()
 	
 	#Now that the window geometry is finalized we can get the size
 	# difference and determine the size of the window frames.
@@ -1677,8 +1744,8 @@ class Display(Tkinter.Canvas):
         size = geometry.split("+")[0]
         position = geometry.split("+", 1)[1]
 
-        initial_framed_size= self.framed_geometry.split("+")[0]
-        initial_framed_position= self.framed_geometry.split("+", 1)[1]
+        initial_framed_size = self.framed_geometry.split("+")[0]
+        initial_framed_position = self.framed_geometry.split("+", 1)[1]
         
         ###If the user never repositioned the window then the value returned
         ### from self.winfo_toplevel().geometry() points to the top left of the
