@@ -305,7 +305,9 @@ for try in list doit; do
               find $ENSTORE_DIR -name "*.py" >$pyfiles
               cat $pyfiles | while read pfile; do
                  $ENSTORE_DIR/tools/mylint.py $pfile
-                 #check status $? "$ENSTORE_DIR/tools/mylint $pfile"
+                 #check status $? "$ENSTORE_DIR/tools/mylint.py $pfile"
+		 $ENSTORE_DIR/tools/check_pct.py $pfile
+                 #check status $? "$ENSTORE_DIR/tools/check_pct.py $pfile"
               done
               rm $pyfiles
            fi
