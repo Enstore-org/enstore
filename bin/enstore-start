@@ -39,9 +39,9 @@ python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_p
 echo $! >> library_manager_pids
 
 # mover: raw disk mover
-#echo "Starting Raw Disk Mover"
-#python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
-#echo $! >> mover_pids
+echo "Starting Raw Disk Mover"
+python $ENSTORE_DIR/src/mover.py          --config_host $config_host --config_port $config_port fd0.mover &
+echo $! >> mover_pids
 
 # really need to add a check to make sure they are working
 sleep 1

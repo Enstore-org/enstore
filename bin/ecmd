@@ -66,19 +66,19 @@ case $cmd in
     ;;
 
 
-  rddt)
+  rddt|rawdriver-test)
     python $ENSTORE_DIR/src/driver.py $@
     stat=$?
     ;;
-  clbk)
+  clbk|callback)
     python $ENSTORE_DIR/src/callback.py $@
     stat=$?
     ;;
-  udpc)
+  udpc|udp-test)
     python $ENSTORE_DIR/src/udp_client.py $@
     stat=$?
     ;;
-  ranf)
+  ranf|random-file)
     python $ENSTORE_DIR/src/ranfile.py $@
     stat=$?
     ;;

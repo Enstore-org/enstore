@@ -10,13 +10,14 @@ from dict_to_a import *
 from driver import RawDiskDriver
 
 #csc = configuration_client()
-u = UDPClient()
+#u = UDPClient()
 
 class Mover :
         def __init__(self, config_host="localhost", config_port=7500):
             self.config_host = config_host
             self.config_port = config_port
 	    csc = configuration_client(self.config_host,self.config_port)
+	    u = UDPClient()
 
         def move_forever(self, name) :
                 self.name = name
@@ -364,7 +365,6 @@ if __name__ == "__main__" :
         print "   do not forget the '--' in front of each option"
         sys.exit(0)
 
-    print config_host,config_port,config_list
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
 
