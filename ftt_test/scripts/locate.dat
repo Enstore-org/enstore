@@ -19,12 +19,12 @@ ftt_skip_fm 1
 ftt_verify_tblock -n 3
 ftt_get_stats
 ftt_echo "We should be at BLOC_LOC == 5"
-ftt_extract_stat FTT_BLOC_LOC
+ftt_extract_stats FTT_BLOC_LOC
 ftt_rewind
 ftt_locate 5
 ftt_echo "We should again be at BLOC_LOC == 5"
 ftt_get_stats
-ftt_extract_stat FTT_BLOC_LOC
+ftt_extract_stats FTT_BLOC_LOC
 
 ftt_rewind
 

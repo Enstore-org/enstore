@@ -464,18 +464,18 @@ ftt_dump_rsdata(ftt_descriptor d, FILE *pf) {
         int lng;
         int res;
 
+        static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00, 18, 0x00};
+
         ENTERING("ftt_dump_srdata");
 	CKNULL("ftt_descriptor", d);
 	CKNULL("stdio file handle", pf);
 
         memset(buf,0,sizeof(buf));
 
-        static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00, 18, 0x00};
         res = ftt_do_scsi_command(d, "Req Sense:", cdb_req_sense, 6, buf, 18, 10, 0);
         if (res < 0) {
         return -1;
         }
-
 
         fprintf(pf, "Request Sense Data\n");
         fprintf(pf, "|_____|_____|_____|_____|_____|_____|_____|_____|\n");
