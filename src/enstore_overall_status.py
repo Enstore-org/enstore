@@ -56,6 +56,14 @@ class HtmlStatusOnlyFile:
 	    self.openfile.close()
 	    self.openfile = 0
 
+    def do_write(self, data, filename=None):
+	if filename is None:
+	    filename = self.file_name
+	try:
+	    self.openfile.write(data)
+	except IOError, detail:
+	    print "Error writing %s (%s)"%(filename, detail)
+
     def write(self, status, nodes_d):
         if self.openfile:
             doc = enstore_html.EnStatusOnlyPage()

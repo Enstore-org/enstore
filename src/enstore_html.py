@@ -2700,7 +2700,7 @@ class EnStatusOnlyPage(EnSaagPage):
 
     def __init__(self, title="ENSTORE Production System's Status", 
                  gif="en_all.gif"):
-        EnBaseHtmlDoc.__init__(self, refresh=370)
+        EnBaseHtmlDoc.__init__(self, refresh=370, background="enstore_background.gif")
         self.title = title
         self.script_title_gif = gif
         self.source_server = "SPAM"
