@@ -76,14 +76,15 @@ def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
         # {'ascent': 11, 'linespace': 15, 'descent': 4, 'fixed': 1}
         height = metrics['ascent']
         width = f.measure(fit_string)
-        if height < height_wanted: #good, we found it
-            if width <= width_wanted:
-                break
-            else:
-                size = size - 1 #Try a little bit smaller...
+        if height <= height_wanted and width_wanted and width <= width_wanted:
+            #good, we found it
+            break
+        elif height < height_wanted and not width_wanted:
+            break
         else:
             size = size - 1 #Try a little bit smaller...
-        _font_cache[(height_wanted, family)] = f
+
+    _font_cache[(height_wanted, family)] = f
     return f
 
 def rgbtohex(r,g,b):
