@@ -1886,7 +1886,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 work_at_mover_unique_id = string.join(s1[:-1], "-")
                 Trace.trace(11, "m_id %s w_id %s"%(mover_rq_unique_id,work_at_mover_unique_id))  
             # check if it is a backed up request
-            if mover_rq_unique_id != work_at_mover_unique_id:
+            if mover_rq_unique_id and mover_rq_unique_id != work_at_mover_unique_id:
                 Trace.trace(15,"found backed up mover %s" % (mticket['mover'],))
                 self.reply_to_caller({'work': 'no_work'})
                 return
