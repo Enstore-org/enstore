@@ -16,16 +16,16 @@ import re
 import os
 import grp
 import pwd
-import string
-import errno
+#import string
+#import errno
 
 # enstore imports
-import setpath
+#import setpath
 
-import e_errors
+#import e_errors
 import alarm_client
 import configuration_client
-import configuration_server
+#import configuration_server
 import file_clerk_client
 import inquisitor_client
 import library_manager_client
@@ -68,7 +68,7 @@ CMD2 = " 2>&1 |tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&
 CMD1 = "%s%s%s"%(CMDa, "startup", CMDb)
 #CMD1 = "%s%s%s"%(CMDa, "startup", CMDc)
 
-DEFAULT_AML2_NODE = "rip10"
+#DEFAULT_AML2_NODE = "rip10"
 ERROR = "ERROR"
 HELP = "HELP"
 HELP_OPTS = ["--help", "-h", "--hel", "--he"]
@@ -209,10 +209,10 @@ remote_scripts = {
 def call_function(executable, argv):
     # pull out the arguments from argv and create a string that can be
     # passed to os.system.
-    str = executable
+    tmp_str = executable
     for arg in argv:
-        str = "%s %s"%(str, arg)
-    return os.system(str)>>8
+        tmp_str = "%s %s"%(tmp_str, arg)
+    return os.system(tmp_str)>>8
 
 def prompt_user(command="", node=""):
     sys.stdout.write("Please confirm: %s enstore on %s [y/n def:n] : "%(command, 
@@ -278,6 +278,7 @@ class EnstoreInterface:
 
     # the __init__ method is below
 
+    """
     # get a new server interface and store it to use later if needed
     def get_server_intf(self, skey, flag):
         functions = server_functions.get(skey, None)
@@ -287,7 +288,8 @@ class EnstoreInterface:
             return self.server_intf
         else:
             return None
-
+    """
+    
     def find_server_match(self, servers):
         total_matches = 0
         try:
@@ -370,8 +372,8 @@ class Enstore:
         self.user_mode = intf.user_mode
         self.matched_server = intf.matched_server
         self.intf = intf
-	self.node = ""
-
+	#self.node = ""
+    """
     # try to get the configuration information from the config server
     def get_config_from_server(self):
         rtn = 0
@@ -418,7 +420,7 @@ class Enstore:
 		    self.node = DEFAULT_AML2_NODE
 		rtn = 1
         return rtn
-
+    """
     # make sure the user wanted to start d0en nodes while on stken and vice versa
     def verify_node(self,node, command):
 	if VERIFY in command:
@@ -494,9 +496,9 @@ class Enstore:
         #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
         #   in DEFAULT_AML2_NODE.
 	# this info is used if the command is an aml2 command
-        if not self.get_config_from_server() and \
-           not self.get_config_from_file():
-            self.node = DEFAULT_AML2_NODE
+        #if not self.get_config_from_server() and \
+        #   not self.get_config_from_file():
+        #    self.node = DEFAULT_AML2_NODE
 	    
 	rtn = 0
         if arg1 in local_scripts.keys():
