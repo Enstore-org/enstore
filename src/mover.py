@@ -148,6 +148,38 @@ class Buffer:
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 
+    def save_settings(self):
+        self.saved_buf_bytes = self._buf_bytes
+        self.saved_reading_block = self._reading_block
+        self.saved_writing_block = self._writing_block
+        self.saved_read_ptr = self._read_ptr
+        self.saved_write_ptr = self._write_ptr
+        self.saved_complete_crc = self.complete_crc
+        self.saved_sanity_crc = self.sanity_crc
+        self.saved_sanity_bytes = self.sanity_bytes
+        self.saved_header_size = self.header_size
+        self.saved_trailer_size = self.trailer_size
+        self.saved_file_size = self.file_size
+        self.saved_bytes_written = self.bytes_written
+        self.saved_sanity_cookie = self.sanity_cookie
+        self.saved_wrapper = self.wrapper
+
+    def restore_settings(self):
+        self._buf_bytes = self.saved_buf_bytes
+        self._reading_block = self.saved_reading_block
+        self._writing_block = self.saved_writing_block
+        self._read_ptr = self.saved_read_ptr
+        self._write_ptr = self.saved_write_ptr
+        self.complete_crc = self.saved_complete_crc
+        self.sanity_crc = self.saved_sanity_crc
+        self.sanity_bytes = self.saved_sanity_bytes
+        self.header_size = self.saved_header_size
+        self.trailer_size = self.saved_trailer_size
+        self.file_size = self.saved_file_size
+        self.bytes_written = self.saved_bytes_written
+        self.sanity_cookie = self.saved_sanity_cookie
+        self.wrapper = self.saved_wrapper
+        
     def reset(self, sanity_cookie, client_crc_on):
         self._lock.acquire()
         self.read_ok.set()
@@ -226,7 +258,7 @@ class Buffer:
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
-    def block_read(self, nbytes, driver):
+    def block_read(self, nbytes, driver, fill_buffer=1):
         Trace.trace(22, "block_read CRC check is %s" % (self.client_crc_on,))
         if self.client_crc_on:
             # calculate checksum when reading from
@@ -237,7 +269,9 @@ class Buffer:
         data = None
         partial = None
         space = self._getspace()
+        Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
         bytes_read = driver.read(space, 0, nbytes)
+        Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -252,7 +286,6 @@ class Buffer:
         bytes_for_cs = bytes_read
 
         if self.first_block: #Handle variable-sized cpio header
-            self.first_block = 0
             ##if len(self.buffer._buf) != 1:
             ##        Trace.log(e_errors.ERROR,
             ##                  "block_read: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
@@ -265,18 +298,23 @@ class Buffer:
                 data_ptr = header_size
                 bytes_for_cs = bytes_read - header_size
         if do_crc:
+            crc_error = 0
             try:
-                Trace.trace(22,"block_read: data_ptr: %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
+                Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
 
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        data,
                                                        data_ptr, bytes_for_cs)
+                Trace.trace(22,"block_read: complete_crc %s" % (self.complete_crc,))
+                Trace.trace(22,"first_block %s, sanity_bytes %s"%(self.first_block,self.sanity_bytes))
                 if self.first_block and self.sanity_bytes < SANITY_SIZE:
 		    self.first_block = 0
+                    Trace.trace(22,"222222222")
                     nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
                     self.sanity_crc = checksum.adler32_o(self.sanity_crc,
                                                          data,
                                                          data_ptr, nbytes)
+                    self.sanity_bytes = self.sanity_bytes + nbytes
                     Trace.trace(22, "block_read: sanity cookie %s sanity_crc %s sanity_bytes %s" %
                                 (self.sanity_cookie, self.sanity_crc,
                                  self.sanity_bytes))
@@ -284,13 +322,18 @@ class Buffer:
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" %
                                   (self.buffer.sanity_cookie[1],self.buffer.sanity_crc)) 
-                        raise "CRC_ERROR"
+                        crc_error = 1
                 data_ptr = data_ptr + bytes_for_cs
             except:
+                Trace.handle_error()
                 raise "CRC_ERROR"
-
+            if crc_error:
+                raise "CRC_ERROR"
+        else:
+           self.first_block = 0 
+                
 ##        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
-        if data:
+        if data and fill_buffer:
             self.push(data)
             if partial:
                 self._freespace(space)
@@ -331,11 +374,10 @@ class Buffer:
                 try:
                     Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
                                 (data_ptr, bytes_for_cs))
-                    Trace.trace(22,"complete crc %s"%(self.complete_crc,))
                     self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                            data,
                                                            data_ptr, bytes_for_cs)
-                    Trace.trace(22,"complete crc1 %s"%(self.complete_crc,))
+                    Trace.trace(22,"complete crc %s"%(self.complete_crc,))
                     
                     if self.first_block and self.sanity_bytes < SANITY_SIZE:
                         self.first_block = 0
@@ -609,6 +651,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
+        self.check_written_file_period = self.config.get('check_written_file', 0)
+        self.files_written_cnt = 0
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
         self.state = IDLE
@@ -756,6 +800,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
 
+    def check_written_file(self):
+        if self.check_written_file_period and self.files_written_cnt%self.check_written_file_period == 0:
+            return 1
+        else:
+            return 0
+        
     def nowork(self, ticket):
         return {}
 
@@ -969,6 +1019,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
     def write_tape(self):
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
+        Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
         count = 0
         defer_write = 1
@@ -1044,8 +1095,73 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             
+            if self.check_written_file() and self.driver_type == 'FTTDriver':
+                Trace.log(e_errors.INFO, "selective CRC check after writing file")
+                Trace.trace(22, "position media")
+                have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+                self.tape_driver.set_mode(blocksize = 0)
+                save_location = self.tape_driver.tell()
+                Trace.trace(22,"save location %s" % (save_location,))
+                if have_tape != 1:
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error positionong tape for selective CRC check", error_source=TAPE)
+                    return
+                try:
+                    self.tape_driver.seek(cookie_to_long(self.vol_info['eod_cookie']), 0) #XXX is eot_ok needed?
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
+                    return
+                self.buffer.save_settings()
+                bytes_read = 0L
+                Trace.trace(20,"write_tape: header size %s" % (self.buffer.header_size,))
+                bytes_to_read = self.bytes_to_transfer + self.buffer.header_size
+                # setup buffer for reads
+                saved_wrapper = self.buffer.wrapper
+                saved_sanity_bytes = self.buffer.sanity_bytes
+                saved_complete_crc = self.buffer.complete_crc
+                self.buffer.reset((self.buffer.sanity_bytes, self.buffer.sanity_crc), client_crc_on=1)
+                self.buffer.set_wrapper(saved_wrapper)
+                Trace.trace(22, "starting check after write, bytes_to_read=%s" % (bytes_to_read,))
+                Trace.log(e_errors.INFO, "selective CRC check after writing file")
+                driver = self.tape_driver
+                while bytes_read < bytes_to_read:
+
+                    nbytes = min(bytes_to_read - bytes_read, self.buffer.blocksize)
+                    if bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
+                        nbytes = self.buffer.blocksize
+                    try:
+                        b_read = self.buffer.block_read(nbytes, driver)
+                    except "CRC_ERROR":
+                        exc, detail, tb = sys.exc_info()
+                        Trace.handle_error(exc, detail, tb)
+                        self.transfer_failed(e_errors.CRC_ERROR, detail, error_source=TAPE)
+                        break
+                    except:
+                        exc, detail, tb = sys.exc_info()
+                        Trace.handle_error(exc, detail, tb)
+                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                        break
+                    if b_read <= 0:
+                        self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (bytes_read,),
+                                             error_source=TAPE)
+                        break
+                    bytes_read = bytes_read + b_read
+                    if bytes_read > bytes_to_read: #this is OK, we read a cpio trailer or something
+                        bytes_read = bytes_to_read
+
+                Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
+                            (self.buffer.complete_crc, saved_complete_crc))
+                if self.buffer.complete_crc != saved_complete_crc:
+                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                    return
+                Trace.log(e_errors.INFO, "selective CRC check after writing file cmpleted successfuly")
+                self.buffer.restore_settings()
+                # position to eod"
+                self.tape_driver.seek(save_location, 0) #XXX is eot_ok
             if self.update_after_writing():
                 self.transfer_completed()
+                self.files_written_cnt = self.files_written_cnt + 1
+
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
