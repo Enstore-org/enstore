@@ -45,6 +45,16 @@ MoverClient:
 
 """
 
+# python modules
+import errno
+import os				# os.environ, os.system, and possible os.error (from posix.waitpid)
+import posix				# waitpid
+import pprint
+import sys				# exit
+import time				# .sleep
+import traceback			# print_exc == stack dump
+
+# enstore modules
 import generic_server
 import generic_cs
 import interface
@@ -53,18 +63,12 @@ import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
 import callback				# used in send_user_done, get_user_sockets
-import errno
+import ECRC				# for crc
 import cpio
 import Trace
 import driver
-import pprint
-import time				# .sleep
-import traceback			# print_exc == stack dump
-import ECRC				# for crc
-import posix				# waitpid
-import sys				# exit
-
 import e_errors
+
 # for status via exit status (initial method), set using exit_status=m_err.index(e_errors.WRITE_NOTAPE),
 #                            and convert back using just ticket['status']=m_err[exit_status]
 m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
@@ -286,7 +290,7 @@ def forked_write_to_hsm( self, ticket ):
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
-	logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
+	logc.send(log_client.INFO,2,"WRITE_TO_HSM start"+str(ticket))
 
 	origin_addr = ticket['lm']['address']# who contacts me directly
     
@@ -411,7 +415,7 @@ def forked_write_to_hsm( self, ticket ):
 	ticket['mover'] = self.config
 	ticket['mover']['callback_addr']        = self.callback_addr# this was the data callback
 	
-	logc.send(log_client.INFO,2,"WRITE"+str(ticket))
+	logc.send(log_client.INFO,2,"WRITE DONE"+str(ticket))
 	
 	Trace.trace( 11, 'b4 send_user_done' )
 	send_user_done( self, ticket, e_errors.OK )
@@ -432,7 +436,7 @@ def forked_read_from_hsm( self, ticket ):
         #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
-	logc.send(log_client.INFO,2,"READ_FROM_HSM"+str(ticket))
+	logc.send(log_client.INFO,2,"READ_FROM_HSM start"+str(ticket))
 
 	origin_addr = ticket['lm']['address']# who contacts me directly
 
@@ -770,7 +774,14 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 
 def get_state_build_next_lm_req( self, wait ):
     if self.client_obj_inst.pid:
-	pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
+	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
+	except:
+	    traceback.print_exc()
+	    logc.send( log_client.ERROR, 1, "waitpid-"+str(sys.exc_info()[0])+str(sys.exc_info()[1]) )
+	    os.system( 'ps alx' )
+	    #raise sys.exc_info()[0], sys.exc_info()[1]
+	    # assume success???
+	    pid = self.client_obj_inst.pid
 	if pid == self.client_obj_inst.pid:
 	    self.client_obj_inst.pid = 0
 	    self.client_obj_inst.state = 'idle'
@@ -869,7 +880,6 @@ class MoverInterface(interface.Interface):
 
 #############################################################################
 import sys				# sys.argv[1:]
-import os				# os.environ
 import socket                           # gethostname (local host)
 import string				# atoi
 import types				# see if library config is list
