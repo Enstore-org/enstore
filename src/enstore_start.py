@@ -18,6 +18,7 @@ import string
 import errno
 import socket
 import pwd
+import stat
 
 # enstore imports
 import setpath
@@ -42,6 +43,7 @@ import volume_clerk_client
 import ratekeeper_client
 import event_relay_client
 
+OUTPUT_DIR_BASE = "/tmp/enstore/"
 
 def get_csc():
     # get a configuration server
@@ -62,6 +64,44 @@ def is_on_host(host):
         return 1
 
     return 0
+
+def output(server_name):
+    #Determine where to redirect the output.
+    try:
+        username = pwd.getpwuid(os.geteuid())[0]
+    except KeyError:
+        username = os.geteuid()
+    try:
+        output_dir = os.path.join(OUTPUT_DIR_BASE, username)
+        try:
+            os.makedirs(output_dir)
+        except OSError, msg:
+            #If the file already exists, this really is not an error.
+            if msg.errno != errno.EEXIST:
+                raise OSError, msg
+    except OSError:
+        output_dir = None
+    try:
+        output_file = os.path.join(output_dir, "%s.out" % server_name)
+    except TypeError:
+        output_file = ""
+
+    #By this point output_file should look something like:
+    # /tmp/enstore/enstore/ratekeeper.out
+    # |--base-----|-name--|--server--| 
+
+    if os.isatty(sys.stdout.fileno()):
+        #If stdout points to a tty, direct it there and to the file.
+        return " < /dev/null | tee %s 2>&1 " % output_file
+    elif os.stat("/dev/console")[stat.ST_MODE] & os.O_WRONLY:
+        #If stdout points to the console, direct it there and to the file.
+        return " < /dev/null | tee %s 2>&1 " % output_file
+    elif output_file:
+        #If only the output file is valid.
+        return " < /dev/null > %s 2>&1 " % output_file
+    else:
+        #If all else fails.
+        return " < /dev/null > /dev/null 2>&1 "
 
 #Return true if the system is in one of the production systems.
 def is_in_cluster():
@@ -309,7 +349,8 @@ def do_work(intf):
     if intf.should_start("configuration_server"):
         check_csc(csc, intf,
                   "python $ENSTORE_DIR/src/configuration_server.py "\
-                  "--config-file $ENSTORE_CONFIG_FILE &")
+                  "--config-file $ENSTORE_CONFIG_FILE %s &" %
+                  output("configuration_server"))
 
     rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
     if not e_errors.is_ok(rtn):
@@ -330,10 +371,10 @@ def do_work(intf):
         sudo = "sudo"  #found
 
     #Start the event relay.
-
     if intf.should_start("event_relay"):
         check_event_relay(csc, intf,
-                          "python $ENSTORE_DIR/src/event_relay.py &")
+                          "python $ENSTORE_DIR/src/event_relay.py %s &" %
+                          output("event_relay"))
 
     #Start the Berkley DB dameons.
     if intf.should_start("db_checkpoint"):
@@ -342,12 +383,14 @@ def do_work(intf):
     if intf.should_start("db_deadlock"):
         check_db(csc, "db_deadlock", intf,
                  "db_deadlock -h %s  -t 1 &" % db_dir)
-        
+
+    #Start the servers.
     for server in ["log_server", "alarm_server", "volume_clerk", "file_clerk",
                    "inquisitor", "ratekeeper"]:
         if intf.should_start(server):
             check_server(csc, server, intf,
-                         "python $ENSTORE_DIR/src/%s.py &" % server)
+                         "python $ENSTORE_DIR/src/%s.py %s &" % (server,
+                                                               output(server)))
 
     #Get the library names.
     libraries = csc.get_library_managers({}).keys()
@@ -357,20 +400,24 @@ def do_work(intf):
     if intf.should_start("library"):
         for library in libraries:
             check_server(csc, library, intf,
-                   "python $ENSTORE_DIR/src/library_manager.py %s &" % library)
+                         "python $ENSTORE_DIR/src/library_manager.py %s %s &" %
+                         (library, output(library)))
     elif intf.just[-16:] == ".library_manager":
         check_server(csc, intf.just, intf,
-                 "python $ENSTORE_DIR/src/library_manager.py %s &" % intf.just)
+                     "python $ENSTORE_DIR/src/library_manager.py %s %s &" %
+                     (intf.just, output(intf.just)))
 
     #Media changers.
     if intf.should_start("media"):
         for library in libraries:
             media = csc.get_media_changer(library)
             check_server(csc, media, intf,
-                     "python $ENSTORE_DIR/src/media_changer.py %s &" % media)
+                         "python $ENSTORE_DIR/src/media_changer.py %s %s &" %
+                         (media, output(media)))
     elif intf.just[-14:] == ".media_changer":
         check_server(csc, intf.just, intf,
-                 "python $ENSTORE_DIR/src/media_changer.py %s &" % intf.just)
+                     "python $ENSTORE_DIR/src/media_changer.py %s %s &" %
+                     (intf.just, output(intf.just)))
 
     #Movers.
     if intf.should_start("mover"):
@@ -378,10 +425,12 @@ def do_work(intf):
             for mover in csc.get_movers(library):
                 mover = mover['mover']
                 check_server(csc, mover, intf,
-                    "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, mover))
+                             "%s python $ENSTORE_DIR/src/mover.py %s %s &" %
+                             (sudo, mover, output(mover)))
     elif intf.just[-6:] == ".mover":
         check_server(csc, intf.just, intf,
-                "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, intf.just))
+                     "%s python $ENSTORE_DIR/src/mover.py %s %s &" %
+                     (sudo, intf.just, output(intf.just)))
 
 if __name__ == '__main__':
 
