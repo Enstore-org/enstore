@@ -138,6 +138,9 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 	EnStatusFile.__init__(self, file)
 	self.refresh = refresh
 
+    def set_alive_error_status(self, key):
+	self.text[key][enstore_status.STATUS][0] = "error"
+
     # write the status info to the file
     def write(self):
         if self.filedes:
