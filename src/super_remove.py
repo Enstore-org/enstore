@@ -142,7 +142,11 @@ if __name__ == '__main__':
 		print 'It is OK to remove', vol
 
 	if not intf.delete:
-		print 'use %s --delete %s to really delete it'%(sys.argv[0], vol)
+		if intf.skip_pnfs:
+			skip = '--skip-pnfs '
+		else:
+			skip = ''
+		print 'use %s %s--delete %s to really delete it'%(sys.argv[0], skip, vol)
 		sys.exit(0)
 
 	# let's get serious
