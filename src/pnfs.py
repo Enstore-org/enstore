@@ -66,34 +66,51 @@ def fullpath(filename):
 
     return machine, filename, dirname, basename
 
-def is_pnfs_path(filename, check_name_only = None):
+def is_pnfs_path(pathname, check_name_only = None):
 
     #Expand the filename to the absolute path.
-    pathname = fullpath(filename)[1]
+    machine, filename, dirname, basename = fullpath(pathname)
+
+    #Some versions of python have gotten dirname wrong if filename was
+    # already a directory.
+    if os.path.isdir(filename):
+        dirname = filename
+        basename = ""
     
     #Determine if the target file or directory is in the pnfs namespace.
-    if string.find(pathname,"/pnfs/") < 0:
+    if string.find(dirname,"/pnfs/") < 0:
         return 0 #If we get here it is not a pnfs directory.
-    elif check_name_only:
-        return 1 #Only check the file name, don't check for existance too.
-    
-    #Determine the path for the cursor existance test.
-    if os.path.isdir(pathname):
-        fname = os.path.join(pathname, ".(get)(cursor)")
+
+    #Search all directories in the path for the cursor wormwhole file. These
+    # extra steps are needed in case the user enters a name that does not
+    # exist.
+    search_dir = "/"
+    for directory in dirname.split("/"):
+        search_dir = os.path.join(search_dir, directory)
+        
+        #Determine the path for the cursor existance test.
+        fname = os.path.join(search_dir, ".(get)(cursor)")
+
+        #If the cursor 'file' does not exist, then this is not a real pnfs
+        # file system.
+        if os.path.exists(fname):
+           break # return 0
     else:
-        fname = os.path.join(os.path.dirname(pathname), ".(get)(cursor)")
+        return 0 #The ".(get)(cursor)" files was not found in any directory.
 
-    #If the cursor 'file' exists, then this is a real pnfs file system.
-    if os.path.exists(fname):
+    #If the pathname existance test should be skipped, return true at
+    # this time.
+    if check_name_only:
         return 1
-
+    
+    #If check_name_only is python false then we can reach this check
+    # that checks to make sure that the filename exists.
+    if os.path.exists(filename):
+        return 1
+    
     #If we get here, then the path contains a directory named 'pnfs' but does
     # not point to a pnfs directory.
     return 0
-
-    #raise OSError(errno.EIO,
-    #              "%s: %s" % (os.strerror(errno.EIO),
-    #                          "A /pnfs/ directory is not a pnfs directory."))
 
 ##############################################################################
 
