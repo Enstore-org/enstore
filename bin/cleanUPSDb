@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+#	This script will run through a UPS database and remove any
+#       TABLE_DIR or PROD_DIR declarations that include the value of 
+#       the PROD_DIR_PREFIX.
+
+if [ $# -ne 1 ];
+then
+    db=`pwd`
+else
+    db=$1;
+fi
+  
+PROD_DIR_PREFIX=`ups list -Kprod_dir_prefix -z $db`
+
+if [ "${PROD_DIR_PREFIX:-x}" != "x" ];
+then
+    IFSsave=$IFS
+
+    IFS="
+"
+
+    for line in `ups list -a -K PRODUCT:VERSION:FLAVOR:QUALIFIERS:TABLE_DIR:PROD_DIR -z $db`;
+    do
+	python ~/cleanUPSDb.py $PROD_DIR_PREFIX $db $line
+    done
+
+    IFS=$IFSsave
+fi
