@@ -18,14 +18,14 @@ if [ ! -d $output ] ; then mkdir -p $output || exit 3; fi
 #echo $output
 
 # get all the volumes that have been defined
-vols=`ecmd vcc --vols | sed -e "s/'//g" -e "s/,/ /g"`
+vols=`enstore volume --vols | sed -e "s/'//g" -e "s/,/ /g"`
 #echo $vols
 
 # now loop over them and save the output
 for vol in $vols; do
   #echo $vol
-  finfo=`ecmd fcc --list=$vol`
-  vinfo=`ecmd vcc --vol=$vol`
+  finfo=`enstore file --list=$vol`
+  vinfo=`enstore volume --vol=$vol`
   la=`echo "$vinfo" | awk '($1 ~ /last_access/) {print $2}'`
   lat="`ptime $la`"
   b=`echo "$vinfo"  | awk '($1 ~ /remaining_bytes/ ) {print $2}' | sed -e 's/L,//g'`
