@@ -6,7 +6,7 @@ fi
 source /usr/local/etc/setups.sh
 setup enstore
 enstore stop
-/usr/local/bin/zapit mover
+ezapit python
 if   [ `uname` = Linux ]; then ps auxww |  egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_';
 elif [ `uname` = SunOS ]; then ps -ef   |  egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_';
 fi
