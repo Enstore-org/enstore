@@ -5,7 +5,7 @@ setup enstore
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
-case node in 
+case $node in 
     stk*) icap="0,0,0"
           ocap="0,0,0"
 	  sun=fntt

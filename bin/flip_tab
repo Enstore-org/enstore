@@ -2,7 +2,7 @@
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
-case node in 
+case $node in 
     stk*) icap="0,0,0"
           ocap="0,0,0"
 	  sun=fntt
@@ -36,7 +36,7 @@ for i in $work/*; do
   . $i |tee $output 2>&1
   echo 
   echo
-  case node in 
+  case $node in 
     stk*)
       /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
       echo 
@@ -81,7 +81,7 @@ for i in $work/*; do
   fi
 done
 
-case node in 
+case $node in 
     d0*|cdf*)
       /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
       ;;
