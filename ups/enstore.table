@@ -12,9 +12,9 @@ QUALIFIERS = ""
         pathPrepend( PATH, ${UPS_PROD_DIR}/bin )
 
         # dot, tgif and htmldoc are for generating documenation only
-	# dot and graphviz are the same product with different names!
+        # dot and graphviz are the same product with different names!
         setupOptional("dot")
-	setupOptional("graphviz")
+        setupOptional("graphviz")
         setupOptional("tgif")
         setupOptional("htmldoc")
 
@@ -22,7 +22,7 @@ QUALIFIERS = ""
 
         # the setup of python is tricky
         # if user has python declared, set that up and use it
-	setupOptional("python")
+        setupOptional("python")
         # if no python from ups available, we need it from the user's path
         exeAccess("python")
         # now we need to set a ups-like PYTHON_DIR to point to python
@@ -55,5 +55,7 @@ QUALIFIERS = ""
         envSet(ENSTORE_DB, $ENSTORE_DIR/etc)
 
         # controls where the trace file goes
-        execute("mkdir -p /tmp/enstore/$(whoami)", NO_UPS_ENV)
-	envSet(TRACE_KEY, "/tmp/enstore/$(whoami)/trace.$(hostname)")
+        execute("whoami", NO_UPS_ENV, meme)
+        execute("mkdir -p /tmp/enstore/$meme", NO_UPS_ENV)
+        envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$(hostname)")
+        envUnset(meme)
