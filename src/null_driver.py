@@ -8,6 +8,7 @@ import time
 import setpath
 import driver
 import strbuffer
+import e_errors
 import Trace
 
 class NullDriver(driver.Driver):
