@@ -15,7 +15,7 @@ import types
 import string
 
 #enstore imports
-import FTT
+#import FTT
 import Trace
 import e_errors
 import interface
