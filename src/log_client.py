@@ -104,7 +104,7 @@ class LoggerClient(generic_client.GenericClient):
             msg = msg + ' ' + str
 	    if self.verbose & generic_cs.DEBUG:
 	        try:
-	            print add_id("", msg)
+	            print generic_cs.add_id("", msg)
 	        except:
 	            pass
             ticket = {'work' : 'log_message',
@@ -124,11 +124,11 @@ class LoggerClient(generic_client.GenericClient):
 #             - a brief trace message (1 per file per server should be priority 10
 #             - file/server trace messages should 10> <20
 #             - debugging should be > 20
-    def set_logpriority(priority):
-        log_priority = priority
+    def set_logpriority(self, priority):
+        self.log_priority = priority
 
-    def get_logpriority():
-        return log_priority
+    def get_logpriority(self):
+        return self.log_priority
 
 
     # check on alive status
