@@ -153,19 +153,30 @@ class DispatchingWorker:
 
     # a server can add an fd to the server_fds list
     def add_select_fd(self, fd, write=0, callback=None):
+        print "add fd", fd, ['read','write'][write], callback
+        if fd is None:
+            return
         if write:
-            self.write_fds.append(fd)
+            if fd not in self.write_fds:
+                self.write_fds.append(fd)
         else:
-            self.read_fds.append(fd)
+            if fd not in self.read_fds:
+                self.read_fds.append(fd)
         self.callback[fd]=callback
+        print "callbacks", self.callback
         
-    def delete_select_fd(self, fd):
+    def remove_select_fd(self, fd):
+        print "disable fd", fd
+        if fd is None:
+            return
+
         if fd in self.write_fds:
             self.write_fds.remove(fd)
         if fd in self.read_fds:
             self.read_fds.remove(fd)
         if self.callback.has_key(fd):
             del self.callback[fd]
+        print "callbacks", self.callback
         
     def get_request(self):
         # returns  (string, socket address)
@@ -175,60 +186,62 @@ class DispatchingWorker:
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
 
-        r = self.read_fds + [self.server_socket]
-        w = self.write_fds
-        
-        rcv_timeout = self.rcv_timeout
-        if self.interval_func:
-            time_left = self.interval - (time.time()-self.last_interval)
-            if time_left<0:
-                time_left=0
-            rcv_timeout = min(rcv_timeout, time_left)
+        gotit = 0
+        while not gotit:
 
-        r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+            r = self.read_fds + [self.server_socket]
+            w = self.write_fds
 
-        if not r + w:
-            return ('',()) #timeout
+            rcv_timeout = self.rcv_timeout
+            if self.interval_func:
+                time_left = self.interval - (time.time()-self.last_interval)
+                if time_left<0:
+                    time_left=0
+                rcv_timeout = min(rcv_timeout, time_left)
 
-        #handle pending I/O operations first
-        for fd in self.read_fds + self.write_fds:
-            if fd in r+w:
+            r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+
+            if not r + w:
+                return ('',()) #timeout
+
+            #handle pending I/O operations first
+            for fd in r+w:
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
-        for fd in r:
-            if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
-                                                    ##for old usage in media_changer
-                msg = os.read(fd, 8)
-                try:
-                    bytecount = string.atoi(msg)
-                except:
-                    Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
-                    break
-                msg = ""
-                while len(msg)<bytecount:
-                    tmp = os.read(fd, bytecount - len(msg))
-                    if not tmp:
+            for fd in r:
+                if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
+                                                        ##for old usage in media_changer
+                    msg = os.read(fd, 8)
+                    try:
+                        bytecount = string.atoi(msg)
+                    except:
+                        Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
                         break
-                    msg = msg+tmp
-                request= (msg,())                    #             if so read it
-                self.delete_select_fd(fd)
-                os.close(fd)
-                                
-                return request
-            # else the input is on the udp socket
-            # req is (string,address) where string has CRC
-            req = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
-            request,inCRC = eval(req[0])
-            # calculate CRC
-            crc = checksum.adler32(0L, request, len(request))
-            if (crc != inCRC) :
-                Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+
-                        " calcCRC="+repr(crc))
-                Trace.log(e_errors.INFO, "BAD CRC request: "+request)
-                Trace.log(e_errors.INFO,
-                          "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
-                request=""
+                    msg = ""
+                    while len(msg)<bytecount:
+                        tmp = os.read(fd, bytecount - len(msg))
+                        if not tmp:
+                            break
+                        msg = msg+tmp
+                    request= (msg,())                    #             if so read it
+                    self.remove_select_fd(fd)
+                    os.close(fd)
+
+                    return request
+                elif fd == self.server_socket:
+                    req = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+                    gotit = 1
+                    request,inCRC = eval(req[0])
+                    # calculate CRC
+                    crc = checksum.adler32(0L, request, len(request))
+                    if (crc != inCRC) :
+                        Trace.trace(6,"handle_request - bad CRC inCRC="+repr(inCRC)+
+                                    " calcCRC="+repr(crc))
+                        Trace.log(e_errors.INFO, "BAD CRC request: "+request)
+                        Trace.log(e_errors.INFO,
+                                  "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
+                        request=""
 
         return (request, req[1])
 
@@ -290,23 +303,6 @@ class DispatchingWorker:
         Trace.trace(6,"process_request function="+repr(function_name))
         apply(function, (ticket,))
         
-    def enable_call_trace(self, ticket):
-        import Ptrace
-        sys.setprofile(Ptrace.profile)
-        ticket['address'] = self.server_address
-        ticket['status'] = (e_errors.OK, None)
-        ticket['pid'] = os.getpid()
-        self.reply_to_caller(ticket)
-
-
-    def disable_call_trace(self, ticket):
-        sys.setprofile(None)
-        ticket['address'] = self.server_address
-        ticket['status'] = (e_errors.OK, None)
-        ticket['pid'] = os.getpid()
-        self.reply_to_caller(ticket)
-
-
     def handle_error(self, request, client_address):
 	exc, msg, tb = sys.exc_info()
 	Trace.trace(6,"handle_error %s %s"%(exc,msg))
@@ -323,9 +319,7 @@ class DispatchingWorker:
 			       'exc_type':str(exc), 
 			       'exc_value':str(msg)} )
 
-    # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
-        Trace.trace(10,"alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
