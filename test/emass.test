@@ -1,0 +1,50 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# test/$RCSfile$  $Revision$
+
+idm05=0
+idm06=0
+idm07=0
+idm08=0
+
+idc12=0
+
+ide13=0
+ide14=0
+ide15=0
+ide16=0
+
+while true; do
+  #mount the aits
+  wait $idm05 2>/dev/null; dasadmin mount -t 8MM CA2901 DM05 & idm05=$$
+  wait $idm06 2>/dev/null; dasadmin mount -t 8MM CA2902 DM06 & idm06=$$
+  wait $idm07 2>/dev/null; dasadmin mount -t 8MM CA2903 DM07 & idm07=$$
+  wait $idm08 2>/dev/null; dasadmin mount -t 8MM CA2904 DM08 & idm08=$$
+
+  #mount the mammoths
+  wait $idc12 2>/dev/null; dasadmin mount -t 8MM CA2251 DC12 & idc12=$$
+
+  #mount the dlts
+  wait $ide13 2>/dev/null; dasadmin mount -t 8MM CA2501 DE13 & ide13=$$
+  wait $ide14 2>/dev/null; dasadmin mount -t 8MM CA2502 DE14 & ide14=$$
+  wait $ide15 2>/dev/null; dasadmin mount -t 8MM CA2503 DE15 & ide15=$$
+  wait $ide16 2>/dev/null; dasadmin mount -t 8MM CA2504 DE16 & ide16=$$
+
+  #eject and dismount the aits
+  wait $idm05 2>/dev/null; rip-drive dm05 offline; dasadmin dismount -d DM05 & idm05=$$
+  wait $idm06 2>/dev/null; rip-drive dm06 offline; dasadmin dismount -d DM06 & idm06=$$
+  wait $idm07 2>/dev/null; rip-drive dm07 offline; dasadmin dismount -d DM07 & idm07=$$
+  wait $idm08 2>/dev/null; rip-drive dm08 offline; dasadmin dismount -d DM08 & idm08=$$
+
+  #eject and dismount the mammoths
+  wait $idc12 2>/dev/null; rip-drive dc12 offline; dasadmin dismount -d DC12 & idc12=$$
+
+  #eject and dismount the dlts
+  wait $ide13 2>/dev/null; rip-drive de13 offline; dasadmin dismount -d DE13 & ide13=$$
+  wait $ide14 2>/dev/null; rip-drive de14 offline; dasadmin dismount -d DE14 & ide14=$$
+  wait $ide15 2>/dev/null; rip-drive de15 offline; dasadmin dismount -d DE15 & ide15=$$
+  wait $ide16 2>/dev/null; rip-drive de16 offline; dasadmin dismount -d DE16 & ide16=$$
+
+done
