@@ -1,9 +1,0 @@
-setenv ENSTORE_DIR `pwd`
-setenv ENSTORE_CONFIG_FILE  $ENSTORE_DIR/etc/tanya.conf
-setenv ENSTORE_DB $ENSTORE_DIR/db
-setenv ENSTORE_DB_BACKUP /usr2/backup
-setenv ENSTORE_BCKP_HST agony 
-setenv ENSTORE_CONFIG_PORT  7560
-setenv ENSTORE_CONFIG_HOST  pcfarm9
-setup libtp
-setup libtppy
