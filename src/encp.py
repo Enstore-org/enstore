@@ -4572,7 +4572,13 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             print_data_access_layer_format(
                 e.volume, e.output[0], 0,
                 {'status':(msg.type, str(msg))})
-            quit(1)
+            if e_errors.is_non_retriable(msg.type):
+                #If the tape is NOACCESS or NOTALLOWED, "get" needs to
+                # return 2 instead of one.  Two indicates an error that
+                # a human needs to intervine.
+                quit(2)
+            else:
+                quit(1)
 
         #Set these here.  ("Get" with --list.)
         if e.list:
@@ -4620,6 +4626,10 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #Get thenumber and filename for the next line on the file.
                 number, filename = list_of_files[i].split()[:2]
                 filename = os.path.basename(filename)
+
+                Trace.message(TRANSFER_LEVEL,
+                              "Preparing file number %s (%s) for transfer." %
+                              (number, filename))
                 
                 #If everything is okay, search the listing for the location
                 # of the file requested.

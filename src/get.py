@@ -191,6 +191,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         #This is an evil hack to modify work_ticket outside of
         # create_read_requests().
         work_ticket['method'] = "read_next"
+        #Grab a new clean udp_socket.
+        unused, unused = encp.get_routing_callback_addr(e, udp_socket)
+        work_ticket['routing_callback_addr'] = \
+                                         udp_socket.server_socket.getsockname()
         #Send the actual request to the mover.
         Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
@@ -300,6 +304,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
+            Trace.log(e_errors.ERROR, "WORK_TICKET: %s" % str(work_ticket))
+            Trace.log(e_errors.ERROR, "DONE_TICKET: %s" % str(done_ticket))
+            Trace.log(e_errors.ERROR, "RESULT_DICT: %s" % str(result_dict))
             #Copy this element special into work_ticket.
             work_ticket['status'] = done_ticket['status']
             #Don't loose the non-retirable error.
