@@ -87,7 +87,7 @@ class GenericDriver:
         len_s=len(s)
         if len_s>12:
             Trace.alarm(e_errors.ALARM,"int2loc size is too big")
-            raise raise InvalidLocationError
+            raise InvalidLocationError
         s='0'*(12-len(s))+s
         return s
 
