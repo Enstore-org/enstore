@@ -49,8 +49,8 @@ case $robot in
     emass $opt DE13-CA2503 < /dev/null > de13.mount 2>&1 &
     emass $opt DE14-CA2504 < /dev/null > de14.mount 2>&1 &
 
-    emass $opt DC15-CA2274 < /dev/null > dc15.mount 2>&1 &
-    #emass $opt DC16-CA2275 < /dev/null > dc16.mount 2>&1 &
+    emass $opt DC15-CA2278 < /dev/null > dc15.mount 2>&1 &
+    emass $opt DC16-CA2275 < /dev/null > dc16.mount 2>&1 &
     emass $opt DC17-CA2276 < /dev/null > dc17.mount 2>&1 &
 
     emass $opt DM18-CA2927 < /dev/null > dm18.mount 2>&1 &
