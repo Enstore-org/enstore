@@ -83,8 +83,7 @@ class GenericAlarm:
     def ticket(self):
         if not self.ticket_generated and self.condition:
             # this is for testing, the real value is
-            # system_name = self.host
-            system_name = "stkensrv42"
+            system_name = self.host
             condition = self.condition
             short_message = self.root_error
             long_message = self.list_alarm()
