@@ -190,6 +190,10 @@ class Interface:
                 self.agetime = string.atoi(value)
             elif opt == "--list":
                 self.list = 1
+            elif opt == "--debug":
+                self.debug = 1
+            elif opt == "--nosummon":
+                self.summon = 1
             elif opt == "--log":
                 self.list = string.atoi(value)
             elif opt == "--verbose" :
