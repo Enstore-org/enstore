@@ -74,29 +74,32 @@ def strip_file_dir(str):
 
 # parse the encp line
 def parse_encp_line(line):
-    Trace.trace(12,"{parse_encp_line "+repr(line))
     [etime, enode, etmp, euser, estatus, etmp2, erest] = \
                                                    string.split(line, None, 6)
     if 0: print etmp,etmp2 # quiet lint
+    if type(erest) == type([]):
+        # if erest is a list we do not currently handle this format
+        return []
     if estatus == e_errors.sevdict[e_errors.INFO]:
-        [erest2, erest3] = string.splitfields(erest, ":", 1)
-        # erest2 has the file name info which we do not need, get the 
-        # total data transfer rate from the end of erest3
-        [erest2, tt] = string.splitfields(erest3, "(", 1)
-        [tt, etmp] = string.splitfields(tt, ")",1)
-        [tt, etmp] = string.splitfields(tt, " ",1)
-	erate = string.splitfields(erest2, " ")
+        try:
+            [erest2, erest3] = string.splitfields(erest, ":", 1)
+            # erest2 has the file name info which we do not need, get the 
+            # total data transfer rate from the end of erest3
+            [erest2, tt] = string.splitfields(erest3, "(", 1)
+            [tt, etmp] = string.splitfields(tt, ")",1)
+            [tt, etmp] = string.splitfields(tt, " ",1)
+            erate = string.splitfields(erest2, " ")
+        except ValueError:
+            # we do not handle this formatting
+            return []
     else:
         # there was an error or warning
         try:
             [str1, str2, erest2] = string.splitfields(erest, ":", 2)
-	    Trace.trace(12,"}parse_encp_line ")
 	    return [etime, enode, euser, estatus, str1, str2, erest2]
-        except:
+        except :
             # the leftover text was formatted funny, just output it
-	    Trace.trace(12,"}parse_encp_line ")
 	    return [etime, enode, euser, estatus, erest]
-    Trace.trace(12,"}parse_encp_line ")
     return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
 
 class EnStatus:
@@ -498,6 +501,11 @@ class EnHTMLFile:
             self.filedes.close()
         Trace.trace(12,"}close")
 
+    # include a link to the main inquisitor page and a sideways page of the
+    # users choice
+    def page_top(self):
+        return ""
+
     # reset the header, the refresh has changed
     def set_header(self):
 	Trace.trace(10,"{set_header ")
@@ -571,6 +579,9 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
 	    einfo = parse_encp_line(line)
+            if not len(einfo):
+                # nothing was returned skip this line and go to the next
+                continue
 	    str = str+spacing+einfo[ETIME]+" on "+einfo[ENODE]+" by "+\
 	          einfo[EUSER]
 	    spacing = "                  "
@@ -640,7 +651,9 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
     def format_encp(self, lines, key):
         if 0: print self,key # quiet lint
 	Trace.trace(13,"{format_encp ")
-	str = "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
+        str = self.page_top()
+	str = str+\
+              "<P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
 	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
 	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
 	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
@@ -651,6 +664,9 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
 	    einfo = parse_encp_line(line)
+            if not len(einfo):
+                # nothing was returned skip this line and go to the next
+                continue
 	    if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
 	        str = str+trow+tdata+einfo[ETIME]+tdata_end+ \
 	                       tdata+einfo[ENODE]+tdata_end+ \
@@ -718,16 +734,10 @@ class EnDataFile(EnFile):
     def timed_read(self, ticket):
 	Trace.trace(10,"{timed_read "+repr(ticket))
 	do_all = FALSE
-	if ticket.has_key(START_TIME):
-	    start_time = ticket[START_TIME]
-	else:
-	    start_time = ""
-	if ticket.has_key(STOP_TIME):
-	    stop_time = ticket[STOP_TIME]
-	else:
-	    stop_time = ""
-	    if start_time == "":
-	        do_all = TRUE
+        start_time = ticket.get(START_TIME, "")
+        stop_time = ticket.get(STOP_TIME, "")
+        if not stop_time and not start_time:
+            do_all = TRUE
 	# read it in.  only save the lines that match the desired time frame
         if not self.filedes == 0:
             try:
@@ -802,6 +812,9 @@ class EnEncpDataFile(EnDataFile):
         if 0: print self # quiet lint
 	Trace.trace(12,"{parse_line "+repr(line))
 	einfo = parse_encp_line(line)
+        if not len(einfo):
+            # nothing was returned skip this line
+            return []
 	if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
 	    # the time info may contain the file directory which we must
 	    # strip off
@@ -817,7 +830,7 @@ class EnEncpDataFile(EnDataFile):
 	Trace.trace(10,"{parse_data ")
 	for line in self.lines:
 	    einfo = self.parse_line(line)
-	    if einfo[0] == e_errors.sevdict[e_errors.INFO]:
+	    if len(einfo) and einfo[0] == e_errors.sevdict[e_errors.INFO]:
 	        self.data.append([string.replace(einfo[1], LOG_PREFIX, ""), \
 	                         einfo[2]])
 	Trace.trace(10,"}parse_data ")
