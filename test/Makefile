@@ -60,8 +60,10 @@ olddbs:
 
 datafiles:
 	if [ ! -d data ] ; then mkdir data ; fi
-	touch data/null0.dat
-	echo short > data/short1.dat
+	echo -n "1" > data/d1
+	echo -n "12" > data/d2
+	echo -n "123" > data/d3
+	echo -n "1234" > data/d4
 	dd if=/dev/zero of=data/null3.dat count=60
 	ecmd random-file --size=131072 --file=data/ran3.dat
 	ecmd random-file --size=262144 --file=data/ran4.dat
@@ -86,4 +88,4 @@ clean:
 	@ $$ENSTORE_DIR/bin/enstoreClean
 	for d in 1 2 3 4 5 6 7 8 9 data ; do rm -rf $$d ; done
 	rm -f files.in
-	rm -f readstop writestop
+	rm -f readstop writestop longstop
