@@ -64,7 +64,14 @@ status_table = (
     ("ERROR",   "command error"),                                       #37
     ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
-    
+
+def convert_status(int_status):
+    status = int_status
+    if status > len(status_table):  #invalid error code
+        status = derrno.EDASINT
+    return status_table[status][0], status, status_table[status][1]    
+
+
 def mount(volume, drive, media_type):
     status = 0
     

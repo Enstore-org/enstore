@@ -479,13 +479,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
             rt = self.load(v['external_label'], drive, v['media_type']) 
             status = rt[1]
             if status != 0:      # mount returned error
-                return status_table[status][0], status, status_table[status][1]
+                s1,s2,s3 = aml2.convert_status(status)
+                return s1, s2, s3
             
             time.sleep(cleanTime)  # wait cleanTime seconds
             rt = self.unload(v['external_label'], drive, v['media_type'])
             status = rt[1]
             if status != 0:      # dismount returned error
-                return status_table[status][0], status, status_table[status][1]
+                s1,s2,s3 = aml2.convert_status(status)
+                return s1, s2, s3
             Trace.log(e_errors.INFO,"AML2 Clean returned %s"%(rt,))
  
         retTicket = vcc.get_remaining_bytes(v['external_label'])
@@ -576,13 +578,13 @@ class Shelf_MediaLoader(MediaLoaderMethods):
       'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
       }
 
-    def status_message(s):
+    def status_message(self, s):
         if s in self.status_message_dict.keys():
             return self.status_message_dict[s][1]
         else:
             return s
 
-    def status_code(s):
+    def status_code(self, s):
         if s in self.status_message_dict.keys():
             return self.status_message_dict[s][0]
         else:
