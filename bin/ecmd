@@ -38,7 +38,7 @@ ecmd newlib  volume_name new_library_name
 ecmd Estart   farmlet  global Enstore start   on all farmlet nodes
 ecmd Estop    farmlet  global Enstore start   on all farmlet nodes
 ecmd Erestart farmlet  global Enstore restart on all farmlet nodes
-ecmd Egrau             lists the current mount state and queue list on the emass robot
+ecmd emass             lists the current mount state and queue list on the emass robot
 ecmd Esys     farmlet  global "enstore-associated" ps on all farmlet nodes
 
 "
@@ -180,7 +180,7 @@ case $cmd in
     stat=$?
     ;;
 
-  Egrau)
+  emass)
     rsh rip1 "$ENSTORE_DIR/sbin/egrau"    
     stat=$?
     ;;
