@@ -84,7 +84,7 @@ def parse_vol_list(comma_seperated_string):
 def get_vcc_list():
     #Determine the entire valid list of configuration servers.
     csc = configuration_client.ConfigurationClient()
-    config_server_addr_list = csc.get('known_config_servers')
+    config_server_addr_list = csc.get('known_config_servers', 10, 6)
     if not e_errors.is_ok(config_server_addr_list['status']):
         sys.stderr.write(str(config_server_addr_list['status']) + "\n")
         sys.exit(1)
