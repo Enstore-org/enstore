@@ -179,7 +179,7 @@ def main():
         now = time.time()
         if now - last_sub >= 600:
             try:
-                s.sendto("notify %s %s" % (target_ip, target_port),
+                s.sendto("notify %s %s" % (dst,),
                          (event_relay_host, event_relay_port))
                 last_sub = now
             except:
