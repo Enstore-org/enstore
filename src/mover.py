@@ -2756,7 +2756,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
-        if self.vol_info.has_key('external_label') and self.vol_info['external_label'] != self.current_volume:
+        if (self.vol_info.has_key('external_label')
+            and self.vol_info['external_label']
+            and self.vol_info['external_label'] != self.current_volume):
             # mover has arequest for a different volume (adminpi request)
             vol_info = self.vcc.inquire_vol(self.current_volume)
         else: vol_info = None
