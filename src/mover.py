@@ -47,8 +47,7 @@ MoverClient:
 
 # python modules
 import errno
-import os				# os.environ, os.system, and possible os.error (from posix.waitpid)
-import posix				# waitpid
+import os				# os.environ, os.system, and possible os.error (from os.waitpid)
 import pprint
 import signal				# signal - to del shm on sigterm, etc
 import sys				# exit
@@ -111,12 +110,12 @@ def sigterm( sig, stack ):
 	print 'attempt kill of mover subprocess', mvr_srvr.client_obj_inst.pid
 	# SIGTERM does not seem to get through if encp is ctl-Z'ed
 	# SIGKILL works, but leaves sub-sub process.
-	# try: posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
-	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGHUP )
-	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
-	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGINT )
-	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGQUIT )
-	#posix.waitpid( mvr_srvr.client_obj_inst.pid, 0 ) #posix.WNOHANG )
+	# try: os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
+	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGHUP )
+	os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
+	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGINT )
+	#os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGQUIT )
+	#os.waitpid( mvr_srvr.client_obj_inst.pid, 0 ) #os.WNOHANG )
 	#print 'process killed'
 	pass
     # ONLY DELETE AFTER FORKED PROCESS IS KILL
@@ -151,9 +150,9 @@ def sigint( sig, stack ):
     
 def sigsegv( sig, stack ):
     if mvr_srvr.client_obj_inst.pid:
-	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
+	os.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
 	time.sleep(3)
-	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
+	os.waitpid( mvr_srvr.client_obj_inst.pid, os.WNOHANG )
 	pass
     # kill just shm to avoid "AttributeError: hsm_driver" which causes
     # forked process to become server via dispatching working exception handling
@@ -733,7 +732,7 @@ def forked_read_from_hsm( self, ticket ):
 		# Note: IRIX fs (and nfs) allow user to give file to other
 		# user but LINUX fs does not.
 		try:
-		    posix.chown( ticket['mover']['lcl_fname'],
+		    os.chown( ticket['mover']['lcl_fname'],
 				 ticket['wrapper']['uid'],
 				 ticket['wrapper']['gid'] )
 		except: pass
@@ -1030,7 +1029,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
-        ticket['pid'] = posix.getpid()
+        ticket['pid'] = os.getpid()
         try:
             Trace.log(e_errors.INFO, "QUITTING... via os_exit python call")
         except:
@@ -1095,7 +1094,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def summon( self, ticket ):
-	wait=posix.WNOHANG
+	wait=os.WNOHANG
 	next_req_to_lm = get_state_build_next_lm_req( self, wait, None )
 	if next_req_to_lm['state']=='busy' and not ticket['address'] in self.summoned_while_busy:
 	    self.summoned_while_busy.append(ticket['address'])
@@ -1187,7 +1186,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 
 def get_state_build_next_lm_req( self, wait, exit_status ):
     if self.client_obj_inst.pid:
-	try: pid, status = posix.waitpid( self.client_obj_inst.pid, wait )
+	try: pid, status = os.waitpid( self.client_obj_inst.pid, wait )
 	except:
 	    if wait == 0: status = exit_status
 	    else:         status = m_err.index(e_errors.OK)<<8 # assume success???
