@@ -22,6 +22,7 @@ import stat
 import grp
 import pwd
 import time
+import popen2
 
 # enstore imports
 import setpath
@@ -49,7 +50,8 @@ import ratekeeper_client
 import event_relay_client
 
 MY_NAME = "ENSTORE_START"
-
+SEND_TO = 3
+SEND_TM = 1
 #
 # These are common to all start/stop functionality. #######################
 #
@@ -108,6 +110,17 @@ def output(server_name):
 
     return output_file
 
+def save(server_name):
+    inf = output(server_name)
+    (dir,of) = os.path.split(inf)
+    of="%s.sav"%(of,)
+    of=os.path.join(dir,of)
+    #Determine where to redirect the output.
+    try:
+        os.system("cp -p %s %s"%(inf,of)) 
+    except:
+        pass
+
 def write_pid_file(servername):
     #Get the pid file information.
     try:
@@ -131,7 +144,9 @@ def write_pid_file(servername):
     #Make the pid file.
     try:
         f = open(pid_file, "wr")
-        f.write(str(os.getpid()))
+        msg = "%s %s"%(os.getpid(), time.strftime("%b%d %H:%M",time.localtime(time.time())))
+        #f.write(str(os.getpid()))
+        f.write(msg)
         f.close()
     except OSError, msg:
         sys.stderr.write(
@@ -170,6 +185,7 @@ def start_server(cmd, servername):
         #Is the child.
 
         #Send stdout and strerr to the output file.
+        save(servername)
         os.close(1);
         os.open(output(servername), os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0664)
         os.close(2);
@@ -285,9 +301,58 @@ def check_event_relay(csc, intf, cmd):
     else:
         print "Found event_relay."
 
+
+# lets start fixing thisngs at least from configuration server
+def check_config_server(intf, name='configuration_server', start_cmd=None):
+    if intf.nocheck:
+        rtn = {'status':("nocheck","nocheck")}
+    else:
+        print "Checking %s." % name
+        # see if EPS returns config_server"
+        cmd = "EPS | grep %s | grep %s"%(name,"configuration_server.py")
+        pipeObj = popen2.Popen3(cmd, 0, 0)
+        if pipeObj:
+            stat = pipeObj.wait()
+            result = pipeObj.fromchild.readlines()  # result has returned string
+            print "RES",result,len(result)
+            if len(result) > 1:
+                # running, don't start
+                rtn = {'status':(e_errors.OK,"running")}
+            else:
+                rtn = {'status':("e_errors.SERVERDIED","not running")}
+        print "RTN",rtn
+    
+    if not e_errors.is_ok(rtn):
+        print "Starting %s" % (name,)
+
+        #Start the server.
+        start_server(start_cmd, name)
+
+        #Check the restarted server.  It sould not be this complicated, but
+        # there were situations where TIMEDOUT still occured when there was
+        # no good reason for it to occur.  Putting a loop here fixed it.
+        for i in (0, 1, 2):
+            time.sleep(1)
+            cmd = "EPS | grep %s | grep %s"%(name,"configuration_server.py")
+            pipeObj = popen2.Popen3(cmd, 0, 0)
+            if pipeObj:
+                stat = pipeObj.wait()
+                result = pipeObj.fromchild.readlines()  # result has returned string
+                if len(result) > 1:
+                    # running, don't start
+                    rtn = {'status':(e_errors.OK,"running")}
+                    break
+                
+        else:
+            rtn = {'status':("e_errors.SERVERDIED","not running")}
+            print "Server %s not started." % (name,)
+            sys.exit(1)
+    else:
+        print "Found %s" % (name,)
+
 def check_server(csc, name, intf, cmd):
     #Check if this server is supposed to run on this machine.
-    info = csc.get(name, 5, 3)
+    info = csc.get(name, SEND_TO, SEND_TM)
     ##HACK:
     #Do a hack for the monitor server.  Since, it runs on all enstore
     # machines we need to add this information before continuing.
@@ -304,13 +369,13 @@ def check_server(csc, name, intf, cmd):
         rtn = {'status':("nocheck","nocheck")}
     else:
         gc = generic_client.GenericClient(csc, MY_NAME, server_name=name,
-                                          rcv_timeout=3, rcv_tries=3)
+                                          rcv_timeout=SEND_TO, rcv_tries=SEND_TM)
 
         print "Checking %s." % name
 
         try:
             # Determine if the host is alive.
-            rtn = gc.alive(name, 3, 3)
+            rtn = gc.alive(name, SEND_TO, SEND_TM)
         except errno.errorcode[errno.ETIMEDOUT]:
             rtn = {'status':(e_errors.TIMEDOUT,
                              errno.errorcode[errno.ETIMEDOUT])}
@@ -326,7 +391,7 @@ def check_server(csc, name, intf, cmd):
         # there were situations where TIMEDOUT still occured when there was
         # no good reason for it to occur.  Putting a loop here fixed it.
         for i in (0, 1, 2):
-            rtn = csc.alive(name, 3, 1)
+            rtn = csc.alive(name, SEND_TO, SEND_TM)
 
             if e_errors.is_ok(rtn):
                 break
@@ -429,26 +494,23 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
 def do_work(intf):
     Trace.init(MY_NAME)
 
-    csc = get_csc()
-
     #If the log server is already running, send log messages there.
     #if e_errors.is_ok(csc.alive("log_server", 2, 2)):
     #    logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
     #    Trace.set_log_func(logc.log_func)
 
-    #Check if the user is enstore or root on a production node.  
+    #Check if the user is enstore or root on a production node.
     check_user()
-
     #Get the python binary name.  If necessary, python options could
     # be specified here.
     python_binary = "python"
 
     #Start the configuration server.
     if intf.should_start(enstore_constants.CONFIGURATION_SERVER):
-        check_server(csc, enstore_constants.CONFIGURATION_SERVER, intf,
-                  "%s $ENSTORE_DIR/src/configuration_server.py "\
+        check_config_server(intf, name='configuration_server', start_cmd="%s $ENSTORE_DIR/src/configuration_server.py "\
                   "--config-file $ENSTORE_CONFIG_FILE" % (python_binary,))
 
+    csc = get_csc()
     rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
     if not e_errors.is_ok(rtn):
         #If the configuration server was not specifically specified.
@@ -532,7 +594,6 @@ def do_work(intf):
     sys.exit(0)
 
 if __name__ == '__main__':
-
+    
     intf = EnstoreStartInterface(user_mode=0)
-
     do_work(intf)
