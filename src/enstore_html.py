@@ -944,7 +944,8 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	return table
 
     def body(self, alarms):
-	table = self.table_top()
+	table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, align="LEFT",
+				  width="800")
 	table.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
 	self.append(table)
 	
