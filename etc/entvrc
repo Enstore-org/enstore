@@ -790,14 +790,14 @@ client_color d0cs400        #ff00ff
 
 client_color chutney        #ff9900
 client_color ketchup        #ff9900
-client_color mayo           #ff9900
-client_color mustard        #ff9900
-client_color pesto          #ff9900
-client_color cmsstor01     #ff9900
-#client_color cmsstor02     #ff9900
-#client_color cmsstor03     #ff9900
-#client_color cmsstor04     #ff9900
-client_color cmsstor05     #ff9900
+client_color cmsstor01      #ff9900
+client_color cmsstor12      #ff9900
+
+client_color mayo           #0000dd
+client_color mustard        #0000dd
+client_color pesto          #0000dd
+client_color cmsstor05      #0000dd
+client_color cmsstor07      #0000dd
 
 #entv generated information
 
