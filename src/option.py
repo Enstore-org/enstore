@@ -61,6 +61,24 @@ To accept multiple values: option.py --opt <filename> [filename2]
         }
     }
 
+To set multiple values without having any arguments
+    example_options = {
+        'opt':{option.HELP_STRING:"some string text",
+               option.DEFAULT_TYPE:option.INTEGER,
+               option.DEFAULT_VALUE:1,
+               option.VALUE_USAGE:option.IGNORED,
+               option.USER_LEVEL:option.ADMIN,
+               #This will set an addition value.  It is weird
+               # that DEFAULT_TYPE is used with VALUE_NAME,
+               # but that is what will make it work.
+               option.EXTRA_VALUES:[{option.DEFAULT_VALUE:0,
+                                     option.DEFAULT_TYPE:option.INTEGER,
+                                     option.VALUE_NAME:option.PRIORITY,
+                                     option.VALUE_USAGE:option.IGNORED,
+                                     }]
+        }
+    }
+
 """
 ############################################################################
 
@@ -191,8 +209,8 @@ ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
 FIND_SAME_FILE = "find-same-file"            # info
 FILE_FAMILY = "file-family"                  #pnfs, encp
-FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
-FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
+FILE_FAMILY_WIDTH = "file-family-width"      #pnfs, encp
+FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs, encp
 FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
@@ -219,6 +237,7 @@ HTML_DIR = "html-dir"                        #monitor(server)
 HTML_FILE = "html-file"                      #inquisitor(server)
 HTML_GEN_HOST = "html-gen-host"              #monitor, system
 ID = "id"                                    #pnfs
+IGNORE_FAIR_SHARE = "ignore-fair-share"      #encp
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
 INFO = "info"                                #pnfs
@@ -230,7 +249,7 @@ KEEP_VOL = "keep-vol"                        #super-remove
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
-LIBRARY = "library"                          #pnfs
+LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
 LIST_SG_COUNT = "ls-sg-count"                #volume
 LOAD = "load"                                #configuration
@@ -273,6 +292,7 @@ OUTAGE = "outage"                            #inquisitor
 OUTOFDATE = "outofdate"                      #plotter
 OUTPUT_DIR = "output-dir"                    #plotter
 OVERRIDE = "override"                        #inquisitor
+OVERRIDE_NOACCESS = "override-noaccess"      #encp
 OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
 RECURSIVE = "recursive"                      #file
 REFRESH = "refresh"                          #inquisitor(c&s)
@@ -331,7 +351,7 @@ START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
 STOP_DRAINING = "stop-draining"              #library
 STOP_TIME = "stop-time"                      #plotter
-STORAGE_GROUP = "storage-group"              #pnfs
+STORAGE_GROUP = "storage-group"              #pnfs, encp
 SUBSCRIBE = "subscribe"                      #inquisitor
 SUMMARY = "summary"                          #monitor, configuration, up_down
 TAG = "tag"                                  #pnfs
@@ -399,7 +419,7 @@ valid_option_list = [
     GET_WORK_SORTED, GET_SG_COUNT,
     GVOL, 
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
-    ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
+    ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
@@ -412,7 +432,7 @@ valid_option_list = [
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
-    OVERRIDE_RO_MOUNT,
+    OVERRIDE_NOACCESS, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
     POSITION, PREFIX, PRIORITY, PROFILE, PTS_DIR,
@@ -1398,6 +1418,7 @@ class Interface:
         self.set_extra_values(long_opt, value)
 
     def set_from_dictionary(self, opt_dict, long_opt, value):
+
         #place this inside for some error reporting...
         opt_dict['option'] = "--" + long_opt
 
@@ -1433,6 +1454,8 @@ class Interface:
             elif opt_dict.get(EXTRA_VALUES, None) and \
                  not self.is_option(self.some_args[2]):
                 self.some_args = self.some_args[2:]
+            elif self.some_args[1] == value:
+                self.some_args = self.some_args[2:]
             else:
                 self.some_args = self.some_args[1:]
 
@@ -1465,7 +1488,6 @@ class Interface:
         elif value == None \
              and opt_dict.get(VALUE_USAGE, IGNORED) in (IGNORED,) \
              or opt_dict.get(FORCE_SET_DEFAULT, None):
-
             try:
                 #Get the name to set.
                 opt_name = self.get_default_name(opt_dict, long_opt)
@@ -1510,7 +1532,6 @@ class Interface:
 
             setattr(self, opt_name, opt_typed_value)
 
-
     def set_extra_values(self, opt, value):
         if self.is_short_option(opt):
             long_opt = self.short_to_long(opt)
@@ -1529,6 +1550,12 @@ class Interface:
                 next = self.next_argument(value)
             else:
                 next = self.next_argument(opt)
+
+            if extra_option[VALUE_USAGE] == IGNORED:
+                next = None
+            elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
+                 next != None and self.is_option(next):
+                next = None
 
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
             self.set_from_dictionary(extra_option, long_opt, next)

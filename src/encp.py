@@ -2947,7 +2947,7 @@ def submit_one_request(ticket):
               "Unable to locate %s.library_manager." % ticket['vc']['library'])
         return ticket
         
-    if ticket['infile'][:5] == "/pnfs":
+    if is_read(ticket):  #ticket['infile'][:5] == "/pnfs":
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
         responce_ticket = lmc.write_to_hsm(ticket)
@@ -4558,7 +4558,10 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             else:
                 file_family = t.get_file_family()
         if not file_family_width:
-            file_family_width = t.get_file_family_width()
+            if e.output_file_family_width:
+                file_family_width = e.output_file_family_width
+            else:
+                file_family_width = t.get_file_family_width()
         if not file_family_wrapper:
             if e.output_file_family_wrapper:
                 file_family_wrapper = e.output_file_family_wrapper
@@ -4641,6 +4644,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['encp_daq'] = encp_daq
         work_ticket['fc'] = file_clerk
         work_ticket['file_size'] = file_size
+        work_ticket['ignore_fair_share'] = e.ignore_fair_share
         work_ticket['infile'] = ifullname
         work_ticket['local_inode'] = file_inode
         work_ticket['outfile'] = ofullname
@@ -5280,7 +5284,9 @@ def verify_read_request_consistancy(requests_per_vol):
                 try:
                     pnfs_size = long(pnfs_size)
                 except TypeError:
-                    rest['pnfs_size_type'] = "pnfs_size contains wrong type."
+                    rest['pnfs_size_type'] = \
+                                        "pnfs_size contains wrong type %s." \
+                                        % type(pnfs_size)
             except AttributeError:
                 pnfs_size = None
                 rest['pnfs_size'] = pnfs.UNKNOWN
@@ -5322,7 +5328,9 @@ def verify_read_request_consistancy(requests_per_vol):
                     if pnfs_crc != pnfs.UNKNOWN:
                         pnfs_crc = long(pnfs_crc)
                 except TypeError:
-                    rest['pnfs_crc_type'] = "pnfs_crc contains wrong type."
+                    rest['pnfs_crc_type'] = \
+                                          "pnfs_crc contains wrong type %s." \
+                                          % type(pnfs_crc)
             except AttributeError:
                 pnfs_crc = None
                 rest['pnfs_crc'] = pnfs.UNKNOWN
@@ -5343,7 +5351,8 @@ def verify_read_request_consistancy(requests_per_vol):
                 try:
                     db_size = long(db_size)
                 except TypeError:
-                    rest['db_size_type'] = "db_size contains wrong type."
+                    rest['db_size_type'] = "db_size contains wrong type %s." \
+                                           % type(db_size)
             except (ValueError, TypeError, IndexError, KeyError):
                 db_size = None
                 rest['db_size'] = pnfs.UNKNOWN
@@ -5354,7 +5363,8 @@ def verify_read_request_consistancy(requests_per_vol):
                         db_volume_family)
                 except TypeError:
                     rest['db_file_family_type'] = \
-                                         "db_file_family contains wrong type."
+                                   "db_file_family contains wrong type %s." % \
+                                   type(db_file_family)
             except (ValueError, TypeError, IndexError, KeyError):
                 db_file_family = None
                 rest['db_file_family'] = pnfs.UNKNOWN
@@ -5378,7 +5388,8 @@ def verify_read_request_consistancy(requests_per_vol):
                 try:
                     db_crc = long(db_crc)
                 except TypeError:
-                    rest['db_crc_type'] = "db_crc contains wrong type."
+                    rest['db_crc_type'] = "db_crc contains wrong type %s." \
+                                          % type(db_crc)
             except (ValueError, TypeError, IndexError, KeyError):
                 db_crc = None
                 rest['db_crc'] = pnfs.UNKNOWN
@@ -5410,10 +5421,13 @@ def verify_read_request_consistancy(requests_per_vol):
                 rest['db_size'] = db_size
                 rest['pnfs_size'] = pnfs_size
                 rest['size'] = "db_size differs from pnfs_size"
+            """
+            The file family check was removed for the migration project.
             if db_file_family != pnfs_origff:
                 rest['db_file_family'] = db_file_family
                 rest['pnfs_origff'] = pnfs_origff
                 rest['file_family'] = "db_file_family differs from pnfs_origff"
+            """
             if db_pnfs_name0 != pnfs_origname:
                 rest['db_pnfs_name0'] = db_pnfs_name0
                 rest['pnfs_origname'] = pnfs_origname
@@ -5605,11 +5619,13 @@ def get_volume_clerk_info(vcc, volume):
     #Get the clerk info.
     vc_ticket = vcc.inquire_vol(volume)
 
+    # Determine if the information return is complete.
+
     if not e_errors.is_ok(vc_ticket['status'][0]):
         raise EncpError(None,
-                        "Failed to obtain information for external label %s." %
-                        volume,
-                        e_errors.EPROTO, vc_ticket)
+                        "Failed to obtain information for external label %s."
+                        % volume,
+                        vc_ticket['status'][0], vc_ticket)
     if not vc_ticket.get('system_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain system_inhibit information."
@@ -5620,18 +5636,6 @@ def get_volume_clerk_info(vcc, volume):
                         "Volume %s did not contain user_inhibit information."
                         % volume,
                         e_errors.EPROTO, vc_ticket)
-    
-    inhibit = vc_ticket['system_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        raise EncpError(None,
-                        "Volume %s is marked %s." % (volume, inhibit),
-                        inhibit, vc_ticket)
-
-    inhibit = vc_ticket['user_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        raise EncpError(None,
-                        "Volume %s is marked %s." % (volume, inhibit),
-                        inhibit, vc_ticket)
 
     #Include the server address in the returned info.
     vc_ticket['address'] = vcc.server_address
@@ -5650,13 +5654,46 @@ def get_volume_clerk_info(vcc, volume):
         #    {'status':(e_errors.EPROTO, str(msg))})
         #quit()
 
+    # Determine if either the NOACCESS or NOTALLOWED inhibits are set for
+    # the volume.  This is done after the above information is included
+    # for the situation where the option to override a NOACCESS or
+    # NOTALLOWED inhibit is set.
+    
+    inhibit = vc_ticket['system_inhibit'][0]
+    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        raise EncpError(None,
+                        "Volume %s is marked %s." % (volume, inhibit),
+                        inhibit, vc_ticket)
+
+    inhibit = vc_ticket['user_inhibit'][0]
+    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        raise EncpError(None,
+                        "Volume %s is marked %s." % (volume, inhibit),
+                        inhibit, vc_ticket)
+
     return vc_ticket
 
-def get_clerks_info(vcc, fcc, bfid):
+def get_clerks_info(vcc, fcc, bfid, e):
 
     #Get the clerk info.  These functions raise EncpError on error.
+
+    #For the file clerk.
     fc_ticket = get_file_clerk_info(fcc, bfid)
-    vc_ticket = get_volume_clerk_info(vcc, fc_ticket['external_label'])
+
+    #The volume clerk is much more complicated.  In some situations we
+    # may wish to override the NOACCESS and NOTALLOWED system inhibts.
+    try:
+        vc_ticket = get_volume_clerk_info(vcc, fc_ticket['external_label'])
+    except EncpError, msg:
+        if msg.type in [e_errors.NOACCESS, e_errors.NOTALLOWED] \
+               and e.override_noaccess:
+            #If we get here, then we wish to override the NOACCESS or
+            # NOTALLOWED inhibit.
+            vc_ticket = msg.ticket
+            vc_ticket['status'] = (e_errors.OK, None)
+        else:
+            #Otherwise re-raise the exception.
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     
     #Return the information.
     return vc_ticket, fc_ticket
@@ -6066,7 +6103,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #try:
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the bfid.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid)
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, e.get_bfid, e)
             #except EncpError, msg:
             #    print_data_access_layer_format(
             #        e.get_bfid, e.output[0], 0,
@@ -6149,7 +6186,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #try:
             #Get the system information from the clerks.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
             #except EncpError, msg:
             #    print_data_access_layer_format(
             #        e.get_cache, e.output[0], 0,
@@ -6228,7 +6265,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 
             #try:
             #Get the system information from the clerks.
-            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
+            vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid, e)
             #except EncpError, detail:
             #    print_data_access_layer_format(
             #        ifullname, ofullname, file_size,
@@ -6316,6 +6353,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         request['file_size'] = file_size
         request['infile'] = ifullname
         request['outfile'] = ofullname
+        #request['override_noaccess'] = e.override_noaccess #no to this
         request['override_ro_mount'] = e.override_ro_mount
         request['retry'] = 0
         request['routing_callback_addr'] = udp_callback_addr #"get" only.
@@ -6714,8 +6752,10 @@ def read_from_hsm(e, tinfo):
     except (OSError, IOError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
-            if e_ticket.get('status', None) == None:
-                e_ticket['status'] = (msg.type, str(msg))
+            #print "e_ticket['status']:", e_ticket['status']
+            #print 
+            #if e_ticket.get('status', None) == None:
+            e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
             e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         else:
@@ -6857,6 +6897,8 @@ class EncpInterface(option.Interface):
         self.age_time = 0          # priority doesn't age
         self.delayed_dismount = None # minutes to wait before dismounting
         self.check = 0             # check if transfer attempt will occur
+        self.ignore_fair_share = None # tells LM not count this write transfer
+                                      # against the storage groups limit.
         
         #messages for user options
         self.data_access_layer = 0 # no special listings
@@ -6882,6 +6924,7 @@ class EncpInterface(option.Interface):
         self.output_file_family = "" # initial set for use with --ephemeral or
                                      # or --file-family
         self.output_file_family_wrapper = ""
+        self.output_file_family_width = ""
         self.output_library = ""
         self.output_storage_group = ""
 
@@ -6891,6 +6934,8 @@ class EncpInterface(option.Interface):
         self.pnfs_is_automounted = 0 # true if pnfs is automounted.
         self.override_ro_mount = 0 # Override a tape marked read only to be
                                    # mounted read/write.
+        self.override_noaccess = 0 # Override reading/writing to a tape
+                                   # marked NOACCESS or NOTALLOWED.
 
         #Special options for operation with a disk cache layer.
         #self.dcache = 0            #obsolete???
@@ -6951,12 +6996,12 @@ class EncpInterface(option.Interface):
                             "Skip the check for the max filesize a file"
                             " system supports.",
                             option.VALUE_USAGE:option.IGNORED,
-                            option.VALUE_TYPE:option.INTEGER,
+                            option.DEFAULT_TYPE:option.INTEGER,
                             option.USER_LEVEL:option.USER,},
         option.CHECK:{option.HELP_STRING:"Only check if the transfer would "
                       "succeed, but do not actully perform the transfer.",
                       option.VALUE_USAGE:option.IGNORED,
-                      option.VALUE_TYPE:option.INTEGER,
+                      option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
@@ -7008,6 +7053,14 @@ class EncpInterface(option.Interface):
                                     option.VALUE_TYPE:option.STRING,
                                option.VALUE_NAME:"output_file_faimily_wrapper",
                                     option.USER_LEVEL:option.ADMIN,},
+        option.FILE_FAMILY_WIDTH:{option.HELP_STRING:
+                                  "Specify an alternative file family "
+                                  "width to override the pnfs file family "
+                                  "width tag (writes only).",
+                                  option.VALUE_USAGE:option.REQUIRED,
+                                  option.VALUE_TYPE:option.STRING,
+                                 option.VALUE_NAME:"output_file_faimily_width",
+                                  option.USER_LEVEL:option.ADMIN,},
         option.GET_BFID:{option.HELP_STRING:
                          "Specifies that dcache requested the file and that "
                          "the first 'filename' is really the file's bfid.",
@@ -7020,6 +7073,21 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN,},
+        option.IGNORE_FAIR_SHARE:{option.HELP_STRING:
+                             "Do not count transfer against fairshare limit.",
+                                  option.DEFAULT_TYPE:option.INTEGER,
+                                  option.DEFAULT_VALUE:1,
+                                  option.VALUE_USAGE:option.IGNORED,
+                                  option.USER_LEVEL:option.ADMIN,
+                          #This will set an addition value.  It is weird
+                          # that DEFAULT_TYPE is used with VALUE_NAME,
+                          # but that is what will make it work.
+                          #option.EXTRA_VALUES:[{option.DEFAULT_VALUE:0,
+                          #                option.DEFAULT_TYPE:option.INTEGER,
+                          #                option.VALUE_NAME:option.PRIORITY,
+                          #                option.VALUE_USAGE:option.IGNORED,
+                          #                      }]
+                                  },
         option.LIBRARY:{option.HELP_STRING:
                             "Specify an alternativelibrary to override "
                             "the pnfs library tag (writes only).",
@@ -7055,6 +7123,11 @@ class EncpInterface(option.Interface):
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.DEFAULT_VALUE:0,
                        option.USER_LEVEL:option.USER,},
+        #option.OVERRIDE_NOACCESS:{option.HELP_STRING:
+        #                          "Override NOACCESS inhibit for read/write.",
+        #                          option.DEFAULT_TYPE:option.INTEGER,
+        #                          option.DEFAULT_VALUE:1,
+        #                          option.USER_LEVEL:option.ADMIN,},
         option.OVERRIDE_RO_MOUNT:{option.HELP_STRING:
                                   "Override read only tape for read/write.",
                                   option.DEFAULT_TYPE:option.INTEGER,
