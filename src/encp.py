@@ -914,6 +914,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                             "control_socket="+repr(control_socket)+\
                             " address="+repr(address))
                 control_socket.close()
+		break
 
         # ok, we've been called back with a matched id - how's the status?
         if ticket["status"][0] != e_errors.OK :
@@ -968,7 +969,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         l = 0
         mycrc = 0
         bufsize = 65536*4
-        f = open(outputlist[j],"w")
+	tempname = outputlist[j]+'.'+repr(unique_id[j])
+        f = open(tempname,"w")
         Trace.trace(8,"read_hsm_files: reading data to  file="+\
                     inputlist[j]+" socket="+repr(data_path_socket)+\
                     " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
@@ -1007,6 +1009,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
+	    os.remove(tempname)
 	    # print error to stdout in d0sam format
 	    print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
 			       done_ticket)
@@ -1062,6 +1065,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 		vinfo.remove(vinfo[j])
 		unique_id.remove(unique_id[j])
 		retry.remove(retry[j])
+		os.remove(tempname)
 		if files_left > 0:
 		    files_left = files_left - 1
 
@@ -1119,6 +1123,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                   time.time()-t0)
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
+	    os.rename(tempname, outputlist[j])
 	    bytes = bytes+file_size[j]
 	    inputlist.remove(inputlist[j])
 	    outputlist.remove(outputlist[j])
