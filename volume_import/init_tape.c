@@ -8,8 +8,8 @@ Labels tape and  creates database branch for new volume
 void InitUsage()
 {
     fprintf(stderr,
-   "Usage: %s --init [--verbose] [--erase] [--tape-device=device] 
-  [--tape-db=db_dir] --volume_label=label\n\
+   "Usage: %s --init [--verbose] [--erase] [--tape-device=device] \n\
+   [--tape-db=db_dir] --volume_label=label\n\
     tape-device can be set using environment variable $TAPE_DEVICE\n\
     tape-db (db directory) can be set using environment variable $TAPE_DB\n", 
 	    progname);
