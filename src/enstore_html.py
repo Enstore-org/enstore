@@ -2747,7 +2747,7 @@ class EnStatusOnlyPage(EnSaagPage):
         status, eftime, offline, outage, override, web_address = estatus
         # first check the time.  if it is 10 minutes different than ours, enstore is
         # assumed to be down
-        etime = enstore_functions.unformat_time(eftime)
+        etime = enstore_functions2.unformat_time(eftime)
         if time.time() - etime > 600 and override == enstore_constants.NONE:
             # the time is too far off, make the enstore ball red
             status = enstore_constants.DOWN
