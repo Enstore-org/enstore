@@ -513,18 +513,18 @@ def get_enstore_pnfs_path(filepath):
     #Make absolute path.
     machine, filename, dirname, basename = fullpath(filepath)
 
-    #Determine the canonical path base.
+    #Determine the canonical path base.  (i.e /pnfs/fnal.gov/usr/)
     canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
-    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
     if dirname[:6] != "/pnfs/":
         raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:13] == "/pnfs/fs/usr/":
-        return "/pnfs/" + filename[13:]
+        return os.path.join("/pnfs/", filename[13:])
     elif dirname[:19] == canonical_pathbase:
-        return "/pnfs/" + filename[19:]
+        return os.path.join("/pnfs/", filename[19:])
     elif dirname[:6] == "/pnfs/":
         return filename
     else:
@@ -542,7 +542,7 @@ def get_enstore_fs_path(filepath):
 
     #Determine the canonical path base.
     canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
-    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
     
     #Return an error if the file is not a pnfs filename.
     if dirname[:6] != "/pnfs/":
@@ -551,9 +551,9 @@ def get_enstore_fs_path(filepath):
     if dirname[:13] == "/pnfs/fs/usr/":
         return filename
     elif dirname[:19] == canonical_pathbase:  #i.e. "/pnfs/fnal.gov/usr/"
-        return "/pnfs/fs/usr/" + filename[19:]
+        return os.path.join("/pnfs/fs/usr/", filename[19:])
     elif dirname[:6] == "/pnfs/":
-        return "/pnfs/fs/usr/" + filename[6:]
+        return os.path.join("/pnfs/fs/usr/", filename[6:])
     else:
         raise EncpError(None, "Unable to return enstore pnfs pathname.",
                         e_errors.WRONGPARAMETER)
@@ -574,7 +574,7 @@ def get_enstore_canonical_path(filepath):
     else:
         canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
     #Use the canonical_name to determine the canonical pathname base.
-    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
     if dirname[:6] != "/pnfs/":
@@ -5835,15 +5835,70 @@ class EncpInterface(option.Interface):
         for i in range(0, self.arglen):
             #Get fullpaths to the files.
             (machine, fullname, directory, basename) = fullpath(self.args[i])
-            self.args[i] = fullname  #os.path.join(dir,basename)
+            self.args[i] = fullname
             #If the file is a pnfs file, store a 1 in the list, if not store
-            # a zero.  All files on the hsm system have /pnfs/ as 1st part
-            # of their name.  Scan input files for /pnfs/ - all have to be the
-            # same.  Pass check_name_only a python true value to skip file
-            # existance/permission tests at this time.
-            
-            p.append(pnfs.is_pnfs_path(fullname, check_name_only = 1))
-            
+            # a zero.  All files on the hsm system have /pnfs/ in there name.
+            # Most have /pnfs/ at the very beginning, but automounted pnfs
+            # filesystems don't. Scan input files for /pnfs/ - all have to
+            # be the same.  Pass check_name_only a python true value to skip
+            # file existance/permission tests at this time.
+            #
+            #Check the three possible pnfs paths.  If all three fail, it
+            # is likely that this is a non-pnfs filename.  Reasons that
+            # a pnfs filename would fail to be detected include:
+            # 1) Pnfs is mounted wrong or not at all.
+            # 2) The user misspelled the path before the pnfs mount point
+            #    in the absolute filename.
+
+            result = []
+            file_name_list = []
+            try:
+                #Original full path.  (Best choice if possible)
+                result.append(pnfs.is_pnfs_path(fullname,
+                                                check_name_only = 1))
+                file_name_list.append(fullname)
+            except EncpError:
+                result.append(0)
+                file_name_list.append("")
+            try:
+                #Traditional encp path.
+                pnfs_path = get_enstore_pnfs_path(fullname)
+                result.append(pnfs.is_pnfs_path(pnfs_path,
+                                                check_name_only = 1))
+                file_name_list.append(pnfs_path)
+            except EncpError:
+                result.append(0)
+                file_name_list.append("")
+            try:
+                #Traditional dcache path.
+                dcache_path = get_enstore_fs_path(fullname)
+                result.append(pnfs.is_pnfs_path(dcache_path,
+                                                check_name_only = 1))
+                file_name_list.append(dcache_path)
+            except EncpError:
+                result.append(0)
+                file_name_list.append("")
+            try:
+                #Traditional srm path.
+                srm_path = get_enstore_canonical_path(fullname)
+                result.append(pnfs.is_pnfs_path(srm_path,
+                                                check_name_only = 1))
+                file_name_list.append(srm_path)
+            except EncpError:
+                result.append(0)
+                file_name_list.append("")
+
+            #Use the first of the different possible pnfs paths.  If all
+            # fail assume it is a local file.
+            for j in range(len(result)):
+                if result[j]:
+                    p.append(result[j])
+                    #Store the corrected name back into the list of files.
+                    self.args[i] = file_name_list[j]
+                    break
+            else:
+                p.append(0) #Assume local file.
+
         #Initialize some important values.
 
         #The p# variables are used as holders for testing if all input files
