@@ -57,7 +57,7 @@ import option
 """
 MY_NAME = "log_server"
 FILE_PREFIX = "LOG-"
-NO_MAX_LOG_FILE_SIZE = -1
+NO_MAX_LOG_FILE_SIZE = -1L
 
 def format_date(tm=None):
     if not tm:
@@ -265,11 +265,11 @@ class Logger(  dispatching_worker.DispatchingWorker
             ft = '-%02d-%02d' % (tm[3], tm[4])
             fn = fn + ft
 
-        fn = self.check_for_extended_files(fn)
-        self.logfile_name = self.logfile_dir_path + "/" + fn
         # check for any of the extra log files (.1, .2 ...) open the latest
         # one of these if they exist.
-        self.logfile_name_orig = self.logfile_name
+        fn2 = self.check_for_extended_files(fn)
+        self.logfile_name = self.logfile_dir_path + "/" + fn2
+        self.logfile_name_orig = self.logfile_dir_path + "/" + fn
 	self.last_logfile_name = ""
         # open log file
         self.open_logfile(self.logfile_name)
