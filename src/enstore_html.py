@@ -1156,7 +1156,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	# CURRENT, BASE, DELTA, AGETIME, FILE, BYTES, ID
 	the_work = self.data_dict.get(enstore_constants.PENDING,
 				      enstore_constants.NO_PENDING)
-	if the_work[enstore_constants.READ] or the_work[enstore_constants.WRITE]:
+	if the_work and (the_work[enstore_constants.READ] or the_work[enstore_constants.WRITE]):
 	    qelems = self.data_dict[enstore_constants.PENDING]['read'] + \
 		     self.data_dict[enstore_constants.PENDING]['write']
 	    rows = self.lm_queue_rows(qelems, enstore_constants.PENDING, PENDING)
@@ -1454,15 +1454,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
     def pending_work_row(self, lm, cols):
-	the_work = self.data_dict[lm].get(enstore_constants.PENDING,
-					  enstore_constants.NO_PENDING)
+	the_work = self.data_dict[lm].get(enstore_constants.PENDING, {})
 	rows = []
 	extra_read_rows = []
 	extra_write_rows = []
 	filename = "%s_%s.html"%(lm, enstore_constants.PENDING)
 	max_lm_rows = self.max_lm_rows.get(lm, DEFAULT_THRESHOLDS)[0]
 	# do the read queue first
-	if not the_work[enstore_constants.READ] == []:
+	if the_work and not the_work[enstore_constants.READ] == []:
 	    qlen = len(the_work[enstore_constants.READ])
 	    if max_lm_rows == DEFAULT_ALL_ROWS or qlen <= max_lm_rows:
 		rows_on_page = qlen
@@ -1478,7 +1477,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		for qelem in  the_work[enstore_constants.READ][rows_on_page:]:
 		    extra_read_rows.append(self.make_lm_pend_read_row(qelem, 
 								      cols))
-	if not the_work[enstore_constants.WRITE] == []:
+	if the_work and not the_work[enstore_constants.WRITE] == []:
 	    qlen = len(the_work[enstore_constants.WRITE])
 	    if max_lm_rows == DEFAULT_ALL_ROWS or not qlen > max_lm_rows:
 		rows_on_page = qlen
