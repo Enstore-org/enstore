@@ -63,7 +63,6 @@ class LoggerClient(generic_client.GenericClient):
                                              # try to make it capital letters
                                              # not more than 8 characters long
                  servername = "log_server"): # log server name
-        self.csc = csc
         # need the following definition so the generic client init does not
         # get another logger client
         self.is_logger = 1

@@ -6,6 +6,8 @@ import sys
 import errno
 import pprint
 import types
+import os				# for os.environ for "default" config*
+import string				# atoi for os.environ of config port
 
 #enstore imports
 import Trace
@@ -42,6 +44,12 @@ class GenericClient:
                 # it is not a tuple of address and port, so we assume that it
                 # is a configuration client object
                 self.csc = csc
+	    else:
+		# it is a 0 (the default value from i.e. log_client)
+		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
+			    string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
+                self.csc = configuration_client.ConfigurationClient( def_addr )
+		pass
             # try to find the logname for this object in the config dict.  use
             # the lowercase version of the name as the server key.  if this
             # object is not defined in the config dict, then just use the
