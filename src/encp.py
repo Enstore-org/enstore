@@ -246,7 +246,7 @@ def write_to_hsm(input, output,
                                 "file_family"        : file_family[i],\
                                 "file_family_width"  : width[i]} # technically width does not belong here, but it associated with the volume
 
-                wrapper["sanity_size"] = 5000
+                wrapper["sanity_size"] = 65535
                 wrapper["size_bytes"] = file_size[i]
                 wrapper["mtime"] = int(time.time())
                 encp["delayed_dismount"] = delayed_dismount
@@ -701,7 +701,7 @@ def read_from_hsm(input, output,
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
                 wrapper["fullname"] = outputlist[i]
-                wrapper["sanity_size"] = 5000
+                wrapper["sanity_size"] = 65535
                 wrapper["size_bytes"] = file_size[i]
                 encp["delayed_dismount"] = delayed_dismount
 
