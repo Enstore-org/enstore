@@ -859,8 +859,9 @@ class Interface:
         for i in range(len(argv)):
             #Make sure it is a switch.
             #Note: the replace operation is necessary to suport _s.
-            if self.is_option(argv[i].split("=")[0].replace("_", "-")):
-                list = string.split(argv[i], "=")
+            if self.is_option(argv[i].split("=", 1)[0].replace("_", "-")) and \
+               self.is_switch_option(argv[i]):
+                list = string.split(argv[i], "=", 1)
                 args[i + offset:i + offset + 1] = list
                 offset = offset + 1
             else:
@@ -1014,6 +1015,14 @@ class Interface:
                     return 1
             return 0
         except TypeError:
+            return 0
+
+    def is_switch_option(self, opt):
+        if len(opt) > 2 and opt[:2] == "--":
+            return 1
+        elif len(opt) > 1 and opt[0] == "-":
+            return 1
+        else:
             return 0
 
 ############################################################################
