@@ -16,7 +16,8 @@ ecmd config  [--config_file=  --dict --load --verbose= --alive --help ]
 ecmd fcc     [--bfids --bfid= --verbose= --alive --backup --help ]
 ecmd vcc     [--vols  --vol=  --verbose= --alive --backup --help ']
 ecmd lmc     [--getwork     --verbose= --alive --help '] library
-ecmd mcc     [-verbose= --alive --help ']  media_changer volume drive
+ecmd mcc     [--verbose= --alive --help ']  media_changer volume drive
+ecmd mov     [--verbose= --alive --help'] mover
 
 ecmd bfids   [--verbose= --help']
 
@@ -138,6 +139,11 @@ case $cmd in
 
   mcc)
     python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
+    stat=$?
+    ;;
+
+  mov)
+    python $ENSTORE_DIR/src/mover_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
