@@ -4,7 +4,8 @@
 # Description...
 # I know this is horrible, I didn't try to make nice. I know I repeated code sections.
 #     --> I need something to make querying and stopping and starting more convenient!!!
-# This can be improved (or delete) as we understand things better.
+# This can be improved (or deleted) as we understand things better.
+#  The inquisitor will supply most of these capabilities...
 
 wm title . Enstore
 
@@ -230,6 +231,7 @@ proc DQRun {} {
 proc DQRun_done { name element op } {
     global alive butd done
     trace vdelete done w DQRun_done
+    puts $alive
     if {$alive == "alive"} {
         $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
     } else {
@@ -386,7 +388,7 @@ proc Log {} {
         Stop
     } else {
         gets $input line
-        if {[string first alive $line] !=0} {set alive "alive" }
+        if {[string first alive $line] >=0} {set alive "alive" }
         $log insert end $line\n
         $log see end
     }
