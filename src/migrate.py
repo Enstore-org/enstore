@@ -443,9 +443,10 @@ def compare_metadata(p, f, pnfsid = None):
 	# some of old pnfs records do not have crc and drive information
 	if p.complete_crc and long(p.complete_crc) != long(f['complete_crc']):
 		return "crc"
-	if p.drive and p.drive != "unknown:unknown" and \
-		p.drive != f['drive'] and f['drive'] != "unknown:unknown":
-		return "drive"
+	# do not check drive any more
+	# if p.drive and p.drive != "unknown:unknown" and \
+	#	p.drive != f['drive'] and f['drive'] != "unknown:unknown":
+	#	return "drive"
 	return None
 
 # swap_metadata(bfid1, src, bfid2, dst) -- swap metadata for src and dst
