@@ -87,6 +87,7 @@ class MediaChangerClientInterface(interface.Interface):
     def parse_options(self):
         interface.Interface.parse_options(self)
         if len(self.args) < 1 :
+	    self.missing_parameter("media_changer")
             self.print_help()
             sys.exit(1)
         else:
@@ -95,6 +96,7 @@ class MediaChangerClientInterface(interface.Interface):
         if (self.alive == 0) and (self.got_server_verbose == 0):
             # bomb out if we number of arguments is wrong
             if len(self.args) < 3 :
+	        self.missing_parameter("volume drive")
                 self.print_help()
                 sys.exit(1)
             else:

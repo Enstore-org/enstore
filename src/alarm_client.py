@@ -79,6 +79,7 @@ class AlarmClientInterface(interface.Interface):
         # see if we have a server
         if len(self.args) < 1 :
 	    if self.status:
+	        self.missing_parameter(self.parameters())
 	        self.print_help()
 	        sys.exit(1)
 	    else:

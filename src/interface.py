@@ -74,6 +74,9 @@ class Interface:
 	    nopts = nopts+prefix+"--"+opt
 	return nopts
 
+    def missing_parameter(self, param):
+	generic_cs.enprint("ERROR: missing parameter "+repr(param))
+
     def parameters(self):
 	return " "
 

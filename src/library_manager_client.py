@@ -137,6 +137,7 @@ class LibraryManagerClientInterface(interface.Interface) :
         interface.Interface.parse_options(self)
         # bomb out if we don't have a library
         if len(self.args) < 1 :
+	    self.missing_parameter(self.parameters())
             self.print_help(),
             sys.exit(1)
         else:

@@ -930,6 +930,7 @@ class MoverInterface(interface.Interface):
         interface.Interface.parse_options(self)
         # bomb out if we don't have a mover
         if len(self.args) < 1 :
+	    self.missing_parameter(self.parameters())
             self.print_help(),
             sys.exit(1)
         else:
