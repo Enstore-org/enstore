@@ -191,6 +191,9 @@ class DbTable:
 	def backup(self):
 		return
 
+	def close(self):	# don't know what to do
+		pass
+
 class FileDB(DbTable):
 	def __init__(self, host='localhost', jou='.', database=default_database):
 		DbTable.__init__(self, host, database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)

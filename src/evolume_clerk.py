@@ -235,7 +235,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def has_undeleted_file(self, vol):
         q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume;"%(vol)
         res = self.dict.db.query(q)
-        return res.ntuples
+        return res.ntuples()
 
     # __delete_volume(vol) -- delete a volume #### DONE
     #
@@ -664,6 +664,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['wrapper'] = ticket.get('wrapper', None)
         record['blocksize'] = ticket.get('blocksize', -1)
+	record['si_time'] = (0, 0)
+	record['comment'] = ""
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
@@ -1351,7 +1353,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 ticket["status"] = (e_errors.KEYERROR, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
-            record["status"] = e_errors.OK, None
+            record["status"] = (e_errors.OK, None)
             self.reply_to_caller(record)
             return
         else:
