@@ -105,7 +105,7 @@ class ConfigurationDict:
 
         # even if there is an error - respond to caller so he can process it
         except:
-            exc,msg,tb=sys.exc_info()
+            exc,msg=sys.exc_info()[:2]
             return str(exc), str(msg)
 
 
@@ -163,7 +163,7 @@ class ConfigurationDict:
             out_ticket = {"status" : (e_errors.KEYERROR,
                                       "Configuration Server: no such name")}
 	except:
-            exc,msg,tb=sys.exc_info()
+            exc,msg=sys.exc_info()[:2]
             out_ticket = {"status" : (str(exc), str(msg))}
 
 	# even if there is an error - respond to caller so he can process it
