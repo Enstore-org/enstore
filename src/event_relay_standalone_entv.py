@@ -17,7 +17,8 @@ import cleanUDP
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
 heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
 my_name = enstore_constants.EVENT_RELAY
-my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
+#my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
+my_ip = "localhost"
 
 # event relay message types
 ALL = "all"
@@ -67,12 +68,13 @@ class Relay:
                 self.use_command_store = NO
         self.clients = {} # key is (host,port), value is time connected
 	self.timeouts = {} # key is (host,port), value is num times error in send
-        ##self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ##self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if not self.use_command_store:
-            self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if self.use_command_store:
+            my_addr = ("localhost", my_port)
+        else:
             my_addr = ("", my_port)
-            self.listen_socket.bind(my_addr)
+        self.listen_socket.bind(my_addr)
+
 	self.send_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
 	### debugger messages
@@ -120,6 +122,7 @@ class Relay:
         num_read = 0
 	try:
 	    while 1:
+                readable = None
                 now = time.time()
                 if self.use_command_store:
                     line = self.fd.readline()
@@ -127,24 +130,26 @@ class Relay:
                     if not line:
                         # we reached the end of the file, rewind
                         self.fd.seek(0)
+                        self.dump()
                         continue
                     tok = self.process_line(line)
                     msg = string.join(tok)
                     num_read = num_read + 1
                     if num_read == 5:
                         # we do not want to swamp the clients
-                        time.sleep(0.15)
+                        #time.sleep(0.05)
                         num_read = 0
+                        readable, junk, junk = select.select([self.listen_socket], [], [], .15)
+                    self.send_message(msg, NOTIFY, now)
                 else:
                     readable, junk, junk = select.select([self.listen_socket], [], [], 15)
-                    self.heartbeat(now)
-                    if not readable:
-                        continue
-                    msg = self.listen_socket.recv(1024)
-                    if not msg:
-                        continue
-                    tok = string.split(msg)
-
+                self.heartbeat(now)
+                if not readable:
+                    continue
+                msg = self.listen_socket.recv(1024)
+                if not msg:
+                    continue
+                tok = string.split(msg)
 		if not tok:
 		    continue
 		if tok[0]==NOTIFY:
