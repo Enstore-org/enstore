@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import string
+import errno
 
 # enstore imports
 import Trace
