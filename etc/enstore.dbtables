@@ -102,3 +102,20 @@ create table bad_file (
 );
 
 create index bad_file_bfid_idx on bad_file(bfid);
+
+create table quota (
+	library		varchar,         
+	storage_group	varchar,
+	requested	int default 0,
+	authorized	int default 0,
+	quota		int default 0,
+	primary key	(library, storage_group)
+);
+
+create index quota_library_idx on quota(library);
+create index quota_storage_group_idx on quota(storage_group);
+
+create table option (
+	key		varchar,
+	value		varchar
+);
