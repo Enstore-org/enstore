@@ -72,6 +72,7 @@ data_access_layer_format = """INFILE=%s
 OUTFILE=%s
 FILESIZE=%s
 LABEL=%s
+LOCATION=%s
 DRIVE=%s
 TRANSFER_TIME=%f
 SEEK_TIME=%f
@@ -108,6 +109,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     fc_ticket = ticket.get('fc', {})
     external_label = fc_ticket.get('external_label', '')
+    location_cookie = fc_ticket.get('location_cookie','')
     mover_ticket = ticket.get('mover', {})
     device = mover_ticket.get('device', '')
     time_ticket = ticket.get('times', {})
@@ -130,7 +132,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     else:
         out=sys.stdout
         
-    out.write(data_access_layer_format % (inputfile, outputfile, filesize, external_label,
+    out.write(data_access_layer_format % (inputfile, outputfile, filesize, external_label,location_cookie,
                                       device, transfer_time, seek_time, mount_time, in_queue,
                                       total, status))
     out.write('\n')
