@@ -222,24 +222,29 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     #### DONE
     def get_user_sockets(self, ticket):
-        file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket["file_clerk_callback_addr"] = (file_clerk_host, file_clerk_port)
-
-        self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.control_socket.connect(ticket['callback_addr'])
-        callback.write_tcp_obj(self.control_socket, ticket)
-        r, w, x = select.select([listen_socket], [], [], 15)
-        if not r:
+        try:
+            file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
+            listen_socket.listen(4)
+            ticket["file_clerk_callback_addr"] = (file_clerk_host, file_clerk_port)
+    
+            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.control_socket.connect(ticket['callback_addr'])
+            callback.write_tcp_obj(self.control_socket, ticket)
+            r, w, x = select.select([listen_socket], [], [], 15)
+            if not r:
+                listen_socket.close()
+                return 0
+            data_socket, address = listen_socket.accept()
+            if not hostaddr.allow(address):
+                data_socket.close()
+                listen_socket.close()
+                return 0
+            self.data_socket = data_socket
             listen_socket.close()
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.handle_error(exc,msg)
             return 0
-        data_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            data_socket.close()
-            listen_socket.close()
-            return 0
-        self.data_socket = data_socket
-        listen_socket.close()
         return 1
 
     # DONE
