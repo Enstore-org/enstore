@@ -14,7 +14,9 @@ if [ -z "${1-}" ] ; then
 fi
 
 case $1 in
-  red50) rm -fr /pnfs/stk/red50/*
+  red50) rm -fr    /pnfs/stk/red50/*
+         mkdir     /pnfs/stk/red50/volmap
+	 chmod 777 /pnfs/stk/red50/volmap
          volumes_del="
                       000004
                       000005
@@ -33,7 +35,9 @@ case $1 in
                       red50 none redwood 000009 50000000000 50000000000
                      "
          ;;
-  red20) rm -fr /pnfs/stk/red20/*
+  red20) rm -fr    /pnfs/stk/red20/*
+         mkdir     /pnfs/stk/red20/volmap
+	 chmod 777 /pnfs/stk/red20/volmap
          volumes_del="
                       000020
                       000021
@@ -78,7 +82,9 @@ case $1 in
                       red20 none redwood 000039 20000000000 20000000000
                      "
          ;;
-  ait)   rm -fr /pnfs/grau/ait/*
+  ait)   rm -fr    /pnfs/grau/ait/*
+         mkdir     /pnfs/grau/ait/volmap
+	 chmod 777 /pnfs/grau/ait/volmap
          volumes_del="
                       CA2901
                       CA2902
@@ -117,7 +123,9 @@ case $1 in
                       ait   none 8MM     CA2916 10737418240 10737418240
                      "
          ;;
-  samait)   rm -fr /pnfs/sam/ait/*
+  samait)rm -fr    /pnfs/sam/ait/*
+         mkdir     /pnfs/sam/ait/volmap
+	 chmod 777 /pnfs/sam/ait/volmap
          volumes_del="
                       CA2945
                       CA2946
@@ -134,7 +142,9 @@ case $1 in
                       samait   none 8MM     CA2949 16106127360 16106127360
                      "
          ;;
-  mam)   rm -fr /pnfs/grau/mammoth/*
+  mam)   rm -fr    /pnfs/grau/mammoth/*
+         mkdir     /pnfs/grau/ait/volmap
+	 chmod 777 /pnfs/grau/ait/volmap
          volumes_del="
                       CA2251
                       CA2252
@@ -173,7 +183,9 @@ case $1 in
                       mam   none 8MM     CA2266 10737418240 10737418240
                      "
          ;;
-  sammam)   rm -fr /pnfs/sam/mammoth/*
+  sammam)rm -fr    /pnfs/sam/mammoth/*
+         mkdir     /pnfs/sam/mammoth/volmap
+	 chmod 777 /pnfs/sam/mammoth/volmap
          volumes_del="
                       CA2270
                       CA2271
@@ -190,7 +202,9 @@ case $1 in
                       samman   none 8MM     CA2274 16106127360 16106127360
                      "
          ;;
-  dlt)   rm -fr /pnfs/grau/dlt/*
+  dlt)   rm -fr    /pnfs/grau/dlt/*
+         mkdir     /pnfs/grau/dlt/volmap
+	 chmod 777 /pnfs/grau/dlt/volmap
          volumes_del="
                       CA2501
                       CA2502
@@ -229,7 +243,9 @@ case $1 in
                       dlt   none DECDLT  CA2516 10737418240 10737418240
                      "
          ;;
-  samdlt)   rm -fr /pnfs/sam/dlt/*
+  samdlt)rm -fr    /pnfs/sam/dlt/*
+         mkdir     /pnfs/sam/dlt/volmap
+	 chmod 777 /pnfs/sam/dlt/volmap
          volumes_del="
                       CA2545
                       CA2546
@@ -246,8 +262,10 @@ case $1 in
                       samdlt   none DECDLT  CA2549 16106127360 16106127360
                      "
          ;;
-  rip6)  rm -fr /pnfs/rip6/*
-         rm -fr /rip6a/rip6/*
+  rip6)  rm -fr    /pnfs/rip6/*
+         rm -fr    /rip6a/rip6/*
+         mkdir     /pnfs/rip6/volmap
+	 chmod 777 /pnfs/rip6/volmap
          volumes_del="
                       rip6-01
                       rip6-02
