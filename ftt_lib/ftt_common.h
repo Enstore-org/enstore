@@ -94,13 +94,13 @@ typedef struct {
 extern ftt_partbuf 	ftt_alloc_parts();
 extern void 		ftt_free_parts(ftt_partbuf);
 
-extern int 		ftt_extract_nparts(partbuf);
-extern int 		ftt_extract_maxparts(partbuf);
-extern long 		ftt_extract_part_size(partbuf,n);
-extern int 		ftt_set_nparts(partbuf,n);
-extern int 		ftt_set_part_size(partbuf,int,long);
+extern int 		ftt_extract_nparts(ftt_partbuf);
+extern int 		ftt_extract_maxparts(ftt_partbuf);
+extern long 		ftt_extract_part_size(ftt_partbuf,int);
+extern int 		ftt_set_nparts(ftt_partbuf,int);
+extern int 		ftt_set_part_size(ftt_partbuf,int,long);
 
-extern int		ftt_get_partitions(ftt_descriptor,partbuf);
-extern int		ftt_write_partitions(ftt_descriptor,partbuf);
-extern int		ftt_skip_part(ftt_descriptor,nparts);
+extern int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
+extern int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
+extern int		ftt_skip_part(ftt_descriptor,int);
 

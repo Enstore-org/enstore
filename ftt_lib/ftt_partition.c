@@ -82,7 +82,7 @@ int
 ftt_write_partitions(ftt_descriptor,partbuf) {
     static char buf[136];
     static unsigned char cdb_modsen11[6] = {0x1a, 0x00, 0x11, 0x00,136, 0x00};
-    static unsigned char cdb_modsel11[6] = {0x15, 0x11, 0x00, 0x00,136, 0x00};
+    static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,136, 0x00};
 
     res = ftt_do_scsi_command(d,"Get Partition table", cdb_modsen11, 6, buf, 136, 10, 0);
     if (res < 0) return res;
