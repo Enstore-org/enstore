@@ -506,8 +506,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          Trace.trace(10,"tape_list %s"%(ticket["status"],))
          return
 
-     if self.fork() != 0:
-         return
+     # Turning off the fork here
+     #
+     # if self.fork() != 0:
+     #     return
+
      # get a user callback
      self.get_user_sockets(ticket)
      callback.write_tcp_obj(self.data_socket,ticket)
