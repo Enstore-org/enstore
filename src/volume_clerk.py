@@ -563,6 +563,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	c = db.join(self.dict, [lc1, fc1])
         while 1:
             label,v = c.next()
+            Trace.log(e_errors.INFO, "checking blank volume: "+`label`)
             if label:
                 Trace.trace(17,'nwv '+label)
                 pass
