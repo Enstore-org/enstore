@@ -1,2 +1,0 @@
-0 1 * * * sh -c 'DIR=/usr/hppc_home/berman/cron;OUT=$DIR/inqPlotUpdate.out;rm -f $OUT;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup gnuplot,enstore 1>>$OUT 2>&1;cd $DIR 1>>$OUT 2>&1;ecmd ic --plot --mc=grau.media_changer --out_dir=$DIR 1>>$OUT 2>&1;'
-30 1 * * * sh -c 'DIR=/usr/hppc_home/berman/cron;OUT=$DIR/inqPlotUpdate.out;rm -f $OUT;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup gnuplot,enstore 1>>$OUT 2>&1;cd $DIR 1>>$OUT 2>&1;ecmd ic --plot 1>>$OUT 2>&1;'
