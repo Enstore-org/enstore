@@ -4,7 +4,6 @@
 
 #system imports
 import sys,os
-import stat
 import string
 import getopt
 import socket
@@ -114,8 +113,6 @@ if __name__=="__main__":
 
     #before we do anything else, make sure we can create the pnfs directories
     if verbose:  print "checking pnfs permissions"
-    gid=os.getegid()
-    uid=os.geteuid()
     for vol_name in volume_dict.keys():
         vol=volume_dict[vol_name]
         for file_num in vol['files'].keys():
@@ -130,16 +127,7 @@ if __name__=="__main__":
                 pnfs_dir = os.path.split(pnfs_dir)[0]
                 
             #make sure we have write access
-            stat_info = os.stat(pnfs_dir)
-            mode=stat_info[stat.ST_MODE]
-            access_ok=0
-            if stat_info[stat.ST_UID]==uid:
-                access_ok = mode&stat.S_IWUSR
-            elif stat_info[stat.ST_GID]==gid:
-                access_ok = mode&stat.S_IWGRP
-            else:
-                access_ok = mode&stat.S_IWOTH
-            if not access_ok:
+            if not os.access(pnfs_dir,os.W_OK):
                 print "Error, no write access to %s" % (pnfs_dir,)
                 sys.exit(-1)
     #ok, we have sufficient permissions to create the pnfs entries
