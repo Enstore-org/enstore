@@ -45,8 +45,7 @@ if [ $? -ne 0 ] ; then echo "Configuration Server is Dead"; exit 1; fi
 
 python -c '
 import configuration_client
-intf=configuration_client.ConfigurationClientInterface()
-csc=configuration_client.ConfigurationClient("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT',intf.verbose)
+csc=configuration_client.ConfigurationClient(("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT'))
 if "'$lookup'" != "0":
  t=csc.u.send({"work":"lookup","lookup": "'$lookup'"},csc.config_address'${2:+,$2}${3:+,$3}')
  import pprint
@@ -58,7 +57,7 @@ else:
      try:
          ahost,ip,port = servers[key]
 	 #print key,ahost,ip,port
-	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="logserver" or key=="inquisitor" or key=="alarm_server" :
+	 if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="log_server" or key=="inquisitor" or key=="alarm_server" :
              print "%s:%s:%s" % (key,ahost,port)
      except:
          pass
