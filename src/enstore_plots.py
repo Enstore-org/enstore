@@ -661,7 +661,7 @@ class BpdDataFile(EnPlot):
                 # move these files somewhere
                 os.system("mv %s %s"%(self.gnufile, pts_dir))
 	for mover in self.per_mover_files_d.keys():
-	    mover.cleanup(keep, pts_dir)
+	    self.per_mover_files_d[mover].cleanup(keep, pts_dir)
 
     # write out the files for each movers' bytes/day
     def per_mover(self):
@@ -835,17 +835,20 @@ class BpdDataFile(EnPlot):
 	#convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
 	#convert_to_jpg(psfilew, "%s/%s"%(dir, filew))
 
-    def cleanup(self, keep, pts_dir):
-	EnPlot.cleanup(self, keep, pts_dir)
-
-	for mover in self.per_mover_files_d.keys():
-	    self.per_mover_files_d[mover].cleanup(keep, pts_dir)
-
 
 class BpdMonthDataFile(EnPlot):
 
     def __init__(self, dir):
 	EnPlot.__init__(self, dir, enstore_constants.BPD_MONTH_FILE)
+
+    def cleanup(self, keep, pts_dir):
+        if not keep:
+            # delete the gnu command file
+            os.system("rm %s"%(self.gnufile,))
+        else:
+            if pts_dir:
+                # move these files somewhere
+                os.system("mv %s %s"%(self.gnufile, pts_dir))
 
     def open(self):
 	if os.path.isfile(self.ptsfile):
