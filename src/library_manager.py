@@ -17,6 +17,8 @@ import dispatching_worker
 import generic_server
 import Trace
 
+import pprint
+
 pending_work = []       # list of read or write work tickets
 
 # here is where we setup priority for work that needs to get done
@@ -32,6 +34,8 @@ def priority(ticket):
 
 # insert work into our queue based on its priority
 def queue_pending_work(ticket):
+    print "LM: queue_pending_work"
+    pprint.pprint(ticket)
     ticket["priority"] = priority(ticket)
     i = 0
     tryp = ticket["priority"]
@@ -56,7 +60,6 @@ def busy_vols_in_family (family_name):
         if w["fc"]["file_family"] == family_name:
             vols.append(w["fc"]["external_label"])
      except:
-        import pprint
         pprint.pprint(w)
         pprint.pprint(work_at_movers)
         pprint.pprint(work_awaiting_bind)
@@ -133,7 +136,7 @@ def next_work_any_volume(csc):
 
         # alas, all I know about is reading and writing
         else:
-            import pprint
+            #import pprint
             print "assertion error in next_work_any_volume w="
             pprint.pprint(w)
             raise "assertion error"
@@ -215,16 +218,22 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
                                        w["work"],
                                        mticket["mover"],
                                        w["uinfo"]["uname"])
+	    """
             self.reply_to_caller({"work"           : "bind_volume",
                                   "external_label" : w["fc"]\
                                   ["external_label"] })
+	    """
             # put it into our bind queue and take it out of pending queue
             work_awaiting_bind.append(w)
             pending_work.remove(w)
-
+	    mticket["external_label"] = w["fc"]["external_label"]
+	    self.have_bound_volume(mticket)
+            self.reply_to_caller({"work"           : "bind_volume",
+                                  "external_label" : w["fc"]\
+                                  ["external_label"] })
         # alas
         else:
-            import pprint
+            #import pprint
             print "assertion error in idle_mover w=, mticket="
             pprint.pprint(w)
             pprint.pprint(mticket)
@@ -232,6 +241,8 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
+	print "LM:have_bound_volume"
+	pprint.pprint(mticket)
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket["external_label"])
         if w:
@@ -278,7 +289,7 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
         # alas
         else:
-            import pprint
+            #import pprint
             print "assertion error in have_bound_volume w=, mticket="
             pprint.pprint(w)
             pprint.pprint(mticket)
