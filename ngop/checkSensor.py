@@ -7,7 +7,9 @@ import stat
 
 NEW_IPMI_NODES = ["d0ensrv0.fnal.gov", "d0ensrv1.fnal.gov",
 		  "d0ensrv2.fnal.gov", "d0ensrv4.fnal.gov",
-		  "d0enmvr26a.fnal.gov"]
+		  "d0enmvr26a.fnal.gov", "cdfenmvr13a.fnal.gov",
+		  "cdfenmvr14a.fnal.gov", "cdfenmvr15a.fnal.gov",
+		  "cdfensrv1.fnal.gov"]
 
 NO_IPMI_NODES = ["d0ensrv5.fnal.gov", "d0ensrv7.fnal.gov"]
 
@@ -25,20 +27,18 @@ def isTime(nm,dur):
 
 def checkFirmware():
    if os.uname()[1] in NEW_IPMI_NODES:
-	   ipmi = "ipmi_new"
 	   senDict={'Processor 1 Temp':0,\
 		    'Processor 2 Temp':0,\
 		    'Processor Fan 1':0,\
 		    'Processor Fan 2':0,\
 		    }
    else:
-	   ipmi = "ipmi"
 	   senDict={'Processor 1 Temp':0,\
 		    'Processor 2 Temp':0,\
 		    'Processor 1 Fan':0,\
 		    'Processor 2 Fan':0,\
 		    }
-   p=os.popen("/home/enstore/%s/sdrread"%(ipmi,),'r')
+   p=os.popen("%s/sdrread"%(os.environ['IPMI_DIR'],),'r')
    retList=p.readlines()
    for line in retList:
         if string.find(line,"GETINFO failed")>=0:
@@ -82,12 +82,9 @@ if __name__=="__main__":
 		    print 0
 	    sys.exit(0)
 	
-    if os.uname()[1] in NEW_IPMI_NODES:
-	    ipmi = "ipmi_new"
-    else:
-	    ipmi = "ipmi"
     if sys.argv[1]=="temp":
-        cmd="/home/enstore/%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"%(ipmi,)
+        cmd="%s/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'"%(os.environ['IPMI_DIR'],)
+	print cmd
         ret=check(cmd)
         if len(ret)!=2:
             print -1
@@ -101,7 +98,7 @@ if __name__=="__main__":
             print -1
             sys.exit(0)
     elif sys.argv[1]=="fan":
-        cmd="/home/enstore/%s/sdrread|grep 'Processor.*Fan:'|awk -F':' '{print $3}'|awk '{print $1}'"%(ipmi,)
+        cmd="%s/sdrread|grep 'Processor.*Fan:'|awk -F':' '{print $3}'|awk '{print $1}'"%(os.environ['IPMI_DIR'],)
         ret=check(cmd)
         if len(ret)!=2:
             print -1
