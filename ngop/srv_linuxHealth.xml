@@ -175,46 +175,6 @@
 	 	</ConditionSet>
     	    </MonitoredElement>   
     </For>
- 	   <MonitoredElement Name="/pnfs" Host="localhost" Type="FileSystem">
-		<ConditionSet>
-                   <fn Name="plug_ins" Arg="if [ `df {%Var}  2> /dev/null | grep -v Filesystem|wc -l` -eq 1 ];then echo `df {%Var}  2> /dev/null | grep -v Filesystem|awk '{print $5}'|sed s/\\%//`;else echo -1;fi" RetVal="int:size"/>
-                   <Condition State="-2" SevLevel="0" Description="{%Var} not mounted">
-                     <apply>
-                      <eq/>
-                      <ci>size</ci>
-                      <cn>-1</cn>
-                     </apply>
-                  </Condition>
-		   <Condition State="1" SevLevel="6" Description="{%Var} between 80 and 90%">	
-    		    <apply>
-		     <and/>
-		     <apply>
-                      <geq/>
-                      <ci>size</ci>
-                      <cn>80</cn>
-                     </apply>
-		     <apply>
-                      <lt/>
-                      <ci>size</ci>
-                      <cn>90</cn>
-                     </apply>
-		    </apply>		
-                    <Action ID="enstore_alarm" Host="localhost" Type="local">
-	                 <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
-                    </Action>
-   		   </Condition>	
-		   <Condition State="0" SevLevel="0" Description="{%Var} size exceeds 90%">	
-    		    <apply>
-                      <geq/>
-                      <ci>size</ci>
-                      <cn>90</cn>
-		    </apply>
-                    <Action ID="enstore_alarm" Host="localhost" Type="local">
-	                 <Exec Name="/var/ngop/include/raise_enstore_alarm" Argument="%Description" />
-                    </Action>
-   		   </Condition>
-	 	</ConditionSet>
-    	    </MonitoredElement>   
     <For Each="Daemon" In="DaemonList" Var="{%Var}" Name="SystemDaemon">
         <MonitoredElement Name="{%Var}" Host="localhost" Type="Daemon">
         <ConditionSet>
