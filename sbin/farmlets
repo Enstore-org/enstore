@@ -17,9 +17,9 @@ CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -clpogtx --blocking
 
 # $Id$
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-if [ "$gang" = "ripe" ]; then  basenode=rip2; else basenode=${gang}srv1; fi
+if [ "$gang" = rip ]; then  basenode=rip2; else basenode=${gang}srv1; fi
 
 if $FIX; then
     $FIXIT    d0ensrv1:/usr/local/etc/farmlets/d0en*	/usr/local/etc/farmlets/
@@ -48,15 +48,15 @@ NENS=`echo "$ENS"|awk '/Number of files transferred:/ {print $NF}'`
 #    /usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman < /dev/null
 #fi
 
-if [ $NSAM != 0 ]; then echo "$SAM"; fi
-if [ $NSTK != 0 ]; then echo "$STK"; fi
-if [ $NCDF != 0 ]; then echo "$CDF"; fi
-if [ $NENS != 0 ]; then echo "$ENS"; fi
+if [ "$NSAM" != 0 ]; then echo "$SAM"; fi
+if [ "$NSTK" != 0 ]; then echo "$STK"; fi
+if [ "$NCDF" != 0 ]; then echo "$CDF"; fi
+if [ "$NENS" != 0 ]; then echo "$ENS"; fi
 
 rc=0
 
-if [ $NSAM != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
-    msg="`date` BAD CONFIGURATION: Farmlet mismatch NSAM=$NSAM NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
+if [ "$NSAM" != 0 -o  "$NSTK" != 0 -o "$NCDF" != 0 -o "$NENS" != 0 ]; then
+    msg="BAD CONFIGURATION: Farmlet mismatch NSAM=$NSAM NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
     echo $msg
     if [ $ALARM -eq 1 ]; then
        enstore alarm --raise --severity "A" --root-error "$msg"
@@ -73,7 +73,7 @@ fi
 #  CHK="`$CHECK ${basenode}:$f/ $f/ 2>/dev/null`"
 #  NCHK=`echo "$CHK"|awk '/Number of files transferred:/ {print $NF}'`
 #  if [ $NCHK != 0 ]; then echo $f "$CHK"
-#    msg="`date` BAD CONFIGURATION: Directory $f NCHK=$NCHK"
+#    msg="BAD CONFIGURATION: Directory $f NCHK=$NCHK"
 #    echo $msg
 #    if [ $ALARM -eq 1 ]; then
 #       enstore alarm --raise --severity "A" --root-error "$msg"
