@@ -366,7 +366,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 # aml2 robot loader server
 class AML2_MediaLoader(MediaLoaderMethods):
 
-    def __init__(self, medch, maxwork=10, csc=None):
+    def __init__(self, medch, maxwork=7, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
 
 	# robot choices are 'R1', 'R2' or 'Both'
@@ -1001,7 +1001,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-        self.maxwork=10
+        self.maxwork=7
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
