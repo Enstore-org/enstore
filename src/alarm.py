@@ -83,6 +83,8 @@ class GenericAlarm:
     def ticket(self):
         if not self.ticket_generated and self.condition:
             system_name = self.host
+            # we need to remove the ".fnal.gov" extension
+            system_name = enstore_functions2.strip_node(system_name)
             condition = self.condition
             short_message = self.root_error
             long_message = self.list_alarm()
