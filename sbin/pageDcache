@@ -237,6 +237,20 @@ if [ $gang = "stken" ]; then
 	    exit 8
 	fi
     fi
+    if [ -z "${GSSPY_GSI_DIR:-}" ]; then
+	setup gsspy_gsi
+	if [ $? -gt 0 ]; then
+	    echo `date` ERROR: unable to setup gsspy_gsi.
+	    exit 8
+	fi
+    fi
+    if [ -z "${GSSPY_KRB_DIR:-}" ]; then
+	setup gsspy_krb
+	if [ $? -gt 0 ]; then
+	    echo `date` ERROR: unable to setup gsspy_krb.
+	    exit 8
+	fi
+    fi
 fi
 
 if [ -z "${DCAP_DIR:-}" ]; then
