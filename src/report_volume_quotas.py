@@ -6,6 +6,7 @@ import sg_db
 import volume_clerk_client
 import volume_family
 import configuration_client
+import e_errors
 
 KB=1024.
 MB=KB*KB
@@ -43,7 +44,9 @@ class OpSGDB:
     # create a dictionary of libraries-stograge groups for all volumes
     def create_sg_dict(self):
         sgs = {}
+        vols = []
         for vol in self.volumes:
+            vols.append(vol['volume'])
             lib = vol['library']
             sg = volume_family.extract_storage_group(vol['volume_family'])
             ff = volume_family.extract_file_family(vol['volume_family'])
@@ -53,23 +56,30 @@ class OpSGDB:
                 sgs[(lib,sg)]['used'] = 0
                 sgs[(lib,sg)]['total'] = 0.
                 sgs[(lib,sg)]['quota'] = self.quotas['libraries'][lib].get(sg, '?')
+                sgs[(lib,sg)]['deleted'] = []
+                    
             if sg != 'none':
-                if ff == 'none':  # blank volume
+                if ff == 'none' or (vol['non_del_files'] == 0 and vol['system_inhibit'][0] != e_errors.DELETED):  # blank volume
                     sgs[(lib,sg)]['blank'] = sgs[(lib,sg)]['blank']+1
-                if vol['non_del_files']:
+                if vol['system_inhibit'][0] == e_errors.DELETED:
+                    if vol['volume'] not in sgs[(lib,sg)]['deleted']:
+                        # count the same volume onlu once
+                        sgs[(lib,sg)]['deleted'].append(vol['volume']) 
+                if vol['non_del_files'] != 0:
                     sgs[(lib,sg)]['used'] = sgs[(lib,sg)]['used']+1
-                sgs[(lib,sg)]['total'] = sgs[(lib,sg)]['total'] + vol['capacity_bytes']*1. - vol['remaining_bytes']*1.
+                    sgs[(lib,sg)]['total'] = sgs[(lib,sg)]['total'] + vol['capacity_bytes']*1. - vol['remaining_bytes']*1.
         return sgs
 
     def print_sg_dict(self, sgs):
         keys=sgs.keys()
         keys.sort()
-        print "%-10s %-20s %-6s %-10s %-012s %-012s" % ('Library', 'Storage Group', 'Quota',
-                                                       'Blank Vols', 'Written Vols', 'Space Used')
+        print "%-10s %-20s %-6s %-10s %-012s %-07s %-012s" % ('Library', 'Storage Group', 'Quota',
+                                                       'Blank Vols', 'Written Vols', 'Deleted', 'Space Used')
         for key in keys:
-            print "%-10s %-20s %-6s %-10s %-14s %-012s" % (key[0], key[1], sgs[key]['quota'],
-                                                           sgs[key]['blank'], sgs[(key)]['used'],
-                                                           capacity_str(sgs[key]['total'])) 
+            print "%-10s %-20s %-6s %-10s %-14s %-7s %-012s" % (key[0], key[1], sgs[key]['quota'],
+                                                                sgs[key]['blank'], sgs[(key)]['used'],
+                                                                len(sgs[key]['deleted']),
+                                                                capacity_str(sgs[key]['total']))
 
     # create database entries
     def create_db(self):
