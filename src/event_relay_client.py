@@ -182,9 +182,9 @@ class EventRelayClient:
                     # we got one, we are done
                     self.unsubscribe()
                     self.sock.close()
-                    sys.exit(0)
+                    return 0
         # we did not get a message, assume the event relay is not alive
-        sys.exit(1)
+        return 1
         
 
 class EventRelayClientInterface:
@@ -214,9 +214,9 @@ class EventRelayClientInterface:
 def do_work(intf):
     # now get an event relay client
     erc = EventRelayClient()
-
+    rtn = 0
     if intf.alive:
-        erc.alive()
+        rtn = erc.alive()
 
     elif intf.dump:
         erc.dump()
@@ -228,8 +228,10 @@ def do_work(intf):
         intf.print_help()
         sys.exit(0)
 
+    return rtn
+
 if __name__ == "__main__" :
  
     intf = EventRelayClientInterface()
 
-    do_work(intf)
+    sys.exit(do_work(intf))
