@@ -101,6 +101,7 @@ def check_volume(vol):
 		del bvol['storage_group']
 	if bvol.has_key('mounts'):
 		del bvol['mounts']
+	bvol['remaining_bytes'] = long(bvol['remaining_bytes'])
 
 	bvol['eod_cookie'] = str(bvol['eod_cookie'])
 	if bvol['eod_cookie'] == '\x00':
