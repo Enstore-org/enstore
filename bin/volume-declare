@@ -95,6 +95,7 @@ case $1 in
                       CA2913
                       CA2914
                       CA2915
+                      CA2916
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -113,6 +114,7 @@ case $1 in
                       ait   none 8MM     CA2913 21474836480 21474836480
                       ait   none 8MM     CA2914 21474836480 21474836480
                       ait   none 8MM     CA2915 21474836480 21474836480 
+                      ait   none 8MM     CA2916 21474836480 21474836480 
                      "
          ;;
   mam)   rm -fr /pnfs/grau/mammoth/*
@@ -132,6 +134,7 @@ case $1 in
                       CA2263
                       CA2264
                       CA2265
+                      CA2266
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -150,6 +153,7 @@ case $1 in
                       mam   none 8MM     CA2263 21474836480 21474836480
                       mam   none 8MM     CA2264 21474836480 21474836480
                       mam   none 8MM     CA2265 21474836480 21474836480
+                      mam   none 8MM     CA2266 21474836480 21474836480
                      "
          ;;
   dlt)   rm -fr /pnfs/grau/dlt/*
@@ -169,6 +173,7 @@ case $1 in
                       CA2513
                       CA2514
                       CA2515
+                      CA2516
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
@@ -187,6 +192,7 @@ case $1 in
                       dlt   none DECDLT  CA2513 30003983462 30003983462
                       dlt   none DECDLT  CA2514 30003983462 30003983462
                       dlt   none DECDLT  CA2515 30003983462 30003983462
+                      dlt   none DECDLT  CA2516 30003983462 30003983462
                      "
          ;;
   rip6)  rm -fr /pnfs/rip6/*
