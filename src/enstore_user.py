@@ -14,4 +14,4 @@ def do_work():
 
 if __name__ == "__main__" :
 
-    sys.exit(do_work())
+    do_work()
