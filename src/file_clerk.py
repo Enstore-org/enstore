@@ -482,7 +482,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 self.reply_to_caller(ticket)
                 Trace.log(e_errors.ERROR,'rename_volume failed %s'%(ticket,))
                 return
-            self.dict[bfid] = record 
+        self.dict[bfid] = record 
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
