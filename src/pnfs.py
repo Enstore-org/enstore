@@ -32,10 +32,6 @@ UNKNOWN = "unknown"
 #DIREXISTS = "directory exists"
 ERROR = -1
 
-ATTEMPTS = 5
-
-#do_log = 0 #If this is set, PNFS errors will be logged
-
 ##############################################################################
 
 #This is used to print out some of the results to the terminal that are more
@@ -163,22 +159,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         self.pstatinfo()
 
-    # update the access/mod time of a file
-    # this function also seems to flush the nfs cache
+    # update the access and mod time of a file
     def utime(self, filename=None):
         if not filename:
             filename = self.pnfsFilename
-        
-        for i in range(ATTEMPTS):
-            try:
-                t = int(time.time())
-                os.utime(filename,(t,t))
-                break
-            except os.error, msg:
-                time.sleep(1)
-        else:
-            Trace.log(e_errors.INFO, "can not utime: %s %s"%(os.error,msg))
-            raise msg
+
+        t = int(time.time())
+        os.utime(filename,(t,t))
         
     # delete a pnfs file including its metadata
     def rm(self, filename=None):
@@ -212,18 +199,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if type(value)!=type(''):
             value=str(value)
 
-        for i in range(ATTEMPTS):
-            try:
-                f = open(fname,'w')
-                f.write(value)
-                f.close()
-                self.utime()
-                self.pstatinfo()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'w')
+        f.write(value)
+        f.close()
+        self.utime()
+        self.pstatinfo()
 
     # read the value stored in the requested file layer
     def readlayer(self,layer, filepath=None):
@@ -234,16 +214,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             
         fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
 
-        for i in range(ATTEMPTS):
-            try:
-                f = open(fname,'r')
-                l = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        l = f.readlines()
+        f.close()
         
         return l
 
@@ -259,16 +232,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         fname = os.path.join(directory, ".(const)(%s)"%(file,))
 
-        for i in range(ATTEMPTS):
-            try:
-                f=open(fname,'r')
-                const = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f=open(fname,'r')
+        const = f.readlines()
+        f.close()
 
         if not filepath:
             self.const = const
@@ -284,16 +250,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             
         fname =os.path.join(directory, ".(id)(%s)" % (file,))
 
-        for i in range(ATTEMPTS):
-            try:
-                f = open(fname,'r')
-                id = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        id = f.readlines()
+        f.close()
 
         id = string.replace(id[0],'\n','')
 
@@ -313,16 +272,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(showid)(%s)"%(self.id,))
 
-        for i in range(ATTEMPTS):
-            try:
-                f = open(fname,'r')
-                showid = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        showid = f.readlines()
+        f.close()
 
         if not id:
             self.showid = showid
@@ -341,16 +293,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(use_dir, ".(nameof)(%s)"%(self.id,))
 
-        for i in range(ATTEMPTS):
-            try:
-                f = open(fname,'r')
-                nameof = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        nameof = f.readlines()
+        f.close()
         
         nameof = string.replace(nameof[0],'\n','')
 
@@ -370,16 +315,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(use_dir, ".(parent)(%s)"%(self.id,))
 
-        for i in range(ATTEMPTS):
-            try:            
-                f = open(fname,'r')
-                parent = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        parent = f.readlines()
+        f.close()
         
         parent = string.replace(parent[0],'\n','')
 
@@ -466,16 +404,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(cursor)")
 
-        for i in range(ATTEMPTS):
-            try:       
-                f = open(fname,'r')
-                cursor = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f = open(fname,'r')
+        cursor = f.readlines()
+        f.close()
         
         if not directory:
             self.cursor = cursor
@@ -489,16 +420,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(counters)")
 
-        for i in range(ATTEMPTS):
-            try:  
-                f=open(fname,'r')
-                counters = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f=open(fname,'r')
+        counters = f.readlines()
+        f.close()
 
         if not directory:
             self.counters = counters
@@ -512,16 +436,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(postion)")
 
-        for i in range(ATTEMPTS):
-            try:  
-                f=open(fname,'r')
-                position = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f=open(fname,'r')
+        position = f.readlines()
+        f.close()
 
         if not directory:
             self.position = position
@@ -535,16 +452,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(database)")
 
-        for i in range(ATTEMPTS):
-            try:  
-                f=open(fname,'r')
-                database = f.readlines()
-                f.close()
-                break
-            except OSError, detail:
-                time.sleep(1)
-        else:
-            raise detail
+        f=open(fname,'r')
+        database = f.readlines()
+        f.close()
         
         database = string.replace(database[0], "\n", "")
 
@@ -564,37 +474,29 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.verify_existance()
 
         #Get the file system size.
-        for i in range(ATTEMPTS):
-            try:  
-                file_size = long(os.stat(file)[stat.ST_SIZE])
-                break
-            except OSError, detail:
-                time.sleep(1)
-            except ValueError:
-                raise OSError(errno.EINVAL,
-                              os.strerror(errno.EINVAL) + ": invalid filesize")
-        else:
-            raise detail
-
-        #If there is no layer 4, go with the os size.
+        os_filesize = long(os.stat(file)[stat.ST_SIZE])
+        
+        #If there is no layer 4, make sure an error occurs.
         try:
-            filesize = long(self.get_xreference()[2].strip())
+            pnfs_filesize = long(self.get_xreference()[2].strip())
         except ValueError:
-            self.file_size = file_size
-            return file_size
+            pnfs_filesize = long(-1)
+            #self.file_size = os_filesize
+            #return os_filesize
         
         #Error checking.  However first ignore large file cases.
-        if file_size == 1 and filesize > long(2L**31L) - 1:
+        if os_filesize == 1 and pnfs_filesize > long(2L**31L) - 1:
             if not filepath:
-                self.file_size = filesize
-            return filesize
-        elif file_size != filesize:
+                self.file_size = pnfs_filesize
+            return long(pnfs_filesize)
+        #Make sure they are the same.
+        elif os_filesize != pnfs_filesize:
             raise OSError(errno.EBADFD,
                           os.strerror(errno.EBADFD) + ": filesize corruption")
-        else:
-            if not filepath:
-                self.file_size = filesize
-            return filesize
+
+        if not filepath:
+            self.file_size = os_filesize
+        return long(os_filesize)
 	
 
     def set_file_size(self, filesize, filepath=None):
@@ -740,27 +642,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the stat of file, or if non-existant, its directory
     def get_stat(self):
-        for i in range(ATTEMPTS):
-            try:
-                # first the file itself
-                self.pstat = os.stat(self.filepath)
-                break
-            except OSError, msg:
-                time.sleep(1)
-        else:
+        try:
+            # first the file itself
+            self.pstat = os.stat(self.filepath)
+        except OSError, msg:
             # if that fails, try the directory
-            if msg.errno == errno.ENOENT:
-                for i in range(ATTEMPTS):
-                    try:
-                        self.pstat = os.stat(os.path.dirname(self.filepath))
-                        break
-                    except OSError, msg2:
-                        time.sleep(1)
-                else:
-                    raise msg2
-            else:
-                self.major,self.minor = (0,0)
+            try:
+                self.pstat = os.stat(os.path.dirname(self.filepath))
+            except OSError, msg2:
                 raise msg
+
+        self.major,self.minor = (0,0)
 
     # update all the stat info on the file, or if non-existent, its directory
     def pstatinfo(self,update=1):
@@ -1649,6 +1541,10 @@ class PnfsInterface(option.Interface):
         if not self.option_list:
             self.print_usage("No valid options were given.")
 
+        #No pnfs options take extra arguments beyond those specifed in the
+        # option dictionaries.  If there are print message and exit.
+        self.check_correct_count()
+
         if getattr(self, "help", None):
             self.print_help()
 
@@ -1941,6 +1837,8 @@ class Tag:
 
         return storage_group
 
+    ##########################################################################
+            
     def penstore_state(self):  #, intf):
         fname = os.path.join(self.dir, ".(config)(flags)/disabled")
         print fname
@@ -1952,8 +1850,6 @@ class Tag:
         else:
             print "Enstore enabled"
 
-    ##########################################################################
-            
     def ppnfs_state(self):  #, intf):
         fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
         if os.access(fname, os.F_OK | os.R_OK):
