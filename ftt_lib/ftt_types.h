@@ -8,7 +8,7 @@ extern char ftt_eprint_buf[];
 
 #define MAX_TRANS_ERRNO 50	/* maximum error number we translate */
 
-#define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
+#define MAX_TRANS_DENSITY 20	/* maximum density number we translate */
 
 /* device information structure */
 #define MAXDEVSLOTS 80

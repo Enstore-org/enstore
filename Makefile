@@ -22,7 +22,7 @@ DIR=$(DEFAULT_DIR)
 
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_15
+            VERS=v2_20
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
            CHAIN="rev_01"
@@ -369,7 +369,7 @@ LISTALL =  ( \
 
 # Default names for things
 DEFAULT_DISTRIBFILE="$(DIR)/../$(PROD)$(FLAVOR)$(QUALS)$(VERS).tar"
-DEFAULT_FLAVOR=`ups flavor -2`
+DEFAULT_FLAVOR=`ups flavor -4`
 DEFAULT_NULL_FLAVOR=NULL
 
 # We try to undo common automount name munging here,
