@@ -49,7 +49,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 # rename volume names in the FC database
 	 if string.find(new_label, ".deleted") != -1:
 	     cur_rec["system_inhibit"] = e_errors.DELETED
-	     set_deleted = "eys"
+	     set_deleted = "yes"
 	 else:
 	     cur_rec["system_inhibit"] = "none"
 	     if restore == "yes":
