@@ -15,7 +15,7 @@ class FileList:
         s = sys.argv[1].split('/')
         if s[0] == '' and s[1] == 'pnfs':
             # pnfs file
-            self.file=s
+            self.file=sys.argv[1]
         else:
             # file contains list of pnfs files
             self.file_list = open(s,'r')
