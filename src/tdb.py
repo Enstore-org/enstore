@@ -49,7 +49,7 @@ class Tdb(threading.Thread) :
             elif toks[0] == "eval" :
                 self.eval(line[4:])
             elif toks[0] == "module" :
-                self.eval(line[6:])
+                self.module(string.strip(line[6:]))
             elif toks[0] == "help":
                 self.help()
             elif toks[0] ==  "quit" :
@@ -65,18 +65,18 @@ class Tdb(threading.Thread) :
     def who(self):
 #        for g in globals().keys() :
 #            self.writeln(repr(g)  + '=' + repr(globals()[g]))
-	print self.module, type(self.module)
 
-	for g in self.module.__dict__.keys() :
-            self.writeln(repr(g)  + '=' + repr(self.module.__dict__[g]))
+	for e in self.mod.__dict__.keys() :
+            self.writeln(repr(e)  + '=' + repr(self.mod.__dict__[e]))
             
     def eval(self, e):
         self.writeln(eval(e))
 
     def module(self, m):
-	self.writeln(sys.modules[m]);
-        self.module = eval(m)
-
+        
+	self.writeln("AAAAAAAAAAAAAAAAA" + `len(m)`)
+	self.writeln(sys.modules[m])
+	self.mod = sys.modules[m]
 
     def  help(self):
         self.writeln(
@@ -108,6 +108,6 @@ class TdbListener(threading.Thread):
 if __name__ == "__main__" :
     TdbListener().start()
     while 1:
-        print "visit me at localhost 9999         "
+        print "visit me at localhost 9999        !!!! "
         time.sleep(10)
 
