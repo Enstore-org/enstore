@@ -19,7 +19,7 @@ encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
-	(cd ENCPBIN_TEMP; make;)
+	(cd ENCPBIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp ENCPBIN
 	cp ../ups/encp.table ENCPBIN
 	cp ../sbin/encp1stInstall ENCPBIN
