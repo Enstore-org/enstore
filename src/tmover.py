@@ -301,7 +301,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.mc_device = self.config.get('mc_device', 0)
         self.min_buffer = self.config.get('min_buffer', 16*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
-        self.fast_rate = self.config.get('fast_rate', 10*MB)
         
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
             
@@ -380,7 +379,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
             self.tape_driver.close()
-            self.tape_driver.set_fast_rate(self.fast_rate)
             try: #see if there's a tape already loaded
                 self.tape_driver.open(self.device, 0)
                 self.tape_driver.set_mode(compression = 0, blocksize = 0)
