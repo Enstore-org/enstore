@@ -63,7 +63,7 @@ def find_enstore():
 
 
 def pgrep_html(pat, files):
-    regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP))
+    regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP)
     patr = regex.compile(pat)
     for file in glob.glob(files):
 	lineno = 1
