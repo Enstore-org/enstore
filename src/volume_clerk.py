@@ -315,7 +315,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     waste = left/totb*100.
                 self.logc.send(e_errors.INFO,8,
                                "%s is now full, bytes remaining = %d, %.2f \%" %
-                               (external_label, v["remaining_bytes"],waste))
+                               (label, v["remaining_bytes"],waste))
                 #dict[label] = copy.deepcopy(v)
                 dict.cursor("update",v)
                 continue
