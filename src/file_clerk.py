@@ -379,6 +379,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"bfid_info %s"%(ticket["status"],))
             return
 
+        # chek if finfo has deleted key and if not fix the record
+        if not finfo.has_key('deleted'):
+            finfo['deleted'] = 'no'
+            Trace.log(e_errors.INFO, 'added missing "deleted" key for bfid %s' % (bfid,))
+            self.dict[bfid] = finfo
+
         # copy all file information we have to user's ticket
         ticket["fc"] = finfo
 
