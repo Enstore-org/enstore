@@ -49,14 +49,19 @@ def same_cookie(c1, c2):
 def move_file(input_filename, output_filename):
 
     #Check the input file.
+
+    #The input file should exist.
     if not os.path.exists(input_filename):
         print_error(e_errors.USERERROR, "Input file does not exists.")
         sys.exit(1)
+    #The input file should be a regular file.
     if not os.path.isfile(input_filename):
         print_error(e_errors.USERERROR, "Source file is not a file.")
         sys.exit(1)
         
-    #check the output file.
+    #Check the output file.
+
+    #If the output file is a directory, append the filename to it.
     if os.path.exists(output_filename):
         if os.path.isdir(output_filename):
             #If the destination is a directory, append the filename.
@@ -68,10 +73,16 @@ def move_file(input_filename, output_filename):
         else:
             print_error(e_errors.USERERROR, "Output file already exists.")
             sys.exit(1)
+    #Filenames must not contain control characters.
     if not charset.is_in_filenamecharset(output_filename):
         print_error(e_errors.USERERROR,
                     "Output filename contains invalid characters.")
         sys.exit(1)
+    #Filenames must be short enough.
+    for directory in output_filename.split("/"):
+        if len(directory) > 199:
+            print_error(e_errors.USERERROR, os.strerror(errno.ENAMETOOLONG))
+            sys.exit(1)
 
     p = pnfs.Pnfs(input_filename)
     p.get_bit_file_id()
@@ -248,6 +259,10 @@ def move_file(input_filename, output_filename):
         sys.exit(1)
 
     if in_fd: #If the rename failed and we did it the hard way.
+
+        #The file size, permissions, ownership and last access/modification
+        # time must all be reset.
+        
         try:
             new_p.set_file_size(file_info['size'])
         except OSError, msg:
@@ -261,6 +276,37 @@ def move_file(input_filename, output_filename):
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
+
+            sys.stderr.flush()
+            sys.exit(1)
+
+        try:
+            os.chown(output_filename, p.pstat[stat.ST_UID],
+                     p.pstat[stat.ST_GID])
+        except OSError, msg:
+            print_error(e_errors.OSERROR,
+                        "File ownership update failed: %s" % str(msg))
+
+            sys.stderr.flush()
+            sys.exit(1)
+
+        try:
+            os.chown(output_filename,
+                     p.pstat[stat.ST_UID], p.pstat[stat.ST_GID])
+        except OSError, msg:
+            print_error(e_errors.OSERROR,
+                        "File ownership update failed: %s" % str(msg))
+
+            sys.stderr.flush()
+            sys.exit(1)
+
+        try:
+            os.utime(output_filename,
+                     (p.pstat[stat.ST_ATIME], p.pstat[stat.ST_MTIME]))
+        except OSError, msg:
+            print_error(e_errors.OSERROR,
+                        "File access and modification time update failed: %s" \
+                        % str(msg))
 
             sys.stderr.flush()
             sys.exit(1)
@@ -298,7 +344,7 @@ def move_file(input_filename, output_filename):
 
     try:
         if in_fd:
-            #Remove the orginal file.  Also, this remove the pnfs layers
+            #Remove the orginal file.  Also, this removes the pnfs layers
             # before the actual file is deleted.  If os.remove() were to be
             # used, the layer information is "trashed" and delfile would mark
             # the moved file as deleted.
