@@ -53,8 +53,12 @@ QUALIFIERS = ""
         setupRequired("libtppy")
         # setupRequired("libtp") # libtp is set up by libtppy
 
-        # now set the python module search path
-        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src:${UPS_PROD_DIR}/modules:$LIBTPPY_DIR/lib")
+        # now set the python module search path, need to do these in separate
+	# lines so that when an unsetup is done, the dropit will do 3 separate
+	# dropits.   dropit does not support > 1 substring to drop on a line
+        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
+        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
+        envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
 
         # control where the trace file goes
         execute("whoami", NO_UPS_ENV, meme)
