@@ -729,7 +729,7 @@ class BpdDataFile(EnPlot):
 	self.write_ctr = 0
 	for [xpt, ypt, type, mover, drive_id] in data:
 	    adate = xpt[0:10]
-	    fypt = string.atof(ypt)
+            fypt = string.atof(ypt)
 	    day = self.ndata[adate]
 	    day[CTR] = day[CTR] + 1
 	    if fypt > day[LARGEST]:

@@ -175,7 +175,6 @@ class EncpLine:
             # some of the lines  do not have MSG_TYPE in them (??? hmmm) so we cannot count on
             # aList being any more than 1 element long.
             self.text = aList[0]
-            self.valid = 1
 
 
 class SgLine:
