@@ -263,11 +263,12 @@ class DispatchingWorker:
 
         # look in the ticket and figure out what work user wants
         try:
-            function = ticket["work"]
-        except KeyError:
+            function_name = ticket["work"]
+            function = getattr(self,function_name)
+        except (KeyError, AttributeError):
             ticket = {'status' : (e_errors.KEYERROR, \
 				  "cannot find requested function")}
-            Trace.trace(0,"process_request "+repr(ticket)+repr(function))
+            Trace.trace(0,"process_request "+repr(ticket)+repr(function_name))
             self.reply_to_caller(ticket)
             return
 
@@ -275,9 +276,12 @@ class DispatchingWorker:
             purge_stale_entries(request_dict)
 
         # call the user function
-        Trace.trace(6,"process_request function="+repr(function))
-        exec ("self." + function + "(ticket)")
-
+        Trace.trace(6,"process_request function="+repr(function_name))
+        
+        ##exec ("self." + function + "(ticket)")
+            
+        apply(function, (ticket,))
+        
         # check for any zombie children and get rid of them
         collect_children()
         Trace.trace(5,"}process_request idn="+repr(idn))
