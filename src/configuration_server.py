@@ -140,7 +140,11 @@ class ConfigurationDict:
         # look up in our dictionary the lookup key
         out_ticket = {}
         try:
-            out_ticket[lookup] = self.configdict[lookup]
+            if ticket.get('new', None):
+                out_ticket[lookup] = self.configdict[lookup]
+            else:
+                #For backward compatibility.
+                out_ticket = self.configdict[lookup]
             out_ticket['status'] = (e_errors.OK, None)
         except KeyError:
             out_ticket = {"status": (e_errors.KEYERROR,
@@ -149,11 +153,12 @@ class ConfigurationDict:
         #The following section places into the udp reply ticket information
         # to prevent the configuration_client from having to pull it
         # down seperatly.
-        domains = self.configdict.get('domains', {})
-        if domains:
-            #Put the domains into the reply ticket.
-            out_ticket['domains'] = domains
-            out_ticket['domains']['system_name'] = self._get_system_name()
+        if ticket.get('new', None):
+            domains = self.configdict.get('domains', {})
+            if domains:
+                #Put the domains into the reply ticket.
+                out_ticket['domains'] = domains
+                out_ticket['domains']['system_name'] = self._get_system_name()
 
         self.reply_to_caller(out_ticket)
 

@@ -137,13 +137,14 @@ class ConfigurationClient(generic_client.GenericClient):
         return socket.getfqdn(self.server_address[0]).split(".")[0]
 
     def do_lookup(self, key, timeout, retry):
-	request = {'work' : 'lookup', 'lookup' : key }
+        request = {'work' : 'lookup', 'lookup' : key, 'new' : 1}
 
         ret = self.send(request, timeout, retry)
 
         if e_errors.is_ok(ret):
             try:
-                #New format.
+                #New format.  This is requested by new configuration clients
+                # by adding the "'new' : 1" to the request ticket above.
                 self.saved_dict[key] = ret[key]
                 ret_val = ret[key]
             except KeyError:
