@@ -143,6 +143,18 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                     #For reads, we only care about the length sent...
                     if r:
                         return_value = len(return_value)
+
+                    if return_value == 0:
+                        #If we get here then something bad happened.  The
+                        # read and writes can return 0 values/lengths,
+                        # however the select won't let the read/writes
+                        # execute unless there is something there or
+                        # somthing bad happened (which makes return_value
+                        # equal to zero).
+                        data_sock.close()
+                        raise CLIENT_CONNECTION_ERROR, \
+                              os.strerror(errno.ECONNRESET)
+                    
                     #Get the new number of bytes sent.
                     bytes_transfered = bytes_transfered + return_value
 
@@ -152,7 +164,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                     data_sock.close()
                     raise CLIENT_CONNECTION_ERROR, detail[1]
 
-            elif time.time() - t1 > self.timeout:
+            #If there hasn't been any traffic in the last timeout number of
+            # seconds, then timeout the connection.
+            #Note: The "timeout - 1" is used because it has been observered
+            # that the select when told to block for example 10 seconds,
+            # actually blocks for 9.9973 seconds.  When comaring the two, 10
+            # is always greater so the timeout would not actually be caught.
+            elif time.time() - t1 > self.timeout - 1:
                 data_sock.close()
                 raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
                 
