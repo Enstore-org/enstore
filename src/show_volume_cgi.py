@@ -20,7 +20,6 @@ def show_size(s):
         return "%7d Bytes"%(s)
 
 # default values
-last_access = 0
 capacity = 0
 remaining_bytes = 0
 system_inhibit = ""
