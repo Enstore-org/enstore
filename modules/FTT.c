@@ -500,7 +500,15 @@ do_read(  int 		rd_fd
 					   , g_shmaddr_p+shm_off+g_buf_bytes
 					   , shm_bytes-g_buf_bytes
 					   , crc_i );
-		crc_i = PyInt_AsLong( rr );
+		if (PyLong_Check(rr))
+		    crc_i = PyLong_AsLong( rr );
+		else if (PyInt_Check(rr))
+		    crc_i = PyInt_AsLong( rr );
+		else {
+		    crc_i = 0;
+		    /*XXX error*/
+		    printf("crc return value is neither int nor long \n");
+		}
 	    }
 	    shm_off += shm_bytes;
 	    shm_bytes = 0;
@@ -531,7 +539,15 @@ do_read(  int 		rd_fd
 					   , g_shmaddr_p+shm_off
 					   , user_bytes
 					   , crc_i );
-		crc_i = PyInt_AsLong( rr );
+		if (PyLong_Check(rr))
+		    crc_i = PyLong_AsLong(rr);
+		else if (PyInt_Check(rr))
+		    crc_i = PyInt_AsLong( rr );
+		else {
+		    /*XXX error*/
+		    printf("crc return value is neither int nor long\n");
+		    crc_i=0;
+		}
 	    }
 	    *read_bytes_ip += user_bytes;
 	    no_bytes -= user_bytes;
@@ -632,6 +648,7 @@ FTT_fd_xfer(  PyObject *self
     if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened"));
 
     if      (crc_tp == Py_None)   crc_i = 0;
+    else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsLong(crc_tp);
     else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
 
