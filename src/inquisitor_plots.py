@@ -136,7 +136,8 @@ class InquisitorPlots:
 	    mbpdfile.close()
 	    mbpdfile.install(self.html_dir)
 
-            xferfile = enstore_plots.XferDataFile(self.output_dir, bpdfile.ptsfile)
+            xferfile = enstore_plots.XferDataFile(self.output_dir,
+                                                  mbpdfile.ptsfile)
             xferfile.open()
             xferfile.plot(encpfile.data)
             xferfile.close()
