@@ -912,7 +912,11 @@ class Interface:
     #some_args is used to avoid problems with duplicate arguments on the
     # command line.
     def next_argument(self, argument):
-
+        if len(self.some_args) > 1:
+            rtn = self.some_args[1]
+        else:
+            rtn = None
+        return rtn
         #Get a copy of the command line with values specified with equal
         # signs seperated.
         self.split_on_equals(self.some_args)
@@ -937,9 +941,11 @@ class Interface:
                 compare_opt = "-" + argument
             else:
                 compare_opt = argument
-
+            print compare_arg, compare_opt
             #Look for the current argument in the list.
-            if string.find(compare_opt, compare_arg) >= 0:
+            # compare_opt is the current index to find
+            # compare_arg comes from the list of arguments.
+            if compare_arg == compare_opt:
                 #Now that the current item in the argument list is found,
                 # make sure it isn't the last and return the next.
                 index = self.some_args.index(arg)
@@ -1154,6 +1160,12 @@ class Interface:
 
             setattr(self, opt_name, opt_typed_value)
 
+            #keep this list up to date for finding the next argument.
+            if opt_dict.get(EXTRA_VALUES, None):
+                self.some_args = self.some_args[2:]
+            else:
+                self.some_args = self.some_args[1:]
+
         #Set value for non-existant optional value.
         elif value == None \
              and opt_dict.get(VALUE_USAGE, IGNORED) in (OPTIONAL,):
@@ -1171,6 +1183,9 @@ class Interface:
                 self.print_usage(msg)
 
             setattr(self, opt_name, opt_typed_value)
+            
+            #keep this list up to date for finding the next argument.
+            self.some_args = self.some_args[1:]
 
         #There is no value or the default  should be forced set anyway.
         elif value == None \
@@ -1190,6 +1205,9 @@ class Interface:
                 self.print_usage(msg)
 
             setattr(self, opt_name, opt_typed_value)
+
+            #keep this list up to date for finding the next argument.
+            self.some_args = self.some_args[1:]
 
     def set_extra_values(self, opt, value):
         if self.is_short_option(opt):
