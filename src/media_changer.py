@@ -199,6 +199,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # Do the forking and call the function
     def DoWork(self, function, ticket):
+        print "DOWORK",ticket
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
             Trace.log(e_errors.INFO, 'REQUESTED %s %s %s'%
                       (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
@@ -442,6 +443,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
+        print "CLEAN"
         import aml2
         Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
@@ -482,9 +484,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field not found in ticket.')
             status = 37
             return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        print "LIB",library
         v = vcc.next_write_volume(library,
                                   min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
                                   vol_veto_list, first_found)  # get which volume to use
+        print "VVVVVVVV',v
         if v["status"][0] != e_errors.OK:
             Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
                       (v["status"][0],v["status"][1]))
@@ -496,6 +500,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	
 	for i in range(driveCleanCycles):
             Trace.log(e_errors.INFO, "AML2 Clean: %s"%repr(ticket))
+            print "calling",cleanADrive 
 	    rt = aml2.cleanADrive(ticket, classTicket)
             Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt)) 
         retTicket = vcc.get_remaining_bytes(cleaningVolume)
