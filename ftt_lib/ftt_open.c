@@ -454,6 +454,7 @@ ftt_setdev(ftt_descriptor d) {
     CKNULL("ftt_descriptor",d);
 
 	status_res = ftt_status(d,0);
+	(void)ftt_close_dev(d);
 
 	DEBUG3(stderr,"ftt_status returned %d\n", status_res);
 	if (status_res < 0) {

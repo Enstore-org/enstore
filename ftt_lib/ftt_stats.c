@@ -74,10 +74,12 @@ ftt_itoa(long n) {
 static void
 set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
     char save;
+    int do_freeme = 0, char *freeme;
 
     /* clean out old value */
     if (b->value[n] != 0) {
-	free(b->value[n]);
+	do_freeme = 1;
+	freeme = b->value[n];
 	b->value[n] = 0;
     }
 
@@ -103,6 +105,10 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
     DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
     b->value[n] = strdup(pcStart);
     *pcEnd = save;
+
+    if (do_freeme) {
+         free(freeme);
+    }
 }
 
 int ftt_numeric_tab[FTT_MAX_STAT] = {
