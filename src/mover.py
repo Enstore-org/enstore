@@ -825,7 +825,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   stats[ftt.TRACK_RETRY],
                                   stats[ftt.UNDERRUN],
                                   0,
-                                  stats[ftt.WRITE_PROT])
+                                  int(stats[ftt.WRITE_PROT]))
                 
     def start(self):
         name = self.name
