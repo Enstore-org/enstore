@@ -7,8 +7,8 @@ case $node in
           ocap="0,0,0"
 	  sun=fntt
           ;;
-    d0*)  icap="1,1,0"
-          ocap="1,0,0"
+    d0*)  icap="1,0,0"
+          ocap="1,1,0"
 	  sun=fntt
           /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
           ;;
