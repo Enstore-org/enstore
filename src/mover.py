@@ -706,9 +706,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                          server_address=vc['address'])
         volume_label = fc['external_label']
         self.current_work_ticket = ticket
-        
-        vol_info = self.query_volume_clerk(volume_label)
-        if vol_info['status'][0] != 'ok':
+        self.vol_info.update(self.vcc.inquire_vol(volume_label))
+        if self.vol_info['status'][0] != 'ok':
             return 0 #XXX NOTAPE
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
@@ -811,8 +810,9 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_failed(self, exc=None, msg=None):
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
 
+        ### XXX translate this to an e_errors code?
         self.last_error = exc, msg
-        
+
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s" % (msg,))
             return
@@ -907,22 +907,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               remaining, eod,
                                               bfid )
         self.vol_info.update(reply)
-        vol_info = self.query_volume_clerk(self.current_volume)
-        self.vol_info.update(vol_info)
-        self.update_volume_status(self.vol_info)
+        self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
+        self.volume_status =  (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                               self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
         return 1
 
-    #XXX get rid of these silly functions
-    def query_volume_clerk(self, label): ###XXX is this function needed or should we just use vcc.
-        vol_info=self.vcc.inquire_vol(label)
-        ##XXX side-effect, yuk
-        self.vol_info.update(vol_info)
-        return vol_info 
-    def update_volume_status(self, vol_info):
-        self.volume_status = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
-                           vol_info.get('user_inhibit',['Unknown', 'Unknown']))
-
-        
     
     def malformed_ticket(self, ticket, expected_keys=None):
         msg = "Missing keys "
@@ -1056,8 +1045,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_location = self.current_location
 
         if not vol_info.get('external_label'):
-            vol_info = self.query_volume_clerk(self.current_volume)
-            self.vol_info.update(vol_info)
+            self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
 
         mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
         status = mcc_reply.get('status')
