@@ -126,7 +126,7 @@ def read_tcp_obj(sock) :
 def read_tcp_obj_new(sock) :
     s=read_tcp_raw(sock)
     if not s:
-        raise enstore_constants.TCP_EXCEPTION
+	raise enstore_constants.TCP_EXCEPTION:
     return cPickle.loads(s)
 
 
