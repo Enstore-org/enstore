@@ -199,19 +199,19 @@ class SortedList:
             self.current_index = 0
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
-            Trace(33,"o_i %s c_i %s s_i %s ret %s"%
+            Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
                   (old_current_index,self.current_index,self.start_index, None))  
             return None
         try:
             if self.current_index == self.start_index:
-                Trace(33,"o_i %s c_i %s s_i %s ret %s"%
+                Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
                       (old_current_index,self.current_index,self.start_index, None))  
                 return None  # came back to where it started
         except AttributeError: # how this happens
             self.start_index = self.current_index
             Trace(33, "ATTR ERR")
             return None
-        Trace(33,"o_i %s c_i %s s_i %s ret %s"%
+        Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
               (old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
         
         return self.sorted_list[self.current_index]
