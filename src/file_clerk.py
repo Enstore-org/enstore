@@ -271,7 +271,13 @@ if __name__ == "__main__" :
     while 1:
         try:
             cs.serve_forever()
+            ogc.send(log_client.INFO, "File Clerk (re)starting")
         except:
-            print time.strftime("%c",time.localtime(time.time())),\
-                  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+                     repr(sys.argv)+" "+\
+                     repr(sys.exc_info()[0])+" "+\
+                     repr(sys.exc_info()[1])+" "+\
+                     "continuing"
+            print format
+            logc.send(log_client.INFO,format)
             continue

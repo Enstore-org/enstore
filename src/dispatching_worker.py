@@ -90,7 +90,7 @@ class DispatchingWorker:
                       "dispatching_worker: Nameserver not responding\n",\
                       message,"\n",address,"\n",\
                       sys.exc_info()[0],"\n", sys.exc_info()[1]
-                sleep(1)
+                time.sleep(1)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "dispatching_worker reply_with_list, post-sendto error:",\

@@ -209,13 +209,18 @@ if __name__ == "__main__" :
 
     # create a log client
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
-    logc.send(log_client.INFO, "Starting Media Changer. Type=%s", args[0])
     mls.set_logc(logc)
 
     while 1:
         try:
             mls.serve_forever()
+            logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
         except:
-            print time.strftime("%c",time.localtime(time.time())),\
-                  sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+                     repr(sys.argv)+" "+\
+                     repr(sys.exc_info()[0])+" "+\
+                     repr(sys.exc_info()[1])+" "+\
+                     "continuing"
+            print format
+            logc.send(log_client.INFO,format)
             continue

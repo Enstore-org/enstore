@@ -29,7 +29,7 @@ def get_client() :
             success, sockt = try_a_port (host, port)
             if success :
                 return host, port, sockt
-        sleep (10) # tried all ports, try later.
+        time.sleep(10) # tried all ports, try later.
 
 
 
@@ -71,7 +71,7 @@ class UDPClient:
                           "udp_client: Nameserver not responding\n",\
                           message,"\n",address,"\n",\
                           sys.exc_info()[0],"\n", sys.exc_info()[1]
-                    sleep(1)
+                    time.sleep(1)
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
                 print "udp_client send, post-sendto error:", \
@@ -146,7 +146,7 @@ class UDPClient:
                       "udp_client (no wait): Nameserver not responding\n",\
                       message,"\n",address,"\n",\
                       sys.exc_info()[0],"\n", sys.exc_info()[1]
-                sleep(1)
+                time.sleep(1)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "udp_client send_no_wait, post-sendto error:", \
