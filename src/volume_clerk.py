@@ -69,7 +69,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     def __init__(self, csc):
         # basically, to make pychecker happy
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME, self.handle_er_msg)
         self.keys = self.csc.get(MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
         self.dict = None
