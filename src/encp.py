@@ -386,13 +386,19 @@ def close_descriptors(*fds):
         if hasattr(fd, "close"):
 	    try:
 		fd.close()
-	    except (OSError, IOError):
-		pass
+	    except (OSError, IOError), msg:
+		sys.stderr.write(
+                    "Unable to close file object: %s\n" % str(msg))
+                Trace.log(e_errors.ERROR,
+                          "Unable to close file object: %s\n" % str(msg))
         else:
             try:
                 os.close(fd)
-            except OSError:
-                sys.stderr.write("Unable to close fd %s.\n" % fd)
+            except (OSError, IOError), msg:
+                sys.stderr.write(
+                    "Unable to close fd %s: %s\n" % (fd, str(msg)))
+                Trace.log(e_errors.ERROR,
+                          "Unable to close fd %s: %s\n" % (fd, str(msg)))
 
     for route in routes_to_close.keys():
         try:
@@ -2773,7 +2779,9 @@ def receive_final_dialog(control_socket):
 
 #Returns two-tuple.  First is dictionary with 'status' element.  The next
 # is an integer of the crc value.  On error returns 0.
-def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
+#def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
+def transfer_file(input_file_obj, output_file_obj, control_socket,
+                  request, tinfo, e):
 
     transfer_start_time = time.time() # Start time of file transfer.
 
@@ -2786,8 +2794,14 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         else:
             crc_flag = 0
 
-        #EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
-        #                          e.buffer_size, crc_flag, e.mover_timeout, 0)
+        if hasattr(input_file_obj, "fileno"):
+            input_fd = input_file_obj.fileno()
+        else:
+            input_fd = input_file_obj
+        if hasattr(output_file_obj, "fileno"):
+            output_fd = output_file_obj.fileno()
+        else:
+            output_fd = output_file_obj
 
 	EXfer_rtn = EXfer.fd_xfer(input_fd, output_fd, request['file_size'],
                                   crc_flag, e.mover_timeout,
@@ -2859,22 +2873,54 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
                   % (transfer_stop_time - tinfo['encp_start_time'],))
+
+    #Try some stuff.
+    try:
+        status = input_file_obj.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        Trace.log(e_errors.INFO, "Socket status is: %s" % status)
+    except AttributeError:
+        pass
+    except socket.error, msg:
+        Trace.log(e_errors.ERROR, "Unable to get socket status: %s" % str(msg))
+    try:
+        input_file_obj.shutdown(0) #close read half.
+    except AttributeError:
+        pass
+    except socket.error, msg:
+        Trace.log(e_errors.ERROR,
+                  "Unable to shutdown read half: %s" % str(msg))
     
+    try:
+        status = output_file_obj.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        Trace.log(e_errors.INFO, "Socket status is: %s" % status)
+    except AttributeError:
+        pass
+    except socket.error, msg:
+        Trace.log(e_errors.ERROR, "Unable to get socket status: %s" % str(msg))
+    try:
+        output_file_obj.shutdown(1) #close write half.
+    except AttributeError:
+        pass
+    except socket.error, msg:
+        Trace.log(e_errors.ERROR,
+                  "Unable to shutdown write half: %s" % str(msg))
+
+    final_dialog_start_time = time.time() # Start time of file transfer.
+
     #Even though the functionality is there for this to be done in
     # handle requests, this should be received outside since there must
     # be one... not only receiving one on error.
+    done_ticket = receive_final_dialog(control_socket)
+    
+    # Print an additional timming value.
+    Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
+                  (time.time() - final_dialog_start_time,))
+
+    #Are these necessary???
     if EXfer_ticket['status'][0] == e_errors.NOSPACE:
         done_ticket = {'status':(e_errors.OK, None)}
     elif EXfer_ticket['status'][0] == e_errors.DEVICE_ERROR:
         done_ticket = {'status':(e_errors.OK, None)}
-    else:
-        final_dialog_start_time = time.time() # Start time of file transfer.
-        
-        done_ticket = receive_final_dialog(control_socket)
-
-        # Print an additional timming value.
-        Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
-                      (time.time() - final_dialog_start_time,))
 
     if not e_errors.is_retriable(done_ticket) and \
        not e_errors.is_ok(done_ticket):
@@ -2916,7 +2962,7 @@ def check_crc(done_ticket, encp_intf, fd=None):
     # Check the CRC
     if encp_intf.chk_crc:
         if mover_crc != encp_crc:
-            msg = "CRC mismatch: %d != %d" % (mover_crc, encp_crc)
+            msg = "CRC mismatch: %d mover != %d encp" % (mover_crc, encp_crc)
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
 
@@ -2937,8 +2983,8 @@ def check_crc(done_ticket, encp_intf, fd=None):
 
             #If we have a valid crc value returned, compare it.
             if readback_crc != mover_crc:
-                msg = "CRC readback mismatch: %d != %d" % (mover_crc,
-                                                           readback_crc)
+                msg = "CRC readback mismatch: %d mover != %d encp" % \
+                      (mover_crc, readback_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
 
@@ -3592,6 +3638,8 @@ def calculate_rate(done_ticket, tinfo):
             'disk_rate' : tinfo["%s_disk_rate"%(u_id,)],
             'overall_rate' : tinfo["%s_overall_rate"%(u_id,)],
             'transfer_rate' : tinfo["%s_transfer_rate"%(u_id,)],
+            'encp_crc' : done_ticket.get('ecrc', 
+                                   done_ticket['exfer'].get('encp_crc', None)),
             }
 
         log_values = (done_ticket['work'],
@@ -4390,10 +4438,11 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
             
         lap_time = time.time() #------------------------------------------Start
 
-        done_ticket = transfer_file(in_fd, data_path_socket.fileno(),
+        #done_ticket = transfer_file(in_fd, data_path_socket.fileno(),
+        done_ticket = transfer_file(in_fd, data_path_socket,
                                     control_socket, work_ticket,
                                     tinfo, e)
-
+        
         tstring = '%s_transfer_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
@@ -5831,7 +5880,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
         
         lap_start = time.time() #----------------------------------------Start
 
-        done_ticket = transfer_file(data_path_socket.fileno(),out_fd,
+        #done_ticket = transfer_file(data_path_socket.fileno(),out_fd,
+        done_ticket = transfer_file(data_path_socket, out_fd,
                                     control_socket, request_ticket,
                                     tinfo, e)
 
