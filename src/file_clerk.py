@@ -517,18 +517,24 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          ####XXX client hangs waiting for TCP reply
          return
 
+     # disable fork() and tape_list
+
      # fork as it may take quite a while to get the list
-     if self.fork() != 0:
-         return
+     # if self.fork() != 0:
+     #    return
      
-     try:
-         bfid_list = self.bfid_db.get_all_bfids(external_label)
-     except:
-         msg = "File Clerk: no entry for volume %s" % external_label
-         ticket["status"] = (e_errors.KEYERROR, msg)
-         Trace.log(e_errors.ERROR, msg)
-         bfid_list = []
+     # try:
+     #    bfid_list = self.bfid_db.get_all_bfids(external_label)
+     # except:
+     #    msg = "File Clerk: no entry for volume %s" % external_label
+     #    ticket["status"] = (e_errors.KEYERROR, msg)
+     #    Trace.log(e_errors.ERROR, msg)
+     #    bfid_list = []
          
+     msg = "File Clerk: tape_list() has been disabled"
+     ticket["status"] = (e_errors.KEYERROR, msg)
+     Trace.log(e_errors.ERROR, msg)
+     bfid_list = []
      
      # get a user callback
      if not self.get_user_sockets(ticket):
@@ -559,7 +565,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
      return
-
 
     def start_backup(self,ticket):
         try:
