@@ -47,7 +47,7 @@ IDLE, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CL
 _state_names=['IDLE', 'MOUNT_WAIT', 'SEEK', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
              'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
 
-assert len(_state_names)==10
+##assert len(_state_names)==10
 
 def state_name(state):
     return _state_names[state]
@@ -111,23 +111,19 @@ class Buffer:
         self.trailer_size = 0
         self._lock.release()
         
-    def nbytes(self):
+    def nbytes(self): #this is only approximate..
         n = self._buf_bytes
-        if self._reading_block:
-            n = n + self._read_ptr
-        if self._writing_block:
-            n = n + len(self._writing_block) - self._write_ptr
         return n
         
     def full(self):
         return self.nbytes() >= self.max_bytes
     
     def empty(self):
-        ##return self.nbytes() == 0
+        ## this means that a "pull" would fail
         return len(self._buf) == 0
 
     def low(self):
-        return len(self._buf)==0 or self.nbytes() <= self.min_bytes
+        return self.empty() or self._buf_bytes <= self.min_bytes
     
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
@@ -220,10 +216,10 @@ class Buffer:
             self._read_ptr = None
     
     def stream_write(self, nbytes, driver):
-        if self.empty():
-            Trace.trace(10, "stream_write: buffer empty")
-            return 0
         if not self._writing_block:
+            if self.empty():
+                Trace.trace(10, "stream_write: buffer empty")
+                return 0
             self._writing_block = self.pull()
             self._write_ptr = 0
         bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
