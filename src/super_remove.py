@@ -62,7 +62,7 @@ if __name__ == '__main__':
 		try:
 			bf = open(vol)
 		except:
-			printf 'can not find bfids file "%s"'%(vol)
+			print 'can not find bfids file "%s"'%(vol)
 			sys.exit(1)
 		files = []
 		for i in bf.readlines():
