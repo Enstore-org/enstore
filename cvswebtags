@@ -19,8 +19,10 @@ UNPACK             31 ftt_test/ftt_t_block.c #define UNPACK(n,b4,b3,b2,b1) (\
 VCKNULL            38 ftt_lib/ftt_macros.h #define VCKNULL(what,p)						\
 assign_defaults   580 ftt_test/ftt_t_parse.c static int assign_defaults(ftt_t_argt *argTable)
 bit               221 ftt_lib/ftt_stats.c #define bit(n,byte) (unsigned long)(((byte)>>(n))&1)
+bzero              29 ftt_lib/SunOS/ftt_scsi.c #define bzero(b,l) memset(b,0,l)
 decrypt_ls        229 ftt_lib/ftt_stats.c decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
 demo_with_delay    12 ftt_lib/asyncdemo.c demo_with_delay(char *dev, int n) {
+extract_logical    11 ftt_lib/AIX/ftt_machdep.c extract_logical(ftt_descriptor d, char *what) {
 ftclCmd_TERM      877 ftt_test/ftt_t_cmdline.c static void ftclCmd_TERM
 ftt_WIN_error     280 ftt_lib/ftt_error.c ftt_WIN_error (DWORD res) {
 ftt_add_stats     172 ftt_lib/ftt_stats.c ftt_add_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
@@ -66,6 +68,7 @@ ftt_get_basename   23 ftt_lib/ftt_info.c ftt_get_basename(ftt_descriptor d) {
 ftt_get_data_direction   15 ftt_lib/ftt_info.c ftt_get_data_direction(ftt_descriptor d) {
 ftt_get_driveid   186 ftt_lib/ftt_find.c ftt_get_driveid(char *basename,char *os) {
 ftt_get_error      31 ftt_lib/ftt_error.c ftt_get_error(int *pn){
+ftt_get_hwdens    243 ftt_lib/AIX/ftt_machdep.c ftt_get_hwdens(ftt_descriptor d, char *devname) {
 ftt_get_max_blocksize   68 ftt_lib/ftt_info.c ftt_get_max_blocksize(ftt_descriptor d) {
 ftt_get_mode      169 ftt_lib/ftt_info.c ftt_get_mode(ftt_descriptor d, int *density, int* mode, int *blocksize){
 ftt_get_mode_dev  217 ftt_lib/ftt_info.c ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density, 
@@ -102,9 +105,15 @@ ftt_retension     263 ftt_lib/ftt_skip.c ftt_retension(ftt_descriptor d) {
 ftt_retry          50 ftt_lib/ftt_common.h extern int 		ftt_retry(ftt_descriptor, 
 ftt_rewind        233 ftt_lib/ftt_skip.c ftt_rewind(ftt_descriptor d){
 ftt_scsi_check     91 ftt_lib/ftt_do_scsi.c ftt_scsi_check(scsi_handle n,char *pcOp, int stat, int len) {
+ftt_scsi_close     74 ftt_lib/AIX/ftt_scsi.c ftt_scsi_close(scsi_handle n)
+ftt_scsi_command  102 ftt_lib/AIX/ftt_scsi.c ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsigned char *pcRdWr, int nRdWr, int delay, int iswrite)
 ftt_scsi_locate   316 ftt_lib/ftt_do_scsi.c ftt_scsi_locate( ftt_descriptor d, int blockno) {
+ftt_scsi_open      52 ftt_lib/AIX/ftt_scsi.c ftt_scsi_open(const char *pc) { 
 ftt_scsi_set_compression  237 ftt_lib/ftt_do_scsi.c ftt_scsi_set_compression(ftt_descriptor d, int compression) {
+ftt_set_blocksize  178 ftt_lib/AIX/ftt_machdep.c ftt_set_blocksize(ftt_descriptor d, int blocksize) {
+ftt_set_compression  174 ftt_lib/AIX/ftt_machdep.c ftt_set_compression(ftt_descriptor d, int compression) {
 ftt_set_data_direction  309 ftt_lib/ftt_info.c ftt_set_data_direction( ftt_descriptor d, int value ) {
+ftt_set_hwdens    104 ftt_lib/AIX/ftt_machdep.c ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 ftt_set_mode      181 ftt_lib/ftt_info.c ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
 ftt_set_mode_dev  253 ftt_lib/ftt_info.c ftt_set_mode_dev(ftt_descriptor d, const char *devname, int force) {
 ftt_set_transfer_length   21 ftt_lib/ftt_do_scsi.c ftt_set_transfer_length( unsigned char *cdb, int n ) {
@@ -116,6 +125,7 @@ ftt_skip_to_double_fm  389 ftt_lib/ftt_skip.c ftt_skip_to_double_fm(ftt_descript
 ftt_stat          118 ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
 ftt_stat_buf      118 ftt_lib/ftt_types.h } ftt_stat, *ftt_stat_buf;
 ftt_stat_entry    148 ftt_lib/ftt_types.h } ftt_stat_entry;
+ftt_status         56 ftt_lib/AIX/ftt_machdep.c ftt_status(ftt_descriptor d, int time_out) {
 ftt_strip_to_basename   88 ftt_lib/ftt_find.c ftt_strip_to_basename(const char *basename,char *os) {
 ftt_sub_stats     192 ftt_lib/ftt_stats.c ftt_sub_stats(ftt_stat_buf b1, ftt_stat_buf b2, ftt_stat_buf res){
 ftt_t_Win_Interrupt  659 ftt_test/ftt_t_cmdline.c BOOL ftt_t_Win_Interrupt(DWORD sig) {
@@ -209,18 +219,24 @@ ftt_update_stats  213 ftt_lib/ftt_higher.c ftt_update_stats(ftt_descriptor d, ft
 ftt_verify_blank  513 ftt_lib/ftt_higher.c ftt_verify_blank(ftt_descriptor d) {
 ftt_verify_vol_label   11 ftt_lib/ftt_higher.c ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel, 
 ftt_wait          100 ftt_lib/ftt_async.c ftt_wait(ftt_descriptor d) {
+ftt_win_get_paramters   16 ftt_lib/WIN32/ftt_machdep.c ftt_win_get_paramters(ftt_descriptor d, TAPE_GET_MEDIA_PARAMETERS *gmp,
 ftt_write         129 ftt_lib/ftt_rdwr.c ftt_write( ftt_descriptor d, char *buf, int length ) {
 ftt_write2fm      444 ftt_lib/ftt_skip.c ftt_write2fm(ftt_descriptor d) {
 ftt_write_fm_if_needed  416 ftt_lib/ftt_skip.c ftt_write_fm_if_needed(ftt_descriptor d) {
 ftt_write_vol_label  102 ftt_lib/ftt_higher.c ftt_write_vol_label(ftt_descriptor d, int type, char *vollabel) {
 ftt_writefm       351 ftt_lib/ftt_skip.c ftt_writefm(ftt_descriptor d) {
 geteuid            10 ftt_lib/ftt_do_scsi.c #define geteuid() -1
+gethostname        28 ftt_lib/SunOS/ftt_scsi.c #define gethostname(b, l) sysinfo(SI_HOSTNAME, b, (long)l)
 getopt              7 ftt_test/ftt_t_getopt.c int getopt(int argc,char **argv,char *what) 
 hex               370 ftt_lib/ftt_do_scsi.c #define hex(x) "0123456789ABCDEF" [ (x) & 0xF ]
 hprint            376 ftt_lib/ftt_do_scsi.c hprint(unsigned char *s, int n, int nperline, int space, int ascii)
 if                 61 ftt_lib/ftt_macros.h     if ( d && d->unrecovered_error != 0 && recovers < d->unrecovered_error) {\
 inqdata           368 ftt_lib/ftt_do_scsi.c } inqdata;
+long                6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
+lookup_drive       38 ftt_lib/OSF1/ftt_scsi.c lookup_drive(char *pc, int *bus, int *targ, int *lun, char *idstring) {
 main               59 ftt_lib/asyncdemo.c main(int argc, char **argv) {
+osf_scsi_block     28 ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
+osf_scsi_descriptor   28 ftt_lib/OSF1/ftt_scsi.c } osf_scsi_block, *osf_scsi_descriptor;
 pack                6 ftt_lib/ftt_label.c #define pack(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
 printinq          417 ftt_lib/ftt_do_scsi.c printinq(inqdata *inq)
 rewind_both         9 sample_code/tapecopy.c rewind_both(ftt_descriptor dfrom, ftt_descriptor dto) {
@@ -228,4 +244,5 @@ scsi_handle         1 ftt_lib/ftt_scsi.h typedef long scsi_handle;
 set_stat           79 ftt_lib/ftt_stats.c set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 sleep              24 ftt_test/ftt_t_rdwr.c #define sleep(x) Sleep(1000*x)
 tapecopy           39 sample_code/tapecopy.c tapecopy(char *from , char *to) {
+ulong               6 ftt_lib/WIN32/ftt_mtio.h typedef unsigned long	ulong;
 usage              12 ftt_lib/ftt_suid.c usage(void) {
