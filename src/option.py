@@ -278,6 +278,7 @@ UPDATE = "update"                            #inquisitor
 UPDATE_AND_EXIT = "update-and-exit"          #inquisitor
 UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 USAGE = "usage"
+VERBOSE = "verbose"                          #monitor
 VOL = "vol"                                  #volume
 VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs
@@ -329,7 +330,7 @@ valid_option_list = [
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT, TITLE, TOUCH,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
-    VOL, VOLS, VOLUME, VOL1OK,
+    VERBOSE, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST,
     XREF,
     ]
