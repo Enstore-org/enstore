@@ -1,6 +1,7 @@
 /* $Id$
  Globals.  The other modules all include globals.h which declares these extern 
 */
+#define NULL (char*)0
 char *tape_device = NULL;
 int tape_fd = -1;
 char *tape_db = NULL;

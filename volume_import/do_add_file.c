@@ -4,8 +4,6 @@
 */
 
 #include "volume_import.h"
-#include "globals.h"
-
 
 static void 
 rm_rf(char *path){

@@ -6,7 +6,6 @@ Input verification functions
 /* All other functions return 0 on success, -1 on failure and won't exit */
 
 #include "volume_import.h"
-#include "globals.h"
 
 int 
 verify_tape_device(){

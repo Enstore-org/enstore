@@ -3,8 +3,6 @@
 */
 
 #include "volume_import.h"
-#include "globals.h"
-
 
 int open_tape(mode){
     int fd;
