@@ -87,6 +87,9 @@ f_prefix = '/pnfs/fs/usr'
 f_p = string.split(f_prefix, '/')
 f_n = len(f_p)
 
+MIGRATION_DB = 'Migration'
+CMS_MIGRATION_DB = 'cms/WAX/repairing2bstayout/Migration'
+
 MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
 lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
 
@@ -336,7 +339,10 @@ def migration_path(path):
 	pl = string.split(path, '/')
 	if pl[:f_n] != f_p:
 		return None
-	pl[f_n] = 'Migration/'+pl[f_n]
+	if pl[f_n] == 'cms':	# special case, different pnfs server
+		pl[f_n] = CMS_MIGRATION_DB+'/'+pl[f_n]
+	else:
+		pl[f_n] = MIGRATION_DB+'/'+pl[f_n]
 	return string.join(pl, '/')
 
 # temp_file(file) -- get a temporary destination file from file
