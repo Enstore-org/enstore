@@ -274,18 +274,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # update the miscellaneous status file.  the input dict is of the form -
     #            { filename : (command_to_do, text) , ... }
-    def make_misc_html_file(self, cmds_to_do):
+    def update_update_commands(self, key, thetime):
         self.mischtmlfile.open()
-        if cmds_to_do:
-            cmd_keys = cmds_to_do.keys()
+        if self.cmds_to_do:
+            cmd_keys = self.cmds_to_do.keys()
             cmd_keys.sort()
             for hfile in cmd_keys:
                 # we need to add some info for this command to the html file
                 # and we need to execute the command.  if the filename is
                 # 'NONE', then, do not add a link to the file.  if the
                 # command is 'NONE', then do not execute anything.
-                if not cmds_to_do[hfile] == "NONE":
-                    rtn = os.system("%s > %s/%s 2>&1"%(cmds_to_do[hfile],
+                if not self.cmds_to_do[hfile] == "NONE":
+                    rtn = os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
                                                        self.html_dir, hfile))
                     # now get the mod time of the file to tell the user so it
                     # can be seen if the system call is really failing
@@ -478,8 +478,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.make_log_html_file(t.get("user_log_dirs", {}))
 
         # if our dictionary contains a list of commands to do when we update
-        # the inquisitor, do the commands, if there are any
-        self.make_misc_html_file(t.get('update_commands', {}))
+        # the inquisitor, save the commands
+        self.cmds_to_do = t.get('update_commands', {})
 
         # update random info from the config file
         self.update_random_info(t)
@@ -636,20 +636,25 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	            if not self.last_update.has_key(a_key):
 	                self.last_update[a_key] = ctime
 	# now get rid of any keys that are in intervals and not in csc_keys
-	# make an exception for config_server and encp.  this takes care of the
+	# make an exception for update_commands, config_server and encp. (since
+        # they will never be in csc_keys. this takes care of the
         # case where a server was removed from the config dict.
 	for a_key in self.intervals.keys():
 	    if a_key not in csc_keys['get_keys']:
-	        if a_key != "config_server" and a_key != "encp":
+	        if a_key != "config_server" and a_key != "encp" and\
+                   a_key != "update_commands":
 	            del self.intervals[a_key]
 	            self.asciifile.remove_key(a_key)
 	            self.htmlfile.remove_key(a_key)
-	# if there was no encp or config_server intervals specified in the 
+	# if there was no encp, config_server or update_commands intervals
+        # specified in the 
 	# inquisitor section of the config file then we will use the default
 	if not self.intervals.has_key("config_server"):
 	    self.intervals["config_server"] = self.default_server_interval
 	if not self.intervals.has_key("encp"):
 	    self.intervals["encp"] = self.default_server_interval
+	if not self.intervals.has_key("update_commands"):
+	    self.intervals["update_commands"] = self.default_server_interval
 
     # flush the files we have been writing to
     def flush_files(self):
