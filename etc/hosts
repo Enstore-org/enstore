@@ -130,6 +130,7 @@
 131.225.13.43		stkenmvr24a.fnal.gov	stkenmvr24a
 131.225.13.63		stkenmvr25a.fnal.gov	stkenmvr25a
 131.225.13.85		stkenmvr26a.fnal.gov	stkenmvr26a
+131.225.13.96		stkenmvr27a.fnal.gov	stkenmvr27a
 131.225.13.81		stkenmvr28a.fnal.gov	stkenmvr28a
 131.225.13.89		stkenmvr29a.fnal.gov	stkenmvr29a
 131.225.13.83		stkenmvr30a.fnal.gov	stkenmvr30a
@@ -142,6 +143,10 @@
 131.225.13.27		stkendca6a.fnal.gov	stkendca6a
 131.225.13.66		stkendca7a.fnal.gov	stkendca7a
 131.225.13.68		stkendca8a.fnal.gov	stkendca8a
+131.225.13.90		stkendca9a.fnal.gov	stkendca9a
+131.225.13.94		stkendca10a.fnal.gov	stkendca10a
+131.225.13.91		stkendca11a.fnal.gov	stkendca11a
+131.225.13.92		stkendca12a.fnal.gov	stkendca12a
 131.225.13.35		stkendm1a.fnal.gov	stkendm1a
 131.225.13.36		stkendm2a.fnal.gov	stkendm2a
 131.225.13.84		stkendm3a.fnal.gov	stkendm3a
@@ -214,7 +219,6 @@
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
 #131.225.13.41		stkenmvr22a.fnal.gov	stkenmvr22a
-#131.225.13.87		stkenmvr27a.fnal.gov	stkenmvr27a
 #131.225.13.39		stkenout1.fnal.gov	stkenout1
 #131.225.13.40		stkenout2.fnal.gov	stkenout2
 #131.225.215.10 	cdfenmvr4a.fnal.gov	cdfenmvr4a
@@ -230,15 +234,15 @@
 
 # private subnet for d0/adic, d0/stk, and public/stk
 192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
+#192.168.19.5		stkensrv1p.fnal.gov	stkensrv1p
 192.168.19.8		d0ensrv2p.fnal.gov	d0ensrv2p
+192.168.19.4		stkensrv2p.fnal.gov	stkensrv2p
 192.168.19.9		d0ensrv3p.fnal.gov	d0ensrv3p
+192.168.19.3		stkensrv3p.fnal.gov	stkensrv3p
 192.168.19.10		d0ensrv4p.fnal.gov	d0ensrv4p
+192.168.19.1		stkensrv4p.fnal.gov	stkensrv4p
 #192.168.19.11		d0ensrv5p.fnal.gov	d0ensrv5p
 192.168.19.19		d0ensrv7p.fnal.gov	d0ensrv7p
-#192.168.19.5		stkensrv1p.fnal.gov	stkensrv1p
-192.168.19.4		stkensrv2p.fnal.gov	stkensrv2p
-192.168.19.3		stkensrv3p.fnal.gov	stkensrv3p
-192.168.19.1		stkensrv4p.fnal.gov	stkensrv4p
 192.168.19.2		fntt.fnal.gov		fntt
 192.168.19.12		adic2.fnal.gov		adic2
 
