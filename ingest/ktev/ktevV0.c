@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include "dcap.h"
 
-#define PNFS_ROOT "/pnfs/fs/moibenko/ktev/"
+#define PNFS_ROOT getenv("DCACHE_ROOT")?getenv("DCACHE_ROOT"):"/pnfs/ktev/migrated_from_dlt/"
 #define FILENAME_LEN 1024
 #define O_BINARY 0
 extern int getopt(int, char * const *, const char *);
@@ -23,11 +23,8 @@ int get_record(char *buffer, int buffer_size, int src)
   int n;
   int record_length;
   n = dc_read(src, &record_length, sizeof(int));
-  printf("n: %d, record_length: %2d\n", n, record_length);
   n = dc_read(src, buffer, record_length);
-  printf("n: %d, record_length: %2d\n", n, record_length);
   n = dc_read(src, &record_length, sizeof(int));
-  printf("n: %d, record_length: %2d\n\n", n, record_length);
   return n>0?record_length:n;
 }
 
@@ -54,18 +51,27 @@ void setVolumeName(const char *s)
 static 
 int getFile(char *volumeName, char fileName[FILENAME_LEN])
 {
-  char *path = malloc(strlen(volumeName) + strlen(PNFS_ROOT) + 2);
+  char *path = malloc(strlen(volumeName) + strlen(PNFS_ROOT) + 11);
+  char firstTwo[2], firstFour[4];
   static DIR  *dir = 0;
   struct dirent *dirent;
   struct stat stat_buf;
 
+  strncpy(firstTwo, volumeName, 2);
+  strncpy(firstFour, volumeName, 4);
+
   strcpy(path, PNFS_ROOT);
+  strcat(path, "/");
+  strncat(path, firstTwo, 2);
+  strcat(path, "/");
+  strncat(path, firstFour, 4);
+  strcat(path, "/");
   strcat(path, volumeName);
   strcat(path, "/");
 
   if(!dir) 
     {
-      printf("Path: %s\n", path);
+      printf("opening: %s\n", path);
       dir = opendir(path);
     }
 
@@ -93,9 +99,8 @@ int getFile(char *volumeName, char fileName[FILENAME_LEN])
 int
 main(int argc, char *argv[])
 {
-  int c,src,dest,record_size;
+  int c,src,record_size;
   char fileName[FILENAME_LEN];
-  off_t size;
   char buffer[75000];
 
   if (argc < 2) {
@@ -120,6 +125,7 @@ main(int argc, char *argv[])
 
       record_size = get_record(buffer, 75000, src);
       while(record_size > 0) {
+	printf("record_size: %d\n", record_size);
 	record_size = get_record(buffer, 75000, src);
       }
     }
