@@ -86,7 +86,7 @@ class FTTDriver(driver.Driver):
             r = self.ftt.rewind()
             Trace.trace(25, "ftt_rewind returns %s" % (r,))
             return r
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "rewind: %s %s" % (detail, detail.errno))
             return -1
 
@@ -97,7 +97,7 @@ class FTTDriver(driver.Driver):
         try:
             file, block = self.ftt.get_position()
             Trace.trace(25, "ftt_get_position returns %s %s" % (file, block))
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.errno))
             return -1
         return file
@@ -132,7 +132,7 @@ class FTTDriver(driver.Driver):
             try:
                 self.ftt.skip_fm(target-current-1)
                 self.ftt.skip_fm(1)
-            except FTTError, detail:
+            except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.errno))
                 raise
         current = self.tell()
@@ -152,7 +152,7 @@ class FTTDriver(driver.Driver):
             Trace.trace(25,  "rate: %.3g MB/sec" % (self._bytes_transferred/(now-self._start_time)/MB))
         try:
             r = self.ftt.close_dev()
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.errno))
         Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
@@ -163,7 +163,7 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.close()
             Trace.trace(25, "ftt_close returns %s" % (r,))
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "close %s %s" % (detail, detail.errno))
             r = -1
         self.ftt = None
@@ -231,7 +231,7 @@ class FTTDriver(driver.Driver):
         r = -1
         try:
             mode = self.ftt.get_mode()
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.errno))
             return -1
         
@@ -244,13 +244,13 @@ class FTTDriver(driver.Driver):
 
         try:
             r = self.ftt.set_mode(density, compression, blocksize)
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "set_mode %s %s" % (detail, detail.errno))
             return -1
 
         try:
             self.fd = self.ftt.open_dev()
-        except FTTError, detail:
+        except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "open_dev %s %s" % (detail, detail.errno))
             return -1
 
