@@ -16,6 +16,7 @@ import Ptrace				# basis for this work
 trace  = Ptrace.trace
 init   = Ptrace.init
 on     = Ptrace.on
+mode   = Ptrace.mode
 
 # USER FUNCTIONS
 def log( severity, msg, *args ):
