@@ -9,6 +9,7 @@ import posixpath
 import regex_syntax
 import regex
 import glob
+import gzip
 
 TMP_DIR = "/tmp/enstore"
 TIMEOUT = 3
@@ -90,7 +91,13 @@ def pgrep_html(pat, files, sensit):
 	filename = string.split(file, "/")[-1]
 	print "<H3>%s</H3><BR>"%(file,)
 	lineno = 1
-	for line in open(file, 'r').readlines():
+	# support both log files that are flat and those that are gzipped
+	if string.find(filename, ".gz") == -1:
+	    # not a gzipped file
+	    lines = open(file, 'r').readlines()
+	else:
+	    lines = gzip.open(file, 'r').readlines()
+	for line in lines:
 	    if patr.search(line) >=0:
 		# only print out the name of the file and not the directory path
 		print '[<B>%s</B>] %04d) %s<BR>' %(filename, lineno, line)
