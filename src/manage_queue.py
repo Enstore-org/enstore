@@ -211,7 +211,7 @@ class SortedList:
             return None
         try:
             if self.current_index == self.start_index:
-                Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
+                Trace.trace(33,"!! o_i %s c_i %s s_i %s ret %s"%
                             (old_current_index,self.current_index,self.start_index, None))
                 self.stop_rolling = 1
                 return None  # came back to where it started
