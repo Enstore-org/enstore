@@ -1,10 +1,14 @@
 #!/bin/sh
-set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+. /usr/local/etc/setups.sh
+setup enstore
+
+set -u  # force better programming and ability to use check for not set
 
 N=`/usr/local/bin/lsof -i TCP -i UDP`
 
-ALLOW_MVR="
+ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
        LISTEN,inetd,:telnet,TCP,x
        LISTEN,inetd,:kshell,TCP,x
@@ -13,17 +17,17 @@ ALLOW_MVR="
        LISTEN,inetd,:netperf,TCP,x
        LISTEN,python,:,,/home/enstore/enstore/bin/encp
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
-       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp
+       UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        UDP,xntpd,:ntp,UDP,x
        TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:6000,TCP,x
        TCP,rsh,:kshell,TCP,x
        TCP,rsh,,TCP,/usr/krb5/bin/rsh
        TCP,telnetd,telnet,TCP,telnetd -Pa valid
-       TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp
+       TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
 "
 
-ALLOW_SRV5="$ALLOW_MVR
+ALLOW_SRV5="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
        LISTEN,conserver,:console,TCP,x
        LISTEN,conserver,:listen,TCP,x
@@ -44,6 +48,8 @@ ALLOW_SRV3="$ALLOW_SRV5
        UDP,rpc.mount,:mount,UDP,x
        UDP,rpc.nfsd,:nfs,UDP,x
 "
+ALLOW_MVR="$ALLOW_BASE
+"
 
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -52,7 +58,7 @@ gang=`gang`
 case $node in
      *srv3) ALLOW=$ALLOW_SRV3;;
      *srv5*|*srv7*) ALLOW=$ALLOW_SRV5;;
-     *mvr*)  ALLOW=$ALLOW_MVR;; 
+     *mvr*)  ALLOW=$ALLOW_MVR;;
          *)  ALLOW=$ALLOW_MVR;;
 esac
 
@@ -60,22 +66,27 @@ esac
 allow() { tt=$1
           for i in $ALLOW; do
             t=`echo $i | cut -f1 -d,`
-            if [ $t != $tt ]; then continue; fi 
+            if [ $t != $tt ]; then continue; fi
             a=`echo $i | cut -f2 -d,`
             b=`echo $i | cut -f3 -d,`
             c=`echo $i | cut -f4 -d,`
             p=`echo $i | cut -f5 -d,`
-            if [ $command = "$a" -a `echo $rest | grep -c "$b"`  -ne 0 -a `echo $rest | grep -c "$c"` -ne 0 ]; then 
+            if [ $command = "$a" -a `echo $rest | grep -c "$b"`  -ne 0 -a `echo $rest | grep -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
                  psline=`ps -wwwwfp $pid|egrep -v PPID`
-                 if [ `echo $psline | egrep -c "$p"` -eq 0 ]; then 
-                    echo UNAUTHORIZED $node $tt $command $pid $rest
-                    ps -wwwwfp $pid|grep -v PPID
+                 if [ `echo $psline | egrep -c "$p"` -eq 0 ]; then
+                    echo $psline
+                    echo $p
+                    msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
+                    msg2=`ps -wwwwfp $pid|grep -v PPID`
+                    echo $msg1
+                    echo $msg2
+                    enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
                     return 2
                  fi
               else
                 p=""
-              fi                
+              fi
               echo Allowing $node $c $tt $a $b $p
                return 0
             fi
