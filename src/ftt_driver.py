@@ -269,15 +269,17 @@ class FTTDriver(driver.Driver):
         
         buf=80*' '
         try:
-
             Trace.log(25, "rewinding tape to check volume label")
             
             self.rewind()
             self.set_mode(compression = 0, blocksize = 0)
-            
+
             if self.fd is None:
                 return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
-            nbytes=self.read(buf, 0, 80)
+            try:
+                nbytes=self.read(buf, 0, 80)
+            except e_errors.READ_ERROR, detail:
+                nbytes = 0
             if nbytes != 80:
                 Trace.trace(25, "read %s bytes checking label" % nbytes)
                 return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], None
@@ -294,6 +296,7 @@ class FTTDriver(driver.Driver):
 
             return e_errors.OK, None
         except exceptions.Exception, detail:
+            Trace.log(e_errors.ERROR, "reading VOL1 label: %s" % (detail,))
             return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], str(detail)
         
     def rates(self):
