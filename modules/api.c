@@ -133,7 +133,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
     return (-1);
   }
 
-  if ( ( flag != INIT ) || ( flag != RECENT ) ) {
+  if ( ( flag != INIT ) && ( flag != RECENT ) ) {
     printf("ds_translate_ftt_stats(): Error, Wrong flag, stats not set\n");
     return (-1);
   }
@@ -1276,7 +1276,7 @@ int ds_send_stats(const DS_DESCRIPTOR* const ds_desc, const int timeout, const i
     }
 
     sd = connect_to_server();
-    printf("ds_send_stats(): send_buff = %s\n",send_buff);
+    /* printf("ds_send_stats(): send_buff = %s\n",send_buff); */
     if (sd > 0) {
       rc = send_data(sd,send_buff);
       if (rc > 0) {
@@ -1306,7 +1306,7 @@ int ds_send_stats(const DS_DESCRIPTOR* const ds_desc, const int timeout, const i
     sprintf(send_buff,"%d|%s|%s",
 	    strlen(msg),BUMP_MOUNTS_STR,msg);
     sd = connect_to_server();
-    printf("ds_send_stats(): send_buff = %s\n",send_buff);  
+    /* printf("ds_send_stats(): send_buff = %s\n",send_buff);  */
     if (sd > 0) {
       rc = send_data(sd,send_buff);
       if (rc > 0) {
