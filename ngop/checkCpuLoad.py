@@ -13,7 +13,7 @@ means that no mail or alarm is generated
 OK_VAL = 1.0
 
 # nodes that are ok if cpuload is < 5
-LOAD5 = ["stkensrv1", "d0ensrv1", "stkendca5a", "stkensrv3"]
+LOAD5 = ["stkensrv1", "d0ensrv1", "stkendca5a", "stkensrv3", "stkensrv2"]
 LOAD5_VAL = 5.0
 
 # nodes that are ok if cpuload is < 4
@@ -21,7 +21,7 @@ LOAD4 = ["stkenmvr5a"]
 LOAD4_VAL = 4.0
 
 # nodes that are ok if cpuload is < 3
-LOAD3 = ["stkendca4a", "stkenmvr6a"]
+LOAD3 = ["stkendca4a", "stkenmvr6a", "stkenmvr4a", "stkenmvr2a", "stkendca3a"]
 LOAD3_VAL = 3.0
 
 # all other nodes give the standard result,
